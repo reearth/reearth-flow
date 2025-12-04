@@ -237,6 +237,10 @@
       "description": "Counts the number of holes in a geometry and adds it as an attribute."
     },
     {
+      "name": "HTTPCaller",
+      "description": "Makes HTTP/HTTPS requests based on feature data and enriches features with response information"
+    },
+    {
       "name": "HoleExtractor",
       "description": "Extracts holes in a geometry and adds it as an attribute."
     },

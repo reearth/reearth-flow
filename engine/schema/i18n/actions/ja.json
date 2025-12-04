@@ -237,6 +237,10 @@
       "description": "ジオメトリ内の穴の数をカウントし、属性として追加する"
     },
     {
+      "name": "HTTPCaller",
+      "description": "地物データに基づいてHTTP/HTTPSリクエストを実行し、レスポンス情報で地物を拡張する"
+    },
+    {
       "name": "HoleExtractor",
       "description": "ジオメトリ内の穴を抽出し、属性として追加する"
     },

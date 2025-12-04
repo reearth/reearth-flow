@@ -237,6 +237,10 @@
       "description": "统计几何中的孔数量并作为属性添加"
     },
     {
+      "name": "HTTPCaller",
+      "description": "基于要素数据发起HTTP/HTTPS请求，并将响应信息添加到要素属性中"
+    },
+    {
       "name": "HoleExtractor",
       "description": "提取几何中的孔并作为属性添加"
     },

@@ -237,6 +237,10 @@
       "description": "Cuenta el número de huecos en una geometría y lo agrega como atributo."
     },
     {
+      "name": "HTTPCaller",
+      "description": "Realiza solicitudes HTTP/HTTPS basadas en datos de entidades y enriquece las entidades con información de respuesta"
+    },
+    {
       "name": "HoleExtractor",
       "description": "Extrae los huecos en una geometría y los agrega como atributo."
     },

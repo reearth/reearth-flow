@@ -3737,6 +3737,205 @@
       ]
     },
     {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "地物データに基づいてHTTP/HTTPSリクエストを実行し、レスポンス情報で地物を拡張する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HTTPCaller Parameters",
+        "description": "Configure HTTP request parameters for making requests based on feature data",
+        "type": "object",
+        "required": [
+          "requestUrl"
+        ],
+        "properties": {
+          "connectionTimeoutSeconds": {
+            "title": "Connection Timeout (seconds)",
+            "description": "Maximum time in seconds to wait for establishing a connection. Defaults to 60 seconds if not specified.",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "Content-Type Header",
+            "description": "The Content-Type header value for the request body. Common values: \"application/json\", \"application/xml\", \"text/plain\"",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorAttribute": {
+            "title": "Error Attribute",
+            "description": "The name of the attribute to store error messages in when a request fails. Defaults to \"_http_error\" if not specified.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headers": {
+            "title": "Custom Headers",
+            "description": "List of custom headers to include in the request. Each header has a name and value, both of which support expressions for dynamic values.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/NameValuePair"
+            }
+          },
+          "headersAttribute": {
+            "title": "Headers Attribute",
+            "description": "The name of the attribute to store the response headers in. Defaults to \"_headers\" if not specified.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "httpMethod": {
+            "title": "HTTP Method",
+            "description": "The HTTP method to use for the request (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS). Defaults to GET if not specified.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "Query Parameters",
+            "description": "List of query parameters to append to the URL. Each parameter has a name and value, both of which support expressions for dynamic values.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/NameValuePair"
+            }
+          },
+          "requestBody": {
+            "title": "Request Body",
+            "description": "The body content to send with POST, PUT, or PATCH requests. Supports expressions for dynamic content generation.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestUrl": {
+            "title": "Request URL",
+            "description": "The URL to send the HTTP request to. Supports expressions to dynamically construct URLs from feature attributes. Example: `\"https://api.example.com/data/\" + env.get(\"__value\").id`",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "Response Body Attribute",
+            "description": "The name of the attribute to store the response body in. Defaults to \"_response_body\" if not specified.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusCodeAttribute": {
+            "title": "Status Code Attribute",
+            "description": "The name of the attribute to store the HTTP status code in. Defaults to \"_http_status_code\" if not specified.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transferTimeoutSeconds": {
+            "title": "Transfer Timeout (seconds)",
+            "description": "Maximum time in seconds to wait for the complete response. Defaults to 90 seconds if not specified.",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "HttpMethod": {
+            "description": "HTTP methods supported by the HTTPCaller",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS"
+            ]
+          },
+          "NameValuePair": {
+            "description": "A name/value pair for headers or query parameters",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Name",
+                "description": "The name/key of the header or query parameter",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              },
+              "value": {
+                "title": "Value",
+                "description": "The value of the header or query parameter (supports expressions)",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
+    },
+    {
       "name": "HoleCounter",
       "type": "processor",
       "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
