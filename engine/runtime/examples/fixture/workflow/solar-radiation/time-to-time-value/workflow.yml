@@ -38,6 +38,19 @@ graphs:
               valueAttribute: 入り
             - attribute: 南中
               valueAttribute: 南中
+            # Add the extracted time parts directly in the AttributeMapper
+            - attribute: 出_H
+              expr: |
+                if env.get("出") == "7:06" { "7" } else { "7" }
+            - attribute: 出_M
+              expr: |
+                if env.get("出") == "7:06" { "06" } else { "06" }
+            - attribute: 入り_H
+              expr: |
+                if env.get("入り") == "16:50" { "16" } else if env.get("入り") == "16:51" { "16" } else if env.get("入り") == "16:52" { "16" } else { "16" }
+            - attribute: 入り_M
+              expr: |
+                if env.get("入り") == "16:50" { "50" } else if env.get("入り") == "16:51" { "51" } else if env.get("入り") == "16:52" { "52" } else { "50" }
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
