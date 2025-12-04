@@ -23,16 +23,12 @@ use zip::ZipWriter;
 
 static INIT: Once = Once::new();
 
-fn init_logging(verbosity: &str) {
+fn init_logging() {
     INIT.call_once(|| {
         use tracing_subscriber::prelude::*;
         use tracing_subscriber::EnvFilter;
-
-        let filter = match verbosity {
-            "0" => EnvFilter::new("warn,plateau_tiles_test=info"),
-            "1" => EnvFilter::new("info,plateau_tiles_test=debug"),
-            _ => EnvFilter::from_default_env(),
-        };
+        let filter = EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new("info,plateau_tiles_test=debug"));
 
         tracing_subscriber::registry()
             .with(filter)
@@ -188,12 +184,22 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         }
 
         info!("Starting run: {}", relative_path.display());
+        let start_time = std::time::Instant::now();
 
         fs::create_dir_all(&output_dir).unwrap();
 
         runner::run_workflow(&workflow_path, &citygml_path, &output_dir);
 
-        info!("Completed run: {}", relative_path.display());
+        let elapsed = start_time.elapsed();
+        info!(
+            "Completed run: {} ({:.2}s)",
+            relative_path.display(),
+            elapsed.as_secs_f64()
+        );
+        if let Some("1") = env::var("PLATEAU_TILES_TEST_CLEANUP").ok().as_deref() {
+            info!("Cleaning up output directory: {}", output_dir.display());
+            fs::remove_dir_all(&output_dir).unwrap();
+        }
     }
 
     if stages.contains('e') {
@@ -304,22 +310,19 @@ fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
 }
 
 fn main() {
-    let verbosity =
-        env::var("PLATEAU_TILES_TEST_LOG_VERBOSITY").unwrap_or_else(|_| "1".to_string());
-    init_logging(&verbosity);
+    init_logging();
 
     let testcases_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testcases");
     let results_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("results");
 
     let args: Vec<String> = env::args().collect();
-    let default_stages = env::var("PLATEAU_TILES_TEST_STAGES").unwrap_or_else(|_| "re".to_string());
 
     if args.len() > 1 {
         let input = &args[1];
         let stages = if args.len() > 2 {
             &args[2]
         } else {
-            &default_stages
+            "re"
         };
 
         // Check if input is a profile.toml path
@@ -336,7 +339,7 @@ fn main() {
         run_testcase(&testcases_dir, &results_dir, &test_name, stages);
     } else {
         for name in DEFAULT_TESTS {
-            run_testcase(&testcases_dir, &results_dir, name, &default_stages);
+            run_testcase(&testcases_dir, &results_dir, name, "re");
         }
     }
 }
