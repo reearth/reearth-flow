@@ -36,7 +36,7 @@
     const viewer = new Cesium.Viewer("cesiumContainer", {});
 
     const yourMvt = new CesiumMVTImageryProvider.CesiumMVTImageryProvider({
-      urlTemplate: "/tiles/{z}/{x}/{y}.pbf",
+      urlTemplate: "/tiles/{z}/{x}/{y}.mvt",
       layerName: "Road",
       style: feature => {
         return {

@@ -146,8 +146,7 @@ pub fn create_workflow(workflow: &str) -> Workflow {
 pub fn setup_logging_and_tracing() {
     let env_filter = EnvFilter::builder()
         .with_default_directive(Level::INFO.into())
-        .from_env_lossy()
-        .add_directive("opendal=error".parse().unwrap());
+        .from_env_lossy();
     let registry = tracing_subscriber::registry().with(env_filter);
     let event_format = tracing_subscriber::fmt::format()
         .with_target(true)

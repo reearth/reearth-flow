@@ -2,11 +2,11 @@
 
 Testing framework for aligning flow outputs containing tile files, with FME outputs.
 
-## Install and run
+## Run
 
-1. install uv (python package manager)
-2. cd into this directory and run `sh setup.sh`
-3. run `uv run python3 -m plateau-tiles-test`
+```sh
+cargo run -p plateau-tiles-test
+```
 
 ## Directory structure
 
@@ -25,35 +25,39 @@ Testing framework for aligning flow outputs containing tile files, with FME outp
   - `flow/` - Flow outputs
   - `runtime/` - Flow intermediate data
 
-## Steps to create a test
+## Caveats
 
-1. Prepare the original CityGML zip under `$CITYGML_SRCDIR`
-2. Create `testcases/{workflow-path}/{desc}/profile.toml` with filter configuration
-3. Run `uv run python3 -m plateau-tiles-test {workflow-path}/{desc} g` to:
-   - Extract codelists/schemas to `artifacts/citymodel/{zip_stem}/`
-   - Extract filtered GML files to `testcases/{workflow-path}/{desc}/citymodel/udx/`
-   - Pack runtime zip to `results/{workflow-path}/{desc}/{zip_name}`
-4. Run FME with the packed zip from `results/{workflow-path}/{desc}/{zip_name}`
-   - FME uses 3dtiles v1.0 + draco compression. Workaround: modify FME workflows to export JSON files (csmapreprojector + coordinateswapper needed to match cesium processing)
-   - Rename `.mvt` -> `.pbf` if necessary
-   - Zip FME output to `testcases/{workflow-path}/{desc}/fme.zip`
-5. Run `uv run python3 -m plateau-tiles-test {workflow-path}/{desc} re` to test
+- draco decoding not supported (TODO), disable it in the workflow to test.
+- 3D tiles v1.0 `.b3dm` output by FME is not supported. Manually edit FME workflows by replacing FME 3d tiles writer with `<CsmapReprojector> -> <CoordinateSwapper> -> <JSON FeatureWriter>`
+- FME's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
 
-## Implemented tests
+## Tests
 
 - `mvt_attributes` - Compare MVT tile attributes.
 - `mvt_polygons` - Compare MVT polygon geometries using symmetric difference area.
-- `mvt_lines` - Compare MVT line geometries using Hausdorff distance of lines and polygon outlines.
-  - Also used for testing polygon topology. For example, polygons before and after union cannot be distinguished by polygon tests.
-  - To avoid corner cases, the frame of current tile is added to the line segment set.
 - `3dtiles_attributes` - Compare 3D Tiles feature attributes.
+- `json_attributes` - Compare JSON outputs.
+- `mvt_lines` - Compare MVT tiles linestrings and polygon outliers.
+- (TODO) `3dtiles_lines` - Compare 3D Tiles meshes using lines.
 
-## Stages
+## Run single test
 
-- `g` - Generate: Extract source zip to artifacts + testcase structure, pack runtime zip
+Run single test with
+
+```
+cargo run -p plateau-tiles-test -- <toml_path> [stages]
+```
+
+Stages:
+
 - `r` - Run: Pack runtime zip (if not exists) and execute workflow
 - `e` - Evaluate: Compare flow output with FME reference
 
-## Todo
+## Notes about designing robust linestrings comparison algorithm
 
-- support draco decoding for 3dtiles v1.1
+While XOR area is a robust comparison for polygons, for line segments robust comparison is hard.
+
+- Hausdorff + segmentize: has problem if a single outlier is far away from other parts
+- Count outliers from the Hausdorff distribution: need to specify a hard threshold
+- Rasterization + RMS: has cumulative error with massive small drift
+- (Current implementation) Rasterization with threshold (>0.5) difference + tile extent undersampling (1024 vs >= 4096). It is robust as long as the pixelated lines generally match.

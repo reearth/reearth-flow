@@ -198,6 +198,7 @@ graphs:
           maxZoom: 16
           skipUnderscorePrefix: true
           colonToUnderscore: true
+          extent: 65536
           output: |
             let feature_type = env.get("__value").feature_type;
             feature_type.replace(":", "_");

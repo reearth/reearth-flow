@@ -102,6 +102,7 @@ impl SinkFactory for MVTSinkFactory {
                 compress_output,
                 skip_underscore_prefix: params.skip_underscore_prefix.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
+                extent: params.extent.unwrap_or(4096) as i32,
             },
             join_handles: Vec::new(),
         };
@@ -149,6 +150,9 @@ pub struct MVTWriterParam {
     /// # Colon to Underscore
     /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
     pub(super) colon_to_underscore: Option<bool>,
+    /// # Extent
+    /// MVT tile resolution. Default is 4096.
+    pub(super) extent: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -160,6 +164,7 @@ pub struct MVTWriterCompiledParam {
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) skip_underscore_prefix: bool,
     pub(super) colon_to_underscore: bool,
+    pub(super) extent: i32,
 }
 
 impl Sink for MVTWriter {
@@ -330,6 +335,7 @@ impl MVTWriter {
         let compress_output = compress_output.clone();
         let skip_underscore_prefix = self.params.skip_underscore_prefix;
         let colon_to_underscore = self.params.colon_to_underscore;
+        let extent = self.params.extent;
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
         std::thread::spawn(move || {
@@ -345,6 +351,7 @@ impl MVTWriter {
                     tile_id_conv,
                     skip_underscore_prefix,
                     colon_to_underscore,
+                    extent,
                 );
                 if let Err(err) = &result {
                     gctx.event_hub.error_log(

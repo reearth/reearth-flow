@@ -292,6 +292,7 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 16
+          extent: 65536
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
           skipUnderscorePrefix: true
@@ -374,6 +375,7 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
+          extent: 65536
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
           skipUnderscorePrefix: true

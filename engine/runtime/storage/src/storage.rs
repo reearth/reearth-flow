@@ -84,7 +84,11 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))?;
         w.write(bytes)
             .await
-            .map_err(|err| format_object_store_error(err, p))
+            .map_err(|err| format_object_store_error(err, p))?;
+        w.close()
+            .await
+            .map_err(|err| format_object_store_error(err, p))?;
+        Ok(())
     }
 
     pub async fn get(&self, location: &Path) -> Result<GetResult> {
