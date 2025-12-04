@@ -41,7 +41,7 @@ fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
                         let mut map = serde_json::Map::new();
                         for (key, value) in tags {
                             let json_value = tinymvt_value_to_json(&value);
-                            map.insert(key, json_value);
+                            map.insert(key.to_string(), json_value);
                         }
                         Value::Object(map)
                     }

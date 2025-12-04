@@ -147,7 +147,7 @@ fn features_by_gml_id(
             }
 
             if let Ok(tags) = tags_decoder.decode(&feature.tags) {
-                if let Some(gml_id_value) = tags.iter().find(|(k, _)| k == "gml_id") {
+                if let Some(gml_id_value) = tags.iter().find(|(k, _)| *k == "gml_id") {
                     if let tinymvt::tag::Value::String(gml_id) = &gml_id_value.1 {
                         // Store the geometry buffer, geometry type, and extent
                         result.insert(

@@ -21,11 +21,6 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
     let env_filter = EnvFilter::builder()
         .with_default_directive(log_level.into())
         .from_env_lossy()
-        .add_directive(
-            "opendal=error"
-                .parse()
-                .map_err(crate::errors::Error::init)?,
-        );
     let time_format = UtcTime::new(
         time::format_description::parse(
             "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
