@@ -41,19 +41,19 @@ graphs:
             # Add the extracted time parts directly in the AttributeMapper
             - attribute: 出_H
               expr: |
-                let time_parts = env.get("出").split(":");
+                let time_parts = env.get("__value")["出"].split(":");
                 if time_parts.len() > 0 { time_parts[0] } else { "" }
             - attribute: 出_M
               expr: |
-                let time_parts = env.get("出").split(":");
+                let time_parts = env.get("__value")["出"].split(":");
                 if time_parts.len() > 1 { time_parts[1] } else { "" }
             - attribute: 入り_H
               expr: |
-                let time_parts = env.get("入り").split(":");
+                let time_parts = env.get("__value")["入り"].split(":");
                 if time_parts.len() > 0 { time_parts[0] } else { "" }
             - attribute: 入り_M
               expr: |
-                let time_parts = env.get("入り").split(":");
+                let time_parts = env.get("__value")["入り"].split(":");
                 if time_parts.len() > 1 { time_parts[1] } else { "" }
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
