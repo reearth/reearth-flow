@@ -4,7 +4,7 @@
         "plateau": {
             "type": "vector",
             "tiles": [
-                "http://localhost:8080/mvt/{z}/{x}/{y}.pbf"
+                "http://localhost:8080/mvt/{z}/{x}/{y}.mvt"
             ],
             "minzoom": 7,
             "maxzoom": 15
