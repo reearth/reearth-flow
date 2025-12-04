@@ -32,13 +32,13 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 
 	serialized := string(serializedBytes)
 
-	if err := r.client.LPush(ctx, jobNodesKey, serialized).Err(); err != nil {
+	if err := r.tracedLPush(ctx, jobNodesKey, serialized); err != nil {
 		log.Printf("ERROR: Failed to push event to Redis list %s: %v", jobNodesKey, err)
 		return fmt.Errorf("failed to push event to Redis list: %w", err)
 	}
 	log.Printf("DEBUG: Successfully pushed event to Redis list %s", jobNodesKey)
 
-	if err := r.client.Expire(ctx, jobNodesKey, 12*time.Hour).Err(); err != nil {
+	if err := r.tracedExpire(ctx, jobNodesKey, 12*time.Hour); err != nil {
 		log.Printf("WARNING: Failed to set expiration on Redis key %s: %v", jobNodesKey, err)
 	} else {
 		log.Printf("DEBUG: Set 12-hour expiration on Redis key %s", jobNodesKey)
@@ -68,7 +68,7 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 		return fmt.Errorf("failed to marshal node data: %w", err)
 	}
 
-	if err := r.client.Set(ctx, nodeKey, string(nodeDataBytes), 12*time.Hour).Err(); err != nil {
+	if err := r.tracedSet(ctx, nodeKey, string(nodeDataBytes), 12*time.Hour); err != nil {
 		log.Printf("ERROR: Failed to set node status in Redis for key %s: %v", nodeKey, err)
 		return fmt.Errorf("failed to set node status in Redis: %w", err)
 	}

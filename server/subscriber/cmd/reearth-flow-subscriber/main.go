@@ -22,6 +22,7 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
 	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
+	"github.com/reearth/reearth-flow/subscriber/internal/telemetry"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
 )
@@ -38,6 +39,28 @@ func main() {
 		log.Fatalf("failed to load config: %v", cerr)
 	}
 	log.Printf("config: %s", conf.Print())
+
+	// Initialize OpenTelemetry
+	tel, err := telemetry.New(ctx, telemetry.Config{
+		Enabled:      conf.TelemetryEnabled,
+		OTLPEndpoint: conf.OTLPEndpoint,
+		Insecure:     conf.OTLPInsecure,
+	})
+	if err != nil {
+		log.Fatalf("failed to initialize telemetry: %v", err)
+	}
+	defer func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := tel.Shutdown(shutdownCtx); err != nil {
+			log.Printf("failed to shutdown telemetry: %v", err)
+		}
+	}()
+	if conf.TelemetryEnabled {
+		log.Printf("[subscriber] OpenTelemetry enabled, exporting to %s", conf.OTLPEndpoint)
+	} else {
+		log.Println("[subscriber] OpenTelemetry disabled")
+	}
 
 	// Initialize PubSub client
 	pubsubClient, err := pubsub.NewClient(ctx, conf.GCPProject)
