@@ -50,7 +50,7 @@ fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     for entry in WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "glb"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "glb"))
     {
         let path = entry.path();
         let content = fs::read(path).map_err(|e| format!("Failed to read GLB: {}", e))?;

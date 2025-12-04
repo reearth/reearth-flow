@@ -171,8 +171,8 @@ fn compare_lines(
     geom2: Option<MultiLineString2D<f64>>,
 ) -> (ComparisonStatus, f64) {
     // Clip both geometries to bounds
-    let line1 = geom1.as_ref().and_then(|g| clip_linestring(g));
-    let line2 = geom2.as_ref().and_then(|g| clip_linestring(g));
+    let line1 = geom1.as_ref().and_then(clip_linestring);
+    let line2 = geom2.as_ref().and_then(clip_linestring);
 
     match (&line1, &line2) {
         (None, None) => (ComparisonStatus::BothMissing, 0.0),
@@ -285,8 +285,8 @@ pub fn test_mvt_lines(
         total += 1;
 
         // Convert polygon boundaries to linestrings
-        let line1 = poly1.as_ref().map(|p| polygon_to_linestrings(p));
-        let line2 = poly2.as_ref().map(|p| polygon_to_linestrings(p));
+        let line1 = poly1.as_ref().map(polygon_to_linestrings);
+        let line2 = poly2.as_ref().map(polygon_to_linestrings);
 
         let (status, score) = compare_lines(line1, line2);
         worst_score = f64::max(worst_score, score);

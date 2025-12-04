@@ -23,7 +23,7 @@ fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     for entry in WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "mvt"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
     {
         let path = entry.path();
         let data = fs::read(path).map_err(|e| format!("Failed to read MVT file: {}", e))?;
@@ -138,7 +138,7 @@ pub fn test_mvt_attributes(
     let fme_tops: HashSet<_> = WalkDir::new(fme_path)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "mvt"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
         .filter_map(|e| {
             let rel = e.path().strip_prefix(fme_path).ok()?;
             let parts: Vec<_> = rel.iter().collect();
@@ -153,7 +153,7 @@ pub fn test_mvt_attributes(
     let flow_tops: HashSet<_> = WalkDir::new(flow_path)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "mvt"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
         .filter_map(|e| {
             let rel = e.path().strip_prefix(flow_path).ok()?;
             let parts: Vec<_> = rel.iter().collect();

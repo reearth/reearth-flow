@@ -176,14 +176,14 @@ pub fn align_mvt_features(
     let mut files1: Vec<PathBuf> = WalkDir::new(dir1)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "mvt"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
         .map(|e| e.path().to_path_buf())
         .collect();
 
     let mut files2: Vec<PathBuf> = WalkDir::new(dir2)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "mvt"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
         .map(|e| e.path().to_path_buf())
         .collect();
 
@@ -296,8 +296,7 @@ fn decode_polygon_from_features(
                 decoder
                     .decode_polygons()
                     .ok()
-                    .map(|polys| tinymvt_to_polygon(Geometry::Polygons(polys), *extent))
-                    .flatten()
+                    .and_then(|polys| tinymvt_to_polygon(Geometry::Polygons(polys), *extent))
             } else {
                 None
             }
@@ -316,8 +315,7 @@ fn decode_linestring_from_features(
                 decoder
                     .decode_linestrings()
                     .ok()
-                    .map(|lines| tinymvt_to_linestring(Geometry::LineStrings(lines), *extent))
-                    .flatten()
+                    .and_then(|lines| tinymvt_to_linestring(Geometry::LineStrings(lines), *extent))
             } else {
                 None
             }
