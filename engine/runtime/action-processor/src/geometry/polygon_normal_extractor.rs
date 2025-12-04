@@ -12,7 +12,6 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::Feature;
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
-use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 
 #[derive(Debug, Clone, Default)]
@@ -48,31 +47,14 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        with: Option<HashMap<String, Value>>,
+        _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let normal_polygon: PolygonNormalExtractor = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::PolygonNormalExtractorFactory(format!(
-                    "Failed to serialize 'with' parameter: {e}"
-                ))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::PolygonNormalExtractorFactory(format!(
-                    "Failed to deserialize 'with' parameter: {e}"
-                ))
-            })?
-        } else {
-            return Err(GeometryProcessorError::PolygonNormalExtractorFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
-        };
+        let normal_polygon: PolygonNormalExtractor = PolygonNormalExtractor {};
         Ok(Box::new(normal_polygon))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 struct PolygonNormalExtractor {}
 
 impl Processor for PolygonNormalExtractor {
@@ -182,7 +164,7 @@ impl PolygonNormalExtractor {
             };
         }
 
-        // Calculate surface normal using Newell's method (based on the Python implementation)
+        // Calculate surface normal using Newell's method
         let mut normal_x = 0.0;
         let mut normal_y = 0.0;
         let mut normal_z = 0.0;
@@ -242,7 +224,7 @@ impl PolygonNormalExtractor {
             azimuth
         };
 
-        // Calculate slope (angle from normal to Z axis) - matching Python implementation
+        // Calculate slope (angle from normal to Z axis)
         let slope = if normalized_normal_z != 0.0 {
             ((normalized_normal_x * normalized_normal_x
                 + normalized_normal_y * normalized_normal_y)
@@ -335,7 +317,6 @@ mod tests {
 
     #[test]
     fn case01_validate_polygon3d_normal() {
-        // Using the coordinates from the Python implementation
         // Create the coordinate vector
         let coordinates = vec![
             Coordinate3D::new__(-310443.027642464, 42024.572164127916, 11.64245729), // First point
