@@ -14,7 +14,8 @@ import type { Doc } from "yjs";
 import {
   isValidConnection,
   CustomConnectionLine,
-  edgeTypes,
+  fullEdgeTypes,
+  simpleEdgeTypes,
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
@@ -36,8 +37,10 @@ type Props = {
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
+  isMainWorkflow: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
+  onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -63,8 +66,10 @@ const Canvas: React.FC<Props> = ({
   edges,
   users,
   currentWorkflowId,
+  isMainWorkflow,
   onWorkflowAdd,
   onWorkflowOpen,
+  onWorkflowAddFromSelection,
   onNodesAdd,
   onNodesChange,
   onBeforeDelete,
@@ -96,6 +101,7 @@ const Canvas: React.FC<Props> = ({
   } = useHooks({
     nodes,
     edges,
+    isMainWorkflow,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
@@ -108,7 +114,6 @@ const Canvas: React.FC<Props> = ({
     onPaste,
     onNodesDisable,
   });
-
   return (
     <ReactFlow
       ref={paneRef}
@@ -118,6 +123,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
+      minZoom={0.3}
       proOptions={{ hideAttribution: true }}
       nodeDragThreshold={2}
       snapToGrid
@@ -126,7 +132,7 @@ const Canvas: React.FC<Props> = ({
       nodes={nodes}
       nodeTypes={nodeTypes}
       edges={edges}
-      edgeTypes={edgeTypes}
+      edgeTypes={readonly ? simpleEdgeTypes : fullEdgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
@@ -160,12 +166,15 @@ const Canvas: React.FC<Props> = ({
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
+          edges={edges}
           allNodes={nodes}
+          isMainWorkflow={isMainWorkflow}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
+          onWorkflowAddFromSelection={onWorkflowAddFromSelection}
           onNodeSettings={onNodeSettings}
           onNodesDeleteCleanup={handleNodesDeleteCleanup}
           onCopy={onCopy}

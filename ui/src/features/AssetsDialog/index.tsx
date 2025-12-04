@@ -16,6 +16,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  LoadingSkeleton,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
@@ -56,6 +57,7 @@ const AssetsDialog: React.FC<Props> = ({
     sortOptions,
     searchTerm,
     layoutView,
+    isCreatingAsset,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,
@@ -127,41 +129,52 @@ const AssetsDialog: React.FC<Props> = ({
               />
             </div>
 
-            <Button variant="default" onClick={handleAssetUploadClick}>
+            <Button
+              variant="default"
+              onClick={handleAssetUploadClick}
+              disabled={isCreatingAsset}>
               <FileArrowUpIcon weight="thin" />
               <p className="text-xs dark:font-light">{t("Upload")}</p>
             </Button>
           </div>
 
           <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
-            {layoutView === "list" ? (
-              <AssetsListView
-                assets={assets}
-                isFetching={isFetching}
-                isDebouncingSearch={isDebouncingSearch}
-                isDeleting={isDeleting}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setAssetToBeDeleted={setAssetToBeDeleted}
-                setAssetToBeEdited={setAssetToBeEdited}
-                setCurrentPage={setCurrentPage}
-                setSearchTerm={setSearchTerm}
-                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
-                onAssetDownload={handleAssetDownload}
-                onAssetDoubleClick={handleAssetDoubleClick}
-              />
+            {!isCreatingAsset ? (
+              <>
+                {layoutView === "list" ? (
+                  <AssetsListView
+                    assets={assets}
+                    isFetching={isFetching}
+                    isDebouncingSearch={isDebouncingSearch}
+                    isDeleting={isDeleting}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    setAssetToBeDeleted={setAssetToBeDeleted}
+                    setAssetToBeEdited={setAssetToBeEdited}
+                    setCurrentPage={setCurrentPage}
+                    setSearchTerm={setSearchTerm}
+                    onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                    onAssetDownload={handleAssetDownload}
+                    onAssetDoubleClick={handleAssetDoubleClick}
+                  />
+                ) : (
+                  <AssetsGridView
+                    assets={assets}
+                    isFetching={isFetching}
+                    isDebouncingSearch={isDebouncingSearch}
+                    isDeleting={isDeleting}
+                    setAssetToBeDeleted={setAssetToBeDeleted}
+                    setAssetToBeEdited={setAssetToBeEdited}
+                    onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                    onAssetDownload={handleAssetDownload}
+                    onAssetDoubleClick={handleAssetDoubleClick}
+                  />
+                )}
+              </>
             ) : (
-              <AssetsGridView
-                assets={assets}
-                isFetching={isFetching}
-                isDebouncingSearch={isDebouncingSearch}
-                isDeleting={isDeleting}
-                setAssetToBeDeleted={setAssetToBeDeleted}
-                setAssetToBeEdited={setAssetToBeEdited}
-                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
-                onAssetDownload={handleAssetDownload}
-                onAssetDoubleClick={handleAssetDoubleClick}
-              />
+              <div className="h-full">
+                <LoadingSkeleton title={t("Uploading Asset...")} />
+              </div>
             )}
             {assets && assets.length > 0 && (
               <div className="mb-3">

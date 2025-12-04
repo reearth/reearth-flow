@@ -5,7 +5,8 @@ import (
 )
 
 type CreateWorkspaceInput struct {
-	Name graphql.String `json:"name"`
+	Alias graphql.String `json:"alias"`
+	Name  graphql.String `json:"name"`
 }
 
 type UpdateWorkspaceInput struct {

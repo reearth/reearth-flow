@@ -137,7 +137,9 @@ pub struct Cesium3DTilesWriterParam {
     /// # Compressed Output Path
     /// Optional path for compressed archive output
     pub(super) compress_output: Option<Expr>,
-    pub(super) draco_compression: Option<bool>, // Draco compression. Defaults to true.
+    /// # Draco Compression
+    /// Use draco compression. Defaults to true.
+    pub(super) draco_compression: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

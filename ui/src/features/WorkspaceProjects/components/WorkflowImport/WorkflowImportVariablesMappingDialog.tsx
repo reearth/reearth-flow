@@ -150,7 +150,7 @@ export default function WorkflowImportVariablesMappingDialog({
           <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
           <DialogDescription>
             {t(
-              "The workflow '{{workflowName}}' contains {{count}} variables. Configure how they should be imported as Project Variables.",
+              "The workflow '{{workflowName}}' contains {{count}} variables. Configure how they should be imported as Workflow Variables.",
               {
                 workflowName,
                 count: variables.length,
@@ -262,7 +262,7 @@ export default function WorkflowImportVariablesMappingDialog({
             </div>
           ))}
         </DialogContentWrapper>
-        <DialogFooter className=" mt-2">
+        <DialogFooter className="mt-2">
           <Button variant="outline" onClick={handleCancel}>
             {t("Cancel")}
           </Button>

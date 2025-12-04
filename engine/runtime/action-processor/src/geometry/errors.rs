@@ -15,6 +15,10 @@ pub(super) enum GeometryProcessorError {
     ThreeDimensionBoxReplacerFactory(String),
     #[error("ThreeDimensionBoxReplacer error: {0}")]
     ThreeDimensionBoxReplacer(String),
+    #[error("BoundaryExtractor Factory error: {0}")]
+    BoundaryExtractorFactory(String),
+    #[error("BoundaryExtractor error: {0}")]
+    BoundaryExtractor(String),
     #[error("CoordinateSystemSetter Factory error: {0}")]
     CoordinateSystemSetterFactory(String),
     #[error("CoordinateSystemSetter error: {0}")]
@@ -115,10 +119,10 @@ pub(super) enum GeometryProcessorError {
     JPStandardGridAccumulatorFactory(String),
     #[error("JPStandardGridAccumulator error: {0}")]
     JPStandardGridAccumulator(String),
-    #[error("SurfaceFootprintReplacer Factory error: {0}")]
-    SurfaceFootprintReplacerFactory(String),
-    #[error("SurfaceFootprintReplacer error: {0}")]
-    SurfaceFootprintReplacer(String),
+    #[error("FootprintReplacer Factory error: {0}")]
+    FootprintReplacerFactory(String),
+    #[error("FootprintReplacer error: {0}")]
+    FootprintReplacer(String),
     #[error("BoundsExtractor Factory error: {0}")]
     BoundsExtractorFactory(String),
     #[error("BoundsExtractor error: {0}")]
@@ -139,6 +143,10 @@ pub(super) enum GeometryProcessorError {
     CSGEvaluatorFactory(String),
     #[error("CSGEvaluator error: {0}")]
     CSGEvaluator(String),
+    #[error("VertexCounter Factory error: {0}")]
+    VertexCounterFactory(String),
+    #[error("VertexCounter error: {0}")]
+    VertexCounter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

@@ -52,17 +52,18 @@ const Toolbox: React.FC<Props> = ({
   const availableTools: Tool[] = [
     {
       id: "reader" as const,
-      name: t("Reader Node"),
+      name: t("Reader"),
       icon: <DatabaseIcon weight="thin" size={16} />,
+      disabled: !isMainWorkflow,
     },
     {
       id: "transformer" as const,
-      name: t("Transformer Node"),
+      name: t("Transformer"),
       icon: <LightningIcon weight="thin" size={16} />,
     },
     {
       id: "writer" as const,
-      name: t("Writer Node"),
+      name: t("Writer"),
       icon: <DiscIcon weight="thin" size={16} />,
       disabled: !isMainWorkflow,
     },
@@ -73,7 +74,7 @@ const Toolbox: React.FC<Props> = ({
     },
     {
       id: "batch" as const,
-      name: t("Batch Node"),
+      name: t("Batch"),
       icon: (
         <RectangleDashedIcon
           className="fill-orange-400"
@@ -84,7 +85,7 @@ const Toolbox: React.FC<Props> = ({
     },
     {
       id: "subworkflow" as const,
-      name: t("Subworkflow Node"),
+      name: t("Subworkflow"),
       icon: <GraphIcon weight="thin" size={16} />,
     },
   ];

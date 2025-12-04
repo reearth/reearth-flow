@@ -1,0 +1,2 @@
+Index,Folder,Filename,サイズ[KB],1GB以下,XML検証結果,L01エラー,L02エラー,L03エラー,L03エラー詳細,L04エラー,不正なcodeSpace数,L05CRS識別子,不正なCRS識別子,L06エラー,T03エラー,xlink参照先なし,gml:id重複,gml:id書式不正,L-frn-01エラー,補足
+1,bldg,49303415_bldg_6697_op.gml,20,OK,VALID,0,0,0,{},0,0,OK,,1,0,0,0,0,1,

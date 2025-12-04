@@ -1,3 +1,4 @@
+pub(crate) mod bundled_schemas;
 pub(crate) mod cache;
 pub(crate) mod errors;
 pub(crate) mod fragmenter;

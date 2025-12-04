@@ -43,6 +43,7 @@ impl Attribute {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
 pub enum AttributeValue {
     Null,
     Bool(bool),
@@ -50,8 +51,8 @@ pub enum AttributeValue {
     String(String),
     DateTime(DateTime),
     Array(Vec<AttributeValue>),
-    Bytes(Bytes),
     Map(HashMap<String, AttributeValue>),
+    Bytes(Bytes),
 }
 
 impl AttributeValue {
@@ -324,7 +325,7 @@ impl From<nusamai_citygml::Value> for AttributeValue {
                 AttributeValue::Number(Number::from_f64(v).unwrap())
             }
             nusamai_citygml::Value::Measure(v) => {
-                AttributeValue::Number(Number::from_f64(v.value()).unwrap())
+                AttributeValue::Number(Number::from_string_unchecked(v.value().to_string()))
             }
             nusamai_citygml::Value::Boolean(v) => AttributeValue::Bool(v),
             nusamai_citygml::Value::Uri(v) => AttributeValue::String(v.value().to_string()),
@@ -392,6 +393,12 @@ impl TryFrom<rhai::Dynamic> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
+        // Skip UNIT (null) values - they should not create attributes
+        if value.is_unit() {
+            return Err(error::Error::internal_runtime(
+                "UNIT value cannot be converted to AttributeValue",
+            ));
+        }
         let value: serde_json::Value =
             from_dynamic(&value).map_err(error::Error::internal_runtime)?;
         let value: Self = value.into();
@@ -553,52 +560,6 @@ impl AttributeValue {
             }
         }
         values
-    }
-
-    pub fn convert_array_attributes(
-        attributes: &HashMap<String, AttributeValue>,
-    ) -> HashMap<String, AttributeValue> {
-        let mut result = HashMap::new();
-        for (k, v) in attributes.iter() {
-            match v {
-                AttributeValue::Array(arr) if arr.len() == 1 => {
-                    let value = arr.first().cloned().unwrap_or(AttributeValue::Null);
-                    match value {
-                        AttributeValue::Map(map) => {
-                            result.insert(
-                                k.clone(),
-                                AttributeValue::Map(Self::convert_array_attributes(&map)),
-                            );
-                        }
-                        _ => {
-                            result.insert(k.clone(), value);
-                        }
-                    }
-                }
-                AttributeValue::Array(arr) => {
-                    let mut new_arr = Vec::new();
-                    for item in arr.iter() {
-                        new_arr.push(match item {
-                            AttributeValue::Map(map) => {
-                                AttributeValue::Map(Self::convert_array_attributes(map))
-                            }
-                            _ => item.clone(),
-                        });
-                    }
-                    result.insert(k.clone(), AttributeValue::Array(new_arr));
-                }
-                AttributeValue::Map(map) => {
-                    result.insert(
-                        k.clone(),
-                        AttributeValue::Map(Self::convert_array_attributes(map)),
-                    );
-                }
-                _ => {
-                    result.insert(k.clone(), v.clone());
-                }
-            }
-        }
-        result
     }
 }
 

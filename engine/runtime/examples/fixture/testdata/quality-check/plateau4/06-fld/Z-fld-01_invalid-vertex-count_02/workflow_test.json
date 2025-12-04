@@ -1,0 +1,17 @@
+{
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "description": "Test quality check for invalid vertex count (pref/river_a)",
+  "cityGmlPath": "udx/fld/pref/river_a/49300100_fld_6697_l2_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_pref_river_a.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "06_浸水想定区域_fld/pref/river_a.csv"
+    }
+  },
+  "expectResultOkFile": false,
+  "skip": false
+}

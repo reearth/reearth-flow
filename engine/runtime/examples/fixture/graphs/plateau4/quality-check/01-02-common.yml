@@ -223,10 +223,12 @@ nodes:
             let total = 0;
             let data = env.get("__value")["dataFileData"];
             if data != () {
-              for key in data.keys() {
-                let val = data[key];
-                if val.type_of() == "i64" {
-                  total += val;
+              for item in data {
+                if item.type_of() == "map" {
+                  let count = item["count"];
+                  if count != () && count.type_of() == "i64" {
+                    total += count;
+                  }
                 }
               }
             }

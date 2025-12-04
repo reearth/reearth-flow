@@ -451,8 +451,7 @@ impl Processor for AttributeFlattener {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(AttributeValue::Map(city_gml_attribute)) = feature.get(&"cityGmlAttributes")
-        else {
+        let Some(AttributeValue::Map(city_gml_attribute)) = feature.get("cityGmlAttributes") else {
             return Err(PlateauProcessorError::AttributeFlattener(format!(
                 "No cityGmlAttributes found with feature id = {:?}",
                 feature.id
@@ -555,7 +554,7 @@ impl Processor for AttributeFlattener {
                 .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
                 .collect::<IndexMap<Attribute, AttributeValue>>(),
         );
-        feature.remove(&Attribute::new("cityGmlAttributes"));
+        feature.remove("cityGmlAttributes");
         feature.attributes.extend(flattened);
         let keys = feature.attributes.keys().cloned().collect_vec();
         let attributes = &mut feature.attributes;

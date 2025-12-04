@@ -78,7 +78,7 @@ const RadioWidget = <
                 // onChange={_onChange}
                 // onBlur={_onBlur}
                 // onFocus={_onFocus}
-                aria-describedby={ariaDescribedByIds<T>(id)}
+                aria-describedby={ariaDescribedByIds(id)}
               />
               <Label htmlFor={optionId(id, index)}>{option.label}</Label>
             </div>

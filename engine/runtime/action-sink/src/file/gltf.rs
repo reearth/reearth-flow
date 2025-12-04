@@ -754,10 +754,18 @@ impl GltfWriter {
             multi_polygon.add_interior(interior_coords);
         }
 
+        // Create default material for the polygon
+        let default_material = Material {
+            base_color: [1.0, 1.0, 1.0, 1.0],
+            base_texture: None,
+        };
+        let mut materials = IndexSet::new();
+        materials.insert(default_material);
+
         let class_feature = ClassFeature {
             polygons: multi_polygon,
-            polygon_material_ids: vec![],
-            materials: Default::default(),
+            polygon_material_ids: vec![0], // One material ID for the one polygon
+            materials,
             attributes: feature
                 .attributes
                 .iter()
@@ -789,20 +797,24 @@ impl GltfWriter {
         // Extract all faces from the solid
         let faces = solid.all_faces();
 
+        if faces.is_empty() {
+            return Ok(());
+        }
+
         // Track bounding volume across all faces
         let mut local_bvol = BoundingVolume::default();
 
-        // Convert each face to a polygon and add it
+        // Create a single MultiPolygon containing all faces
+        let mut multi_polygon = flatgeom::MultiPolygon::new();
+        let mut polygon_count = 0;
+
+        // Convert each face to a polygon and add it to the multi_polygon
         for face in faces.iter() {
-            // Face is essentially a LineString of coordinates
-            // We need to convert it to a flatgeom polygon
             let coords = &face.0;
 
             if coords.len() < 3 {
                 continue; // Skip degenerate faces
             }
-
-            let mut multi_polygon = flatgeom::MultiPolygon::new();
 
             // Convert face coordinates to [x, y, z, u, v] format
             let face_coords: Vec<[f64; 5]> = coords
@@ -823,36 +835,38 @@ impl GltfWriter {
                 .collect();
 
             multi_polygon.add_exterior(face_coords);
-
-            let class_feature = ClassFeature {
-                polygons: multi_polygon,
-                polygon_material_ids: vec![],
-                materials: Default::default(),
-                attributes: feature
-                    .attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect(),
-                feature_id: None,
-                feature_type: feature_type.clone(),
-            };
-
-            // Add to classified features
-            self.classified_features
-                .entry(feature_type.clone())
-                .or_default()
-                .features
-                .push(class_feature);
+            polygon_count += 1;
         }
 
-        // Update bounding volume for the entire solid
-        if !faces.is_empty() {
-            self.classified_features
-                .entry(feature_type)
-                .or_default()
-                .bounding_volume
-                .update(&local_bvol);
-        }
+        // Create default material
+        let default_material = Material {
+            base_color: [1.0, 1.0, 1.0, 1.0],
+            base_texture: None,
+        };
+        let mut materials = IndexSet::new();
+        materials.insert(default_material);
+
+        // Create material IDs - one per face/polygon (all use material 0)
+        let polygon_material_ids = vec![0; polygon_count];
+
+        // Create a single ClassFeature for all faces of the solid
+        let class_feature = ClassFeature {
+            polygons: multi_polygon,
+            polygon_material_ids,
+            materials,
+            attributes: feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect(),
+            feature_id: None,
+            feature_type: feature_type.clone(),
+        };
+
+        // Add to classified features and update bounding volume
+        let feats = self.classified_features.entry(feature_type).or_default();
+        feats.features.push(class_feature);
+        feats.bounding_volume.update(&local_bvol);
 
         Ok(())
     }

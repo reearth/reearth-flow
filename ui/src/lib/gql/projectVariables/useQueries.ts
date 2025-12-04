@@ -102,7 +102,7 @@ export const useQueries = () => {
       if (data?.removeParameter === true) {
         return { success: true, projectId };
       }
-      throw new Error("Failed to delete project variable");
+      throw new Error("Failed to delete workflow variable");
     },
     onSuccess: (result) => {
       if (result?.success && result?.projectId) {
@@ -230,7 +230,7 @@ export const useQueries = () => {
       if (data?.removeParameters === true) {
         return { success: true, projectId };
       }
-      throw new Error("Failed to delete project variables");
+      throw new Error("Failed to delete workflow variables");
     },
     onSuccess: (result) => {
       if (result?.success && result?.projectId) {

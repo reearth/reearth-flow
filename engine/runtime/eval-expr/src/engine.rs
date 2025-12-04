@@ -30,7 +30,7 @@ impl Engine {
         script_engine.set_allow_anonymous_fn(true);
         script_engine.set_allow_shadowing(true);
         let scope = rhai::Scope::new();
-        vec![
+        [
             rhai::exported_module!(env_module),
             rhai::exported_module!(scope_module),
         ]

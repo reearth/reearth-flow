@@ -10,7 +10,7 @@ with:
   targetPackages:
     - urf
     - area
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
@@ -25,7 +25,7 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
               },
             ]
 
@@ -37,101 +37,171 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
           format: citygml
+          flatten: true
           dataset: |
             env.get("__value")["path"]
 
-      - id: dc498449-5478-4bff-abaa-59f2d160925f
-        name: PLATEAU4.MaxLodExtractor
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+        name: AttributeManagerPreFlattener
         type: action
-        action: PLATEAU4.MaxLodExtractor
+        action: AttributeManager
         with:
-          cityGmlPathAttribute: path
-          maxLodAttribute: maxLod
+          operations:
+            - attribute: meshcode
+              method: create
+              value: |
+                let file = file::extract_filename(env.get("__value")["path"]);
+                file.split("_")[0]
+            - attribute: gml_id
+              method: create
+              value: |
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+            - attribute: feature_type
+              method: create
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
 
-      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        name: AttributeAggregatorByMaxLod
+      - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        name: AttributeFlattener
         type: action
-        action: AttributeAggregator
-        with:
-          aggregateAttributes:
-          - newAttribute: file
-            attributeValue: |
-              file::extract_filename(env.get("__value")["path"])
-          - newAttribute: type
-            attributeValue: |
-              env.get("__feature_type")
-          - newAttribute: maxLod
-            attributeValue: |
-              env.get("__value").maxLod
-          calculation: |
-            1
-          calculationAttribute: count
-          method: count
-
-      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        name: AttributeMapperByMaxLod
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-          - attribute: code
-            expr: |
-              env.get("__value").file[0..6]
-          - attribute: type
-            expr: |
-              env.get("__value")["type"].split(":")[0]
-          - attribute: maxLod
-            expr: |
-              env.get("__value").maxLod
-          - attribute: file
-            expr: |
-              env.get("__value").file
-
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: FileWriterTsvFilePath
-        type: action
-        action: CsvWriter
-        with:
-          format: tsv
-          output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
+        action: PLATEAU4.AttributeFlattener
 
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        name: AttributeMapper
+        name: AttributeManager
         type: action
-        action: AttributeMapper
+        action: AttributeManager
         with:
-          mappers:
-            - attribute: meshcode
-              valueAttribute: meshCode
-            - attribute: city_code
-              valueAttribute: cityCode
-            - attribute: city_name
-              valueAttribute: cityName
-            - attribute: feature_type
-              valueAttribute: gmlName
-            - attribute: gml_id
-              valueAttribute: gmlId
+          operations:
+          - attribute: featureId
+            method: remove
+          - attribute: featureParentId
+            method: remove
+          - attribute: geometryName
+            method: remove
+          - attribute: cityCode
+            method: rename
+            value: city_code
+          - attribute: cityName
+            method: rename
+            value: city_name
+          - attribute: lod
+            method: rename
+            value: _lod
+          - attribute: gmlId
+            method: remove
+          - attribute: gmlPropertyName
+            method: remove
+          - attribute: fileIndex
+            method: remove
+          - attribute: root
+            method: remove
+          - attribute: cityGmlPath
+            method: remove
+          - attribute: admin
+            method: remove
+          - attribute: area
+            method: remove
+          - attribute: package
+            method: remove
+          - attribute: extension
+            method: remove
+          - attribute: dirRoot
+            method: remove
+          - attribute: gmlRootId
+            method: remove
+          - attribute: maxLod
+            method: remove
+          - attribute: dirSchemas
+            method: remove
+          - attribute: dirCodelists
+            method: remove
+          - attribute: path
+            method: remove
+          - attribute: name
+            method: remove
+          - attribute: udxDirs
+            method: rename
+            value: _udxDirs
+          - attribute: featureType
+            method: remove
+          - attribute: gmlName
+            method: remove
+
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        name: StripFeatureTypePrefix
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: feature_type_without_prefix
+            method: create
+            value: |
+              env.get("__value").feature_type.split(":")[1]
+
+      - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        name: AttributeDuplicateFilter
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - feature_type
+
+      - id: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+        name: AttributeConversionTable
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: !include urf_japanese_converter.csv.txt
+          rules:
+          - featureFroms:
+            - feature_type_without_prefix
+            featureTo: feature_type_ja
+            conversionTableKeys:
+            - name
+            conversionTableTo: description
+
+      - id: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              urf: env.get("__features").map(|f| #{
+                name: f.feature_type_without_prefix,
+                description: f.feature_type_ja
+              })
+            }
+
+      - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - feature_type
+          order: ascending
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: MvtWriter
         type: action
         action: MVTWriter
         with:
-          format: mvt
           layerName: |
-            let feature_type = env.get("__value").feature_type;
-            feature_type.replace(":", "_");
-            feature_type
+            env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 16
+          skipUnderscorePrefix: true
+          colonToUnderscore: true
           output: |
             let feature_type = env.get("__value").feature_type;
             feature_type.replace(":", "_");
-            file::join_path(env.get("outputPath"), feature_type)
+            file::join_path(env.get("workerArtifactPath"), feature_type)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -146,31 +216,46 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: dc498449-5478-4bff-abaa-59f2d160925f
+        to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         fromPort: default
         toPort: default
-      - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
-        from: dc498449-5478-4bff-abaa-59f2d160925f
-        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        fromPort: default
-        toPort: default
-      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
-        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        fromPort: default
-        toPort: default
-      - id: 993360df-5cfd-4525-9626-bfe13fa62117
-        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+      - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+        from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+        to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         fromPort: default
         toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
-        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
-      - id: e862f11a-88a6-4c1b-a743-ba80253039df
+      - id: d8e9f0a1-b2c3-d4e5-f6a7-b8c9d0e1f2a3
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        fromPort: default
+        toPort: default
+      - id: e9f0a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4
+        from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        to: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        fromPort: default
+        toPort: default
+      - id: f0a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
+        from: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        to: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+        fromPort: default
+        toPort: default
+      - id: a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6
+        from: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+        to: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
+        fromPort: default
+        toPort: default
+      - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+        fromPort: default
+        toPort: default
+      - id: e862f11a-88a6-4c1b-a743-ba80253039df
+        from: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default

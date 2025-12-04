@@ -1,0 +1,22 @@
+{
+  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
+  "description": "Test for plateau4 07 surface orientation error.",
+  "expectedOutput": {
+    "expectedFile": "07_土砂災害警戒区域_面の向き不正.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_lsld.json",
+      "includeFields": ["面の向き不正"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "07_土砂災害警戒区域_検査結果一覧.csv",
+      "includeColumns": ["面の向き不正"]
+    }
+  },
+  "cityGmlPath": "udx/lsld/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

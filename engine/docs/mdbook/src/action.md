@@ -1,5 +1,19 @@
 # Actions
 
+## AppearanceRemover
+### Type
+* processor
+### Description
+Removes appearance information (materials, textures) from CityGML geometry
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## AreaOnAreaOverlayer
 ### Type
 * processor
@@ -671,6 +685,39 @@ Transform Feature Attributes Using Expressions and Mappings
 ### Category
 * Attribute
 
+## BoundaryExtractor
+### Type
+* processor
+### Description
+Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BoundaryExtractor Parameters",
+  "description": "Configuration for extracting boundaries from geometries.",
+  "type": "object",
+  "properties": {
+    "exteriorOnly": {
+      "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepEmptyBoundaries": {
+      "description": "Whether to keep features with empty boundaries (default: false)",
+      "default": false,
+      "type": "boolean"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## BoundsExtractor
 ### Type
 * processor
@@ -1100,6 +1147,8 @@ Export Features as Cesium 3D Tiles for Web Visualization
       ]
     },
     "dracoCompression": {
+      "title": "Draco Compression",
+      "description": "Use draco compression. Defaults to true.",
       "type": [
         "boolean",
         "null"
@@ -1378,20 +1427,13 @@ Read Features from CSV or TSV File
           "description": "Geometry stored as Well-Known Text in a single column",
           "type": "object",
           "required": [
-            "column",
-            "geometryMode"
+            "column"
           ],
           "properties": {
             "column": {
               "title": "WKT Column Name",
               "description": "Name of the column containing WKT geometry",
               "type": "string"
-            },
-            "geometryMode": {
-              "type": "string",
-              "enum": [
-                "wkt"
-              ]
             }
           }
         },
@@ -1400,17 +1442,10 @@ Read Features from CSV or TSV File
           "description": "Geometry stored as separate X, Y, (optional Z) columns",
           "type": "object",
           "required": [
-            "geometryMode",
             "xColumn",
             "yColumn"
           ],
           "properties": {
-            "geometryMode": {
-              "type": "string",
-              "enum": [
-                "coordinates"
-              ]
-            },
             "xColumn": {
               "title": "X Column Name",
               "description": "Name of the column containing X coordinate (longitude)",
@@ -1479,6 +1514,18 @@ Writes features to CSV or TSV files.
         }
       ]
     },
+    "geometry": {
+      "title": "Geometry Configuration",
+      "description": "Optional configuration for exporting geometry to CSV columns",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeometryExportConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "output": {
       "description": "Output path or expression for the CSV/TSV file to create",
       "allOf": [
@@ -1511,6 +1558,57 @@ Writes features to CSV or TSV files.
     },
     "Expr": {
       "type": "string"
+    },
+    "GeometryExportConfig": {
+      "title": "Geometry Export Configuration",
+      "description": "Configure how geometry data is written to CSV columns",
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "WKT Column",
+          "description": "Write geometry as Well-Known Text in a single column",
+          "type": "object",
+          "required": [
+            "column"
+          ],
+          "properties": {
+            "column": {
+              "title": "WKT Column Name",
+              "description": "Name of the column to write WKT geometry",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "title": "Coordinate Columns",
+          "description": "Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+          "type": "object",
+          "required": [
+            "xColumn",
+            "yColumn"
+          ],
+          "properties": {
+            "xColumn": {
+              "title": "X Column Name",
+              "description": "Name of the column for X coordinate (longitude)",
+              "type": "string"
+            },
+            "yColumn": {
+              "title": "Y Column Name",
+              "description": "Name of the column for Y coordinate (latitude)",
+              "type": "string"
+            },
+            "zColumn": {
+              "title": "Z Column Name",
+              "description": "Optional name of the column for Z coordinate (elevation)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }
@@ -2783,6 +2881,21 @@ Extracts file system properties (type, size, timestamps) from files
 ### Category
 * File
 
+## FootprintReplacer
+### Type
+* processor
+### Description
+Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* footprint
+* rejected
+### Category
+* Geometry
+
 ## GeoJsonReader
 ### Type
 * source
@@ -3006,6 +3119,76 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 * File
 * Database
 
+## GeoPackageWriter
+### Type
+* sink
+### Description
+Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoPackageWriter Parameters",
+  "description": "Configuration for writing features to GeoPackage files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "createSpatialIndex": {
+      "description": "Create RTree spatial index (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "geometryColumn": {
+      "description": "Geometry column name (default: \"geom\")",
+      "default": "geom",
+      "type": "string"
+    },
+    "geometryType": {
+      "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
+      "default": "GEOMETRY",
+      "type": "string"
+    },
+    "output": {
+      "description": "Output path for the GeoPackage file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "overwrite": {
+      "description": "Overwrite existing file (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "srsId": {
+      "description": "Spatial Reference System ID (default: 4326 for WGS84)",
+      "default": 4326,
+      "type": "integer",
+      "format": "int32"
+    },
+    "tableName": {
+      "description": "Table name to create (default: \"features\")",
+      "default": "features",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+* Database
+
 ## GeometryCoercer
 ### Type
 * processor
@@ -3019,23 +3202,24 @@ Coerces and converts feature geometries to specified target geometry types
   "description": "Configuration for coercing geometries to specific target types.",
   "type": "object",
   "required": [
-    "coercerType"
+    "targetType"
   ],
   "properties": {
-    "coercerType": {
+    "targetType": {
       "description": "Target geometry type to coerce features to (e.g., LineString)",
       "allOf": [
         {
-          "$ref": "#/definitions/CoercerType"
+          "$ref": "#/definitions/CoerceTarget"
         }
       ]
     }
   },
   "definitions": {
-    "CoercerType": {
+    "CoerceTarget": {
       "type": "string",
       "enum": [
-        "lineString"
+        "lineString",
+        "triangularMesh"
       ]
     }
   }
@@ -3220,6 +3404,20 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 * extracted
 * remaining
 * untouched
+### Category
+* Geometry
+
+## GeometryRemover
+### Type
+* processor
+### Description
+Removes geometry from a feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Geometry
 
@@ -3527,15 +3725,26 @@ Reproject Geometry to Different Coordinate System
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Horizontal Reprojector Parameters",
-  "description": "Configure the target coordinate system for geometry reprojection",
+  "description": "Configure the source and target coordinate systems for geometry reprojection",
   "type": "object",
   "required": [
-    "epsgCode"
+    "targetEpsgCode"
   ],
   "properties": {
-    "epsgCode": {
-      "title": "EPSG Code",
-      "description": "Target coordinate system EPSG code for the reprojection",
+    "sourceEpsgCode": {
+      "title": "Source EPSG Code",
+      "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "targetEpsgCode": {
+      "title": "Target EPSG Code",
+      "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
       "type": "integer",
       "format": "uint16",
       "minimum": 0.0
@@ -3927,6 +4136,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
     "output"
   ],
   "properties": {
+    "colonToUnderscore": {
+      "title": "Colon to Underscore",
+      "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "compressOutput": {
       "title": "Compress Output",
       "description": "Optional expression to determine whether to compress the output tiles",
@@ -3969,6 +4186,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         {
           "$ref": "#/definitions/Expr"
         }
+      ]
+    },
+    "skipUnderscorePrefix": {
+      "title": "Skip Underscore Prefix",
+      "description": "Skip attributes with underscore prefix",
+      "type": [
+        "boolean",
+        "null"
       ]
     }
   },
@@ -4680,6 +4905,57 @@ Extracts city code information from PLATEAU4 codelists for local public authorit
 ### Category
 * PLATEAU
 
+## PLATEAU4.CityGmlMeshBuilder
+### Type
+* processor
+### Description
+Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGML Mesh Builder Parameters",
+  "description": "Configure validation rules for CityGML mesh triangles",
+  "type": "object",
+  "properties": {
+    "errorAttribute": {
+      "title": "Error Attribute Name",
+      "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
+      "default": "_validation_error",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "rejectInvalid": {
+      "title": "Reject Invalid Features",
+      "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* not_closed
+* incorrect_vertices
+* wrong_orientation
+* degenerate_triangle
+* summary
+* rejected
+### Category
+* PLATEAU
+* Geometry
+
 ## PLATEAU4.DestinationMeshCodeExtractor
 ### Type
 * processor
@@ -4746,6 +5022,46 @@ Validates domain of definition of CityGML features
 * default
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU4.FaceExtractor
+### Type
+* processor
+### Description
+Validates individual surfaces of WaterBody features for TIN mesh quality
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FaceExtractor Parameters",
+  "description": "Configuration for validating individual surfaces of WaterBody features. Always checks vertex count, closure, and orientation of polygons in TIN meshes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPathAttribute": {
+      "description": "Attribute name for city_gml_path (default: \"_gml_path\")",
+      "default": "_gml_path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* error
+* summary
+* passed
+* all
 ### Category
 * PLATEAU
 
@@ -4863,7 +5179,7 @@ Extract object list
 ### Type
 * processor
 ### Description
-Creates pairs of features that can possibly intersect based on bounding box overlap
+Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
 ### Parameters
 ```json
 {
@@ -4871,11 +5187,18 @@ Creates pairs of features that can possibly intersect based on bounding box over
   "title": "SolidIntersectionTestPairCreatorParam",
   "type": "object",
   "properties": {
-    "boundingBoxAttribute": {
-      "default": "bounding_box",
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+      "default": "list",
       "type": "string"
     },
     "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
       "default": "pair_id",
       "type": "string"
     }
@@ -4995,6 +5318,35 @@ Detect unmatched Xlinks for PLATEAU
 * summary
 * unMatchedXlinkFrom
 * unMatchedXlinkTo
+### Category
+* PLATEAU
+
+## PLATEAU4.UnsharedEdgeDetector
+### Type
+* processor
+### Description
+Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnsharedEdgeDetector Parameters",
+  "description": "Configure unshared edge detection behavior",
+  "type": "object",
+  "properties": {
+    "tolerance": {
+      "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
+      "default": 0.1,
+      "type": "number",
+      "format": "double"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* unshared
 ### Category
 * PLATEAU
 
@@ -5173,7 +5525,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
     },
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+      "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
       "type": [
         "string",
         "null"
@@ -5273,6 +5625,133 @@ Validates the Solid Boundary Geometry
 * default
 ### Output Ports
 * success
+* failed
+* rejected
+### Category
+* Geometry
+
+## SpatialFilter
+### Type
+* processor
+### Description
+Filter Features by Spatial Relationship
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpatialFilter Parameters",
+  "description": "Configure spatial relationship testing between filter and candidate geometries",
+  "type": "object",
+  "properties": {
+    "outputMatchCountAttribute": {
+      "title": "Output Match Count Attribute",
+      "description": "Optional attribute name to store the number of matching filters",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "passOnMultipleMatches": {
+      "title": "Pass on Multiple Matches",
+      "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
+      "default": true,
+      "type": "boolean"
+    },
+    "predicate": {
+      "title": "Spatial Predicate",
+      "description": "The spatial relationship to test between filter and candidate geometries",
+      "default": "intersects",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SpatialPredicate"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "SpatialPredicate": {
+      "oneOf": [
+        {
+          "description": "Filter geometry completely contains candidate",
+          "type": "string",
+          "enum": [
+            "contains"
+          ]
+        },
+        {
+          "description": "Candidate completely within filter geometry",
+          "type": "string",
+          "enum": [
+            "within"
+          ]
+        },
+        {
+          "description": "Geometries have any intersection",
+          "type": "string",
+          "enum": [
+            "intersects"
+          ]
+        },
+        {
+          "description": "Geometries have no spatial relationship",
+          "type": "string",
+          "enum": [
+            "disjoint"
+          ]
+        },
+        {
+          "description": "Geometries touch at boundaries but don't overlap",
+          "type": "string",
+          "enum": [
+            "touches"
+          ]
+        },
+        {
+          "description": "Geometries cross each other",
+          "type": "string",
+          "enum": [
+            "crosses"
+          ]
+        },
+        {
+          "description": "Geometries overlap partially",
+          "type": "string",
+          "enum": [
+            "overlaps"
+          ]
+        },
+        {
+          "description": "Candidate is covered by filter geometry",
+          "type": "string",
+          "enum": [
+            "coveredBy"
+          ]
+        },
+        {
+          "description": "Filter geometry covers candidate",
+          "type": "string",
+          "enum": [
+            "covers"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* filter
+* candidate
+### Output Ports
+* passed
 * failed
 * rejected
 ### Category
@@ -5417,55 +5896,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
 * complete
 ### Category
 * Attribute
-
-## SurfaceFootprintReplacer
-### Type
-* processor
-### Description
-Replace the geometry with its footprint
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SurfaceFootprintReplacer Parameters",
-  "description": "Configuration for replacing geometry with its footprint projection.",
-  "type": "object",
-  "properties": {
-    "elevation": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "lightDirection": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "number",
-        "format": "double"
-      },
-      "maxItems": 3,
-      "minItems": 3
-    },
-    "shadowMode": {
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* footprint
-* rejected
-### Category
-* Geometry
 
 ## ThreeDimensionBoxReplacer
 ### Type
@@ -5725,6 +6155,46 @@ Rotate 3D Geometry Around Arbitrary Axis
 Force 3D Geometry to 2D by Removing Z-Coordinates
 ### Parameters
 * No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
+## VertexCounter
+### Type
+* processor
+### Description
+Count Geometry Vertices to Attribute
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vertex Counter Parameters",
+  "description": "Configure where to store the count of vertices found in geometries",
+  "type": "object",
+  "required": [
+    "outputAttribute"
+  ],
+  "properties": {
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Name of the attribute where the vertex count will be stored as a number",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
