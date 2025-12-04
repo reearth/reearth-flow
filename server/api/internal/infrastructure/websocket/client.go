@@ -19,8 +19,8 @@ type Config struct {
 }
 
 type Client struct {
-	config Config
 	client *http.Client
+	config Config
 }
 
 var _ interfaces.WebsocketClient = &Client{}
@@ -169,8 +169,8 @@ func (c *Client) GetHistoryMetadata(ctx context.Context, docID string) ([]*webso
 	}
 
 	var historyResp []struct {
-		Version   uint64 `json:"version"`
 		Timestamp string `json:"timestamp"`
+		Version   uint64 `json:"version"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&historyResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)

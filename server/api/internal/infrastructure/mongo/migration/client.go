@@ -22,9 +22,9 @@ func Do(ctx context.Context, db *mongox.Client, config repo.Config) error {
 
 type Config struct {
 	c       repo.Config
-	locked  bool
 	current config.Config
 	m       sync.Mutex
+	locked  bool
 }
 
 func NewConfig(c repo.Config) *Config {

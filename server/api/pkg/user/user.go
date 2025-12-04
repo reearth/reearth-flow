@@ -3,15 +3,15 @@ package user
 import "github.com/reearth/reearth-flow/api/pkg/workspace"
 
 type User struct {
-	id            ID
+	host          *string
+	metadata      Metadata
 	name          string
 	alias         string
 	email         string
-	metadata      Metadata
-	host          *string
-	myWorkspaceID WorkspaceID
-	auths         []string
 	myWorkspace   workspace.Workspace
+	auths         []string
+	id            ID
+	myWorkspaceID WorkspaceID
 }
 
 type List []*User

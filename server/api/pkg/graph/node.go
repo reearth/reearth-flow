@@ -17,12 +17,12 @@ const (
 )
 
 type NodeExecution struct {
-	id          string
-	jobID       id.JobID
-	nodeID      id.NodeID
-	status      Status
 	startedAt   *time.Time
 	completedAt *time.Time
+	id          string
+	status      Status
+	jobID       id.JobID
+	nodeID      id.NodeID
 }
 
 func NewNodeExecution(
