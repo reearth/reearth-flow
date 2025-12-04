@@ -1,0 +1,48 @@
+# HTTPCaller Integration Test Workflow
+# This workflow demonstrates making HTTP requests with dynamic URL construction
+id: 8f7e6d5c-4b3a-2c1d-0e9f-8a7b6c5d4e3f
+name: "HTTPCaller integration test"
+entryGraphId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+graphs:
+  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    name: entrypoint
+    nodes:
+      # Create a feature with data to use in the HTTP request
+      - id: 11111111-2222-3333-4444-555555555555
+        name: Source-FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          features:
+            - id: "feature-1"
+              userId: 1
+
+      # Make an HTTP GET request to fetch user data
+      - id: 22222222-3333-4444-5555-666666666666
+        name: Processor-HTTPCaller
+        type: action
+        action: HTTPCaller
+        with:
+          requestUrl: |
+            "https://jsonplaceholder.typicode.com/users/" + str::to_string(env.get("__value").userId)
+          httpMethod: GET
+          headers:
+            - name: |
+                "Accept"
+              value: |
+                "application/json"
+          responseBodyAttribute: "_response_body"
+          statusCodeAttribute: "_http_status_code"
+          headersAttribute: "_response_headers"
+          errorAttribute: "_http_error"
+          connectionTimeoutSeconds: 30
+          transferTimeoutSeconds: 60
+
+    edges:
+      - id: aaaa1111-bbbb-2222-cccc-3333dddd4444
+        from: 11111111-2222-3333-4444-555555555555
+        to: 22222222-3333-4444-5555-666666666666
+        fromPort: default
+        toPort: default
+
+

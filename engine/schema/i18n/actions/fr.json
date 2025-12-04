@@ -237,6 +237,10 @@
       "description": "Count Polygon Holes to Attribute"
     },
     {
+      "name": "HTTPCaller",
+      "description": "Effectue des requêtes HTTP/HTTPS basées sur les données des entités et enrichit les entités avec les informations de réponse"
+    },
+    {
       "name": "HoleExtractor",
       "description": "Extract Polygon Holes as Separate Features"
     },
