@@ -1,4 +1,5 @@
 pub(super) mod cesium3dtiles;
+pub(super) mod citygml;
 pub(super) mod csv;
 pub(super) mod czml;
 pub(super) mod excel;

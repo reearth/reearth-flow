@@ -6,11 +6,12 @@ use reearth_flow_runtime::node::{NodeKind, SinkFactory};
 use crate::{
     echo::EchoSinkFactory,
     file::{
-        cesium3dtiles::sink::Cesium3DTilesSinkFactory, csv::CsvWriterFactory,
-        czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory, geojson::GeoJsonWriterFactory,
-        geopackage::GeoPackageWriterFactory, gltf::GltfWriterSinkFactory, json::JsonWriterFactory,
-        mvt::sink::MVTSinkFactory, obj::ObjWriterFactory, shapefile::ShapefileWriterFactory,
-        xml::XmlWriterFactory, zip::ZipFileWriterFactory,
+        cesium3dtiles::sink::Cesium3DTilesSinkFactory, citygml::CityGmlWriterFactory,
+        csv::CsvWriterFactory, czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory,
+        geojson::GeoJsonWriterFactory, geopackage::GeoPackageWriterFactory,
+        gltf::GltfWriterSinkFactory, json::JsonWriterFactory, mvt::sink::MVTSinkFactory,
+        obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, xml::XmlWriterFactory,
+        zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
 };
@@ -18,6 +19,7 @@ use crate::{
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn SinkFactory>> = vec![
         Box::<Cesium3DTilesSinkFactory>::default(),
+        Box::<CityGmlWriterFactory>::default(),
         Box::<CsvWriterFactory>::default(),
         Box::<EchoSinkFactory>::default(),
         Box::<ExcelWriterFactory>::default(),
