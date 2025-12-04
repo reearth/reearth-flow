@@ -94,18 +94,8 @@ impl Storage {
             },
         })?;
 
-<<<<<<< HEAD
         let meta_result = self.inner.stat(p).await;
 
-=======
-        let meta = ObjectMeta {
-            location: object_store::path::Path::parse(p)?,
-            last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length(),
-            e_tag: meta.etag().map(|x| x.to_string()),
-            version: None,
-        };
->>>>>>> origin/main
         let r = self
             .inner
             .read(p)
