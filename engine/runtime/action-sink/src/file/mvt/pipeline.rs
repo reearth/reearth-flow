@@ -212,9 +212,9 @@ pub(super) fn tile_writing_stage(
     tile_id_conv: TileIdMethod,
     skip_underscore_prefix: bool,
     colon_to_underscore: bool,
+    default_extent: i32,
 ) -> crate::errors::Result<()> {
-    let default_detail = 12;
-    let min_detail = 9;
+    let min_extent: i32 = 512;
 
     let storage = ctx
         .storage_resolver
@@ -230,16 +230,14 @@ pub(super) fn tile_writing_stage(
             let path = output_path
                 .join(Path::new(&format!("{zoom}/{x}/{y}.mvt")))
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-            for detail in (min_detail..=default_detail).rev() {
-                // Make a MVT tile binary
+            let mut extent = default_extent;
+            while extent >= min_extent {
                 let bytes = make_tile(
-                    detail,
+                    extent,
                     &serialized_feats,
                     skip_underscore_prefix,
                     colon_to_underscore,
                 )?;
-
-                // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
                     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
                     e.write_all(&bytes)
@@ -249,9 +247,12 @@ pub(super) fn tile_writing_stage(
                         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                     compressed_bytes.len()
                 };
-                if detail != min_detail && compressed_size > 500_000 {
-                    // If the tile is too large, try a lower detail level
-                    tracing::warn!("Large tile skipped, retry unimplemented");
+                if compressed_size > 500_000 && extent > min_extent {
+                    tracing::warn!(
+                        "Tile z:{} x:{} y:{} with extent {} is too large ({} bytes), retrying with smaller extent",
+                        zoom, x, y, extent, compressed_size
+                    );
+                    extent /= 2;
                     continue;
                 }
                 storage
@@ -265,7 +266,7 @@ pub(super) fn tile_writing_stage(
 }
 
 pub(super) fn make_tile(
-    default_detail: i32,
+    extent: i32,
     serialized_feats: &[Vec<u8>],
     skip_underscore_prefix: bool,
     colon_to_underscore: bool,
@@ -273,7 +274,6 @@ pub(super) fn make_tile(
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
     let mut int_ring_buf2 = Vec::new();
-    let extent = 1 << default_detail;
 
     for serialized_feat in serialized_feats {
         let feature: super::slice::SlicedFeature = serde_json::from_slice(serialized_feat)
@@ -309,15 +309,19 @@ pub(super) fn make_tile(
                             continue;
                         }
 
-                        // Reject collinear points
+                        // Skip collinear points (cast to i64 to avoid overflow)
                         let [curr_x, curr_y] = curr;
                         let [prev_x, prev_y] = prev;
                         let [next_x, next_y] = next;
-                        if curr != next
-                            && ((next_y - prev_y) * (curr_x - prev_x)).abs()
-                                == ((curr_y - prev_y) * (next_x - prev_x)).abs()
-                        {
-                            continue;
+                        if curr != next {
+                            let dx1 = (curr_x - prev_x) as i64;
+                            let dy1 = (curr_y - prev_y) as i64;
+                            let dx2 = (next_x - prev_x) as i64;
+                            let dy2 = (next_y - prev_y) as i64;
+                            let cross_product = dx1 * dy2 - dy1 * dx2;
+                            if cross_product == 0 {
+                                continue;
+                            }
                         }
 
                         int_ring_buf2.push(curr);
@@ -432,7 +436,7 @@ pub(super) fn make_tile(
                 features: layer_data.features,
                 keys,
                 values,
-                extent: Some(extent),
+                extent: Some(extent as u32),
             })
         })
         .collect();
