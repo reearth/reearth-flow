@@ -2,10 +2,10 @@ package interfaces
 
 // PageBasedPaginationParam represents page-based pagination parameters
 type PageBasedPaginationParam struct {
-	Page     int
-	PageSize int
 	OrderBy  *string
 	OrderDir *string
+	Page     int
+	PageSize int
 }
 
 // PaginationParam represents pagination parameters

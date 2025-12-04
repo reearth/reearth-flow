@@ -85,7 +85,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)
 	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
 		SignupSecret:             cfg.Config.SignupSecret,
-		AuthSrvUIDomain:          cfg.Config.Host_Web,
+		AuthSrvUIDomain:          cfg.Config.HostWeb,
 		Host:                     cfg.Config.Host,
 		SharedPath:               cfg.Config.SharedPath,
 		WebsocketThriftServerURL: cfg.Config.WebsocketThriftServerURL,
@@ -116,7 +116,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	serveFiles(e, cfg.Gateways.File)
 
-	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.Web_Disabled, nil)
+	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.WebDisabled, nil)
 
 	return e
 }

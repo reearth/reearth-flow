@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -100,7 +101,7 @@ func Start(debug bool, version string) {
 	}
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("failed to run server: %v", err)
 		}
 	}()
@@ -116,19 +117,19 @@ func Start(debug bool, version string) {
 }
 
 type WebServer struct {
-	address   string
 	appServer *echo.Echo
+	address   string
 }
 
 type ServerConfig struct {
+	PermissionChecker gateway.PermissionChecker
 	Config            *config.Config
-	Debug             bool
 	Repos             *repo.Container
 	AccountRepos      *accountrepo.Container // TODO: Remove this field once the migration is complete.
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container // TODO: Remove this field once the migration is complete.
-	PermissionChecker gateway.PermissionChecker
 	AccountGQLClient  *gql.Client
+	Debug             bool
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {

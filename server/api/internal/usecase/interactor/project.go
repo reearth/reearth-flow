@@ -21,6 +21,7 @@ type Project struct {
 	workflowRepo      repo.Workflow
 	projectRepo       repo.Project
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	workspaceRepo     workspace.Repo
 	transaction       usecasex.Transaction
 	file              gateway.File
@@ -35,6 +36,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		workflowRepo:      r.Workflow,
 		projectRepo:       r.Project,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		workspaceRepo:     workspaceRepo,
 		transaction:       r.Transaction,
 		file:              gr.File,

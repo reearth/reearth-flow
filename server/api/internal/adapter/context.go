@@ -11,9 +11,11 @@ import (
 	"golang.org/x/text/language"
 )
 
-type userKey struct{}
-type jwtTokenKey struct{}
-type gqlOperationNameKey struct{}
+type (
+	userKey             struct{}
+	jwtTokenKey         struct{}
+	gqlOperationNameKey struct{}
+)
 
 type ContextKey string
 
@@ -27,12 +29,12 @@ const (
 var defaultLang = language.English
 
 type AuthInfo struct {
+	EmailVerified *bool
 	Token         string
 	Sub           string
 	Iss           string
 	Name          string
 	Email         string
-	EmailVerified *bool
 }
 
 // TODO: After migration, remove this function

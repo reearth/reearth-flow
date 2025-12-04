@@ -23,6 +23,7 @@ type Deployment struct {
 	projectRepo       repo.Project
 	workflowRepo      repo.Workflow
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	triggerRepo       repo.Trigger
 	paramRepo         repo.Parameter
 	transaction       usecasex.Transaction
@@ -38,6 +39,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		projectRepo:       r.Project,
 		workflowRepo:      r.Workflow,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		triggerRepo:       r.Trigger,
 		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
@@ -375,6 +377,10 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
+	}
+
+	if i.batch == nil {
+		return nil, fmt.Errorf("batch gateway is not configured")
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, d.Workspace())

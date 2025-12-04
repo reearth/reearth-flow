@@ -13,28 +13,30 @@ const (
 )
 
 type Loaders struct {
-	usecases   interfaces.Container
-	Asset      *AssetLoader
-	Deployment *DeploymentLoader
-	Job        *JobLoader
-	Log        *LogLoader
-	Node       *NodeExLoader
-	Parameter  *ParameterLoader
-	Project    *ProjectLoader
-	Trigger    *TriggerLoader
-	User       *UserLoader
-	Workspace  *WorkspaceLoader
+	usecases     interfaces.Container
+	Asset        *AssetLoader
+	Deployment   *DeploymentLoader
+	Job          *JobLoader
+	Log          *LogLoader
+	Node         *NodeExLoader
+	Parameter    *ParameterLoader
+	Project      *ProjectLoader
+	Trigger      *TriggerLoader
+	User         *UserLoader
+	Workspace    *WorkspaceLoader
+	WorkerConfig *WorkerConfigLoader
 }
 
 type DataLoaders struct {
-	Asset      AssetDataLoader
-	Deployment DeploymentDataLoader
-	Job        JobDataLoader
-	Parameter  ParameterDataLoader
-	Project    ProjectDataLoader
-	Trigger    TriggerDataLoader
-	User       UserDataLoader
-	Workspace  WorkspaceDataLoader
+	Asset        AssetDataLoader
+	Deployment   DeploymentDataLoader
+	Job          JobDataLoader
+	Parameter    ParameterDataLoader
+	Project      ProjectDataLoader
+	Trigger      TriggerDataLoader
+	User         UserDataLoader
+	Workspace    WorkspaceDataLoader
+	WorkerConfig WorkerConfigDataLoader
 }
 
 func NewLoaders(usecases *interfaces.Container) *Loaders {
@@ -42,17 +44,18 @@ func NewLoaders(usecases *interfaces.Container) *Loaders {
 		return nil
 	}
 	return &Loaders{
-		usecases:   *usecases,
-		Asset:      NewAssetLoader(usecases.Asset),
-		Deployment: NewDeploymentLoader(usecases.Deployment),
-		Job:        NewJobLoader(usecases.Job),
-		Log:        NewLogLoader(usecases.Log),
-		Node:       NewNodeExLoader(usecases.NodeExecution),
-		Parameter:  NewParameterLoader(usecases.Parameter),
-		Project:    NewProjectLoader(usecases.Project),
-		Trigger:    NewTriggerLoader(usecases.Trigger),
-		User:       NewUserLoader(usecases.User),
-		Workspace:  NewWorkspaceLoader(usecases.Workspace),
+		usecases:     *usecases,
+		Asset:        NewAssetLoader(usecases.Asset),
+		Deployment:   NewDeploymentLoader(usecases.Deployment),
+		Job:          NewJobLoader(usecases.Job),
+		Log:          NewLogLoader(usecases.Log),
+		Node:         NewNodeExLoader(usecases.NodeExecution),
+		Parameter:    NewParameterLoader(usecases.Parameter),
+		Project:      NewProjectLoader(usecases.Project),
+		Trigger:      NewTriggerLoader(usecases.Trigger),
+		User:         NewUserLoader(usecases.User),
+		Workspace:    NewWorkspaceLoader(usecases.Workspace),
+		WorkerConfig: NewWorkerConfigLoader(usecases.WorkerConfig),
 	}
 }
 
@@ -65,26 +68,28 @@ func (l Loaders) DataLoadersWith(ctx context.Context, enabled bool) *DataLoaders
 
 func (l Loaders) DataLoaders(ctx context.Context) *DataLoaders {
 	return &DataLoaders{
-		Asset:      l.Asset.DataLoader(ctx),
-		Deployment: l.Deployment.DataLoader(ctx),
-		Job:        l.Job.DataLoader(ctx),
-		Parameter:  l.Parameter.DataLoader(ctx),
-		Project:    l.Project.DataLoader(ctx),
-		Trigger:    l.Trigger.DataLoader(ctx),
-		User:       l.User.DataLoader(ctx),
-		Workspace:  l.Workspace.DataLoader(ctx),
+		Asset:        l.Asset.DataLoader(ctx),
+		Deployment:   l.Deployment.DataLoader(ctx),
+		Job:          l.Job.DataLoader(ctx),
+		Parameter:    l.Parameter.DataLoader(ctx),
+		Project:      l.Project.DataLoader(ctx),
+		Trigger:      l.Trigger.DataLoader(ctx),
+		User:         l.User.DataLoader(ctx),
+		Workspace:    l.Workspace.DataLoader(ctx),
+		WorkerConfig: l.WorkerConfig.DataLoader(ctx),
 	}
 }
 
 func (l Loaders) OrdinaryDataLoaders(ctx context.Context) *DataLoaders {
 	return &DataLoaders{
-		Asset:      l.Asset.OrdinaryDataLoader(ctx),
-		Deployment: l.Deployment.OrdinaryDataLoader(ctx),
-		Job:        l.Job.OrdinaryDataLoader(ctx),
-		Parameter:  l.Parameter.OrdinaryDataLoader(ctx),
-		Project:    l.Project.OrdinaryDataLoader(ctx),
-		Trigger:    l.Trigger.OrdinaryDataLoader(ctx),
-		User:       l.User.OrdinaryDataLoader(ctx),
-		Workspace:  l.Workspace.OrdinaryDataLoader(ctx),
+		Asset:        l.Asset.OrdinaryDataLoader(ctx),
+		Deployment:   l.Deployment.OrdinaryDataLoader(ctx),
+		Job:          l.Job.OrdinaryDataLoader(ctx),
+		Parameter:    l.Parameter.OrdinaryDataLoader(ctx),
+		Project:      l.Project.OrdinaryDataLoader(ctx),
+		Trigger:      l.Trigger.OrdinaryDataLoader(ctx),
+		User:         l.User.OrdinaryDataLoader(ctx),
+		Workspace:    l.Workspace.OrdinaryDataLoader(ctx),
+		WorkerConfig: l.WorkerConfig.OrdinaryDataLoader(ctx),
 	}
 }

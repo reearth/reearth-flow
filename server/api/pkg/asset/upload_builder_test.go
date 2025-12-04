@@ -30,7 +30,6 @@ func TestUploadBuilder_NewUpload(t *testing.T) {
 }
 
 func TestUploadBuilderUUID(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input string
