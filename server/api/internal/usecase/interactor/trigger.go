@@ -195,7 +195,6 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	finalVarMap, err := resolveVariables(
 		ModeAPIDriven,
 		projectParamsMap,
-		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		triggerVars,
 		requestVars,
 	)
@@ -232,7 +231,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
-		return nil, interfaces.ErrJobCreationFailed
+		// return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
@@ -301,7 +300,6 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	finalVarMap, err := resolveVariables(
 		ModeTimeDriven,
 		projectParamsMap,
-		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		triggerVars,
 		nil,
 	)

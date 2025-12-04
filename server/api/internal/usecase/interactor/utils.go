@@ -13,15 +13,13 @@ import (
 type VariablesMode int
 
 const (
-	ModeExecuteDeployment VariablesMode = iota
-	ModeAPIDriven
+	ModeAPIDriven VariablesMode = iota
 	ModeTimeDriven
 )
 
 func resolveVariables(
 	mode VariablesMode,
 	projectParams map[string]variable.Variable,
-	deploymentVars map[string]variable.Variable,
 	triggerVars map[string]variable.Variable,
 	requestVars map[string]variable.Variable,
 ) (map[string]variable.Variable, error) {
@@ -45,23 +43,9 @@ func resolveVariables(
 	}
 
 	switch mode {
-	case ModeExecuteDeployment:
-		// ExecuteDeployment: request.variables ← deployment.variables ← project.parameters
-		if err := apply(projectParams); err != nil {
-			return nil, err
-		}
-		if err := apply(deploymentVars); err != nil {
-			return nil, err
-		}
-		if err := apply(requestVars); err != nil {
-			return nil, err
-		}
 	case ModeAPIDriven:
-		// REST /run: request.with ← trigger.variables ← deployment.variables ← project.parameters
+		// REST /run: request.with ← trigger.variables ← project.parameters
 		if err := apply(projectParams); err != nil {
-			return nil, err
-		}
-		if err := apply(deploymentVars); err != nil {
 			return nil, err
 		}
 		if err := apply(triggerVars); err != nil {
@@ -71,11 +55,8 @@ func resolveVariables(
 			return nil, err
 		}
 	case ModeTimeDriven:
-		// REST /execute-scheduled: trigger.variables ← deployment.variables ← project.parameters
+		// REST /execute-scheduled: trigger.variables ← project.parameters
 		if err := apply(projectParams); err != nil {
-			return nil, err
-		}
-		if err := apply(deploymentVars); err != nil {
 			return nil, err
 		}
 		if err := apply(triggerVars); err != nil {

@@ -34,10 +34,6 @@ func TestResolveVariables(t *testing.T) {
 		"B": {Key: "B", Type: parameter.TypeText, Value: "pB"},
 		"D": {Key: "D", Type: parameter.TypeText, Value: "pD"},
 	}
-	dv := map[string]variable.Variable{
-		"B": {Key: "B", Type: parameter.TypeText, Value: "dB"},
-		"C": {Key: "C", Type: parameter.TypeText, Value: "dC"},
-	}
 	tv := map[string]variable.Variable{
 		"C": {Key: "C", Type: parameter.TypeText, Value: "tC"},
 		"D": {Key: "D", Type: parameter.TypeText, Value: "tD"},
@@ -61,73 +57,52 @@ func TestResolveVariables(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		mode           VariablesMode
-		projectParams  map[string]variable.Variable
-		deploymentVars map[string]variable.Variable
-		triggerVars    map[string]variable.Variable
-		requestVars    map[string]variable.Variable
-		expected       map[string]string
+		name          string
+		mode          VariablesMode
+		projectParams map[string]variable.Variable
+		triggerVars   map[string]variable.Variable
+		requestVars   map[string]variable.Variable
+		expected      map[string]string
 	}{
 		{
-			name:           "ModeExecuteDeployment: Request Overrides Deployment Overrides Project",
-			mode:           ModeExecuteDeployment,
-			projectParams:  pp,
-			deploymentVars: dv,
-			requestVars:    rv,
+			name:          "ModeAPIDriven: Request Overrides Trigger Overrides Deployment",
+			mode:          ModeAPIDriven,
+			projectParams: pp,
+			triggerVars:   tv,
+			requestVars:   rv,
 			expected: map[string]string{
 				"A": "pA", // From PP
-				"B": "dB", // From DV (overrides pB)
-				"C": "dC", // From DV
-				"D": "rD", // From RV (overrides pD)
-				"E": "rE", // From RV
-			},
-		},
-		{
-			name:           "ModeAPIDriven: Request Overrides Trigger Overrides Deployment",
-			mode:           ModeAPIDriven,
-			projectParams:  pp,
-			deploymentVars: dv,
-			triggerVars:    tv,
-			requestVars:    rv,
-			expected: map[string]string{
-				"A": "pA", // From PP
-				"B": "dB", // From DV (overrides pB)
-				"C": "tC", // From TV (overrides dC)
+				"B": "pB", // From PP
+				"C": "tC", // From TV
 				"D": "rD", // From RV (overrides pD and tD)
 				"E": "rE", // From RV
 			},
 		},
 		{
-			name:           "ModeTimeDriven: Trigger Overrides Deployment Overrides Project",
-			mode:           ModeTimeDriven,
-			projectParams:  pp,
-			deploymentVars: dv,
-			triggerVars:    tv,
-			requestVars:    rv, // Should be ignored
+			name:          "ModeTimeDriven: Trigger Overrides Deployment Overrides Project",
+			mode:          ModeTimeDriven,
+			projectParams: pp,
+			triggerVars:   tv,
+			requestVars:   nil,
 			expected: map[string]string{
 				"A": "pA", // From PP
-				"B": "dB", // From DV (overrides pB)
-				"C": "tC", // From TV (overrides dC)
+				"B": "pB", // From PP
+				"C": "tC", // From TV
 				"D": "tD", // From TV (overrides pD)
 			},
 		},
 		{
-			name:           "Handles nil inputs",
-			mode:           ModeExecuteDeployment,
-			projectParams:  nil,
-			deploymentVars: dv,
-			requestVars:    nil,
-			expected: map[string]string{
-				"B": "dB",
-				"C": "dC",
-			},
+			name:          "Handles nil inputs",
+			mode:          ModeAPIDriven,
+			projectParams: nil,
+			requestVars:   nil,
+			expected:      map[string]string{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, err := resolveVariables(tc.mode, tc.projectParams, tc.deploymentVars, tc.triggerVars, tc.requestVars)
+			actual, err := resolveVariables(tc.mode, tc.projectParams, tc.triggerVars, tc.requestVars)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, toStringMap(actual))
 		})
