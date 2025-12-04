@@ -538,6 +538,12 @@ type ComplexityRoot struct {
 		Website     func(childComplexity int) int
 	}
 
+	Variable struct {
+		Key   func(childComplexity int) int
+		Type  func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
 	Workspace struct {
 		Assets   func(childComplexity int, pagination *gqlmodel.Pagination) int
 		ID       func(childComplexity int) int
@@ -2928,6 +2934,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserMetadata.Website(childComplexity), true
 
+	case "Variable.key":
+		if e.complexity.Variable.Key == nil {
+			break
+		}
+
+		return e.complexity.Variable.Key(childComplexity), true
+	case "Variable.type":
+		if e.complexity.Variable.Type == nil {
+			break
+		}
+
+		return e.complexity.Variable.Type(childComplexity), true
+	case "Variable.value":
+		if e.complexity.Variable.Value == nil {
+			break
+		}
+
+		return e.complexity.Variable.Value(childComplexity), true
+
 	case "Workspace.assets":
 		if e.complexity.Workspace.Assets == nil {
 			break
@@ -3042,6 +3067,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateTriggerInput,
 		ec.unmarshalInputUpdateWorkspaceInput,
+		ec.unmarshalInputVariableInput,
 	)
 	first := true
 
@@ -3631,7 +3657,7 @@ extend type Query {
   workspace: Workspace
   workspaceId: ID!
   logs(since: DateTime!): [Log]
-  variables: JSON
+  variables: [Variable!]!
 }
 
 enum JobStatus {
@@ -3989,7 +4015,7 @@ extend type Mutation {
     authToken: String
     timeInterval: TimeInterval
     enabled: Boolean
-    variables: JSON
+    variables: [Variable!]!
 }
 
 # Enums
@@ -4030,7 +4056,7 @@ input CreateTriggerInput {
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
     enabled: Boolean
-    variables: JSON
+    variables: [VariableInput!]
 }
 
 input UpdateTriggerInput {
@@ -4040,7 +4066,7 @@ input UpdateTriggerInput {
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
     enabled: Boolean
-    variables: JSON
+    variables: [VariableInput!]
 }
 
 # Connection
@@ -4172,6 +4198,18 @@ type UserFacingLog {
 
 extend type Subscription {
   userFacingLogs(jobId: ID!): UserFacingLog
+}
+`, BuiltIn: false},
+	{Name: "../../../gql/variable.graphql", Input: `type Variable {
+    key: String!
+    type: ParameterType!
+    value: Any!
+}
+
+input VariableInput {
+    key: String!
+    type: ParameterType!
+    value: Any!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
@@ -9063,9 +9101,9 @@ func (ec *executionContext) _Job_variables(ctx context.Context, field graphql.Co
 			return obj.Variables, nil
 		},
 		nil,
-		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		ec.marshalNVariable2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -9076,7 +9114,15 @@ func (ec *executionContext) fieldContext_Job_variables(_ context.Context, field 
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_Variable_key(ctx, field)
+			case "type":
+				return ec.fieldContext_Variable_type(ctx, field)
+			case "value":
+				return ec.fieldContext_Variable_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Variable", field.Name)
 		},
 	}
 	return fc, nil
@@ -15823,9 +15869,9 @@ func (ec *executionContext) _Trigger_variables(ctx context.Context, field graphq
 			return obj.Variables, nil
 		},
 		nil,
-		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		ec.marshalNVariable2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
@@ -15836,7 +15882,15 @@ func (ec *executionContext) fieldContext_Trigger_variables(_ context.Context, fi
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_Variable_key(ctx, field)
+			case "type":
+				return ec.fieldContext_Variable_type(ctx, field)
+			case "value":
+				return ec.fieldContext_Variable_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Variable", field.Name)
 		},
 	}
 	return fc, nil
@@ -16686,6 +16740,93 @@ func (ec *executionContext) fieldContext_UserMetadata_lang(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Lang does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Variable_key(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Variable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Variable_key,
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Variable_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Variable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Variable_type(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Variable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Variable_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Variable_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Variable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ParameterType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Variable_value(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Variable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Variable_value,
+		func(ctx context.Context) (any, error) {
+			return obj.Value, nil
+		},
+		nil,
+		ec.marshalNAny2interface,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Variable_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Variable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Any does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18810,7 +18951,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 			it.Enabled = data
 		case "variables":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
-			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			data, err := ec.unmarshalOVariableInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -20053,7 +20194,7 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 			it.Enabled = data
 		case "variables":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
-			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			data, err := ec.unmarshalOVariableInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -20092,6 +20233,47 @@ func (ec *executionContext) unmarshalInputUpdateWorkspaceInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputVariableInput(ctx context.Context, obj any) (gqlmodel.VariableInput, error) {
+	var it gqlmodel.VariableInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "type", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
 		}
 	}
 
@@ -21691,6 +21873,9 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "variables":
 			out.Values[i] = ec._Job_variables(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23957,6 +24142,9 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Trigger_enabled(ctx, field, obj)
 		case "variables":
 			out.Values[i] = ec._Trigger_variables(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24364,6 +24552,55 @@ func (ec *executionContext) _UserMetadata(ctx context.Context, sel ast.Selection
 			}
 		case "lang":
 			out.Values[i] = ec._UserMetadata_lang(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var variableImplementors = []string{"Variable"}
+
+func (ec *executionContext) _Variable(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Variable) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, variableImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Variable")
+		case "key":
+			out.Values[i] = ec._Variable_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._Variable_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._Variable_value(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -26468,6 +26705,65 @@ func (ec *executionContext) marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋree
 	return ec._UserMetadata(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNVariable2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Variable) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNVariable2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariable(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNVariable2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariable(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Variable) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Variable(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNVariableInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInput(ctx context.Context, v any) (*gqlmodel.VariableInput, error) {
+	res, err := ec.unmarshalInputVariableInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNWorkspace2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspaceᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Workspace) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -27548,6 +27844,24 @@ func (ec *executionContext) marshalOUserFacingLog2ᚖgithubᚗcomᚋreearthᚋre
 		return graphql.Null
 	}
 	return ec._UserFacingLog(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOVariableInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInputᚄ(ctx context.Context, v any) ([]*gqlmodel.VariableInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*gqlmodel.VariableInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNVariableInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOWorkspace2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspace(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Workspace) graphql.Marshaler {

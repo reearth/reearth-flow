@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
 )
 
@@ -71,9 +72,12 @@ func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigg
 
 	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
 
+	varsMap := variable.SliceToMap(t.Variables())
+	workerVars := variable.ToWorkerMap(varsMap)
+
 	body, err := json.Marshal(scheduledPayload{
 		TriggerID: t.ID().String(),
-		With:      t.Variables(),
+		With:      workerVars,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal scheduled job payload: %w", err)
@@ -131,9 +135,12 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 
 	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
 
+	varsMap := variable.SliceToMap(t.Variables())
+	workerVars := variable.ToWorkerMap(varsMap)
+
 	body, err := json.Marshal(scheduledPayload{
 		TriggerID: t.ID().String(),
-		With:      t.Variables(),
+		With:      workerVars,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal scheduled job payload: %w", err)

@@ -2,11 +2,12 @@ package interactor
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,93 +30,94 @@ func (m *mockPermissionChecker) CheckPermission(ctx context.Context, authInfo *a
 }
 
 func TestResolveVariables(t *testing.T) {
-	pp := map[string]string{"A": "pA", "B": "pB", "D": "pD"}
-	dv := map[string]string{"B": "dB", "C": "dC"}
-	tv := map[string]string{"C": "tC", "D": "tD"}
-	rv := map[string]string{"D": "rD", "E": "rE"}
+	pp := map[string]variable.Variable{
+		"A": {Key: "A", Type: parameter.TypeText, Value: "pA"},
+		"B": {Key: "B", Type: parameter.TypeText, Value: "pB"},
+		"D": {Key: "D", Type: parameter.TypeText, Value: "pD"},
+	}
+	tv := map[string]variable.Variable{
+		"C": {Key: "C", Type: parameter.TypeText, Value: "tC"},
+		"D": {Key: "D", Type: parameter.TypeText, Value: "tD"},
+	}
+	rv := map[string]variable.Variable{
+		"D": {Key: "D", Type: parameter.TypeText, Value: "rD"},
+		"E": {Key: "E", Type: parameter.TypeText, Value: "rE"},
+	}
+
+	toStringMap := func(m map[string]variable.Variable) map[string]string {
+		if m == nil {
+			return nil
+		}
+		out := make(map[string]string, len(m))
+		for k, v := range m {
+			if s, ok := v.Value.(string); ok {
+				out[k] = s
+			}
+		}
+		return out
+	}
 
 	tests := []struct {
-		name           string
-		mode           VariablesMode
-		projectParams  map[string]string
-		deploymentVars map[string]string
-		triggerVars    map[string]string
-		requestVars    map[string]string
-		expected       map[string]string
+		name          string
+		mode          VariablesMode
+		projectParams map[string]variable.Variable
+		triggerVars   map[string]variable.Variable
+		requestVars   map[string]variable.Variable
+		expected      map[string]string
 	}{
 		{
-			name:           "ModeExecuteDeployment: Request Overrides Deployment Overrides Project",
-			mode:           ModeExecuteDeployment,
-			projectParams:  pp,
-			deploymentVars: dv,
-			requestVars:    rv,
+			name:          "ModeAPIDriven: Request Overrides Trigger Overrides Deployment",
+			mode:          ModeAPIDriven,
+			projectParams: pp,
+			triggerVars:   tv,
+			requestVars:   rv,
 			expected: map[string]string{
 				"A": "pA", // From PP
-				"B": "dB", // From DV (overrides pB)
-				"C": "dC", // From DV
-				"D": "rD", // From RV (overrides pD)
-				"E": "rE", // From RV
-			},
-		},
-		{
-			name:           "ModeAPIDriven: Request Overrides Trigger Overrides Deployment",
-			mode:           ModeAPIDriven,
-			projectParams:  pp,
-			deploymentVars: dv,
-			triggerVars:    tv,
-			requestVars:    rv,
-			expected: map[string]string{
-				"A": "pA", // From PP
-				"B": "dB", // From DV (overrides pB)
-				"C": "tC", // From TV (overrides dC)
+				"B": "pB", // From PP
+				"C": "tC", // From TV
 				"D": "rD", // From RV (overrides pD and tD)
 				"E": "rE", // From RV
 			},
 		},
 		{
-			name:           "ModeTimeDriven: Trigger Overrides Deployment Overrides Project",
-			mode:           ModeTimeDriven,
-			projectParams:  pp,
-			deploymentVars: dv,
-			triggerVars:    tv,
-			requestVars:    rv, // Should be ignored
+			name:          "ModeTimeDriven: Trigger Overrides Deployment Overrides Project",
+			mode:          ModeTimeDriven,
+			projectParams: pp,
+			triggerVars:   tv,
+			requestVars:   nil,
 			expected: map[string]string{
 				"A": "pA", // From PP
-				"B": "dB", // From DV (overrides pB)
-				"C": "tC", // From TV (overrides dC)
+				"B": "pB", // From PP
+				"C": "tC", // From TV
 				"D": "tD", // From TV (overrides pD)
 			},
 		},
 		{
-			name:           "Handles nil inputs",
-			mode:           ModeExecuteDeployment,
-			projectParams:  nil,
-			deploymentVars: dv,
-			requestVars:    nil,
-			expected: map[string]string{
-				"B": "dB",
-				"C": "dC",
-			},
+			name:          "Handles nil inputs",
+			mode:          ModeAPIDriven,
+			projectParams: nil,
+			requestVars:   nil,
+			expected:      map[string]string{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := resolveVariables(tc.mode, tc.projectParams, tc.deploymentVars, tc.triggerVars, tc.requestVars)
-			assert.Equal(t, tc.expected, actual)
+			actual, err := resolveVariables(tc.mode, tc.projectParams, tc.triggerVars, tc.requestVars)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, toStringMap(actual))
 		})
 	}
 }
 
 func TestProjectParametersToMap(t *testing.T) {
 	mockArray := []string{"item1", "item2"}
-	arrayJSONBytes, _ := json.Marshal(mockArray)
 	mockTime := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name          string
-		params        []map[string]interface{}
-		expectedValue map[string]string
+		name     string
+		params   []map[string]interface{}
+		expected map[string]variable.Variable
 	}{
 		{
 			name: "Simple Types Conversion",
@@ -125,31 +127,59 @@ func TestProjectParametersToMap(t *testing.T) {
 				{"name": "text", "type": parameter.TypeText, "defaultValue": "hello"},
 				{"name": "color", "type": parameter.TypeColor, "defaultValue": "#ff0000"},
 			},
-			expectedValue: map[string]string{
-				"num":   "42.5",
-				"bool":  "true",
-				"text":  "hello",
-				"color": "#ff0000",
+			expected: map[string]variable.Variable{
+				"num": {
+					Key:   "num",
+					Type:  parameter.TypeNumber,
+					Value: 42.5,
+				},
+				"bool": {
+					Key:   "bool",
+					Type:  parameter.TypeYesNo,
+					Value: true,
+				},
+				"text": {
+					Key:   "text",
+					Type:  parameter.TypeText,
+					Value: "hello",
+				},
+				"color": {
+					Key:   "color",
+					Type:  parameter.TypeColor,
+					Value: "#ff0000",
+				},
 			},
 		},
 		{
-			name: "Complex Types (JSON Marshal)",
+			name: "Complex Types (JSON Marshal before, now raw value)",
 			params: []map[string]interface{}{
 				{"name": "arr", "type": parameter.TypeArray, "defaultValue": mockArray},
 				{"name": "choice", "type": parameter.TypeChoice, "defaultValue": mockArray},
 			},
-			expectedValue: map[string]string{
-				"arr":    string(arrayJSONBytes),
-				"choice": string(arrayJSONBytes),
+			expected: map[string]variable.Variable{
+				"arr": {
+					Key:   "arr",
+					Type:  parameter.TypeArray,
+					Value: mockArray,
+				},
+				"choice": {
+					Key:   "choice",
+					Type:  parameter.TypeChoice,
+					Value: mockArray,
+				},
 			},
 		},
 		{
-			name: "Go Time Conversion (Marshal)",
+			name: "Go Time Conversion (kept as time.Time)",
 			params: []map[string]interface{}{
 				{"name": "datetime", "type": parameter.TypeDatetime, "defaultValue": mockTime},
 			},
-			expectedValue: map[string]string{
-				"datetime": "\"" + mockTime.Format(time.RFC3339Nano) + "\"",
+			expected: map[string]variable.Variable{
+				"datetime": {
+					Key:   "datetime",
+					Type:  parameter.TypeDatetime,
+					Value: mockTime,
+				},
 			},
 		},
 		{
@@ -158,8 +188,12 @@ func TestProjectParametersToMap(t *testing.T) {
 				{"name": "emptyStr", "type": parameter.TypeText, "defaultValue": ""},
 				{"name": "nilVal", "type": parameter.TypeText, "defaultValue": nil},
 			},
-			expectedValue: map[string]string{
-				"emptyStr": "",
+			expected: map[string]variable.Variable{
+				"emptyStr": {
+					Key:   "emptyStr",
+					Type:  parameter.TypeText,
+					Value: "",
+				},
 			},
 		},
 	}
@@ -168,7 +202,14 @@ func TestProjectParametersToMap(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pl := buildParameterList(t, tc.params)
 			actual := projectParametersToMap(pl)
-			assert.Equal(t, tc.expectedValue, actual)
+
+			assert.Equal(t, len(tc.expected), len(actual))
+			for k, ev := range tc.expected {
+				av, ok := actual[k]
+				assert.True(t, ok, "key %s should exist", k)
+				assert.Equal(t, ev.Type, av.Type, "type mismatch for key %s", k)
+				assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)
+			}
 		})
 	}
 }
@@ -207,65 +248,128 @@ func buildParameterList(t *testing.T, defs []map[string]interface{}) *parameter.
 
 func TestNormalizeRequestVars(t *testing.T) {
 	arr := []interface{}{"a", "b"}
-	obj := map[string]interface{}{"k": "v"}
-
-	arrJSON, _ := json.Marshal(arr)
-	objJSON, _ := json.Marshal(obj)
 
 	tests := []struct {
 		name     string
 		input    map[string]interface{}
-		expected map[string]string
+		schema   map[string]variable.Variable
+		expected map[string]variable.Variable
 	}{
 		{
 			name:     "nil input returns nil",
 			input:    nil,
+			schema:   nil,
 			expected: nil,
 		},
 		{
-			name: "primitive types",
+			name:     "empty map returns nil",
+			input:    map[string]interface{}{},
+			schema:   nil,
+			expected: nil,
+		},
+		{
+			name: "no schema: everything becomes TEXT",
 			input: map[string]interface{}{
-				"s":   "str",
-				"f64": float64(1.5),
-				"f32": float32(2.5),
-				"i":   int(10),
-				"i8":  int8(1),
-				"i16": int16(2),
-				"i32": int32(3),
-				"i64": int64(4),
-				"u":   uint(5),
-				"u8":  uint8(6),
-				"u16": uint16(7),
-				"u32": uint32(8),
-				"u64": uint64(9),
-				"b":   true,
+				"s":  "str",
+				"n":  10,
+				"b":  true,
+				"ar": arr,
 			},
-			expected: map[string]string{
-				"s":   "str",
-				"f64": "1.5",
-				"f32": "2.5",
-				"i":   "10",
-				"i8":  "1",
-				"i16": "2",
-				"i32": "3",
-				"i64": "4",
-				"u":   "5",
-				"u8":  "6",
-				"u16": "7",
-				"u32": "8",
-				"u64": "9",
-				"b":   "true",
+			schema: nil,
+			expected: map[string]variable.Variable{
+				"s": {
+					Key:   "s",
+					Type:  parameter.TypeText,
+					Value: "str",
+				},
+				"n": {
+					Key:   "n",
+					Type:  parameter.TypeText,
+					Value: "10",
+				},
+				"b": {
+					Key:   "b",
+					Type:  parameter.TypeText,
+					Value: "true",
+				},
+				"ar": {
+					Key:   "ar",
+					Type:  parameter.TypeText,
+					Value: fmt.Sprintf("%v", arr),
+				},
 			},
 		},
 		{
-			name: "complex types marshalled as JSON",
+			name: "with schema: primitive types coerced by type",
 			input: map[string]interface{}{
-				"arr": arr,
-				"obj": obj,
+				"s":  "str",
+				"n":  "1.5",
+				"b":  "true",
+				"tm": "2025-01-01T00:00:00Z",
 			},
-			expected: map[string]string{
-				"arr": string(arrJSON),
-				"obj": string(objJSON),
+			schema: map[string]variable.Variable{
+				"s":  {Key: "s", Type: parameter.TypeText},
+				"n":  {Key: "n", Type: parameter.TypeNumber},
+				"b":  {Key: "b", Type: parameter.TypeYesNo},
+				"tm": {Key: "tm", Type: parameter.TypeDatetime},
+			},
+			expected: map[string]variable.Variable{
+				"s": {
+					Key:   "s",
+					Type:  parameter.TypeText,
+					Value: "str",
+				},
+				"n": {
+					Key:   "n",
+					Type:  parameter.TypeNumber,
+					Value: 1.5,
+				},
+				"b": {
+					Key:   "b",
+					Type:  parameter.TypeYesNo,
+					Value: true,
+				},
+				"tm": {
+					Key:  "tm",
+					Type: parameter.TypeDatetime,
+				},
+			},
+		},
+		{
+			name: "with schema: array/choice coerced from JSON",
+			input: map[string]interface{}{
+				"arr": `["a","b"]`,
+				"obj": `{"k":"v"}`,
+			},
+			schema: map[string]variable.Variable{
+				"arr": {Key: "arr", Type: parameter.TypeArray},
+				"obj": {Key: "obj", Type: parameter.TypeChoice},
+			},
+			expected: map[string]variable.Variable{
+				"arr": {
+					Key:  "arr",
+					Type: parameter.TypeArray,
+				},
+				"obj": {
+					Key:  "obj",
+					Type: parameter.TypeChoice,
+				},
+			},
+		},
+		{
+			name: "with schema: coercion failure falls back to TEXT",
+			input: map[string]interface{}{
+				"n": "not-a-number",
+			},
+			schema: map[string]variable.Variable{
+				"n": {Key: "n", Type: parameter.TypeNumber},
+			},
+			expected: map[string]variable.Variable{
+				"n": {
+					Key:   "n",
+					Type:  parameter.TypeText,
+					Value: "not-a-number",
+				},
 			},
 		},
 		{
@@ -274,21 +378,46 @@ func TestNormalizeRequestVars(t *testing.T) {
 				"a": nil,
 				"b": "value",
 			},
-			expected: map[string]string{
-				"b": "value",
+			schema: nil,
+			expected: map[string]variable.Variable{
+				"b": {
+					Key:   "b",
+					Type:  parameter.TypeText,
+					Value: "value",
+				},
 			},
 		},
-		{
-			name:     "empty map returns nil",
-			input:    map[string]interface{}{},
-			expected: nil,
-		},
+	}
+
+	eqVarMap := func(expected, actual map[string]variable.Variable) {
+		if expected == nil {
+			assert.Nil(t, actual)
+			return
+		}
+		assert.Equal(t, len(expected), len(actual))
+		for k, ev := range expected {
+			av, ok := actual[k]
+			assert.True(t, ok, "key %s should exist", k)
+			assert.Equal(t, ev.Type, av.Type, "type mismatch for key %s", k)
+
+			// For special types like Datetime and Array, just check the type roughly
+			switch ev.Type {
+			case parameter.TypeDatetime:
+				_, ok := av.Value.(time.Time)
+				assert.True(t, ok, "value for key %s should be time.Time", k)
+			case parameter.TypeArray, parameter.TypeChoice:
+				// Since these come from JSON, avoid deep equal like []any or map[string]any
+				assert.NotNil(t, av.Value, "value for key %s should not be nil", k)
+			default:
+				assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)
+			}
+		}
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := normalizeRequestVars(tc.input)
-			assert.Equal(t, tc.expected, actual)
+			actual := normalizeRequestVars(tc.input, tc.schema)
+			eqVarMap(tc.expected, actual)
 		})
 	}
 }
