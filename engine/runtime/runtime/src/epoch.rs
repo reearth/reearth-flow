@@ -65,3 +65,7 @@ impl Epoch {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "epoch_test.rs"]
+mod epoch_test;
