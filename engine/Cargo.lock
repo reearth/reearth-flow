@@ -8766,7 +8766,7 @@ dependencies = [
 [[package]]
 name = "tinymvt"
 version = "0.0.1"
-source = "git+https://github.com/reearth/tinymvt.git?branch=feat%2Fdecode#a933d35d14efa5235f82df71f037b62e087406bf"
+source = "git+https://github.com/reearth/tinymvt.git?tag=v0.0.3#ca8dde1bdebd5106793203941b488b1b69119f01"
 dependencies = [
  "ahash 0.8.12",
  "indexmap 2.12.1",
