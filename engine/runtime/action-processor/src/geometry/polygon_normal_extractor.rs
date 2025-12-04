@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use super::errors::GeometryProcessorError;
-use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+use reearth_flow_geometry::types::coordinate::Coordinate3D;
+use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -10,6 +11,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::Feature;
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -76,31 +78,8 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
 /// Configuration for calculating normal vectors from polygon features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-struct PolygonNormalExtractor {
-    /// Whether to add normalX attribute (default: true)
-    #[serde(default = "default_true")]
-    add_normal_x: bool,
+struct PolygonNormalExtractor {}
 
-    /// Whether to add normalY attribute (default: true)
-    #[serde(default = "default_true")]
-    add_normal_y: bool,
-
-    /// Whether to add normalZ attribute (default: true)
-    #[serde(default = "default_true")]
-    add_normal_z: bool,
-
-    /// Whether to add signedArea2D attribute (default: true)
-    #[serde(default = "default_true")]
-    add_signed_area_2d: bool,
-
-    /// Whether to add Slope attribute (default: true)
-    #[serde(default = "default_true")]
-    add_slope: bool,
-
-    /// Whether to add Azimuth attribute (default: true)
-    #[serde(default = "default_true")]
-    add_azimuth: bool,
-}
 #[allow(unused)]
 fn default_true() -> bool {
     true
@@ -113,7 +92,7 @@ impl Processor for PolygonNormalExtractor {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        let geometry = &feature.geometry;
+        let geometry = feature.geometry.clone();
 
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
@@ -122,24 +101,14 @@ impl Processor for PolygonNormalExtractor {
 
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
+                    "There is no 3D polygon".to_string(),
+                )));
             }
-            GeometryValue::FlowGeometry2D(geos) => {
-                match geos {
-                    Geometry2D::Polygon(_polygon) => {
-                        // Calculate normal properties for 2D polygons
-                        // Just pass through since 2D polygons don't have meaningful 3D normals
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                    }
-                    Geometry2D::MultiPolygon(_) => {
-                        // For MultiPolygon, just pass through
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                    }
-                    _ => {
-                        // For non-polygon geometries, pass through unchanged
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                    }
-                }
+            GeometryValue::FlowGeometry2D(_geos) => {
+                return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
+                    "There is no 3D polygon".to_string(),
+                )));
             }
             GeometryValue::FlowGeometry3D(geos) => {
                 match geos {
@@ -147,197 +116,38 @@ impl Processor for PolygonNormalExtractor {
                         // Calculate normal properties for 3D polygons
                         let normal_result =
                             PolygonNormalExtractor::calculate_normal_properties_3d(polygon);
-
-                        // Add calculated attributes to the feature
-                        if self.add_normal_x {
-                            feature.attributes.insert(
-                                Attribute::new("normalX".to_string()),
-                                AttributeValue::Number(
-                                    Number::from_f64(normal_result.normal_x).ok_or_else(|| {
-                                        GeometryProcessorError::PolygonNormalExtractor(
-                                            "Failed to convert normalX to JSON number".to_string(),
-                                        )
-                                    })?,
-                                ),
-                            );
-                        }
-                        if self.add_normal_y {
-                            feature.attributes.insert(
-                                Attribute::new("normalY".to_string()),
-                                AttributeValue::Number(
-                                    Number::from_f64(normal_result.normal_y).ok_or_else(|| {
-                                        GeometryProcessorError::PolygonNormalExtractor(
-                                            "Failed to convert normalY to JSON number".to_string(),
-                                        )
-                                    })?,
-                                ),
-                            );
-                        }
-                        if self.add_normal_z {
-                            feature.attributes.insert(
-                                Attribute::new("normalZ".to_string()),
-                                AttributeValue::Number(
-                                    Number::from_f64(normal_result.normal_z).ok_or_else(|| {
-                                        GeometryProcessorError::PolygonNormalExtractor(
-                                            "Failed to convert normalZ to JSON number".to_string(),
-                                        )
-                                    })?,
-                                ),
-                            );
-                        }
-                        if self.add_signed_area_2d {
-                            feature.attributes.insert(
-                                Attribute::new("signedArea2D".to_string()),
-                                AttributeValue::Number(
-                                    Number::from_f64(normal_result.signed_area_2d).ok_or_else(
-                                        || {
-                                            GeometryProcessorError::PolygonNormalExtractor(
-                                                "Failed to convert signedArea2D to JSON number"
-                                                    .to_string(),
-                                            )
-                                        },
-                                    )?,
-                                ),
-                            );
-                        }
-                        if self.add_slope {
-                            feature.attributes.insert(
-                                Attribute::new("Slope".to_string()),
-                                AttributeValue::Number(
-                                    Number::from_f64(normal_result.slope).ok_or_else(|| {
-                                        GeometryProcessorError::PolygonNormalExtractor(
-                                            "Failed to convert slope to JSON number".to_string(),
-                                        )
-                                    })?,
-                                ),
-                            );
-                        }
-                        if self.add_azimuth {
-                            feature.attributes.insert(
-                                Attribute::new("Azimuth".to_string()),
-                                AttributeValue::Number(
-                                    Number::from_f64(normal_result.azimuth).ok_or_else(|| {
-                                        GeometryProcessorError::PolygonNormalExtractor(
-                                            "Failed to convert azimuth to JSON number".to_string(),
-                                        )
-                                    })?,
-                                ),
-                            );
-                        }
+                        let () = PolygonNormalExtractor::set_normal_features(
+                            normal_result,
+                            &mut feature,
+                            None,
+                        )?;
 
                         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     }
                     Geometry3D::MultiPolygon(multi_polygon) => {
-                        // Calculate normal for the first polygon in the multipolygon
-                        if let Some(first_polygon) = multi_polygon.iter().next() {
+                        for (index, polygon) in multi_polygon.iter().enumerate() {
                             let normal_result =
-                                PolygonNormalExtractor::calculate_normal_properties_3d(
-                                    first_polygon,
-                                );
-
-                            // Add calculated attributes to the feature
-                            if self.add_normal_x {
-                                feature.attributes.insert(
-                                    Attribute::new("normalX".to_string()),
-                                    AttributeValue::Number(
-                                        Number::from_f64(normal_result.normal_x).ok_or_else(
-                                            || {
-                                                GeometryProcessorError::PolygonNormalExtractor(
-                                                    "Failed to convert normalX to JSON number"
-                                                        .to_string(),
-                                                )
-                                            },
-                                        )?,
-                                    ),
-                                );
-                            }
-                            if self.add_normal_y {
-                                feature.attributes.insert(
-                                    Attribute::new("normalY".to_string()),
-                                    AttributeValue::Number(
-                                        Number::from_f64(normal_result.normal_y).ok_or_else(
-                                            || {
-                                                GeometryProcessorError::PolygonNormalExtractor(
-                                                    "Failed to convert normalY to JSON number"
-                                                        .to_string(),
-                                                )
-                                            },
-                                        )?,
-                                    ),
-                                );
-                            }
-                            if self.add_normal_z {
-                                feature.attributes.insert(
-                                    Attribute::new("normalZ".to_string()),
-                                    AttributeValue::Number(
-                                        Number::from_f64(normal_result.normal_z).ok_or_else(
-                                            || {
-                                                GeometryProcessorError::PolygonNormalExtractor(
-                                                    "Failed to convert normalZ to JSON number"
-                                                        .to_string(),
-                                                )
-                                            },
-                                        )?,
-                                    ),
-                                );
-                            }
-                            if self.add_signed_area_2d {
-                                feature.attributes.insert(
-                                    Attribute::new("signedArea2D".to_string()),
-                                    AttributeValue::Number(
-                                        Number::from_f64(normal_result.signed_area_2d).ok_or_else(
-                                            || {
-                                                GeometryProcessorError::PolygonNormalExtractor(
-                                                    "Failed to convert signedArea2D to JSON number"
-                                                        .to_string(),
-                                                )
-                                            },
-                                        )?,
-                                    ),
-                                );
-                            }
-                            if self.add_slope {
-                                feature.attributes.insert(
-                                    Attribute::new("Slope".to_string()),
-                                    AttributeValue::Number(
-                                        Number::from_f64(normal_result.slope).ok_or_else(|| {
-                                            GeometryProcessorError::PolygonNormalExtractor(
-                                                "Failed to convert slope to JSON number"
-                                                    .to_string(),
-                                            )
-                                        })?,
-                                    ),
-                                );
-                            }
-                            if self.add_azimuth {
-                                feature.attributes.insert(
-                                    Attribute::new("Azimuth".to_string()),
-                                    AttributeValue::Number(
-                                        Number::from_f64(normal_result.azimuth).ok_or_else(
-                                            || {
-                                                GeometryProcessorError::PolygonNormalExtractor(
-                                                    "Failed to convert azimuth to JSON number"
-                                                        .to_string(),
-                                                )
-                                            },
-                                        )?,
-                                    ),
-                                );
-                            }
+                                PolygonNormalExtractor::calculate_normal_properties_3d(polygon);
+                            let () = PolygonNormalExtractor::set_normal_features(
+                                normal_result,
+                                &mut feature,
+                                Some(&format!("_{index}")),
+                            )?;
                         }
 
                         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     }
                     _ => {
-                        // For non-polygon geometries, pass through unchanged
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                        return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
+                            "There is no 3D polygon".to_string(),
+                        )));
                     }
                 }
             }
             GeometryValue::CityGmlGeometry(_) => {
-                // For now, just pass CityGML geometries through unchanged
-                // Normal calculation for CityGML would require more complex handling
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
+                    "Only support simple Polygon normal extraction".to_string(),
+                )));
             }
         }
 
@@ -389,6 +199,7 @@ impl PolygonNormalExtractor {
         let mut signed_area_2d = 0.0;
 
         let coord_count = coords.len() - 1; // Exclude the closing vertex which is the same as the first
+
         for i in 0..coord_count {
             let before = (i + coord_count - 1) % coord_count;
             let after = (i + 1) % coord_count;
@@ -412,10 +223,14 @@ impl PolygonNormalExtractor {
             let z2 = coords1.z;
             let z3 = coords2.z;
 
-            // Calculate normal
-            normal_x += (y2 - y1) * (z3 - z1) - (y3 - y1) * (z2 - z1);
-            normal_y += (z2 - z1) * (x3 - x1) - (z3 - z1) * (x2 - x1);
-            normal_z += (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1);
+            // Calculate normal using cross product of vectors (coords1 - coords0) and (coords2 - coords0)
+            let v1 = Coordinate3D::new__(x2 - x1, y2 - y1, z2 - z1);
+            let v2 = Coordinate3D::new__(x3 - x1, y3 - y1, z3 - z1);
+            let cross_product = v1.cross(&v2);
+
+            normal_x += cross_product.x;
+            normal_y += cross_product.y;
+            normal_z += cross_product.z;
 
             // Polygon area (Gauss area formula)
             let area_tri = ((y2 + y3) * (x2 - x3)) / 2.0;
@@ -471,6 +286,67 @@ impl PolygonNormalExtractor {
             slope,
             azimuth,
         }
+    }
+
+    fn set_normal_features(
+        normal_result: NormalResult,
+        feature: &mut Feature,
+        suffix: Option<&str>,
+    ) -> Result<(), BoxedError> {
+        // Add calculated attributes to the feature
+        feature.attributes.insert(
+            Attribute::new(format!("normalX{}", suffix.unwrap_or(""))),
+            AttributeValue::Number(Number::from_f64(normal_result.normal_x).ok_or_else(|| {
+                GeometryProcessorError::PolygonNormalExtractor(
+                    "Failed to convert normalX to JSON number".to_string(),
+                )
+            })?),
+        );
+        feature.attributes.insert(
+            Attribute::new(format!("normalY{}", suffix.unwrap_or(""))),
+            AttributeValue::Number(Number::from_f64(normal_result.normal_y).ok_or_else(|| {
+                GeometryProcessorError::PolygonNormalExtractor(
+                    "Failed to convert normalY to JSON number".to_string(),
+                )
+            })?),
+        );
+        feature.attributes.insert(
+            Attribute::new(format!("normalZ{}", suffix.unwrap_or(""))),
+            AttributeValue::Number(Number::from_f64(normal_result.normal_z).ok_or_else(|| {
+                GeometryProcessorError::PolygonNormalExtractor(
+                    "Failed to convert normalZ to JSON number".to_string(),
+                )
+            })?),
+        );
+        feature.attributes.insert(
+            Attribute::new(format!("signedArea2D{}", suffix.unwrap_or(""))),
+            AttributeValue::Number(Number::from_f64(normal_result.signed_area_2d).ok_or_else(
+                || {
+                    GeometryProcessorError::PolygonNormalExtractor(
+                        "Failed to convert signedArea2D to JSON number".to_string(),
+                    )
+                },
+            )?),
+        );
+        feature.attributes.insert(
+            Attribute::new(format!("Slope{}", suffix.unwrap_or(""))),
+            AttributeValue::Number(Number::from_f64(normal_result.slope).ok_or_else(|| {
+                GeometryProcessorError::PolygonNormalExtractor(
+                    "Failed to convert slope to JSON number".to_string(),
+                )
+            })?),
+        );
+
+        feature.attributes.insert(
+            Attribute::new(format!("Azimuth{}", suffix.unwrap_or(""))),
+            AttributeValue::Number(Number::from_f64(normal_result.azimuth).ok_or_else(|| {
+                GeometryProcessorError::PolygonNormalExtractor(
+                    "Failed to convert azimuth to JSON number".to_string(),
+                )
+            })?),
+        );
+
+        Ok(())
     }
 }
 
