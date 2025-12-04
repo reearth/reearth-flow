@@ -17,11 +17,11 @@ type Scheduler interface {
 }
 
 type ScheduledJobInfo struct {
+	LastAttempt  *timestamppb.Timestamp
+	NextSchedule *timestamppb.Timestamp
 	Name         string
 	Schedule     string
 	State        ScheduledJobState
-	LastAttempt  *timestamppb.Timestamp
-	NextSchedule *timestamppb.Timestamp
 }
 
 type ScheduledJobState string

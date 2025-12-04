@@ -15,9 +15,9 @@ import (
 )
 
 type Job struct {
-	lock sync.Mutex
 	data map[id.JobID]*job.Job
 	f    repo.WorkspaceFilter
+	lock sync.Mutex
 }
 
 func NewJob() *Job {

@@ -12,15 +12,15 @@ import (
 
 type CreateDeploymentParam struct {
 	Project     *id.ProjectID
-	Workspace   id.WorkspaceID
 	Workflow    *file.File
 	Description string
+	Workspace   id.WorkspaceID
 }
 
 type UpdateDeploymentParam struct {
-	ID          id.DeploymentID
 	Workflow    *file.File
 	Description *string
+	ID          id.DeploymentID
 }
 
 type ExecuteDeploymentParam struct {
