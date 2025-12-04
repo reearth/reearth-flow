@@ -89,10 +89,10 @@ export default ({
 
     await useUpdateTrigger(
       selectedTrigger.id,
+      variablesToSave,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
-      variablesToSave,
     );
 
     onDialogClose();

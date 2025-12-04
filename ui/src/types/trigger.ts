@@ -1,3 +1,5 @@
+import type { Variable } from "@flow/lib/gql/__gen__/graphql";
+
 import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
 
@@ -18,8 +20,7 @@ export enum TimeIntervalEnum {
 
 export type TimeInterval = keyof typeof TimeIntervalEnum;
 
-// At a later date, we will need to expand this to support typed variable like in ProjectVariables
-type TriggerVariables = Record<string, any>;
+export type { Variable } from "@flow/lib/gql/__gen__/graphql";
 
 export type Trigger = {
   id: string;
@@ -33,7 +34,7 @@ export type Trigger = {
   authToken?: string;
   timeInterval?: TimeInterval;
   description?: string;
-  variables?: TriggerVariables;
+  variables: Variable[];
 };
 
 export type GetTriggers = {

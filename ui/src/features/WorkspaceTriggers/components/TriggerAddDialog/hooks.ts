@@ -191,9 +191,9 @@ export default ({
       workspaceId,
       deploymentId,
       description,
+      variablesToSave,
       eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
       eventSource === "API_DRIVEN" ? authToken : undefined,
-      variablesToSave,
     );
 
     setCreatedTrigger(createdTrigger);
