@@ -3,9 +3,7 @@ id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
 name: "Solar Radiation time to TIMEVALUE workflow"
 entryGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
 with:
-  inputCsvPath:
-  outputCsvPath:
-  # Solar parameters (adjust per location/date)
+  csvFile: !include ./input-time-to-time-value.csv
 graphs:
   - id: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
     name: entry_point
@@ -60,8 +58,7 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            env.get("outputCsvPath")
+          output: ./output-time-to-time-value.csv
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -70,8 +67,14 @@ graphs:
         fromPort: default
         toPort: default
 
-      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+      - id: ff632408-d0b2-11f0-8ed6-7c70db10a7e3
         from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: deeca816-d026-11f0-bcf9-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: deeca816-d026-11f0-bcf9-7c70db10a7e3
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default
