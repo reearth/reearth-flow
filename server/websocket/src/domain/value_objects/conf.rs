@@ -15,3 +15,8 @@ pub const DEFAULT_ORIGINS: &[&str] = &[
     "http://localhost:8080",
 ];
 pub const DEFAULT_WS_PORT: &str = "8000";
+
+// Tracing defaults
+pub const DEFAULT_ENABLE_CLOUD_TRACE: bool = false;
+pub const DEFAULT_SERVICE_NAME: &str = "reearth-flow-websocket";
+pub const DEFAULT_LOG_LEVEL: &str = "info";
