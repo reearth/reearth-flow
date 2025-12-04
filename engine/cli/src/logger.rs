@@ -20,7 +20,7 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
         .unwrap_or(Level::INFO);
     let env_filter = EnvFilter::builder()
         .with_default_directive(log_level.into())
-        .from_env_lossy()
+        .from_env_lossy();
     let time_format = UtcTime::new(
         time::format_description::parse(
             "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",

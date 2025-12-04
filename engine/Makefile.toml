@@ -50,8 +50,6 @@ export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test -p workflow-tests ${@:-}
 ''']
 
-# plateau-tiles-test's main target tests data-convert workflows
-# plateau-tiles-test itself also contain unit tests which are run in test-rs
 [tasks.test-conv]
 script = ['''
 #!/usr/bin/env bash -eux
