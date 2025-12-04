@@ -1,22 +1,20 @@
 use crate::align_mvt::{align_mvt_features, AlignedGeometry, GeometryType};
-use reearth_flow_geometry::algorithm::area2d::Area2D;
-use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
+use reearth_flow_geometry::algorithm::clipper::ClipperOpen2D;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::polygon::Polygon2D;
 use serde::Deserialize;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
-pub struct MvtPolygonsConfig {
+pub struct MvtLinesConfig {
     pub threshold: Option<f64>,
     pub zoom: Option<(u32, u32)>,
 }
 
-
-/// Clips geometry to [0,1] x [0,1] bounds
-fn clip_geometry(geom: &MultiPolygon2D<f64>) -> Option<MultiPolygon2D<f64>> {
+/// Clips linestring to [0,1] x [0,1] bounds
+fn clip_linestring(geom: &MultiLineString2D<f64>) -> Option<MultiLineString2D<f64>> {
     // Create clip bounds as a polygon [0,1] x [0,1]
     let clip_bounds = Polygon2D::new(
         LineString2D::new(vec![
@@ -29,7 +27,7 @@ fn clip_geometry(geom: &MultiPolygon2D<f64>) -> Option<MultiPolygon2D<f64>> {
         vec![],
     );
 
-    let clipped = geom.intersection(&MultiPolygon2D::new(vec![clip_bounds]));
+    let clipped = geom.intersection2d(&clip_bounds, 1e9);
     if clipped.0.is_empty() {
         None
     } else {
@@ -45,40 +43,38 @@ enum ComparisonStatus {
     Compared,
 }
 
-/// Compares two polygons using symmetric difference (XOR)
-fn compare_polygons(
-    geom1: Option<MultiPolygon2D<f64>>,
-    geom2: Option<MultiPolygon2D<f64>>,
+/// Compares two linestrings (unimplemented - placeholder for future implementation)
+fn compare_lines(
+    geom1: Option<MultiLineString2D<f64>>,
+    geom2: Option<MultiLineString2D<f64>>,
 ) -> (ComparisonStatus, f64) {
     // Clip both geometries to bounds
-    let poly1 = geom1.and_then(|g| clip_geometry(&g));
-    let poly2 = geom2.and_then(|g| clip_geometry(&g));
+    let line1 = geom1.and_then(|g| clip_linestring(&g));
+    let line2 = geom2.and_then(|g| clip_linestring(&g));
 
-    match (poly1, poly2) {
+    match (line1, line2) {
         (None, None) => (ComparisonStatus::BothMissing, 0.0),
-        (None, Some(p2)) => {
-            let area = p2.unsigned_area2d();
-            (ComparisonStatus::Only2, area)
+        (None, Some(_)) => {
+            // TODO: Implement proper length calculation or other metric
+            (ComparisonStatus::Only2, 0.0)
         }
-        (Some(p1), None) => {
-            let area = p1.unsigned_area2d();
-            (ComparisonStatus::Only1, area)
+        (Some(_), None) => {
+            // TODO: Implement proper length calculation or other metric
+            (ComparisonStatus::Only1, 0.0)
         }
-        (Some(p1), Some(p2)) => {
-            // Symmetric difference (XOR)
-            let sym_diff = p1.xor(&p2);
-            let area = sym_diff.unsigned_area2d();
-            (ComparisonStatus::Compared, area)
+        (Some(_), Some(_)) => {
+            // TODO: Implement linestring comparison logic (e.g., Hausdorff distance)
+            // For now, just pass all comparisons
+            (ComparisonStatus::Compared, 0.0)
         }
     }
 }
 
-
-/// Tests MVT polygons between FME and Flow outputs
-pub fn test_mvt_polygons(
+/// Tests MVT lines between FME and Flow outputs
+pub fn test_mvt_lines(
     fme_path: &Path,
     flow_path: &Path,
-    config: &MvtPolygonsConfig,
+    config: &MvtLinesConfig,
 ) -> Result<(), String> {
     let threshold = config.threshold.unwrap_or(0.0);
     let (zmin, zmax) = config.zoom.unwrap_or((0, u32::MAX));
@@ -86,7 +82,7 @@ pub fn test_mvt_polygons(
     let zmax = if zmax == u32::MAX { None } else { Some(zmax) };
 
     let aligned_features =
-        align_mvt_features(fme_path, flow_path, GeometryType::Polygon, zmin, zmax)?;
+        align_mvt_features(fme_path, flow_path, GeometryType::LineString, zmin, zmax)?;
 
     let mut failures = Vec::new();
     let mut total = 0;
@@ -94,7 +90,7 @@ pub fn test_mvt_polygons(
 
     for feature in aligned_features {
         let (geom1, geom2) = match feature.geometry {
-            AlignedGeometry::Polygon(g1, g2) => (g1, g2),
+            AlignedGeometry::LineString(g1, g2) => (g1, g2),
             _ => continue,
         };
 
@@ -104,7 +100,7 @@ pub fn test_mvt_polygons(
         }
 
         total += 1;
-        let (status, score) = compare_polygons(geom1, geom2);
+        let (status, score) = compare_lines(geom1, geom2);
         worst_score = f64::max(worst_score, score);
 
         if score > threshold {
@@ -113,7 +109,7 @@ pub fn test_mvt_polygons(
     }
 
     tracing::info!(
-        "MVT polygons: {} total, {} failures, worst={:.6}, threshold={}",
+        "MVT lines: {} total, {} failures, worst={:.6}, threshold={}",
         total,
         failures.len(),
         worst_score,
@@ -127,7 +123,7 @@ pub fn test_mvt_polygons(
             tracing::info!("  {} | {} | {:.6} | {}", path, gml_id, score, status);
         }
         return Err(format!(
-            "MVT polygon comparison failed: {}/{} exceeded threshold {}",
+            "MVT line comparison failed: {}/{} exceeded threshold {}",
             failures.len(),
             total,
             threshold

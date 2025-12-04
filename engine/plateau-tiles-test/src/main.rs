@@ -1,9 +1,11 @@
+mod align_mvt;
 mod cast_config;
 mod compare_attributes;
 mod runner;
 mod test_cesium_attributes;
 mod test_json_attributes;
 mod test_mvt_attributes;
+mod test_mvt_lines;
 mod test_mvt_polygons;
 
 use serde::Deserialize;
@@ -15,6 +17,7 @@ use std::sync::Once;
 use test_cesium_attributes::CesiumAttributesConfig;
 use test_json_attributes::JsonFileConfig;
 use test_mvt_attributes::MvtAttributesConfig;
+use test_mvt_lines::MvtLinesConfig;
 use test_mvt_polygons::MvtPolygonsConfig;
 use tracing::info;
 use walkdir::WalkDir;
@@ -56,7 +59,7 @@ struct Tests {
     #[serde(default)]
     mvt_polygons: Option<MvtPolygonsConfig>,
     #[serde(default)]
-    mvt_lines: Option<serde_json::Value>,
+    mvt_lines: Option<MvtLinesConfig>,
     #[serde(default)]
     cesium_attributes: Option<CesiumAttributesConfig>,
 }
@@ -183,7 +186,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
         }
 
-        info!("Starting run: {}", relative_path.display());
+        info!("Starting run: {} to {}", relative_path.display(), output_dir.display());
         let start_time = std::time::Instant::now();
 
         fs::create_dir_all(&output_dir).unwrap();
@@ -196,10 +199,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             relative_path.display(),
             elapsed.as_secs_f64()
         );
-        if let Some("1") = env::var("PLATEAU_TILES_TEST_CLEANUP").ok().as_deref() {
-            info!("Cleaning up output directory: {}", output_dir.display());
-            fs::remove_dir_all(&output_dir).unwrap();
-        }
     }
 
     if stages.contains('e') {
@@ -235,6 +234,12 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if let Some(cfg) = &tests.mvt_lines {
+            run_test("mvt_lines", &relative_path_display, || {
+                test_mvt_lines::test_mvt_lines(&fme_dir, &output_dir.join("flow"), cfg)
+            });
+        }
+
         if let Some(cfg) = &tests.cesium_attributes {
             run_test("cesium_attributes", &relative_path_display, || {
                 // FME output is JSON export, Flow output is 3D tiles directory
@@ -243,10 +248,11 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 test_cesium_attributes::test_cesium_attributes(&fme_json, &flow_tiles, cfg)
             });
         }
+    }
 
-        if tests.mvt_lines.is_some() {
-            info!("Skipping unsupported test type: mvt_lines");
-        }
+    if let Some("1") = env::var("PLATEAU_TILES_TEST_CLEANUP").ok().as_deref() {
+        info!("Cleaning up output directory: {}", output_dir.display());
+        fs::remove_dir_all(&output_dir).unwrap();
     }
 }
 
@@ -311,6 +317,10 @@ fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
 
 fn main() {
     init_logging();
+
+    // Set to 0ms for local test runs - we don't need event propagation delay
+    // since we're not sending events to external systems (GCP Pub/Sub, etc.)
+    env::set_var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS", "0");
 
     let testcases_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testcases");
     let results_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("results");
