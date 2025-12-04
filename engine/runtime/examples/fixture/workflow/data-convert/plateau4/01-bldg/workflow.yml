@@ -450,6 +450,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
+          dracoCompression: false
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -513,6 +514,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
+          dracoCompression: false
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -576,6 +578,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
+          dracoCompression: false
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
