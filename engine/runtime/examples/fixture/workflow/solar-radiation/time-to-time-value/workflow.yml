@@ -23,34 +23,61 @@ graphs:
         action: AttributeMapper
         with:
           mappers:
-            - attribute: 方位_出  
-              valueAttribute: 方位[°]  
-            - attribute: 方位_入  
-              valueAttribute: 方位[°]00  
-            - attribute: 出 
-              expr: |
-                datetime::extract_second(env.get("出"))
-            - attribute: 入り 
-              expr: |
-                datetime::extract_second(env.get("入り"))
-            - attribute: 南中 
-              expr: |
-                datetime::extract_second(env.get("南中"))
-        
+            - attribute: 年月日
+              valueAttribute: 年月日
+            - attribute: 方位_出
+              valueAttribute: 方位[°]
+            - attribute: 方位_入
+              valueAttribute: 方位[°]00
+            - attribute: 高度[°]
+              valueAttribute: 高度[°]
+            # Preserve original time values
+            - attribute: 出
+              valueAttribute: 出
+            - attribute: 入り
+              valueAttribute: 入り
+            - attribute: 南中
+              valueAttribute: 南中
+
       - id: deeca816-d026-11f0-bcf9-7c70db10a7e3
-        name: solar-radiation-accumulator 
-        type: action 
-        action: AttributeManager 
+        name: solar-radiation-accumulator
+        type: action
+        action: AttributeManager
         with:
           operations:
-          # (@Value(入り)/86400 - @Value(出)/86400) * 24 * @sin(@degToRad(@Value(高度[°]))) * (2/@pi())
+          # Calculate solar radiation using the time values
           - attribute: 日射量[kWh/m2]
-            method: create 
-            expr: | 
-              let input = env.get("入り") / 86400;
-              let output = env.get("出") / 86400;
+            method: create
+            expr: |
+              # Parse the time strings to calculate solar radiation
+              let input_str = env.get("入り");
+              let output_str = env.get("出");
+
+              # Since input_str and output_str are in format like "16:50", "7:06",
+              # we need to parse them into time values in seconds
+              # Split the time strings by colon
+              let input_parts = string::split(input_str, ":");
+              let output_parts = string::split(output_str, ":");
+
+              # Extract hour and minute parts (assuming H:MM or HH:MM format)
+              let input_hour = string::to_int(input_parts[0]);
+              let input_min = string::to_int(input_parts[1]);
+              let output_hour = string::to_int(output_parts[0]);
+              let output_min = string::to_int(output_parts[1]);
+
+              # Calculate total seconds from midnight
+              let input_seconds = input_hour * 3600 + input_min * 60;
+              let output_seconds = output_hour * 3600 + output_min * 60;
+
+              # Calculate the day fraction
+              let input_day_fraction = input_seconds / 86400.0;
+              let output_day_fraction = output_seconds / 86400.0;
+
+              # Get the elevation angle
               let hight = env.get("高度[°]");
-              (input - output) * 24 * math::sin(math::to_radians(hight)) * (2/math::PI)
+
+              # Calculate solar radiation
+              (input_day_fraction - output_day_fraction) * 24.0 * math::sin(math::to_radians(hight)) * (2.0/math::PI)
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
