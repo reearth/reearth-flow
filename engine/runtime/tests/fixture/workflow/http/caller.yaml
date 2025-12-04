@@ -1,0 +1,62 @@
+id: 9c66c0a4-e1fa-41dd-a0c9-df3f6e01dd33
+name: "http caller integration test"
+entryGraphId: d6863b71-953b-4d15-af56-396fc93fc618
+graphs:
+  - id: d6863b71-953b-4d15-af56-396fc93fc618
+    name: entrypoint
+    nodes:
+      - id: b1a91180-ab88-4c1a-aab5-48c242a218da
+        name: Source-Json-Reader-01
+        type: action
+        action: JsonReader
+        with:
+          dataset: |
+            "ram:///fixture/testdata/http/caller/test_data.json"
+
+      - id: b1a91180-ab88-4c1a-aab5-48c242a218db
+        name: HTTP-Caller
+        type: action
+        action: HTTPCaller
+        with:
+          url: |
+            "https://jsonplaceholder.typicode.com/${env.get('__value').api_endpoint}"
+          method: GET
+          customHeaders:
+            - name: "Authorization"
+              value: |
+                "Bearer ${env.get('__value').auth_token}"
+            - name: "X-User-ID"
+              value: |
+                env.get('__value').user_id
+          queryParameters:
+            - name: "format"
+              value: |
+                "json"
+          responseBodyAttribute: "_response"
+          statusCodeAttribute: "_status"
+          headersAttribute: "_response_headers"
+          errorAttribute: "_error"
+          connectionTimeout: 30
+          transferTimeout: 60
+
+      - id: b1a91180-ab88-4c1a-aab5-48c242a218dc
+        name: Sink-Json-Writer-01
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            "{{ env.outputFilePath }}"
+
+    edges:
+      - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
+        from: b1a91180-ab88-4c1a-aab5-48c242a218da
+        to: b1a91180-ab88-4c1a-aab5-48c242a218db
+        fromPort: default
+        toPort: default
+
+      - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
+        from: b1a91180-ab88-4c1a-aab5-48c242a218db
+        to: b1a91180-ab88-4c1a-aab5-48c242a218dc
+        fromPort: default
+        toPort: default
+
