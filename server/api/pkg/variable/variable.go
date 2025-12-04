@@ -59,7 +59,10 @@ func toString(v Variable) string {
 		}
 		return fmt.Sprintf("%v", v.Value)
 	default:
-		b, _ := json.Marshal(v.Value)
+		b, err := json.Marshal(v.Value)
+		if err != nil {
+			return fmt.Sprintf("<marshal error: %v>", err)
+		}
 		return string(b)
 	}
 }

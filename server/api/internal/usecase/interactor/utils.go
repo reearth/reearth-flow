@@ -27,7 +27,7 @@ func resolveVariables(
 
 	apply := func(src map[string]variable.Variable) error {
 		for k, v := range src {
-			cur, ok := out[k]
+			_, ok := out[k]
 			if !ok {
 				out[k] = v
 				continue
@@ -35,7 +35,7 @@ func resolveVariables(
 			// In case of type mismatch, we adopt the type of the overriding variable (v)
 			nv, ok := coerceValue(v.Value, v.Type)
 			if !ok {
-				return fmt.Errorf("type mismatch on key %q (have=%s want=%s)", k, cur.Type, v.Type)
+				return fmt.Errorf("failed to coerce value for key %q to type %s", k, v.Type)
 			}
 			out[k] = variable.Variable{Key: k, Type: v.Type, Value: nv}
 		}
