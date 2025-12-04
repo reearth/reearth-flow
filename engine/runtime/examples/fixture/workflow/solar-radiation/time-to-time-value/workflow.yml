@@ -9,13 +9,13 @@ graphs:
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FeatureReader
+        name: CsvReader
         type: action
-        action: FeatureReader
+        action: CsvReader
         with:
           format: csv
-          dataset: |
-            env.get("inputCsvPath")
+          inline: |
+            env.get("csvFile")
 
       - id: d2b4977d-e218-4628-96f2-d26407aeea14
         name: AttributeMapper
@@ -58,7 +58,7 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: ./output-time-to-time-value.csv
+          output: ./target/output-time-to-time-value.csv
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
