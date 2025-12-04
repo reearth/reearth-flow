@@ -49,8 +49,7 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let normal_polygon: PolygonNormalExtractor = PolygonNormalExtractor {};
-        Ok(Box::new(normal_polygon))
+        Ok(Box::new(PolygonNormalExtractor {}))
     }
 }
 
