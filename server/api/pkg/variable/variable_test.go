@@ -100,8 +100,8 @@ func TestMapToSlice(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := variable.MapToSlice(tt.input)
 
-			if tt.want != nil {
-				assert.Equal(t, tt.want, got)
+			if tt.want == nil {
+				assert.Nil(t, got)
 			} else {
 				assert.Len(t, got, len(tt.want))
 				for _, want := range tt.want {

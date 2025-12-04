@@ -72,7 +72,7 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		return fmt.Sprintf("%v", v), true
 	case parameter.TypeNumber:
 		switch n := v.(type) {
-		case float64, float32, int, int32, int64, uint, uint32, uint64:
+		case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 			return n, true
 		case string:
 			if f, err := strconv.ParseFloat(n, 64); err == nil {
@@ -113,7 +113,9 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		if s, ok := v.(string); ok {
 			var a any
 			if json.Unmarshal([]byte(s), &a) == nil {
-				return a, true
+				if arr, ok := a.([]interface{}); ok {
+					return arr, true
+				}
 			}
 		}
 		return nil, false
