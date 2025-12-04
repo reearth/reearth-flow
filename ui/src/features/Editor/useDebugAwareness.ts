@@ -63,6 +63,19 @@ export default ({
     };
   }, [yAwareness, projectId]);
 
+  // Cleanup: Clear broadcast when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear debug run from awareness directly to avoid dependency issues
+      const state = yAwareness.getLocalState();
+      if (state?.debugRun) {
+        yAwareness.setLocalStateField("debugRun", null);
+      }
+    };
+    // Only run on unmount, not when yAwareness changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return {
     broadcastDebugRun,
     activeDebugRuns,

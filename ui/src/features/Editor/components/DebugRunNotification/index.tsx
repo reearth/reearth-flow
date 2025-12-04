@@ -30,8 +30,9 @@ const DebugRunNotification: React.FC<Props> = ({
       if (
         dismissedRef.current.has(run.jobId) ||
         currentUserJobIds.includes(run.jobId)
-      )
+      ) {
         return;
+      }
 
       dismissedRef.current.add(run.jobId);
 

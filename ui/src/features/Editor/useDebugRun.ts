@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useProjectVariables } from "@flow/lib/gql";
@@ -37,6 +37,11 @@ export default ({
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+  const debugRunStateRef = useRef(debugRunState);
+
+  useEffect(() => {
+    debugRunStateRef.current = debugRunState;
+  }, [debugRunState]);
 
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
@@ -84,7 +89,7 @@ export default ({
         });
       }
       await updateValue({ jobs });
-      broadcastDebugRun(data.job.id); // NEW
+      broadcastDebugRun(data.job.id);
 
       fitView({ duration: 400, padding: 0.5 });
     }
@@ -126,9 +131,9 @@ export default ({
       if (!currentProject) return;
 
       // Check if job already exists before updating
-      const existingJobs = debugRunState?.jobs || [];
+      const existingJobs = debugRunStateRef.current?.jobs || [];
       if (existingJobs.some((j) => j.jobId === jobId)) {
-        return; // Already viewing this job, so need to update
+        return; // Already viewing this job, so no need to update
       }
 
       // Clear any existing debug run that the user has run
@@ -158,23 +163,8 @@ export default ({
         }),
       });
     },
-    // Intentionally omit debugRunState?.jobs to read fresh value on each call
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, currentProject, updateValue],
   );
-
-  // Cleanup: Clear broadcast when component unmounts
-  useEffect(() => {
-    return () => {
-      // Clear debug run from awareness directly to avoid dependency issues
-      const state = yAwareness.getLocalState();
-      if (state?.debugRun) {
-        yAwareness.setLocalStateField("debugRun", null);
-      }
-    };
-    // Only run on unmount, not when yAwareness changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const currentUserJobIds =
     debugRunState?.jobs
