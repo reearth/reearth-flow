@@ -28,7 +28,7 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
     }
 
     fn description(&self) -> &str {
-        "Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime"
+        "Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime, or executes pre-compiled WASM modules"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -89,77 +89,77 @@ impl WasmRuntimeExecutorFactory {
         ctx: &NodeContext,
         params: &WasmRuntimeExecutorParam,
     ) -> super::errors::Result<Vec<u8>> {
-        let temp_wasm_file = NamedTempFile::new().map_err(|e| {
-            WasmProcessorError::RuntimeExecutorFactory(format!(
-                "Failed to create temporary file: {e}"
-            ))
-        })?;
-        let temp_wasm_path = temp_wasm_file.path();
-        let temp_wasm_path_str = temp_wasm_path.to_str().ok_or_else(|| {
-            WasmProcessorError::RuntimeExecutorFactory(
-                "Temporary file path is not valid UTF-8".to_string(),
-            )
-        })?;
-
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = expr_engine.new_scope();
         let source = expr_engine
             .eval_scope::<String>(params.source.as_ref(), &scope)
             .unwrap_or_else(|_| params.source.to_string());
 
-        let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
-            || source.starts_with("https://")
-        {
-            let source_uri = Uri::from_str(&source).map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}"))
-            })?;
-
-            let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve URL: {e}"))
-            })?;
-
-            let content = storage
-                .get(source_uri.path().as_path())
-                .await
-                .map_err(|e| {
-                    WasmProcessorError::RuntimeExecutorFactory(format!(
-                        "Failed to download from URL: {e}"
-                    ))
-                })?
-                .bytes()
-                .await
-                .map_err(|e| {
-                    WasmProcessorError::RuntimeExecutorFactory(format!(
-                        "Failed to read content: {e}"
-                    ))
-                })?;
-
-            let mut temp_py_file = NamedTempFile::new().map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!(
-                    "Failed to create temporary Python file: {e}"
-                ))
-            })?;
-
-            temp_py_file.write_all(&content).map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!(
-                    "Failed to write Python file: {e}"
-                ))
-            })?;
-
-            temp_py_file.flush().map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!(
-                    "Failed to flush Python file: {e}"
-                ))
-            })?;
-
-            let temp_path = temp_py_file.path().to_string_lossy().to_string();
-            (temp_path, Some(temp_py_file))
-        } else {
-            (source, None)
-        };
-
         let wasm_binary = match params.programming_language {
             ProgrammingLanguage::Python => {
+                let temp_wasm_file = NamedTempFile::new().map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Failed to create temporary file: {e}"
+                    ))
+                })?;
+                let temp_wasm_path = temp_wasm_file.path();
+                let temp_wasm_path_str = temp_wasm_path.to_str().ok_or_else(|| {
+                    WasmProcessorError::RuntimeExecutorFactory(
+                        "Temporary file path is not valid UTF-8".to_string(),
+                    )
+                })?;
+
+                let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
+                    || source.starts_with("https://")
+                {
+                    let source_uri = Uri::from_str(&source).map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}"))
+                    })?;
+
+                    let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve URL: {e}"))
+                    })?;
+
+                    let content = storage
+                        .get(source_uri.path().as_path())
+                        .await
+                        .map_err(|e| {
+                            WasmProcessorError::RuntimeExecutorFactory(format!(
+                                "Failed to download from URL: {e}"
+                            ))
+                        })?
+                        .bytes()
+                        .await
+                        .map_err(|e| {
+                            WasmProcessorError::RuntimeExecutorFactory(format!(
+                                "Failed to read content: {e}"
+                            ))
+                        })?;
+
+                    let mut temp_py_file = NamedTempFile::new().map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!(
+                            "Failed to create temporary Python file: {e}"
+                        ))
+                    })?;
+
+                    temp_py_file.write_all(&content).map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!(
+                            "Failed to write Python file: {e}"
+                        ))
+                    })?;
+
+                    temp_py_file.flush().map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!(
+                            "Failed to flush Python file: {e}"
+                        ))
+                    })?;
+
+                    let temp_path = temp_py_file.path().to_string_lossy().to_string();
+                    (temp_path, Some(temp_py_file))
+                } else {
+                    (source, None)
+                };
+
                 let py2wasm_output = std::process::Command::new("py2wasm")
                     .args([&local_source_path, "-o", temp_wasm_path_str])
                     .output()
@@ -185,6 +185,34 @@ impl WasmRuntimeExecutorFactory {
                         ))
                     })?;
                 binary
+            },
+            ProgrammingLanguage::PrecompiledWasm => {
+                // For precompiled WASM, load the binary directly from the source URI
+                let source_uri = Uri::from_str(&source).map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!("Invalid WASM file URI: {e}"))
+                })?;
+
+                let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve WASM file URI: {e}"))
+                })?;
+
+                let wasm_bytes = storage
+                    .get(source_uri.path().as_path())
+                    .await
+                    .map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!(
+                            "Failed to get WASM file: {e}"
+                        ))
+                    })?
+                    .bytes()
+                    .await
+                    .map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!(
+                            "Failed to read WASM file content: {e}"
+                        ))
+                    })?;
+
+                wasm_bytes.to_vec()
             }
         };
 
@@ -205,19 +233,20 @@ pub(crate) struct WasmRuntimeExecutor {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WasmRuntimeExecutorParam {
     /// # Source Code
-    /// Script source code or path to compile to WebAssembly
+    /// Script source code or path to compile to WebAssembly, or path to pre-compiled WASM module
     source: Expr,
     /// # Processor Type
     /// Type of processor to create (Source, Processor, or Sink)
     processor_type: ProcessorType,
     /// # Programming Language
-    /// Programming language of the source script (currently supports Python)
+    /// Programming language of the source script (supports Python compilation or pre-compiled WASM)
     programming_language: ProgrammingLanguage,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub(crate) enum ProgrammingLanguage {
     Python,
+    PrecompiledWasm,
 }
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub(crate) enum ProcessorType {

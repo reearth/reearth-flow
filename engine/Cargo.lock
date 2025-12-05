@@ -7830,6 +7830,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "solar_radiation_calculator"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "soup2"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

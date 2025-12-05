@@ -59,4 +59,18 @@ cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/wor
 ```
 
 
+## How to use rust wasm power
 
+```sh
+# Prepare wasm target for rust
+rustup target add wasm32-unknown-unknown
+
+cd wasm/solar_radiation_calculator
+cargo build --target wasm32-unknown-unknown --release
+
+# The generated file will be located at: 
+target/wasm32-unknown-unknown/release/solar_radiation_calculator.wasm
+
+# Test workflow: 
+cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/workflow/solar-radiation/time-to-time-value/solar-energy-workflow.yml
+```
