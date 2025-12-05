@@ -3,7 +3,7 @@ use rhai::export_module;
 
 #[export_module]
 pub(crate) mod str_module {
-    use rhai::plugin::*;
+    use rhai::{plugin::*, Dynamic};
 
     /// Extracts the first captured group from a regex match in the given text.
     /// Returns the captured text as a string, or empty string if no match or no capture group.
@@ -21,6 +21,10 @@ pub(crate) mod str_module {
     pub fn matches(haystack: &str, regex: &str) -> bool {
         let regex = Regex::new(regex).unwrap();
         regex.is_match(haystack)
+    }
+
+    pub fn string_to_int(s: String) -> i64 {
+        s.parse::<i64>().unwrap()
     }
 }
 #[cfg(test)]
