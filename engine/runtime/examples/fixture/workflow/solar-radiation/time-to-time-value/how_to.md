@@ -33,11 +33,15 @@ cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/wor
 - 出_M, minutes part from attribute 出.
 - 入り_H, hour part from attribute 入り
 - 入り_M, minutes part from attribute 入り
+- 南中_H, hour part from attribute 南中
+- 南中_M, min part from attribute 南中
+- 南中_S, seconds part from attribute 南中
 
 ## Overwrite existing attribute 
 
 - overwrite attribute value for 出
 - new value is computed as: 出_H * 3600 + 出_M * 60
+
 
 
 ```yml 
