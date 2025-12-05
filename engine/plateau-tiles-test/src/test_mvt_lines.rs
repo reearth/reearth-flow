@@ -260,7 +260,12 @@ pub fn test_mvt_lines(
         let (status, score) = compare_lines(geom1, geom2);
         worst_score = f64::max(worst_score, score);
 
-        results.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
+        results.push((
+            score,
+            feature.tile_path,
+            feature.gml_id,
+            format!("{:?}", status),
+        ));
     }
 
     // Process Polygon features (compare boundaries as lines)
@@ -284,10 +289,18 @@ pub fn test_mvt_lines(
         let (status, score) = compare_lines(line1, line2);
         worst_score = f64::max(worst_score, score);
 
-        results.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
+        results.push((
+            score,
+            feature.tile_path,
+            feature.gml_id,
+            format!("{:?}", status),
+        ));
     }
 
-    let failures: Vec<_> = results.iter().filter(|(score, _, _, _)| *score > threshold).collect();
+    let failures: Vec<_> = results
+        .iter()
+        .filter(|(score, _, _, _)| *score > threshold)
+        .collect();
 
     tracing::info!(
         "MVT lines: {} total, {} failures, worst={:.6}, threshold={}",
