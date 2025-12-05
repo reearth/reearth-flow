@@ -35,6 +35,7 @@ const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
 pub struct CityGmlXmlWriter<W: Write> {
     writer: Writer<W>,
     srs_name: String,
+    id_counter: u64,
 }
 
 impl<W: Write> CityGmlXmlWriter<W> {
@@ -44,7 +45,16 @@ impl<W: Write> CityGmlXmlWriter<W> {
         } else {
             Writer::new(inner)
         };
-        Self { writer, srs_name }
+        Self {
+            writer,
+            srs_name,
+            id_counter: 0,
+        }
+    }
+
+    fn generate_gml_id(&mut self, prefix: &str) -> String {
+        self.id_counter += 1;
+        format!("{}_{}", prefix, self.id_counter)
     }
 
     pub fn write_header(&mut self, envelope: Option<&BoundingEnvelope>) -> Result<(), SinkError> {
@@ -96,14 +106,20 @@ impl<W: Write> CityGmlXmlWriter<W> {
         &mut self,
         city_type: CityObjectType,
         geometries: &[GeometryEntry],
+        gml_id: Option<&str>,
     ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         let element_name = city_type.element_name();
+        let mut city_obj_elem = BytesStart::new(element_name);
+        let obj_id = gml_id
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| self.generate_gml_id(city_type.id_prefix()));
+        city_obj_elem.push_attribute(("gml:id", obj_id.as_str()));
         self.writer
-            .write_event(Event::Start(BytesStart::new(element_name)))
+            .write_event(Event::Start(city_obj_elem))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         for entry in geometries {
@@ -126,7 +142,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         entry: &GeometryEntry,
     ) -> Result<(), SinkError> {
         let ns = city_type.namespace_prefix();
-        let lod_elem = self.get_geometry_element_name(ns, entry);
+        let lod_elem = self.get_geometry_element_name(ns, entry, city_type);
 
         match &entry.element {
             GmlElement::Solid { id, surfaces } => {
@@ -167,16 +183,26 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
-    fn get_geometry_element_name(&self, ns: &str, entry: &GeometryEntry) -> String {
+    fn get_geometry_element_name(
+        &self,
+        ns: &str,
+        entry: &GeometryEntry,
+        city_type: CityObjectType,
+    ) -> String {
         if let Some(property) = &entry.property {
             format!("{}:{}", ns, property)
         } else {
-            let geom_type = match &entry.element {
-                GmlElement::Solid { .. } => "Solid",
-                GmlElement::MultiSurface { .. } => "MultiSurface",
-                GmlElement::MultiCurve { .. } => "MultiCurve",
-            };
-            format!("{}:lod{}{}", ns, entry.lod, geom_type)
+            // GenericCityObject uses lodXGeometry, not lodXMultiSurface/lodXSolid
+            if city_type == CityObjectType::GenericCityObject {
+                format!("{}:lod{}Geometry", ns, entry.lod)
+            } else {
+                let geom_type = match &entry.element {
+                    GmlElement::Solid { .. } => "Solid",
+                    GmlElement::MultiSurface { .. } => "MultiSurface",
+                    GmlElement::MultiCurve { .. } => "MultiCurve",
+                };
+                format!("{}:lod{}{}", ns, entry.lod, geom_type)
+            }
         }
     }
 
@@ -185,6 +211,9 @@ impl<W: Write> CityGmlXmlWriter<W> {
         if let Some(gml_id) = id {
             solid.push_attribute(("gml:id", gml_id));
         }
+        // Add srsName to geometry for proper CRS reference
+        solid.push_attribute(("srsName", self.srs_name.as_str()));
+        solid.push_attribute(("srsDimension", "3"));
         self.writer
             .write_event(Event::Start(solid))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -222,6 +251,9 @@ impl<W: Write> CityGmlXmlWriter<W> {
         if let Some(gml_id) = id {
             ms.push_attribute(("gml:id", gml_id));
         }
+        // Add srsName to geometry for proper CRS reference
+        ms.push_attribute(("srsName", self.srs_name.as_str()));
+        ms.push_attribute(("srsDimension", "3"));
         self.writer
             .write_event(Event::Start(ms))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -306,6 +338,9 @@ impl<W: Write> CityGmlXmlWriter<W> {
         if let Some(gml_id) = id {
             mc.push_attribute(("gml:id", gml_id));
         }
+        // Add srsName to geometry for proper CRS reference
+        mc.push_attribute(("srsName", self.srs_name.as_str()));
+        mc.push_attribute(("srsDimension", "3"));
         self.writer
             .write_event(Event::Start(mc))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;

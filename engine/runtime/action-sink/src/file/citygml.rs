@@ -203,7 +203,8 @@ impl Sink for CityGmlWriterSink {
                     continue;
                 }
 
-                xml_writer.write_city_object(city_type, &geometries)?;
+                let gml_id_str = feature.id.to_string();
+                xml_writer.write_city_object(city_type, &geometries, Some(gml_id_str.as_str()))?;
             }
 
             xml_writer.write_footer()?;
