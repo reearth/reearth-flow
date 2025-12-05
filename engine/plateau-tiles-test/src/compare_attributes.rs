@@ -205,8 +205,12 @@ impl AttributeComparer {
                         };
 
                         if !matches {
-                            self.mismatches
-                                .push((self.identifier.clone(), key.to_string(), v1, v2));
+                            self.mismatches.push((
+                                self.identifier.clone(),
+                                key.to_string(),
+                                v1,
+                                v2,
+                            ));
                         }
                         return;
                     }
