@@ -145,6 +145,7 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 			}
             createdAt
             updatedAt
+			lastTriggered
         }
     }`
 
@@ -203,8 +204,9 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 					Type  string      `json:"type"`
 					Value interface{} `json:"value"`
 				} `json:"variables"`
-				CreatedAt string `json:"createdAt"`
-				UpdatedAt string `json:"updatedAt"`
+				CreatedAt     string  `json:"createdAt"`
+				UpdatedAt     string  `json:"updatedAt"`
+				LastTriggered *string `json:"lastTriggered"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -243,6 +245,7 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 
 	assert.NotEmpty(t, trigger.CreatedAt)
 	assert.NotEmpty(t, trigger.UpdatedAt)
+	assert.Nil(t, trigger.LastTriggered)
 
 	t.Logf("Created trigger with ID: %s", trigger.ID)
 }
@@ -348,6 +351,7 @@ func TestUpdateTrigger(t *testing.T) {
 			}
             createdAt
             updatedAt
+			lastTriggered
         }
     }`
 
@@ -395,8 +399,9 @@ func TestUpdateTrigger(t *testing.T) {
 					Type  string      `json:"type"`
 					Value interface{} `json:"value"`
 				} `json:"variables"`
-				CreatedAt string `json:"createdAt"`
-				UpdatedAt string `json:"updatedAt"`
+				CreatedAt     string  `json:"createdAt"`
+				UpdatedAt     string  `json:"updatedAt"`
+				LastTriggered *string `json:"lastTriggered"`
 			} `json:"updateTrigger"`
 		} `json:"data"`
 	}
@@ -427,6 +432,7 @@ func TestUpdateTrigger(t *testing.T) {
 	updatedAt2 := parse(trigger.UpdatedAt)
 	assert.WithinDuration(t, createdAt1, createdAt2, 1*time.Millisecond)
 	assert.True(t, updatedAt2.After(updatedAt1))
+	assert.Nil(t, trigger.LastTriggered)
 }
 
 func TestCreateAPIDrivenTrigger(t *testing.T) {
@@ -464,6 +470,7 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 				type
 				value
 			}
+			lastTriggered
 		}
 	}`
 
@@ -514,6 +521,7 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 					Type  string      `json:"type"`
 					Value interface{} `json:"value"`
 				} `json:"variables"`
+				LastTriggered *string `json:"lastTriggered"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -549,6 +557,8 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 		"API_VAR_A": "value_A",
 		"API_VAR_B": "value_B",
 	}, gotVars)
+
+	assert.Nil(t, trigger.LastTriggered)
 
 	t.Logf("Created API trigger with ID: %s", trigger.ID)
 }
