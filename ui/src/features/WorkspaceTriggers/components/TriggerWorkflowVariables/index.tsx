@@ -73,8 +73,6 @@ export default function TriggerProjectVariablesMappingDialog({
       }),
   );
 
-  console.log("variables:", variableMappings);
-
   const handleDefaultValueChange = (index: number, newValue: any) => {
     setVariableMappings((prev) =>
       prev.map((mapping, i) =>

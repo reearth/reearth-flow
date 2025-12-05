@@ -121,7 +121,6 @@ export default ({
     ? Object.keys(workflowVariablesObject).length
     : 0;
 
-  console.log("hasVariables", hasVariables);
   return {
     updatedEventSource,
     updatedAuthToken,
