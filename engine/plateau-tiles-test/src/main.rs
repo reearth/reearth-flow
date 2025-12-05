@@ -175,6 +175,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     let citygml_path = output_dir.join(&profile.citygml_zip_name);
 
     if stages.contains('r') {
+        let _ = fs::remove_dir_all(&output_dir);
         if !citygml_path.exists() {
             let zip_stem = profile
                 .citygml_zip_name
