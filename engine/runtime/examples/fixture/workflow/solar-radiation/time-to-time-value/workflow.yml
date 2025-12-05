@@ -89,6 +89,14 @@ graphs:
                 let mins = str::string_to_int(mins_str);
                 let seconds = str::string_to_int(secs_str);
                 hour * 3600 + mins * 60 + seconds
+            - attribute: 出_H
+              method: remove
+            - attribute: 出_M
+              method: remove
+            - attribute: 入り_H
+              method: remove
+            - attribute: 入り_M
+              method: remove
                 
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
