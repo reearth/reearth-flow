@@ -125,6 +125,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
+    "data-convert/plateau4/06-area-urf/area",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)

@@ -11,6 +11,7 @@ pub struct AttributeComparer {
 #[derive(Debug, Clone)]
 pub enum CastConfig {
     String,
+    Float { epsilon: Option<f64> },
     Json,
     ListToDict { key: String },
 }
@@ -103,6 +104,20 @@ impl AttributeComparer {
                         Value::String(value.to_string())
                     }
                 }
+                CastConfig::Float { .. } => {
+                    // Convert to number if possible
+                    match &value {
+                        Value::Number(_) => value,
+                        Value::String(s) => {
+                            if let Ok(f) = s.parse::<f64>() {
+                                serde_json::json!(f)
+                            } else {
+                                value
+                            }
+                        }
+                        _ => value,
+                    }
+                }
                 CastConfig::Json => {
                     if let Some(s) = value.as_str() {
                         serde_json::from_str(s).unwrap_or(value)
@@ -180,6 +195,23 @@ impl AttributeComparer {
                 }
             }
             _ => {
+                // Check if we should compare as floats with tolerance
+                if let Some(CastConfig::Float { epsilon }) = self.casts.get(key) {
+                    if let (Some(f1), Some(f2)) = (v1.as_f64(), v2.as_f64()) {
+                        let matches = if let Some(eps) = epsilon {
+                            (f1 - f2).abs() <= *eps
+                        } else {
+                            f1 == f2 // Exact match when no epsilon provided
+                        };
+
+                        if !matches {
+                            self.mismatches
+                                .push((self.identifier.clone(), key.to_string(), v1, v2));
+                        }
+                        return;
+                    }
+                }
+
                 if v1 != v2 {
                     self.mismatches
                         .push((self.identifier.clone(), key.to_string(), v1, v2));
@@ -373,5 +405,38 @@ mod tests {
 
         let result = analyze_attributes("test", &v1, &v2, casts);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cast_float() {
+        let mut casts = HashMap::new();
+        casts.insert(".value".to_string(), CastConfig::Float { epsilon: None });
+
+        // Exact match - should pass
+        let v1 = json!({"value": 1.5});
+        let v2 = json!({"value": 1.5});
+        assert!(analyze_attributes("test", &v1, &v2, casts.clone()).is_ok());
+
+        // String to float conversion - should pass
+        let v1 = json!({"value": "1.5"});
+        let v2 = json!({"value": 1.5});
+        assert!(analyze_attributes("test", &v1, &v2, casts.clone()).is_ok());
+
+        // Different values with no epsilon - should fail
+        let v1 = json!({"value": 1.5});
+        let v2 = json!({"value": 1.500001});
+        assert!(analyze_attributes("test", &v1, &v2, casts).is_err());
+
+        // With epsilon tolerance - should pass
+        let mut casts_eps = HashMap::new();
+        casts_eps.insert(
+            ".value".to_string(),
+            CastConfig::Float {
+                epsilon: Some(0.001),
+            },
+        );
+        let v1 = json!({"value": 1.5});
+        let v2 = json!({"value": 1.500001});
+        assert!(analyze_attributes("test", &v1, &v2, casts_eps).is_ok());
     }
 }
