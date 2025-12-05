@@ -1572,8 +1572,8 @@ mod tests {
     ) -> Result<HashMap<String, u64>, BoxedError> {
         match fw {
             ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
+                let send_ports = noop_fw.send_ports.lock()?;
+                let send_features = noop_fw.send_features.lock()?;
 
                 let file_stats_outputs: HashMap<String, u64> = send_ports
                     .iter()

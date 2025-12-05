@@ -229,7 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_empty_dir() -> std::io::Result<()> {
-        let temp_dir = Builder::new().prefix("foobar").tempdir_in(".").unwrap();
+        let temp_dir = Builder::new().prefix("foobar").tempdir_in(".")?;
         let file_path = temp_dir.path().join("file");
         tokio::fs::File::create(file_path).await?;
 
@@ -250,7 +250,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_copy_tree() -> std::io::Result<()> {
-        let temp_dir = Builder::new().prefix("foobar").tempdir_in(".").unwrap();
+        let temp_dir = Builder::new().prefix("foobar").tempdir_in(".")?;
         let src_dir = temp_dir.path().join("src");
         let dest_dir = temp_dir.path().join("dest");
 

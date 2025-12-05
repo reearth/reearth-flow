@@ -1418,8 +1418,8 @@ mod tests {
     ) -> Result<Vec<Feature>, BoxedError> {
         match fw {
             ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
+                let send_ports = noop_fw.send_ports.lock()?;
+                let send_features = noop_fw.send_features.lock()?;
 
                 let outputs: Vec<Feature> = send_ports
                     .iter()

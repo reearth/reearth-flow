@@ -474,7 +474,7 @@ impl TestContext {
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature_state_uri = format!("file://{}", feature_state_path.display());
         let feature_state_uri = reearth_flow_common::uri::Uri::from_str(&feature_state_uri)?;
-        let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
+        let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver)?);
         let ingress_state = Arc::clone(&feature_state);
 
         // Run workflow
