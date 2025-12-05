@@ -166,16 +166,10 @@ export default ({
     [t, currentProject, updateValue],
   );
 
-  const currentUserJobIds =
-    debugRunState?.jobs
-      ?.filter((job) => job.projectId === currentProject?.id)
-      .map((job) => job.jobId) || [];
-
   return {
+    activeDebugRuns,
     handleDebugRunStart,
     handleDebugRunStop,
     loadExternalDebugJob,
-    activeDebugRuns,
-    currentUserJobIds,
   };
 };

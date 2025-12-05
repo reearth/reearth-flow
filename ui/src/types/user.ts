@@ -50,7 +50,8 @@ export type AwarenessUser = {
 };
 
 export type UserDebug = {
-  userId: string;
+  clientId: number;
+  color: string;
   userName: string;
   jobId: string;
   startedAt: number;

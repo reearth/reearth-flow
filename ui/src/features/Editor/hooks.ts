@@ -255,7 +255,6 @@ export default ({
     handleDebugRunStop,
     loadExternalDebugJob,
     activeDebugRuns,
-    currentUserJobIds,
   } = useDebugRun({
     rawWorkflows,
     yAwareness,
@@ -404,7 +403,6 @@ export default ({
     spotlightUserClientId,
     spotlightUser,
     activeDebugRuns,
-    currentUserJobIds,
     loadExternalDebugJob,
     handleWorkflowDeployment,
     handleProjectShare,

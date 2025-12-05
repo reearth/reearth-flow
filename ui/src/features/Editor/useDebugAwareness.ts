@@ -44,7 +44,8 @@ export default ({
             (!projectId || state.debugRun.projectId === projectId), // Filter by project
         )
         .map(([clientId, state]) => ({
-          userId: String(clientId),
+          clientId,
+          color: state.color || "#ffff",
           userName: state.userName || "Unknown User",
           jobId: state.debugRun.jobId,
           startedAt: state.debugRun.startedAt || Date.now(),
@@ -52,6 +53,8 @@ export default ({
 
       setActiveDebugRuns(otherDebugRuns);
     };
+
+    console.log("OTHER DEBUG RUNS EFFECT RUNNING", yAwareness.getStates());
 
     // Initial call to populate state
     handleChange();
