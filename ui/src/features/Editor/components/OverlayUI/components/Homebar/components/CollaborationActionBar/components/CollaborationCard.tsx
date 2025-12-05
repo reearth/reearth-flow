@@ -1,4 +1,8 @@
-import { ProhibitIcon, TargetIcon } from "@phosphor-icons/react";
+import {
+  BinocularsIcon,
+  ProhibitIcon,
+  TargetIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { IconButton } from "@flow/components";
@@ -10,8 +14,10 @@ type Props = {
   userName: string;
   color: string;
   spotlightUserClientId?: number | null;
+  time?: string;
   onSpotlightUserSelect?: (clientId: number) => void;
   onSpotlightUserDeselect?: () => void;
+  onDebugRunJoin?: () => void;
 };
 
 const CollaborationCard: React.FC<Props> = ({
@@ -20,8 +26,10 @@ const CollaborationCard: React.FC<Props> = ({
   userName,
   color,
   spotlightUserClientId,
+  time,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
+  onDebugRunJoin,
 }) => {
   const isSpotlighted = spotlightUserClientId === clientId;
   const t = useT();
@@ -40,10 +48,17 @@ const CollaborationCard: React.FC<Props> = ({
           {userName.charAt(1)}
         </span>
       </div>
-      <div className="flex-grow">
+      <div className="flex flex-col">
         <span className="text-sm select-none dark:font-light">{userName}</span>
+        {time && (
+          <span className="text-sm opacity-55 dark:font-light">
+            {t("debugging (started {{time}})", {
+              time,
+            })}
+          </span>
+        )}
       </div>
-      {isHovered && !isSpotlighted && !self && (
+      {isHovered && onSpotlightUserSelect && !isSpotlighted && !self && (
         <IconButton
           className="h-8"
           tooltipText={t("Spotlight User")}
@@ -51,12 +66,20 @@ const CollaborationCard: React.FC<Props> = ({
           onClick={() => onSpotlightUserSelect?.(clientId)}
         />
       )}
-      {isSpotlighted && !self && (
+      {isSpotlighted && onSpotlightUserDeselect && !self && (
         <IconButton
           className="h-8"
           tooltipText={t("Remove Spotlight")}
           icon={<ProhibitIcon size={14} />}
           onClick={() => onSpotlightUserDeselect?.()}
+        />
+      )}
+      {isHovered && onDebugRunJoin && !self && (
+        <IconButton
+          className="h-8"
+          tooltipText={t("View Debug Run")}
+          icon={<BinocularsIcon size={14} />}
+          onClick={() => onDebugRunJoin?.()}
         />
       )}
     </div>

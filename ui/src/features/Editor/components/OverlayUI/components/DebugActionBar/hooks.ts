@@ -13,11 +13,12 @@ export default ({
   const [currentProject] = useCurrentProject();
 
   const [showPopover, setShowPopover] = useState<
-    "debugStart" | "debugStop" | undefined
+    "debugStart" | "debugStop" | "debugRuns" | undefined
   >(undefined);
 
   const handleShowDebugStartPopover = () => setShowPopover("debugStart");
   const handleShowDebugStopPopover = () => setShowPopover("debugStop");
+  const handleShowDebugActiveRunsPopover = () => setShowPopover("debugRuns");
   const handlePopoverClose = () => setShowPopover(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
@@ -83,6 +84,7 @@ export default ({
     handleDebugRunStart,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
+    handleShowDebugActiveRunsPopover,
     handlePopoverClose,
     handleDebugRunReset,
   };
