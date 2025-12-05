@@ -105,10 +105,18 @@ pub fn test_mvt_polygons(
         let (status, score) = compare_polygons(geom1, geom2);
         worst_score = f64::max(worst_score, score);
 
-        results.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
+        results.push((
+            score,
+            feature.tile_path,
+            feature.gml_id,
+            format!("{:?}", status),
+        ));
     }
 
-    let failures: Vec<_> = results.iter().filter(|(score, _, _, _)| *score > threshold).collect();
+    let failures: Vec<_> = results
+        .iter()
+        .filter(|(score, _, _, _)| *score > threshold)
+        .collect();
 
     tracing::info!(
         "MVT polygons: {} total, {} failures, worst={:.6}, threshold={}",
