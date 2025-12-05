@@ -17,6 +17,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  Switch,
 } from "@flow/components";
 import {
   getDefaultValue,
@@ -191,16 +192,33 @@ export default function TriggerProjectVariablesMappingDialog({
                       }
                       className="min-h-[60px]"
                     />
+                  ) : mapping.type === "color" ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`default-${index}`}
+                        className="w-[20%]"
+                        type={"color"}
+                        value={mapping.defaultValue}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleDefaultValueChange(index, value);
+                        }}
+                      />
+                      <span className="font-mono text-sm">
+                        {t("Hex Code")}: {mapping.defaultValue}
+                      </span>
+                    </div>
+                  ) : mapping.type === "yes_no" ? (
+                    <Switch
+                      checked={Boolean(mapping.defaultValue)}
+                      onCheckedChange={(checked) =>
+                        handleDefaultValueChange(index, checked)
+                      }
+                    />
                   ) : (
                     <Input
                       id={`default-${index}`}
-                      type={
-                        mapping.type === "number"
-                          ? "number"
-                          : mapping.type === "password"
-                            ? "password"
-                            : "text"
-                      }
+                      type={mapping.type === "number" ? "number" : "text"}
                       value={mapping.defaultValue}
                       onChange={(e) => {
                         const value =

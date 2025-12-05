@@ -745,6 +745,7 @@
   "Trigger Details": "触发器详情",
   "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables._other": "部署包含 {{count}} 个变量。配置它们应如何设置为工作流变量。",
   "Reset to workflow default": "重置为工作流默认值",
+  "Hex Code": "十六进制代码",
   "Confirm Variables": "确认变量",
   "Delete Trigger": "删除触发器",
   "New Trigger": "新触发器",

@@ -11,6 +11,7 @@ import type {
   ApiDriverInput,
   TimeDriverInput,
   UpdateTriggerInput,
+  VariableInput,
 } from "../__gen__/graphql";
 import { toTrigger } from "../convert";
 import { useGraphQLContext } from "../provider";
@@ -39,7 +40,7 @@ export const useQueries = () => {
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
       description: string;
-      variables?: Record<string, any>;
+      variables?: VariableInput[];
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -77,7 +78,7 @@ export const useQueries = () => {
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
       description?: string;
-      variables?: Record<string, any>;
+      variables?: VariableInput[];
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,

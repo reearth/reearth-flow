@@ -16,10 +16,24 @@ export enum TimeIntervalEnum {
   EVERY_WEEK = "EVERY_WEEK",
 }
 
+enum ParameterType {
+  Array = "ARRAY",
+  Choice = "CHOICE",
+  Color = "COLOR",
+  Datetime = "DATETIME",
+  FileFolder = "FILE_FOLDER",
+  Number = "NUMBER",
+  Text = "TEXT",
+  YesNo = "YES_NO",
+}
+
 export type TimeInterval = keyof typeof TimeIntervalEnum;
 
-// At a later date, we will need to expand this to support typed variable like in ProjectVariables
-type TriggerVariables = Record<string, any>;
+export type Variable = {
+  key: string;
+  type: ParameterType;
+  value: any;
+};
 
 export type Trigger = {
   id: string;
@@ -33,7 +47,7 @@ export type Trigger = {
   authToken?: string;
   timeInterval?: TimeInterval;
   description?: string;
-  variables?: TriggerVariables;
+  variables: Variable[];
 };
 
 export type GetTriggers = {

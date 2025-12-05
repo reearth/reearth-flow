@@ -9,7 +9,7 @@ import type {
 } from "@flow/types";
 import { PaginationOptions } from "@flow/types/paginationOptions";
 
-import { TimeDriverInput } from "../__gen__/graphql";
+import { TimeDriverInput, VariableInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
@@ -30,7 +30,7 @@ export const useTrigger = () => {
     description: string,
     timeInterval?: TimeInterval,
     authToken?: string,
-    variables?: Record<string, any>,
+    variables?: VariableInput[],
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -65,7 +65,7 @@ export const useTrigger = () => {
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
-    variables?: Record<string, any>,
+    variables?: VariableInput[],
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {

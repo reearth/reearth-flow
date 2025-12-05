@@ -64,9 +64,6 @@ const TriggerEditDialog: React.FC<Props> = ({
     EVERY_MONTH: t("Every Month"),
   };
 
-  // Currently hiding the workflow variables dialog until Phase 2 is ready
-  const showProjectVariablesDialog = false;
-
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
@@ -80,7 +77,7 @@ const TriggerEditDialog: React.FC<Props> = ({
               placeholder={t("Give your trigger a meaningful description...")}
             />
           </DialogContentSection>
-          {hasVariables && showProjectVariablesDialog && (
+          {hasVariables && (
             <DialogContentSection className="flex flex-col">
               <Label>{t("Workflow Variables")}</Label>
               <div
@@ -161,7 +158,7 @@ const TriggerEditDialog: React.FC<Props> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
-      {pendingWorkflowData?.variables && showProjectVariablesDialog && (
+      {pendingWorkflowData?.variables && (
         <TriggerProjectVariablesMappingDialog
           isOpen={openTriggerProjectVariablesDialog}
           onOpenChange={setOpenTriggerProjectVariablesDialog}

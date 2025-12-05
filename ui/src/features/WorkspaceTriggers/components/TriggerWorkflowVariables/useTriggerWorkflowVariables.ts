@@ -1,10 +1,46 @@
 import { useCallback, useState } from "react";
 
+import { inferProjectVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
+import { toGqlParameterType } from "@flow/lib/gql/convert";
+import { Variable } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-export const useTriggerWorkflowVariables = (
-  initialVariables?: Record<string, any>,
-) => {
+/**
+ * Convert Variable array to Record for internal use
+ */
+const variablesToRecord = (
+  variables?: Variable[],
+): Record<string, any> | undefined => {
+  if (!variables || variables.length === 0) return undefined;
+  return variables.reduce(
+    (acc, v) => {
+      acc[v.key] = v.value;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+};
+
+/**
+ * Convert Record to Variable array for API
+ */
+const recordToVariables = (
+  record?: Record<string, any>,
+): Variable[] | undefined => {
+  if (!record || Object.keys(record).length === 0) return undefined;
+  return Object.entries(record).map(([key, value]) => {
+    const inferredVarType = inferProjectVariableType(value, key);
+    const type = toGqlParameterType(inferredVarType);
+    if (!type) {
+      throw new Error(`Unable to infer type for variable "${key}"`);
+    }
+    return { key, type, value };
+  });
+};
+
+export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
+  // Convert Variable[] to Record for internal manipulation
+  const initialRecord = variablesToRecord(initialVariables);
   const [
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
@@ -26,7 +62,7 @@ export const useTriggerWorkflowVariables = (
 
   // Store initial trigger custom variables separately
   const [triggerCustomVariables] = useState<Record<string, any> | undefined>(
-    initialVariables,
+    initialRecord,
   );
 
   const handleWorkflowFetch = useCallback(
@@ -105,11 +141,9 @@ export const useTriggerWorkflowVariables = (
 
   // Compare current variables with deployment defaults
   // Returns undefined if they match (don't save), or only the customized variables if they differ
-  const getVariablesToSave = useCallback(():
-    | Record<string, any>
-    | undefined => {
+  const getVariablesToSave = useCallback((): Variable[] | undefined => {
     if (!workflowVariablesObject || !deploymentDefaultVariables) {
-      return workflowVariablesObject;
+      return recordToVariables(workflowVariablesObject);
     }
 
     const customizedVars: Record<string, any> = {};
@@ -135,7 +169,7 @@ export const useTriggerWorkflowVariables = (
       return undefined;
     }
 
-    return customizedVars;
+    return recordToVariables(customizedVars);
   }, [workflowVariablesObject, deploymentDefaultVariables]);
 
   return {
