@@ -28,9 +28,9 @@ export const useTrigger = () => {
     workspaceId: string,
     deploymentId: string,
     description: string,
-    variables?: VariableInput[],
     timeInterval?: TimeInterval,
     authToken?: string,
+    variables?: VariableInput[],
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -62,10 +62,10 @@ export const useTrigger = () => {
 
   const useUpdateTrigger = async (
     triggerId: string,
-    variables?: VariableInput[],
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
+    variables?: VariableInput[],
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {

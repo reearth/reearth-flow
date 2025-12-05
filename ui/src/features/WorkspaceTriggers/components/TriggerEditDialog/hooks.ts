@@ -89,10 +89,10 @@ export default ({
 
     await useUpdateTrigger(
       selectedTrigger.id,
-      variablesToSave,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
+      variablesToSave,
     );
 
     onDialogClose();
@@ -121,6 +121,7 @@ export default ({
     ? Object.keys(workflowVariablesObject).length
     : 0;
 
+  console.log("hasVariables", hasVariables);
   return {
     updatedEventSource,
     updatedAuthToken,
