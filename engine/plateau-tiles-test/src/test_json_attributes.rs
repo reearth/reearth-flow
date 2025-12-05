@@ -21,11 +21,12 @@ pub fn test_json_attributes(
         let fme_file = fme_path.join(file_path);
         let flow_file = flow_path.join(file_path);
 
-        if !fme_file.exists() {
-            return Err(format!("FME JSON file not found: {}", fme_file.display()));
-        }
-        if !flow_file.exists() {
-            return Err(format!("Flow JSON file not found: {}", flow_file.display()));
+        if !fme_file.exists() || !flow_file.exists() {
+            if fme_file.exists() || flow_file.exists() {
+                return Err(format!("JSON file existence mismatch for {}: FME {}, Flow {}",
+                    name, fme_file.exists(), flow_file.exists()));
+            }
+            continue;
         }
 
         // Read JSON files with BOM handling (FME produces UTF-8 with BOM)
