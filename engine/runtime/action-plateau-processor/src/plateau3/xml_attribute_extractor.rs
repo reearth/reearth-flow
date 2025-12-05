@@ -780,7 +780,7 @@ impl Processor for XmlAttributeExtractor {
                     attr.clone()
                 };
                 let (feature, _attr) = row_map.get_mut(row_id).unwrap();
-                feature.insert(Attribute::new("attributes"), attr.try_into().unwrap());
+                feature.insert(Attribute::new("attributes"), attr.try_into()?);
             }
             for (_, (feature, _attr)) in row_map.iter() {
                 size += 1;

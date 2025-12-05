@@ -154,7 +154,7 @@ impl Processor for BuildingInstallationGeometryTypeExtractor {
                                 building
                                     .get_attribute_ns(
                                         "id",
-                                        std::str::from_utf8(GML31_NS.into_inner()).unwrap(),
+                                        std::str::from_utf8(GML31_NS.into_inner())?,
                                     )
                                     .unwrap_or_default(),
                             ),
@@ -165,7 +165,7 @@ impl Processor for BuildingInstallationGeometryTypeExtractor {
                                 building_installation
                                     .get_attribute_ns(
                                         "id",
-                                        std::str::from_utf8(GML31_NS.into_inner()).unwrap(),
+                                        std::str::from_utf8(GML31_NS.into_inner())?,
                                     )
                                     .unwrap_or_default(),
                             ),

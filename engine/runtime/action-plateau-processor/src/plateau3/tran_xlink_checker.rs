@@ -120,7 +120,7 @@ impl Processor for TranXLinkChecker {
             })?;
         for road in &nodes {
             let gml_id = road
-                .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+                .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner())?)
                 .unwrap_or_default();
             let traffix_areas =
                 xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//tran:TrafficArea", road).map_err(
