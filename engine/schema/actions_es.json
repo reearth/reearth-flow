@@ -1254,6 +1254,73 @@
       ]
     },
     {
+      "name": "CityGmlWriter",
+      "type": "sink",
+      "description": "Escribe entidades en archivos CityGML 2.0",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGmlWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "epsgCode": {
+            "description": "EPSG code for coordinate reference system",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "lodFilter": {
+            "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "output": {
+            "description": "Output file path expression",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "prettyPrint": {
+            "description": "Whether to format output with indentation (default: true)",
+            "default": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divide las entidades candidatas utilizando entidades recortadoras, de modo que las partes dentro o fuera de las recortadoras se produzcan por separado",
@@ -4164,6 +4231,16 @@
               }
             ]
           },
+          "extent": {
+            "title": "Extent",
+            "description": "MVT tile resolution. Default is 4096.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "layerName": {
             "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
@@ -6027,7 +6104,7 @@
     {
       "name": "ThreeDimensionForcer",
       "type": "processor",
-      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ThreeDimensionForcer Parameters",
