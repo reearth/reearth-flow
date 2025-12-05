@@ -23,8 +23,12 @@ pub fn test_json_attributes(
 
         if !fme_file.exists() || !flow_file.exists() {
             if fme_file.exists() || flow_file.exists() {
-                return Err(format!("JSON file existence mismatch for {}: FME {}, Flow {}",
-                    name, fme_file.exists(), flow_file.exists()));
+                return Err(format!(
+                    "JSON file existence mismatch for {}: FME {}, Flow {}",
+                    name,
+                    fme_file.exists(),
+                    flow_file.exists()
+                ));
             }
             continue;
         }

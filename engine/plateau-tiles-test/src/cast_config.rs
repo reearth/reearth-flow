@@ -6,8 +6,14 @@ use std::collections::HashMap;
 #[serde(untagged)]
 pub enum CastConfigValue {
     Simple(String),
-    ComplexListToDict { comparator: String, key: String },
-    ComplexFloat { comparator: String, epsilon: Option<f64> },
+    ComplexListToDict {
+        comparator: String,
+        key: String,
+    },
+    ComplexFloat {
+        comparator: String,
+        epsilon: Option<f64>,
+    },
 }
 
 pub fn convert_casts(
@@ -34,11 +40,12 @@ pub fn convert_casts(
                     return Err(format!("Unknown comparator: {}", comparator));
                 }
             }
-            CastConfigValue::ComplexFloat { comparator, epsilon } => {
+            CastConfigValue::ComplexFloat {
+                comparator,
+                epsilon,
+            } => {
                 if comparator == "float" {
-                    CastConfig::Float {
-                        epsilon: *epsilon,
-                    }
+                    CastConfig::Float { epsilon: *epsilon }
                 } else {
                     return Err(format!("Unknown comparator: {}", comparator));
                 }
