@@ -26,6 +26,29 @@ pub(crate) mod str_module {
     pub fn string_to_int(s: String) -> i64 {
         s.parse::<i64>().unwrap()
     }
+
+    pub fn sub_str_from_index_inclusive(s: String, start: i64, end: i64) -> String {
+        if start < 0 || end < 0 {
+            return String::new();
+        }
+
+        let start = start as usize;
+        let end = end as usize;
+
+        if start > end {
+            return String::new();
+        }
+
+        let chars: Vec<char> = s.chars().collect();
+
+        if start >= chars.len() {
+            return String::new();
+        }
+
+        let end_idx = std::cmp::min(end + 1, chars.len()); // +1 to make end inclusive
+
+        chars[start..end_idx].iter().collect()
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -77,5 +100,50 @@ mod tests {
         let regex = r"^\d{5}-bldg-\d+$";
         let result = matches(haystack, regex);
         assert!(!result); // This should fail because 1621 has only 4 digits, not 5
+    }
+
+    #[test]
+    fn test_sub_str_from_index_inclusive() {
+        // Basic functionality: extract substring from inclusive start to inclusive end
+        let result = sub_str_from_index_inclusive("hello".to_string(), 1, 3);
+        assert_eq!(result, "ell"); // Indexes 1, 2, 3 correspond to 'e', 'l', 'l'
+
+        // Extract entire string
+        let result = sub_str_from_index_inclusive("hello".to_string(), 0, 4);
+        assert_eq!(result, "hello");
+
+        // Extract first character
+        let result = sub_str_from_index_inclusive("hello".to_string(), 0, 0);
+        assert_eq!(result, "h");
+
+        // Extract last character
+        let result = sub_str_from_index_inclusive("hello".to_string(), 4, 4);
+        assert_eq!(result, "o");
+
+        // Out of bounds end index should be handled gracefully
+        let result = sub_str_from_index_inclusive("hello".to_string(), 3, 10);
+        assert_eq!(result, "lo");
+
+        // Start index greater than end index should return empty string
+        let result = sub_str_from_index_inclusive("hello".to_string(), 3, 1);
+        assert_eq!(result, "");
+
+        // Negative indices should return empty string
+        let result = sub_str_from_index_inclusive("hello".to_string(), -1, 4);
+        assert_eq!(result, "");
+        let result = sub_str_from_index_inclusive("hello".to_string(), 0, -1);
+        assert_eq!(result, "");
+
+        // Start index beyond string length should return empty string
+        let result = sub_str_from_index_inclusive("hello".to_string(), 10, 15);
+        assert_eq!(result, "");
+
+        // Empty string should return empty string
+        let result = sub_str_from_index_inclusive("".to_string(), 0, 5);
+        assert_eq!(result, "");
+
+        // Unicode characters should work correctly
+        let result = sub_str_from_index_inclusive("héllo".to_string(), 1, 3);
+        assert_eq!(result, "éll");
     }
 }

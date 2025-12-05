@@ -78,8 +78,18 @@ graphs:
                 let min_str = env.get("__value")["入り_M"];
                 let min = str::string_to_int(min_str);
                 hour * 3600 + min * 60
-            
-         
+            - attribute: 南中
+              method: convert 
+              value: |
+                let dt = env.get("__value")["南中"];
+                let hour_str = str::extract_single_by_regex("(\\d+):(\\d+):(\\d+)", dt);
+                let mins_str = str::extract_single_by_regex("\\d+:(\\d+):\\d+", dt);
+                let secs_str = str::extract_single_by_regex("\\d+:\\d+:(\\d+)", dt);
+                let hour = str::string_to_int(hour_str);
+                let mins = str::string_to_int(mins_str);
+                let seconds = str::string_to_int(secs_str);
+                hour * 3600 + mins * 60 + seconds
+                
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
