@@ -86,7 +86,7 @@ pub fn test_mvt_polygons(
     let aligned_features =
         align_mvt_features(fme_path, flow_path, GeometryType::Polygon, zmin, zmax)?;
 
-    let mut failures = Vec::new();
+    let mut results = Vec::new();
     let mut total = 0;
     let mut worst_score = 0.0;
 
@@ -105,15 +105,10 @@ pub fn test_mvt_polygons(
         let (status, score) = compare_polygons(geom1, geom2);
         worst_score = f64::max(worst_score, score);
 
-        if score > threshold {
-            failures.push((
-                score,
-                feature.tile_path,
-                feature.gml_id,
-                format!("{:?}", status),
-            ));
-        }
+        results.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
     }
+
+    let failures: Vec<_> = results.iter().filter(|(score, _, _, _)| *score > threshold).collect();
 
     tracing::info!(
         "MVT polygons: {} total, {} failures, worst={:.6}, threshold={}",
@@ -125,8 +120,9 @@ pub fn test_mvt_polygons(
 
     if !failures.is_empty() {
         tracing::info!("Worst 5 failures:");
-        failures.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-        for (score, path, gml_id, status) in failures.iter().take(5) {
+        let mut sorted_failures = failures.clone();
+        sorted_failures.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        for (score, path, gml_id, status) in sorted_failures.iter().take(5) {
             tracing::info!("  {} | {} | {:.6} | {}", path, gml_id, score, status);
         }
         return Err(format!(
@@ -135,6 +131,15 @@ pub fn test_mvt_polygons(
             total,
             threshold
         ));
+    } else {
+        // Log worst 5 in debug when test passes
+        let mut sorted_results = results.clone();
+        sorted_results.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+
+        tracing::debug!("Worst 5 scores (all below threshold):");
+        for (score, path, gml_id, status) in sorted_results.iter().take(5) {
+            tracing::debug!("  {} | {} | {:.6} | {}", path, gml_id, score, status);
+        }
     }
 
     Ok(())
