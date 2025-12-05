@@ -616,7 +616,7 @@ impl<T: CoordNum, Z: CoordNum> Iterator for GeometryCoordsIter<'_, T, Z> {
     }
 }
 
-impl<T: CoordNum + Debug, Z: CoordNum + Debug> fmt::Debug for GeometryCoordsIter<'_, T, Z> {
+impl<T: CoordNum + Debug, Z: CoordNum + Debug> Debug for GeometryCoordsIter<'_, T, Z> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GeometryCoordsIter::Point(i) => fmt.debug_tuple("Point").field(i).finish(),
@@ -689,7 +689,7 @@ impl<T: CoordNum, Z: CoordNum> Iterator for GeometryExteriorCoordsIter<'_, T, Z>
     }
 }
 
-impl<T: CoordNum + Debug, Z: CoordNum + Debug> fmt::Debug for GeometryExteriorCoordsIter<'_, T, Z> {
+impl<T: CoordNum + Debug, Z: CoordNum + Debug> Debug for GeometryExteriorCoordsIter<'_, T, Z> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GeometryExteriorCoordsIter::Point(i) => fmt.debug_tuple("Point").field(i).finish(),

@@ -287,7 +287,7 @@ impl DagSchemas {
 
     pub fn collect_ancestor_sources(
         &self,
-        node_index: petgraph::graph::NodeIndex,
+        node_index: NodeIndex,
     ) -> HashSet<NodeHandle> {
         let mut sources = HashSet::new();
         collect_ancestor_sources_recursive(self, node_index, &mut sources);
@@ -302,7 +302,7 @@ impl DagSchemas {
             .collect()
     }
 
-    pub fn remove_edge(&mut self, edge: petgraph::graph::EdgeIndex) {
+    pub fn remove_edge(&mut self, edge: EdgeIndex) {
         self.graph.remove_edge(edge);
     }
 

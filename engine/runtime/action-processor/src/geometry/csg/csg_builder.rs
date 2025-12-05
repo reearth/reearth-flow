@@ -320,7 +320,7 @@ impl CSGBuilder {
                 let mut attribute_objects = Vec::new();
 
                 // Convert left feature's entire attributes to AttributeValue::Map
-                let left_attrs: std::collections::HashMap<String, AttributeValue> = left_feature
+                let left_attrs: HashMap<String, AttributeValue> = left_feature
                     .attributes
                     .iter()
                     .map(|(k, v)| (k.to_string(), v.clone()))
@@ -328,7 +328,7 @@ impl CSGBuilder {
                 attribute_objects.push(AttributeValue::Map(left_attrs));
 
                 // Convert right feature's entire attributes to AttributeValue::Map
-                let right_attrs: std::collections::HashMap<String, AttributeValue> = right_feature
+                let right_attrs: HashMap<String, AttributeValue> = right_feature
                     .attributes
                     .iter()
                     .map(|(k, v)| (k.to_string(), v.clone()))

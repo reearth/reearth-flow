@@ -126,9 +126,9 @@ impl Sink for ZipFileWriter {
         let mut cursor = Cursor::new(buffer);
         let writer = BufWriter::new(&mut cursor);
         zip::write(writer, temp_dir_path.as_path())
-            .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
+            .map_err(|e| SinkError::ZipFileWriter(e.to_string()))?;
         let storage = storage_resolver.resolve(&output).map_err(|e| {
-            crate::errors::SinkError::ZipFileWriter(format!(
+            SinkError::ZipFileWriter(format!(
                 "Failed to resolve storage for {output}: {e}"
             ))
         })?;

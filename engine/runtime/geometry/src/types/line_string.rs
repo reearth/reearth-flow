@@ -126,7 +126,7 @@ impl LineString3D<f64> {
 }
 
 #[derive(Debug)]
-pub struct PointsIter<'a, T, Z>(::std::slice::Iter<'a, Coordinate<T, Z>>)
+pub struct PointsIter<'a, T, Z>(std::slice::Iter<'a, Coordinate<T, Z>>)
 where
     T: CoordNum + 'a,
     Z: CoordNum + 'a;
@@ -177,7 +177,7 @@ impl<T: CoordNum, Z: CoordNum> DoubleEndedIterator for PointsIter<'_, T, Z> {
 }
 
 pub struct CoordinatesIter<'a, T: CoordNum + 'a, Z: CoordNum + 'a>(
-    ::std::slice::Iter<'a, Coordinate<T, Z>>,
+    std::slice::Iter<'a, Coordinate<T, Z>>,
 );
 
 impl<'a, T: CoordNum, Z: CoordNum> Iterator for CoordinatesIter<'a, T, Z> {
@@ -327,7 +327,7 @@ impl<T: CoordNum, Z: CoordNum, IC: Into<Coordinate<T, Z>>> FromIterator<IC> for 
 
 impl<T: CoordNum, Z: CoordNum> IntoIterator for LineString<T, Z> {
     type Item = Coordinate<T, Z>;
-    type IntoIter = ::std::vec::IntoIter<Coordinate<T, Z>>;
+    type IntoIter = std::vec::IntoIter<Coordinate<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -345,9 +345,9 @@ impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a LineString<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a mut LineString<T, Z> {
     type Item = &'a mut Coordinate<T, Z>;
-    type IntoIter = ::std::slice::IterMut<'a, Coordinate<T, Z>>;
+    type IntoIter = std::slice::IterMut<'a, Coordinate<T, Z>>;
 
-    fn into_iter(self) -> ::std::slice::IterMut<'a, Coordinate<T, Z>> {
+    fn into_iter(self) -> std::slice::IterMut<'a, Coordinate<T, Z>> {
         self.0.iter_mut()
     }
 }
@@ -395,7 +395,7 @@ impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
         LineString3D::new(
             coords
                 .iter_closed()
-                .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
+                .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
                 .collect::<Vec<_>>(),
         )
     }
@@ -430,7 +430,7 @@ pub fn from_line_string_5d(
         .iter_closed()
         .map(|line| {
             (
-                coordinate::Coordinate3D::new__(line[0], line[1], line[2]),
+                Coordinate3D::new__(line[0], line[1], line[2]),
                 coordinate::Coordinate2D::new_(line[3], line[4]),
             )
         })

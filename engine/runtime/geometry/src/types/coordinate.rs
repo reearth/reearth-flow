@@ -459,10 +459,10 @@ where
     }
 }
 
-impl<T, Z> ::rstar::Point for Coordinate<T, Z>
+impl<T, Z> rstar::Point for Coordinate<T, Z>
 where
-    T: ::num_traits::Float + ::rstar::RTreeNum + Default,
-    Z: ::num_traits::Float + ::rstar::RTreeNum + Default,
+    T: Float + rstar::RTreeNum + Default,
+    Z: Float + rstar::RTreeNum + Default,
 {
     type Scalar = T;
 

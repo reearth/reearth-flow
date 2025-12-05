@@ -27,7 +27,7 @@ impl State {
     pub fn new(root: &Uri, storage_resolver: &StorageResolver) -> Result<Self> {
         let storage = storage_resolver
             .resolve(root)
-            .map_err(std::io::Error::other)?;
+            .map_err(Error::other)?;
         let use_compression = env::var("FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA")
             .ok()
             .map(|s| s.to_lowercase() == "true")
@@ -187,7 +187,7 @@ impl State {
         root: &Uri,
         storage_resolver: &StorageResolver,
         use_compression: bool,
-    ) -> std::io::Result<Self> {
+    ) -> Result<Self> {
         let mut s = State::new(root, storage_resolver)?;
         s.use_compression = use_compression;
         Ok(s)

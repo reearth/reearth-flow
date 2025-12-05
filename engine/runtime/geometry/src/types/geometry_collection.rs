@@ -74,7 +74,7 @@ impl<T: CoordNum, Z: CoordNum> IndexMut<usize> for GeometryCollection<T, Z> {
 // structure helper for consuming iterator
 #[derive(Debug)]
 pub struct IntoIteratorHelper<T: CoordNum, Z: CoordNum> {
-    iter: ::alloc::vec::IntoIter<Geometry<T, Z>>,
+    iter: alloc::vec::IntoIter<Geometry<T, Z>>,
 }
 
 // implement the IntoIterator trait for a consuming iterator. Iteration will
@@ -104,7 +104,7 @@ impl<T: CoordNum, Z: CoordNum> Iterator for IntoIteratorHelper<T, Z> {
 // structure helper for non-consuming iterator
 #[derive(Debug)]
 pub struct IterHelper<'a, T: CoordNum, Z: CoordNum> {
-    iter: ::core::slice::Iter<'a, Geometry<T, Z>>,
+    iter: core::slice::Iter<'a, Geometry<T, Z>>,
 }
 
 // implement the IntoIterator trait for a non-consuming iterator. Iteration will
@@ -134,7 +134,7 @@ impl<'a, T: CoordNum, Z: CoordNum> Iterator for IterHelper<'a, T, Z> {
 // structure helper for mutable non-consuming iterator
 #[derive(Debug)]
 pub struct IterMutHelper<'a, T: CoordNum, Z: CoordNum> {
-    iter: ::core::slice::IterMut<'a, Geometry<T, Z>>,
+    iter: core::slice::IterMut<'a, Geometry<T, Z>>,
 }
 
 // implement the IntoIterator trait for a mutable non-consuming iterator. Iteration will

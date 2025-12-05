@@ -58,7 +58,7 @@ fn extract_zip(
     root_output_path: &Uri,
     storage: Arc<Storage>,
 ) -> super::errors::Result<Vec<FilePath>> {
-    let mut zip_archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| {
+    let mut zip_archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
             "Failed to open `source_dataset` as zip archive: {e}"
         ))

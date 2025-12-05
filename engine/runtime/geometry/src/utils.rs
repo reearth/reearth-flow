@@ -263,8 +263,8 @@ pub fn check_too_few_points<T: CoordFloat + FromPrimitive, Z: CoordFloat + FromP
 /// Check for self-intersection with 3D-aware analysis
 /// This function first checks if the LineString is planar, and if so, rotates it to XY plane for accurate intersection testing
 pub fn linestring_has_self_intersection_3d<
-    T: GeoNum + num_traits::FromPrimitive + num_traits::ToPrimitive,
-    Z: GeoNum + num_traits::FromPrimitive + num_traits::ToPrimitive,
+    T: GeoNum + FromPrimitive + num_traits::ToPrimitive,
+    Z: GeoNum + FromPrimitive + num_traits::ToPrimitive,
 >(
     geom: &LineString<T, Z>,
 ) -> bool {
@@ -449,8 +449,8 @@ pub fn rotate_linestring_to_xy_plane<T, Z>(
     planarity_info: &PointsCoplanar,
 ) -> Option<LineString<T, Z>>
 where
-    T: CoordFloat + num_traits::FromPrimitive + num_traits::ToPrimitive,
-    Z: CoordFloat + num_traits::FromPrimitive + num_traits::ToPrimitive,
+    T: CoordFloat + FromPrimitive + num_traits::ToPrimitive,
+    Z: CoordFloat + FromPrimitive + num_traits::ToPrimitive,
 {
     use nalgebra::{Matrix3, Vector3};
 

@@ -138,7 +138,7 @@ impl Sink for GeoJsonWriter {
             };
             let storage = storage_resolver
                 .resolve(&file_path)
-                .map_err(crate::errors::SinkError::geojson_writer)?;
+                .map_err(SinkError::geojson_writer)?;
             let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
 
             let geojsons: Vec<geojson::Feature> = features
@@ -154,7 +154,7 @@ impl Sink for GeoJsonWriter {
                     buffer.push(b',');
                 }
                 let bytes = serde_json::to_vec(&geojson)
-                    .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{e}")))?;
+                    .map_err(|e| SinkError::GeoJsonWriter(format!("{e}")))?;
                 buffer.extend(bytes);
             }
             buffer.extend(Vec::from(b"]}\n"));

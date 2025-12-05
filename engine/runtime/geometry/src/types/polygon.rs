@@ -726,7 +726,7 @@ impl<T: CoordNum> Iterator for Iter<'_, T> {
 }
 
 impl rstar::RTreeObject for Polygon2D<f64> {
-    type Envelope = ::rstar::AABB<Point2D<f64>>;
+    type Envelope = rstar::AABB<Point2D<f64>>;
 
     fn envelope(&self) -> Self::Envelope {
         self.exterior.envelope()
@@ -734,7 +734,7 @@ impl rstar::RTreeObject for Polygon2D<f64> {
 }
 
 impl rstar::RTreeObject for Polygon3D<f64> {
-    type Envelope = ::rstar::AABB<Point3D<f64>>;
+    type Envelope = rstar::AABB<Point3D<f64>>;
 
     fn envelope(&self) -> Self::Envelope {
         self.exterior.envelope()

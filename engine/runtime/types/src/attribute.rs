@@ -372,7 +372,7 @@ impl From<nusamai_citygml::Value> for AttributeValue {
 
 impl From<XmlXpathValue> for AttributeValue {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<AttributeValue>::into(
+        Into::<AttributeValue>::into(
             value.to_string().parse::<serde_json::Value>().unwrap(),
         )
     }

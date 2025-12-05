@@ -37,7 +37,7 @@ pub struct Archive {
     /// Offset from beginning of file + SIGNATURE_HEADER_SIZE to packed streams.
     pub pack_pos: u64,
     pub pack_sizes: Vec<u64>,
-    pub pack_crcs_defined: bit_set::BitSet,
+    pub pack_crcs_defined: BitSet,
     pub pack_crcs: Vec<u64>,
     pub folders: Vec<Folder>,
     pub sub_streams_info: Option<SubStreamsInfo>,

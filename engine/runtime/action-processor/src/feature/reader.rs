@@ -133,7 +133,7 @@ impl ProcessorFactory for FeatureReaderFactory {
 
 #[derive(Debug, Clone)]
 struct FeatureReader {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     params: CompiledFeatureReaderParam,
 }
 
@@ -190,7 +190,7 @@ enum CompiledFeatureReaderParam {
 #[derive(Debug, Clone)]
 struct CompiledCommonReaderParam {
     expr: rhai::AST,
-    original_expr: reearth_flow_types::Expr,
+    original_expr: Expr,
 }
 
 impl Processor for FeatureReader {
@@ -208,7 +208,7 @@ impl Processor for FeatureReader {
                         param,
                     },
             } => csv::read_csv(
-                reearth_flow_common::csv::Delimiter::Comma,
+                csv::Delimiter::Comma,
                 global_params,
                 common_param,
                 param,
@@ -224,7 +224,7 @@ impl Processor for FeatureReader {
                         param,
                     },
             } => csv::read_csv(
-                reearth_flow_common::csv::Delimiter::Tab,
+                csv::Delimiter::Tab,
                 global_params,
                 common_param,
                 param,

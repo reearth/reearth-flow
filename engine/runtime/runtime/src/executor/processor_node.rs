@@ -70,7 +70,7 @@ pub struct ProcessorNode<F> {
     /// The runtime to run the source in.
     #[allow(dead_code)]
     runtime: Arc<Handle>,
-    span: tracing::Span,
+    span: Span,
     thread_pool: rayon::ThreadPool,
     thread_counter: Arc<AtomicU32>,
     features_processed: Arc<AtomicU64>,

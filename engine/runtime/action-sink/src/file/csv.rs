@@ -154,7 +154,7 @@ fn write_csv(
     delimiter: Delimiter,
     storage_resolver: &Arc<StorageResolver>,
     geometry_config: Option<&super::writer_geometry::GeometryExportConfig>,
-) -> Result<(), crate::errors::SinkError> {
+) -> Result<(), SinkError> {
     if features.is_empty() {
         return Ok(());
     }
@@ -190,7 +190,7 @@ fn write_csv(
     if let Some(ref fields) = header_fields {
         if !fields.is_empty() {
             wtr.write_record(fields.clone())
-                .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+                .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
         }
     }
 
@@ -222,12 +222,12 @@ fn write_csv(
                 }
 
                 wtr.write_record(values)
-                    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+                    .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
             }
             _ => match row {
                 AttributeValue::String(s) => wtr
                     .write_record(vec![s])
-                    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?,
+                    .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?,
                 AttributeValue::Array(s) => {
                     let values = s
                         .iter()
@@ -237,10 +237,10 @@ fn write_csv(
                         })
                         .collect::<Vec<_>>();
                     wtr.write_record(values)
-                        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?
+                        .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?
                 }
                 _ => {
-                    return Err(crate::errors::SinkError::CsvWriter(
+                    return Err(SinkError::CsvWriter(
                         "Unsupported input".to_string(),
                     ))
                 }
@@ -248,18 +248,18 @@ fn write_csv(
         }
     }
     wtr.flush()
-        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+        .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
     let data = String::from_utf8(
         wtr.into_inner()
-            .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?,
+            .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?,
     )
-    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+    .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+        .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(data))
-        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+        .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
     Ok(())
 }
 
@@ -273,14 +273,14 @@ fn get_fields(row: &AttributeValue) -> Option<Vec<String>> {
 fn get_row_values(
     row: &AttributeValue,
     fields: &[String],
-) -> Result<Vec<String>, crate::errors::SinkError> {
+) -> Result<Vec<String>, SinkError> {
     fields
         .iter()
         .map(|field| match row {
             AttributeValue::Map(row) => row.get(field).map(|v| v.to_string()).ok_or_else(|| {
-                crate::errors::SinkError::CsvWriter(format!("Field not found: {field}"))
+                SinkError::CsvWriter(format!("Field not found: {field}"))
             }),
-            _ => Err(crate::errors::SinkError::CsvWriter(
+            _ => Err(SinkError::CsvWriter(
                 "Unsupported input".to_string(),
             )),
         })

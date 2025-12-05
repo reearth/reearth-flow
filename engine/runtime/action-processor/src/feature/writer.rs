@@ -138,7 +138,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 
 #[derive(Debug, Clone)]
 struct FeatureWriter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     params: CompiledFeatureWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }

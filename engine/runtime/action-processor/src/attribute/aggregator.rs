@@ -116,7 +116,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 
 #[derive(Debug, Clone)]
 struct AttributeAggregator {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     calculation: Option<rhai::AST>,
     calculation_value: Option<i64>,

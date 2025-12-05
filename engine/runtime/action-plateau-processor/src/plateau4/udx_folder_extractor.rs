@@ -130,7 +130,7 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
 
 #[derive(Debug, Clone)]
 pub struct UDXFolderExtractor {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     city_gml_path: rhai::AST,
     codelists_path: Option<Attribute>,
     schemas_path: Option<Attribute>,
@@ -189,7 +189,7 @@ impl Processor for UDXFolderExtractor {
 
 fn process_feature(
     feature: &Feature,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
+    global_params: &Option<HashMap<String, Value>>,
     expr: &rhai::AST,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,

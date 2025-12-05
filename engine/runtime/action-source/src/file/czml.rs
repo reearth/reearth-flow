@@ -131,13 +131,13 @@ async fn read_czml(
     content: &Bytes,
     params: &CzmlReaderParam,
     sender: Sender<(Port, IngestionMessage)>,
-) -> Result<(), crate::errors::SourceError> {
+) -> Result<(), SourceError> {
     let text = String::from_utf8(content.to_vec())
-        .map_err(|e| crate::errors::SourceError::CzmlReader(format!("Invalid UTF-8: {e}")))?;
+        .map_err(|e| SourceError::CzmlReader(format!("Invalid UTF-8: {e}")))?;
 
     // Parse as JSON array of packets
     let packets: Vec<Value> = serde_json::from_str(&text).map_err(|e| {
-        crate::errors::SourceError::CzmlReader(format!("Failed to parse CZML: {e}"))
+        SourceError::CzmlReader(format!("Failed to parse CZML: {e}"))
     })?;
 
     for packet in packets {
@@ -159,7 +159,7 @@ async fn read_czml(
                 ))
                 .await
                 .map_err(|e| {
-                    crate::errors::SourceError::CzmlReader(format!("Failed to send feature: {e}"))
+                    SourceError::CzmlReader(format!("Failed to send feature: {e}"))
                 })?;
         }
     }
@@ -170,7 +170,7 @@ async fn read_czml(
 fn packet_to_feature(
     packet: &Value,
     force_2d: bool,
-) -> Result<Option<Feature>, crate::errors::SourceError> {
+) -> Result<Option<Feature>, SourceError> {
     let mut feature = Feature::default();
 
     // Extract attributes from packet
@@ -240,7 +240,7 @@ fn packet_to_feature(
 fn extract_geometry(
     packet: &Value,
     force_2d: bool,
-) -> Result<Option<Geometry>, crate::errors::SourceError> {
+) -> Result<Option<Geometry>, SourceError> {
     if let Some(polygon) = packet.get("polygon") {
         if let Some(positions) = polygon.get("positions") {
             if let Some(coords) = extract_cartographic_degrees(positions) {
@@ -437,10 +437,10 @@ fn convert_polygon_coords(
     coords: &[f64],
     holes: Vec<Vec<f64>>,
     force_2d: bool,
-) -> Result<GeometryValue, crate::errors::SourceError> {
+) -> Result<GeometryValue, SourceError> {
     if coords.len() < 9 {
         // At least 3 points (triangle)
-        return Err(crate::errors::SourceError::CzmlReader(
+        return Err(SourceError::CzmlReader(
             "Polygon must have at least 3 points".to_string(),
         ));
     }
@@ -501,10 +501,10 @@ fn convert_polygon_coords(
 fn convert_line_coords(
     coords: &[f64],
     force_2d: bool,
-) -> Result<GeometryValue, crate::errors::SourceError> {
+) -> Result<GeometryValue, SourceError> {
     if coords.len() < 6 {
         // At least 2 points
-        return Err(crate::errors::SourceError::CzmlReader(
+        return Err(SourceError::CzmlReader(
             "Polyline must have at least 2 points".to_string(),
         ));
     }
@@ -558,9 +558,9 @@ fn extract_rectangle_bounds(value: &Value) -> Option<Vec<f64>> {
 fn convert_rectangle_to_polygon(
     wsen: Vec<f64>,
     force_2d: bool,
-) -> Result<GeometryValue, crate::errors::SourceError> {
+) -> Result<GeometryValue, SourceError> {
     if wsen.len() < 4 {
-        return Err(crate::errors::SourceError::CzmlReader(
+        return Err(SourceError::CzmlReader(
             "Rectangle must have west, south, east, north bounds".to_string(),
         ));
     }
@@ -605,7 +605,7 @@ fn create_ellipse_polygon(
     semi_major_meters: f64,
     semi_minor_meters: f64,
     force_2d: bool,
-) -> Result<GeometryValue, crate::errors::SourceError> {
+) -> Result<GeometryValue, SourceError> {
     // Approximate ellipse with polygon (32 points for smooth curve)
     const NUM_POINTS: usize = 32;
 

@@ -278,7 +278,7 @@ impl<T: CoordNum, Z: CoordNum, NT: CoordNum, NZ: CoordNum> MapCoords<T, Z, NT, N
 impl<T: CoordNum, Z: CoordNum> MapCoordsInPlace<T, Z> for Rect<T, Z> {
     fn map_coords_in_place(&mut self, func: impl Fn(Coordinate<T, Z>) -> Coordinate<T, Z>) {
         let mut new_rect = Rect::new(func(self.min()), func(self.max()));
-        ::std::mem::swap(self, &mut new_rect);
+        std::mem::swap(self, &mut new_rect);
     }
 }
 
@@ -299,6 +299,6 @@ impl<T: CoordNum, Z: CoordNum> MapCoordsInPlace<T, Z> for Triangle<T, Z> {
     fn map_coords_in_place(&mut self, func: impl Fn(Coordinate<T, Z>) -> Coordinate<T, Z>) {
         let mut new_triangle = Triangle::new(func(self.0), func(self.1), func(self.2));
 
-        ::std::mem::swap(self, &mut new_triangle);
+        std::mem::swap(self, &mut new_triangle);
     }
 }

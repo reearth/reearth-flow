@@ -152,7 +152,7 @@ impl RunWorkerCommand {
 
     async fn run(&self) -> crate::errors::Result<()> {
         tracing::info!("Starting worker");
-        let storage_resolver = Arc::new(resolve::StorageResolver::new());
+        let storage_resolver = Arc::new(StorageResolver::new());
 
         let meta = self.download_metadata(&storage_resolver).await?;
         enable_file_logging(meta.job_id)?;

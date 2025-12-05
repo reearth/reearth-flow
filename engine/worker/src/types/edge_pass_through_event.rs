@@ -47,7 +47,7 @@ impl EncodableMessage for EdgePassThroughEvent {
         serde_json::to_string(self)
             .map_err(crate::errors::Error::FailedToEncode)
             .map(|payload| {
-                ValidatedMessage::new(uuid::Uuid::new_v4(), self.timestamp, Bytes::from(payload))
+                ValidatedMessage::new(Uuid::new_v4(), self.timestamp, Bytes::from(payload))
             })
     }
 }

@@ -43,7 +43,7 @@ impl<T: CoordNum, Z: CoordNum, IP: Into<Point<T, Z>>> FromIterator<IP> for Multi
 /// Iterate over the `Point`s in this `MultiPoint`.
 impl<T: CoordNum, Z: CoordNum> IntoIterator for MultiPoint<T, Z> {
     type Item = Point<T, Z>;
-    type IntoIter = ::std::vec::IntoIter<Point<T, Z>>;
+    type IntoIter = std::vec::IntoIter<Point<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -52,7 +52,7 @@ impl<T: CoordNum, Z: CoordNum> IntoIterator for MultiPoint<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a MultiPoint<T, Z> {
     type Item = &'a Point<T, Z>;
-    type IntoIter = ::std::slice::Iter<'a, Point<T, Z>>;
+    type IntoIter = std::slice::Iter<'a, Point<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -61,7 +61,7 @@ impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a MultiPoint<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a mut MultiPoint<T, Z> {
     type Item = &'a mut Point<T, Z>;
-    type IntoIter = ::std::slice::IterMut<'a, Point<T, Z>>;
+    type IntoIter = std::slice::IterMut<'a, Point<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()

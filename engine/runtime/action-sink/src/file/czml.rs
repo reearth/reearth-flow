@@ -139,7 +139,7 @@ impl Sink for CzmlWriter {
             };
             let storage = storage_resolver
                 .resolve(&file_path)
-                .map_err(crate::errors::SinkError::czml_writer)?;
+                .map_err(SinkError::czml_writer)?;
             let (sender, receiver) = std::sync::mpsc::sync_channel(1000);
             let gctx = ctx.as_context();
 
@@ -175,21 +175,21 @@ impl Sink for CzmlWriter {
                     while let Some(bytes) = iter.next() {
                         buffer
                             .write(&bytes)
-                            .map_err(crate::errors::SinkError::czml_writer)?;
+                            .map_err(SinkError::czml_writer)?;
                         if iter.peek().is_some() {
                             buffer
                                 .write(b",")
-                                .map_err(crate::errors::SinkError::czml_writer)?;
+                                .map_err(SinkError::czml_writer)?;
                         };
                     }
 
                     // Write the FeautureCollection footer and EOL
                     buffer
                         .write(b"]\n")
-                        .map_err(crate::errors::SinkError::czml_writer)?;
+                        .map_err(SinkError::czml_writer)?;
                     storage
                         .put_sync(file_path.path().as_path(), Bytes::from(buffer))
-                        .map_err(crate::errors::SinkError::czml_writer)
+                        .map_err(SinkError::czml_writer)
                 },
             );
             ra?;
@@ -203,7 +203,7 @@ fn map_to_html_table(map: &IndexMap<Attribute, AttributeValue>) -> String {
     let mut html = String::new();
     html.push_str("<table>");
     for (key, value) in map {
-        let value: serde_json::Value = value.clone().into();
+        let value: Value = value.clone().into();
         html.push_str(&format!("<tr><td>{key}</td><td>{value}</td></tr>"));
     }
     html.push_str("</table>");

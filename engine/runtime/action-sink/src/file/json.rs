@@ -131,14 +131,14 @@ fn write_json(
     features: &[Feature],
     expr_engine: &Arc<Engine>,
     storage_resolver: &Arc<StorageResolver>,
-) -> Result<(), crate::errors::SinkError> {
-    let json_value: serde_json::Value = if let Some(converter) = &params.converter {
+) -> Result<(), SinkError> {
+    let json_value: Value = if let Some(converter) = &params.converter {
         let scope = expr_engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Array(
+        let value: Value = Value::Array(
             features
                 .iter()
                 .map(|feature| {
-                    serde_json::Value::Object(
+                    Value::Object(
                         feature
                             .attributes
                             .clone()
@@ -151,14 +151,14 @@ fn write_json(
         );
         scope.set("__features", value);
         let convert = scope.eval::<Dynamic>(converter.as_ref()).map_err(|e| {
-            crate::errors::SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
+            SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
         })?;
         dynamic_to_value(&convert)
     } else {
         let attributes = features
             .iter()
             .map(|f| {
-                serde_json::Value::Object(
+                Value::Object(
                     f.attributes
                         .clone()
                         .into_iter()
@@ -166,14 +166,14 @@ fn write_json(
                         .collect::<serde_json::Map<_, _>>(),
                 )
             })
-            .collect::<Vec<serde_json::Value>>();
-        serde_json::Value::Array(attributes)
+            .collect::<Vec<Value>>();
+        Value::Array(attributes)
     };
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| crate::errors::SinkError::JsonWriter(format!("{e:?}")))?;
+        .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(json_value.to_string()))
-        .map_err(|e| crate::errors::SinkError::JsonWriter(format!("{e:?}")))?;
+        .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
     Ok(())
 }

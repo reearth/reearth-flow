@@ -118,7 +118,7 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ValidationResult {
     error_count: usize,
-    details: Vec<serde_json::Value>,
+    details: Vec<Value>,
 }
 
 impl ValidationResult {

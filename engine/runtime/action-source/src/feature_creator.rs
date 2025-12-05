@@ -100,7 +100,7 @@ impl Source for FeatureCreator {
         let new_value = scope
             .eval::<Dynamic>(self.creator.to_string().as_str())
             .map_err(|e| {
-                crate::errors::SourceError::FeatureCreator(format!("Failed to evaluate: {e}"))
+                SourceError::FeatureCreator(format!("Failed to evaluate: {e}"))
             })?;
         if new_value.is::<rhai::Map>() {
             if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
@@ -115,7 +115,7 @@ impl Source for FeatureCreator {
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
-                    .map_err(|e| crate::errors::SourceError::FeatureCreator(format!("{e:?}")))?;
+                    .map_err(|e| SourceError::FeatureCreator(format!("{e:?}")))?;
             } else {
                 return Err(
                     SourceError::FeatureCreator("Failed to convert to map".to_string()).into(),
@@ -123,7 +123,7 @@ impl Source for FeatureCreator {
             }
         } else if new_value.is::<rhai::Array>() {
             let array_values = new_value.clone().into_array().map_err(|e| {
-                crate::errors::SourceError::FeatureCreator(format!("Failed to convert: {e}"))
+                SourceError::FeatureCreator(format!("Failed to convert: {e}"))
             })?;
             for new_value in array_values {
                 if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
@@ -139,7 +139,7 @@ impl Source for FeatureCreator {
                         ))
                         .await
                         .map_err(|e| {
-                            crate::errors::SourceError::FeatureCreator(format!("{e:?}"))
+                            SourceError::FeatureCreator(format!("{e:?}"))
                         })?;
                 }
             }

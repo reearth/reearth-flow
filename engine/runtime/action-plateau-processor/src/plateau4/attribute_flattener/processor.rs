@@ -242,7 +242,7 @@ impl AttributeFlattener {
             }
             let dm_attributes_value = AttributeValue::Map(citygml_attributes);
             let json_string =
-                serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
+                serde_json::to_string(&Value::from(dm_attributes_value)).unwrap();
             feature.attributes.insert(
                 Attribute::new("dm_attributes".to_string()),
                 AttributeValue::String(json_string),
@@ -328,7 +328,7 @@ impl AttributeFlattener {
         let citygml_attributes = convert_gyear_fields(citygml_attributes);
 
         // save the whole `citygml_attributes` values as `attributes`
-        let citygml_attributes_json = serde_json::to_string(&serde_json::Value::from(
+        let citygml_attributes_json = serde_json::to_string(&Value::from(
             AttributeValue::Map(citygml_attributes),
         ))
         .unwrap();
@@ -611,7 +611,7 @@ mod tests {
 
     /// Helper to create a citygml_attributes map from JSON
     fn citygml_attrs_from_json(json: &str) -> HashMap<String, AttributeValue> {
-        let value: serde_json::Value = serde_json::from_str(json).unwrap();
+        let value: Value = serde_json::from_str(json).unwrap();
         match AttributeValue::from(value) {
             AttributeValue::Map(map) => map,
             _ => panic!("Expected map"),
@@ -743,7 +743,7 @@ mod tests {
         let attributes_json = result.get("attributes");
         match attributes_json {
             Some(AttributeValue::String(json_str)) => {
-                let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
+                let parsed: Value = serde_json::from_str(json_str).unwrap();
                 let survey_year_in_json =
                     &parsed["uro:BuildingDetailAttribute"][0]["uro:surveyYear"];
                 assert!(
@@ -845,7 +845,7 @@ mod tests {
         let attributes_json = result.get("attributes");
         match attributes_json {
             Some(AttributeValue::String(json_str)) => {
-                let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
+                let parsed: Value = serde_json::from_str(json_str).unwrap();
                 let address_in_json = &parsed["bldg:address"];
                 assert!(
                     address_in_json.is_string(),
@@ -882,7 +882,7 @@ mod tests {
         let attributes_json = result.get("attributes");
         match attributes_json {
             Some(AttributeValue::String(json_str)) => {
-                let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
+                let parsed: Value = serde_json::from_str(json_str).unwrap();
                 let meshcode = &parsed["meshcode"];
                 assert_eq!(meshcode.as_str().unwrap(), "51393186");
             }

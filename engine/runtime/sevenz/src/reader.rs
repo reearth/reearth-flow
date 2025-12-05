@@ -188,7 +188,7 @@ impl Archive {
             let mut buf = [0; 20];
             reader.read_exact(&mut buf).map_err(Error::io)?;
             reader
-                .seek(std::io::SeekFrom::Start(current_position))
+                .seek(SeekFrom::Start(current_position))
                 .map_err(Error::io)?;
             buf.iter().any(|a| *a != 0)
         } else {
@@ -278,7 +278,7 @@ impl Archive {
             pos -= 1;
 
             reader
-                .seek(std::io::SeekFrom::Start(pos))
+                .seek(SeekFrom::Start(pos))
                 .map_err(Error::io)?;
             let nid = read_u8(reader)?;
             if nid == K_ENCODED_HEADER || nid == K_HEADER {
@@ -382,7 +382,7 @@ impl Archive {
                         "Multi input/output stream coders are not yet supported",
                     ));
                 }
-                let next = crate::decoders::add_decoder(
+                let next = add_decoder(
                     decoder,
                     folder.get_unpack_size_at_index(index) as usize,
                     coder,
@@ -1118,7 +1118,7 @@ impl<R: Read + Seek> SevenZReader<R> {
                     "Multi input/output stream coders are not yet supported",
                 ));
             }
-            let next = crate::decoders::add_decoder(
+            let next = add_decoder(
                 decoder,
                 folder.get_unpack_size_at_index(index) as usize,
                 coder,

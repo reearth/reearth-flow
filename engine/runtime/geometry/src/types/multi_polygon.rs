@@ -49,7 +49,7 @@ impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> FromIterator<IP> for Mul
 
 impl<T: CoordNum, Z: CoordNum> IntoIterator for MultiPolygon<T, Z> {
     type Item = Polygon<T, Z>;
-    type IntoIter = ::std::vec::IntoIter<Polygon<T, Z>>;
+    type IntoIter = std::vec::IntoIter<Polygon<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -58,7 +58,7 @@ impl<T: CoordNum, Z: CoordNum> IntoIterator for MultiPolygon<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a MultiPolygon<T, Z> {
     type Item = &'a Polygon<T, Z>;
-    type IntoIter = ::std::slice::Iter<'a, Polygon<T, Z>>;
+    type IntoIter = std::slice::Iter<'a, Polygon<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -67,7 +67,7 @@ impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a MultiPolygon<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a mut MultiPolygon<T, Z> {
     type Item = &'a mut Polygon<T, Z>;
-    type IntoIter = ::std::slice::IterMut<'a, Polygon<T, Z>>;
+    type IntoIter = std::slice::IterMut<'a, Polygon<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()

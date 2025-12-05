@@ -85,9 +85,9 @@ pub async fn extract(
 ) -> crate::errors::Result<()> {
     let reader = ZipFileReader::new(bytes.to_vec())
         .await
-        .map_err(crate::errors::SourceError::file_path_extractor)?;
+        .map_err(SourceError::file_path_extractor)?;
     if reader.file().entries().is_empty() {
-        return Err(crate::errors::SourceError::FilePathExtractor(
+        return Err(SourceError::FilePathExtractor(
             "No entries".to_string(),
         ));
     }
@@ -99,16 +99,16 @@ pub async fn extract(
                 .file()
                 .entries()
                 .get(i)
-                .ok_or(crate::errors::SourceError::FilePathExtractor(
+                .ok_or(SourceError::FilePathExtractor(
                     "No entry".to_string(),
                 ))?;
         let filename = entry.filename().as_str().map_err(|e| {
-            crate::errors::SourceError::FilePathExtractor(format!(
+            SourceError::FilePathExtractor(format!(
                 "Filename error with: error = {e:?}"
             ))
         })?;
         let outpath = root_output_path.join(filename).map_err(|e| {
-            crate::errors::SourceError::FilePathExtractor(format!(
+            SourceError::FilePathExtractor(format!(
                 "Output path join error with: error = {e:?}"
             ))
         })?;
@@ -126,7 +126,7 @@ pub async fn extract(
                 .exists(outpath.path().as_path())
                 .await
                 .map_err(|e| {
-                    crate::errors::SourceError::FilePathExtractor(format!(
+                    SourceError::FilePathExtractor(format!(
                         "Storage exists error with: error = {e:?}"
                     ))
                 })?
@@ -137,7 +137,7 @@ pub async fn extract(
                 .create_dir(outpath.path().as_path())
                 .await
                 .map_err(|e| {
-                    crate::errors::SourceError::FilePathExtractor(format!(
+                    SourceError::FilePathExtractor(format!(
                         "Create dir error with: error = {e:?}"
                     ))
                 })?;
@@ -147,25 +147,25 @@ pub async fn extract(
         }
         if let Some(p) = outpath.parent() {
             if !storage.exists(p.path().as_path()).await.map_err(|e| {
-                crate::errors::SourceError::FilePathExtractor(format!(
+                SourceError::FilePathExtractor(format!(
                     "Storage exists error with: error = {e:?}"
                 ))
             })? {
                 storage.create_dir(p.path().as_path()).await.map_err(|e| {
-                    crate::errors::SourceError::FilePathExtractor(format!(
+                    SourceError::FilePathExtractor(format!(
                         "Create dir error with: error = {e:?}"
                     ))
                 })?;
             }
         }
         let mut entry_reader = reader.reader_without_entry(i).await.map_err(|e| {
-            crate::errors::SourceError::FilePathExtractor(format!(
+            SourceError::FilePathExtractor(format!(
                 "Reader without entry error with: error = {e:?}"
             ))
         })?;
         let mut buf = Vec::<u8>::new();
         entry_reader.read_to_end(&mut buf).await.map_err(|e| {
-            crate::errors::SourceError::FilePathExtractor(format!(
+            SourceError::FilePathExtractor(format!(
                 "Read to end error with: error = {e:?}"
             ))
         })?;
@@ -173,12 +173,12 @@ pub async fn extract(
             .put(outpath.path().as_path(), bytes::Bytes::from(buf))
             .await
             .map_err(|e| {
-                crate::errors::SourceError::FilePathExtractor(format!(
+                SourceError::FilePathExtractor(format!(
                     "Storage put error with: error = {e:?}"
                 ))
             })?;
         let file_path = FilePath::try_from(outpath.clone()).map_err(|e| {
-            crate::errors::SourceError::FilePathExtractor(format!(
+            SourceError::FilePathExtractor(format!(
                 "Filepath convert error with: error = {e:?}"
             ))
         })?;
@@ -187,7 +187,7 @@ pub async fn extract(
             format!("file path extract with path = {file_path:?}"),
         );
         let attribute_value = AttributeValue::try_from(file_path).map_err(|e| {
-            crate::errors::SourceError::FilePathExtractor(format!(
+            SourceError::FilePathExtractor(format!(
                 "Attribute Value convert error with: error = {e:?}"
             ))
         })?;
@@ -201,7 +201,7 @@ pub async fn extract(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(crate::errors::SourceError::file_path_extractor)?;
+            .map_err(SourceError::file_path_extractor)?;
     }
     Ok(())
 }
@@ -242,39 +242,39 @@ impl Source for FilePathExtractor {
             let root_output_path =
                 dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
             let root_output_path = Uri::from_str(root_output_path.to_str().ok_or(
-                crate::errors::SourceError::FilePathExtractor("Invalid path".to_string()),
+                SourceError::FilePathExtractor("Invalid path".to_string()),
             )?)
-            .map_err(crate::errors::SourceError::file_path_extractor)?;
+            .map_err(SourceError::file_path_extractor)?;
             let source_dataset_storage = ctx
                 .storage_resolver
                 .resolve(&source_dataset)
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             let file_result = source_dataset_storage
                 .get(source_dataset.path().as_path())
                 .await
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             let bytes = file_result
                 .bytes()
                 .await
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             let root_output_storage = ctx
                 .storage_resolver
                 .resolve(&root_output_path)
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             root_output_storage
                 .create_dir(root_output_path.path().as_path())
                 .await
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             extract(&ctx, bytes, root_output_path, root_output_storage, sender).await?;
         } else if source_dataset.is_dir() {
             let storage = ctx
                 .storage_resolver
                 .resolve(&source_dataset)
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             let entries = storage
                 .list_with_result(Some(source_dataset.path().as_path()), true)
                 .await
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
             for entry in entries {
                 let attribute_value =
                     AttributeValue::try_from(FilePath::try_from(entry).unwrap_or_default())?;
@@ -285,7 +285,7 @@ impl Source for FilePathExtractor {
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
-                    .map_err(crate::errors::SourceError::file_path_extractor)?;
+                    .map_err(SourceError::file_path_extractor)?;
             }
         } else {
             let attribute_value = AttributeValue::try_from(FilePath::try_from(source_dataset)?)?;
@@ -296,7 +296,7 @@ impl Source for FilePathExtractor {
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
-                .map_err(crate::errors::SourceError::file_path_extractor)?;
+                .map_err(SourceError::file_path_extractor)?;
         }
         Ok(())
     }
@@ -320,5 +320,5 @@ fn get_expr_path<T: AsRef<str> + std::fmt::Display>(
         .eval_scope::<String>(path.as_ref(), &scope)
         .unwrap_or_else(|_| path.to_string());
     Uri::from_str(path.as_str())
-        .map_err(|_| crate::errors::SourceError::FilePathExtractor("Invalid path".to_string()))
+        .map_err(|_| SourceError::FilePathExtractor("Invalid path".to_string()))
 }

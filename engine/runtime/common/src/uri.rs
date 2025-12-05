@@ -223,7 +223,7 @@ impl Uri {
         Some(self.clone())
     }
 
-    pub fn join<P: AsRef<Path> + std::fmt::Debug>(&self, path: P) -> crate::Result<Self> {
+    pub fn join<P: AsRef<Path> + Debug>(&self, path: P) -> crate::Result<Self> {
         if path.as_ref().is_absolute() {
             return Err(crate::Error::Uri(format!(
                 "cannot join URI `{}` with absolute path `{:?}`",
@@ -362,9 +362,9 @@ impl PartialEq<String> for Uri {
     }
 }
 
-impl From<Uri> for url::Url {
+impl From<Uri> for Url {
     fn from(uri: Uri) -> Self {
-        url::Url::parse(uri.as_str()).unwrap()
+        Url::parse(uri.as_str()).unwrap()
     }
 }
 
@@ -663,7 +663,7 @@ mod tests {
     #[test]
     fn test_into_url() {
         let uri = Uri::for_test("gs://bucket/key");
-        let url: url::Url = uri.into();
+        let url: Url = uri.into();
         assert_eq!(url.as_str(), "gs://bucket/key");
     }
 }

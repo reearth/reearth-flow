@@ -1,7 +1,7 @@
 use jsonpath_lib::Selector;
 use serde_json::Value;
 
-pub fn find_by_json_path(content: serde_json::Value, json_path: &str) -> crate::Result<Vec<Value>> {
+pub fn find_by_json_path(content: Value, json_path: &str) -> crate::Result<Vec<Value>> {
     let mut selector = Selector::new();
     let selector = selector.str_path(json_path).map_err(crate::Error::json)?;
     selector
@@ -49,7 +49,7 @@ pub fn json_merge_patch(target: &mut Value, patch: &Value) {
             }
         }
         Value::Array(patch_arr) => {
-            *target = serde_json::Value::Array(
+            *target = Value::Array(
                 patch_arr
                     .clone()
                     .into_iter()
@@ -95,7 +95,7 @@ mod tests {
             }
         });
         let json_path = "$.data.users[*].name";
-        let expected_result: Vec<serde_json::Value> = vec![];
+        let expected_result: Vec<Value> = vec![];
         assert_eq!(
             find_by_json_path(content, json_path).unwrap(),
             expected_result
@@ -172,7 +172,7 @@ mod tests {
               }
         });
         let json_path = "$..[?(@.id && @.type)]"; // Invalid path, 'email' does not exist
-        let expected_result: Vec<serde_json::Value> = vec![
+        let expected_result: Vec<Value> = vec![
             serde_json::json!({
               "tran:function": [
                 "島"
@@ -222,7 +222,7 @@ mod tests {
 
         json_merge_patch(&mut target, &patch);
 
-        let expected: serde_json::Value =
+        let expected: Value =
             serde_json::from_str(r#"{"a": "z", "c": {"d": "e"}}"#).unwrap();
         assert_eq!(target, expected);
     }
@@ -231,7 +231,7 @@ mod tests {
     fn test_json_merge_patch_should_override_field_in_object() {
         let mut target = serde_json::from_str(r#"{"a": "b"}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -242,7 +242,7 @@ mod tests {
     fn test_json_merge_patch_should_add_field_to_object() {
         let mut target = serde_json::from_str(r#"{"a": "b"}"#).unwrap();
         let patch = serde_json::from_str(r#"{"b": "c"}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": "b", "b": "c"}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": "b", "b": "c"}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -253,7 +253,7 @@ mod tests {
     fn test_json_merge_patch_should_remove_field_from_object() {
         let mut target = serde_json::from_str(r#"{"a": "b", "b": "c"}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": null}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"b": "c"}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"b": "c"}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -264,7 +264,7 @@ mod tests {
     fn test_json_merge_patch_should_override_field_in_array() {
         let mut target = serde_json::from_str(r#"{"a": ["b"]}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -275,7 +275,7 @@ mod tests {
     fn test_json_merge_patch_should_replace_array_with_scalar() {
         let mut target = serde_json::from_str(r#"{"a": "c"}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": ["b"]}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": ["b"]}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": ["b"]}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -286,7 +286,7 @@ mod tests {
     fn test_json_merge_patch_should_merge_objects_in_object() {
         let mut target = serde_json::from_str(r#"{"a": {"b": "c"}}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": {"b": "d", "c": null}}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": {"b": "d"}}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": {"b": "d"}}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -297,7 +297,7 @@ mod tests {
     fn test_json_merge_patch_should_replace_array_with_value() {
         let mut target = serde_json::from_str(r#"{"a": [{"b": "c"}]}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": [1]}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": [1]}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": [1]}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -308,7 +308,7 @@ mod tests {
     fn test_json_merge_patch_should_merge_nested_objects_and_remove_leaf_nodes() {
         let mut target = serde_json::from_str(r#"{}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": {"bb": {"ccc": null}}}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": {"bb": {}}}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": {"bb": {}}}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -319,7 +319,7 @@ mod tests {
     fn test_json_merge_patch_should_replace_scalar_with_scalar() {
         let mut target = serde_json::from_str(r#"{"a": "b"}"#).unwrap();
         let patch = serde_json::from_str(r#"["c"]"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"["c"]"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"["c"]"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -329,18 +329,18 @@ mod tests {
     #[test]
     fn test_json_merge_patch_should_replace_scalar_with_null() {
         let mut target = serde_json::from_str(r#"{"a": "foo"}"#).unwrap();
-        let patch = serde_json::Value::Null;
+        let patch = Value::Null;
 
         json_merge_patch(&mut target, &patch);
 
-        assert_eq!(target, serde_json::Value::Null);
+        assert_eq!(target, Value::Null);
     }
 
     #[test]
     fn test_json_merge_patch_should_replace_scalar_with_string() {
         let mut target = serde_json::from_str(r#"{"a": "foo"}"#).unwrap();
         let patch = serde_json::from_str(r#""bar""#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#""bar""#).unwrap();
+        let expected: Value = serde_json::from_str(r#""bar""#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -351,7 +351,7 @@ mod tests {
     fn test_json_merge_patch_should_merge_null_with_scalar() {
         let mut target = serde_json::from_str(r#"{"e": null}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": 1}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"e": null, "a": 1}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"e": null, "a": 1}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -362,7 +362,7 @@ mod tests {
     fn test_json_merge_patch_should_replace_array_with_object() {
         let mut target = serde_json::from_str(r#"{"a": []}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": {"b": "c"}}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": {"b": "c"}}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": {"b": "c"}}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -373,7 +373,7 @@ mod tests {
     fn test_json_merge_patch_should_merge_objects_in_array() {
         let mut target = serde_json::from_str(r#"[{"a": "b"}, {"c": "d"}]"#).unwrap();
         let patch = serde_json::from_str(r#"{"1": {"e": "f"}}"#).unwrap();
-        let expected: serde_json::Value =
+        let expected: Value =
             serde_json::from_str(r#"[{"a": "b"}, {"c": "d", "e": "f"}]"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
@@ -385,7 +385,7 @@ mod tests {
     fn test_json_merge_patch_should_replace_object_with_array() {
         let mut target = serde_json::from_str(r#"{"a": {"b": "c"}}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": []}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{"a": []}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{"a": []}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -396,7 +396,7 @@ mod tests {
     fn test_json_merge_patch_should_merge_arrays() {
         let mut target = serde_json::from_str(r#"["a", "b"]"#).unwrap();
         let patch = serde_json::from_str(r#"["c", "d"]"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"["c", "d"]"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"["c", "d"]"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -407,7 +407,7 @@ mod tests {
     fn test_json_merge_patch_should_remove_key_from_object() {
         let mut target = serde_json::from_str(r#"{"a": "b"}"#).unwrap();
         let patch = serde_json::from_str(r#"{"a": null}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"{}"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"{}"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -418,7 +418,7 @@ mod tests {
     fn test_json_merge_patch_should_remove_index_from_array() {
         let mut target = serde_json::from_str(r#"["a", "b"]"#).unwrap();
         let patch = serde_json::from_str(r#"{"1": null}"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"["a"]"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"["a"]"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 
@@ -429,7 +429,7 @@ mod tests {
     fn test_json_merge_patch_should_remove_array_element() {
         let mut target = serde_json::from_str(r#"[1, 2, 3]"#).unwrap();
         let patch = serde_json::from_str(r#"[null, 2]"#).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(r#"[2]"#).unwrap();
+        let expected: Value = serde_json::from_str(r#"[2]"#).unwrap();
 
         json_merge_patch(&mut target, &patch);
 

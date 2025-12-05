@@ -80,18 +80,18 @@ impl ProcessorFactory for AttributeConversionTableFactory {
             let input_path = scope
                 .eval::<String>(dataset.to_string().as_str())
                 .map_err(|e| {
-                    super::errors::AttributeProcessorError::ConversionTable(format!(
+                    AttributeProcessorError::ConversionTable(format!(
                         "Failed to evaluate expr: {e}"
                     ))
                 })?;
             let input_path = Uri::from_str(input_path.as_str()).map_err(|e| {
-                super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
+                AttributeProcessorError::ConversionTable(format!("{e:?}"))
             })?;
             let storage = storage_resolver.resolve(&input_path).map_err(|e| {
-                super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
+                AttributeProcessorError::ConversionTable(format!("{e:?}"))
             })?;
             storage.get_sync(input_path.path().as_path()).map_err(|e| {
-                super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
+                AttributeProcessorError::ConversionTable(format!("{e:?}"))
             })?
         } else if let Some(inline) = params.inline {
             Bytes::from(inline.into_bytes())
@@ -235,7 +235,7 @@ fn read_csv(
     byte: Bytes,
 ) -> Result<
     HashMap<uuid::Uuid, HashMap<String, AttributeValue>>,
-    super::errors::AttributeProcessorError,
+    AttributeProcessorError,
 > {
     let cursor = Cursor::new(byte);
     let mut rdr = csv::ReaderBuilder::new()
@@ -247,14 +247,14 @@ fn read_csv(
         .deserialize()
         .next()
         .unwrap_or(Ok(Vec::<String>::new()))
-        .map_err(|e| super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}")))?;
+        .map_err(|e| AttributeProcessorError::ConversionTable(format!("{e:?}")))?;
     let mut rows = HashMap::new();
     for rd in rdr.deserialize() {
         let record: Vec<String> = rd.map_err(|e| {
-            super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
+            AttributeProcessorError::ConversionTable(format!("{e:?}"))
         })?;
         if record.len() < header.len() {
-            return Err(super::errors::AttributeProcessorError::ConversionTable(
+            return Err(AttributeProcessorError::ConversionTable(
                 format!(
                     "CSV row has fewer columns ({}) than header ({})",
                     record.len(),
@@ -276,19 +276,19 @@ fn read_json(
     byte: Bytes,
 ) -> Result<
     HashMap<uuid::Uuid, HashMap<String, AttributeValue>>,
-    super::errors::AttributeProcessorError,
+    AttributeProcessorError,
 > {
-    let value: serde_json::Value =
+    let value: Value =
         serde_json::from_str(std::str::from_utf8(&byte).map_err(|e| {
-            super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
+            AttributeProcessorError::ConversionTable(format!("{e:?}"))
         })?)
-        .map_err(|e| super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}")))?;
+        .map_err(|e| AttributeProcessorError::ConversionTable(format!("{e:?}")))?;
     let mut rows = HashMap::new();
     match value {
-        serde_json::Value::Array(arr) => {
+        Value::Array(arr) => {
             for v in arr {
                 match v {
-                    serde_json::Value::Object(obj) => {
+                    Value::Object(obj) => {
                         let row = obj
                             .iter()
                             .map(|(k, v)| (k.clone(), AttributeValue::from(v.clone())))
@@ -296,14 +296,14 @@ fn read_json(
                         rows.insert(uuid::Uuid::new_v4(), row);
                     }
                     _ => {
-                        return Err(super::errors::AttributeProcessorError::ConversionTable(
+                        return Err(AttributeProcessorError::ConversionTable(
                             "Invalid JSON format".to_string(),
                         ));
                     }
                 }
             }
         }
-        serde_json::Value::Object(obj) => {
+        Value::Object(obj) => {
             let row = obj
                 .iter()
                 .map(|(k, v)| (k.clone(), AttributeValue::from(v.clone())))
@@ -311,7 +311,7 @@ fn read_json(
             rows.insert(uuid::Uuid::new_v4(), row);
         }
         _ => {
-            return Err(super::errors::AttributeProcessorError::ConversionTable(
+            return Err(AttributeProcessorError::ConversionTable(
                 "Invalid JSON format".to_string(),
             ));
         }

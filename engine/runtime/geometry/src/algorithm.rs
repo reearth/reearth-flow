@@ -45,12 +45,12 @@ pub mod winding_order;
 pub use relate::Relate;
 
 pub trait GeoFloat:
-    GeoNum + num_traits::Float + num_traits::Signed + num_traits::Bounded + float_next_after::NextAfter
+    GeoNum + Float + num_traits::Signed + num_traits::Bounded + float_next_after::NextAfter
 {
 }
 impl<T> GeoFloat for T where
     T: GeoNum
-        + num_traits::Float
+        + Float
         + num_traits::Signed
         + num_traits::Bounded
         + float_next_after::NextAfter

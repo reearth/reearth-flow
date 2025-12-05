@@ -29,21 +29,21 @@ impl<T: GeoFloat, Z: GeoFloat> EdgeIntersection<T, Z> {
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialEq for EdgeIntersection<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> PartialEq for EdgeIntersection<T, Z> {
     fn eq(&self, other: &EdgeIntersection<T, Z>) -> bool {
         self.segment_index == other.segment_index && self.dist == other.dist
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::Eq for EdgeIntersection<T, Z> {}
+impl<T: GeoFloat, Z: GeoFloat> Eq for EdgeIntersection<T, Z> {}
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialOrd for EdgeIntersection<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> PartialOrd for EdgeIntersection<T, Z> {
     fn partial_cmp(&self, other: &EdgeIntersection<T, Z>) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::Ord for EdgeIntersection<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> Ord for EdgeIntersection<T, Z> {
     fn cmp(&self, other: &EdgeIntersection<T, Z>) -> std::cmp::Ordering {
         if self.segment_index < other.segment_index {
             return std::cmp::Ordering::Less;

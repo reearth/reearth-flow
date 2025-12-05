@@ -67,7 +67,7 @@ impl DagExecutor {
         runtime: Arc<Handle>,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        kv_store: Arc<dyn crate::kvs::KvStore>,
+        kv_store: Arc<dyn KvStore>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
