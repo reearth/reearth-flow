@@ -56,6 +56,20 @@ graphs:
                 let time_parts = env.get("__value")["入り"].split(":");
                 if time_parts.len() > 1 { time_parts[1] } else { "" }
 
+      - id: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
+        name: ConvertToSeconds
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: 出
+              method: convert 
+              value: |
+                let hour_str = env.get("__value")["出_H"];
+                let minute_str = env.get("__value")["出_M"];
+                minute_str
+         
+
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
         type: action
@@ -73,6 +87,12 @@ graphs:
 
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
         from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
+        fromPort: default
+        toPort: default
+
+      - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        from: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default
