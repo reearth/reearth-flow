@@ -200,10 +200,7 @@ export default function TriggerProjectVariablesMappingDialog({
                         type={"color"}
                         value={mapping.defaultValue}
                         onChange={(e) => {
-                          const value =
-                            mapping.type === "number"
-                              ? parseFloat(e.target.value) || 0
-                              : e.target.value;
+                          const value = e.target.value;
                           handleDefaultValueChange(index, value);
                         }}
                       />
@@ -213,7 +210,7 @@ export default function TriggerProjectVariablesMappingDialog({
                     </div>
                   ) : mapping.type === "yes_no" ? (
                     <Switch
-                      checked={mapping.defaultValue}
+                      checked={Boolean(mapping.defaultValue)}
                       onCheckedChange={(checked) =>
                         handleDefaultValueChange(index, checked)
                       }
@@ -221,13 +218,7 @@ export default function TriggerProjectVariablesMappingDialog({
                   ) : (
                     <Input
                       id={`default-${index}`}
-                      type={
-                        mapping.type === "number"
-                          ? "number"
-                          : mapping.type === "password"
-                            ? "password"
-                            : "text"
-                      }
+                      type={mapping.type === "number" ? "number" : "text"}
                       value={mapping.defaultValue}
                       onChange={(e) => {
                         const value =
