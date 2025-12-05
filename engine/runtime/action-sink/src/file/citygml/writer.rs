@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
@@ -8,13 +7,6 @@ use super::converter::{
     format_pos_list, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSurface,
 };
 use crate::errors::SinkError;
-
-static ID_COUNTER: AtomicU64 = AtomicU64::new(1);
-
-fn generate_gml_id(prefix: &str) -> String {
-    let id = ID_COUNTER.fetch_add(1, Ordering::Relaxed);
-    format!("{}_{}", prefix, id)
-}
 
 const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:core", "http://www.opengis.net/citygml/2.0"),
@@ -43,6 +35,7 @@ const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
 pub struct CityGmlXmlWriter<W: Write> {
     writer: Writer<W>,
     srs_name: String,
+    id_counter: u64,
 }
 
 impl<W: Write> CityGmlXmlWriter<W> {
@@ -52,7 +45,16 @@ impl<W: Write> CityGmlXmlWriter<W> {
         } else {
             Writer::new(inner)
         };
-        Self { writer, srs_name }
+        Self {
+            writer,
+            srs_name,
+            id_counter: 0,
+        }
+    }
+
+    fn generate_gml_id(&mut self, prefix: &str) -> String {
+        self.id_counter += 1;
+        format!("{}_{}", prefix, self.id_counter)
     }
 
     pub fn write_header(&mut self, envelope: Option<&BoundingEnvelope>) -> Result<(), SinkError> {
@@ -114,7 +116,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let mut city_obj_elem = BytesStart::new(element_name);
         let obj_id = gml_id
             .map(|s| s.to_string())
-            .unwrap_or_else(|| generate_gml_id(city_type.id_prefix()));
+            .unwrap_or_else(|| self.generate_gml_id(city_type.id_prefix()));
         city_obj_elem.push_attribute(("gml:id", obj_id.as_str()));
         self.writer
             .write_event(Event::Start(city_obj_elem))
