@@ -31,6 +31,7 @@ use super::{
     offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory,
     planarity_filter::PlanarityFilterFactory,
+    polygon_normal_extractor::PolygonNormalExtractorFactory,
     refiner::RefinerFactory,
     remover::GeometryRemoverFactory,
     replacer::GeometryReplacerFactory,
@@ -96,6 +97,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CSGEvaluatorFactory>::default(),
         Box::<VertexCounterFactory>::default(),
         Box::<SpatialFilterFactory>::default(),
+        Box::<PolygonNormalExtractorFactory>::default(),
     ];
     factories
         .into_iter()
