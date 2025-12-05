@@ -63,7 +63,7 @@ graphs:
         with:
           operations:
             - attribute: 出
-              method: convert 
+              method: convert
               value: |
                 let hour_str = env.get("__value")["出_H"];
                 let hour = str::string_to_int(hour_str);
@@ -71,7 +71,7 @@ graphs:
                 let min = str::string_to_int(min_str);
                 hour * 3600 + min * 60
             - attribute: 入り
-              method: convert 
+              method: convert
               value: |
                 let hour_str = env.get("__value")["入り_H"];
                 let hour = str::string_to_int(hour_str);
@@ -79,7 +79,7 @@ graphs:
                 let min = str::string_to_int(min_str);
                 hour * 3600 + min * 60
             - attribute: 南中
-              method: convert 
+              method: convert
               value: |
                 let dt = env.get("__value")["南中"];
                 let hour_str = str::extract_single_by_regex("(\\d+):(\\d+):(\\d+)", dt);
@@ -97,7 +97,24 @@ graphs:
               method: remove
             - attribute: 入り_M
               method: remove
-                
+
+
+      - id: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
+        name: SolarRadiationCalculator
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: "日射量[kWh/m2]"
+              method: create
+              value: |
+                let entry_time_value = env.get("__value")["入り"];
+                let exit_time_value = env.get("__value")["出"];
+                let altitude_value = env.get("__value")["高度[°]"];
+                let input_time_days = entry_time_value / 86400.0;
+                let output_time_days = exit_time_value / 86400.0;
+                let altitude_radians = math::to_radians(altitude_value);
+                altitude_radians
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
@@ -120,8 +137,14 @@ graphs:
         fromPort: default
         toPort: default
 
-      - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+      - id: e8f7a6b5-4c3d-2e1f-9a8b-7c6d5e4f3a2b
         from: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
+        to: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        from: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default
