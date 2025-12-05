@@ -58,7 +58,7 @@ impl Processor for EchoProcessor {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let span = ctx.info_span();
-        let feature: serde_json::Value = ctx.feature.clone().into();
+        let feature: Value = ctx.feature.clone().into();
         ctx.event_hub.info_log(
             Some(span.clone()),
             format!(

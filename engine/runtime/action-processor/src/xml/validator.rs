@@ -1260,15 +1260,15 @@ mod tests {
             let mut with = HashMap::new();
             with.insert(
                 "attribute".to_string(),
-                serde_json::Value::String("xml_content".to_string()),
+                Value::String("xml_content".to_string()),
             );
             with.insert(
                 "inputType".to_string(),
-                serde_json::Value::String("text".to_string()),
+                Value::String("text".to_string()),
             );
             with.insert(
                 "validationType".to_string(),
-                serde_json::Value::String("syntaxAndSchema".to_string()),
+                Value::String("syntaxAndSchema".to_string()),
             );
 
             // This should not panic with our lazy initialization

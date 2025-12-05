@@ -37,7 +37,7 @@ pub enum RingRole {
     Interior(isize),
 }
 
-impl std::fmt::Display for RingRole {
+impl Display for RingRole {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             RingRole::Exterior => write!(f, "exterior ring"),
@@ -450,7 +450,7 @@ impl<
                 for i in 0..self.0.len().saturating_sub(1) {
                     let p1 = &self.0[i];
                     let p2 = &self.0[i + 1];
-                    if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
+                    if let Some(distance) = utils::calculate_geo_distance_3d(p1, p2) {
                         if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                             reason.push(ValidationProblemAtPosition(
                                 ValidationProblem::DuplicateConsecutivePoints,
@@ -567,7 +567,7 @@ impl<
                 for i in 0..coords.len().saturating_sub(1) {
                     let p1 = &coords[i];
                     let p2 = &coords[i + 1];
-                    if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
+                    if let Some(distance) = utils::calculate_geo_distance_3d(p1, p2) {
                         if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                             reason.push(ValidationProblemAtPosition(
                                 ValidationProblem::DuplicateConsecutivePoints,
@@ -586,7 +586,7 @@ impl<
                     for i in 0..coords.len().saturating_sub(1) {
                         let p1 = &coords[i];
                         let p2 = &coords[i + 1];
-                        if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
+                        if let Some(distance) = utils::calculate_geo_distance_3d(p1, p2) {
                             if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                                 reason.push(ValidationProblemAtPosition(
                                     ValidationProblem::DuplicateConsecutivePoints,

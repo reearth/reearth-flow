@@ -43,7 +43,7 @@ impl LogStreamEvent {
             log_level,
             node_id,
             message,
-            timestamp: chrono::Utc::now(),
+            timestamp: Utc::now(),
         }
     }
 }
@@ -60,7 +60,7 @@ impl EncodableMessage for LogStreamEvent {
         serde_json::to_string(self)
             .map_err(crate::errors::Error::FailedToEncode)
             .map(|payload| {
-                ValidatedMessage::new(uuid::Uuid::new_v4(), self.timestamp, Bytes::from(payload))
+                ValidatedMessage::new(Uuid::new_v4(), self.timestamp, Bytes::from(payload))
             })
     }
 }

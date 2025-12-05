@@ -45,7 +45,7 @@ impl RotateQuery3D {
         // Origin of rotation
         let angle_degrees = angle_degrees.to_radians();
         // Rotational axis vector
-        let direction = nalgebra::Vector3::new(normalized_v.x, normalized_v.y, normalized_v.z);
+        let direction = Vector3::new(normalized_v.x, normalized_v.y, normalized_v.z);
 
         // Create a rotation matrix around the rotation axis.
         let rotation = nalgebra::Rotation3::from_axis_angle(
@@ -82,7 +82,7 @@ impl RotateQuery3D {
 
     /// Creates a new `RotateQuery3D` which rotates a vector around the given `angle_degrees` and `direction`.
     pub fn from_angle_and_direction(angle_degrees: f64, direction: Point3D<f64>) -> Option<Self> {
-        let direction_v = nalgebra::Vector3::new(direction.x(), direction.y(), direction.z());
+        let direction_v = Vector3::new(direction.x(), direction.y(), direction.z());
         let rotation = nalgebra::Rotation3::from_axis_angle(
             &nalgebra::Unit::new_normalize(direction_v),
             angle_degrees.to_radians(),
@@ -99,8 +99,8 @@ impl RotateQuery3D {
     #[allow(dead_code)]
     fn rotate_geometry(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
         let origin = origin
-            .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
-            .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
+            .map(|p| Vector3::new(p.x(), p.y(), p.z()))
+            .unwrap_or(Vector3::new(0.0, 0.0, 0.0));
 
         let point = nalgebra::Point3::new(point.x(), point.y(), point.z());
         let translated_point = point - origin;
@@ -112,8 +112,8 @@ impl RotateQuery3D {
     /// Rotates a point in 3D space. This method is used for coordinate system.
     pub fn rotate(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
         let origin = origin
-            .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
-            .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
+            .map(|p| Vector3::new(p.x(), p.y(), p.z()))
+            .unwrap_or(Vector3::new(0.0, 0.0, 0.0));
 
         let diff_point = Point3D::new(
             point.x() - origin.x,

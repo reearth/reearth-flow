@@ -13,7 +13,7 @@ use crate::uri::Uri;
 
 pub type XmlDocument = document::Document;
 pub type XmlXpathValue = libxml::xpath::Object;
-pub type XmlContext = libxml::xpath::Context;
+pub type XmlContext = Context;
 pub type XmlNode = libxml::tree::Node;
 pub type XmlRoNode = libxml::readonly::RoNode;
 pub type XmlNamespace = libxml::tree::Namespace;

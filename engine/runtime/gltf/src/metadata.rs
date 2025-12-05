@@ -204,7 +204,7 @@ impl Class {
         buffer_views: &mut Vec<BufferView>,
     ) -> (
         ext_structural_metadata::Class,
-        ext_structural_metadata::PropertyTable,
+        PropertyTable,
     ) {
         let mut class_properties = IndexMap::new();
         let mut pt_properties: IndexMap<String, PropertyTableProperty> = Default::default();

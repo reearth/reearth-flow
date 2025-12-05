@@ -28,7 +28,7 @@ pub struct SqlAdapter {
 }
 
 impl SqlAdapter {
-    pub async fn new<U: Into<String>>(url: U, pool_size: u32) -> crate::errors::Result<Self> {
+    pub async fn new<U: Into<String>>(url: U, pool_size: u32) -> errors::Result<Self> {
         let _ = &*INSTALL_DRIVERS;
         let url: String = url.into();
         let _ = AnyKind::from_str(url.as_str())?;
@@ -40,7 +40,7 @@ impl SqlAdapter {
         Ok(Self { pool })
     }
 
-    pub async fn fetch_many(&self, query: &str) -> crate::errors::Result<Vec<AnyRow>> {
+    pub async fn fetch_many(&self, query: &str) -> errors::Result<Vec<AnyRow>> {
         let result: Vec<AnyRow> = self
             .pool
             .fetch(sqlx::query(query))
@@ -51,7 +51,7 @@ impl SqlAdapter {
         Ok(result)
     }
 
-    pub async fn execute(&self, query: &str) -> crate::errors::Result<u64> {
+    pub async fn execute(&self, query: &str) -> errors::Result<u64> {
         let result = self
             .pool
             .execute(sqlx::query(query))

@@ -134,7 +134,7 @@ impl AsRef<ClassFeatures> for ClassFeatures {
 }
 
 impl TryFrom<&ClassFeatures> for nusamai_citygml::schema::Schema {
-    type Error = crate::errors::SinkError;
+    type Error = SinkError;
 
     fn try_from(v: &ClassFeatures) -> Result<Self, Self::Error> {
         let Some(first) = v.features.first() else {
@@ -260,7 +260,7 @@ impl Sink for GltfWriter {
                 let texture_folder_name = "textures";
                 let atlas_dir = folder_path.join(texture_folder_name);
                 std::fs::create_dir_all(&atlas_dir).map_err(|e| {
-                    crate::errors::SinkError::GltfWriter(format!(
+                    SinkError::GltfWriter(format!(
                         "Failed to create directory {atlas_dir:?} with : {e:?}"
                     ))
                 })?;
@@ -446,7 +446,7 @@ impl Sink for GltfWriter {
                                 atlas_dir.join(atlas_file_name).with_extension(ext.clone());
 
                             // update material
-                            mat = material::Material {
+                            mat = Material {
                                 base_color: mat.base_color,
                                 base_texture: Some(material::Texture {
                                     uri: Url::from_file_path(atlas_uri).unwrap(),
@@ -517,7 +517,7 @@ impl Sink for GltfWriter {
                     // Save the filename to the content list of the tileset.json (3D Tiles)
                     tileset_content_files.lock().unwrap().push(filename.clone());
                     self.output.join(filename).map_err(|e| {
-                        crate::errors::SinkError::GltfWriter(format!(
+                        SinkError::GltfWriter(format!(
                             "Failed to join uri with {e:?}"
                         ))
                     })?
@@ -536,18 +536,18 @@ impl Sink for GltfWriter {
                     self.draco_compression,
                 )
                 .map_err(|e| {
-                    crate::errors::SinkError::GltfWriter(format!(
+                    SinkError::GltfWriter(format!(
                         "Failed to write_gltf_glb with : {e:?}"
                     ))
                 })?;
                 let storage = ctx
                     .storage_resolver
                     .resolve(&file_path)
-                    .map_err(crate::errors::SinkError::gltf_writer)?;
+                    .map_err(SinkError::gltf_writer)?;
                 storage
                     .put_sync(file_path.as_path().as_path(), bytes::Bytes::from(buffer))
-                    .map_err(crate::errors::SinkError::gltf_writer)?;
-                Ok::<(), crate::errors::SinkError>(())
+                    .map_err(SinkError::gltf_writer)?;
+                Ok::<(), SinkError>(())
             })?;
 
         Ok(())
@@ -565,10 +565,10 @@ impl GltfWriter {
             return Err(SinkError::GltfWriter("Feature type is missing".to_string()).into());
         };
         let mut materials: IndexSet<Material> = IndexSet::new();
-        let default_material = reearth_flow_types::material::X3DMaterial::default();
+        let default_material = material::X3DMaterial::default();
         let mut local_bvol = BoundingVolume::default();
         let mut class_feature = ClassFeature {
-            polygons: flatgeom::MultiPolygon::new(),
+            polygons: MultiPolygon::new(),
             attributes: feature
                 .attributes
                 .iter()
@@ -714,7 +714,7 @@ impl GltfWriter {
         // Convert Polygon3D to flatgeom::Polygon format [x, y, z, u, v]
         let flat_polygon: FlatPolygon3 = polygon.clone().into();
 
-        let mut multi_polygon = flatgeom::MultiPolygon::new();
+        let mut multi_polygon = MultiPolygon::new();
         let mut local_bvol = BoundingVolume::default();
 
         // Add exterior ring
@@ -805,7 +805,7 @@ impl GltfWriter {
         let mut local_bvol = BoundingVolume::default();
 
         // Create a single MultiPolygon containing all faces
-        let mut multi_polygon = flatgeom::MultiPolygon::new();
+        let mut multi_polygon = MultiPolygon::new();
         let mut polygon_count = 0;
 
         // Convert each face to a polygon and add it to the multi_polygon

@@ -21,7 +21,7 @@ pub(crate) struct SerdeSerializer<S: serde::Serializer> {
 
 impl<S: serde::Serializer> SerdeSerializer<S> {
     /// Start serializing map of values
-    fn start(ser: S, len: Option<usize>) -> result::Result<Self, slog::Error> {
+    fn start(ser: S, len: Option<usize>) -> Result<Self, slog::Error> {
         let ser_map = ser
             .serialize_map(len)
             .map_err(|e| io::Error::other(format!("serde serialization error: {e}")))?;
@@ -29,7 +29,7 @@ impl<S: serde::Serializer> SerdeSerializer<S> {
     }
 
     /// Finish serialization, and return the serializer
-    fn end(self) -> result::Result<S::Ok, S::Error> {
+    fn end(self) -> Result<S::Ok, S::Error> {
         self.ser_map.end()
     }
 }

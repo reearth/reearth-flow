@@ -221,7 +221,7 @@ async fn read_shapefile(
     content: &Bytes,
     params: &ShapefileReaderParam,
     sender: Sender<(Port, IngestionMessage)>,
-) -> Result<(), crate::errors::SourceError> {
+) -> Result<(), SourceError> {
     let (shapes_and_records, epsg_code) = if is_zip_file(content) {
         read_shapefile_from_zip(content, &params.encoding)?
     } else {
@@ -397,10 +397,10 @@ fn resolve_encoding(
 ///
 /// Takes a type-safe ShapefileEncoding enum (already validated) and creates
 /// the appropriate dbase reader.
-fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
+fn create_dbase_reader<T: Read + std::io::Seek>(
     source: T,
     encoding: ShapefileEncoding,
-) -> Result<shapefile::dbase::Reader<T>, crate::errors::SourceError> {
+) -> Result<shapefile::dbase::Reader<T>, SourceError> {
     tracing::debug!("Creating dbase reader with {} encoding", encoding.name());
 
     match encoding {
@@ -433,7 +433,7 @@ type ShapefileData = (
 fn read_shapefile_from_zip(
     content: &Bytes,
     encoding_param: &Option<String>,
-) -> Result<ShapefileData, crate::errors::SourceError> {
+) -> Result<ShapefileData, SourceError> {
     let cursor = Cursor::new(content.as_ref());
     let mut archive = zip::ZipArchive::new(cursor)
         .map_err(|e| SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}")))?;
@@ -566,7 +566,7 @@ type PolygonData3D = Vec<(Vec<Coordinate<f64, f64>>, Vec<Vec<Coordinate<f64, f64
 
 fn process_polygon_rings_2d(
     rings: &[shapefile::PolygonRing<shapefile::Point>],
-) -> Result<PolygonData2D, crate::errors::SourceError> {
+) -> Result<PolygonData2D, SourceError> {
     use shapefile::PolygonRing;
 
     if rings.is_empty() {
@@ -612,7 +612,7 @@ fn process_polygon_rings_2d(
 
 fn process_polygonz_rings_2d(
     rings: &[shapefile::PolygonRing<shapefile::PointZ>],
-) -> Result<PolygonData2D, crate::errors::SourceError> {
+) -> Result<PolygonData2D, SourceError> {
     use shapefile::PolygonRing;
 
     if rings.is_empty() {
@@ -658,7 +658,7 @@ fn process_polygonz_rings_2d(
 
 fn process_polygon_rings_3d(
     rings: &[shapefile::PolygonRing<shapefile::PointZ>],
-) -> Result<PolygonData3D, crate::errors::SourceError> {
+) -> Result<PolygonData3D, SourceError> {
     use shapefile::PolygonRing;
 
     if rings.is_empty() {
@@ -740,7 +740,7 @@ fn polygons_to_geometry_3d(polygon_data: PolygonData3D) -> GeometryValue {
 
 fn convert_polygon_to_geometry(
     polygon: shapefile::Polygon,
-) -> Result<GeometryValue, crate::errors::SourceError> {
+) -> Result<GeometryValue, SourceError> {
     let polygon_data = process_polygon_rings_2d(polygon.rings())?;
     Ok(polygons_to_geometry_2d(polygon_data))
 }
@@ -748,7 +748,7 @@ fn convert_polygon_to_geometry(
 fn convert_polygonz_to_geometry(
     polygon: shapefile::PolygonZ,
     force_2d: bool,
-) -> Result<GeometryValue, crate::errors::SourceError> {
+) -> Result<GeometryValue, SourceError> {
     if force_2d {
         let polygon_data = process_polygonz_rings_2d(polygon.rings())?;
         Ok(polygons_to_geometry_2d(polygon_data))
@@ -761,7 +761,7 @@ fn convert_polygonz_to_geometry(
 fn convert_shape_to_geometry(
     shape: shapefile::Shape,
     force_2d: bool,
-) -> Result<Geometry, crate::errors::SourceError> {
+) -> Result<Geometry, SourceError> {
     use shapefile::Shape;
 
     let geometry_value = match shape {

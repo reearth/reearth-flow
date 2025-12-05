@@ -45,7 +45,7 @@ use crate::file::mvt::tileid::TileIdMethod;
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
-    schema: &nusamai_citygml::schema::Schema,
+    schema: &Schema,
     tile_id_conv: TileIdMethod,
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
@@ -105,7 +105,7 @@ pub(super) fn feature_sorting_stage(
             .map(|(tile_id, typename, body)| {
                 let (idx, _) = typename_to_seq.insert_full(typename);
                 let type_seq = idx as u64;
-                std::result::Result::<_, Infallible>::Ok((SortKey { tile_id, type_seq }, body))
+                Result::<_, Infallible>::Ok((SortKey { tile_id, type_seq }, body))
             }),
         config,
     );
@@ -167,7 +167,7 @@ pub(super) fn tile_writing_stage(
     let folder_path = binding.path();
     let texture_folder_name = "textures";
     let atlas_dir = folder_path.join(texture_folder_name);
-    std::fs::create_dir_all(&atlas_dir).map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    fs::create_dir_all(&atlas_dir).map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     // Make a glTF (.glb) file for each tile
     receiver_sorted

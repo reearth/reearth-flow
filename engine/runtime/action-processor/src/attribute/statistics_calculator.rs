@@ -99,7 +99,7 @@ struct StatisticsCalculator {
     group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
 }
 
 #[derive(Debug, Clone)]

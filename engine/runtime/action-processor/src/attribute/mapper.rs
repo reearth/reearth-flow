@@ -150,7 +150,7 @@ struct CompiledMapper {
 
 #[derive(Debug, Clone)]
 pub struct AttributeMapper {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     mapper: CompiledAttributeMapperParam,
 }
 

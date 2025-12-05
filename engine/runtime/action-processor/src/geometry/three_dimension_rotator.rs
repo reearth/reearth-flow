@@ -135,7 +135,7 @@ pub struct ThreeDimensionRotatorParam {
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionRotator {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     angle_degree: rhai::AST,
     origin_x: rhai::AST,
     origin_y: rhai::AST,

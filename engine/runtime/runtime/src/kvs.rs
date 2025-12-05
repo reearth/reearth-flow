@@ -32,7 +32,7 @@ pub trait KvStore: Send + Sync + Debug {
     /// If the database did have this key present, the value is updated, and the old value is
     /// returned.
     ///
-    /// [`None`]: std::option::Option
+    /// [`None`]: Option
     fn insert(&mut self, key: KvStoreKey, value: AttributeValue);
 
     /// Remove entry with given key, returning the value at the key if the key was previously

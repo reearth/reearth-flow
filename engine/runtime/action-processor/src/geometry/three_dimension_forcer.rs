@@ -107,7 +107,7 @@ pub struct ThreeDimensionForcerParam {
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionForcer {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     elevation: Option<rhai::AST>,
     preserve_existing_z: bool,
 }

@@ -14,7 +14,7 @@ pub trait SchemaCache: Send + Sync {
     fn get_schema(&self, key: &str) -> Result<Option<Vec<u8>>>;
 
     /// Get the file path for a cached schema (for libxml to access)
-    fn get_schema_path(&self, key: &str) -> Result<std::path::PathBuf>;
+    fn get_schema_path(&self, key: &str) -> Result<PathBuf>;
 
     /// Check if cache is available
     fn is_available(&self) -> bool;
@@ -36,7 +36,7 @@ impl SchemaCache for NoOpSchemaCache {
         Ok(None)
     }
 
-    fn get_schema_path(&self, _key: &str) -> Result<std::path::PathBuf> {
+    fn get_schema_path(&self, _key: &str) -> Result<PathBuf> {
         Err(super::errors::XmlProcessorError::Validator(
             "Schema cache not available".to_string(),
         ))
@@ -191,7 +191,7 @@ impl SchemaCache for FileSystemSchemaCache {
         }
     }
 
-    fn get_schema_path(&self, key: &str) -> Result<std::path::PathBuf> {
+    fn get_schema_path(&self, key: &str) -> Result<PathBuf> {
         Ok(self.get_full_path(key))
     }
 

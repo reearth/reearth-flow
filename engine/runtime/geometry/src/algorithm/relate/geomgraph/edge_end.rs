@@ -92,21 +92,21 @@ where
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::Eq for EdgeEndKey<T, Z> {}
+impl<T: GeoFloat, Z: GeoFloat> Eq for EdgeEndKey<T, Z> {}
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialEq for EdgeEndKey<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> PartialEq for EdgeEndKey<T, Z> {
     fn eq(&self, other: &EdgeEndKey<T, Z>) -> bool {
         self.delta == other.delta
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialOrd for EdgeEndKey<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> PartialOrd for EdgeEndKey<T, Z> {
     fn partial_cmp(&self, other: &EdgeEndKey<T, Z>) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::Ord for EdgeEndKey<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> Ord for EdgeEndKey<T, Z> {
     fn cmp(&self, other: &EdgeEndKey<T, Z>) -> std::cmp::Ordering {
         self.compare_direction(other)
     }

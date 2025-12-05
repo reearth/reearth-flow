@@ -87,7 +87,7 @@ impl<T: CoordNum, Z: CoordNum, ILS: Into<LineString<T, Z>>> FromIterator<ILS>
 
 impl<T: CoordNum, Z: CoordNum> IntoIterator for MultiLineString<T, Z> {
     type Item = LineString<T, Z>;
-    type IntoIter = ::std::vec::IntoIter<LineString<T, Z>>;
+    type IntoIter = std::vec::IntoIter<LineString<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -96,7 +96,7 @@ impl<T: CoordNum, Z: CoordNum> IntoIterator for MultiLineString<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a MultiLineString<T, Z> {
     type Item = &'a LineString<T, Z>;
-    type IntoIter = ::std::slice::Iter<'a, LineString<T, Z>>;
+    type IntoIter = std::slice::Iter<'a, LineString<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -105,7 +105,7 @@ impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a MultiLineString<T, Z> {
 
 impl<'a, T: CoordNum, Z: CoordNum> IntoIterator for &'a mut MultiLineString<T, Z> {
     type Item = &'a mut LineString<T, Z>;
-    type IntoIter = ::std::slice::IterMut<'a, LineString<T, Z>>;
+    type IntoIter = std::slice::IterMut<'a, LineString<T, Z>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()

@@ -106,20 +106,20 @@ impl Source for SqlReader {
         let database_url = scope
             .eval::<String>(self.param.database_url.to_string().as_str())
             .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
+                SourceError::SqlReader(format!("Failed to evaluate: {e}"))
             })?;
         let sql = scope
             .eval::<String>(self.param.sql.to_string().as_str())
             .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
+                SourceError::SqlReader(format!("Failed to evaluate: {e}"))
             })?;
         let adapter = SqlAdapter::new(database_url, 10).await.map_err(|e| {
-            crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {e}"))
+            SourceError::SqlReader(format!("Failed to create adapter: {e}"))
         })?;
         let result = adapter
             .fetch_many(sql.as_str())
             .await
-            .map_err(|e| crate::errors::SourceError::SqlReader(format!("Failed to fetch: {e}")))?;
+            .map_err(|e| SourceError::SqlReader(format!("Failed to fetch: {e}")))?;
         let features = result
             .into_iter()
             .map(|row| row.try_into())
@@ -131,7 +131,7 @@ impl Source for SqlReader {
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
-                .map_err(crate::errors::SourceError::sql_reader)?;
+                .map_err(SourceError::sql_reader)?;
         }
         Ok(())
     }

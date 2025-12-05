@@ -108,7 +108,7 @@ impl From<Geometry> for Feature {
 
 impl From<XmlXpathValue> for Feature {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<Feature>::into(value.to_string().parse::<serde_json::Value>().unwrap())
+        Into::<Feature>::into(value.to_string().parse::<serde_json::Value>().unwrap())
     }
 }
 
@@ -388,16 +388,16 @@ impl Feature {
         }
     }
 
-    pub fn contains_key<T: AsRef<str> + std::fmt::Display>(&self, key: T) -> bool {
+    pub fn contains_key<T: AsRef<str> + Display>(&self, key: T) -> bool {
         self.attributes
             .contains_key(&Attribute::new(key.to_string()))
     }
 
-    pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: T) -> Option<&AttributeValue> {
+    pub fn get<T: AsRef<str> + Display>(&self, key: T) -> Option<&AttributeValue> {
         self.attributes.get(&Attribute::new(key.to_string()))
     }
 
-    pub fn get_by_keys<T: AsRef<str> + std::fmt::Display>(
+    pub fn get_by_keys<T: AsRef<str> + Display>(
         &self,
         keys: &[T],
     ) -> Option<AttributeValue> {
@@ -414,7 +414,7 @@ impl Feature {
         }
     }
 
-    pub fn insert<T: AsRef<str> + std::fmt::Display>(
+    pub fn insert<T: AsRef<str> + Display>(
         &mut self,
         key: T,
         value: AttributeValue,
@@ -432,7 +432,7 @@ impl Feature {
             .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
     }
 
-    pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: T) -> Option<AttributeValue> {
+    pub fn remove<T: AsRef<str> + Display>(&mut self, key: T) -> Option<AttributeValue> {
         self.attributes
             .swap_remove(&Attribute::new(key.to_string()))
     }
@@ -473,7 +473,7 @@ impl Feature {
                 .lod
                 .and_then(|lod| lod.highest_lod())
                 .map_or(serde_json::Value::Null, |lod| {
-                    serde_json::Value::Number(serde_json::Number::from(lod))
+                    serde_json::Value::Number(Number::from(lod))
                 }),
         );
         if let Some(with) = with {

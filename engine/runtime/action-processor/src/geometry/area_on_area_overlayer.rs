@@ -389,7 +389,7 @@ impl PolygonWithMbr2D {
     }
 }
 
-impl rstar::RTreeObject for PolygonWithMbr2D {
+impl RTreeObject for PolygonWithMbr2D {
     type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {

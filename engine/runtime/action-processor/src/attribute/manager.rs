@@ -83,7 +83,7 @@ impl ProcessorFactory for AttributeManagerFactory {
 
 #[derive(Debug, Clone)]
 struct AttributeManager {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     operations: Vec<Operate>,
 }
 
@@ -167,7 +167,7 @@ fn process_feature(
     feature: &Feature,
     operations: &[Operate],
     expr_engine: Arc<Engine>,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
+    global_params: &Option<HashMap<String, Value>>,
 ) -> Feature {
     let mut result = feature.clone();
     for operation in operations {

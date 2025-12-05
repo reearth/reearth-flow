@@ -88,7 +88,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
 
 #[derive(Debug, Clone)]
 struct FeatureTransformer {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     transformers: Vec<CompiledTransform>,
 }
 
@@ -148,7 +148,7 @@ fn mapper(
     feature: &Feature,
     expr: &rhai::AST,
     expr_engine: Arc<Engine>,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
+    global_params: &Option<HashMap<String, Value>>,
 ) -> Feature {
     let scope = feature.new_scope(expr_engine.clone(), global_params);
     let new_value = scope.eval_ast::<Dynamic>(expr);

@@ -162,16 +162,16 @@ struct PythonScriptProcessorParam {
     timeout_seconds: Option<u64>,
 }
 
-fn geometry_to_geojson(geometry: &Geometry) -> serde_json::Value {
+fn geometry_to_geojson(geometry: &Geometry) -> Value {
     match &geometry.value {
-        GeometryValue::None => serde_json::Value::Null,
+        GeometryValue::None => Value::Null,
         GeometryValue::FlowGeometry2D(flow_geom) => flow_geometry_2d_to_geojson(flow_geom),
-        GeometryValue::FlowGeometry3D(_) => serde_json::Value::Null,
-        GeometryValue::CityGmlGeometry(_) => serde_json::Value::Null,
+        GeometryValue::FlowGeometry3D(_) => Value::Null,
+        GeometryValue::CityGmlGeometry(_) => Value::Null,
     }
 }
 
-fn flow_geometry_2d_to_geojson(geometry: &FlowGeometry2D<f64>) -> serde_json::Value {
+fn flow_geometry_2d_to_geojson(geometry: &FlowGeometry2D<f64>) -> Value {
     match geometry {
         FlowGeometry2D::Point(point) => {
             serde_json::json!({
@@ -268,12 +268,12 @@ fn flow_geometry_2d_to_geojson(geometry: &FlowGeometry2D<f64>) -> serde_json::Va
                 "coordinates": [coords]
             })
         }
-        _ => serde_json::Value::Null,
+        _ => Value::Null,
     }
 }
 
-fn feature_to_geojson(feature: &Feature) -> serde_json::Value {
-    let properties: serde_json::Map<String, serde_json::Value> = feature
+fn feature_to_geojson(feature: &Feature) -> Value {
+    let properties: serde_json::Map<String, Value> = feature
         .attributes
         .iter()
         .map(|(k, v)| (k.to_string(), v.clone().into()))
@@ -333,7 +333,7 @@ fn dedent(text: &str) -> String {
     }
 }
 
-fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonProcessorError> {
+fn geojson_to_geometry(geojson: &Value) -> Result<Geometry, PythonProcessorError> {
     use reearth_flow_geometry::types::line_string::LineString2D;
     use reearth_flow_geometry::types::point::Point2D;
     use reearth_flow_geometry::types::polygon::Polygon2D;
@@ -801,7 +801,7 @@ print(json.dumps(output))
             .into());
         }
 
-        let geojson_response: serde_json::Value =
+        let geojson_response: Value =
             serde_json::from_str(stdout.trim()).map_err(|e| {
                 PythonProcessorError::SerializationError(format!(
                     "Failed to parse Python output: {e}. Output was: {stdout}"
@@ -902,7 +902,7 @@ mod tests {
         );
 
         let point = Point2D::from((139.7, 35.7)); // Tokyo coordinates
-        let geometry = FlowGeometry::with_value(reearth_flow_types::GeometryValue::FlowGeometry2D(
+        let geometry = FlowGeometry::with_value(GeometryValue::FlowGeometry2D(
             FlowGeometry2D::Point(point),
         ));
 
@@ -998,7 +998,7 @@ mod tests {
     #[test]
     fn test_geometry_to_geojson_point() {
         let point = Point2D::from((139.7, 35.7));
-        let geometry = FlowGeometry::with_value(reearth_flow_types::GeometryValue::FlowGeometry2D(
+        let geometry = FlowGeometry::with_value(GeometryValue::FlowGeometry2D(
             FlowGeometry2D::Point(point),
         ));
 
@@ -1040,7 +1040,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::Point(point)) =
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::Point(point)) =
             geometry.value
         {
             assert_eq!(point.x(), 139.7);
@@ -1074,7 +1074,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::LineString(line)) =
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::LineString(line)) =
             geometry.value
         {
             assert_eq!(line.0.len(), 3);
@@ -1098,7 +1098,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::Polygon(polygon)) =
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::Polygon(polygon)) =
             geometry.value
         {
             assert_eq!(polygon.exterior().0.len(), 5);
@@ -1122,7 +1122,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::Polygon(polygon)) =
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::Polygon(polygon)) =
             geometry.value
         {
             assert_eq!(polygon.exterior().0.len(), 5);
@@ -1144,7 +1144,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiPoint(mp)) =
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiPoint(mp)) =
             geometry.value
         {
             assert_eq!(mp.0.len(), 2);
@@ -1169,7 +1169,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiLineString(
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiLineString(
             mls,
         )) = geometry.value
         {
@@ -1195,7 +1195,7 @@ mod tests {
         assert!(result.is_ok());
 
         let geometry = result.unwrap();
-        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiPolygon(
+        if let GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiPolygon(
             mpoly,
         )) = geometry.value
         {

@@ -92,7 +92,7 @@ impl ProcessorFactory for FeatureFilterFactory {
 
 #[derive(Debug, Clone)]
 struct FeatureFilter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     conditions: Vec<CompiledCondition>,
 }
 

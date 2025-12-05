@@ -42,9 +42,9 @@ pub fn dynamic_to_value(value: &Dynamic) -> Value {
         let arr_values: Vec<_> = arr.iter().map(dynamic_to_value).collect();
         return Value::Array(arr_values);
     } else if value.is_map() {
-        let map: rhai::Map = value.clone_cast();
+        let map: Map = value.clone_cast();
         if map.len() == 1 && *map.first_key_value().unwrap().0 == "String" {
-            return serde_json::Value::String(map.first_key_value().unwrap().1.to_string());
+            return Value::String(map.first_key_value().unwrap().1.to_string());
         }
         let mut map_values = JsonMap::new();
         for (k, v) in map {

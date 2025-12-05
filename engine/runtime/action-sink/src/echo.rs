@@ -55,7 +55,7 @@ impl Sink for EchoSink {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let span = ctx.info_span();
-        let feature: serde_json::Value = ctx.feature.clone().into();
+        let feature: Value = ctx.feature.clone().into();
         ctx.event_hub.info_log(
             Some(span.clone()),
             format!(

@@ -98,7 +98,7 @@ pub struct NodeType {
     pub name: String,
     pub action: String,
     pub kind: NodeKind,
-    pub with: Option<HashMap<String, serde_json::Value>>,
+    pub with: Option<HashMap<String, Value>>,
 }
 
 impl NodeType {
@@ -107,7 +107,7 @@ impl NodeType {
         name: String,
         action: String,
         kind: NodeKind,
-        with: Option<HashMap<String, serde_json::Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Self {
         Self {
             handle: NodeHandle::new(id),

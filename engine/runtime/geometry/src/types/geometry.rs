@@ -225,7 +225,7 @@ impl<T: CoordFloat, Z: CoordFloat> From<Geometry<T, Z>> for geojson::Value {
 }
 
 impl TryFrom<geojson::Value> for Geometry2D<f64> {
-    type Error = crate::error::Error;
+    type Error = Error;
 
     fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
         match value {
@@ -255,7 +255,7 @@ impl TryFrom<geojson::Value> for Geometry2D<f64> {
 }
 
 impl TryFrom<geojson::Value> for Geometry3D<f64> {
-    type Error = crate::error::Error;
+    type Error = Error;
 
     fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
         match value {

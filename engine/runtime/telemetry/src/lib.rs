@@ -47,7 +47,7 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
         }
         None => SdkMeterProvider::builder()
             .with_reader(
-                opentelemetry_sdk::metrics::PeriodicReader::builder(
+                PeriodicReader::builder(
                     opentelemetry_stdout::MetricExporter::default(),
                 )
                 .build(),

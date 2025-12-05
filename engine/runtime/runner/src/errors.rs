@@ -10,7 +10,7 @@ pub enum Error {
     #[error("Missing api config or security input")]
     MissingSecurityConfig,
     #[error("Failed to server pgwire: {0}")]
-    PGWireServerFailed(#[source] std::io::Error),
+    PGWireServerFailed(#[source] io::Error),
     #[error("Cache {0} has reached its maximum size. Try to increase `cache_max_map_size` in the config.")]
     CacheFull(String),
     #[error("Internal thread panic: {0}")]

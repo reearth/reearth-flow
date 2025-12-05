@@ -387,7 +387,7 @@ mod tests {
             )
             .with_response(
                 "http://example.com/level2.xsd",
-                Err(super::super::errors::XmlProcessorError::Validator(
+                Err(XmlProcessorError::Validator(
                     "Schema fetch failed".to_string(),
                 )),
             );

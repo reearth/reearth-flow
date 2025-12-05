@@ -385,7 +385,7 @@ impl Cesium3DTilesWriter {
                                     output.path().as_path(),
                                 )
                                 .map_err(|e| {
-                                    crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
+                                    SinkError::cesium3dtiles_writer(e.to_string())
                                 });
                                 match zip_result {
                                     Ok(_) => {
@@ -394,7 +394,7 @@ impl Cesium3DTilesWriter {
                                                 compress_output.path().as_path(),
                                                 bytes::Bytes::from(cursor.into_inner()),
                                             )
-                                            .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                                            .map_err(SinkError::cesium3dtiles_writer)
                                         {
                                             Ok(_) => {
                                                 match std::fs::remove_dir_all(

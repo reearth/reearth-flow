@@ -83,7 +83,7 @@ impl ProcessorFactory for ExtruderFactory {
 
 #[derive(Debug, Clone)]
 pub struct Extruder {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     distance: rhai::AST,
 }
 

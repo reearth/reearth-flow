@@ -40,7 +40,7 @@ where
 #[derive(Clone)]
 struct NodeKey<T: GeoFloat, Z: GeoFloat>(Coordinate<T, Z>);
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::Ord for NodeKey<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> Ord for NodeKey<T, Z> {
     fn cmp(&self, other: &NodeKey<T, Z>) -> std::cmp::Ordering {
         debug_assert!(!self.0.x.is_nan());
         debug_assert!(!self.0.y.is_nan());
@@ -50,13 +50,13 @@ impl<T: GeoFloat, Z: GeoFloat> std::cmp::Ord for NodeKey<T, Z> {
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialOrd for NodeKey<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> PartialOrd for NodeKey<T, Z> {
     fn partial_cmp(&self, other: &NodeKey<T, Z>) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialEq for NodeKey<T, Z> {
+impl<T: GeoFloat, Z: GeoFloat> PartialEq for NodeKey<T, Z> {
     fn eq(&self, other: &NodeKey<T, Z>) -> bool {
         debug_assert!(!self.0.x.is_nan());
         debug_assert!(!self.0.y.is_nan());
@@ -66,7 +66,7 @@ impl<T: GeoFloat, Z: GeoFloat> std::cmp::PartialEq for NodeKey<T, Z> {
     }
 }
 
-impl<T: GeoFloat, Z: GeoFloat> std::cmp::Eq for NodeKey<T, Z> {}
+impl<T: GeoFloat, Z: GeoFloat> Eq for NodeKey<T, Z> {}
 
 impl<T, Z, NF> NodeMap<T, Z, NF>
 where

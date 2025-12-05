@@ -51,7 +51,7 @@ impl Workflow {
             .filter(|(key, _)| {
                 self.with
                     .as_ref()
-                    .unwrap_or(&serde_json::Map::new())
+                    .unwrap_or(&Map::new())
                     .contains_key(key)
             })
             .collect();
@@ -61,7 +61,7 @@ impl Workflow {
         let mut with = if let Some(with) = self.with.clone() {
             with
         } else {
-            serde_json::Map::<String, Value>::new()
+            Map::<String, Value>::new()
         };
         with.extend(
             environment_vars

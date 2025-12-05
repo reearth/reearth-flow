@@ -44,7 +44,7 @@ pub fn slice_to_tiles<E>(
 
     let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
     let mut materials: IndexSet<Material> = IndexSet::new();
-    let default_material = reearth_flow_types::material::X3DMaterial::default();
+    let default_material = material::X3DMaterial::default();
 
     let (lng_center, lat_center, approx_dx, approx_dy, approx_dh) = {
         let vertice = city_gml.max_min_vertice();
@@ -135,7 +135,7 @@ pub fn slice_to_tiles<E>(
                         if zoom < max_zoom {
                             let geom_error = {
                                 let (_, _, y) =
-                                    tiling::scheme::zxy_from_lng_lat(zoom, lng_center, lat_center);
+                                    zxy_from_lng_lat(zoom, lng_center, lat_center);
                                 tiling::scheme::geometric_error(zoom, y)
                             };
                             if let Some(lod) = entry.lod {

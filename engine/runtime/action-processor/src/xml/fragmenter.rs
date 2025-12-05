@@ -98,7 +98,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
 
 #[derive(Debug, Clone)]
 pub struct XmlFragmenter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     params: XmlFragmenterParam,
     elements_to_match_ast: rhai::AST,
     elements_to_exclude_ast: rhai::AST,
@@ -198,7 +198,7 @@ impl Processor for XmlFragmenter {
 fn send_xml_fragment(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
+    global_params: &Option<HashMap<String, Value>>,
     feature: &Feature,
     attribute: &Attribute,
     elements_to_match_ast: &rhai::AST,

@@ -154,7 +154,7 @@ pub struct FeatureMergerParam {
 
 #[derive(Debug, Clone)]
 pub struct FeatureMerger {
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    global_params: Option<HashMap<String, Value>>,
     params: CompiledParam,
     requestor_buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
     supplier_buffer: HashMap<String, (bool, Vec<Feature>)>,  // (complete_grouped, features)
