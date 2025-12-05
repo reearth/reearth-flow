@@ -73,4 +73,6 @@ target/wasm32-unknown-unknown/release/solar_radiation_calculator.wasm
 
 # Test workflow: 
 cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/workflow/solar-radiation/time-to-time-value/solar-energy-workflow.yml
+
+cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/workflow/requirement/plateau4/b005-3/workflow.yml
 ```
