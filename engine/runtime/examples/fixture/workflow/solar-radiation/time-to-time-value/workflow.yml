@@ -66,8 +66,19 @@ graphs:
               method: convert 
               value: |
                 let hour_str = env.get("__value")["出_H"];
-                let minute_str = env.get("__value")["出_M"];
-                minute_str
+                let hour = str::string_to_int(hour_str);
+                let min_str = env.get("__value")["出_M"];
+                let min = str::string_to_int(min_str);
+                hour * 3600 + min * 60
+            - attribute: 入り
+              method: convert 
+              value: |
+                let hour_str = env.get("__value")["入り_H"];
+                let hour = str::string_to_int(hour_str);
+                let min_str = env.get("__value")["入り_M"];
+                let min = str::string_to_int(min_str);
+                hour * 3600 + min * 60
+            
          
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
