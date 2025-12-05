@@ -745,6 +745,7 @@
   "Trigger Details": "トリガー詳細",
   "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables._other": "デプロイメントには {{count}} 個の変数が含まれています。ワークフロー変数として設定する方法を構成します。",
   "Reset to workflow default": "ワークフローデフォルトにリセット",
+  "Hex Code": "16進コード",
   "Confirm Variables": "変数を確認",
   "Delete Trigger": "トリガーを削除",
   "New Trigger": "新規トリガー",

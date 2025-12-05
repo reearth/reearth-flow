@@ -749,6 +749,7 @@
   "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables._many": "El despliegue contiene {{count}} variables. Configura cómo deben establecerse como variables de flujo de trabajo.",
   "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables._other": "El despliegue contiene {{count}} variables. Configura cómo deben establecerse como variables de flujo de trabajo.",
   "Reset to workflow default": "Restablecer al valor predeterminado del flujo de trabajo",
+  "Hex Code": "Código hexadecimal",
   "Confirm Variables": "Confirmar variables",
   "Delete Trigger": "Eliminar disparador",
   "New Trigger": "Nuevo disparador",

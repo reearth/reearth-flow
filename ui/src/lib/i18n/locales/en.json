@@ -747,6 +747,7 @@
   "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables._one": "",
   "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables._other": "",
   "Reset to workflow default": "",
+  "Hex Code": "",
   "Confirm Variables": "",
   "Delete Trigger": "",
   "New Trigger": "",
