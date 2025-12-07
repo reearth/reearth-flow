@@ -84,11 +84,7 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))?;
         w.write(bytes)
             .await
-            .map_err(|err| format_object_store_error(err, p))?;
-        w.close()
-            .await
-            .map_err(|err| format_object_store_error(err, p))?;
-        Ok(())
+            .map_err(|err| format_object_store_error(err, p))
     }
 
     pub async fn get(&self, location: &Path) -> Result<GetResult> {
@@ -117,7 +113,7 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))?;
         Ok(GetResult {
             payload: GetResultPayload::Stream(Box::pin(OpendalReader { inner: r })),
-            range: (0..meta.size),
+            range: 0..meta.size,
             meta,
             attributes: Default::default(),
         })
