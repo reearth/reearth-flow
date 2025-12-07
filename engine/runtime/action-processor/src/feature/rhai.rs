@@ -116,7 +116,7 @@ impl Processor for RhaiCaller {
         if let Err(e) = is_target {
             return Err(FeatureProcessorError::RhaiCaller(format!("{e:?}")).into());
         }
-        if !is_target.unwrap() {
+        if !is_target? {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         }
@@ -133,7 +133,7 @@ impl Processor for RhaiCaller {
                     return Ok(());
                 }
             } else if new_value.is::<rhai::Array>() {
-                let array_values = new_value.clone().into_array().unwrap();
+                let array_values = new_value.clone().into_array()?;
                 for new_value in array_values {
                     if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
                         let mut feature = feature.clone();

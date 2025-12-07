@@ -300,7 +300,7 @@ pub fn write_gltf_glb<W: Write>(
 
         // Now the glb data is in `tmp_buffer`. We compress it.
         let mut transcoder =
-            draco_oxide::io::gltf::transcoder::DracoTranscoder::create(None).unwrap();
+            draco_oxide::io::gltf::transcoder::DracoTranscoder::create(None)?;
         transcoder.transcode_buffer(&tmp_buffer, &mut writer)?;
         writer.flush()?;
     } else {

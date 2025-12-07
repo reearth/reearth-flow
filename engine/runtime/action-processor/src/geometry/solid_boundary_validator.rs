@@ -219,7 +219,7 @@ impl Processor for SolidBoundaryValidator {
         let mut feature: reearth_flow_types::Feature = feature.clone();
         feature.attributes.insert(
             Attribute::new("solid_boundary_issues"),
-            AttributeValue::from(serde_json::to_value(&result).unwrap()),
+            AttributeValue::from(serde_json::to_value(&result)?),
         );
         // Send to failed port if there are validation issues
         fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));

@@ -88,8 +88,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
         };
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(threads_num)
-            .build()
-            .unwrap();
+            .build()?;
         let process = FeatureCityGmlReader {
             global_params: with,
             params: compiled_params,
