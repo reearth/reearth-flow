@@ -33,3 +33,4 @@ tokio.workspace = true
 tracing.workspace = true
 wasmer.workspace = true
 wasmer-wasix.workspace = true
+# wasmtime = "39"
