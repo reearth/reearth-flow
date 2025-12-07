@@ -109,56 +109,57 @@ impl WasmRuntimeExecutorFactory {
                     )
                 })?;
 
-                let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
-                    || source.starts_with("https://")
-                {
-                    let source_uri = Uri::from_str(&source).map_err(|e| {
-                        WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}"))
-                    })?;
+                let (local_source_path, _temp_py_file_holder) =
+                    if source.starts_with("http://") || source.starts_with("https://") {
+                        let source_uri = Uri::from_str(&source).map_err(|e| {
+                            WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}"))
+                        })?;
 
-                    let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
-                        WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve URL: {e}"))
-                    })?;
-
-                    let content = storage
-                        .get(source_uri.path().as_path())
-                        .await
-                        .map_err(|e| {
+                        let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
                             WasmProcessorError::RuntimeExecutorFactory(format!(
-                                "Failed to download from URL: {e}"
-                            ))
-                        })?
-                        .bytes()
-                        .await
-                        .map_err(|e| {
-                            WasmProcessorError::RuntimeExecutorFactory(format!(
-                                "Failed to read content: {e}"
+                                "Failed to resolve URL: {e}"
                             ))
                         })?;
 
-                    let mut temp_py_file = NamedTempFile::new().map_err(|e| {
-                        WasmProcessorError::RuntimeExecutorFactory(format!(
-                            "Failed to create temporary Python file: {e}"
-                        ))
-                    })?;
+                        let content = storage
+                            .get(source_uri.path().as_path())
+                            .await
+                            .map_err(|e| {
+                                WasmProcessorError::RuntimeExecutorFactory(format!(
+                                    "Failed to download from URL: {e}"
+                                ))
+                            })?
+                            .bytes()
+                            .await
+                            .map_err(|e| {
+                                WasmProcessorError::RuntimeExecutorFactory(format!(
+                                    "Failed to read content: {e}"
+                                ))
+                            })?;
 
-                    temp_py_file.write_all(&content).map_err(|e| {
-                        WasmProcessorError::RuntimeExecutorFactory(format!(
-                            "Failed to write Python file: {e}"
-                        ))
-                    })?;
+                        let mut temp_py_file = NamedTempFile::new().map_err(|e| {
+                            WasmProcessorError::RuntimeExecutorFactory(format!(
+                                "Failed to create temporary Python file: {e}"
+                            ))
+                        })?;
 
-                    temp_py_file.flush().map_err(|e| {
-                        WasmProcessorError::RuntimeExecutorFactory(format!(
-                            "Failed to flush Python file: {e}"
-                        ))
-                    })?;
+                        temp_py_file.write_all(&content).map_err(|e| {
+                            WasmProcessorError::RuntimeExecutorFactory(format!(
+                                "Failed to write Python file: {e}"
+                            ))
+                        })?;
 
-                    let temp_path = temp_py_file.path().to_string_lossy().to_string();
-                    (temp_path, Some(temp_py_file))
-                } else {
-                    (source, None)
-                };
+                        temp_py_file.flush().map_err(|e| {
+                            WasmProcessorError::RuntimeExecutorFactory(format!(
+                                "Failed to flush Python file: {e}"
+                            ))
+                        })?;
+
+                        let temp_path = temp_py_file.path().to_string_lossy().to_string();
+                        (temp_path, Some(temp_py_file))
+                    } else {
+                        (source, None)
+                    };
 
                 let py2wasm_output = std::process::Command::new("py2wasm")
                     .args([&local_source_path, "-o", temp_wasm_path_str])
@@ -185,15 +186,19 @@ impl WasmRuntimeExecutorFactory {
                         ))
                     })?;
                 binary
-            },
+            }
             ProgrammingLanguage::PrecompiledWasm => {
                 // For precompiled WASM, load the binary directly from the source URI
                 let source_uri = Uri::from_str(&source).map_err(|e| {
-                    WasmProcessorError::RuntimeExecutorFactory(format!("Invalid WASM file URI: {e}"))
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Invalid WASM file URI: {e}"
+                    ))
                 })?;
 
                 let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
-                    WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve WASM file URI: {e}"))
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Failed to resolve WASM file URI: {e}"
+                    ))
                 })?;
 
                 let wasm_bytes = storage
@@ -315,21 +320,69 @@ impl WasmRuntimeExecutor {
         })?;
 
         let program_name = "WasmRuntimeExecutor";
+
+        // Create pipes for stdin, stdout, and stderr
+        let (mut stdin_tx, stdin_rx) = Pipe::channel();
         let (stdout_tx, mut stdout_rx) = Pipe::channel();
-        WasiEnv::builder(program_name)
-            .args([input])
+        let (stderr_tx, mut stderr_rx) = Pipe::channel();
+
+        // Write the input to stdin so the WASM module can read it
+        stdin_tx.write_all(input.as_bytes()).map_err(|e| {
+            WasmProcessorError::RuntimeExecutor(format!("Failed to write input to stdin: {e}"))
+        })?;
+        drop(stdin_tx); // Close the write end so the WASM module knows input is complete
+
+        // Instantiate the module with the WASI environment in one step
+        let (instance, _wasi_env) = WasiEnv::builder(program_name)
+            .args([".", input]) // Pass input both as stdin and as an argument
+            .stdin(Box::new(stdin_rx))
             .stdout(Box::new(stdout_tx))
-            .run_with_store(module, &mut store)
+            .stderr(Box::new(stderr_tx))
+            .instantiate(module, &mut store)
             .map_err(|e| {
-                WasmProcessorError::RuntimeExecutor(format!("Failed to execute module: {e}"))
+                WasmProcessorError::RuntimeExecutor(format!(
+                    "Failed to instantiate module with WASI: {e}"
+                ))
             })?;
 
+        // Look for a start function or main function to execute
+        let start_func = instance
+            .exports
+            .get_function("_start")
+            .or_else(|_| instance.exports.get_function("main"))
+            .or_else(|_| instance.exports.get_function("_initialize"))
+            .map_err(|_| {
+                WasmProcessorError::RuntimeExecutor(
+                    "No start function found in WASM module".to_string(),
+                )
+            })?;
+
+        // Execute the start function
+        start_func.call(&mut store, &[]).map_err(|e| {
+            WasmProcessorError::RuntimeExecutor(format!("Failed to execute WASM module: {e}"))
+        })?;
+
+        // Capture stdout
         let mut output = String::new();
         stdout_rx.read_to_string(&mut output).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!(
                 "Failed to read stdout from Wasm module: {e}"
             ))
         })?;
+
+        // Check stderr for any error messages
+        let mut stderr_output = String::new();
+        stderr_rx.read_to_string(&mut stderr_output).map_err(|e| {
+            WasmProcessorError::RuntimeExecutor(format!(
+                "Failed to read stderr from Wasm module: {e}"
+            ))
+        })?;
+
+        if !stderr_output.trim().is_empty() {
+            // Log the stderr as a warning (or handle as appropriate for your use case)
+            tracing::warn!("WASM module stderr: {}", stderr_output);
+        }
+
         Ok(output)
     }
 
