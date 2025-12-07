@@ -16,7 +16,7 @@ use std::{collections::HashMap, sync::Arc};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use tempfile::NamedTempFile;
-use wasmer::{Engine, Module, Store};
+use wasmer::{Module, Store};
 use wasmer_wasix::{Pipe, WasiEnv};
 
 #[derive(Debug, Clone, Default)]
@@ -75,10 +75,21 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
         let wasm_binary = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(self.compile_to_wasm(&ctx, &params))
         })?;
+
+        // 3. Create a temporary Store and compile the Module ONCE here
+        let store = Store::default();
+        let module = Module::new(&store, &wasm_binary).map_err(|e| {
+            WasmProcessorError::RuntimeExecutorFactory(format!(
+                "Failed to compile WASM module: {e}"
+            ))
+        })?;
+
+        // 4. Store the compiled module in the executor
         let process = WasmRuntimeExecutor {
             processor_type: params.processor_type,
-            wasm_binary,
+            module,
         };
+
         Ok(Box::new(process))
     }
 }
@@ -228,7 +239,7 @@ impl WasmRuntimeExecutorFactory {
 #[derive(Debug, Clone)]
 pub(crate) struct WasmRuntimeExecutor {
     processor_type: ProcessorType,
-    wasm_binary: Vec<u8>,
+    module: Module,
 }
 
 /// # WasmRuntimeExecutor Parameters
@@ -314,27 +325,13 @@ impl WasmRuntimeExecutor {
     }
 
     fn execute_wasm_module(&self, input: &str) -> super::errors::Result<String> {
-        tracing::info!("=>> execute_wasm_module: entered");
-
-        // 1) Engine + Store
-        let engine = Engine::default(); // or Engine::default()
-        let mut store = Store::new(engine);
-
-        tracing::info!(
-            "=>> execute_wasm_module: after Store::new, wasm_binary size = {}",
-            self.wasm_binary.len()
-        );
-        tracing::info!(
-            "=>> execute_wasm_module: first bytes = {:x?}",
-            &self.wasm_binary.get(0..8)
-        );
-
-        let module = Module::new(store.engine(), &self.wasm_binary).map_err(|e| {
-            WasmProcessorError::RuntimeExecutor(format!("Failed to compile module: {e}"))
-        })?;
-        tracing::info!("=>> execute_wasm_module: after Module::new");
-
         let program_name = "WasmRuntimeExecutor";
+
+        // New store from same engine as the compiled module
+        let mut store = Store::default();
+
+        tracing::info!("=> execute_wasm_module: entered");
+        tracing::info!("=> execute_wasm_module: input length = {}", input.len());
 
         // stdin: host writer -> guest reader
         let (mut stdin_tx, stdin_rx) = Pipe::channel();
@@ -359,7 +356,7 @@ impl WasmRuntimeExecutor {
                 .stdin(Box::new(stdin_rx))
                 .stdout(Box::new(stdout_tx))
                 .stderr(Box::new(stderr_tx))
-                .instantiate(module, &mut store)
+                .instantiate(self.module.clone(), &mut store)
                 .map_err(|e| {
                     WasmProcessorError::RuntimeExecutor(format!(
                         "Failed to instantiate module with WASI: {e}"
