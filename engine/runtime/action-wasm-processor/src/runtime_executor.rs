@@ -16,7 +16,7 @@ use std::{collections::HashMap, sync::Arc};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use tempfile::NamedTempFile;
-use wasmer::{Instance, Module, Store};
+use wasmer::{Module, Store};
 use wasmer_wasix::{Pipe, WasiEnv};
 
 #[derive(Debug, Clone, Default)]

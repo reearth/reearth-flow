@@ -1,0 +1,3 @@
+# Configuration for building WASM with correct target by default
+[build]
+target = "wasm32-wasip1"
