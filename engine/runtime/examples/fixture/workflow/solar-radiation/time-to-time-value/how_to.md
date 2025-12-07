@@ -261,3 +261,49 @@ cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/wor
 - If the WASM file is not generated, make sure the `wasm32-wasip1` target is installed
 - If the JSON format is incorrect, verify the input/output structure matches expectations
 - If the module hangs, ensure all input is properly consumed and output is produced before the main function returns
+
+## Debugging WASM Execution Issues
+
+### Common Hanging Issues and Solutions
+
+1. **WASM Module Execution Hanging**:
+   - **Symptom**: The workflow gets stuck at "WasmRuntimeExecutor process start..." and doesn't proceed
+   - **Cause**: The WASM module might contain infinite loops or blocking operations not supported in WASI
+   - **Solution**:
+     - Review your WASM code for any infinite loops
+     - Avoid using blocking I/O operations that aren't WASI-compatible
+     - Add minimal processing to test if the basic functionality works
+     - Add temporary println! statements in the WASM code to identify where it hangs
+
+2. **Debugging the Runtime Executor**:
+   - The `execute_wasm_module` function in `runtime_executor.rs` creates a WASI environment with stdin, stdout, and stderr pipes
+   - If the WASM module doesn't properly terminate, it can cause the workflow to hang
+   - Check that the WASM module properly consumes its input and exits cleanly
+
+3. **Testing WASM Module Independently**:
+   ```bash
+   # Create a simple test input
+   echo '{"altitude": 30.0, "azimuth": 45.0}' > test_input.json
+
+   # Test the WASM module directly (you might need to install wasmtime)
+   cat test_input.json | wasmtime --invoke _start target/wasm32-wasip1/release/solar_radiation_calculator.wasm
+   ```
+
+4. **Debug Version with Minimal Logic**:
+   If experiencing hanging issues, temporarily simplify your WASM module to return immediate results:
+   ```rust
+   fn main() {
+       let output = r#"{"status": "success", "日射量[kWh/m2]": 1.0, "attributes": {}}"#;
+       println!("{}", output);
+   }
+   ```
+
+5. **Check Resource Usage**:
+   - Large WASM modules or modules that use excessive memory can cause hangs
+   - Monitor system resources while running the workflow
+   - Consider optimizing the WASM module for size and memory usage
+
+6. **Verify WASI Environment Setup**:
+   - Ensure the WASI environment is properly configured with all necessary capabilities
+   - Check if file system access or other WASI features are required and properly configured
+   - The runtime executor should handle stdin/stdout pipes correctly
