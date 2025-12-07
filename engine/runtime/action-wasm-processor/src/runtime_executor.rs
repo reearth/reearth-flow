@@ -16,7 +16,7 @@ use std::{collections::HashMap, sync::Arc};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use tempfile::NamedTempFile;
-use wasmer::{Module, Store};
+use wasmer::{Engine, Module, Store};
 use wasmer_wasix::{Pipe, WasiEnv};
 
 #[derive(Debug, Clone, Default)]
@@ -314,69 +314,87 @@ impl WasmRuntimeExecutor {
     }
 
     fn execute_wasm_module(&self, input: &str) -> super::errors::Result<String> {
-        let mut store = Store::default();
-        let module = Module::new(&store, &self.wasm_binary).map_err(|e| {
+        tracing::info!("=>> execute_wasm_module: entered");
+
+        // 1) Engine + Store
+        let engine = Engine::default(); // or Engine::default()
+        let mut store = Store::new(engine);
+
+        tracing::info!(
+            "=>> execute_wasm_module: after Store::new, wasm_binary size = {}",
+            self.wasm_binary.len()
+        );
+        tracing::info!(
+            "=>> execute_wasm_module: first bytes = {:x?}",
+            &self.wasm_binary.get(0..8)
+        );
+
+        let module = Module::new(store.engine(), &self.wasm_binary).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!("Failed to compile module: {e}"))
         })?;
+        tracing::info!("=>> execute_wasm_module: after Module::new");
 
         let program_name = "WasmRuntimeExecutor";
 
-        // --------- stdin: host writer -> guest reader ----------
+        // stdin: host writer -> guest reader
         let (mut stdin_tx, stdin_rx) = Pipe::channel();
 
-        // --------- stdout: guest writer -> host reader ----------
+        // stdout: guest writer -> host reader
         let (stdout_tx, mut stdout_rx) = Pipe::channel();
 
-        // --------- stderr: guest writer -> host reader ----------
+        // stderr: guest writer -> host reader
         let (stderr_tx, mut stderr_rx) = Pipe::channel();
 
         // Write the input to stdin and then close the write end
+
         stdin_tx.write_all(input.as_bytes()).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!("Failed to write input to stdin: {e}"))
         })?;
-        drop(stdin_tx); // VERY IMPORTANT: signals EOF to the wasm side
 
-        // Build WASI env and instantiate module
-        let (instance, _wasi_env) = WasiEnv::builder(program_name)
-            // If you ever want args: .args([".", input])
-            .stdin(Box::new(stdin_rx))
-            .stdout(Box::new(stdout_tx))
-            .stderr(Box::new(stderr_tx))
-            .instantiate(module, &mut store)
-            .map_err(|e| {
-                WasmProcessorError::RuntimeExecutor(format!(
-                    "Failed to instantiate module with WASI: {e}"
-                ))
+        drop(stdin_tx); // IMPORTANT: signal EOF to guest
+
+        {
+            // Inner scope so wasi_env (and its FDs) are dropped before reading from pipes
+            let (instance, wasi_env) = WasiEnv::builder(program_name)
+                .stdin(Box::new(stdin_rx))
+                .stdout(Box::new(stdout_tx))
+                .stderr(Box::new(stderr_tx))
+                .instantiate(module, &mut store)
+                .map_err(|e| {
+                    WasmProcessorError::RuntimeExecutor(format!(
+                        "Failed to instantiate module with WASI: {e}"
+                    ))
+                })?;
+
+            let start_func = instance
+                .exports
+                .get_function("_start")
+                .or_else(|_| instance.exports.get_function("main"))
+                .or_else(|_| instance.exports.get_function("_initialize"))
+                .map_err(|_| {
+                    WasmProcessorError::RuntimeExecutor(
+                        "No start function found in WASM module".to_string(),
+                    )
+                })?;
+
+            start_func.call(&mut store, &[]).map_err(|e| {
+                WasmProcessorError::RuntimeExecutor(format!("Failed to execute WASM module: {e}"))
             })?;
 
-        // Find a start/main function to execute
-        let start_func = instance
-            .exports
-            .get_function("_start")
-            .or_else(|_| instance.exports.get_function("main"))
-            .or_else(|_| instance.exports.get_function("_initialize"))
-            .map_err(|_| {
-                WasmProcessorError::RuntimeExecutor(
-                    "No start function found in WASM module".to_string(),
-                )
-            })?;
+            // When this scope ends, wasi_env and the pipe writers it holds are dropped.
+            drop(wasi_env); // optional but explicit
+        }
 
-        // Execute the WASI program (this runs your `main`)
-        start_func.call(&mut store, &[]).map_err(|e| {
-            WasmProcessorError::RuntimeExecutor(format!("Failed to execute WASM module: {e}"))
-        })?;
+        // Now the guest side of stdout/stderr is closed, so reads will see EOF instead of hanging.
 
-        // Now the guest has finished; its stdout/stderr writers are closed → EOF
-
-        // Capture stdout
         let mut output = String::new();
+
         stdout_rx.read_to_string(&mut output).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!(
                 "Failed to read stdout from WASM module: {e}"
             ))
         })?;
 
-        // Capture stderr (if any)
         let mut stderr_output = String::new();
         stderr_rx.read_to_string(&mut stderr_output).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!(
