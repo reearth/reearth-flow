@@ -127,7 +127,7 @@ impl<T: CoordFloat + From<Z>, Z: CoordFloat + Mul<T, Output = Z>> Line<T, Z> {
         }
         if a <= epsilon {
             let t = clamp(e / c, T::zero(), T::one());
-            return (self.start, (other.start + v * t));
+            return (self.start, other.start + v * t);
         }
         if c <= epsilon {
             let s = clamp(-d / a, T::zero(), T::one());
@@ -476,7 +476,7 @@ mod tests {
         assert!((line1.distance(&line2) - 1_f64).abs() < 1e-6);
 
         let line3 = Line3D::new_((2.0, 1.0, 0.0), (2.0, 2.0, 0.0));
-        assert!((line1.distance(&line3) - (2_f64).sqrt()).abs() < 1e-6);
+        assert!((line1.distance(&line3) - 2_f64.sqrt()).abs() < 1e-6);
 
         let line4 = Line3D::new_((2.0, 0.0, 0.0), (3.0, 0.0, 0.0));
         assert!((line1.distance(&line4) - 1_f64).abs() < 1e-6);

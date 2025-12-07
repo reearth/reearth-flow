@@ -196,7 +196,7 @@ mod tests {
         let c = Point3D::new(0.0, 0.0, 1.0);
 
         let normal = compute_normal_3d(a, b, c, true).unwrap();
-        let expected_norm = (3.0_f64).sqrt().recip(); // 1/√3
+        let expected_norm = 3.0_f64.sqrt().recip(); // 1/√3
         assert_relative_eq!(normal.x(), expected_norm, epsilon = 1e-10);
         assert_relative_eq!(normal.y(), expected_norm, epsilon = 1e-10);
         assert_relative_eq!(normal.z(), expected_norm, epsilon = 1e-10);
