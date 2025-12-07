@@ -25,7 +25,7 @@ graphs:
         with:
           processorType: "Attribute"
           programmingLanguage: "PrecompiledWasm"
-          source: "file:///home/zw/code/rust_programming/reearth-flow/engine/target/wasm32-unknown-unknown/release/solar_radiation_calculator.wasm"
+          source: "file:///home/zw/code/rust_programming/reearth-flow/engine/target/wasm32-wasip1/debug/solar_radiation_calculator.wasm"
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
