@@ -145,6 +145,28 @@ impl CityObjectType {
             Self::GenericCityObject => "gen",
         }
     }
+
+    pub fn id_prefix(&self) -> &'static str {
+        match self {
+            Self::Building => "bldg",
+            Self::BuildingPart => "bldg_part",
+            Self::Road => "road",
+            Self::Railway => "rail",
+            Self::Track => "track",
+            Self::Square => "square",
+            Self::Bridge => "brid",
+            Self::BridgePart => "brid_part",
+            Self::Tunnel => "tun",
+            Self::TunnelPart => "tun_part",
+            Self::WaterBody => "wtr",
+            Self::LandUse => "luse",
+            Self::SolitaryVegetationObject => "veg_sol",
+            Self::PlantCover => "veg_plant",
+            Self::CityFurniture => "frn",
+            Self::ReliefFeature => "dem",
+            Self::GenericCityObject => "gen",
+        }
+    }
 }
 
 pub fn convert_citygml_geometry(
