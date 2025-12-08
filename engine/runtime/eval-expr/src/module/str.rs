@@ -27,6 +27,10 @@ pub(crate) mod str_module {
         s.parse::<i64>().unwrap()
     }
 
+    pub fn string_to_f64(s: String) -> f64 {
+        s.parse::<f64>().unwrap()
+    }
+
     pub fn sub_str_from_index_inclusive(s: String, start: i64, end: i64) -> String {
         if start < 0 || end < 0 {
             return String::new();

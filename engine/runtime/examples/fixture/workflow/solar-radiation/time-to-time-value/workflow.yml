@@ -113,8 +113,9 @@ graphs:
                 let altitude_value = env.get("__value")["高度[°]"];
                 let input_time_days = entry_time_value / 86400.0;
                 let output_time_days = exit_time_value / 86400.0;
-                let altitude_radians = math::to_radians(altitude_value);
-                altitude_radians
+                let altitude_radians = math::to_radians(str::string_to_f64(altitude_value));
+                (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
+          
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
