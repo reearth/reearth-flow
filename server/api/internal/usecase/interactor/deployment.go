@@ -25,7 +25,6 @@ type Deployment struct {
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
 	triggerRepo       repo.Trigger
-	paramRepo         repo.Parameter
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -41,7 +40,6 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		jobRepo:           r.Job,
 		workerConfigRepo:  r.WorkerConfig,
 		triggerRepo:       r.Trigger,
-		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -333,25 +331,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	var projectID id.ProjectID
-	var projectParamsMap map[string]string
-	if d.Project() != nil {
-		projectID = *d.Project()
-		pls, err := i.paramRepo.FindByProject(ctx, projectID)
-		if err != nil {
-			return nil, err
-		}
-		projectParamsMap = projectParametersToMap(pls)
-	}
-
-	finalVars := resolveVariables(
-		ModeExecuteDeployment,
-		projectParamsMap,
-		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
-		nil,
-		nil, // TODO: Add requestVars here if deployment.variables are supported/needed.
-	)
-
 	debug := false
 
 	j, err := job.New().
@@ -361,7 +340,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(finalVars).
 		Build()
 	if err != nil {
 		return nil, err
@@ -379,11 +357,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	if i.batch == nil {
-		return nil, fmt.Errorf("batch gateway is not configured")
+	var projectID id.ProjectID
+	if d.Project() != nil {
+		projectID = *d.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, d.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
