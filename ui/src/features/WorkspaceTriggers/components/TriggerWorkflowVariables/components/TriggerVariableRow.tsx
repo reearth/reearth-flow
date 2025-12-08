@@ -56,7 +56,7 @@ const TriggerVariableRow: React.FC<Props> = ({
         <div className="flex items-center gap-2">
           <Input
             id={`default-${index}`}
-            className="h-6 w-6 rounded border p-0"
+            className="h-6 w-6 rounded border p-0 hover:cursor-pointer"
             type={"color"}
             value={variable.defaultValue}
             onChange={(e) => {
@@ -78,10 +78,7 @@ const TriggerVariableRow: React.FC<Props> = ({
         />
       );
     case "text":
-      if (
-        typeof variable.defaultValue === "string" &&
-        variable.defaultValue.length > 50
-      ) {
+      if (variable.defaultValue.length > 50) {
         return (
           <TextArea
             id={`default-${index}`}
