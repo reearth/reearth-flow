@@ -1,13 +1,5 @@
 # How To
 
-## Run workflow 
-
-Within engine project root folder:
-
-```sh 
-cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/workflow/solar-radiation/time-to-time-value/workflow.yml
-```
-
 ## The input attributes 
 
 - 年月日
@@ -59,6 +51,20 @@ cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/wor
                 let altitude_radians = math::to_radians(altitude_value);
                 (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
 ```
+
+
+## Run workflow 
+
+Within engine project root folder:
+
+```sh 
+# Set FLOW_RUNTIME_WORKING_DIRECTORY will make running workflow generate intermediate data
+# export FLOW_RUNTIME_WORKING_DIRECTORY="/home/zw/code/rust_programming/reearth-flow/engine/target/"
+cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/workflow/solar-radiation/time-to-time-value/workflow.yml
+```
+
+- After running,  check the `feature-store` folder, for example `target/projects/engine/jobs/cd72d791-843d-4a4d-922d-fa21ef71d875/feature-store`
+- Check the intermediate data you need and use it for testing. 
 
 
 
