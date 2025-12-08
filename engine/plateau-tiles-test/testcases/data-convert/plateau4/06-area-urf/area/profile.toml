@@ -1,0 +1,18 @@
+citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[tests.mvt_lines]
+threshold = 0.01
+
+# both should not exist (no urf in area data)
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/area/" = ["523856_area_6697_op.gml"]
