@@ -1,34 +1,34 @@
-import { ArrowUDownLeftIcon } from "@phosphor-icons/react";
-import { useState } from "react";
+import {
+  ArrowUDownLeftIcon,
+  ChalkboardTeacherIcon,
+} from "@phosphor-icons/react";
+import { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 
 import {
-  Button,
   Dialog,
   DialogContent,
-  DialogContentWrapper,
-  DialogDescription,
+  DialogContentSection,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
-  TextArea,
   IconButton,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  Switch,
 } from "@flow/components";
+import { Button } from "@flow/components/buttons/BaseButton";
 import {
   getDefaultValue,
   inferProjectVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
-import SimpleArrayInput from "@flow/features/WorkspaceProjects/components/WorkflowImport/SimpleArrayInput";
 import { useT } from "@flow/lib/i18n";
 import { VarType } from "@flow/types";
-import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
+import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-type VariableMapping = {
+import { TriggerVariableRow, TriggerVariablesTable } from "./components";
+
+export type VariableMapping = {
   name: string;
   type: VarType;
   defaultValue: any;
@@ -45,7 +45,9 @@ type TriggerProjectVariablesMappingDialogProps = {
   onCancel: () => void;
 };
 
-export default function TriggerProjectVariablesMappingDialog({
+const TriggerProjectVariablesMappingDialog: React.FC<
+  TriggerProjectVariablesMappingDialogProps
+> = ({
   isOpen,
   onOpenChange,
   variables,
@@ -53,7 +55,7 @@ export default function TriggerProjectVariablesMappingDialog({
   deploymentDefaults,
   onConfirm,
   onCancel,
-}: TriggerProjectVariablesMappingDialogProps) {
+}) => {
   const t = useT();
 
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
@@ -73,15 +75,18 @@ export default function TriggerProjectVariablesMappingDialog({
       }),
   );
 
-  const handleDefaultValueChange = (index: number, newValue: any) => {
-    setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index ? { ...mapping, defaultValue: newValue } : mapping,
-      ),
-    );
-  };
+  const handleDefaultValueChange = useCallback(
+    (index: number, newValue: any) => {
+      setVariableMappings((prev) =>
+        prev.map((mapping, i) =>
+          i === index ? { ...mapping, defaultValue: newValue } : mapping,
+        ),
+      );
+    },
+    [],
+  );
 
-  const handleResetToDefault = (index: number) => {
+  const handleResetToDefault = useCallback((index: number) => {
     setVariableMappings((prev) =>
       prev.map((mapping, i) => {
         if (i === index && mapping.deploymentDefault !== undefined) {
@@ -90,15 +95,15 @@ export default function TriggerProjectVariablesMappingDialog({
         return mapping;
       }),
     );
-  };
+  }, []);
 
-  const isAtDefault = (mapping: VariableMapping): boolean => {
+  const isAtDefault = useCallback((mapping: VariableMapping): boolean => {
     if (mapping.deploymentDefault === undefined) return true;
     return (
       JSON.stringify(mapping.defaultValue) ===
       JSON.stringify(mapping.deploymentDefault)
     );
-  };
+  }, []);
 
   const handleConfirm = () => {
     const projectVariables = variableMappings.map((mapping) => ({
@@ -115,132 +120,97 @@ export default function TriggerProjectVariablesMappingDialog({
     onOpenChange(false);
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent size="xl">
-        <DialogHeader>
-          <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
-          <DialogDescription>
-            {t(
-              "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables.",
-              {
-                workflowName,
-                count: variables.length,
-              },
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogContentWrapper className="h-[400px] overflow-auto">
-          {variableMappings.map((mapping, index) => (
-            <div key={mapping.name} className="space-y-4 rounded-lg border p-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold">
-                    {mapping.name}
-                  </Label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex flex-col justify-center space-y-2">
-                  <Label htmlFor={`type-${index}`}>{t("Variable Type")}</Label>
-                  <span className="flex h-8 w-fit items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-sm">
-                    {mapping.type}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={`default-${index}`}>
-                      <span>{t("Default Value")}</span>
-                    </Label>
-                    {mapping.deploymentDefault !== undefined && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <IconButton
-                            size="sm"
-                            variant="ghost"
-                            icon={<ArrowUDownLeftIcon />}
-                            onClick={() => handleResetToDefault(index)}
-                            disabled={isAtDefault(mapping)}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {t("Reset to workflow default")}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                  {mapping.type === "array" ? (
-                    <SimpleArrayInput
-                      value={
-                        Array.isArray(mapping.defaultValue)
-                          ? mapping.defaultValue
-                          : []
-                      }
-                      onChange={(newValue) =>
-                        handleDefaultValueChange(index, newValue)
-                      }
+  const columns: ColumnDef<VariableMapping>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: t("Name"),
+      },
+      {
+        accessorKey: "type",
+        header: t("Type"),
+      },
+      {
+        accessorKey: "defaultValue",
+        header: t("Default Value"),
+        cell: ({ row }) => {
+          return (
+            <TriggerVariableRow
+              variable={row.original}
+              index={row.index}
+              onDefaultValueChange={handleDefaultValueChange}
+            />
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: t("Actions"),
+        cell: ({ row }) => {
+          return (
+            <div className="flex items-center gap-1">
+              {row.original.deploymentDefault !== undefined && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      icon={<ArrowUDownLeftIcon />}
+                      onClick={() => handleResetToDefault(row.index)}
+                      disabled={isAtDefault(row.original)}
                     />
-                  ) : mapping.type === "text" &&
-                    typeof mapping.defaultValue === "string" &&
-                    mapping.defaultValue.length > 50 ? (
-                    <TextArea
-                      id={`default-${index}`}
-                      value={mapping.defaultValue}
-                      onChange={(e) =>
-                        handleDefaultValueChange(index, e.target.value)
-                      }
-                      className="min-h-[60px]"
-                    />
-                  ) : mapping.type === "color" ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id={`default-${index}`}
-                        className="w-[20%]"
-                        type={"color"}
-                        value={mapping.defaultValue}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          handleDefaultValueChange(index, value);
-                        }}
-                      />
-                      <span className="font-mono text-sm">
-                        {t("Hex Code")}: {mapping.defaultValue}
-                      </span>
-                    </div>
-                  ) : mapping.type === "yes_no" ? (
-                    <Switch
-                      checked={Boolean(mapping.defaultValue)}
-                      onCheckedChange={(checked) =>
-                        handleDefaultValueChange(index, checked)
-                      }
-                    />
-                  ) : (
-                    <Input
-                      id={`default-${index}`}
-                      type={mapping.type === "number" ? "number" : "text"}
-                      value={mapping.defaultValue}
-                      onChange={(e) => {
-                        const value =
-                          mapping.type === "number"
-                            ? parseFloat(e.target.value) || 0
-                            : e.target.value;
-                        handleDefaultValueChange(index, value);
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("Reset to workflow default")}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
-          ))}
-        </DialogContentWrapper>
-        <DialogFooter className="mt-2">
-          <Button variant="outline" onClick={handleCancel}>
-            {t("Cancel")}
-          </Button>
-          <Button onClick={handleConfirm}>{t("Confirm Variables")}</Button>
-        </DialogFooter>
+          );
+        },
+        size: 100,
+      },
+    ],
+    [handleDefaultValueChange, handleResetToDefault, isAtDefault, t],
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleCancel}>
+      <DialogContent
+        className="h-[50vh] focus-visible:ring-0 focus-visible:outline-none"
+        size="2xl"
+        position="off-center">
+        <div className="flex h-full flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ChalkboardTeacherIcon />
+                  {`${workflowName} ${t("Workflow Variables")}`}
+                </div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex h-full min-h-0">
+            <DialogContentSection className="flex min-h-0 flex-3 flex-col">
+              <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
+                <TriggerVariablesTable
+                  projectVariables={variableMappings}
+                  columns={columns}
+                />
+              </DialogContentSection>
+            </DialogContentSection>
+          </div>
+          <DialogFooter className="flex justify-end gap-2 p-4">
+            <Button variant="outline" onClick={handleCancel}>
+              {t("Cancel")}
+            </Button>
+            <Button onClick={handleConfirm}>{t("Submit")}</Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default TriggerProjectVariablesMappingDialog;

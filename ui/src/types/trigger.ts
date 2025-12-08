@@ -1,5 +1,6 @@
 import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
+import { VarType } from "./projectVariables";
 
 export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
 export enum TriggerOrderBy {
@@ -16,22 +17,11 @@ export enum TimeIntervalEnum {
   EVERY_WEEK = "EVERY_WEEK",
 }
 
-enum ParameterType {
-  Array = "ARRAY",
-  Choice = "CHOICE",
-  Color = "COLOR",
-  Datetime = "DATETIME",
-  FileFolder = "FILE_FOLDER",
-  Number = "NUMBER",
-  Text = "TEXT",
-  YesNo = "YES_NO",
-}
-
 export type TimeInterval = keyof typeof TimeIntervalEnum;
 
 export type Variable = {
   key: string;
-  type: ParameterType;
+  type: VarType;
   value: any;
 };
 

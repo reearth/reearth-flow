@@ -30,7 +30,9 @@ const recordToVariables = (
   if (!record || Object.keys(record).length === 0) return undefined;
   return Object.entries(record).map(([key, value]) => {
     const inferredVarType = inferProjectVariableType(value, key);
-    const type = toGqlParameterType(inferredVarType);
+    const type = toGqlParameterType(
+      inferredVarType,
+    ) as unknown as Variable["type"];
     if (!type) {
       throw new Error(`Unable to infer type for variable "${key}"`);
     }

@@ -184,8 +184,12 @@ export default ({
       return;
     }
 
-    // Only save variables if they differ from deployment defaults
-    const variablesToSave = getVariablesToSave();
+    const variablesToSaveRaw = getVariablesToSave();
+
+    const variablesToSave = variablesToSaveRaw?.map(({ type, ...rest }) => ({
+      ...rest,
+      type: (window as any).ParameterType?.[type.toUpperCase()] ?? type,
+    })) as any;
 
     const { trigger: createdTrigger } = await createTrigger(
       workspaceId,

@@ -106,7 +106,10 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
-  variables: trigger.variables,
+  variables: trigger.variables.map((v) => ({
+    ...v,
+    type: toUserParamVarType(v.type),
+  })),
 });
 
 export const toNodeExecution = (
