@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useProjectVariables } from "@flow/lib/gql";
@@ -37,11 +37,6 @@ export default ({
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
-  const debugRunStateRef = useRef(debugRunState);
-
-  useEffect(() => {
-    debugRunStateRef.current = debugRunState;
-  }, [debugRunState]);
 
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
@@ -128,10 +123,10 @@ export default ({
 
   const loadExternalDebugJob = useCallback(
     async (jobId: string, userName: string) => {
-      if (!currentProject) return;
+      if (!currentProject || !debugRunState) return;
 
       // Check if job already exists before updating
-      const existingJobs = debugRunStateRef.current?.jobs || [];
+      const existingJobs = debugRunState?.jobs || [];
       if (existingJobs.some((j) => j.jobId === jobId)) {
         return; // Already viewing this job, so no need to update
       }
@@ -163,7 +158,7 @@ export default ({
         }),
       });
     },
-    [t, currentProject, updateValue],
+    [t, currentProject, debugRunState, updateValue],
   );
 
   return {
