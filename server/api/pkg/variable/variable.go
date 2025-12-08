@@ -9,9 +9,9 @@ import (
 )
 
 type Variable struct {
+	Value any
 	Key   string
 	Type  parameter.Type
-	Value any
 }
 
 func SliceToMap(vars []Variable) map[string]Variable {
