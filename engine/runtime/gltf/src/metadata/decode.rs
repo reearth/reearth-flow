@@ -312,8 +312,11 @@ pub fn extract_feature_properties(
     // Get component type from schema for each property
     let get_component_type = |prop_name: &str| -> Option<&str> {
         metadata_value
-            .pointer(&format!("/schema/classes/{}/properties/{}/componentType",
-                prop_table.get("class")?.as_str()?, prop_name))
+            .pointer(&format!(
+                "/schema/classes/{}/properties/{}/componentType",
+                prop_table.get("class")?.as_str()?,
+                prop_name
+            ))
             .and_then(|v| v.as_str())
     };
 
@@ -329,12 +332,15 @@ pub fn extract_feature_properties(
         // String property
         if let Some(offsets_idx) = prop_def.get("stringOffsets").and_then(|v| v.as_u64()) {
             let offsets_view = &buffer_views[offsets_idx as usize];
-            let offsets_data = &binary_blob[offsets_view.offset()..offsets_view.offset() + offsets_view.length()];
-            let offsets: Vec<u32> = offsets_data.chunks_exact(4)
-                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+            let offsets_data =
+                &binary_blob[offsets_view.offset()..offsets_view.offset() + offsets_view.length()];
+            let offsets: Vec<u32> = offsets_data
+                .chunks_exact(4)
+                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect();
 
             for i in 0..count {
-                let s = std::str::from_utf8(&data[offsets[i] as usize..offsets[i+1] as usize])
+                let s = std::str::from_utf8(&data[offsets[i] as usize..offsets[i + 1] as usize])
                     .map_err(|e| GltfReaderError::Buffer(format!("Invalid UTF-8: {}", e)))?;
                 feature_props[i].insert(prop_name.clone(), Value::String(s.to_string()));
             }
@@ -342,29 +348,37 @@ pub fn extract_feature_properties(
         }
 
         // Numeric/enum properties - must have component type
-        let component_type = get_component_type(prop_name)
-            .ok_or_else(|| GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name)))?;
+        let component_type = get_component_type(prop_name).ok_or_else(|| {
+            GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name))
+        })?;
 
         for i in 0..count {
             let value = match component_type {
                 "INT64" => {
-                    let v = i64::from_le_bytes(data[i*8..i*8+8].try_into().unwrap());
+                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
                     (v != INT64_NO_DATA).then(|| Value::Number(v.into()))
                 }
                 "UINT64" => {
-                    let v = u64::from_le_bytes(data[i*8..i*8+8].try_into().unwrap());
+                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
                     (v != UINT64_NO_DATA).then(|| Value::Number(v.into()))
                 }
                 "FLOAT64" => {
-                    let v = f64::from_le_bytes(data[i*8..i*8+8].try_into().unwrap());
-                    (v != FLOAT_NO_DATA).then(|| serde_json::Number::from_f64(v))
-                        .flatten().map(Value::Number)
+                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    (v != FLOAT_NO_DATA)
+                        .then(|| serde_json::Number::from_f64(v))
+                        .flatten()
+                        .map(Value::Number)
                 }
                 "UINT32" => {
-                    let v = u32::from_le_bytes(data[i*4..i*4+4].try_into().unwrap());
+                    let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
                     (v != ENUM_NO_DATA).then(|| Value::Number(v.into()))
                 }
-                _ => return Err(GltfReaderError::Parse(format!("Unsupported componentType '{}' for property {}", component_type, prop_name))),
+                _ => {
+                    return Err(GltfReaderError::Parse(format!(
+                        "Unsupported componentType '{}' for property {}",
+                        component_type, prop_name
+                    )))
+                }
             };
             if let Some(v) = value {
                 feature_props[i].insert(prop_name.clone(), v);

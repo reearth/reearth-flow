@@ -6,8 +6,8 @@ use std::{
     time, vec,
 };
 
-use once_cell::sync::Lazy;
 use nusamai_citygml::schema::{Schema, TypeDef};
+use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -186,20 +186,13 @@ impl Sink for Cesium3DTilesWriter {
 fn sanitize_attribute_key(identifier: &str) -> String {
     let mut result = String::new();
     for (i, c) in identifier.chars().enumerate() {
-        let is_alpha = c.is_ascii_alphabetic();
-        let is_alpha_num = is_alpha || c.is_ascii_digit();
+        let is_valid_first = c == '_' || c.is_ascii_alphabetic();
+        let is_valid_rest = c.is_ascii_alphabetic() || c.is_ascii_digit();
+
         if i == 0 {
-            if c == '_' {
-                result.push('_');
-            } else if !is_alpha {
-                result.push('_');
-            } else {
-                result.push(c);
-            }
-        } else if !is_alpha_num {
-            result.push('_');
+            result.push(if is_valid_first { c } else { '_' });
         } else {
-            result.push(c);
+            result.push(if is_valid_rest { c } else { '_' });
         }
     }
     result
@@ -229,7 +222,9 @@ impl Cesium3DTilesWriter {
         }
 
         let output = self.params.output.clone();
-        let scope = ctx.feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let scope = ctx
+            .feature
+            .new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
@@ -251,7 +246,9 @@ impl Cesium3DTilesWriter {
             feature.attributes = feature
                 .attributes
                 .into_iter()
-                .filter(|(k, _)| !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__"))
+                .filter(|(k, _)| {
+                    !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+                })
                 .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
                 .collect();
             feature
@@ -486,5 +483,23 @@ impl Cesium3DTilesWriter {
             }
         });
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_attribute_key() {
+        // Valid identifiers remain unchanged
+        assert_eq!(sanitize_attribute_key("validName"), "validName");
+        assert_eq!(sanitize_attribute_key("_private"), "_private");
+
+        // Invalid first character gets replaced
+        assert_eq!(sanitize_attribute_key("123start"), "_23start");
+
+        // Special characters get replaced with underscores
+        assert_eq!(sanitize_attribute_key("my-key.name"), "my_key_name");
     }
 }

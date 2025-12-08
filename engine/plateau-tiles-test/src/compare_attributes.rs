@@ -164,7 +164,7 @@ impl AttributeComparer {
                 }
             }
             // NULL match empty string since flow does not use schema to template features
-            if v1.as_str().unwrap_or("") .is_empty() && v2.is_null() {
+            if v1.as_str().unwrap_or("").is_empty() && v2.is_null() {
                 return;
             }
             self.mismatches

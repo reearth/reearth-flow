@@ -252,7 +252,11 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.cesium_attributes {
             run_test("cesium_attributes", &relative_path_display, || {
-                test_cesium_attributes::test_cesium_attributes(&fme_dir, &output_dir.join("flow"), cfg)
+                test_cesium_attributes::test_cesium_attributes(
+                    &fme_dir,
+                    &output_dir.join("flow"),
+                    cfg,
+                )
             });
         }
 

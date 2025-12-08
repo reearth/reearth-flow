@@ -163,8 +163,11 @@ async fn read_gltf(
         }
 
         if !all_primitives.is_empty() {
-            let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(&all_primitives, &buffer_data)
-                .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+            let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
+                &all_primitives,
+                &buffer_data,
+            )
+            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
             let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
             let mut attributes = IndexMap::new();
 
@@ -225,9 +228,15 @@ async fn read_gltf(
                     let primitives: Vec<_> = mesh.primitives().collect();
 
                     if !primitives.is_empty() {
-                        let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(&primitives, &buffer_data)
-                            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
-                        let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
+                        let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
+                            &primitives,
+                            &buffer_data,
+                        )
+                        .map_err(|e| {
+                            SourceError::GltfReader(format!("Failed to create geometry: {e}"))
+                        })?;
+                        let geometry =
+                            Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
                         let mut attributes = IndexMap::new();
 
                         attributes.insert(

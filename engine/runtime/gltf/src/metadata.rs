@@ -1,13 +1,13 @@
 //! glTF metadata encoding/decoding using EXT_structural_metadata extension
 
-pub mod encode;
 pub mod decode;
+pub mod encode;
 
-pub use encode::MetadataEncoder;
 pub use decode::{
-    read_mesh_features, read_structural_metadata, extract_feature_properties,
-    PropertyTables, PropertyTable, PropertyData,
+    extract_feature_properties, read_mesh_features, read_structural_metadata, PropertyData,
+    PropertyTable, PropertyTables,
 };
+pub use encode::MetadataEncoder;
 
 pub const ENUM_NO_DATA: u32 = 0;
 pub const ENUM_NO_DATA_NAME: &str = "";

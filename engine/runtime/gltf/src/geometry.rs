@@ -138,12 +138,7 @@ mod tests {
 
         let buffer_data = vec![gltf.blob.as_ref().unwrap().clone()];
 
-        let primitives: Vec<_> = gltf
-            .meshes()
-            .next()
-            .unwrap()
-            .primitives()
-            .collect();
+        let primitives: Vec<_> = gltf.meshes().next().unwrap().primitives().collect();
 
         let geometry = create_geometry_from_primitives(&primitives, &buffer_data).unwrap();
 
@@ -155,7 +150,11 @@ mod tests {
                 // First triangle: (0,0,0) -> (1,0,0) -> (1,1,0) -> (0,0,0)
                 let poly1 = &mp.0[0];
                 let coords1 = &poly1.exterior().0;
-                assert_eq!(coords1.len(), 4, "Triangle should have 4 coords (closed ring)");
+                assert_eq!(
+                    coords1.len(),
+                    4,
+                    "Triangle should have 4 coords (closed ring)"
+                );
 
                 assert_eq!(coords1[0].x, 0.0);
                 assert_eq!(coords1[0].y, 0.0);
