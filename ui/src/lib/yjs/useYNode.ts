@@ -277,6 +277,8 @@ export default ({
         updatedParams?: any;
         updatedCustomizations?: any;
         isDisabled?: boolean;
+        disabledEdges?: { id: string; source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null }[];
+        bypassEdgeIds?: string[];
       }[],
     ) =>
       undoTrackerActionWrapper(() => {
@@ -286,7 +288,7 @@ export default ({
         const nodes = Object.values(yNodes.toJSON()) as Node[];
 
         nodesToChange.forEach(
-          ({ nodeId, updatedParams, updatedCustomizations, isDisabled }) => {
+          ({ nodeId, updatedParams, updatedCustomizations, isDisabled, disabledEdges, bypassEdgeIds }) => {
             const prevNode = nodes.find((n) => n.id === nodeId);
 
             if (!prevNode) return;
@@ -320,6 +322,8 @@ export default ({
             if (updatedCustomizations)
               yData?.set("customizations", updatedCustomizations);
             if (isDisabled !== undefined) yData?.set("isDisabled", isDisabled);
+            if (disabledEdges !== undefined) yData?.set("disabledEdges", disabledEdges);
+            if (bypassEdgeIds !== undefined) yData?.set("bypassEdgeIds", bypassEdgeIds);
           },
         );
       }),

@@ -1,6 +1,6 @@
 import * as Y from "yjs";
 
-export type YNodeValue = Y.Text | Y.Map<unknown> | number | boolean; // add other possible types
+export type YNodeValue = Y.Text | Y.Map<unknown> | Y.Array<unknown> | number | boolean | Record<string, any> | any[]; // add other possible types
 
 export type YNode = Y.Map<YNodeValue>;
 

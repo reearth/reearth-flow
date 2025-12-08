@@ -1,4 +1,10 @@
-import { useReactFlow } from "@xyflow/react";
+import {
+  useReactFlow,
+  getIncomers,
+  getOutgoers,
+  getConnectedEdges,
+  EdgeChange,
+} from "@xyflow/react";
 import {
   MouseEvent,
   useCallback,
@@ -27,6 +33,7 @@ import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import { generateUUID } from "@flow/utils";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -145,6 +152,11 @@ export default ({
         const targetNode = nodes.find((n) => n.id === edge.target);
         const sourceIsCollapsed = sourceNode?.data?.isCollapsed;
         const targetIsCollapsed = targetNode?.data?.isCollapsed;
+        const sourceIsDisabled = sourceNode?.data?.isDisabled;
+        const targetIsDisabled = targetNode?.data?.isDisabled;
+
+        // Edge is inactive if either endpoint is disabled
+        const isInactive = sourceIsDisabled || targetIsDisabled;
 
         return {
           ...edge,
@@ -153,6 +165,14 @@ export default ({
               ? true
               : (edge.selected ?? false),
           reconnectable: !(sourceIsCollapsed || targetIsCollapsed),
+          style: isInactive
+            ? {
+                ...edge.style,
+                stroke: "#9CA3AF",
+                strokeDasharray: "5,5",
+                opacity: 0.4,
+              }
+            : edge.style,
         };
       }),
     [rawEdges, selectedEdgeIds, nodes],
@@ -285,6 +305,41 @@ export default ({
         const isDeletingLastOutputRouter =
           totalOutputRouters > 0 && remainingOutputRouters === 0;
 
+        // Clean up disabled edge references before deletion
+        const disabledNodesToUpdate: {
+          nodeId: string;
+          disabledEdges: {
+            id: string;
+            source: string;
+            target: string;
+            sourceHandle?: string | null;
+            targetHandle?: string | null;
+          }[];
+        }[] = [];
+
+        nodes.forEach((node) => {
+          if (node.data?.isDisabled && node.data?.disabledEdges) {
+            // Filter out edges that reference nodes being deleted
+            const cleanedEdges = node.data.disabledEdges.filter(
+              (edge) =>
+                !deletingIds.has(edge.source) && !deletingIds.has(edge.target),
+            );
+
+            // Only update if edges were actually removed
+            if (cleanedEdges.length !== node.data.disabledEdges.length) {
+              disabledNodesToUpdate.push({
+                nodeId: node.id,
+                disabledEdges: cleanedEdges,
+              });
+            }
+          }
+        });
+
+        // Update disabled nodes if needed
+        if (disabledNodesToUpdate.length > 0) {
+          handleYNodesDataUpdate(disabledNodesToUpdate);
+        }
+
         if (isDeletingLastInputRouter || isDeletingLastOutputRouter) {
           deferredDeleteRef.current = { resolve };
           setShowBeforeDeleteDialog(true);
@@ -293,7 +348,7 @@ export default ({
         }
       });
     },
-    [nodes],
+    [nodes, handleYNodesDataUpdate],
   );
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
@@ -357,15 +412,103 @@ export default ({
 
   const handleNodesDisable = useCallback(
     (ns?: Node[]) => {
-      const nodesToUpdate =
-        ns?.map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled })) ||
-        nodes
-          .filter((n) => n.selected)
-          .map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled }));
+      const targetNodes = ns || nodes.filter((n) => n.selected);
+      const nodesToUpdate: {
+        nodeId: string;
+        isDisabled: boolean;
+        disabledEdges?: {
+          id: string;
+          source: string;
+          target: string;
+          sourceHandle?: string | null;
+          targetHandle?: string | null;
+        }[];
+        bypassEdgeIds?: string[];
+      }[] = [];
+      const edgeChanges: EdgeChange[] = [];
 
+      targetNodes.forEach((node) => {
+        const isCurrentlyDisabled = node.data?.isDisabled;
+        const willBeDisabled = !isCurrentlyDisabled;
+
+        if (willBeDisabled) {
+          // DISABLING: Keep edges but create bypass connections
+          const connectedEdges = getConnectedEdges([node], edges);
+          const incomers = getIncomers(node, nodes, edges);
+          const outgoers = getOutgoers(node, nodes, edges);
+
+          // Store edge IDs so we know which bypass edges to remove on re-enable
+          const disabledEdges = connectedEdges.map((edge) => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
+          }));
+
+          // DON'T remove the original edges - keep them visible but inactive
+          // Only create bypass connections
+
+          // Create bypass connections (only if single input/output to avoid ambiguity)
+          const hasMultipleIO =
+            (node.data.outputs && node.data.outputs.length > 1) ||
+            (node.data.inputs && node.data.inputs.length > 1);
+
+          const bypassEdgeIds: string[] = [];
+
+          if (!hasMultipleIO) {
+            incomers.forEach((incomer) => {
+              outgoers.forEach((outgoer) => {
+                const bypassEdgeId = generateUUID();
+                bypassEdgeIds.push(bypassEdgeId);
+                edgeChanges.push({
+                  type: "add",
+                  item: {
+                    id: bypassEdgeId,
+                    source: incomer.id,
+                    target: outgoer.id,
+                  },
+                });
+              });
+            });
+          }
+
+          nodesToUpdate.push({
+            nodeId: node.id,
+            isDisabled: true,
+            disabledEdges,
+            bypassEdgeIds,
+          });
+        } else {
+          // RE-ENABLING: Remove bypass edges that were created for this node
+          const bypassEdgeIds = node.data?.bypassEdgeIds;
+
+          if (bypassEdgeIds && bypassEdgeIds.length > 0) {
+            // Remove only the bypass edges that were created when this node was disabled
+            bypassEdgeIds.forEach((bypassEdgeId) => {
+              // Check if the bypass edge still exists before removing
+              if (edges.some((e) => e.id === bypassEdgeId)) {
+                edgeChanges.push({ id: bypassEdgeId, type: "remove" });
+              }
+            });
+          }
+
+          nodesToUpdate.push({
+            nodeId: node.id,
+            isDisabled: false,
+            disabledEdges: undefined,
+            bypassEdgeIds: undefined,
+          });
+        }
+      });
+
+      // Apply all changes
+      if (edgeChanges.length > 0) {
+        handleYEdgesChange(edgeChanges);
+      }
       handleYNodesDataUpdate(nodesToUpdate);
     },
-    [nodes, handleYNodesDataUpdate],
+    [nodes, edges, handleYNodesDataUpdate, handleYEdgesChange],
   );
 
   const handlePaneClick = useCallback(
