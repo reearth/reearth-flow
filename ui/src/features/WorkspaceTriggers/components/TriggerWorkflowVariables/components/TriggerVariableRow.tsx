@@ -1,4 +1,5 @@
 import { Input, Switch, TextArea } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
 import { VariableMapping } from "..";
 
@@ -15,6 +16,7 @@ const TriggerVariableRow: React.FC<Props> = ({
   index,
   onDefaultValueChange,
 }) => {
+  const t = useT();
   switch (variable.type) {
     case "array":
       return (
@@ -27,10 +29,15 @@ const TriggerVariableRow: React.FC<Props> = ({
       );
     case "yes_no":
       return (
-        <Switch
-          checked={Boolean(variable.defaultValue)}
-          onCheckedChange={(checked) => onDefaultValueChange(index, checked)}
-        />
+        <div className="flex items-center space-x-3">
+          <span className="text-sm font-medium">
+            {variable.defaultValue ? t("Yes") : t("No")}
+          </span>
+          <Switch
+            checked={Boolean(variable.defaultValue)}
+            onCheckedChange={(checked) => onDefaultValueChange(index, checked)}
+          />
+        </div>
       );
     case "number":
       return (
