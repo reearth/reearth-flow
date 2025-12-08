@@ -141,7 +141,7 @@ where
     let subject = vec![polygon_to_shape_paths(poly1)];
     let clip = vec![polygon_to_shape_paths(poly2)];
 
-    let shapes = subject.overlay(&clip, op.into(), FillRule::EvenOdd);
+    let shapes = subject.overlay(&clip, op.into(), FillRule::NonZero);
 
     shapes_to_multi_polygon(shapes)
 }
@@ -158,7 +158,7 @@ where
     let subject = multi_polygon_to_shape_paths(mpoly1);
     let clip = multi_polygon_to_shape_paths(mpoly2);
 
-    let shapes = subject.overlay(&clip, op.into(), FillRule::EvenOdd);
+    let shapes = subject.overlay(&clip, op.into(), FillRule::NonZero);
 
     shapes_to_multi_polygon(shapes)
 }
@@ -181,7 +181,7 @@ where
         boundary_included: true,
     };
 
-    let paths = subject.clip_by(&clip_paths, FillRule::EvenOdd, clip_rule);
+    let paths = subject.clip_by(&clip_paths, FillRule::NonZero, clip_rule);
 
     paths_to_multi_line_string(paths)
 }
@@ -204,7 +204,7 @@ where
         boundary_included: true,
     };
 
-    let paths = subject.clip_by(&clip_paths, FillRule::EvenOdd, clip_rule);
+    let paths = subject.clip_by(&clip_paths, FillRule::NonZero, clip_rule);
 
     paths_to_multi_line_string(paths)
 }

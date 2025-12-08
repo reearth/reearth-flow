@@ -7,17 +7,18 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type CreateTriggerParam struct {
-	Enabled      *bool
-	Variables    map[string]string
 	Description  string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
 	WorkspaceID  id.WorkspaceID
 	DeploymentID id.DeploymentID
+	Enabled      *bool
+	Variables    []variable.Variable
 }
 
 type ExecuteAPITriggerParam struct {
@@ -28,19 +29,18 @@ type ExecuteAPITriggerParam struct {
 }
 
 type ExecuteTimeDrivenTriggerParam struct {
-	Variables map[string]string
 	TriggerID id.TriggerID
 }
 
 type UpdateTriggerParam struct {
 	DeploymentID *id.DeploymentID
 	Description  *string
-	Enabled      *bool
-	Variables    map[string]string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
 	ID           id.TriggerID
+	Enabled      *bool
+	Variables    []variable.Variable
 }
 
 var (

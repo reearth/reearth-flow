@@ -138,7 +138,11 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
             eventSource
             timeInterval
 			enabled
-            variables
+            variables {
+				key
+				type
+				value
+			}
             createdAt
             updatedAt
         }
@@ -153,9 +157,17 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 				"interval": "EVERY_DAY",
 			},
 			"enabled": true,
-			"variables": map[string]interface{}{
-				"TEST_VAR_1": "test_value_1",
-				"TEST_VAR_2": "test_value_2",
+			"variables": []map[string]interface{}{
+				{
+					"key":   "TEST_VAR_1",
+					"type":  "TEXT",
+					"value": "test_value_1",
+				},
+				{
+					"key":   "TEST_VAR_2",
+					"type":  "TEXT",
+					"value": "test_value_2",
+				},
 			},
 		},
 	}
@@ -179,16 +191,20 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 	var result struct {
 		Data struct {
 			CreateTrigger struct {
-				ID           string            `json:"id"`
-				WorkspaceID  string            `json:"workspaceId"`
-				DeploymentID string            `json:"deploymentId"`
-				Description  string            `json:"description"`
-				EventSource  string            `json:"eventSource"`
-				TimeInterval string            `json:"timeInterval"`
-				Enabled      bool              `json:"enabled"`
-				Variables    map[string]string `json:"variables"`
-				CreatedAt    string            `json:"createdAt"`
-				UpdatedAt    string            `json:"updatedAt"`
+				ID           string `json:"id"`
+				WorkspaceID  string `json:"workspaceId"`
+				DeploymentID string `json:"deploymentId"`
+				Description  string `json:"description"`
+				EventSource  string `json:"eventSource"`
+				TimeInterval string `json:"timeInterval"`
+				Enabled      bool   `json:"enabled"`
+				Variables    []struct {
+					Key   string      `json:"key"`
+					Type  string      `json:"type"`
+					Value interface{} `json:"value"`
+				} `json:"variables"`
+				CreatedAt string `json:"createdAt"`
+				UpdatedAt string `json:"updatedAt"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -213,10 +229,18 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 	assert.Equal(t, "TIME_DRIVEN", trigger.EventSource)
 	assert.Equal(t, "EVERY_DAY", trigger.TimeInterval)
 	assert.True(t, trigger.Enabled)
+
+	gotVars := map[string]string{}
+	for _, v := range trigger.Variables {
+		if s, ok := v.Value.(string); ok {
+			gotVars[v.Key] = s
+		}
+	}
 	assert.Equal(t, map[string]string{
 		"TEST_VAR_1": "test_value_1",
 		"TEST_VAR_2": "test_value_2",
-	}, trigger.Variables)
+	}, gotVars)
+
 	assert.NotEmpty(t, trigger.CreatedAt)
 	assert.NotEmpty(t, trigger.UpdatedAt)
 
@@ -260,10 +284,10 @@ func TestUpdateTrigger(t *testing.T) {
 				"interval": "EVERY_DAY",
 			},
 			"enabled": true,
-			"variables": map[string]interface{}{
-				"VAR_1": "v1",
-				"VAR_2": "v2",
-				"VAR_3": "v3",
+			"variables": []map[string]interface{}{
+				{"key": "VAR_1", "type": "TEXT", "value": "v1"},
+				{"key": "VAR_2", "type": "TEXT", "value": "v2"},
+				{"key": "VAR_3", "type": "TEXT", "value": "v3"},
 			},
 		},
 	}
@@ -317,7 +341,11 @@ func TestUpdateTrigger(t *testing.T) {
             eventSource
             timeInterval
 			enabled
-            variables
+            variables {
+				key
+				type
+				value
+			}
             createdAt
             updatedAt
         }
@@ -331,10 +359,10 @@ func TestUpdateTrigger(t *testing.T) {
 				"interval": "EVERY_HOUR",
 			},
 			"enabled": false,
-			"variables": map[string]interface{}{
-				"VAR_1": "v1",
-				"VAR_2": "v2-2",
-				"VAR_4": "v4",
+			"variables": []map[string]interface{}{
+				{"key": "VAR_1", "type": "TEXT", "value": "v1"},
+				{"key": "VAR_2", "type": "TEXT", "value": "v2-2"},
+				{"key": "VAR_4", "type": "TEXT", "value": "v4"},
 			},
 		},
 	}
@@ -357,14 +385,18 @@ func TestUpdateTrigger(t *testing.T) {
 	var updateResult struct {
 		Data struct {
 			UpdateTrigger struct {
-				ID           string            `json:"id"`
-				Description  string            `json:"description"`
-				EventSource  string            `json:"eventSource"`
-				TimeInterval string            `json:"timeInterval"`
-				Enabled      bool              `json:"enabled"`
-				Variables    map[string]string `json:"variables"`
-				CreatedAt    string            `json:"createdAt"`
-				UpdatedAt    string            `json:"updatedAt"`
+				ID           string `json:"id"`
+				Description  string `json:"description"`
+				EventSource  string `json:"eventSource"`
+				TimeInterval string `json:"timeInterval"`
+				Enabled      bool   `json:"enabled"`
+				Variables    []struct {
+					Key   string      `json:"key"`
+					Type  string      `json:"type"`
+					Value interface{} `json:"value"`
+				} `json:"variables"`
+				CreatedAt string `json:"createdAt"`
+				UpdatedAt string `json:"updatedAt"`
 			} `json:"updateTrigger"`
 		} `json:"data"`
 	}
@@ -378,11 +410,18 @@ func TestUpdateTrigger(t *testing.T) {
 	assert.Equal(t, "TIME_DRIVEN", trigger.EventSource)
 	assert.Equal(t, "EVERY_HOUR", trigger.TimeInterval)
 	assert.False(t, trigger.Enabled)
+
+	gotVars := map[string]string{}
+	for _, v := range trigger.Variables {
+		if s, ok := v.Value.(string); ok {
+			gotVars[v.Key] = s
+		}
+	}
 	assert.Equal(t, map[string]string{
 		"VAR_1": "v1",
 		"VAR_2": "v2-2",
 		"VAR_4": "v4",
-	}, trigger.Variables)
+	}, gotVars)
 
 	createdAt2 := parse(trigger.CreatedAt)
 	updatedAt2 := parse(trigger.UpdatedAt)
@@ -420,7 +459,11 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 			eventSource
 			authToken
 			enabled
-			variables
+			variables {
+				key
+				type
+				value
+			}
 		}
 	}`
 
@@ -433,9 +476,9 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 				"token": "test-api-token",
 			},
 			"enabled": true,
-			"variables": map[string]interface{}{
-				"API_VAR_A": "value_A",
-				"API_VAR_B": "value_B",
+			"variables": []map[string]interface{}{
+				{"key": "API_VAR_A", "type": "TEXT", "value": "value_A"},
+				{"key": "API_VAR_B", "type": "TEXT", "value": "value_B"},
 			},
 		},
 	}
@@ -459,14 +502,18 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	var result struct {
 		Data struct {
 			CreateTrigger struct {
-				ID           string            `json:"id"`
-				WorkspaceID  string            `json:"workspaceId"`
-				DeploymentID string            `json:"deploymentId"`
-				Description  string            `json:"description"`
-				EventSource  string            `json:"eventSource"`
-				AuthToken    string            `json:"authToken"`
-				Enabled      bool              `json:"enabled"`
-				Variables    map[string]string `json:"variables"`
+				ID           string `json:"id"`
+				WorkspaceID  string `json:"workspaceId"`
+				DeploymentID string `json:"deploymentId"`
+				Description  string `json:"description"`
+				EventSource  string `json:"eventSource"`
+				AuthToken    string `json:"authToken"`
+				Enabled      bool   `json:"enabled"`
+				Variables    []struct {
+					Key   string      `json:"key"`
+					Type  string      `json:"type"`
+					Value interface{} `json:"value"`
+				} `json:"variables"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -491,10 +538,17 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	assert.Equal(t, "API_DRIVEN", trigger.EventSource)
 	assert.NotEmpty(t, trigger.AuthToken)
 	assert.True(t, trigger.Enabled)
+
+	gotVars := map[string]string{}
+	for _, v := range trigger.Variables {
+		if s, ok := v.Value.(string); ok {
+			gotVars[v.Key] = s
+		}
+	}
 	assert.Equal(t, map[string]string{
 		"API_VAR_A": "value_A",
 		"API_VAR_B": "value_B",
-	}, trigger.Variables)
+	}, gotVars)
 
 	t.Logf("Created API trigger with ID: %s", trigger.ID)
 }
