@@ -91,7 +91,8 @@ export default ({
 
     const variablesToSave = variablesToSaveRaw?.map(({ type, ...rest }) => ({
       ...rest,
-      type: ParameterType[type.toUpperCase() as keyof typeof ParameterType] ?? type,
+      type:
+        ParameterType[type.toUpperCase() as keyof typeof ParameterType] ?? type,
     })) as any;
 
     await useUpdateTrigger(
