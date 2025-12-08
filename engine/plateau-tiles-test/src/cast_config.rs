@@ -6,7 +6,14 @@ use std::collections::HashMap;
 #[serde(untagged)]
 pub enum CastConfigValue {
     Simple(String),
-    Complex { comparator: String, key: String },
+    ComplexListToDict {
+        comparator: String,
+        key: String,
+    },
+    ComplexFloat {
+        comparator: String,
+        epsilon: Option<f64>,
+    },
 }
 
 pub fn convert_casts(
@@ -17,10 +24,11 @@ pub fn convert_casts(
         let cast = match value {
             CastConfigValue::Simple(s) => match s.as_str() {
                 "string" => CastConfig::String,
+                "float" => CastConfig::Float { epsilon: None },
                 "json" => CastConfig::Json,
                 _ => return Err(format!("Unknown cast type: {}", s)),
             },
-            CastConfigValue::Complex {
+            CastConfigValue::ComplexListToDict {
                 comparator,
                 key: dict_key,
             } => {
@@ -28,6 +36,16 @@ pub fn convert_casts(
                     CastConfig::ListToDict {
                         key: dict_key.clone(),
                     }
+                } else {
+                    return Err(format!("Unknown comparator: {}", comparator));
+                }
+            }
+            CastConfigValue::ComplexFloat {
+                comparator,
+                epsilon,
+            } => {
+                if comparator == "float" {
+                    CastConfig::Float { epsilon: *epsilon }
                 } else {
                     return Err(format!("Unknown comparator: {}", comparator));
                 }

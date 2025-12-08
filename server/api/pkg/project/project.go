@@ -8,17 +8,17 @@ import (
 var ErrInvalidAlias error = errors.New("invalid alias")
 
 type Project struct {
+	updatedAt         time.Time
+	sharedToken       *string
 	basicAuthPassword string
 	basicAuthUsername string
 	description       string
-	id                ID
-	isArchived        bool
-	isBasicAuthActive bool
 	name              string
-	sharedToken       *string
-	updatedAt         time.Time
+	id                ID
 	workflow          WorkflowID
 	workspace         WorkspaceID
+	isArchived        bool
+	isBasicAuthActive bool
 }
 
 func (p *Project) BasicAuthPassword() string {

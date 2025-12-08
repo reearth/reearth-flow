@@ -125,6 +125,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
+    "data-convert/plateau4/06-area-urf/area",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -175,6 +176,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     let citygml_path = output_dir.join(&profile.citygml_zip_name);
 
     if stages.contains('r') {
+        let _ = fs::remove_dir_all(&output_dir);
         if !citygml_path.exists() {
             let zip_stem = profile
                 .citygml_zip_name

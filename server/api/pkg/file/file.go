@@ -13,9 +13,9 @@ import (
 type File struct {
 	Content io.ReadCloser
 	Path    string
-	Size    int64
 	// If the content type is not explicitly specified, ContenType will be an empty string.
 	ContentType string
+	Size        int64
 }
 
 // Iterator is an iterator of files
@@ -26,8 +26,8 @@ type Iterator interface {
 
 // For debugging
 type SimpleIterator struct {
-	c     int
 	files []File
+	c     int
 }
 
 func NewSimpleIterator(files []File) *SimpleIterator {

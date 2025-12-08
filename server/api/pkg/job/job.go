@@ -17,22 +17,22 @@ const (
 )
 
 type Job struct {
+	startedAt         time.Time
 	completedAt       *time.Time
 	debug             *bool
-	deployment        DeploymentID
+	batchStatus       *Status
+	workerStatus      *Status
+	variables         []variable.Variable
 	gcpJobID          string
-	id                ID
 	logsURL           string
 	workerLogsURL     string
 	userFacingLogsURL string
 	metadataURL       string
-	outputURLs        []string
-	startedAt         time.Time
 	status            Status
-	batchStatus       *Status
-	workerStatus      *Status
+	outputURLs        []string
+	deployment        DeploymentID
+	id                ID
 	workspace         WorkspaceID
-	variables         []variable.Variable
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {

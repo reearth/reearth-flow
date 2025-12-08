@@ -19,13 +19,9 @@ import (
 )
 
 type BatchConfig struct {
-	AllowedLocations                []string
 	BinaryPath                      string
-	BootDiskSizeGB                  int
 	BootDiskType                    string
 	ChannelBufferSize               string
-	ComputeCpuMilli                 int
-	ComputeMemoryMib                int
 	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
@@ -39,8 +35,12 @@ type BatchConfig struct {
 	Region                          string
 	RustLog                         string
 	SAEmail                         string
-	TaskCount                       int
 	ThreadPoolSize                  string
+	AllowedLocations                []string
+	BootDiskSizeGB                  int
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
+	TaskCount                       int
 	CompressIntermediateData        bool
 }
 
