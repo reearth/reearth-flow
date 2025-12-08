@@ -127,7 +127,7 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: ./target/output-time-to-time-value.csv
+          output: ./output-time-to-time-value.csv
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

@@ -1,7 +1,7 @@
 {
   "workflowPath": "solar-radiation/time-to-time-value/workflow.yml",
   "description": "Test solar radiation time-to-time-value workflow with time conversion validation",
-  "cityGmlPath": "udx/bldg/input.gml",
+  "cityGmlPath": "",
   "expectedOutput": {
     "expectedFile": "output-time-to-time-value.csv"
   },

@@ -1,5 +1,7 @@
 # How To
 
+## Run workflow 
+
 Within engine project root folder:
 
 ```sh 
@@ -60,3 +62,12 @@ cargo run --package reearth-flow-cli run --workflow runtime/examples/fixture/wor
 
 
 
+## How to run test
+
+- The related configuration setting is from code `runtime/examples/fixture/tests/build.rs`.
+
+- So run the test for this workflow is: 
+  
+```sh 
+cargo test -p workflow-tests test_solar_radiation_time_to_time_value
+```
