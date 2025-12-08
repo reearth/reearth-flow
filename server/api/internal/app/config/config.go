@@ -26,10 +26,10 @@ type (
 		AuthSrv      AuthSrvConfig     `pp:",omitempty"`
 		Web_Config   JSON              `pp:",omitempty"`
 		Web          map[string]string `pp:",omitempty"`
-		AuthAlg      *string           `pp:",omitempty"`
-		AuthTtl      *int              `pp:",omitempty"`
-		AuthClientid *string           `pp:",omitempty"`
-		AuthJwksuri  *string           `pp:",omitempty"`
+		AuthAlg      *string           `envconfig:"AUTH_ALG" pp:",omitempty"`
+		AuthTtl      *int              `envconfig:"AUTH_TTL" pp:",omitempty"`
+		AuthClientid *string           `envconfig:"AUTH_CLIENTID" pp:",omitempty"`
+		AuthJwksuri  *string           `envconfig:"AUTH_JWKSURI" pp:",omitempty"`
 
 		mailer.Config
 		Auth0   Auth0Config   `pp:",omitempty"`
