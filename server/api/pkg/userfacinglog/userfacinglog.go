@@ -14,13 +14,13 @@ const (
 )
 
 type UserFacingLog struct {
-	jobID     JobID
 	timestamp time.Time
-	level     LogLevel
 	nodeID    *string
 	nodeName  *string
+	level     LogLevel
 	message   string
 	metadata  json.RawMessage
+	jobID     JobID
 }
 
 func NewUserFacingLog(jobID JobID, timestamp time.Time, message string, metadata json.RawMessage) *UserFacingLog {

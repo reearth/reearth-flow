@@ -6,9 +6,9 @@ import (
 )
 
 type VariableDocument struct {
+	Value any    `bson:"value"`
 	Key   string `bson:"key"`
 	Type  string `bson:"type"`
-	Value any    `bson:"value"`
 }
 
 func VariablesToDoc(vars []variable.Variable) []VariableDocument {

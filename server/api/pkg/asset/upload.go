@@ -7,13 +7,13 @@ import (
 )
 
 type Upload struct {
-	uuid            string
-	workspace       id.WorkspaceID
-	fileName        string
 	expiresAt       time.Time
-	contentLength   int64
+	uuid            string
+	fileName        string
 	contentType     string
 	contentEncoding string
+	contentLength   int64
+	workspace       id.WorkspaceID
 }
 
 func (u *Upload) UUID() string {
