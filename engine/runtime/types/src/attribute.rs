@@ -270,13 +270,7 @@ impl From<serde_json::Value> for AttributeValue {
             serde_json::Value::Null => AttributeValue::Null,
             serde_json::Value::Bool(v) => AttributeValue::Bool(v),
             serde_json::Value::Number(v) => AttributeValue::Number(v),
-            serde_json::Value::String(v) => {
-                if let Ok(v) = DateTime::try_from(v.as_str()) {
-                    AttributeValue::DateTime(DateTime(v.into()))
-                } else {
-                    AttributeValue::String(v)
-                }
-            }
+            serde_json::Value::String(v) => AttributeValue::String(v),
             serde_json::Value::Array(v) => {
                 AttributeValue::Array(v.into_iter().map(AttributeValue::from).collect::<Vec<_>>())
             }

@@ -128,6 +128,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
+    "data-convert/plateau4/04-luse-lsld/luse",
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
@@ -223,6 +224,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         let fme_dir = output_dir.join("fme");
         extract_fme_output(&fme_output_path, &fme_dir);
+
+        // Extract Flow output zip files if present
+        let flow_dir = output_dir.join("flow");
+        extract_flow_zip_outputs(&flow_dir);
 
         let tests = &profile.tests;
         let relative_path_display = relative_path.display();
@@ -323,6 +328,73 @@ fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
         for i in 0..archive.len() {
             let mut file = archive.by_index(i).unwrap();
             let outpath = fme_dir.join(file.name());
+
+            if file.name().ends_with('/') {
+                fs::create_dir_all(&outpath).unwrap();
+            } else {
+                if let Some(parent) = outpath.parent() {
+                    fs::create_dir_all(parent).unwrap();
+                }
+                let mut outfile = fs::File::create(&outpath).unwrap();
+                std::io::copy(&mut file, &mut outfile).unwrap();
+            }
+        }
+    }
+}
+
+/// Extract zip files in the flow output directory
+/// This handles the case where MVTWriter or Cesium3DTilesWriter creates compressed output
+fn extract_flow_zip_outputs(flow_dir: &Path) {
+    if !flow_dir.exists() {
+        return;
+    }
+
+    // Find all zip files in the flow directory
+    let zip_files: Vec<_> = fs::read_dir(flow_dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "zip"))
+        .collect();
+
+    for zip_entry in zip_files {
+        let zip_path = zip_entry.path();
+        let stem = zip_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("extracted");
+
+        // Determine the output directory name
+        // For MVT: {citymodel}_luse_mvt.zip -> luse/
+        // For 3DTiles: {citymodel}_bldg_3dtiles.zip -> bldg_lod1/
+        let output_name = if stem.contains("_mvt") {
+            // Extract the layer name from the zip file name
+            // e.g., "43206_tamana-shi_city_2024_citygml_2_op_luse_mvt" -> "luse"
+            stem.rsplit('_').nth(1).unwrap_or("tiles").to_string()
+        } else {
+            stem.to_string()
+        };
+
+        let output_dir = flow_dir.join(&output_name);
+        if output_dir.exists() {
+            // Already extracted, skip
+            continue;
+        }
+
+        tracing::debug!(
+            "Extracting Flow output: {} -> {}",
+            zip_path.display(),
+            output_dir.display()
+        );
+
+        fs::create_dir_all(&output_dir).unwrap();
+
+        let file = fs::File::open(&zip_path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i).unwrap();
+            let outpath = output_dir.join(file.name());
 
             if file.name().ends_with('/') {
                 fs::create_dir_all(&outpath).unwrap();

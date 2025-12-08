@@ -12047,5 +12047,182 @@
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
 		}
+	],
+	"luse/luse:LandUse": [
+		{
+			"attribute": "gml:name",
+			"data_type": "string",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "string",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "luse:class",
+			"data_type": "string",
+			"json_path": "luse:class"
+		},
+		{
+			"attribute": "luse:class_code",
+			"data_type": "string",
+			"json_path": "luse:class_code"
+		},
+		{
+			"attribute": "luse:usage",
+			"data_type": "string",
+			"json_path": "luse:usage"
+		},
+		{
+			"attribute": "luse:usage_code",
+			"data_type": "string",
+			"json_path": "luse:usage_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:id",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:id"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:orgLandUse",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:orgLandUse"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:orgLandUse_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:orgLandUse_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:nominalArea",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:nominalArea"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:ownerType",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:ownerType"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:ownerType_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:ownerType_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:areaInSquareMeter",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:areaInSquareMeter"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:areaInHa",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:areaInHa"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:buildingCoverageRate",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:buildingCoverageRate"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:floorAreaRate",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:floorAreaRate"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:specifiedBuildingCoverageRate",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:specifiedBuildingCoverageRate"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:specifiedFloorAreaRate",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:specifiedFloorAreaRate"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:standardFloorAreaRate",
+			"data_type": "measure",
+			"json_path": "uro:LandUseDetailAttribute uro:standardFloorAreaRate"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:urbanPlanType",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:urbanPlanType"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:urbanPlanType_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:urbanPlanType_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:areaClassificationType",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:areaClassificationType"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:areaClassificationType_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:areaClassificationType_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:districtsAndZonesType",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:districtsAndZonesType"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:districtsAndZonesType_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:districtsAndZonesType_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:prefecture",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:prefecture"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:prefecture_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:prefecture_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:city",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:city"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:city_code",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:city_code"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:surveyYear",
+			"data_type": "int",
+			"json_path": "uro:LandUseDetailAttribute uro:surveyYear"
+		},
+		{
+			"attribute": "uro:LandUseDetailAttribute_uro:note",
+			"data_type": "string",
+			"json_path": "uro:LandUseDetailAttribute uro:note"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:geometrySrcDescLod1",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:geometrySrcDescLod1_code",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1_code"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:thematicSrcDesc",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:thematicSrcDesc_code",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:thematicSrcDesc_code"
+		}
 	]
 }
