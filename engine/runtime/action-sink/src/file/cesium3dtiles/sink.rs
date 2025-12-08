@@ -102,7 +102,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
-                skip_hidden_attributes: params.skip_hidden_attributes.unwrap_or(false),
+                skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
             },
         };
         Ok(Box::new(sink))
@@ -141,9 +141,9 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
-    /// # Skip Hidden Attributes
-    /// skip double underscore prefix when sanitizing attribute keys. Defaults to false.
-    pub(super) skip_hidden_attributes: Option<bool>,
+    /// # Skip unexposed Attributes
+    /// Skip attributes with double underscore prefix
+    pub(super) skip_unexposed_attributes: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -154,7 +154,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
-    pub(super) skip_hidden_attributes: bool,
+    pub(super) skip_unexposed_attributes: bool,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -228,20 +228,8 @@ impl Cesium3DTilesWriter {
             ));
         }
 
-        // Sanitize feature attribute keys
-        let feature = {
-            let mut feature = ctx.feature.clone();
-            feature.attributes = feature
-                .attributes
-                .into_iter()
-                .filter(|(k, _)| !self.params.skip_hidden_attributes || !k.as_ref().starts_with("__"))
-                .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
-                .collect();
-            feature
-        };
-
         let output = self.params.output.clone();
-        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let scope = ctx.feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
@@ -255,6 +243,20 @@ impl Cesium3DTilesWriter {
         } else {
             None
         };
+
+        // Sanitize attribute keys according to Cesium 3D Tiles specification
+        // see: https://github.com/CesiumGS/3d-tiles/blob/1.1/specification/Metadata/README.adoc#identifiers
+        let feature = {
+            let mut feature = ctx.feature.clone();
+            feature.attributes = feature
+                .attributes
+                .into_iter()
+                .filter(|(k, _)| !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__"))
+                .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
+                .collect();
+            feature
+        };
+
         let buffer = self
             .buffer
             .entry((output, feature_type.clone(), compress_output.clone()))
