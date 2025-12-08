@@ -388,10 +388,19 @@ impl Processor for HorizontalReprojector {
                 feature.geometry.epsg = Some(self.target_epsg_code);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
-            GeometryValue::CityGmlGeometry(_) => {
-                return Err(GeometryProcessorError::HorizontalReprojector(
-                    "CityGML geometry reprojection with PROJ not yet implemented. Use the legacy Japanese-only reprojector for CityGML.".to_string()
-                ).into());
+            GeometryValue::CityGmlGeometry(ref geos) => {
+                let mut feature = feature.clone();
+                let mut transformed_geos = geos.clone();
+                transformed_geos
+                    .transform_horizontal(|x, y| {
+                        proj_transform.convert((x, y)).map_err(|e| {
+                            GeometryProcessorError::HorizontalReprojector(e.to_string())
+                        })
+                    })
+                    .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })?;
+                feature.geometry.value = GeometryValue::CityGmlGeometry(transformed_geos);
+                feature.geometry.epsg = Some(self.target_epsg_code);
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))

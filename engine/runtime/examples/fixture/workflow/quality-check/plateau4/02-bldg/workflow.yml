@@ -147,6 +147,13 @@ graphs:
             - attribute: gmlName
               method: remove
 
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          epsgCode: 10168
+
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         name: FeatureFilterBuildingPart
         type: action
@@ -609,6 +616,11 @@ graphs:
         toPort: default
       - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
         from: e51ebef4-2a0f-4c67-abdc-1583db29a72b
+        to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        fromPort: default
+        toPort: default
+      - id: 10737c99-a56c-42ed-b17e-32bf1163a21e
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
         to: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         fromPort: default
         toPort: default
