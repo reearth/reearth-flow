@@ -23,13 +23,13 @@ func init() {
 type (
 	Mailer mailer.Mailer
 	Config struct {
-		AuthSrv    AuthSrvConfig     `pp:",omitempty"`
-		Web_Config JSON              `pp:",omitempty"`
-		Web        map[string]string `pp:",omitempty"`
-		AuthAlg    *string           `pp:",omitempty"`
-		AuthTtl    *int              `pp:",omitempty"`
-		AuthClientid *string         `pp:",omitempty"`
-		AuthJwksuri  *string         `pp:",omitempty"`
+		AuthSrv      AuthSrvConfig     `pp:",omitempty"`
+		Web_Config   JSON              `pp:",omitempty"`
+		Web          map[string]string `pp:",omitempty"`
+		AuthAlg      *string           `pp:",omitempty"`
+		AuthTtl      *int              `pp:",omitempty"`
+		AuthClientid *string           `pp:",omitempty"`
+		AuthJwksuri  *string           `pp:",omitempty"`
 
 		mailer.Config
 		Auth0   Auth0Config   `pp:",omitempty"`
