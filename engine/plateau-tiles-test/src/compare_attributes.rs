@@ -152,16 +152,20 @@ impl AttributeComparer {
 
         // Type checking with tolerance
         if !self.types_match(&v1, &v2) {
-            // Try type coercion
             if let Some(v2_bool) = v2.as_bool() {
                 if self.value_as_bool(&v1) == Some(v2_bool) {
                     return;
                 }
             }
+            // FME unpredictably does implicit string conversion
             if let Some(v2_str) = v2.as_str() {
                 if v1.to_string().trim_matches('"') == v2_str {
                     return;
                 }
+            }
+            // NULL match empty string since flow does not use schema to template features
+            if v1.as_str().unwrap_or("") .is_empty() && v2.is_null() {
+                return;
             }
             self.mismatches
                 .push((self.identifier.clone(), key.to_string(), v1, v2));

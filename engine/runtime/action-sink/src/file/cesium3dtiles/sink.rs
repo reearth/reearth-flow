@@ -102,6 +102,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
+                colon_to_underscore: params.colon_to_underscore.unwrap_or(true),
             },
         };
         Ok(Box::new(sink))
@@ -140,6 +141,9 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
+    /// # Colon to Underscore
+    /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
+    pub(super) colon_to_underscore: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -149,7 +153,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
-    pub(super) draco_compression: Option<bool>, // Draco compression. Defaults to true.
+    pub(super) draco_compression: Option<bool>,
+    pub(super) colon_to_underscore: bool,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -198,7 +203,22 @@ impl Cesium3DTilesWriter {
                 "Unsupported input".to_string(),
             ));
         }
-        let feature = &ctx.feature;
+        // Normalize attribute keys if colon_to_underscore is enabled
+        let feature = if self.params.colon_to_underscore {
+            let mut feature = ctx.feature.clone();
+            feature.attributes = feature
+                .attributes
+                .into_iter()
+                .map(|(k, v)| {
+                    let key_str = k.as_ref().replace(':', "_");
+                    (reearth_flow_types::Attribute::new(key_str), v)
+                })
+                .collect();
+            feature
+        } else {
+            ctx.feature.clone()
+        };
+
         let output = self.params.output.clone();
         let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
@@ -218,7 +238,7 @@ impl Cesium3DTilesWriter {
             .buffer
             .entry((output, feature_type.clone(), compress_output.clone()))
             .or_default();
-        buffer.push(feature.clone());
+        buffer.push(feature);
         Ok(())
     }
 
