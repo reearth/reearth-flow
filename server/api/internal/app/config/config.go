@@ -42,11 +42,11 @@ type (
 		AccountsApiHost string `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
 		AssetBaseURL    string `default:"http://localhost:8080/assets"`
 		DB              string `default:"mongodb://localhost"`
-		DbAccount       string `pp:",omitempty"`
+		DbAccount       string `envconfig:"DB_ACCOUNT" pp:",omitempty"`
 		GCPProject      string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 		GCPRegion       string `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
 		Host            string `default:"http://localhost:8080"`
-		HostWeb         string `pp:",omitempty"`
+		HostWeb         string `envconfig:"HOST_WEB" pp:",omitempty"`
 		Port            string `default:"8080"`
 		Profiler        string `pp:",omitempty"`
 		ServerHost      string `pp:",omitempty"`
@@ -58,10 +58,10 @@ type (
 		WorkflowBaseURL string `default:"http://localhost:8080/workflows"`
 
 		// log
-		RedisUrl string `pp:",omitempty"`
+		RedisUrl string `envconfig:"REDIS_URL" pp:",omitempty"`
 
-		AuthIss                               string `pp:",omitempty"`
-		AuthAud                               string `pp:",omitempty"`
+		AuthIss                               string `envconfig:"AUTH_ISS" pp:",omitempty"`
+		AuthAud                               string `envconfig:"AUTH_AUD" pp:",omitempty"`
 		WorkerBatchsaemail                    string `envconfig:"WORKER_BATCHSAEMAIL" pp:",omitempty"`
 		WorkerBinarypath                      string `envconfig:"WORKER_BINARYPATH" default:"reearth-flow-worker" pp:",omitempty"`
 		WorkerBootdisksizegb                  string `envconfig:"WORKER_BOOTDISKSIZEGB" default:"50" pp:",omitempty"`
@@ -89,7 +89,7 @@ type (
 		// cms
 		CmsEndpoint string          `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`
 		CmsToken    string          `envconfig:"REEARTH_FLOW_GRPC_TOKEN_CMS" pp:",omitempty"`
-		DbUsers     []appx.NamedURI `pp:",omitempty"`
+		DbUsers     []appx.NamedURI `envconfig:"DB_USERS" pp:",omitempty"`
 		Origins     []string        `pp:",omitempty"`
 
 		// auth
@@ -106,7 +106,7 @@ type (
 		SkipPermissionCheck            bool          `default:"false"`
 		WebAppDisabled                 bool          `pp:",omitempty"`
 		WebDisabled                    bool          `pp:",omitempty"`
-		WorkerCompressintermediatedata bool          `envconfig:"WORKER_COMPRESSINTERMEDIATEDATA" default:"false" pp:",omitempty"`
+		WorkerCompressintermediatedata bool          `envconfig:"WORKER_COMPRESS_INTERMEDIATE_DATA" default:"false" pp:",omitempty"`
 		CmsUsetls                      bool          `envconfig:"REEARTH_FLOW_GRPC_USETLS" default:"true" pp:",omitempty"`
 	}
 )
