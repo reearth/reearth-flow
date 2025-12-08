@@ -3,7 +3,11 @@ id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
 name: "Solar Radiation time to TIMEVALUE workflow"
 entryGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
 with:
-  csvFile: !include ./input-time-to-time-value.csv
+  csvFile: |
+    年月日,出,方位[°],南中,高度[°],入り,方位[°]00
+    2023/1/1,7:06,118.3,11:57:59,30.7,16:50,241.7
+    2023/1/2,7:06,118.2,11:58:28,30.8,16:51,241.8
+    2023/1/3,7:06,118.1,11:58:55,30.9,16:52,241.9
 graphs:
   - id: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
     name: entry_point

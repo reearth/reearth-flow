@@ -1,0 +1,16 @@
+{
+  "workflowPath": "solar-radiation/time-to-time-value/workflow.yml",
+  "description": "Test solar radiation time-to-time-value workflow with time conversion validation",
+  "cityGmlPath": "udx/bldg/input.gml",
+  "expectedOutput": {
+    "expectedFile": "output-time-to-time-value.csv"
+  },
+  "intermediateAssertions": [
+    {
+      "edgeId": "e8f7a6b5-4c3d-2e1f-9a8b-7c6d5e4f3a2b",
+      "expectedFile": "intermediate_time_conversion.jsonl",
+      "jsonFilter": "{出, 入り, 南中, 出_H, 出_M, 入り_H, 入り_M}"
+    }
+  ],
+  "skip": false
+}
