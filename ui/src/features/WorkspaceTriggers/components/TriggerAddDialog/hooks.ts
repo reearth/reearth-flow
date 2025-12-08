@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
+import { ParameterType } from "@flow/lib/gql/__gen__/graphql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import {
@@ -188,7 +189,8 @@ export default ({
 
     const variablesToSave = variablesToSaveRaw?.map(({ type, ...rest }) => ({
       ...rest,
-      type: (window as any).ParameterType?.[type.toUpperCase()] ?? type,
+      type:
+        ParameterType[type.toUpperCase() as keyof typeof ParameterType] ?? type,
     })) as any;
 
     const { trigger: createdTrigger } = await createTrigger(

@@ -78,7 +78,10 @@ const TriggerVariableRow: React.FC<Props> = ({
         />
       );
     case "text":
-      if (variable.defaultValue.length > 50) {
+      if (
+        typeof variable.defaultValue === "string" &&
+        variable.defaultValue.length > 50
+      ) {
         return (
           <TextArea
             id={`default-${index}`}
@@ -101,6 +104,16 @@ const TriggerVariableRow: React.FC<Props> = ({
           />
         );
       }
+    default:
+      console.error(
+        `Unsupported variable type '${variable.type}' in TriggerVariableRow (index: ${index}).`,
+      );
+      return (
+        <div className="text-sm font-semibold text-red-600">
+          {t("Unsupported variable type")}:{" "}
+          <span className="font-mono">{variable.type}</span>
+        </div>
+      );
   }
 };
 

@@ -33,10 +33,11 @@ const recordToVariables = (
     const type = toGqlParameterType(
       inferredVarType,
     ) as unknown as Variable["type"];
-    if (!type) {
+
+    if (!type || typeof type !== "string") {
       throw new Error(`Unable to infer type for variable "${key}"`);
     }
-    return { key, type, value };
+    return { key, type: type as Variable["type"], value };
   });
 };
 

@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
-import { VarType } from "./projectVariables";
+import type { VarType } from "./projectVariables";
 
 export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
 export enum TriggerOrderBy {

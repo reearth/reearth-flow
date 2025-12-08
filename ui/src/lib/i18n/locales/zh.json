@@ -743,6 +743,7 @@
   "Workflow Url": "工作流URL",
   "Update Trigger": "更新触发器",
   "Trigger Details": "触发器详情",
+  "Unsupported variable type": "不支持的变量类型",
   "Reset to workflow default": "重置为工作流默认值",
   "Delete Trigger": "删除触发器",
   "New Trigger": "新触发器",

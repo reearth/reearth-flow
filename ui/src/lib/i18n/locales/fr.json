@@ -745,6 +745,7 @@
   "Workflow Url": "URL du flux de travail",
   "Update Trigger": "Mettre à jour le déclencheur",
   "Trigger Details": "Détails du déclencheur",
+  "Unsupported variable type": "Type de variable non pris en charge",
   "Reset to workflow default": "Réinitialiser aux valeurs par défaut du flux de travail",
   "Delete Trigger": "Supprimer le déclencheur",
   "New Trigger": "Nouveau déclencheur",

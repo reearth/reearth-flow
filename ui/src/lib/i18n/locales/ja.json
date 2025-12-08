@@ -743,6 +743,7 @@
   "Workflow Url": "ワークフローURL",
   "Update Trigger": "トリガーを更新",
   "Trigger Details": "トリガー詳細",
+  "Unsupported variable type": "サポートされていない変数タイプ",
   "Reset to workflow default": "ワークフローデフォルトにリセット",
   "Delete Trigger": "トリガーを削除",
   "New Trigger": "新規トリガー",
