@@ -163,7 +163,7 @@ impl AttributeComparer {
                     return;
                 }
             }
-            // NULL match empty string since flow does not use schema to template features
+            // let NULL match empty string due to the limitation of 3d-tiles-tools upgrade
             if v1.as_str().unwrap_or("").is_empty() && v2.is_null() {
                 return;
             }
