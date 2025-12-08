@@ -13,7 +13,6 @@ type TriggerDocument struct {
 	UpdatedAt     time.Time          `bson:"updatedat"`
 	LastTriggered time.Time          `bson:"lasttriggered,omitempty"`
 	Enabled       *bool              `bson:"enabled,omitempty"`
-	Variables     []VariableDocument `bson:"variables,omitempty"`
 	ID            string             `bson:"id"`
 	WorkspaceID   string             `bson:"workspaceid"`
 	DeploymentID  string             `bson:"deploymentid"`
@@ -21,6 +20,7 @@ type TriggerDocument struct {
 	EventSource   string             `bson:"eventsource"`
 	TimeInterval  string             `bson:"timeinterval,omitempty"`
 	AuthToken     string             `bson:"authtoken,omitempty"`
+	Variables     []VariableDocument `bson:"variables,omitempty"`
 }
 
 type TriggerConsumer = Consumer[*TriggerDocument, *trigger.Trigger]

@@ -31,9 +31,9 @@ type Trigger struct {
 	lastTriggered *time.Time
 	authToken     *string
 	timeInterval  *TimeInterval
-	variables     []variable.Variable
 	description   string
 	eventSource   EventSourceType
+	variables     []variable.Variable
 	id            ID
 	workspaceId   WorkspaceID
 	deploymentId  DeploymentID
