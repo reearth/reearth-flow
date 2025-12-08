@@ -4075,6 +4075,8 @@ input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
   file: Upload!
+  previousJobId: ID
+  startNodeId: ID
 }
 
 # Payload
@@ -20535,7 +20537,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "file"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "file", "previousJobId", "startNodeId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20563,6 +20565,20 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.File = data
+		case "previousJobId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("previousJobId"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PreviousJobID = data
+		case "startNodeId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startNodeId"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartNodeID = data
 		}
 	}
 

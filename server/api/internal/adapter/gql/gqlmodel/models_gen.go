@@ -517,9 +517,11 @@ type RemoveParametersInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID   ID             `json:"projectId"`
-	WorkspaceID ID             `json:"workspaceId"`
-	File        graphql.Upload `json:"file"`
+	ProjectID     ID             `json:"projectId"`
+	WorkspaceID   ID             `json:"workspaceId"`
+	File          graphql.Upload `json:"file"`
+	PreviousJobID *ID            `json:"previousJobId,omitempty"`
+	StartNodeID   *ID            `json:"startNodeId,omitempty"`
 }
 
 type RunProjectPayload struct {
