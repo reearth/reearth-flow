@@ -63,7 +63,7 @@ const CollaborationCard: React.FC<Props> = ({
           className="h-8"
           tooltipText={t("Spotlight User")}
           icon={<TargetIcon size={14} />}
-          onClick={() => onSpotlightUserSelect?.(clientId)}
+          onClick={() => onSpotlightUserSelect(clientId)}
         />
       )}
       {isSpotlighted && onSpotlightUserDeselect && !self && (
@@ -71,7 +71,7 @@ const CollaborationCard: React.FC<Props> = ({
           className="h-8"
           tooltipText={t("Remove Spotlight")}
           icon={<ProhibitIcon size={14} />}
-          onClick={() => onSpotlightUserDeselect?.()}
+          onClick={onSpotlightUserDeselect}
         />
       )}
       {isHovered && onDebugRunJoin && !self && (
