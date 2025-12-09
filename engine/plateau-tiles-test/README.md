@@ -39,12 +39,12 @@ cargo run -p plateau-tiles-test
 
 ## Tests
 
+- `json_attributes` - Compare JSON outputs.
 - `mvt_attributes` - Compare MVT tile attributes.
 - `mvt_polygons` - Compare MVT polygon geometries using symmetric difference area.
-- `cesium_attributes` - Compare 3D Tiles feature attributes.
-- `json_attributes` - Compare JSON outputs.
 - `mvt_lines` - Compare MVT tiles linestrings and polygon outliers.
-- (TODO) `cesium_lines` - Compare 3D Tiles meshes using lines.
+- `cesium_attributes` - Compare 3D Tiles feature attributes.
+- `cesium_statistics` - Compare 3D Tiles triangle meshes from statistical values.
 
 ## Run single test
 

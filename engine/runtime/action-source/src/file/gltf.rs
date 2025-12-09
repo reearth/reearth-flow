@@ -146,144 +146,79 @@ async fn read_gltf(
     let buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
 
     if params.merge_meshes {
+        // Merge all meshes into single feature
         let mut all_primitives = Vec::new();
         let mut mesh_names = Vec::new();
         let mut node_names = Vec::new();
 
-        for scene in gltf.scenes() {
-            for node in scene.nodes() {
-                collect_primitives(
-                    &node,
-                    &gltf,
-                    &mut all_primitives,
-                    &mut mesh_names,
-                    &mut node_names,
-                );
-            }
+        // Collect all scenes to keep them alive while we process primitives
+        let scenes: Vec<_> = gltf.scenes().collect();
+
+        for scene in &scenes {
+            let traverser = reearth_flow_gltf::NodeTraverser::new(scene);
+            traverser.traverse(|node, _transform| -> Result<(), SourceError> {
+                if let Some(mesh) = node.mesh() {
+                    all_primitives.extend(mesh.primitives());
+                    if let Some(mesh_name) = mesh.name() {
+                        if !mesh_names.contains(&mesh_name.to_string()) {
+                            mesh_names.push(mesh_name.to_string());
+                        }
+                    }
+                }
+                if params.include_nodes {
+                    if let Some(node_name) = node.name() {
+                        if !node_names.contains(&node_name.to_string()) {
+                            node_names.push(node_name.to_string());
+                        }
+                    }
+                }
+                Ok(())
+            })?;
         }
 
         if !all_primitives.is_empty() {
+            // WARNING: Merged geometry loses individual node transforms!
+            // This is the existing behavior - all primitives are combined in local space
             let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
                 &all_primitives,
                 &buffer_data,
             )
             .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
-            let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
-            let mut attributes = IndexMap::new();
 
-            attributes.insert(
-                Attribute::new("source"),
-                AttributeValue::String("glTF".to_string()),
-            );
-
-            if !mesh_names.is_empty() {
-                attributes.insert(
-                    Attribute::new("meshes"),
-                    AttributeValue::Array(
-                        mesh_names
-                            .iter()
-                            .map(|m| AttributeValue::String(m.clone()))
-                            .collect(),
-                    ),
-                );
-            }
-
-            if params.include_nodes && !node_names.is_empty() {
-                attributes.insert(
-                    Attribute::new("nodes"),
-                    AttributeValue::Array(
-                        node_names
-                            .iter()
-                            .map(|n| AttributeValue::String(n.clone()))
-                            .collect(),
-                    ),
-                );
-            }
-
-            attributes.insert(
-                Attribute::new("primitiveCount"),
-                AttributeValue::Number(serde_json::Number::from(all_primitives.len())),
-            );
-
-            let feature = Feature {
-                geometry,
-                attributes,
-                ..Default::default()
-            };
-
-            sender
-                .send((
-                    DEFAULT_PORT.clone(),
-                    IngestionMessage::OperationEvent { feature },
-                ))
-                .await
-                .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
+            send_feature(&sender, flow_geometry, &mesh_names, &node_names, all_primitives.len(), params).await?;
         }
     } else {
+        // Emit one feature per mesh (with transforms applied)
         for scene in gltf.scenes() {
-            let mut node_queue: Vec<gltf::Node> = scene.nodes().collect();
+            let mut features_to_send = Vec::new();
 
-            while let Some(node) = node_queue.pop() {
+            let traverser = reearth_flow_gltf::NodeTraverser::new(&scene);
+            traverser.traverse(|node, world_transform| -> Result<(), SourceError> {
                 if let Some(mesh) = node.mesh() {
                     let primitives: Vec<_> = mesh.primitives().collect();
-
                     if !primitives.is_empty() {
-                        let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
+                        let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
                             &primitives,
                             &buffer_data,
+                            Some(world_transform),
                         )
-                        .map_err(|e| {
-                            SourceError::GltfReader(format!("Failed to create geometry: {e}"))
-                        })?;
-                        let geometry =
-                            Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
-                        let mut attributes = IndexMap::new();
+                        .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
 
-                        attributes.insert(
-                            Attribute::new("source"),
-                            AttributeValue::String("glTF".to_string()),
-                        );
-
-                        if let Some(mesh_name) = mesh.name() {
-                            attributes.insert(
-                                Attribute::new("mesh"),
-                                AttributeValue::String(mesh_name.to_string()),
-                            );
-                        }
-
-                        if params.include_nodes {
-                            if let Some(node_name) = node.name() {
-                                attributes.insert(
-                                    Attribute::new("node"),
-                                    AttributeValue::String(node_name.to_string()),
-                                );
-                            }
-                        }
-
-                        attributes.insert(
-                            Attribute::new("primitiveCount"),
-                            AttributeValue::Number(serde_json::Number::from(primitives.len())),
-                        );
-
-                        let feature = Feature {
-                            geometry,
-                            attributes,
-                            ..Default::default()
+                        let mesh_names = mesh.name().map(|n| vec![n.to_string()]).unwrap_or_default();
+                        let node_names = if params.include_nodes {
+                            node.name().map(|n| vec![n.to_string()]).unwrap_or_default()
+                        } else {
+                            vec![]
                         };
 
-                        sender
-                            .send((
-                                DEFAULT_PORT.clone(),
-                                IngestionMessage::OperationEvent { feature },
-                            ))
-                            .await
-                            .map_err(|e| {
-                                SourceError::GltfReader(format!("Failed to send feature: {e}"))
-                            })?;
+                        features_to_send.push((flow_geometry, mesh_names, node_names, primitives.len()));
                     }
                 }
+                Ok(())
+            })?;
 
-                node_queue.extend(node.children());
+            for (flow_geometry, mesh_names, node_names, primitive_count) in features_to_send {
+                send_feature(&sender, flow_geometry, &mesh_names, &node_names, primitive_count, params).await?;
             }
         }
     }
@@ -291,36 +226,70 @@ async fn read_gltf(
     Ok(())
 }
 
-fn collect_primitives<'a>(
-    node: &gltf::Node<'a>,
-    _gltf: &gltf::Gltf,
-    primitives: &mut Vec<gltf::Primitive<'a>>,
-    mesh_names: &mut Vec<String>,
-    node_names: &mut Vec<String>,
-) {
-    let mut node_stack = vec![node.clone()];
+async fn send_feature(
+    sender: &Sender<(Port, IngestionMessage)>,
+    flow_geometry: reearth_flow_geometry::types::geometry::Geometry3D<f64>,
+    mesh_names: &[String],
+    node_names: &[String],
+    primitive_count: usize,
+    params: &GltfReaderParam,
+) -> Result<(), SourceError> {
+    let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
+    let mut attributes = IndexMap::new();
 
-    while let Some(current_node) = node_stack.pop() {
-        if let Some(node_name) = current_node.name() {
-            if !node_names.contains(&node_name.to_string()) {
-                node_names.push(node_name.to_string());
-            }
-        }
+    attributes.insert(
+        Attribute::new("source"),
+        AttributeValue::String("glTF".to_string()),
+    );
 
-        if let Some(mesh) = current_node.mesh() {
-            if let Some(mesh_name) = mesh.name() {
-                if !mesh_names.contains(&mesh_name.to_string()) {
-                    mesh_names.push(mesh_name.to_string());
-                }
-            }
-
-            for primitive in mesh.primitives() {
-                primitives.push(primitive);
-            }
-        }
-
-        node_stack.extend(current_node.children());
+    if !mesh_names.is_empty() {
+        let key = if mesh_names.len() == 1 { "mesh" } else { "meshes" };
+        attributes.insert(
+            Attribute::new(key),
+            if mesh_names.len() == 1 {
+                AttributeValue::String(mesh_names[0].clone())
+            } else {
+                AttributeValue::Array(
+                    mesh_names.iter().map(|m| AttributeValue::String(m.clone())).collect(),
+                )
+            },
+        );
     }
+
+    if params.include_nodes && !node_names.is_empty() {
+        let key = if node_names.len() == 1 { "node" } else { "nodes" };
+        attributes.insert(
+            Attribute::new(key),
+            if node_names.len() == 1 {
+                AttributeValue::String(node_names[0].clone())
+            } else {
+                AttributeValue::Array(
+                    node_names.iter().map(|n| AttributeValue::String(n.clone())).collect(),
+                )
+            },
+        );
+    }
+
+    attributes.insert(
+        Attribute::new("primitiveCount"),
+        AttributeValue::Number(serde_json::Number::from(primitive_count)),
+    );
+
+    let feature = Feature {
+        geometry,
+        attributes,
+        ..Default::default()
+    };
+
+    sender
+        .send((
+            DEFAULT_PORT.clone(),
+            IngestionMessage::OperationEvent { feature },
+        ))
+        .await
+        .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
+
+    Ok(())
 }
 
 async fn load_buffers(

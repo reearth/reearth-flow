@@ -1,6 +1,7 @@
 use reearth_flow_geometry::types::{coordinate::Coordinate, multi_polygon::MultiPolygon3D, polygon::Polygon3D};
 use reearth_flow_gltf::{
-    extract_feature_properties, parse_gltf, read_indices, read_mesh_features, read_positions,
+    extract_feature_properties, parse_gltf, read_indices, read_mesh_features, read_positions_with_transform,
+    Transform,
 };
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -213,10 +214,38 @@ impl GeometryCollector {
             .ok_or_else(|| format!("GLB file {:?} has no binary blob", glb_path))?
             .clone()];
 
-        for mesh in gltf.meshes() {
-            for primitive in mesh.primitives() {
-                self.process_primitive(&primitive, &buffer_data, &feature_list, glb_path, geometric_error)?;
+        // Process scene graph to capture node transforms
+        for scene in gltf.scenes() {
+            for node in scene.nodes() {
+                let transform = Transform::from_node(&node);
+                self.process_node(&node, &transform, &buffer_data, &feature_list, glb_path, geometric_error)?;
             }
+        }
+
+        Ok(())
+    }
+
+    fn process_node(
+        &mut self,
+        node: &::gltf::Node,
+        parent_transform: &Transform,
+        buffer_data: &[Vec<u8>],
+        feature_list: &[(String, serde_json::Map<String, Value>)],
+        glb_path: &Path,
+        geometric_error: f64,
+    ) -> Result<(), String> {
+        // Process mesh if attached to this node
+        if let Some(mesh) = node.mesh() {
+            for primitive in mesh.primitives() {
+                self.process_primitive(&primitive, buffer_data, feature_list, glb_path, geometric_error, parent_transform)?;
+            }
+        }
+
+        // Recursively process children with accumulated transforms
+        for child in node.children() {
+            let child_local = Transform::from_node(&child);
+            let child_world = child_local.compose(parent_transform);
+            self.process_node(&child, &child_world, buffer_data, feature_list, glb_path, geometric_error)?;
         }
 
         Ok(())
@@ -229,6 +258,7 @@ impl GeometryCollector {
         feature_list: &[(String, serde_json::Map<String, Value>)],
         glb_path: &Path,
         geometric_error: f64,
+        transform: &Transform,
     ) -> Result<(), String> {
         let feature_ids = read_mesh_features(primitive, buffer_data)
             .map_err(|e| format!("Failed to read mesh features from {:?}: {}", glb_path, e))?
@@ -237,7 +267,7 @@ impl GeometryCollector {
         let position_accessor = primitive
             .get(&::gltf::Semantic::Positions)
             .ok_or_else(|| format!("Primitive has no positions: {:?}", glb_path))?;
-        let positions = read_positions(&position_accessor, buffer_data)
+        let positions = read_positions_with_transform(&position_accessor, buffer_data, Some(transform))
             .map_err(|e| format!("Failed to read positions: {}", e))?;
 
         let indices = primitive

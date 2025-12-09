@@ -1,4 +1,5 @@
 use crate::align_cesium::{collect_geometries_by_gmlid, find_cesium_tile_directories, DetailLevel};
+use reearth_flow_geometry::algorithm::centroid::Centroid;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -72,6 +73,7 @@ fn align_and_compare(
         verify_monotonic_geometric_error(gml_id, fme_detail_levels, "FME")?;
         verify_monotonic_geometric_error(gml_id, flow_detail_levels, "Flow")?;
 
+        // compare each Flow detail level to the highest-detail FME level
         let fme_highest_level = fme_detail_levels
             .last()
             .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?;
@@ -111,10 +113,21 @@ fn verify_monotonic_geometric_error(
     Ok(())
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct DetailLevelComparisonResult {
     gml_id: String,
     bounding_box_error: f64,
+    mass_center_error: f64,
+}
+
+impl std::fmt::Display for DetailLevelComparisonResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} bounding_box:{:.6} mass_center:{:.6}",
+            self.gml_id, self.bounding_box_error, self.mass_center_error,
+        )
+    }
 }
 
 impl DetailLevelComparisonResult {
@@ -131,16 +144,46 @@ fn compare_detail_level(
     fme_level: &DetailLevel,
     flow_level: &DetailLevel,
 ) -> Result<(), String> {
-    let result = DetailLevelComparisonResult::new(gml_id.to_string());
+    let mut result = DetailLevelComparisonResult::new(gml_id.to_string());
     let fme_error = fme_level.geometric_error;
     let fme_geometry = &fme_level.multipolygon;
     let flow_error = flow_level.geometric_error;
     let flow_geometry = &flow_level.multipolygon;
 
     // compare bounding boxes
-    let fme_bbox = fme_geometry.bounding_box();
-    let flow_bbox = flow_geometry.bounding_box();
-    eprintln!("{:?} - FME BBox: {:?}, Flow BBox: {:?}", result.gml_id, fme_bbox, flow_bbox);
+    let fme_bbox = fme_geometry.bounding_box().expect("FME geometry has no bounding box");
+    let flow_bbox = flow_geometry.bounding_box().expect("Flow geometry has no bounding box");
+    // if vertices have max error r, the bounding boxes can differ by at most r in each direction
+    // thus the bounding box error is at most sqrt(3) * r. We simply use 2 * r as a safe upper bound.
+    let bbox_error = 2.0 * (fme_error + flow_error);
+    let error_min = (fme_bbox.min() - flow_bbox.min()).norm() / bbox_error;
+    let error_max = (fme_bbox.max() - flow_bbox.max()).norm() / bbox_error;
+    result.bounding_box_error = error_min.max(error_max);
+    if result.bounding_box_error > 1.0 {
+        return Err(format!(
+            "gml_id '{}': bounding box mismatch exceeds error bound: {}",
+            gml_id, result.bounding_box_error
+        ));
+    }
 
+    // compare mass center
+    let fme_centroid = fme_geometry.centroid().ok_or_else(|| {
+        format!("gml_id '{}': FME geometry has no centroid", gml_id)
+    })?;
+    let flow_centroid = flow_geometry.centroid().ok_or_else(|| {
+        format!("gml_id '{}': Flow geometry has no centroid", gml_id)
+    })?;
+    // if vertices have max error r, centroids can differ by at most r
+    let centroid_error_bound = fme_error + flow_error;
+    let centroid_diff = (fme_centroid.0 - flow_centroid.0).norm();
+    result.mass_center_error = centroid_diff / centroid_error_bound;
+    if result.mass_center_error > 1.0 {
+        return Err(format!(
+            "gml_id '{}': mass center mismatch exceeds error bound: {}",
+            gml_id, result.mass_center_error
+        ));
+    }
+
+    tracing::debug!("{}", result);
     Ok(())
 }

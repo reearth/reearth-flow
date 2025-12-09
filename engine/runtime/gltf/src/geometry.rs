@@ -2,12 +2,14 @@ use reearth_flow_geometry::types::{
     geometry::Geometry3D, multi_polygon::MultiPolygon3D, polygon::Polygon3D,
 };
 
-use crate::reader::{read_indices, read_positions, GltfReaderError};
+use crate::reader::{read_indices, read_positions_with_transform, GltfReaderError};
+use crate::scene::Transform;
 
-/// Creates a MultiPolygon3D from GLTF primitives
-pub fn create_multipolygon_from_primitives(
+/// Creates a MultiPolygon3D from GLTF primitives with optional transform
+pub fn create_multipolygon_from_primitives_with_transform(
     primitives: &[gltf::Primitive],
     buffer_data: &[Vec<u8>],
+    transform: Option<&Transform>,
 ) -> Result<MultiPolygon3D<f64>, GltfReaderError> {
     let mut polygons = Vec::new();
 
@@ -16,7 +18,7 @@ pub fn create_multipolygon_from_primitives(
             .get(&gltf::Semantic::Positions)
             .ok_or_else(|| GltfReaderError::Accessor("Primitive has no positions".to_string()))?;
 
-        let positions = read_positions(&position_accessor, buffer_data)?;
+        let positions = read_positions_with_transform(&position_accessor, buffer_data, transform)?;
 
         if let Some(indices_accessor) = primitive.indices() {
             let indices = read_indices(&indices_accessor, buffer_data)?;
@@ -97,13 +99,22 @@ pub fn create_multipolygon_from_primitives(
     Ok(MultiPolygon3D::new(polygons))
 }
 
-/// Creates a Geometry3D from GLTF primitives
-/// Returns Polygon if single polygon, MultiPolygon otherwise
-pub fn create_geometry_from_primitives(
+/// Creates a MultiPolygon3D from GLTF primitives (backwards compatible, no transform)
+pub fn create_multipolygon_from_primitives(
     primitives: &[gltf::Primitive],
     buffer_data: &[Vec<u8>],
+) -> Result<MultiPolygon3D<f64>, GltfReaderError> {
+    create_multipolygon_from_primitives_with_transform(primitives, buffer_data, None)
+}
+
+/// Creates a Geometry3D from GLTF primitives with optional transform
+/// Returns Polygon if single polygon, MultiPolygon otherwise
+pub fn create_geometry_from_primitives_with_transform(
+    primitives: &[gltf::Primitive],
+    buffer_data: &[Vec<u8>],
+    transform: Option<&Transform>,
 ) -> Result<Geometry3D<f64>, GltfReaderError> {
-    let multipolygon = create_multipolygon_from_primitives(primitives, buffer_data)?;
+    let multipolygon = create_multipolygon_from_primitives_with_transform(primitives, buffer_data, transform)?;
     let polygons = multipolygon.0;
 
     let geometry = if polygons.len() == 1 {
@@ -113,6 +124,15 @@ pub fn create_geometry_from_primitives(
     };
 
     Ok(geometry)
+}
+
+/// Creates a Geometry3D from GLTF primitives (backwards compatible, no transform)
+/// Returns Polygon if single polygon, MultiPolygon otherwise
+pub fn create_geometry_from_primitives(
+    primitives: &[gltf::Primitive],
+    buffer_data: &[Vec<u8>],
+) -> Result<Geometry3D<f64>, GltfReaderError> {
+    create_geometry_from_primitives_with_transform(primitives, buffer_data, None)
 }
 
 #[cfg(test)]

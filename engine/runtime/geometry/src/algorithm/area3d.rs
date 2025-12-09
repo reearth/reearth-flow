@@ -263,3 +263,43 @@ where
             .fold(T::zero(), |acc, next| acc + next)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::polygon::Polygon3D;
+    use crate::types::line_string::LineString3D;
+    use crate::types::coordinate::Coordinate;
+
+    #[test]
+    fn test_triangle_area_basic() {
+        // Simple right triangle in XY plane: (0,0,0), (1,0,0), (0,1,0)
+        // Expected area: 0.5
+        let coords = vec![
+            Coordinate { x: 0.0, y: 0.0, z: 0.0 },
+            Coordinate { x: 1.0, y: 0.0, z: 0.0 },
+            Coordinate { x: 0.0, y: 1.0, z: 0.0 },
+            Coordinate { x: 0.0, y: 0.0, z: 0.0 }, // Close the ring
+        ];
+        let polygon = Polygon3D::new(LineString3D::new(coords), vec![]);
+        let area = polygon.unsigned_area3d();
+        println!("Basic triangle area: {}", area);
+        assert!((area - 0.5_f64).abs() < 1e-10, "Expected area 0.5, got {}", area);
+    }
+
+    #[test]
+    fn test_triangle_area_with_large_offset() {
+        // Same triangle but with large ECEF-like offset
+        let offset = 4000000.0;
+        let coords = vec![
+            Coordinate { x: offset, y: offset, z: offset },
+            Coordinate { x: offset + 1.0, y: offset, z: offset },
+            Coordinate { x: offset, y: offset + 1.0, z: offset },
+            Coordinate { x: offset, y: offset, z: offset },
+        ];
+        let polygon = Polygon3D::new(LineString3D::new(coords), vec![]);
+        let area = polygon.unsigned_area3d();
+        println!("Large offset triangle area: {}", area);
+        assert!((area - 0.5_f64).abs() < 1e-6, "Expected area 0.5 with offset, got {}", area);
+    }
+}

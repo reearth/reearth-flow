@@ -6501,6 +6501,7 @@ dependencies = [
  "gltf",
  "indexmap 2.12.1",
  "itertools 0.14.0",
+ "nalgebra",
  "nusamai-citygml",
  "nusamai-gltf",
  "once_cell",
