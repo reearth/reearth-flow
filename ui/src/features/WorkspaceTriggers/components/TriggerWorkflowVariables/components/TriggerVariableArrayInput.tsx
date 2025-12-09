@@ -17,7 +17,7 @@ export default function TriggerVariableArrayInput({
   return (
     <div className="space-y-2">
       {value.map((item, index) => (
-        <div key={index} className="flex items-center">
+        <div key={`${item}-${index}`} className="flex items-center">
           <span className="w-6 text-sm text-muted-foreground">
             {index + 1}.
           </span>
