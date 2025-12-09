@@ -11,9 +11,11 @@ import (
 	"golang.org/x/text/language"
 )
 
-type userKey struct{}
-type jwtTokenKey struct{}
-type gqlOperationNameKey struct{}
+type (
+	userKey             struct{}
+	jwtTokenKey         struct{}
+	gqlOperationNameKey struct{}
+)
 
 type ContextKey string
 

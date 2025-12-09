@@ -1176,6 +1176,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
           "$ref": "#/definitions/Expr"
         }
       ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -4266,9 +4274,9 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
-    "skipUnderscorePrefix": {
-      "title": "Skip Underscore Prefix",
-      "description": "Skip attributes with underscore prefix",
+    "skipUnexposedAttributes": {
+      "title": "Skip Unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
       "type": [
         "boolean",
         "null"

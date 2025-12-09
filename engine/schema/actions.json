@@ -1179,6 +1179,14 @@
                 "$ref": "#/definitions/Expr"
               }
             ]
+          },
+          "skipUnexposedAttributes": {
+            "title": "Skip unexposed Attributes",
+            "description": "Skip attributes with double underscore prefix",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "definitions": {
@@ -4273,9 +4281,9 @@
               }
             ]
           },
-          "skipUnderscorePrefix": {
-            "title": "Skip Underscore Prefix",
-            "description": "Skip attributes with underscore prefix",
+          "skipUnexposedAttributes": {
+            "title": "Skip Unexposed Attributes",
+            "description": "Skip attributes with double underscore prefix",
             "type": [
               "boolean",
               "null"

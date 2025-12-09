@@ -28,7 +28,7 @@ cargo run -p plateau-tiles-test
 ## Caveats
 
 - draco decoding not supported (TODO), disable it in the workflow to test.
-- 3D tiles v1.0 `.b3dm` output by FME is not supported. Manually edit FME workflows by replacing FME 3d tiles writer with `<CsmapReprojector> -> <CoordinateSwapper> -> <JSON FeatureWriter>`
+- 3D tiles v1.0 `.b3dm` output by FME is not supported. Use [3d-tiles-tool](https://github.com/CesiumGS/3d-tiles-tools) to upgrade it.
 - FME's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
 
 ## Tests

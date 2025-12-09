@@ -6,6 +6,7 @@ use std::{
     time, vec,
 };
 
+use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::event::{Event, EventHub};
@@ -13,8 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::Expr;
-use reearth_flow_types::Feature;
+use reearth_flow_types::{Attribute, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -102,6 +102,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
+                skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
             },
         };
         Ok(Box::new(sink))
@@ -114,7 +115,7 @@ type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
-    pub(super) schema: nusamai_citygml::schema::Schema,
+    pub(super) schema: Schema,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
@@ -140,6 +141,9 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
+    /// # Skip unexposed Attributes
+    /// Skip attributes with double underscore prefix
+    pub(super) skip_unexposed_attributes: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -149,7 +153,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
-    pub(super) draco_compression: Option<bool>, // Draco compression. Defaults to true.
+    pub(super) draco_compression: Option<bool>,
+    pub(super) skip_unexposed_attributes: bool,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -176,6 +181,23 @@ impl Sink for Cesium3DTilesWriter {
     }
 }
 
+/// Sanitizes attribute keys to comply with Cesium 3D Tiles 1.1 identifier requirements.
+/// Identifiers must start with a letter or underscore, and contain only alphanumeric characters or underscores.
+fn sanitize_attribute_key(identifier: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in identifier.chars().enumerate() {
+        let is_valid_first = c == '_' || c.is_ascii_alphabetic();
+        let is_valid_rest = c.is_ascii_alphabetic() || c.is_ascii_digit();
+
+        if i == 0 {
+            result.push(if is_valid_first { c } else { '_' });
+        } else {
+            result.push(if is_valid_rest { c } else { '_' });
+        }
+    }
+    result
+}
+
 impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let Some(feature_type) = &ctx.feature.feature_type() else {
@@ -198,9 +220,11 @@ impl Cesium3DTilesWriter {
                 "Unsupported input".to_string(),
             ));
         }
-        let feature = &ctx.feature;
+
         let output = self.params.output.clone();
-        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let scope = ctx
+            .feature
+            .new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
@@ -214,17 +238,33 @@ impl Cesium3DTilesWriter {
         } else {
             None
         };
+
+        // Sanitize attribute keys according to Cesium 3D Tiles specification
+        // see: https://github.com/CesiumGS/3d-tiles/blob/1.1/specification/Metadata/README.adoc#identifiers
+        let feature = {
+            let mut feature = ctx.feature.clone();
+            feature.attributes = feature
+                .attributes
+                .into_iter()
+                .filter(|(k, _)| {
+                    !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+                })
+                .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
+                .collect();
+            feature
+        };
+
         let buffer = self
             .buffer
             .entry((output, feature_type.clone(), compress_output.clone()))
             .or_default();
-        buffer.push(feature.clone());
+        buffer.push(feature);
         Ok(())
     }
 
     fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let feature = &ctx.feature;
-        let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+        let typedef: TypeDef = feature.into();
         let Some(feature_type) = &feature.feature_type() else {
             return Err(SinkError::Cesium3DTilesWriter(
                 "Failed to get feature type".to_string(),
@@ -259,13 +299,13 @@ impl Cesium3DTilesWriter {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
-        let mut schema: nusamai_citygml::schema::Schema = self.schema.clone();
+        let mut schema: Schema = self.schema.clone();
         for (feature_type, upstream) in upstream {
             let Some(feature) = upstream.first() else {
                 continue;
             };
             if !schema.types.contains_key(feature_type) {
-                let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+                let typedef: TypeDef = feature.into();
                 schema.types.insert(feature_type.clone(), typedef);
             }
             features.extend(upstream.clone().into_iter());
@@ -443,5 +483,23 @@ impl Cesium3DTilesWriter {
             }
         });
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_attribute_key() {
+        // Valid identifiers remain unchanged
+        assert_eq!(sanitize_attribute_key("validName"), "validName");
+        assert_eq!(sanitize_attribute_key("_private"), "_private");
+
+        // Invalid first character gets replaced
+        assert_eq!(sanitize_attribute_key("123start"), "_23start");
+
+        // Special characters get replaced with underscores
+        assert_eq!(sanitize_attribute_key("my-key.name"), "my_key_name");
     }
 }
