@@ -68,6 +68,7 @@ graphs:
                 env.get("__value")["package"] == "lsld"
               outputPort: lsld
 
+      # LUSE processing branch
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeMapperLuse
         type: action
@@ -116,7 +117,7 @@ graphs:
               valueAttribute: attributes
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: MVTWriter
+        name: MVTWriterLuse
         type: action
         action: MVTWriter
         with:
@@ -127,7 +128,113 @@ graphs:
           output: |
             file::join_path(env.get("workerArtifactPath"), "luse")
           compressOutput: |
-            file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_luse_mvt.zip")
+            let artifact = env.get("workerArtifactPath");
+            let cityGml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if cityGml.ends_with("_luse_lsld_mvt") {
+              cityGml = cityGml.sub_string(0, cityGml.len() - 14);
+            } else if cityGml.ends_with("_luse_mvt") {
+              cityGml = cityGml.sub_string(0, cityGml.len() - 9);
+            }
+            file::join_path(artifact, cityGml + "_luse_mvt.zip")
+
+      # LSLD processing branch
+      - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        name: AttributeMapperLsld
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              expr: |
+                file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: featureType
+            - attribute: gml_id
+              valueAttribute: gmlId
+            - attribute: core_creationDate
+              expr: |
+                env.get("__value")["core:creationDate"]
+            - attribute: urf_validFrom
+              expr: |
+                env.get("__value")["urf:validFrom"]
+            - attribute: urf_prefecture
+              expr: |
+                env.get("__value")["urf:prefecture"]
+            - attribute: urf_location
+              expr: |
+                env.get("__value")["urf:location"]
+            - attribute: urf_disasterType
+              expr: |
+                env.get("__value")["urf:disasterType"]
+            - attribute: urf_areaType
+              expr: |
+                env.get("__value")["urf:areaType"]
+            - attribute: urf_zoneNumber
+              expr: |
+                env.get("__value")["urf:zoneNumber"]
+            - attribute: urf_zoneName
+              expr: |
+                env.get("__value")["urf:zoneName"]
+            - attribute: urf_status
+              expr: |
+                env.get("__value")["urf:status"]
+            - attribute: uro_geometrySrcDescLod1
+              expr: |
+                env.get("__value")["uro:DataQualityAttribute_uro:geometrySrcDescLod1"]
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: sort_order
+              expr: |
+                let area_type = env.get("__value")["urf:areaType_code"];
+                if area_type == () { area_type = env.get("__value")["urf:areaType"]; }
+                if area_type == "1" || area_type == 1 { 1 }
+                else if area_type == "2" || area_type == 2 { 2 }
+                else if area_type == "3" || area_type == 3 { 3 }
+                else if area_type == "4" || area_type == 4 { 4 }
+                else { 999 }
+
+      - id: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        name: FeatureSorterLsld
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - sort_order
+          order: ascending
+
+      - id: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+        name: AttributeManagerLsldRemoveSortOrder
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: sort_order
+              method: remove
+
+      - id: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        name: MVTWriterLsld
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            "lsld"
+          minZoom: 8
+          maxZoom: 16
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "lsld")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let cityGml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if cityGml.ends_with("_luse_lsld_mvt") {
+              cityGml = cityGml.sub_string(0, cityGml.len() - 14);
+            } else if cityGml.ends_with("_lsld_mvt") {
+              cityGml = cityGml.sub_string(0, cityGml.len() - 9);
+            }
+            file::join_path(artifact, cityGml + "_lsld_mvt.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -164,5 +271,27 @@ graphs:
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: default
+        toPort: default
+
+      # LSLD branch edges
+      - id: 1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b
+        from: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        to: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        fromPort: lsld
+        toPort: default
+      - id: 2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c
+        from: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        to: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        fromPort: default
+        toPort: default
+      - id: 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+        from: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+        fromPort: default
+        toPort: default
+      - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+        from: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+        to: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
         fromPort: default
         toPort: default

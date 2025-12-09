@@ -12224,5 +12224,92 @@
 			"data_type": "string",
 			"json_path": "uro:DataQualityAttribute uro:thematicSrcDesc_code"
 		}
+	],
+	"lsld/urf:SedimentDisasterProneArea": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "string",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "urf:validFrom",
+			"data_type": "string",
+			"json_path": "urf:validFrom"
+		},
+		{
+			"attribute": "urf:prefecture",
+			"data_type": "string",
+			"json_path": "urf:prefecture"
+		},
+		{
+			"attribute": "urf:prefecture_code",
+			"data_type": "string",
+			"json_path": "urf:prefecture_code"
+		},
+		{
+			"attribute": "urf:location",
+			"data_type": "string",
+			"json_path": "urf:location"
+		},
+		{
+			"attribute": "urf:disasterType",
+			"data_type": "string",
+			"json_path": "urf:disasterType"
+		},
+		{
+			"attribute": "urf:disasterType_code",
+			"data_type": "string",
+			"json_path": "urf:disasterType_code"
+		},
+		{
+			"attribute": "urf:areaType",
+			"data_type": "string",
+			"json_path": "urf:areaType"
+		},
+		{
+			"attribute": "urf:areaType_code",
+			"data_type": "string",
+			"json_path": "urf:areaType_code"
+		},
+		{
+			"attribute": "urf:zoneNumber",
+			"data_type": "string",
+			"json_path": "urf:zoneNumber"
+		},
+		{
+			"attribute": "urf:zoneName",
+			"data_type": "string",
+			"json_path": "urf:zoneName"
+		},
+		{
+			"attribute": "urf:status",
+			"data_type": "string",
+			"json_path": "urf:status"
+		},
+		{
+			"attribute": "urf:status_code",
+			"data_type": "string",
+			"json_path": "urf:status_code"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:geometrySrcDescLod1",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:geometrySrcDescLod1_code",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1_code"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:thematicSrcDesc",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
+		},
+		{
+			"attribute": "uro:DataQualityAttribute_uro:thematicSrcDesc_code",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:thematicSrcDesc_code"
+		}
 	]
 }
