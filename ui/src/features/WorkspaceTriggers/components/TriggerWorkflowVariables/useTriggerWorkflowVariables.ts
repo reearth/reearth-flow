@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 
 import { inferProjectVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
-import { toGqlParameterType } from "@flow/lib/gql/convert";
 import { Variable } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
@@ -22,28 +21,22 @@ const variablesToRecord = (
 };
 
 /**
- * Convert Record to Variable array for API
+ * Convert Record to Variable array (domain type)
  */
 const recordToVariables = (
   record?: Record<string, any>,
 ): Variable[] | undefined => {
   if (!record || Object.keys(record).length === 0) return undefined;
   return Object.entries(record).map(([key, value]) => {
-    const inferredVarType = inferProjectVariableType(value, key);
-    const type = toGqlParameterType(
-      inferredVarType,
-    ) as unknown as Variable["type"];
-
-    if (!type || typeof type !== "string") {
-      throw new Error(`Unable to infer type for variable "${key}"`);
-    }
-    return { key, type: type as Variable["type"], value };
+    const type = inferProjectVariableType(value, key);
+    return { key, type, value };
   });
 };
 
 export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
   // Convert Variable[] to Record for internal manipulation
   const initialRecord = variablesToRecord(initialVariables);
+
   const [
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
-import { ParameterType } from "@flow/lib/gql/__gen__/graphql";
+import { toVariableInput } from "@flow/lib/gql/convert";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import {
@@ -185,13 +185,8 @@ export default ({
       return;
     }
 
-    const variablesToSaveRaw = getVariablesToSave();
-
-    const variablesToSave = variablesToSaveRaw?.map(({ type, ...rest }) => ({
-      ...rest,
-      type:
-        ParameterType[type.toUpperCase() as keyof typeof ParameterType] ?? type,
-    })) as any;
+    const domainVariables = getVariablesToSave();
+    const variablesToSave = toVariableInput(domainVariables);
 
     const { trigger: createdTrigger } = await createTrigger(
       workspaceId,

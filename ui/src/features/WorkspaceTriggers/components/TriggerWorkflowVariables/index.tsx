@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   IconButton,
+  DataTable as Table,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -26,7 +27,7 @@ import { useT } from "@flow/lib/i18n";
 import { VarType } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-import { TriggerVariableRow, TriggerVariablesTable } from "./components";
+import { TriggerVariableRow } from "./components";
 
 export type VariableMapping = {
   name: string;
@@ -194,10 +195,7 @@ const TriggerProjectVariablesMappingDialog: React.FC<
           <div className="flex h-full min-h-0">
             <DialogContentSection className="flex min-h-0 flex-3 flex-col">
               <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
-                <TriggerVariablesTable
-                  projectVariables={variableMappings}
-                  columns={columns}
-                />
+                <Table columns={columns} data={variableMappings} />
               </DialogContentSection>
             </DialogContentSection>
           </div>
@@ -205,7 +203,7 @@ const TriggerProjectVariablesMappingDialog: React.FC<
             <Button variant="outline" onClick={handleCancel}>
               {t("Cancel")}
             </Button>
-            <Button onClick={handleConfirm}>{t("Submit")}</Button>
+            <Button onClick={handleConfirm}>{t("Apply")}</Button>
           </DialogFooter>
         </div>
       </DialogContent>

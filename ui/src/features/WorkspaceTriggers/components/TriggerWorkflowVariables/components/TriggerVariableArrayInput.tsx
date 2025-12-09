@@ -39,11 +39,7 @@ export default function TriggerVariableArrayInput({
               type={typeof item === "number" ? "number" : "text"}
               value={item}
               onChange={(e) => {
-                const value =
-                  typeof item === "number"
-                    ? parseFloat(e.target.value)
-                    : e.target.value;
-                handleUpdateItem(index, value);
+                handleUpdateItem(index, e.target.value);
               }}
             />
           )}

@@ -16,9 +16,11 @@ import {
   type CmsModelFragment,
   type CmsItemFragment,
   type CmsAssetFragment,
+  type UserFacingLogFragment,
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   type UserFacingLogLevel as GraphqlUserFacingLogLevel,
+  type VariableInput as GraphqlVariableInput,
   ParameterType,
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
@@ -47,11 +49,10 @@ import type {
   CmsSchemaFieldType,
   CmsAsset,
   UserFacingLog,
+  Variable,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
-
-import { UserFacingLogFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -454,4 +455,17 @@ export const toCmsSchemaFieldType = (
     default:
       return "text";
   }
+};
+
+export const toVariableInput = (
+  variables?: Variable[],
+): GraphqlVariableInput[] | undefined => {
+  if (!variables) return undefined;
+  return variables.map(({ key, type, value }) => {
+    const gqlType = toGqlParameterType(type);
+    if (!gqlType) {
+      throw new Error(`Unable to convert type "${type}" for variable "${key}"`);
+    }
+    return { key, type: gqlType, value };
+  });
 };

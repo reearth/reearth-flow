@@ -46,8 +46,7 @@ const TriggerVariableRow: React.FC<Props> = ({
           type="number"
           value={variable.defaultValue}
           onChange={(e) => {
-            const value = parseFloat(e.target.value);
-            onDefaultValueChange(index, value);
+            onDefaultValueChange(index, e.target.value);
           }}
         />
       );
