@@ -22,16 +22,8 @@ pub(crate) mod str_module {
         let regex = Regex::new(regex).unwrap();
         regex.is_match(haystack)
     }
-
-    pub fn to_i64(s: String) -> i64 {
-        s.parse::<i64>().expect("string value should be an integer")
-    }
-
-    pub fn to_f64(s: String) -> f64 {
-        s.parse::<f64>()
-            .expect("string value should be float to be able to convert to f64")
-    }
 }
+
 #[cfg(test)]
 mod tests {
     use super::str_module::*;
