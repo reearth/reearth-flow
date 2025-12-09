@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
-import { toVariableInput } from "@flow/lib/gql/convert";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import {
@@ -185,8 +184,7 @@ export default ({
       return;
     }
 
-    const domainVariables = getVariablesToSave();
-    const variablesToSave = toVariableInput(domainVariables);
+    const variablesToSave = getVariablesToSave();
 
     const { trigger: createdTrigger } = await createTrigger(
       workspaceId,

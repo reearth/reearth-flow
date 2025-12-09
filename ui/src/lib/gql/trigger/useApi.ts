@@ -6,10 +6,11 @@ import type {
   TimeInterval,
   Trigger,
   UpdateTrigger,
+  Variable,
 } from "@flow/types";
 import { PaginationOptions } from "@flow/types/paginationOptions";
 
-import { TimeDriverInput, VariableInput } from "../__gen__/graphql";
+import { TimeDriverInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
@@ -30,10 +31,9 @@ export const useTrigger = () => {
     description: string,
     timeInterval?: TimeInterval,
     authToken?: string,
-    variables?: VariableInput[],
+    variables?: Variable[],
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
-
     try {
       const data = await mutateAsync({
         workspaceId,
@@ -65,7 +65,7 @@ export const useTrigger = () => {
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
-    variables?: VariableInput[],
+    variables?: Variable[],
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {

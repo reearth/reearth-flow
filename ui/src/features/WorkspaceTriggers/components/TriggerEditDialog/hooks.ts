@@ -2,7 +2,6 @@ import { isEqual } from "lodash-es";
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
-import { toVariableInput } from "@flow/lib/gql/convert";
 import { Trigger, TimeInterval, EventSourceType } from "@flow/types";
 
 import { useTriggerWorkflowVariables } from "../TriggerWorkflowVariables/useTriggerWorkflowVariables";
@@ -86,8 +85,7 @@ export default ({
     if (!selectedTrigger) return;
 
     // Only save variables if they differ from deployment defaults
-    const domainVariables = getVariablesToSave();
-    const variablesToSave = toVariableInput(domainVariables);
+    const variablesToSave = getVariablesToSave();
 
     await useUpdateTrigger(
       selectedTrigger.id,
