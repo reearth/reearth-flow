@@ -47,8 +47,31 @@ pub use writer::*;
 
 #[cfg(test)]
 pub(crate) mod test_utils {
-    /// Minimal GLB with rectangle (0,0,0)-(1,1,0) as two triangles, without EXT_structural_metadata
-    /// Vertices: (0,0,0), (1,0,0), (1,1,0), (0,1,0)
-    /// Triangles: [0,1,2] and [0,2,3]
-    pub const MINIMAL_GLB_BASE64: &str = "Z2xURgIAAAA4AgAA4AEAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyLjAifSwic2NlbmUiOjAsInNjZW5lcyI6W3sibm9kZXMiOlswXX1dLCJub2RlcyI6W3sibWVzaCI6MH1dLCJtZXNoZXMiOlt7InByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjB9LCJpbmRpY2VzIjoxLCJtb2RlIjo0fV19XSwiYWNjZXNzb3JzIjpbeyJidWZmZXJWaWV3IjowLCJjb21wb25lbnRUeXBlIjo1MTI2LCJjb3VudCI6NCwidHlwZSI6IlZFQzMiLCJtaW4iOlswLjAsMC4wLDAuMF0sIm1heCI6WzEuMCwxLjAsMC4wXX0seyJidWZmZXJWaWV3IjoxLCJjb21wb25lbnRUeXBlIjo1MTIzLCJjb3VudCI6NiwidHlwZSI6IlNDQUxBUiJ9XSwiYnVmZmVyVmlld3MiOlt7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MCwiYnl0ZUxlbmd0aCI6NDh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo0OCwiYnl0ZUxlbmd0aCI6MTJ9XSwiYnVmZmVycyI6W3siYnl0ZUxlbmd0aCI6NjB9XX0gICA8AAAAQklOAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAQACAAAAAgADAA==";
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::sync::{Mutex, OnceLock};
+
+    fn testdata_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testdata")
+    }
+
+    /// Lazy loader for test GLB files from testdata directory.
+    /// Files are loaded on first access and cached in memory.
+    ///
+    /// Available files:
+    /// - "minimal_rectangle.glb" - Minimal GLB with rectangle (0,0,0)-(1,1,0), NO EXT_structural_metadata
+    /// - "test_data_39255_tran_AuxiliaryTrafficArea.glb" - GLB with EXT_structural_metadata extension
+    pub fn load_testdata(filename: &str) -> Vec<u8> {
+        static CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new();
+        let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+
+        let mut cache = cache.lock().unwrap();
+        cache
+            .entry(filename.to_string())
+            .or_insert_with(|| {
+                std::fs::read(testdata_dir().join(filename))
+                    .unwrap_or_else(|_| panic!("Failed to load testdata: {}", filename))
+            })
+            .clone()
+    }
 }

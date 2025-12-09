@@ -123,11 +123,7 @@ mod tests {
 
     #[test]
     fn test_parse_rectangle_glb() {
-        use crate::test_utils::MINIMAL_GLB_BASE64;
-        use base64::Engine;
-        let glb_bytes = base64::engine::general_purpose::STANDARD
-            .decode(MINIMAL_GLB_BASE64)
-            .unwrap();
+        let glb_bytes = crate::test_utils::load_testdata("minimal_rectangle.glb");
         let content = Bytes::from(glb_bytes);
 
         let gltf = parse_gltf(&content).unwrap();

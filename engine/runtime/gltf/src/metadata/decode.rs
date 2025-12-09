@@ -406,8 +406,9 @@ mod tests {
     #[test]
     fn test_extract_feature_properties() {
         // Load test GLB file with EXT_structural_metadata
-        let glb_data = include_bytes!("test_data_39255_tran_AuxiliaryTrafficArea.glb");
-        let gltf = parse_gltf(&bytes::Bytes::from(&glb_data[..])).expect("Failed to parse GLB");
+        let glb_data =
+            crate::test_utils::load_testdata("test_data_39255_tran_AuxiliaryTrafficArea.glb");
+        let gltf = parse_gltf(&bytes::Bytes::from(glb_data)).expect("Failed to parse GLB");
 
         // Extract feature properties
         let features = extract_feature_properties(&gltf).expect("Failed to extract features");
@@ -494,17 +495,12 @@ mod tests {
     fn test_extract_feature_properties_no_extension() {
         // Test with minimal GLB that has NO EXT_structural_metadata extension
         // Should return empty IndexMap without error
-        use crate::test_utils::MINIMAL_GLB_BASE64;
-        use base64::Engine;
-
-        let glb_bytes = base64::engine::general_purpose::STANDARD
-            .decode(MINIMAL_GLB_BASE64)
-            .unwrap();
+        let glb_bytes = crate::test_utils::load_testdata("minimal_rectangle.glb");
 
         let gltf = gltf::Gltf::from_slice(&glb_bytes).expect("Failed to parse GLB");
 
-        let result = extract_feature_properties(&gltf)
-            .expect("Should not error on missing extension");
+        let result =
+            extract_feature_properties(&gltf).expect("Should not error on missing extension");
 
         // Should return empty IndexMap when extension is not present
         assert!(
