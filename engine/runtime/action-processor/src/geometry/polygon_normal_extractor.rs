@@ -87,7 +87,7 @@ impl Processor for PolygonNormalExtractor {
                         // Calculate normal properties for 3D polygons
                         let normal_result =
                             PolygonNormalExtractor::calculate_normal_properties_3d(polygon);
-                        let () = PolygonNormalExtractor::set_normal_features(
+                        PolygonNormalExtractor::set_normal_features(
                             normal_result,
                             &mut feature,
                             None,
@@ -99,7 +99,7 @@ impl Processor for PolygonNormalExtractor {
                         for (index, polygon) in multi_polygon.iter().enumerate() {
                             let normal_result =
                                 PolygonNormalExtractor::calculate_normal_properties_3d(polygon);
-                            let () = PolygonNormalExtractor::set_normal_features(
+                            PolygonNormalExtractor::set_normal_features(
                                 normal_result,
                                 &mut feature,
                                 Some(&format!("_{index}")),
