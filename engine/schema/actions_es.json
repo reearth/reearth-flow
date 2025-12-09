@@ -1,3 +1,5 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running `target/debug/reearth-flow schema-action --language-file-path schema/i18n/actions/es.json`
 {
   "actions": [
     {
@@ -3223,6 +3225,11 @@
             "default": true,
             "type": "boolean"
           },
+          "enableGeometryTypeConstraint": {
+            "description": "Enable geometry type constraint extension (default: false)",
+            "default": false,
+            "type": "boolean"
+          },
           "geometryColumn": {
             "description": "Geometry column name (default: \"geom\")",
             "default": "geom",
@@ -3239,6 +3246,18 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "metadata": {
+            "description": "Metadata to write to gpkg_metadata table (optional)",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeoPackageMetadata"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "output": {
@@ -3292,6 +3311,37 @@
         "definitions": {
           "Expr": {
             "type": "string"
+          },
+          "GeoPackageMetadata": {
+            "description": "Metadata configuration for GeoPackage",
+            "type": "object",
+            "required": [
+              "content"
+            ],
+            "properties": {
+              "content": {
+                "description": "Metadata content (XML, JSON, or plain text)",
+                "type": "string"
+              },
+              "mimeType": {
+                "description": "MIME type of metadata (default: \"text/xml\")",
+                "default": "text/xml",
+                "type": "string"
+              },
+              "scope": {
+                "description": "Metadata scope (default: \"dataset\")",
+                "default": "dataset",
+                "type": "string"
+              },
+              "standardUri": {
+                "description": "URI for metadata standard (e.g., \"http://www.isotc211.org/2005/gmd\")",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           },
           "TableMode": {
             "description": "Table handling mode for GeoPackage writer",

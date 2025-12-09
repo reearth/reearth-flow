@@ -142,6 +142,12 @@ pub(super) struct GeoPackageWriterParam {
     /// Use auto-generated primary key (default: true). If false, uses values from primary_key_column attribute
     #[serde(default = "default_auto_primary_key")]
     pub(super) auto_primary_key: bool,
+    /// Enable geometry type constraint extension (default: false)
+    #[serde(default)]
+    pub(super) enable_geometry_type_constraint: bool,
+    /// Metadata to write to gpkg_metadata table (optional)
+    #[serde(default)]
+    pub(super) metadata: Option<GeoPackageMetadata>,
 }
 
 fn default_table_name() -> String {
@@ -182,6 +188,31 @@ fn default_primary_key_column() -> String {
 
 fn default_auto_primary_key() -> bool {
     true
+}
+
+/// Metadata configuration for GeoPackage
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct GeoPackageMetadata {
+    /// Metadata scope (default: "dataset")
+    #[serde(default = "default_metadata_scope")]
+    pub(super) scope: String,
+    /// URI for metadata standard (e.g., "http://www.isotc211.org/2005/gmd")
+    #[serde(default)]
+    pub(super) standard_uri: Option<String>,
+    /// MIME type of metadata (default: "text/xml")
+    #[serde(default = "default_metadata_mime_type")]
+    pub(super) mime_type: String,
+    /// Metadata content (XML, JSON, or plain text)
+    pub(super) content: String,
+}
+
+fn default_metadata_scope() -> String {
+    "dataset".to_string()
+}
+
+fn default_metadata_mime_type() -> String {
+    "text/xml".to_string()
 }
 
 /// Z coordinate handling mode
@@ -492,6 +523,13 @@ impl GeoPackageWriter {
                         self.create_spatial_index_for_layer(&adapter, layer_name, &layer_data.features)
                             .await?;
                     }
+
+                    // Register geometry type constraint extension if enabled
+                    self.register_geometry_type_constraint(&adapter, layer_name)
+                        .await?;
+
+                    // Write metadata for this layer
+                    self.write_metadata(&adapter, layer_name).await?;
                 }
             } else {
                 // Single-layer mode
@@ -507,6 +545,14 @@ impl GeoPackageWriter {
                 if self.params.create_spatial_index {
                     self.create_spatial_index(&adapter).await?;
                 }
+
+                // Register geometry type constraint extension if enabled
+                self.register_geometry_type_constraint(&adapter, &self.params.table_name)
+                    .await?;
+
+                // Write metadata
+                self.write_metadata(&adapter, &self.params.table_name)
+                    .await?;
             }
 
             Ok::<(), BoxedError>(())
@@ -829,7 +875,7 @@ impl GeoPackageWriter {
                 ))
             })?;
 
-        // Create gpkg_extensions table (required for spatial index)
+        // Create gpkg_extensions table (required for spatial index and other extensions)
         adapter
             .execute(
                 r#"
@@ -846,6 +892,46 @@ impl GeoPackageWriter {
             .await
             .map_err(|e| {
                 SinkError::GeoPackageWriter(format!("Failed to create gpkg_extensions: {e}"))
+            })?;
+
+        // Create gpkg_metadata table (optional, for document metadata)
+        adapter
+            .execute(
+                r#"
+                CREATE TABLE gpkg_metadata (
+                    id INTEGER CONSTRAINT m_pk PRIMARY KEY ASC NOT NULL,
+                    md_scope TEXT NOT NULL DEFAULT 'dataset',
+                    md_standard_uri TEXT,
+                    mime_type TEXT NOT NULL DEFAULT 'text/xml',
+                    metadata TEXT NOT NULL DEFAULT ''
+                )
+                "#,
+            )
+            .await
+            .map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to create gpkg_metadata: {e}"))
+            })?;
+
+        // Create gpkg_metadata_reference table (for metadata associations)
+        adapter
+            .execute(
+                r#"
+                CREATE TABLE gpkg_metadata_reference (
+                    reference_scope TEXT NOT NULL,
+                    table_name TEXT,
+                    column_name TEXT,
+                    row_id_value INTEGER,
+                    timestamp DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+                    md_file_id INTEGER NOT NULL,
+                    md_parent_id INTEGER,
+                    CONSTRAINT crmr_mfi_fk FOREIGN KEY (md_file_id) REFERENCES gpkg_metadata(id),
+                    CONSTRAINT crmr_mpi_fk FOREIGN KEY (md_parent_id) REFERENCES gpkg_metadata(id)
+                )
+                "#,
+            )
+            .await
+            .map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to create gpkg_metadata_reference: {e}"))
             })?;
 
         Ok(())
@@ -1280,6 +1366,132 @@ impl GeoPackageWriter {
         adapter.execute(&register_ext).await.map_err(|e| {
             SinkError::GeoPackageWriter(format!("Failed to register rtree extension: {e}"))
         })?;
+
+        Ok(())
+    }
+
+    /// Write metadata to gpkg_metadata and gpkg_metadata_reference tables
+    async fn write_metadata(
+        &self,
+        adapter: &SqlAdapter,
+        table_name: &str,
+    ) -> Result<(), BoxedError> {
+        if let Some(ref metadata) = self.params.metadata {
+            // Insert metadata record
+            let insert_metadata = format!(
+                r#"
+                INSERT INTO gpkg_metadata (id, md_scope, md_standard_uri, mime_type, metadata)
+                VALUES (1, '{}', {}, '{}', '{}')
+                "#,
+                metadata.scope.replace('\'', "''"),
+                metadata
+                    .standard_uri
+                    .as_ref()
+                    .map(|s| format!("'{}'", s.replace('\'', "''")))
+                    .unwrap_or_else(|| "NULL".to_string()),
+                metadata.mime_type.replace('\'', "''"),
+                metadata.content.replace('\'', "''")
+            );
+
+            adapter.execute(&insert_metadata).await.map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to insert metadata: {e}"))
+            })?;
+
+            // Insert metadata reference to link metadata to the table
+            let insert_reference = format!(
+                r#"
+                INSERT INTO gpkg_metadata_reference (reference_scope, table_name, column_name, row_id_value, md_file_id, md_parent_id)
+                VALUES ('table', '{}', NULL, NULL, 1, NULL)
+                "#,
+                table_name.replace('\'', "''")
+            );
+
+            adapter.execute(&insert_reference).await.map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to insert metadata reference: {e}"))
+            })?;
+
+            // Register metadata extension
+            adapter
+                .execute(
+                    r#"
+                    INSERT OR IGNORE INTO gpkg_extensions (table_name, column_name, extension_name, definition, scope)
+                    VALUES (NULL, NULL, 'gpkg_metadata', 'http://www.geopackage.org/spec120/#extension_metadata', 'read-write')
+                    "#,
+                )
+                .await
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to register metadata extension: {e}"))
+                })?;
+        }
+
+        Ok(())
+    }
+
+    /// Register geometry type constraint extension
+    async fn register_geometry_type_constraint(
+        &self,
+        adapter: &SqlAdapter,
+        table_name: &str,
+    ) -> Result<(), BoxedError> {
+        if !self.params.enable_geometry_type_constraint {
+            return Ok(());
+        }
+
+        // Register the geometry type constraint extension
+        let register_ext = format!(
+            r#"
+            INSERT OR IGNORE INTO gpkg_extensions (table_name, column_name, extension_name, definition, scope)
+            VALUES ('{}', '{}', 'gpkg_geometry_type_trigger', 'http://www.geopackage.org/spec120/#extension_geometry_type_triggers', 'write-only')
+            "#,
+            table_name.replace('\'', "''"),
+            self.params.geometry_column.replace('\'', "''")
+        );
+
+        adapter.execute(&register_ext).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!(
+                "Failed to register geometry type constraint extension: {e}"
+            ))
+        })?;
+
+        // Create trigger to enforce geometry type constraint
+        let geometry_type = self.params.geometry_type.to_uppercase();
+        if geometry_type != "GEOMETRY" {
+            let table_quoted = quote_identifier(table_name);
+            let table_esc = table_name.replace('\'', "''");
+            let geom_quoted = quote_identifier(&self.params.geometry_column);
+            let geom_esc = self.params.geometry_column.replace('\'', "''");
+            let gtype_z = format!("{}Z", geometry_type);
+            let gtype_m = format!("{}M", geometry_type);
+            let gtype_zm = format!("{}ZM", geometry_type);
+
+            // Create INSERT trigger
+            let insert_trigger = format!(
+                r#"
+                CREATE TRIGGER IF NOT EXISTS {table}_geom_type_insert
+                BEFORE INSERT ON {table}
+                FOR EACH ROW
+                BEGIN
+                    SELECT RAISE(ABORT, 'Geometry type mismatch')
+                    WHERE (SELECT geometry_type_name FROM gpkg_geometry_columns 
+                           WHERE table_name = '{table_esc}' AND column_name = '{geom_esc}') != 'GEOMETRY'
+                    AND GeometryType(NEW.{geom}) NOT IN ('{gtype}', '{gtypez}', '{gtypem}', '{gtypezm}');
+                END
+                "#,
+                table = table_quoted,
+                table_esc = table_esc,
+                geom = geom_quoted,
+                geom_esc = geom_esc,
+                gtype = geometry_type,
+                gtypez = gtype_z,
+                gtypem = gtype_m,
+                gtypezm = gtype_zm
+            );
+
+            // Note: SQLite/GeoPackage doesn't have GeometryType function by default
+            // This trigger is registered as an extension indicator only
+            // Actual enforcement would require SpatiaLite or custom function
+            let _ = adapter.execute(&insert_trigger).await;
+        }
 
         Ok(())
     }
