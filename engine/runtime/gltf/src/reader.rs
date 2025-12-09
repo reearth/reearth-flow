@@ -201,7 +201,7 @@ pub fn read_indices(
     Ok(indices)
 }
 
-pub fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
+pub(crate) fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
     let bytes = buffer
         .get(offset..offset + 4)
         .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
@@ -211,7 +211,7 @@ pub fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
     Ok(f32::from_le_bytes(array))
 }
 
-pub fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
+pub(crate) fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
     let bytes = buffer
         .get(offset..offset + 2)
         .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
@@ -221,7 +221,7 @@ pub fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
     Ok(u16::from_le_bytes(array))
 }
 
-pub fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderError> {
+pub(crate) fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderError> {
     let bytes = buffer
         .get(offset..offset + 4)
         .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;

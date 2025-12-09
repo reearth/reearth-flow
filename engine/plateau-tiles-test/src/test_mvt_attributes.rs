@@ -122,6 +122,28 @@ fn align_mvt_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)
     Ok(result)
 }
 
+/// Find top-level MVT tile directories (directories containing metadata.json)
+fn find_mvt_tile_directories(base_path: &Path) -> Result<Vec<String>, String> {
+    let mut dirs = HashSet::new();
+
+    for entry in WalkDir::new(base_path)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file() && e.file_name() == "metadata.json")
+    {
+        if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path) {
+            if let Some(first_component) = rel.iter().next() {
+                dirs.insert(first_component.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    let mut result: Vec<_> = dirs.into_iter().collect();
+    result.sort();
+    Ok(result)
+}
+
 /// Tests MVT attributes between FME and Flow outputs
 pub fn test_mvt_attributes(
     fme_path: &Path,
@@ -134,53 +156,26 @@ pub fn test_mvt_attributes(
         HashMap::new()
     };
 
-    // Find all top-level directories containing .mvt files
-    let fme_tops: HashSet<_> = WalkDir::new(fme_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
-        .filter_map(|e| {
-            let rel = e.path().strip_prefix(fme_path).ok()?;
-            let parts: Vec<_> = rel.iter().collect();
-            if parts.len() > 1 {
-                parts[0].to_str().map(|s| s.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
+    // Find top-level MVT tile directories
+    let fme_dirs = find_mvt_tile_directories(fme_path)?;
+    let flow_dirs = find_mvt_tile_directories(flow_path)?;
 
-    let flow_tops: HashSet<_> = WalkDir::new(flow_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
-        .filter_map(|e| {
-            let rel = e.path().strip_prefix(flow_path).ok()?;
-            let parts: Vec<_> = rel.iter().collect();
-            if parts.len() > 1 {
-                parts[0].to_str().map(|s| s.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    if fme_tops.is_empty() || flow_tops.is_empty() {
-        return Err("No MVT files found".to_string());
+    if fme_dirs.is_empty() || flow_dirs.is_empty() {
+        return Err("No MVT tile directories found".to_string());
     }
-    if fme_tops != flow_tops {
+    if fme_dirs != flow_dirs {
         return Err(format!(
-            "MVT top-level directories differ: FME={:?}, Flow={:?}",
-            fme_tops, flow_tops
+            "MVT tile directories differ: FME={:?}, Flow={:?}",
+            fme_dirs, flow_dirs
         ));
     }
 
-    let mut all_tops: Vec<_> = fme_tops.union(&flow_tops).cloned().collect();
-    all_tops.sort();
+    // Compare each directory pair
+    for dir_name in &fme_dirs {
+        let fme_dir = fme_path.join(dir_name);
+        let flow_dir = flow_path.join(dir_name);
 
-    for top_dir in all_tops {
-        let fme_dir = fme_path.join(&top_dir);
-        let flow_dir = flow_path.join(&top_dir);
+        tracing::debug!("Comparing MVT attributes in directory: {}", dir_name);
 
         for (gml_id, attr1, attr2) in align_mvt_attr(&fme_dir, &flow_dir)? {
             analyze_attributes(&gml_id, &attr1, &attr2, casts.clone())?;

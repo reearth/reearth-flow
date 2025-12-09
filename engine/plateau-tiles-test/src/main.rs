@@ -248,10 +248,11 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.cesium_attributes {
             run_test("cesium_attributes", &relative_path_display, || {
-                // FME output is JSON export, Flow output is 3D tiles directory
-                let fme_json = fme_dir.join("export.json");
-                let flow_tiles = output_dir.join("flow").join("tran_lod3");
-                test_cesium_attributes::test_cesium_attributes(&fme_json, &flow_tiles, cfg)
+                test_cesium_attributes::test_cesium_attributes(
+                    &fme_dir,
+                    &output_dir.join("flow"),
+                    cfg,
+                )
             });
         }
     }
