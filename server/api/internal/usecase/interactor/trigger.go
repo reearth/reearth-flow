@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -12,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -177,25 +179,35 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
-	var projectParamsMap map[string]string
+	var projectParams map[string]variable.Variable
 	if deployment.Project() != nil {
 		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
 		if err != nil {
 			return nil, err
 		}
-		projectParamsMap = projectParametersToMap(pls)
+		projectParams = projectParametersToMap(pls)
 	}
 
-	triggerVars := trigger.Variables()
-	requestVars := normalizeRequestVars(p.Variables)
+	var triggerVars map[string]variable.Variable
+	if tvs := trigger.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
 
-	finalVars := resolveVariables(
+	schema := map[string]variable.Variable{}
+	maps.Copy(schema, projectParams)
+	maps.Copy(schema, triggerVars)
+
+	requestVars := normalizeRequestVars(p.Variables, schema)
+
+	finalVarMap, err := resolveVariables(
 		ModeAPIDriven,
-		projectParamsMap,
-		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
+		projectParams,
 		triggerVars,
 		requestVars,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	j, err := job.New().
 		NewID().
@@ -203,7 +215,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(finalVars).
+		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -223,14 +235,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	if i.batch == nil {
-		return nil, fmt.Errorf("batch gateway not configured")
-	}
-
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
-		return nil, interfaces.ErrJobCreationFailed
+		// return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
@@ -282,24 +290,29 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
-	var projectParamsMap map[string]string
+	var projectParams map[string]variable.Variable
 	if deployment.Project() != nil {
 		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
 		if err != nil {
 			return nil, err
 		}
-		projectParamsMap = projectParametersToMap(pls)
+		projectParams = projectParametersToMap(pls)
 	}
 
-	triggerVars := trigger.Variables()
+	var triggerVars map[string]variable.Variable
+	if tvs := trigger.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
 
-	finalVars := resolveVariables(
+	finalVarMap, err := resolveVariables(
 		ModeTimeDriven,
-		projectParamsMap,
-		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
+		projectParams,
 		triggerVars,
 		nil,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	j, err := job.New().
 		NewID().
@@ -307,7 +320,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(finalVars).
+		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -327,7 +340,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed

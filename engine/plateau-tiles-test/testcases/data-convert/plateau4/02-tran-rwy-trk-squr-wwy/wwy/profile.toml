@@ -1,10 +1,10 @@
 citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op.zip"
 
-# [tests.mvt_lines]
-# threshold = 0.01
-# 
-# [tests.mvt_polygons]
-# threshold = 0.01
+[tests.mvt_lines]
+threshold = 0.01
+
+[tests.mvt_polygons]
+threshold = 0.01
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"

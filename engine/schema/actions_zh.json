@@ -1,6 +1,22 @@
 {
   "actions": [
     {
+      "name": "AppearanceRemover",
+      "type": "processor",
+      "description": "Removes appearance information (materials, textures) from CityGML geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "AreaOnAreaOverlayer",
       "type": "processor",
       "description": "在一个区域上叠加另一个区域",
@@ -1233,6 +1249,73 @@
       "outputPorts": [
         "default"
       ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "CityGmlWriter",
+      "type": "sink",
+      "description": "将实体写入CityGML 2.0文件",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGmlWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "epsgCode": {
+            "description": "EPSG code for coordinate reference system",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "lodFilter": {
+            "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "output": {
+            "description": "Output file path expression",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "prettyPrint": {
+            "description": "Whether to format output with indentation (default: true)",
+            "default": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
       "categories": [
         "File"
       ]
@@ -2874,6 +2957,23 @@
       ]
     },
     {
+      "name": "FootprintReplacer",
+      "type": "processor",
+      "description": "Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "footprint",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "GeoJsonReader",
       "type": "source",
       "description": "从GeoJSON文件读取要素",
@@ -3375,6 +3475,22 @@
         "extracted",
         "remaining",
         "untouched"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryRemover",
+      "type": "processor",
+      "description": "Removes geometry from a feature",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "Geometry"
@@ -4114,6 +4230,16 @@
                 "type": "null"
               }
             ]
+          },
+          "extent": {
+            "title": "Extent",
+            "description": "MVT tile resolution. Default is 4096.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
           },
           "layerName": {
             "title": "Layer Name",
@@ -5161,17 +5287,24 @@
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Creates pairs of features that can possibly intersect based on bounding box overlap",
+      "description": "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
         "type": "object",
         "properties": {
-          "boundingBoxAttribute": {
-            "default": "bounding_box",
+          "gmlIdAttribute": {
+            "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+            "default": "gmlId",
+            "type": "string"
+          },
+          "listAttribute": {
+            "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+            "default": "list",
             "type": "string"
           },
           "pairIdAttribute": {
+            "description": "Attribute name to store the pair ID (default: \"pair_id\")",
             "default": "pair_id",
             "type": "string"
           }
@@ -5879,55 +6012,6 @@
       ]
     },
     {
-      "name": "SurfaceFootprintReplacer",
-      "type": "processor",
-      "description": "用足迹替换表面几何",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SurfaceFootprintReplacer Parameters",
-        "description": "Configuration for replacing geometry with its footprint projection.",
-        "type": "object",
-        "properties": {
-          "elevation": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double"
-          },
-          "lightDirection": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "number",
-              "format": "double"
-            },
-            "maxItems": 3,
-            "minItems": 3
-          },
-          "shadowMode": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "footprint",
-        "rejected"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
       "description": "用多边形替换三维盒子",
@@ -6020,7 +6104,7 @@
     {
       "name": "ThreeDimensionForcer",
       "type": "processor",
-      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "description": "通过添加Z坐标（高程）将2D几何转换为3D",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ThreeDimensionForcer Parameters",
