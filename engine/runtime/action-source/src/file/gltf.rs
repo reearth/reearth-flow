@@ -155,8 +155,7 @@ async fn read_gltf(
         let scenes: Vec<_> = gltf.scenes().collect();
 
         for scene in &scenes {
-            let traverser = reearth_flow_gltf::NodeTraverser::new(scene);
-            traverser.traverse(|node, _transform| -> Result<(), SourceError> {
+            reearth_flow_gltf::traverse_scene(scene, |node, _transform| -> Result<(), SourceError> {
                 if let Some(mesh) = node.mesh() {
                     all_primitives.extend(mesh.primitives());
                     if let Some(mesh_name) = mesh.name() {
@@ -192,8 +191,7 @@ async fn read_gltf(
         for scene in gltf.scenes() {
             let mut features_to_send = Vec::new();
 
-            let traverser = reearth_flow_gltf::NodeTraverser::new(&scene);
-            traverser.traverse(|node, world_transform| -> Result<(), SourceError> {
+            reearth_flow_gltf::traverse_scene(&scene, |node, world_transform| -> Result<(), SourceError> {
                 if let Some(mesh) = node.mesh() {
                     let primitives: Vec<_> = mesh.primitives().collect();
                     if !primitives.is_empty() {

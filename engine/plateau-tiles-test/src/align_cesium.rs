@@ -1,7 +1,7 @@
 use reearth_flow_geometry::types::{coordinate::Coordinate, multi_polygon::MultiPolygon3D, polygon::Polygon3D};
 use reearth_flow_gltf::{
     extract_feature_properties, parse_gltf, read_indices, read_mesh_features, read_positions_with_transform,
-    Transform,
+    traverse_scene, Transform,
 };
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -216,36 +216,15 @@ impl GeometryCollector {
 
         // Process scene graph to capture node transforms
         for scene in gltf.scenes() {
-            for node in scene.nodes() {
-                let transform = Transform::from_node(&node);
-                self.process_node(&node, &transform, &buffer_data, &feature_list, glb_path, geometric_error)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn process_node(
-        &mut self,
-        node: &::gltf::Node,
-        parent_transform: &Transform,
-        buffer_data: &[Vec<u8>],
-        feature_list: &[(String, serde_json::Map<String, Value>)],
-        glb_path: &Path,
-        geometric_error: f64,
-    ) -> Result<(), String> {
-        // Process mesh if attached to this node
-        if let Some(mesh) = node.mesh() {
-            for primitive in mesh.primitives() {
-                self.process_primitive(&primitive, buffer_data, feature_list, glb_path, geometric_error, parent_transform)?;
-            }
-        }
-
-        // Recursively process children with accumulated transforms
-        for child in node.children() {
-            let child_local = Transform::from_node(&child);
-            let child_world = child_local.compose(parent_transform);
-            self.process_node(&child, &child_world, buffer_data, feature_list, glb_path, geometric_error)?;
+            traverse_scene(&scene, |node, world_transform| -> Result<(), String> {
+                // Process mesh if attached to this node
+                if let Some(mesh) = node.mesh() {
+                    for primitive in mesh.primitives() {
+                        self.process_primitive(&primitive, &buffer_data, &feature_list, glb_path, geometric_error, world_transform)?;
+                    }
+                }
+                Ok(())
+            })?;
         }
 
         Ok(())
@@ -291,7 +270,7 @@ impl GeometryCollector {
     ) -> Result<(), String> {
         let mut feature_polygons: HashMap<u32, Vec<Polygon3D<f64>>> = HashMap::new();
 
-        if indices.len() % 3 != 0 {
+        if !indices.len().is_multiple_of(3) {
             return Err(format!(
                 "Invalid index count {} (not divisible by 3) in {:?}",
                 indices.len(),
@@ -315,7 +294,7 @@ impl GeometryCollector {
             let triangle = vec![positions[idx0], positions[idx1], positions[idx2], positions[idx0]];
             feature_polygons
                 .entry(fid0)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(Polygon3D::new(triangle.into(), vec![]));
         }
 
@@ -344,7 +323,7 @@ impl GeometryCollector {
     }
 
     fn store_geometry(&mut self, gml_id: String, multipolygon: MultiPolygon3D<f64>, geometric_error: f64) {
-        let entry = self.result.entry(gml_id).or_insert_with(Vec::new);
+        let entry = self.result.entry(gml_id).or_default();
 
         // Just append - features are added in depth order as we traverse the tree
         entry.push(DetailLevel {

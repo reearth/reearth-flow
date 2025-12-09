@@ -73,7 +73,7 @@ impl Transform {
         let mut matrix = Matrix4::identity();
         matrix
             .fixed_view_mut::<3, 3>(0, 0)
-            .copy_from(&quat.to_rotation_matrix().matrix());
+            .copy_from(quat.to_rotation_matrix().matrix());
         matrix.fixed_view_mut::<3, 1>(0, 3).copy_from(&translation);
 
         // Apply scale to the rotation part
@@ -117,51 +117,38 @@ impl Transform {
     }
 }
 
-/// Scene node traverser that handles transform accumulation
-pub struct NodeTraverser<'a> {
-    scene: &'a gltf::Scene<'a>,
+/// Traverses the scene graph and calls the callback for each node.
+/// Callback receives: (node, accumulated_world_transform)
+pub fn traverse_scene<'a, F, E>(scene: &gltf::Scene<'a>, mut callback: F) -> Result<(), E>
+where
+    F: FnMut(&gltf::Node<'a>, &Transform) -> Result<(), E>,
+{
+    for root_node in scene.nodes() {
+        let root_transform = Transform::from_node(&root_node);
+        traverse_node(&root_node, &root_transform, &mut callback)?;
+    }
+    Ok(())
 }
 
-impl<'a> NodeTraverser<'a> {
-    /// Creates a new traverser for a scene
-    pub fn new(scene: &'a gltf::Scene<'a>) -> Self {
-        Self { scene }
+fn traverse_node<'a, F, E>(
+    node: &gltf::Node<'a>,
+    world_transform: &Transform,
+    callback: &mut F,
+) -> Result<(), E>
+where
+    F: FnMut(&gltf::Node<'a>, &Transform) -> Result<(), E>,
+{
+    // Call callback for this node
+    callback(node, world_transform)?;
+
+    // Recursively traverse children with accumulated transforms
+    for child in node.children() {
+        let child_local = Transform::from_node(&child);
+        let child_world = child_local.compose(world_transform);
+        traverse_node(&child, &child_world, callback)?;
     }
 
-    /// Traverses the scene graph and calls the callback for each node
-    /// Callback receives: (node, accumulated_world_transform)
-    pub fn traverse<F, E>(&self, mut callback: F) -> Result<(), E>
-    where
-        F: FnMut(&gltf::Node<'a>, &Transform) -> Result<(), E>,
-    {
-        for root_node in self.scene.nodes() {
-            let root_transform = Transform::from_node(&root_node);
-            self.traverse_node(&root_node, &root_transform, &mut callback)?;
-        }
-        Ok(())
-    }
-
-    fn traverse_node<F, E>(
-        &self,
-        node: &gltf::Node<'a>,
-        world_transform: &Transform,
-        callback: &mut F,
-    ) -> Result<(), E>
-    where
-        F: FnMut(&gltf::Node<'a>, &Transform) -> Result<(), E>,
-    {
-        // Call callback for this node
-        callback(node, world_transform)?;
-
-        // Recursively traverse children with accumulated transforms
-        for child in node.children() {
-            let child_local = Transform::from_node(&child);
-            let child_world = child_local.compose(world_transform);
-            self.traverse_node(&child, &child_world, callback)?;
-        }
-
-        Ok(())
-    }
+    Ok(())
 }
 
 #[cfg(test)]
