@@ -22,6 +22,7 @@ type Trigger struct {
 	triggerRepo       repo.Trigger
 	deploymentRepo    repo.Deployment
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	paramRepo         repo.Parameter
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
@@ -36,6 +37,7 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		triggerRepo:       r.Trigger,
 		deploymentRepo:    r.Deployment,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,

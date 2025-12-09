@@ -23,6 +23,7 @@ type Deployment struct {
 	projectRepo       repo.Project
 	workflowRepo      repo.Workflow
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	triggerRepo       repo.Trigger
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
@@ -37,6 +38,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		projectRepo:       r.Project,
 		workflowRepo:      r.Workflow,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		triggerRepo:       r.Trigger,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
