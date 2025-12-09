@@ -1,5 +1,19 @@
 # Actions
 
+## AppearanceRemover
+### Type
+* processor
+### Description
+Removes appearance information (materials, textures) from CityGML geometry
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## AreaOnAreaOverlayer
 ### Type
 * processor
@@ -1162,6 +1176,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
           "$ref": "#/definitions/Expr"
         }
       ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -1232,6 +1254,74 @@ Reads 3D city models from CityGML files.
 ### Input Ports
 ### Output Ports
 * default
+### Category
+* File
+
+## CityGmlWriter
+### Type
+* sink
+### Description
+Writes features to CityGML 2.0 files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "epsgCode": {
+      "description": "EPSG code for coordinate reference system",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "lodFilter": {
+      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    },
+    "output": {
+      "description": "Output file path expression",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "prettyPrint": {
+      "description": "Whether to format output with indentation (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
 ### Category
 * File
 
@@ -2867,6 +2957,21 @@ Extracts file system properties (type, size, timestamps) from files
 ### Category
 * File
 
+## FootprintReplacer
+### Type
+* processor
+### Description
+Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* footprint
+* rejected
+### Category
+* Geometry
+
 ## GeoJsonReader
 ### Type
 * source
@@ -3090,6 +3195,76 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 * File
 * Database
 
+## GeoPackageWriter
+### Type
+* sink
+### Description
+Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoPackageWriter Parameters",
+  "description": "Configuration for writing features to GeoPackage files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "createSpatialIndex": {
+      "description": "Create RTree spatial index (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "geometryColumn": {
+      "description": "Geometry column name (default: \"geom\")",
+      "default": "geom",
+      "type": "string"
+    },
+    "geometryType": {
+      "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
+      "default": "GEOMETRY",
+      "type": "string"
+    },
+    "output": {
+      "description": "Output path for the GeoPackage file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "overwrite": {
+      "description": "Overwrite existing file (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "srsId": {
+      "description": "Spatial Reference System ID (default: 4326 for WGS84)",
+      "default": 4326,
+      "type": "integer",
+      "format": "int32"
+    },
+    "tableName": {
+      "description": "Table name to create (default: \"features\")",
+      "default": "features",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+* Database
+
 ## GeometryCoercer
 ### Type
 * processor
@@ -3305,6 +3480,20 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 * extracted
 * remaining
 * untouched
+### Category
+* Geometry
+
+## GeometryRemover
+### Type
+* processor
+### Description
+Removes geometry from a feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Geometry
 
@@ -4043,6 +4232,16 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
+    "extent": {
+      "title": "Extent",
+      "description": "MVT tile resolution. Default is 4096.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
     "layerName": {
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
@@ -4075,9 +4274,9 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
-    "skipUnderscorePrefix": {
-      "title": "Skip Underscore Prefix",
-      "description": "Skip attributes with underscore prefix",
+    "skipUnexposedAttributes": {
+      "title": "Skip Unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
       "type": [
         "boolean",
         "null"
@@ -5066,7 +5265,7 @@ Extract object list
 ### Type
 * processor
 ### Description
-Creates pairs of features that can possibly intersect based on bounding box overlap
+Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
 ### Parameters
 ```json
 {
@@ -5074,11 +5273,18 @@ Creates pairs of features that can possibly intersect based on bounding box over
   "title": "SolidIntersectionTestPairCreatorParam",
   "type": "object",
   "properties": {
-    "boundingBoxAttribute": {
-      "default": "bounding_box",
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+      "default": "list",
       "type": "string"
     },
     "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
       "default": "pair_id",
       "type": "string"
     }
@@ -5776,55 +5982,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
 * complete
 ### Category
 * Attribute
-
-## SurfaceFootprintReplacer
-### Type
-* processor
-### Description
-Replace the geometry with its footprint
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SurfaceFootprintReplacer Parameters",
-  "description": "Configuration for replacing geometry with its footprint projection.",
-  "type": "object",
-  "properties": {
-    "elevation": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "lightDirection": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "number",
-        "format": "double"
-      },
-      "maxItems": 3,
-      "minItems": 3
-    },
-    "shadowMode": {
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* footprint
-* rejected
-### Category
-* Geometry
 
 ## ThreeDimensionBoxReplacer
 ### Type

@@ -9,16 +9,16 @@ import (
 
 type ParameterDocument struct {
 	CreatedAt    time.Time   `bson:"created_at"`
-	ID           string      `bson:"id"`
-	Index        int         `bson:"index"`
-	Name         string      `bson:"name"`
-	Project      string      `bson:"project"`
-	Required     bool        `bson:"required"`
-	Public       bool        `bson:"public"`
-	Type         string      `bson:"type"`
 	UpdatedAt    time.Time   `bson:"updated_at"`
 	DefaultValue interface{} `bson:"default_value"`
 	Config       interface{} `bson:"config"`
+	ID           string      `bson:"id"`
+	Name         string      `bson:"name"`
+	Project      string      `bson:"project"`
+	Type         string      `bson:"type"`
+	Index        int         `bson:"index"`
+	Required     bool        `bson:"required"`
+	Public       bool        `bson:"public"`
 }
 
 type ParameterConsumer = Consumer[*ParameterDocument, *parameter.Parameter]

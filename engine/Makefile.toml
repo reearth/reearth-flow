@@ -53,11 +53,9 @@ cargo test -p workflow-tests ${@:-}
 [tasks.test-conv]
 script = ['''
 #!/usr/bin/env bash -eux
-export CLEANUP_AFTER_TEST=${CLEANUP_AFTER_TEST:-1}
-export PLATEAU_TILES_TEST_VERBOSITY=${PLATEAU_TILES_TEST_VERBOSITY:-info}
-cd plateau-tiles-test
-bash setup.sh
-uv run python3 -m plateau-tiles-test ${@:-}
+export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
+export PLATEAU_TILES_TEST_CLEANUP=1
+cargo run -p plateau-tiles-test ${@:-}
 ''']
 
 [tasks.doc]
@@ -185,6 +183,7 @@ BASEPATH_CONV=./runtime/examples/fixture/workflow/data-convert/plateau4/
 WORKFLOW_CONV=(
   "01-bldg"
   "02-tran-rwy-trk-squr-wwy"
+  "06-area-urf"
 )
 
 BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/

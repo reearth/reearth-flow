@@ -20,10 +20,10 @@ import (
 type UserFacingLogInteractor struct {
 	logsGatewayRedis  gateway.Redis
 	jobRepo           repo.Job
+	permissionChecker gateway.PermissionChecker
 	subscriptions     *subscription.UserFacingLogManager
 	watchers          map[string]context.CancelFunc
 	mu                sync.Mutex
-	permissionChecker gateway.PermissionChecker
 }
 
 func NewUserFacingLogInteractor(lgRedis gateway.Redis, jobRepo repo.Job, permissionChecker gateway.PermissionChecker) interfaces.UserFacingLog {

@@ -1,5 +1,7 @@
 pub(crate) mod errors;
+pub(crate) mod geometry;
 pub(crate) mod metadata;
+pub(crate) mod reader;
 pub(crate) mod utils;
 pub(crate) mod writer;
 
@@ -37,6 +39,8 @@ impl Default for BoundingVolume {
     }
 }
 
+pub use geometry::*;
 pub use metadata::*;
+pub use reader::*;
 pub use utils::*;
 pub use writer::*;

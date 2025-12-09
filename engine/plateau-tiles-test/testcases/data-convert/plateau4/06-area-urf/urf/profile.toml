@@ -9,6 +9,12 @@ threshold = 0.001
 [tests.mvt_lines]
 threshold = 0.01
 
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".urf"]
+comparator = "list_to_dict"
+key = ".name"
+
 [filter.tree]
 "" = ["codelists/", "schemas/"]
 "udx/urf/534071_urf_6697_07_op.gml" = ["urf_0e6c149e-4090-4a94-a5d8-129d30bc3422"]
