@@ -151,8 +151,12 @@ fn compare_detail_level(
     let flow_geometry = &flow_level.multipolygon;
 
     // compare bounding boxes
-    let fme_bbox = fme_geometry.bounding_box().expect("FME geometry has no bounding box");
-    let flow_bbox = flow_geometry.bounding_box().expect("Flow geometry has no bounding box");
+    let fme_bbox = fme_geometry
+        .bounding_box()
+        .expect("FME geometry has no bounding box");
+    let flow_bbox = flow_geometry
+        .bounding_box()
+        .expect("Flow geometry has no bounding box");
     // if vertices have max error r, the bounding boxes can differ by at most r in each direction
     // thus the bounding box error is at most sqrt(3) * r. We simply use 2 * r as a safe upper bound.
     let bbox_error = 2.0 * (fme_error + flow_error);
@@ -167,12 +171,12 @@ fn compare_detail_level(
     }
 
     // compare mass center
-    let fme_centroid = fme_geometry.centroid().ok_or_else(|| {
-        format!("gml_id '{}': FME geometry has no centroid", gml_id)
-    })?;
-    let flow_centroid = flow_geometry.centroid().ok_or_else(|| {
-        format!("gml_id '{}': Flow geometry has no centroid", gml_id)
-    })?;
+    let fme_centroid = fme_geometry
+        .centroid()
+        .ok_or_else(|| format!("gml_id '{}': FME geometry has no centroid", gml_id))?;
+    let flow_centroid = flow_geometry
+        .centroid()
+        .ok_or_else(|| format!("gml_id '{}': Flow geometry has no centroid", gml_id))?;
     // if vertices have max error r, centroids can differ by at most r
     let centroid_error_bound = fme_error + flow_error;
     let centroid_diff = (fme_centroid.0 - flow_centroid.0).norm();

@@ -1,7 +1,9 @@
-use reearth_flow_geometry::types::{coordinate::Coordinate, multi_polygon::MultiPolygon3D, polygon::Polygon3D};
+use reearth_flow_geometry::types::{
+    coordinate::Coordinate, multi_polygon::MultiPolygon3D, polygon::Polygon3D,
+};
 use reearth_flow_gltf::{
-    extract_feature_properties, parse_gltf, read_indices, read_mesh_features, read_positions_with_transform,
-    traverse_scene, Transform,
+    extract_feature_properties, parse_gltf, read_indices, read_mesh_features,
+    read_positions_with_transform, traverse_scene, Transform,
 };
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -55,8 +57,12 @@ pub fn load_tileset(dir: &Path) -> Result<TilesetInfo, String> {
     let content = fs::read_to_string(&tileset_path)
         .map_err(|e| format!("Failed to read tileset.json from {:?}: {}", tileset_path, e))?;
 
-    let json: Value = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse tileset.json from {:?}: {}", tileset_path, e))?;
+    let json: Value = serde_json::from_str(&content).map_err(|e| {
+        format!(
+            "Failed to parse tileset.json from {:?}: {}",
+            tileset_path, e
+        )
+    })?;
 
     Ok(TilesetInfo {
         path: tileset_path,
@@ -220,7 +226,14 @@ impl GeometryCollector {
                 // Process mesh if attached to this node
                 if let Some(mesh) = node.mesh() {
                     for primitive in mesh.primitives() {
-                        self.process_primitive(&primitive, &buffer_data, &feature_list, glb_path, geometric_error, world_transform)?;
+                        self.process_primitive(
+                            &primitive,
+                            &buffer_data,
+                            &feature_list,
+                            glb_path,
+                            geometric_error,
+                            world_transform,
+                        )?;
                     }
                 }
                 Ok(())
@@ -246,8 +259,9 @@ impl GeometryCollector {
         let position_accessor = primitive
             .get(&::gltf::Semantic::Positions)
             .ok_or_else(|| format!("Primitive has no positions: {:?}", glb_path))?;
-        let positions = read_positions_with_transform(&position_accessor, buffer_data, Some(transform))
-            .map_err(|e| format!("Failed to read positions: {}", e))?;
+        let positions =
+            read_positions_with_transform(&position_accessor, buffer_data, Some(transform))
+                .map_err(|e| format!("Failed to read positions: {}", e))?;
 
         let indices = primitive
             .indices()
@@ -255,9 +269,16 @@ impl GeometryCollector {
         let indices = read_indices(&indices, buffer_data)
             .map_err(|e| format!("Failed to read indices: {}", e))?;
 
-        self.split_by_feature(feature_ids, positions, indices, feature_list, glb_path, geometric_error)?;
+        self.split_by_feature(
+            feature_ids,
+            positions,
+            indices,
+            feature_list,
+            glb_path,
+            geometric_error,
+        )?;
         Ok(())
-        }
+    }
 
     fn split_by_feature(
         &mut self,
@@ -291,7 +312,12 @@ impl GeometryCollector {
                 glb_path
             );
 
-            let triangle = vec![positions[idx0], positions[idx1], positions[idx2], positions[idx0]];
+            let triangle = vec![
+                positions[idx0],
+                positions[idx1],
+                positions[idx2],
+                positions[idx0],
+            ];
             feature_polygons
                 .entry(fid0)
                 .or_default()
@@ -322,7 +348,12 @@ impl GeometryCollector {
             })
     }
 
-    fn store_geometry(&mut self, gml_id: String, multipolygon: MultiPolygon3D<f64>, geometric_error: f64) {
+    fn store_geometry(
+        &mut self,
+        gml_id: String,
+        multipolygon: MultiPolygon3D<f64>,
+        geometric_error: f64,
+    ) {
         let entry = self.result.entry(gml_id).or_default();
 
         // Just append - features are added in depth order as we traverse the tree

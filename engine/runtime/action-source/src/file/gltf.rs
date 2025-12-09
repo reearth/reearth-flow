@@ -155,24 +155,27 @@ async fn read_gltf(
         let scenes: Vec<_> = gltf.scenes().collect();
 
         for scene in &scenes {
-            reearth_flow_gltf::traverse_scene(scene, |node, _transform| -> Result<(), SourceError> {
-                if let Some(mesh) = node.mesh() {
-                    all_primitives.extend(mesh.primitives());
-                    if let Some(mesh_name) = mesh.name() {
-                        if !mesh_names.contains(&mesh_name.to_string()) {
-                            mesh_names.push(mesh_name.to_string());
+            reearth_flow_gltf::traverse_scene(
+                scene,
+                |node, _transform| -> Result<(), SourceError> {
+                    if let Some(mesh) = node.mesh() {
+                        all_primitives.extend(mesh.primitives());
+                        if let Some(mesh_name) = mesh.name() {
+                            if !mesh_names.contains(&mesh_name.to_string()) {
+                                mesh_names.push(mesh_name.to_string());
+                            }
                         }
                     }
-                }
-                if params.include_nodes {
-                    if let Some(node_name) = node.name() {
-                        if !node_names.contains(&node_name.to_string()) {
-                            node_names.push(node_name.to_string());
+                    if params.include_nodes {
+                        if let Some(node_name) = node.name() {
+                            if !node_names.contains(&node_name.to_string()) {
+                                node_names.push(node_name.to_string());
+                            }
                         }
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                },
+            )?;
         }
 
         if !all_primitives.is_empty() {
@@ -184,39 +187,69 @@ async fn read_gltf(
             )
             .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
 
-            send_feature(&sender, flow_geometry, &mesh_names, &node_names, all_primitives.len(), params).await?;
+            send_feature(
+                &sender,
+                flow_geometry,
+                &mesh_names,
+                &node_names,
+                all_primitives.len(),
+                params,
+            )
+            .await?;
         }
     } else {
         // Emit one feature per mesh (with transforms applied)
         for scene in gltf.scenes() {
             let mut features_to_send = Vec::new();
 
-            reearth_flow_gltf::traverse_scene(&scene, |node, world_transform| -> Result<(), SourceError> {
-                if let Some(mesh) = node.mesh() {
-                    let primitives: Vec<_> = mesh.primitives().collect();
-                    if !primitives.is_empty() {
-                        let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
-                            &primitives,
-                            &buffer_data,
-                            Some(world_transform),
-                        )
-                        .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+            reearth_flow_gltf::traverse_scene(
+                &scene,
+                |node, world_transform| -> Result<(), SourceError> {
+                    if let Some(mesh) = node.mesh() {
+                        let primitives: Vec<_> = mesh.primitives().collect();
+                        if !primitives.is_empty() {
+                            let flow_geometry =
+                                reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+                                    &primitives,
+                                    &buffer_data,
+                                    Some(world_transform),
+                                )
+                                .map_err(|e| {
+                                    SourceError::GltfReader(format!(
+                                        "Failed to create geometry: {e}"
+                                    ))
+                                })?;
 
-                        let mesh_names = mesh.name().map(|n| vec![n.to_string()]).unwrap_or_default();
-                        let node_names = if params.include_nodes {
-                            node.name().map(|n| vec![n.to_string()]).unwrap_or_default()
-                        } else {
-                            vec![]
-                        };
+                            let mesh_names =
+                                mesh.name().map(|n| vec![n.to_string()]).unwrap_or_default();
+                            let node_names = if params.include_nodes {
+                                node.name().map(|n| vec![n.to_string()]).unwrap_or_default()
+                            } else {
+                                vec![]
+                            };
 
-                        features_to_send.push((flow_geometry, mesh_names, node_names, primitives.len()));
+                            features_to_send.push((
+                                flow_geometry,
+                                mesh_names,
+                                node_names,
+                                primitives.len(),
+                            ));
+                        }
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                },
+            )?;
 
             for (flow_geometry, mesh_names, node_names, primitive_count) in features_to_send {
-                send_feature(&sender, flow_geometry, &mesh_names, &node_names, primitive_count, params).await?;
+                send_feature(
+                    &sender,
+                    flow_geometry,
+                    &mesh_names,
+                    &node_names,
+                    primitive_count,
+                    params,
+                )
+                .await?;
             }
         }
     }
@@ -241,28 +274,42 @@ async fn send_feature(
     );
 
     if !mesh_names.is_empty() {
-        let key = if mesh_names.len() == 1 { "mesh" } else { "meshes" };
+        let key = if mesh_names.len() == 1 {
+            "mesh"
+        } else {
+            "meshes"
+        };
         attributes.insert(
             Attribute::new(key),
             if mesh_names.len() == 1 {
                 AttributeValue::String(mesh_names[0].clone())
             } else {
                 AttributeValue::Array(
-                    mesh_names.iter().map(|m| AttributeValue::String(m.clone())).collect(),
+                    mesh_names
+                        .iter()
+                        .map(|m| AttributeValue::String(m.clone()))
+                        .collect(),
                 )
             },
         );
     }
 
     if params.include_nodes && !node_names.is_empty() {
-        let key = if node_names.len() == 1 { "node" } else { "nodes" };
+        let key = if node_names.len() == 1 {
+            "node"
+        } else {
+            "nodes"
+        };
         attributes.insert(
             Attribute::new(key),
             if node_names.len() == 1 {
                 AttributeValue::String(node_names[0].clone())
             } else {
                 AttributeValue::Array(
-                    node_names.iter().map(|n| AttributeValue::String(n.clone())).collect(),
+                    node_names
+                        .iter()
+                        .map(|n| AttributeValue::String(n.clone()))
+                        .collect(),
                 )
             },
         );

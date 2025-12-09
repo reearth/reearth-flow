@@ -114,7 +114,8 @@ pub fn create_geometry_from_primitives_with_transform(
     buffer_data: &[Vec<u8>],
     transform: Option<&Transform>,
 ) -> Result<Geometry3D<f64>, GltfReaderError> {
-    let multipolygon = create_multipolygon_from_primitives_with_transform(primitives, buffer_data, transform)?;
+    let multipolygon =
+        create_multipolygon_from_primitives_with_transform(primitives, buffer_data, transform)?;
     let polygons = multipolygon.0;
 
     let geometry = if polygons.len() == 1 {

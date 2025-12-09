@@ -89,7 +89,8 @@ impl Transform {
     /// Checks if this is an identity transform (within floating point tolerance)
     pub fn is_identity(&self) -> bool {
         const EPSILON: f64 = 1e-10;
-        self.matrix.relative_eq(&Matrix4::identity(), EPSILON, EPSILON)
+        self.matrix
+            .relative_eq(&Matrix4::identity(), EPSILON, EPSILON)
     }
 
     /// Applies this transform to a coordinate
@@ -191,8 +192,7 @@ mod tests {
 
     #[test]
     fn test_scale_transform() {
-        let transform =
-            Transform::from_trs([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [2.0, 3.0, 4.0]);
+        let transform = Transform::from_trs([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [2.0, 3.0, 4.0]);
 
         let coord = Coordinate {
             x: 1.0,
@@ -208,7 +208,8 @@ mod tests {
 
     #[test]
     fn test_compose_transforms() {
-        let translate = Transform::from_trs([10.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 1.0]);
+        let translate =
+            Transform::from_trs([10.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 1.0]);
         let scale = Transform::from_trs([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [2.0, 2.0, 2.0]);
 
         // compose() semantics: parent * self (parent applied after self)
