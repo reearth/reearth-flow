@@ -184,7 +184,6 @@ export default ({
       return;
     }
 
-    // Only save variables if they differ from deployment defaults
     const variablesToSave = getVariablesToSave();
 
     const { trigger: createdTrigger } = await createTrigger(
