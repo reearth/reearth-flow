@@ -3237,6 +3237,15 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "type": "integer",
       "format": "int32"
     },
+    "tableMode": {
+      "description": "Table handling mode: CreateIfNeeded (default), UseExisting (append), or DropAndCreate",
+      "default": "createIfNeeded",
+      "allOf": [
+        {
+          "$ref": "#/definitions/TableMode"
+        }
+      ]
+    },
     "tableName": {
       "description": "Table name to create (default: \"features\")",
       "default": "features",
@@ -3246,6 +3255,32 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
   "definitions": {
     "Expr": {
       "type": "string"
+    },
+    "TableMode": {
+      "description": "Table handling mode for GeoPackage writer",
+      "oneOf": [
+        {
+          "description": "Create table if it doesn't exist (default)",
+          "type": "string",
+          "enum": [
+            "createIfNeeded"
+          ]
+        },
+        {
+          "description": "Append to existing table (fail if table doesn't exist)",
+          "type": "string",
+          "enum": [
+            "useExisting"
+          ]
+        },
+        {
+          "description": "Drop existing table and recreate",
+          "type": "string",
+          "enum": [
+            "dropAndCreate"
+          ]
+        }
+      ]
     }
   }
 }

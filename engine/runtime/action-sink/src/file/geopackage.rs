@@ -16,6 +16,7 @@ use reearth_flow_types::{AttributeValue, Expr, Feature, Geometry, GeometryValue}
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 
 use crate::errors::SinkError;
 
@@ -114,6 +115,9 @@ pub(super) struct GeoPackageWriterParam {
     /// Overwrite existing file (default: false)
     #[serde(default)]
     pub(super) overwrite: bool,
+    /// Table handling mode: CreateIfNeeded (default), UseExisting (append), or DropAndCreate
+    #[serde(default = "default_table_mode")]
+    pub(super) table_mode: TableMode,
 }
 
 fn default_table_name() -> String {
@@ -136,13 +140,30 @@ fn default_create_spatial_index() -> bool {
     true
 }
 
-#[derive(Debug, Clone, PartialEq)]
+fn default_table_mode() -> TableMode {
+    TableMode::CreateIfNeeded
+}
+
+/// Table handling mode for GeoPackage writer
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum TableMode {
+    /// Create table if it doesn't exist (default)
+    #[default]
+    CreateIfNeeded,
+    /// Append to existing table (fail if table doesn't exist)
+    UseExisting,
+    /// Drop existing table and recreate
+    DropAndCreate,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub(super) enum AttributeType {
+    Boolean,  // Lowest priority (can be promoted)
     Integer,
     Real,
-    Text,
     Blob,
-    Boolean,
+    Text, 
 }
 
 impl AttributeType {
@@ -173,6 +194,48 @@ impl AttributeType {
             AttributeValue::Null => AttributeType::Text,
         }
     }
+
+    /// Promote type to handle conflicts - returns the more general type
+    /// Type promotion hierarchy: Boolean -> Integer -> Real -> Text
+    /// Blob is a special case - conflicts with non-Blob promote to Text
+    fn promote(&self, other: &AttributeType) -> AttributeType {
+        if self == other {
+            return self.clone();
+        }
+
+        // Special handling for Blob - if mixing with non-Blob, promote to Text
+        if matches!(self, AttributeType::Blob) || matches!(other, AttributeType::Blob) {
+            if self != other {
+                return AttributeType::Text;
+            }
+            return AttributeType::Blob;
+        }
+
+        // For Boolean, Integer, Real, Text - use the more general type
+        // Boolean < Integer < Real < Text (in terms of generality)
+        match (self, other) {
+            // Boolean promotions
+            (AttributeType::Boolean, AttributeType::Integer)
+            | (AttributeType::Integer, AttributeType::Boolean) => AttributeType::Integer,
+            (AttributeType::Boolean, AttributeType::Real)
+            | (AttributeType::Real, AttributeType::Boolean) => AttributeType::Real,
+            (AttributeType::Boolean, AttributeType::Text)
+            | (AttributeType::Text, AttributeType::Boolean) => AttributeType::Text,
+
+            // Integer promotions
+            (AttributeType::Integer, AttributeType::Real)
+            | (AttributeType::Real, AttributeType::Integer) => AttributeType::Real,
+            (AttributeType::Integer, AttributeType::Text)
+            | (AttributeType::Text, AttributeType::Integer) => AttributeType::Text,
+
+            // Real promotions
+            (AttributeType::Real, AttributeType::Text)
+            | (AttributeType::Text, AttributeType::Real) => AttributeType::Text,
+
+            // Same types or already handled
+            _ => AttributeType::Text,
+        }
+    }
 }
 
 impl Sink for GeoPackageWriter {
@@ -189,10 +252,22 @@ impl Sink for GeoPackageWriter {
             let key_str = key.to_string();
             // Skip geometry column and common GeoPackage system columns
             if key_str != self.params.geometry_column && key_str != "fid" && key_str != "id" {
-                // Only add if not already in schema, or update type if needed
-                if !self.schema.contains_key(&key_str) {
-                    let attr_type = AttributeType::from_attribute_value(value);
-                    self.schema.insert(key_str, attr_type);
+                if matches!(value, AttributeValue::Null) {
+                    if !self.schema.contains_key(&key_str) {
+                        self.schema.insert(key_str, AttributeType::Text);
+                    }
+                    continue;
+                }
+
+                let new_type = AttributeType::from_attribute_value(value);
+                if let Some(existing_type) = self.schema.get(&key_str) {
+                    // Type conflict detected - promote to more general type
+                    let promoted_type = existing_type.promote(&new_type);
+                    if promoted_type != *existing_type {
+                        self.schema.insert(key_str, promoted_type);
+                    }
+                } else {
+                    self.schema.insert(key_str, new_type);
                 }
             }
         }
@@ -220,17 +295,56 @@ impl Sink for GeoPackageWriter {
             .resolve(&output_uri)
             .map_err(SinkError::geopackage_writer)?;
 
-        if !self.params.overwrite {
-            if let Ok(true) = storage.exists_sync(output_uri.path().as_path()) {
-                return Err(SinkError::GeoPackageWriter(format!(
-                    "File already exists: {}. Set overwrite=true to replace it.",
-                    path
-                ))
-                .into());
+        let file_exists = storage
+            .exists_sync(output_uri.path().as_path())
+            .unwrap_or(false);
+
+        // Handle file existence based on table_mode and overwrite settings
+        match self.params.table_mode {
+            TableMode::CreateIfNeeded => {
+                if file_exists && !self.params.overwrite {
+                    let existing_data = storage.get_sync(output_uri.path().as_path())?;
+                    let gpkg_data =
+                        self.update_existing_geopackage(&existing_data, false, false)?;
+                    storage.put_sync(output_uri.path().as_path(), Bytes::from(gpkg_data))?;
+                    return Ok(());
+                }
+            }
+            TableMode::UseExisting => {
+                if !file_exists {
+                    return Err(SinkError::GeoPackageWriter(format!(
+                        "File does not exist: {}. UseExisting mode requires an existing file.",
+                        path
+                    ))
+                    .into());
+                }
+                // Append to existing table
+                let existing_data = storage.get_sync(output_uri.path().as_path())?;
+                let gpkg_data = self.update_existing_geopackage(&existing_data, true, false)?;
+                storage.put_sync(output_uri.path().as_path(), Bytes::from(gpkg_data))?;
+                return Ok(());
+            }
+            TableMode::DropAndCreate => {
+                if file_exists {
+                    // File exists - drop table and recreate
+                    let existing_data = storage.get_sync(output_uri.path().as_path())?;
+                    let gpkg_data = self.update_existing_geopackage(&existing_data, false, true)?;
+                    storage.put_sync(output_uri.path().as_path(), Bytes::from(gpkg_data))?;
+                    return Ok(());
+                }
+                // File doesn't exist, create new
             }
         }
 
-        // Create GeoPackage file
+        // For new file creation or overwrite mode
+        if file_exists && !self.params.overwrite {
+            return Err(SinkError::GeoPackageWriter(format!(
+                "File already exists: {}. Set overwrite=true to replace it.",
+                path
+            ))
+            .into());
+        }
+
         let gpkg_data = self.create_geopackage()?;
 
         // Write to storage
@@ -282,6 +396,238 @@ impl GeoPackageWriter {
             .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to read temp file: {e}")))?;
 
         Ok(content)
+    }
+
+    fn update_existing_geopackage(
+        &self,
+        existing_data: &Bytes,
+        require_existing_table: bool,
+        drop_existing_table: bool,
+    ) -> Result<Vec<u8>, BoxedError> {
+        // Write existing data to temp file
+        let temp_file = tempfile::NamedTempFile::new()
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to create temp file: {e}")))?;
+
+        std::fs::write(temp_file.path(), existing_data)
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write temp file: {e}")))?;
+
+        let db_path = temp_file.path().to_str().ok_or_else(|| {
+            SinkError::GeoPackageWriter("Failed to get temp file path".to_string())
+        })?;
+
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to create runtime: {e}")))?;
+
+        rt.block_on(async {
+            let adapter = SqlAdapter::new(&format!("sqlite://{db_path}"), 1)
+                .await
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to connect to database: {e}"))
+                })?;
+
+            // Check if table exists
+            let table_exists = self.check_table_exists(&adapter).await?;
+
+            if require_existing_table && !table_exists {
+                return Err(SinkError::GeoPackageWriter(format!(
+                    "Table '{}' does not exist. UseExisting mode requires an existing table.",
+                    self.params.table_name
+                ))
+                .into());
+            }
+
+            if drop_existing_table && table_exists {
+                // Drop existing table and related metadata
+                self.drop_table(&adapter).await?;
+                // Create new table
+                self.create_feature_table(&adapter).await?;
+            } else if !table_exists {
+                // Table doesn't exist, create it
+                self.create_feature_table(&adapter).await?;
+            } else {
+                // Table exists, verify schema compatibility for append
+                self.verify_schema_compatibility(&adapter).await?;
+            }
+
+            // Insert features
+            self.insert_features(&adapter).await?;
+
+            // Update bounding box in gpkg_contents
+            self.update_gpkg_contents_bbox(&adapter).await?;
+
+            // Create spatial index if requested and table was newly created
+            if self.params.create_spatial_index && (drop_existing_table || !table_exists) {
+                self.create_spatial_index(&adapter).await?;
+            }
+
+            Ok::<(), BoxedError>(())
+        })?;
+
+        // Read the file content
+        let content = std::fs::read(temp_file.path())
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to read temp file: {e}")))?;
+
+        Ok(content)
+    }
+
+    async fn check_table_exists(&self, adapter: &SqlAdapter) -> Result<bool, BoxedError> {
+        let query = format!(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        let rows = adapter.fetch_many(&query).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to check table existence: {e}"))
+        })?;
+
+        if let Some(row) = rows.first() {
+            if let Ok(cnt) = row.try_get::<i32, _>(0) {
+                return Ok(cnt > 0);
+            }
+        }
+        Ok(false)
+    }
+
+    async fn drop_table(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        // Drop the feature table
+        let drop_table = format!(
+            "DROP TABLE IF EXISTS {}",
+            quote_identifier(&self.params.table_name)
+        );
+        adapter.execute(&drop_table).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to drop table: {e}"))
+        })?;
+
+        // Remove from gpkg_contents
+        let delete_contents = format!(
+            "DELETE FROM gpkg_contents WHERE table_name = '{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        adapter.execute(&delete_contents).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to delete from gpkg_contents: {e}"))
+        })?;
+
+        let delete_geom_cols = format!(
+            "DELETE FROM gpkg_geometry_columns WHERE table_name = '{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        adapter.execute(&delete_geom_cols).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!(
+                "Failed to delete from gpkg_geometry_columns: {e}"
+            ))
+        })?;
+
+        // Drop spatial index if exists
+        let rtree_table = format!(
+            "rtree_{}_{}",
+            self.params
+                .table_name
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_"),
+            self.params
+                .geometry_column
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+        );
+        let drop_rtree = format!("DROP TABLE IF EXISTS {}", quote_identifier(&rtree_table));
+        adapter.execute(&drop_rtree).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to drop spatial index: {e}"))
+        })?;
+
+        let delete_ext = format!(
+            "DELETE FROM gpkg_extensions WHERE table_name = '{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        let _ = adapter.execute(&delete_ext).await;
+
+        Ok(())
+    }
+
+    async fn verify_schema_compatibility(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        // Get existing columns from the table
+        // PRAGMA table_info returns: cid, name, type, notnull, dflt_value, pk
+        let query = format!(
+            "PRAGMA table_info({})",
+            quote_identifier(&self.params.table_name)
+        );
+        let rows = adapter.fetch_many(&query).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to get table info: {e}"))
+        })?;
+
+        let existing_columns: HashMap<String, String> = rows
+            .iter()
+            .filter_map(|row| {
+                let name: String = row.try_get(1).ok()?; // column 1 is name
+                let col_type: String = row.try_get(2).ok()?; // column 2 is type
+                Some((name, col_type.to_uppercase()))
+            })
+            .collect();
+
+        // Verify geometry column exists
+        if !existing_columns.contains_key(&self.params.geometry_column) {
+            return Err(SinkError::GeoPackageWriter(format!(
+                "Geometry column '{}' not found in existing table",
+                self.params.geometry_column
+            ))
+            .into());
+        }
+
+        // Check schema compatibility and add missing columns
+        for (name, attr_type) in &self.schema {
+            if let Some(existing_type) = existing_columns.get(name) {
+                // Column exists - check type compatibility
+                // SQLite is dynamically typed, but we should warn about major mismatches
+                let new_sql_type = attr_type.to_sql_type();
+                if !is_type_compatible(existing_type, new_sql_type) {
+                    // Log warning but continue - SQLite will handle type coercion
+                    tracing::warn!(
+                        "Type mismatch for column '{}': existing={}, new={}. SQLite will coerce values.",
+                        name, existing_type, new_sql_type
+                    );
+                }
+            } else {
+                // Column doesn't exist - add it via ALTER TABLE
+                let alter_query = format!(
+                    "ALTER TABLE {} ADD COLUMN {} {}",
+                    quote_identifier(&self.params.table_name),
+                    quote_identifier(name),
+                    attr_type.to_sql_type()
+                );
+                adapter.execute(&alter_query).await.map_err(|e| {
+                    SinkError::GeoPackageWriter(format!(
+                        "Failed to add column '{}' to existing table: {e}",
+                        name
+                    ))
+                })?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn update_gpkg_contents_bbox(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        let (min_x, min_y, max_x, max_y) = self.calculate_bbox();
+
+        // Update bounding box to encompass existing + new data
+        let update_bbox = format!(
+            r#"
+            UPDATE gpkg_contents SET
+                min_x = MIN(COALESCE(min_x, {0}), {0}),
+                min_y = MIN(COALESCE(min_y, {1}), {1}),
+                max_x = MAX(COALESCE(max_x, {2}), {2}),
+                max_y = MAX(COALESCE(max_y, {3}), {3}),
+                last_change = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+            WHERE table_name = '{4}'
+            "#,
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            self.params.table_name.replace('\'', "''")
+        );
+
+        adapter.execute(&update_bbox).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to update gpkg_contents bbox: {e}"))
+        })?;
+
+        Ok(())
     }
 
     async fn init_geopackage_structure(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
@@ -1129,6 +1475,39 @@ fn quote_identifier(name: &str) -> String {
     } else {
         format!("\"{}\"", name)
     }
+}
+
+/// Check if two SQL types are compatible for SQLite
+/// SQLite is dynamically typed, so most types are compatible
+/// This function returns true if the types are the same or can be safely coerced
+fn is_type_compatible(existing_type: &str, new_type: &str) -> bool {
+    let existing = existing_type.to_uppercase();
+    let new = new_type.to_uppercase();
+
+    if existing == new {
+        return true;
+    }
+
+    if existing == "INTEGER" && (new == "INTEGER" || new == "BOOLEAN") {
+        return true;
+    }
+    if existing == "BOOLEAN" && new == "INTEGER" {
+        return true;
+    }
+
+    if existing == "REAL" && new == "INTEGER" {
+        return true;
+    }
+
+    if existing == "TEXT" {
+        return true;
+    }
+
+    if existing == "BLOB" && new == "BLOB" {
+        return true;
+    }
+
+    false
 }
 
 fn attribute_value_to_sql_string(value: &AttributeValue) -> Result<String, BoxedError> {
