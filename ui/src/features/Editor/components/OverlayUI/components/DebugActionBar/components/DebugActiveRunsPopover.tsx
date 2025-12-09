@@ -10,7 +10,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 import type { UserDebug } from "@flow/types";
 
-import CollaborationCard from "../../Homebar/components/CollaborationActionBar/components/CollaborationCard";
+import CollaborationCard from "../../Collaboration/CollaborationCard";
 
 type Props = {
   activeDebugRuns?: UserDebug[];
