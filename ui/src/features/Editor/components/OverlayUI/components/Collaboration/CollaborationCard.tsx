@@ -79,7 +79,7 @@ const CollaborationCard: React.FC<Props> = ({
           className="h-8"
           tooltipText={t("View Debug Run")}
           icon={<BinocularsIcon size={14} />}
-          onClick={() => onDebugRunJoin?.()}
+          onClick={onDebugRunJoin}
         />
       )}
     </div>

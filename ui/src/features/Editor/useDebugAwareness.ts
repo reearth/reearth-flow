@@ -13,12 +13,13 @@ export default ({
   const [activeDebugRuns, setActiveDebugRuns] = useState<UserDebug[]>([]);
 
   const broadcastDebugRun = useCallback(
-    (jobId: string | null) => {
+    (jobId: string | null, status?: string) => {
       if (jobId && projectId) {
         yAwareness.setLocalStateField("debugRun", {
           jobId,
           projectId,
           startedAt: Date.now(),
+          status,
         });
       } else {
         const state = yAwareness.getLocalState();
@@ -53,8 +54,6 @@ export default ({
 
       setActiveDebugRuns(otherDebugRuns);
     };
-
-    console.log("OTHER DEBUG RUNS EFFECT RUNNING", yAwareness.getStates());
 
     // Initial call to populate state
     handleChange();

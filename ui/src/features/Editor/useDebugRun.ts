@@ -84,7 +84,7 @@ export default ({
         });
       }
       await updateValue({ jobs });
-      broadcastDebugRun(data.job.id);
+      broadcastDebugRun(data.job.id, data.job.status);
 
       fitView({ duration: 400, padding: 0.5 });
     }
@@ -136,13 +136,18 @@ export default ({
         (job) => job.projectId !== currentProject.id,
       );
 
+      const states = Array.from(yAwareness.getStates());
+      const debugJobStatus = states.find(([, state]) =>
+        state.debugRun ? state.debugRun.jobId === jobId : false,
+      )?.[1]?.debugRun?.status;
+
       // Add the new external debug job
       const newJobs = [
         ...filteredJobs,
         {
           projectId: currentProject.id,
           jobId,
-          status: "running" as JobState["status"],
+          status: debugJobStatus,
         },
       ];
 
@@ -158,7 +163,7 @@ export default ({
         }),
       });
     },
-    [t, currentProject, debugRunState, updateValue],
+    [t, currentProject, debugRunState, updateValue, yAwareness],
   );
 
   return {
