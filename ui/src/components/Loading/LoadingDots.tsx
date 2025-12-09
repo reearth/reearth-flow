@@ -4,7 +4,7 @@ const LoadingDots = () => {
     "bg-node-reader/60",
     "bg-node-transformer/60",
     "bg-node-writer/60",
-    "bg-primary/60",
+    "bg-zinc-600",
     "bg-node-subworkflow/60",
   ];
 

@@ -66,6 +66,9 @@ const config = {
           "subworkflow-selected": "rgba(var(--node-subworkflow-selected))",
         },
         success: "rgba(var(--success))",
+        canvas: {
+          background: "rgba(var(--canvas-background))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

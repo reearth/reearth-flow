@@ -1,40 +1,60 @@
+import { GearIcon } from "@phosphor-icons/react";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Button,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useTheme } from "@flow/lib/theme";
 
 const ThemeToggle = () => {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const t = useT();
 
+  const themes = [
+    { value: "light", label: t("Light"), icon: <SunIcon /> },
+    { value: "dark", label: t("Dark"), icon: <MoonIcon /> },
+    { value: "system", label: t("System"), icon: <GearIcon /> },
+  ];
+
+  const currentTheme = themes.filter((t) => t.value === theme)[0];
+
+  const handleThemeChange = (theme: "light" | "dark" | "system") => {
+    setTheme(theme);
+  };
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="border-none">
-          <SunIcon className="size-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <MoonIcon className="absolute size-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-          <span className="sr-only">{t("Toggle theme")}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="center">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          {t("Light")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          {t("Dark")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          {t("System")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Select onValueChange={handleThemeChange}>
+      <SelectTrigger>
+        <SelectValue placeholder={<CurrentTheme theme={currentTheme} />} />
+      </SelectTrigger>
+      <SelectContent>
+        {themes.map((theme) => (
+          <SelectItem key={theme.value} value={theme.value}>
+            <div className="flex items-center justify-between gap-2">
+              {theme.icon}
+              {theme.label}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+const CurrentTheme = ({
+  theme,
+}: {
+  theme: { icon: React.ReactNode; label: string };
+}) => {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      {theme.icon}
+      {theme.label}
+    </div>
   );
 };
 

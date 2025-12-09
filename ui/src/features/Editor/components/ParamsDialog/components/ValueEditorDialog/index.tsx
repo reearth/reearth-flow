@@ -242,7 +242,7 @@ const ValueEditorDialog: React.FC<Props> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => handleDialogOpen("cms")}>
-                    <CmsLogo className="h-4 w-4 text-white" />
+                    <CmsLogo className="h-4 w-4 text-black dark:text-white" />
                     {t("CMS Integration")}
                   </Button>
                   {projectVariables && projectVariables.length > 0 && (
