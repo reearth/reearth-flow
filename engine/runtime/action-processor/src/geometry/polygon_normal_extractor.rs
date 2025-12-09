@@ -110,7 +110,7 @@ impl Processor for PolygonNormalExtractor {
                     }
                     _ => {
                         return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                            "There is no 3D polygon.".to_string(),
+                            "There is no 3D polygon".to_string(),
                         )));
                     }
                 }
