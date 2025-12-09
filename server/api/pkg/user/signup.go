@@ -7,11 +7,11 @@ import (
 type SignupAttrs struct {
 	ID          *ID
 	WorkspaceID *WorkspaceID
-	Name        string
-	Email       string
-	Password    string
 	Secret      *string
 	Lang        *language.Tag
 	Theme       *Theme
+	Name        string
+	Email       string
+	Password    string
 	MockAuth    bool
 }

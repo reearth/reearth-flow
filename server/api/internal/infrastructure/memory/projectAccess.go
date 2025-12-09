@@ -11,8 +11,8 @@ import (
 )
 
 type ProjectAccess struct {
-	lock sync.Mutex
 	data map[id.ProjectAccessID]*projectAccess.ProjectAccess
+	lock sync.Mutex
 }
 
 func NewProjectAccess() repo.ProjectAccess {

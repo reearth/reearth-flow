@@ -162,13 +162,7 @@ impl From<&Feature> for nusamai_citygml::schema::TypeDef {
             .iter()
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
-            if let AttributeValue::Number(value) = v {
-                attributes.insert(
-                    k.to_string(),
-                    AttributeValue::String(value.to_string()).into(),
-                );
-                continue;
-            }
+            // Use Number as-is without conversion (TypeRef::Integer/Double is auto-determined)
             attributes.insert(k.to_string(), v.clone().into());
         }
         nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
@@ -475,9 +469,12 @@ impl Feature {
         );
         scope.set(
             "__lod",
-            self.lod().map_or(serde_json::Value::Null, |_| {
-                serde_json::Value::String(self.lod().unwrap_or_default())
-            }),
+            self.metadata
+                .lod
+                .and_then(|lod| lod.highest_lod())
+                .map_or(serde_json::Value::Null, |lod| {
+                    serde_json::Value::Number(serde_json::Number::from(lod))
+                }),
         );
         if let Some(with) = with {
             for (k, v) in with {

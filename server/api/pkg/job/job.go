@@ -2,6 +2,8 @@ package job
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type Status string
@@ -15,22 +17,22 @@ const (
 )
 
 type Job struct {
+	startedAt         time.Time
 	completedAt       *time.Time
 	debug             *bool
-	deployment        DeploymentID
+	batchStatus       *Status
+	workerStatus      *Status
+	variables         []variable.Variable
 	gcpJobID          string
-	id                ID
 	logsURL           string
 	workerLogsURL     string
 	userFacingLogsURL string
 	metadataURL       string
-	outputURLs        []string
-	startedAt         time.Time
 	status            Status
-	batchStatus       *Status
-	workerStatus      *Status
+	outputURLs        []string
+	deployment        DeploymentID
+	id                ID
 	workspace         WorkspaceID
-	variables         map[string]string
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
@@ -133,7 +135,7 @@ func (j *Job) OutputURLs() []string {
 	return j.outputURLs
 }
 
-func (j *Job) Variables() map[string]string {
+func (j *Job) Variables() []variable.Variable {
 	return j.variables
 }
 
@@ -201,6 +203,6 @@ func (j *Job) SetWorkerStatus(workerStatus Status) {
 	j.workerStatus = &workerStatus
 }
 
-func (j *Job) SetVariables(variables map[string]string) {
+func (j *Job) SetVariables(variables []variable.Variable) {
 	j.variables = variables
 }

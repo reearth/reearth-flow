@@ -3,10 +3,6 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::types::{
-    coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, multi_polygon::MultiPolygon3D,
-    polygon::Polygon3D,
-};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -167,7 +163,12 @@ async fn read_gltf(
         }
 
         if !all_primitives.is_empty() {
-            let geometry = create_geometry_from_primitives(&all_primitives, &buffer_data, params)?;
+            let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
+                &all_primitives,
+                &buffer_data,
+            )
+            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+            let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
             let mut attributes = IndexMap::new();
 
             attributes.insert(
@@ -227,8 +228,15 @@ async fn read_gltf(
                     let primitives: Vec<_> = mesh.primitives().collect();
 
                     if !primitives.is_empty() {
+                        let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
+                            &primitives,
+                            &buffer_data,
+                        )
+                        .map_err(|e| {
+                            SourceError::GltfReader(format!("Failed to create geometry: {e}"))
+                        })?;
                         let geometry =
-                            create_geometry_from_primitives(&primitives, &buffer_data, params)?;
+                            Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
                         let mut attributes = IndexMap::new();
 
                         attributes.insert(
@@ -405,232 +413,6 @@ async fn load_external_buffer(
         .map_err(|e| SourceError::GltfReader(format!("Failed to read buffer content: {e}")))?;
 
     Ok(content.to_vec())
-}
-
-fn create_geometry_from_primitives(
-    primitives: &[gltf::Primitive],
-    buffer_data: &[Vec<u8>],
-    _params: &GltfReaderParam,
-) -> Result<Geometry, SourceError> {
-    let mut polygons = Vec::new();
-
-    for primitive in primitives {
-        let position_accessor = primitive
-            .get(&gltf::Semantic::Positions)
-            .ok_or_else(|| SourceError::GltfReader("Primitive has no positions".to_string()))?;
-
-        let positions = read_positions(&position_accessor, buffer_data)?;
-
-        if let Some(indices_accessor) = primitive.indices() {
-            let indices = read_indices(&indices_accessor, buffer_data)?;
-
-            match primitive.mode() {
-                gltf::mesh::Mode::Triangles => {
-                    for chunk in indices.chunks(3) {
-                        if chunk.len() == 3 {
-                            let triangle = vec![
-                                positions[chunk[0]],
-                                positions[chunk[1]],
-                                positions[chunk[2]],
-                                positions[chunk[0]], // Close the ring
-                            ];
-                            polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                        }
-                    }
-                }
-                gltf::mesh::Mode::TriangleStrip => {
-                    for i in 0..indices.len().saturating_sub(2) {
-                        let triangle = if i % 2 == 0 {
-                            vec![
-                                positions[indices[i]],
-                                positions[indices[i + 1]],
-                                positions[indices[i + 2]],
-                                positions[indices[i]], // Close the ring
-                            ]
-                        } else {
-                            vec![
-                                positions[indices[i]],
-                                positions[indices[i + 2]],
-                                positions[indices[i + 1]],
-                                positions[indices[i]], // Close the ring
-                            ]
-                        };
-                        polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                    }
-                }
-                gltf::mesh::Mode::TriangleFan => {
-                    for i in 1..indices.len().saturating_sub(1) {
-                        let triangle = vec![
-                            positions[indices[0]],
-                            positions[indices[i]],
-                            positions[indices[i + 1]],
-                            positions[indices[0]], // Close the ring
-                        ];
-                        polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                    }
-                }
-                _ => {
-                    return Err(SourceError::GltfReader(format!(
-                        "Unsupported primitive mode: {:?}",
-                        primitive.mode()
-                    )))
-                }
-            }
-        } else {
-            // Non-indexed primitives
-            match primitive.mode() {
-                gltf::mesh::Mode::Triangles => {
-                    for chunk in positions.chunks(3) {
-                        if chunk.len() == 3 {
-                            let triangle = vec![chunk[0], chunk[1], chunk[2], chunk[0]];
-                            polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                        }
-                    }
-                }
-                _ => {
-                    return Err(SourceError::GltfReader(format!(
-                        "Unsupported non-indexed primitive mode: {:?}",
-                        primitive.mode()
-                    )))
-                }
-            }
-        }
-    }
-
-    let flow_geometry = if polygons.len() == 1 {
-        FlowGeometry3D::Polygon(polygons.into_iter().next().unwrap())
-    } else {
-        FlowGeometry3D::MultiPolygon(MultiPolygon3D::new(polygons))
-    };
-
-    let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
-
-    Ok(geometry)
-}
-
-fn read_positions(
-    accessor: &gltf::Accessor,
-    buffer_data: &[Vec<u8>],
-) -> Result<Vec<Coordinate>, SourceError> {
-    let view = accessor.view().ok_or_else(|| {
-        SourceError::GltfReader("Position accessor has no buffer view".to_string())
-    })?;
-
-    let buffer = &buffer_data[view.buffer().index()];
-    let start = view.offset() + accessor.offset();
-    let stride = view.stride().unwrap_or(accessor.size());
-
-    let mut positions = Vec::new();
-
-    match accessor.data_type() {
-        gltf::accessor::DataType::F32 => {
-            if accessor.dimensions() != gltf::accessor::Dimensions::Vec3 {
-                return Err(SourceError::GltfReader(
-                    "Position accessor must be Vec3".to_string(),
-                ));
-            }
-
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let x = read_f32(buffer, offset)?;
-                let y = read_f32(buffer, offset + 4)?;
-                let z = read_f32(buffer, offset + 8)?;
-
-                positions.push(Coordinate {
-                    x: x as f64,
-                    y: y as f64,
-                    z: z as f64,
-                });
-            }
-        }
-        _ => {
-            return Err(SourceError::GltfReader(format!(
-                "Unsupported position data type: {:?}",
-                accessor.data_type()
-            )))
-        }
-    }
-
-    Ok(positions)
-}
-
-fn read_indices(
-    accessor: &gltf::Accessor,
-    buffer_data: &[Vec<u8>],
-) -> Result<Vec<usize>, SourceError> {
-    let view = accessor
-        .view()
-        .ok_or_else(|| SourceError::GltfReader("Index accessor has no buffer view".to_string()))?;
-
-    let buffer = &buffer_data[view.buffer().index()];
-    let start = view.offset() + accessor.offset();
-    let stride = view.stride().unwrap_or(accessor.size());
-
-    let mut indices = Vec::new();
-
-    match accessor.data_type() {
-        gltf::accessor::DataType::U16 => {
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let idx = read_u16(buffer, offset)?;
-                indices.push(idx as usize);
-            }
-        }
-        gltf::accessor::DataType::U32 => {
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let idx = read_u32(buffer, offset)?;
-                indices.push(idx as usize);
-            }
-        }
-        gltf::accessor::DataType::U8 => {
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let idx = buffer
-                    .get(offset)
-                    .ok_or_else(|| SourceError::GltfReader("Index out of bounds".to_string()))?;
-                indices.push(*idx as usize);
-            }
-        }
-        _ => {
-            return Err(SourceError::GltfReader(format!(
-                "Unsupported index data type: {:?}",
-                accessor.data_type()
-            )))
-        }
-    }
-
-    Ok(indices)
-}
-
-fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, SourceError> {
-    let bytes = buffer
-        .get(offset..offset + 4)
-        .ok_or_else(|| SourceError::GltfReader("Buffer read out of bounds".to_string()))?;
-
-    let mut array = [0u8; 4];
-    array.copy_from_slice(bytes);
-    Ok(f32::from_le_bytes(array))
-}
-
-fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, SourceError> {
-    let bytes = buffer
-        .get(offset..offset + 2)
-        .ok_or_else(|| SourceError::GltfReader("Buffer read out of bounds".to_string()))?;
-
-    let mut array = [0u8; 2];
-    array.copy_from_slice(bytes);
-    Ok(u16::from_le_bytes(array))
-}
-
-fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, SourceError> {
-    let bytes = buffer
-        .get(offset..offset + 4)
-        .ok_or_else(|| SourceError::GltfReader("Buffer read out of bounds".to_string()))?;
-
-    let mut array = [0u8; 4];
-    array.copy_from_slice(bytes);
-    Ok(u32::from_le_bytes(array))
 }
 
 #[cfg(test)]

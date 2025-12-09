@@ -8,6 +8,12 @@ nodes:
     with:
       routingPort: default
 
+  # Remove geometry as we only need attributes for format checks
+  - id: 4a05d084-a43b-4b25-b252-c4fe5e047991
+    name: GeometryRemoverForFormatChecks
+    type: action
+    action: GeometryRemover
+
   # C02 (Creates a histogram for the instances only, and does not include any testing)
   - id: 793ebebf-6903-4691-bed5-5913d3062a39
     name: SurfaceValidationC02
@@ -527,9 +533,14 @@ nodes:
       routingPort: fileOutput
 
 edges:
+  - id: 1acf360f-3edb-435c-b6fd-0f233bbd999b
+    from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    fromPort: default
+    to: 4a05d084-a43b-4b25-b252-c4fe5e047991
+    toPort: default
   # === Beginning of C02 ===
   - id: 63110e28-8d45-46a7-afa8-8a1877d1739a
-    from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    from: 4a05d084-a43b-4b25-b252-c4fe5e047991
     fromPort: default
     to: 793ebebf-6903-4691-bed5-5913d3062a39
     toPort: default
@@ -552,7 +563,7 @@ edges:
 
   # === Beginning of L-BLDG-04, 05, City Code Check ===
   - id: 6546098c-dca0-4a81-8342-c993c28d36f6
-    from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    from: 4a05d084-a43b-4b25-b252-c4fe5e047991
     fromPort: default
     to: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
     toPort: default

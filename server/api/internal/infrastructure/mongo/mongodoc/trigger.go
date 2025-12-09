@@ -9,18 +9,18 @@ import (
 )
 
 type TriggerDocument struct {
-	ID            string            `bson:"id"`
-	WorkspaceID   string            `bson:"workspaceid"`
-	DeploymentID  string            `bson:"deploymentid"`
-	Description   string            `bson:"description"`
-	EventSource   string            `bson:"eventsource"`
-	TimeInterval  string            `bson:"timeinterval,omitempty"`
-	AuthToken     string            `bson:"authtoken,omitempty"`
-	CreatedAt     time.Time         `bson:"createdat"`
-	UpdatedAt     time.Time         `bson:"updatedat"`
-	LastTriggered time.Time         `bson:"lasttriggered,omitempty"`
-	Enabled       *bool             `bson:"enabled,omitempty"`
-	Variables     map[string]string `bson:"variables,omitempty"`
+	CreatedAt     time.Time          `bson:"createdat"`
+	UpdatedAt     time.Time          `bson:"updatedat"`
+	LastTriggered time.Time          `bson:"lasttriggered,omitempty"`
+	Enabled       *bool              `bson:"enabled,omitempty"`
+	ID            string             `bson:"id"`
+	WorkspaceID   string             `bson:"workspaceid"`
+	DeploymentID  string             `bson:"deploymentid"`
+	Description   string             `bson:"description"`
+	EventSource   string             `bson:"eventsource"`
+	TimeInterval  string             `bson:"timeinterval,omitempty"`
+	AuthToken     string             `bson:"authtoken,omitempty"`
+	Variables     []VariableDocument `bson:"variables,omitempty"`
 }
 
 type TriggerConsumer = Consumer[*TriggerDocument, *trigger.Trigger]
@@ -61,8 +61,8 @@ func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 	e := t.Enabled()
 	doc.Enabled = &e
 
-	if variables := t.Variables(); variables != nil {
-		doc.Variables = variables
+	if vs := t.Variables(); len(vs) > 0 {
+		doc.Variables = VariablesToDoc(vs)
 	}
 
 	return doc, tid
@@ -105,8 +105,8 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		LastTriggered(d.LastTriggered).
 		Enabled(enabled)
 
-	if len(d.Variables) > 0 {
-		b = b.Variables(d.Variables)
+	if vs := VariablesFromDoc(d.Variables); len(vs) > 0 {
+		b = b.Variables(vs)
 	}
 
 	return b.Build()
