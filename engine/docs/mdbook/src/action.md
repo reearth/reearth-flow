@@ -3203,6 +3203,18 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
     "output"
   ],
   "properties": {
+    "autoPrimaryKey": {
+      "description": "Use auto-generated primary key (default: true). If false, uses values from primary_key_column attribute",
+      "default": true,
+      "type": "boolean"
+    },
+    "batchSize": {
+      "description": "Batch size for insert operations (default: 1000, 0 = no batching)",
+      "default": 1000,
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0.0
+    },
     "createSpatialIndex": {
       "description": "Create RTree spatial index (default: true)",
       "default": true,
@@ -3218,6 +3230,14 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "default": "GEOMETRY",
       "type": "string"
     },
+    "layerGroupAttribute": {
+      "description": "Attribute name to use for grouping features into multiple tables (optional) When set, features will be written to different tables based on the value of this attribute",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "output": {
       "description": "Output path for the GeoPackage file to create",
       "allOf": [
@@ -3230,6 +3250,11 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "description": "Overwrite existing file (default: false)",
       "default": false,
       "type": "boolean"
+    },
+    "primaryKeyColumn": {
+      "description": "Primary key column name (default: \"fid\" with auto-increment)",
+      "default": "fid",
+      "type": "string"
     },
     "srsId": {
       "description": "Spatial Reference System ID (default: 4326 for WGS84)",
@@ -3250,6 +3275,15 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "description": "Table name to create (default: \"features\")",
       "default": "features",
       "type": "string"
+    },
+    "zMode": {
+      "description": "Z coordinate handling mode (default: Optional)",
+      "default": "optional",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ZCoordinateMode"
+        }
+      ]
     }
   },
   "definitions": {
@@ -3278,6 +3312,32 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
           "type": "string",
           "enum": [
             "dropAndCreate"
+          ]
+        }
+      ]
+    },
+    "ZCoordinateMode": {
+      "description": "Z coordinate handling mode",
+      "oneOf": [
+        {
+          "description": "Keep Z coordinates if present, ignore if missing (default)",
+          "type": "string",
+          "enum": [
+            "optional"
+          ]
+        },
+        {
+          "description": "Z coordinates are not allowed - drop Z if present, output 2D geometries",
+          "type": "string",
+          "enum": [
+            "notAllowed"
+          ]
+        },
+        {
+          "description": "Z coordinates are required - add Z=0 if missing",
+          "type": "string",
+          "enum": [
+            "required"
           ]
         }
       ]
