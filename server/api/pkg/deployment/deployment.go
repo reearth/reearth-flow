@@ -5,14 +5,14 @@ import (
 )
 
 type Deployment struct {
-	id          ID
+	updatedAt   time.Time
 	project     *ProjectID
-	workspace   WorkspaceID
+	headId      *ID
 	workflowURL string
 	description string
 	version     string
-	updatedAt   time.Time
-	headId      *ID
+	id          ID
+	workspace   WorkspaceID
 	isHead      bool
 }
 

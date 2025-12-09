@@ -15,13 +15,13 @@ type UpdateMeInput struct {
 type SignupInput struct {
 	ID          *graphql.ID      `json:"id,omitempty"`
 	WorkspaceID *graphql.ID      `json:"workspaceID,omitempty"`
-	Name        graphql.String   `json:"name"`
-	Email       graphql.String   `json:"email"`
-	Password    graphql.String   `json:"password"`
 	Secret      *graphql.String  `json:"secret,omitempty"`
 	Lang        *graphql.String  `json:"lang,omitempty"`
 	Theme       *graphql.String  `json:"theme,omitempty"`
 	MockAuth    *graphql.Boolean `json:"mockAuth,omitempty"`
+	Name        graphql.String   `json:"name"`
+	Email       graphql.String   `json:"email"`
+	Password    graphql.String   `json:"password"`
 }
 
 type SignupOIDCInput struct {

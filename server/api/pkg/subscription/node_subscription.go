@@ -7,8 +7,8 @@ import (
 )
 
 type NodeManager struct {
-	mu          sync.RWMutex
 	subscribers map[string][]chan *graph.NodeExecution
+	mu          sync.RWMutex
 }
 
 func NewNodeManager() *NodeManager {

@@ -3,10 +3,10 @@ package graph
 import "github.com/reearth/reearth-flow/api/pkg/id"
 
 type EdgeExecution struct {
-	id                  EdgeExecutionID
-	edgeID              string
-	jobID               id.JobID
 	intermediateDataURL *string
+	edgeID              string
+	id                  EdgeExecutionID
+	jobID               id.JobID
 }
 
 func NewEdgeExecution(
