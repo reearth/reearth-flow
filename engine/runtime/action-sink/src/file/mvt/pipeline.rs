@@ -360,21 +360,10 @@ pub(super) fn make_tile(
         for poly in &int_mpoly {
             let exterior = poly.exterior();
             if exterior.signed_ring_area() > 0.0 {
-                // Convert from [i32; 2] to [i16; 2] for the geometry encoder
-                let converted_exterior: Vec<[i16; 2]> = exterior
-                    .into_iter()
-                    .map(|[x, y]| [x as i16, y as i16])
-                    .collect();
-
-                geom_enc.add_ring(converted_exterior);
+                geom_enc.add_ring(&exterior);
                 for interior in poly.interiors() {
                     if interior.is_cw() {
-                        // Convert from [i32; 2] to [i16; 2] for the geometry encoder
-                        let converted_interior: Vec<[i16; 2]> = interior
-                            .into_iter()
-                            .map(|[x, y]| [x as i16, y as i16])
-                            .collect();
-                        geom_enc.add_ring(converted_interior);
+                        geom_enc.add_ring(&interior);
                     }
                 }
             }
@@ -383,12 +372,7 @@ pub(super) fn make_tile(
         let has_linestrings = !int_line_string.is_empty();
         for line_string in &int_line_string {
             if line_string.len() >= 2 {
-                // Convert from [i32; 2] to [i16; 2] for the geometry encoder
-                let converted_coords: Vec<[i16; 2]> = line_string
-                    .into_iter()
-                    .map(|[x, y]| [x as i16, y as i16])
-                    .collect();
-                geom_enc.add_linestring(converted_coords);
+                geom_enc.add_linestring(&line_string);
             }
         }
         let geometry = geom_enc.into_vec();
