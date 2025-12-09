@@ -3214,9 +3214,26 @@
           "output"
         ],
         "properties": {
+          "autoPrimaryKey": {
+            "description": "Use auto-generated primary key (default: true). If false, uses values from primary_key_column attribute",
+            "default": true,
+            "type": "boolean"
+          },
+          "batchSize": {
+            "description": "Batch size for insert operations (default: 1000, 0 = no batching)",
+            "default": 1000,
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
+          },
           "createSpatialIndex": {
             "description": "Create RTree spatial index (default: true)",
             "default": true,
+            "type": "boolean"
+          },
+          "enableGeometryTypeConstraint": {
+            "description": "Enable geometry type constraint extension (default: false)",
+            "default": false,
             "type": "boolean"
           },
           "geometryColumn": {
@@ -3228,6 +3245,26 @@
             "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
             "default": "GEOMETRY",
             "type": "string"
+          },
+          "layerGroupAttribute": {
+            "description": "Attribute name to use for grouping features into multiple tables (optional) When set, features will be written to different tables based on the value of this attribute",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "description": "Metadata to write to gpkg_metadata table (optional)",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeoPackageMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "output": {
             "description": "Output path for the GeoPackage file to create",
@@ -3242,21 +3279,127 @@
             "default": false,
             "type": "boolean"
           },
+          "primaryKeyColumn": {
+            "description": "Primary key column name (default: \"fid\" with auto-increment)",
+            "default": "fid",
+            "type": "string"
+          },
           "srsId": {
             "description": "Spatial Reference System ID (default: 4326 for WGS84)",
             "default": 4326,
             "type": "integer",
             "format": "int32"
           },
+          "tableMode": {
+            "description": "Table handling mode: CreateIfNeeded (default), UseExisting (append), or DropAndCreate",
+            "default": "createIfNeeded",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TableMode"
+              }
+            ]
+          },
           "tableName": {
             "description": "Table name to create (default: \"features\")",
             "default": "features",
             "type": "string"
+          },
+          "zMode": {
+            "description": "Z coordinate handling mode (default: Optional)",
+            "default": "optional",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ZCoordinateMode"
+              }
+            ]
           }
         },
         "definitions": {
           "Expr": {
             "type": "string"
+          },
+          "GeoPackageMetadata": {
+            "description": "Metadata configuration for GeoPackage",
+            "type": "object",
+            "required": [
+              "content"
+            ],
+            "properties": {
+              "content": {
+                "description": "Metadata content (XML, JSON, or plain text)",
+                "type": "string"
+              },
+              "mimeType": {
+                "description": "MIME type of metadata (default: \"text/xml\")",
+                "default": "text/xml",
+                "type": "string"
+              },
+              "scope": {
+                "description": "Metadata scope (default: \"dataset\")",
+                "default": "dataset",
+                "type": "string"
+              },
+              "standardUri": {
+                "description": "URI for metadata standard (e.g., \"http://www.isotc211.org/2005/gmd\")",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "TableMode": {
+            "description": "Table handling mode for GeoPackage writer",
+            "oneOf": [
+              {
+                "description": "Create table if it doesn't exist (default)",
+                "type": "string",
+                "enum": [
+                  "createIfNeeded"
+                ]
+              },
+              {
+                "description": "Append to existing table (fail if table doesn't exist)",
+                "type": "string",
+                "enum": [
+                  "useExisting"
+                ]
+              },
+              {
+                "description": "Drop existing table and recreate",
+                "type": "string",
+                "enum": [
+                  "dropAndCreate"
+                ]
+              }
+            ]
+          },
+          "ZCoordinateMode": {
+            "description": "Z coordinate handling mode",
+            "oneOf": [
+              {
+                "description": "Keep Z coordinates if present, ignore if missing (default)",
+                "type": "string",
+                "enum": [
+                  "optional"
+                ]
+              },
+              {
+                "description": "Z coordinates are not allowed - drop Z if present, output 2D geometries",
+                "type": "string",
+                "enum": [
+                  "notAllowed"
+                ]
+              },
+              {
+                "description": "Z coordinates are required - add Z=0 if missing",
+                "type": "string",
+                "enum": [
+                  "required"
+                ]
+              }
+            ]
           }
         }
       },
