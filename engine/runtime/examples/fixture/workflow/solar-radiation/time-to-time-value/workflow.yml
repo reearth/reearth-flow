@@ -70,17 +70,17 @@ graphs:
               method: convert
               value: |
                 let hour_str = env.get("__value")["出_H"];
-                let hour = str::string_to_int(hour_str);
+                let hour = str::to_i64(hour_str);
                 let min_str = env.get("__value")["出_M"];
-                let min = str::string_to_int(min_str);
+                let min = str::to_i64(min_str);
                 hour * 3600 + min * 60
             - attribute: 入り
               method: convert
               value: |
                 let hour_str = env.get("__value")["入り_H"];
-                let hour = str::string_to_int(hour_str);
+                let hour = str::to_i64(hour_str);
                 let min_str = env.get("__value")["入り_M"];
-                let min = str::string_to_int(min_str);
+                let min = str::to_i64(min_str);
                 hour * 3600 + min * 60
             - attribute: 南中
               method: convert
@@ -89,9 +89,9 @@ graphs:
                 let hour_str = str::extract_single_by_regex("(\\d+):(\\d+):(\\d+)", dt);
                 let mins_str = str::extract_single_by_regex("\\d+:(\\d+):\\d+", dt);
                 let secs_str = str::extract_single_by_regex("\\d+:\\d+:(\\d+)", dt);
-                let hour = str::string_to_int(hour_str);
-                let mins = str::string_to_int(mins_str);
-                let seconds = str::string_to_int(secs_str);
+                let hour = str::to_i64(hour_str);
+                let mins = str::to_i64(mins_str);
+                let seconds = str::to_i64(secs_str);
                 hour * 3600 + mins * 60 + seconds
             - attribute: 出_H
               method: remove
@@ -117,7 +117,7 @@ graphs:
                 let altitude_value = env.get("__value")["高度[°]"];
                 let input_time_days = entry_time_value / 86400.0;
                 let output_time_days = exit_time_value / 86400.0;
-                let altitude_radians = math::to_radians(str::string_to_f64(altitude_value));
+                let altitude_radians = math::to_radians(str::to_f64(altitude_value));
                 (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
           
 
