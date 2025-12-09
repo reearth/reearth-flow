@@ -492,9 +492,24 @@ mod tests {
 
     #[test]
     fn test_extract_feature_properties_no_extension() {
-        // Create a minimal GLB without EXT_structural_metadata
-        // For now, just verify it returns empty without error
-        // A proper test would need a real GLB without the extension
-        // This is a placeholder to demonstrate the API
+        // Test with minimal GLB that has NO EXT_structural_metadata extension
+        // Should return empty IndexMap without error
+        use crate::test_utils::MINIMAL_GLB_BASE64;
+        use base64::Engine;
+
+        let glb_bytes = base64::engine::general_purpose::STANDARD
+            .decode(MINIMAL_GLB_BASE64)
+            .unwrap();
+
+        let gltf = gltf::Gltf::from_slice(&glb_bytes).expect("Failed to parse GLB");
+
+        let result = extract_feature_properties(&gltf)
+            .expect("Should not error on missing extension");
+
+        // Should return empty IndexMap when extension is not present
+        assert!(
+            result.is_empty(),
+            "Expected empty result when EXT_structural_metadata is not present"
+        );
     }
 }

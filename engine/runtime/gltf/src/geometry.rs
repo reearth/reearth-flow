@@ -123,14 +123,10 @@ mod tests {
 
     #[test]
     fn test_parse_rectangle_glb() {
-        // Minimal GLB with rectangle (0,0,0)-(1,1,0) as two triangles
-        // Vertices: (0,0,0), (1,0,0), (1,1,0), (0,1,0)
-        // Triangles: [0,1,2] and [0,2,3]
-        let glb_base64 = "Z2xURgIAAAA4AgAA4AEAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyLjAifSwic2NlbmUiOjAsInNjZW5lcyI6W3sibm9kZXMiOlswXX1dLCJub2RlcyI6W3sibWVzaCI6MH1dLCJtZXNoZXMiOlt7InByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjB9LCJpbmRpY2VzIjoxLCJtb2RlIjo0fV19XSwiYWNjZXNzb3JzIjpbeyJidWZmZXJWaWV3IjowLCJjb21wb25lbnRUeXBlIjo1MTI2LCJjb3VudCI6NCwidHlwZSI6IlZFQzMiLCJtaW4iOlswLjAsMC4wLDAuMF0sIm1heCI6WzEuMCwxLjAsMC4wXX0seyJidWZmZXJWaWV3IjoxLCJjb21wb25lbnRUeXBlIjo1MTIzLCJjb3VudCI6NiwidHlwZSI6IlNDQUxBUiJ9XSwiYnVmZmVyVmlld3MiOlt7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MCwiYnl0ZUxlbmd0aCI6NDh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo0OCwiYnl0ZUxlbmd0aCI6MTJ9XSwiYnVmZmVycyI6W3siYnl0ZUxlbmd0aCI6NjB9XX0gICA8AAAAQklOAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAQACAAAAAgADAA==";
-
+        use crate::test_utils::MINIMAL_GLB_BASE64;
         use base64::Engine;
         let glb_bytes = base64::engine::general_purpose::STANDARD
-            .decode(glb_base64)
+            .decode(MINIMAL_GLB_BASE64)
             .unwrap();
         let content = Bytes::from(glb_bytes);
 
