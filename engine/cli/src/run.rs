@@ -11,7 +11,7 @@ use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
-use crate::incremental::copy_upstream_intermediate_data;
+use crate::incremental::prepare_incremental_feature_store;
 
 pub fn build_run_command() -> Command {
     Command::new("run")
@@ -207,7 +207,7 @@ impl RunCliCommand {
             let start_node_id =
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
-            copy_upstream_intermediate_data(
+            prepare_incremental_feature_store(
                 &workflow,
                 job_id,
                 &storage_resolver,
