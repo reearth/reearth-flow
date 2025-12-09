@@ -16,6 +16,7 @@ type Container struct {
 	AssetUpload   AssetUpload
 	AuthRequest   authserver.RequestRepo
 	Config        Config
+	WorkerConfig  WorkerConfig
 	Deployment    Deployment
 	EdgeExecution EdgeExecution
 	Job           Job
@@ -53,6 +54,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		AssetUpload:   c.AssetUpload.Filtered(workspace),
 		AuthRequest:   c.AuthRequest,
 		Config:        c.Config,
+		WorkerConfig:  c.WorkerConfig,
 		Deployment:    c.Deployment.Filtered(workspace),
 		EdgeExecution: c.EdgeExecution,
 		Job:           c.Job.Filtered(workspace),
