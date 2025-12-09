@@ -80,60 +80,36 @@ pub fn collect_reusable_edge_ids(
         .find(|g| g.id == workflow.entry_graph_id)
         .ok_or_else(|| crate::errors::Error::init("Entry graph not found"))?;
 
-    let mut in_degree: HashMap<uuid::Uuid, usize> = HashMap::new();
     let mut adj: HashMap<uuid::Uuid, Vec<uuid::Uuid>> = HashMap::new();
-
     for node in &graph.nodes {
-        in_degree.entry(node.id()).or_insert(0);
         adj.entry(node.id()).or_default();
     }
-
     for edge in &graph.edges {
         adj.entry(edge.from).or_default().push(edge.to);
-        *in_degree.entry(edge.to).or_insert(0) += 1;
-        in_degree.entry(edge.from).or_insert(0);
     }
 
+    let mut downstream_nodes = HashSet::new();
     let mut queue = VecDeque::new();
-    for (node_id, &deg) in &in_degree {
-        if deg == 0 {
-            queue.push_back(*node_id);
-        }
-    }
 
-    let mut topo: Vec<uuid::Uuid> = Vec::new();
-    let mut in_degree_mut = in_degree.clone();
+    downstream_nodes.insert(start_node_id);
+    queue.push_back(start_node_id);
 
     while let Some(node) = queue.pop_front() {
-        topo.push(node);
         if let Some(neighbors) = adj.get(&node) {
             for &next in neighbors {
-                if let Some(d) = in_degree_mut.get_mut(&next) {
-                    *d -= 1;
-                    if *d == 0 {
-                        queue.push_back(next);
-                    }
+                if downstream_nodes.insert(next) {
+                    queue.push_back(next);
                 }
             }
         }
     }
 
-    let pos = topo
-        .iter()
-        .position(|id| *id == start_node_id)
-        .ok_or_else(|| crate::errors::Error::init("start_node_id not found in workflow graph"))?;
-
-    let mut nodes_before_start = HashSet::new();
-    for id in topo.iter().take(pos) {
-        nodes_before_start.insert(*id);
-    }
-
-    let mut edge_ids = Vec::new();
+    let mut reusable_edges = Vec::new();
     for edge in &graph.edges {
-        if nodes_before_start.contains(&edge.from) {
-            edge_ids.push(edge.id);
+        if !downstream_nodes.contains(&edge.from) {
+            reusable_edges.push(edge.id);
         }
     }
 
-    Ok(edge_ids)
+    Ok(reusable_edges)
 }
