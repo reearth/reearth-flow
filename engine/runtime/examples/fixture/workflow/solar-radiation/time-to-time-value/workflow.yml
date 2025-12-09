@@ -42,7 +42,7 @@ graphs:
               valueAttribute: 入り
             - attribute: 南中
               valueAttribute: 南中
-            # Add the extracted time parts directly in the AttributeMapper
+            # Add the extracted time parts directly in the  AttributeMapper
             - attribute: 出_H
               expr: |
                 let time_parts = env.get("__value")["出"].split(":");
