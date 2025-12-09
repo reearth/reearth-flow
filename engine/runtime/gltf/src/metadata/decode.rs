@@ -3,6 +3,8 @@ use indexmap::IndexMap;
 use reearth_flow_types::AttributeValue;
 use serde_json::Value;
 
+use super::{ENUM_NO_DATA, FLOAT_NO_DATA, INT64_NO_DATA, UINT64_NO_DATA};
+
 /// Extract feature IDs from EXT_mesh_features extension
 pub fn read_mesh_features(
     primitive: &gltf::Primitive,
@@ -307,26 +309,81 @@ pub fn extract_feature_properties(
     let mut feature_props: Vec<serde_json::Map<String, Value>> =
         (0..count).map(|_| serde_json::Map::new()).collect();
 
+    // Get component type from schema for each property
+    let get_component_type = |prop_name: &str| -> Option<&str> {
+        metadata_value
+            .pointer(&format!(
+                "/schema/classes/{}/properties/{}/componentType",
+                prop_table.get("class")?.as_str()?,
+                prop_name
+            ))
+            .and_then(|v| v.as_str())
+    };
+
     // Extract each property
     for (prop_name, prop_def) in properties {
         let values_idx = prop_def["values"].as_u64().ok_or_else(|| {
             GltfReaderError::Parse(format!("Missing values index for property {}", prop_name))
         })? as usize;
 
-        // Check if it's a string property
+        let values_view = &buffer_views[values_idx];
+        let data = &binary_blob[values_view.offset()..values_view.offset() + values_view.length()];
+
+        // String property
         if let Some(offsets_idx) = prop_def.get("stringOffsets").and_then(|v| v.as_u64()) {
-            let strings = extract_strings_from_glb(
-                binary_blob,
-                &buffer_views,
-                values_idx,
-                offsets_idx as usize,
-                count,
-            )?;
-            for (i, s) in strings.into_iter().enumerate() {
-                feature_props[i].insert(prop_name.clone(), Value::String(s));
+            let offsets_view = &buffer_views[offsets_idx as usize];
+            let offsets_data =
+                &binary_blob[offsets_view.offset()..offsets_view.offset() + offsets_view.length()];
+            let offsets: Vec<u32> = offsets_data
+                .chunks_exact(4)
+                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect();
+
+            for i in 0..count {
+                let s = std::str::from_utf8(&data[offsets[i] as usize..offsets[i + 1] as usize])
+                    .map_err(|e| GltfReaderError::Buffer(format!("Invalid UTF-8: {}", e)))?;
+                feature_props[i].insert(prop_name.clone(), Value::String(s.to_string()));
+            }
+            continue;
+        }
+
+        // Numeric/enum properties - must have component type
+        let component_type = get_component_type(prop_name).ok_or_else(|| {
+            GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name))
+        })?;
+
+        for i in 0..count {
+            let value = match component_type {
+                "INT64" => {
+                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    (v != INT64_NO_DATA).then(|| Value::Number(v.into()))
+                }
+                "UINT64" => {
+                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    (v != UINT64_NO_DATA).then(|| Value::Number(v.into()))
+                }
+                "FLOAT64" => {
+                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    (v != FLOAT_NO_DATA)
+                        .then(|| serde_json::Number::from_f64(v))
+                        .flatten()
+                        .map(Value::Number)
+                }
+                "UINT32" => {
+                    let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    (v != ENUM_NO_DATA).then(|| Value::Number(v.into()))
+                }
+                _ => {
+                    return Err(GltfReaderError::Parse(format!(
+                        "Unsupported componentType '{}' for property {}",
+                        component_type, prop_name
+                    )))
+                }
+            };
+            if let Some(v) = value {
+                feature_props[i].insert(prop_name.clone(), v);
             }
         }
-        // TODO: Handle other property types (numeric, etc.)
     }
 
     // Key by gml_id
@@ -339,56 +396,6 @@ pub fn extract_feature_properties(
     }
 
     Ok(result)
-}
-
-/// Extract string array from glTF binary buffers (for GLB files)
-fn extract_strings_from_glb(
-    binary_blob: &[u8],
-    buffer_views: &[gltf::buffer::View],
-    values_idx: usize,
-    offsets_idx: usize,
-    count: usize,
-) -> Result<Vec<String>, GltfReaderError> {
-    // Read offsets
-    let offsets_view = &buffer_views[offsets_idx];
-    let offsets_start = offsets_view.offset();
-    let offsets_len = offsets_view.length();
-    let offsets_data = binary_blob
-        .get(offsets_start..offsets_start + offsets_len)
-        .ok_or_else(|| GltfReaderError::Buffer("Offsets buffer out of bounds".to_string()))?;
-
-    let offsets: Vec<u32> = offsets_data
-        .chunks_exact(4)
-        .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-        .collect();
-
-    if offsets.len() != count + 1 {
-        return Err(GltfReaderError::Buffer(format!(
-            "Offsets length mismatch: {} vs {}",
-            offsets.len() - 1,
-            count
-        )));
-    }
-
-    // Read string data
-    let values_view = &buffer_views[values_idx];
-    let values_start = values_view.offset();
-    let values_len = values_view.length();
-    let strings_data = binary_blob
-        .get(values_start..values_start + values_len)
-        .ok_or_else(|| GltfReaderError::Buffer("Values buffer out of bounds".to_string()))?;
-
-    // Extract strings
-    let mut strings = Vec::new();
-    for i in 0..count {
-        let start = offsets[i] as usize;
-        let end = offsets[i + 1] as usize;
-        let s = std::str::from_utf8(&strings_data[start..end])
-            .map_err(|e| GltfReaderError::Buffer(format!("Invalid UTF-8 in string: {}", e)))?;
-        strings.push(s.to_string());
-    }
-
-    Ok(strings)
 }
 
 #[cfg(test)]

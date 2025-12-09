@@ -396,7 +396,8 @@ graphs:
       - attribute: area
         method: remove
       - attribute: package
-        method: remove
+        method: rename
+        value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -428,8 +429,9 @@ graphs:
       maxZoom: 18
       attachTexture: false
       dracoCompression: false
+      skipUnexposedAttributes: true
       output: |
-        file::join_path(env.get("workerArtifactPath"), "tran_lod3")
+        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3")
   - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
     name: AttributeManagerByLod0-2
     type: action
@@ -450,7 +452,7 @@ graphs:
         value: city_name
       - attribute: lod
         method: rename
-        value: _lod
+        value: __lod
       - attribute: gmlId
         method: remove
       - attribute: gmlPropertyName
@@ -466,7 +468,8 @@ graphs:
       - attribute: area
         method: remove
       - attribute: package
-        method: remove
+        method: rename
+        value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -484,8 +487,7 @@ graphs:
       - attribute: name
         method: remove
       - attribute: udxDirs
-        method: rename
-        value: _udxDirs
+        method: remove
       - attribute: featureType
         method: remove
       - attribute: gmlName
@@ -496,8 +498,8 @@ graphs:
     action: FeatureSorter
     with:
       attributes:
-      - _udxDirs
-      - _lod
+      - __package
+      - __lod
       order: ascending
   - id: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
     name: TwoDimensionForcer
@@ -516,8 +518,8 @@ graphs:
     with:
       groupBy:
       - gml_id
-      - _udxDirs
-      - _lod
+      - __package
+      - __lod
       attributeAccumulationMode: useOne
   - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     name: FeatureSorterPreMVT
@@ -525,8 +527,8 @@ graphs:
     action: FeatureSorter
     with:
       attributes:
-      - _udxDirs
-      - _lod
+      - __package
+      - __lod
       - feature_type
       order: ascending
   - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
@@ -540,8 +542,8 @@ graphs:
       maxZoom: 16
       extent: 65536
       output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
-      skipUnderscorePrefix: true
+        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
+      skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: AttributeManagerByDmGeometricAttribute
@@ -572,7 +574,8 @@ graphs:
       - attribute: area
         method: remove
       - attribute: package
-        method: remove
+        method: rename
+        value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -590,8 +593,7 @@ graphs:
       - attribute: name
         method: remove
       - attribute: udxDirs
-        method: rename
-        value: _udxDirs
+        method: remove
       - attribute: featureType
         method: remove
       - attribute: gmlName
@@ -602,7 +604,7 @@ graphs:
     action: FeatureSorter
     with:
       attributes:
-      - _udxDirs
+      - __package
       order: ascending
   - id: c3d4e5f6-a7b8-9012-cdef-123456789012
     name: TwoDimensionForcerDmGeometricAttribute
@@ -619,8 +621,8 @@ graphs:
       maxZoom: 18
       extent: 65536
       output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
-      skipUnderscorePrefix: true
+        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes")
+      skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
