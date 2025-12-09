@@ -6287,6 +6287,7 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
+ "reearth-flow-gltf",
  "reearth-flow-runtime",
  "reearth-flow-sql",
  "reearth-flow-state",
