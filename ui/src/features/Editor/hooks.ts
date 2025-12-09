@@ -427,6 +427,58 @@ export default ({
       }[] = [];
       const edgeChanges: EdgeChange[] = [];
 
+      // Build set of node IDs being disabled in this operation
+      const nodesToDisableIds = new Set<string>();
+      targetNodes.forEach((node) => {
+        const isCurrentlyDisabled = node.data?.isDisabled;
+        const willBeDisabled = !isCurrentlyDisabled;
+        if (willBeDisabled) {
+          nodesToDisableIds.add(node.id);
+        }
+      });
+
+      // Helper: recursively find enabled incomers, traversing through disabled nodes
+      const findEnabledIncomers = (node: Node, visited = new Set<string>()): Node[] => {
+        if (visited.has(node.id)) return [];
+        visited.add(node.id);
+
+        const directIncomers = getIncomers(node, nodes, edges);
+        const enabledIncomers: Node[] = [];
+
+        directIncomers.forEach((incomer) => {
+          // If this incomer is being disabled OR already disabled, recurse through it
+          if (nodesToDisableIds.has(incomer.id) || incomer.data?.isDisabled) {
+            enabledIncomers.push(...findEnabledIncomers(incomer, visited));
+          } else {
+            // This is an enabled node
+            enabledIncomers.push(incomer);
+          }
+        });
+
+        return enabledIncomers;
+      };
+
+      // Helper: recursively find enabled outgoers, traversing through disabled nodes
+      const findEnabledOutgoers = (node: Node, visited = new Set<string>()): Node[] => {
+        if (visited.has(node.id)) return [];
+        visited.add(node.id);
+
+        const directOutgoers = getOutgoers(node, nodes, edges);
+        const enabledOutgoers: Node[] = [];
+
+        directOutgoers.forEach((outgoer) => {
+          // If this outgoer is being disabled OR already disabled, recurse through it
+          if (nodesToDisableIds.has(outgoer.id) || outgoer.data?.isDisabled) {
+            enabledOutgoers.push(...findEnabledOutgoers(outgoer, visited));
+          } else {
+            // This is an enabled node
+            enabledOutgoers.push(outgoer);
+          }
+        });
+
+        return enabledOutgoers;
+      };
+
       targetNodes.forEach((node) => {
         const isCurrentlyDisabled = node.data?.isDisabled;
         const willBeDisabled = !isCurrentlyDisabled;
@@ -434,8 +486,10 @@ export default ({
         if (willBeDisabled) {
           // DISABLING: Keep edges but create bypass connections
           const connectedEdges = getConnectedEdges([node], edges);
-          const incomers = getIncomers(node, nodes, edges);
-          const outgoers = getOutgoers(node, nodes, edges);
+
+          // Find enabled nodes beyond any disabled nodes
+          const incomers = findEnabledIncomers(node);
+          const outgoers = findEnabledOutgoers(node);
 
           // Store edge IDs so we know which bypass edges to remove on re-enable
           const disabledEdges = connectedEdges.map((edge) => ({
@@ -456,9 +510,11 @@ export default ({
 
           const bypassEdgeIds: string[] = [];
 
-          if (!hasMultipleIO) {
+          if (!hasMultipleIO && incomers.length > 0 && outgoers.length > 0) {
             incomers.forEach((incomer) => {
               outgoers.forEach((outgoer) => {
+                // Each disabled node creates its own bypass edge, even if it's a duplicate
+                // This ensures when nodes are re-enabled independently, the correct bypass edges remain
                 const bypassEdgeId = generateUUID();
                 bypassEdgeIds.push(bypassEdgeId);
                 edgeChanges.push({
