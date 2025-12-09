@@ -1,3 +1,4 @@
+use crate::align_cesium::{collect_glb_paths_from_tileset, find_cesium_tile_directories};
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::analyze_attributes;
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
@@ -6,25 +7,22 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;
 
 #[derive(Debug, Deserialize)]
 pub struct CesiumAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
-/// Load all GLB attributes from a directory, keyed by gml_id
+/// Load all GLB attributes from a directory using tileset.json, keyed by gml_id
 fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     let mut ret = HashMap::new();
     let mut rel = HashMap::new();
 
-    for entry in WalkDir::new(dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "glb"))
-    {
-        let path = entry.path();
-        let content = fs::read(path).map_err(|e| format!("Failed to read GLB: {}", e))?;
+    // Collect GLB paths from tileset.json
+    let glb_paths = collect_glb_paths_from_tileset(dir)?;
+
+    for path in glb_paths {
+        let content = fs::read(&path).map_err(|e| format!("Failed to read GLB: {}", e))?;
         let gltf = parse_gltf(&bytes::Bytes::from(content))
             .map_err(|e| format!("Failed to parse GLB: {}", e))?;
 
@@ -43,7 +41,7 @@ fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
                 }
             } else {
                 ret.insert(gml_id.clone(), Value::Object(props));
-                rel.insert(gml_id, path.to_path_buf());
+                rel.insert(gml_id, path.clone());
             }
         }
     }
@@ -74,28 +72,6 @@ fn align_glb_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)
         result.push((gml_id.clone(), attr1, attr2));
     }
 
-    Ok(result)
-}
-
-/// Find top-level 3D Tiles directories (directories containing tileset.json)
-fn find_cesium_tile_directories(base_path: &Path) -> Result<Vec<String>, String> {
-    let mut dirs = HashSet::new();
-
-    for entry in WalkDir::new(base_path)
-        .max_depth(3)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file() && e.file_name() == "tileset.json")
-    {
-        if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path) {
-            if let Some(first_component) = rel.iter().next() {
-                dirs.insert(first_component.to_string_lossy().to_string());
-            }
-        }
-    }
-
-    let mut result: Vec<_> = dirs.into_iter().collect();
-    result.sort();
     Ok(result)
 }
 

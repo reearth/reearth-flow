@@ -91,6 +91,17 @@ fn read_feature_id_accessor(
                 feature_ids.push(*id as u32);
             }
         }
+        gltf::accessor::DataType::F32 => {
+            // Some tools store feature IDs as floats - convert to u32
+            for i in 0..accessor.count() {
+                let offset = start + i * stride;
+                let bytes = buffer.get(offset..offset + 4).ok_or_else(|| {
+                    GltfReaderError::Accessor("Feature ID out of bounds".to_string())
+                })?;
+                let float_id = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                feature_ids.push(float_id as u32);
+            }
+        }
         _ => {
             return Err(GltfReaderError::Accessor(format!(
                 "Unsupported feature ID data type: {:?}",
