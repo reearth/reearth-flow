@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -39,7 +39,7 @@ func (r *realSubscription) Receive(ctx context.Context, f func(context.Context, 
 		ctx, span := r.tracer.Start(ctx, "pubsub.receive",
 			trace.WithSpanKind(trace.SpanKindConsumer),
 			trace.WithAttributes(
-				semconv.MessagingSystemGCPPubsub,
+				semconv.MessagingSystemGCPPubSub,
 				semconv.MessagingDestinationName(r.subscriptionID),
 				semconv.MessagingMessageID(m.ID),
 				attribute.Int("messaging.message.body.size", len(m.Data)),
