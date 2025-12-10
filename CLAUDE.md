@@ -6,149 +6,245 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Re:Earth Flow is a **monorepo** containing a comprehensive geospatial workflow platform with three main components:
 
-- **Engine** (`engine/`) - Rust-based DAG workflow execution engine for geospatial data processing
-- **Server** (`server/`) - Go-based GraphQL API backend with real-time collaboration
-- **UI** (`ui/`) - React/TypeScript frontend with visual workflow builder
+- **Engine** (`engine/`) - Rust-based DAG workflow execution engine for geospatial data processing - See [engine/CLAUDE.md](engine/CLAUDE.md)
+- **Server** (`server/`) - Go-based GraphQL API backend with real-time collaboration - See [server/CLAUDE.md](server/CLAUDE.md)
+- **UI** (`ui/`) - React/TypeScript frontend with visual workflow builder - See [ui/CLAUDE.md](ui/CLAUDE.md)
 
-## Development Commands
+## Quick Start
 
-### Engine (Rust)
+### Initial Setup
+
 ```bash
-cd engine/
-cargo install cargo-make
-cargo make format      # Format code
-cargo make check       # Compilation check
-cargo make clippy      # Linting
-cargo make test        # Run tests
-cargo make doc         # Generate docs
+# Clone the repository
+git clone <repository-url>
+cd reearth-flow
 
-# Run CLI
-cargo run --package reearth-flow-cli -- run --workflow path/to/workflow.yml
+# Set up each component
+cd engine && cargo build && cd ..
+cd server/api && make run-db && cd ../..
+cd ui && yarn install && cd ..
 ```
 
-### Server (Go)
+### Running the Full Stack
+
 ```bash
-cd server/api/
-make run-app          # Start API server
-make run-db           # Start MongoDB
-make test             # Run tests
-make e2e              # End-to-end tests
-make gql              # Generate GraphQL code
+# Terminal 1: Start MongoDB
+cd server/api && make run-db
+
+# Terminal 2: Start API Server (must run before WebSocket!)
+cd server/api && make run-app
+
+# Terminal 3: Start WebSocket Server
+cd server/websocket && cargo run
+
+# Terminal 4: Start UI Development Server
+cd ui && yarn start
 ```
 
-### UI (React/TypeScript)
-```bash
-cd ui/
-yarn                  # Install dependencies
-yarn start            # Development server
-yarn build            # Production build
-yarn test             # Unit tests
-yarn gql              # Generate GraphQL code
-yarn lint             # ESLint
-```
+## End-to-End Data Flow
 
-## Project Structure
+Understanding how data flows through the entire system:
 
-### Engine - Workflow Execution
-- **Languages**: Rust with cargo-make for build management
-- **Core**: DAG-based workflow execution with multi-threading
-- **Data Model**: Feature-centric geospatial data processing
-- **Actions**: Source/Processor/Sink pattern for data operations
-- **Storage**: OpenDAL multi-backend abstraction (GCS, S3, local)
-- **Expressions**: Rhai scripting for dynamic parameters
+### 1. Workflow Creation & Editing
+- **UI** creates workflow definitions using visual editor (ReactFlow)
+- **Yjs** (UI) syncs changes in real-time across collaborative clients
+- **WebSocket Server** (Server/Rust) manages Y-WebSocket protocol
+- **GraphQL mutations** (UI → Server) persist workflow state to MongoDB
+- **Server** stores workflow definitions in database
 
-**For detailed engine architecture, development patterns, and debugging guidance, see `engine/CLAUDE.md`.**
+### 2. Workflow Execution
+- **UI** triggers workflow execution via GraphQL mutation
+- **Server** creates job record and submits to Google Cloud Batch
+- **Engine** receives workflow definition and executes DAG
+- **Engine** processes geospatial data through action pipeline
+- **Engine** writes results to cloud storage (GCS/S3)
 
-### Server - API Backend
-- **Languages**: Go with GraphQL (gqlgen)
-- **Architecture**: Clean Architecture with DDD patterns
-- **Database**: MongoDB with Redis for caching
-- **Authentication**: JWT with Auth0/Cognito support
-- **Cloud**: Google Cloud Batch/Storage/Pub-Sub integration
-- **Real-time**: Rust WebSocket server for collaboration
+### 3. Real-time Monitoring
+- **Engine** publishes logs and status to Google Pub/Sub
+- **Subscriber Service** (Server) consumes Pub/Sub events
+- **Subscriber** writes logs to MongoDB and Redis
+- **Server** streams updates via GraphQL subscriptions
+- **UI** displays real-time job progress and logs
 
-Key services:
-- `api/` - Main GraphQL API server
-- `websocket/` - Real-time collaboration (Rust)
-- `subscriber/` - Log processing service
+### 4. Results & Visualization
+- **UI** retrieves result URLs from completed jobs
+- **UI** visualizes geospatial outputs in Cesium/MapLibre
+- **Server** provides access control for results
+- **Engine** data accessible via cloud storage links
 
-### UI - Frontend Application
-- **Framework**: React 19 with TypeScript, Vite build
-- **UI**: Tailwind CSS + Radix UI components
-- **State**: Jotai atoms + TanStack Query + Yjs collaboration
-- **Routing**: TanStack Router with file-based routes
-- **Editor**: ReactFlow for visual workflow building
-- **Maps**: Cesium 3D + MapLibre 2D geospatial visualization
+## Cross-Component Workflows
 
-Key features:
-- Visual workflow editor with real-time collaboration
-- Multi-tenant workspace management
-- Geospatial data visualization
-- Job monitoring and deployment management
+### Adding New Workflow Actions
 
-## Technology Integration
+When adding a new action type that spans all three components:
 
-### Collaborative Editing
-- **UI**: Yjs for document synchronization
-- **Server**: Rust WebSocket server (`server/websocket/`)
-- **Protocol**: Y-WebSocket for real-time updates
+1. **Engine** (`engine/runtime/action-*/`)
+   - Implement action logic in Rust
+   - Add to action registry
+   - Write unit tests
+   - See [engine/CLAUDE.md](engine/CLAUDE.md) for details
 
-### Workflow Execution
-- **Definition**: YAML/JSON workflows created in UI
-- **Storage**: MongoDB via GraphQL API
-- **Execution**: Engine processes workflows via Server coordination
-- **Monitoring**: Real-time job status through WebSocket + GraphQL subscriptions
+2. **Server** (`server/api/pkg/schema/`)
+   - Define action schema and validation
+   - Update GraphQL types if needed
+   - Register action in schema generator
+   - See [server/CLAUDE.md](server/CLAUDE.md) for details
 
-### Data Flow
-1. UI creates workflows with visual editor
-2. Server stores definitions in MongoDB
-3. Engine executes workflows on GCP Batch
-4. Results stored in cloud storage
-5. Real-time updates via WebSocket/GraphQL
+3. **UI** (`ui/src/features/Editor/`)
+   - Add action to node palette
+   - Create configuration form component
+   - Add validation and connection rules
+   - Run `yarn gql` to regenerate types
+   - See [ui/CLAUDE.md](ui/CLAUDE.md) for details
+
+4. **Integration Testing**
+   - Test workflow creation in UI
+   - Test execution through server to engine
+   - Verify results and monitoring
+
+### Modifying GraphQL Schema
+
+When making API changes that affect both server and UI:
+
+1. **Server** - Update schema in `server/api/gql/*.graphql`
+2. **Server** - Run `make gql` to regenerate Go code
+3. **Server** - Implement resolver logic
+4. **Server** - Update use cases and repositories as needed
+5. **UI** - Run `yarn gql` to regenerate TypeScript types
+6. **UI** - Update components using modified types
+7. **Testing** - Test end-to-end data flow
+
+### Database Schema Changes
+
+When modifying MongoDB collections:
+
+1. **Server** - Add migration in `server/api/internal/infrastructure/mongo/migration/`
+2. **Server** - Update domain models in `server/api/pkg/*/`
+3. **Server** - Update repository implementations
+4. **Subscriber** - Update if log/node processing affected
+5. **Testing** - Verify migration and data integrity
+
+### Real-time Collaboration Features
+
+When adding features that require real-time sync:
+
+1. **UI** - Update Yjs document structure
+2. **WebSocket Server** - Verify Y-WebSocket compatibility
+3. **Server** - Update GraphQL schema for persistence
+4. **UI** - Create hooks for reactive Yjs state
+5. **Testing** - Test with multiple concurrent users
 
 ## Environment Configuration
 
-### Engine
-- `FLOW_RUNTIME_*` variables control execution behavior
-- `FLOW_VAR_*` variables inject into workflow context
-- See `engine/CLAUDE.md` for detailed configuration
+Each component uses environment variables with consistent prefixes:
 
-### Server
-- Google Cloud credentials for batch processing
-- MongoDB and Redis connection strings
-- Auth provider configuration (Auth0, Cognito)
+### Shared Conventions
+- `FLOW_*` - Application-specific configuration
+- `REEARTH_*` - Platform-level configuration
+- `GOOGLE_*` - Google Cloud Platform credentials
 
-### UI
-- Auth0 configuration for authentication
-- API endpoint configuration
-- Feature flags for development
+### Component-Specific Details
+- **Engine** - See [engine/CLAUDE.md](engine/CLAUDE.md) for `FLOW_RUNTIME_*` and `FLOW_VAR_*`
+- **Server** - See [server/CLAUDE.md](server/CLAUDE.md) for database and cloud configuration
+- **UI** - See [ui/CLAUDE.md](ui/CLAUDE.md) for API endpoints and Auth0 settings
 
-## Multi-Service Development
+## Multi-Service Coordination
 
-When working across components:
-1. **Database changes** - Update server GraphQL schema and UI types
-2. **New actions** - Add to engine, update server action registry
-3. **UI features** - Consider real-time collaboration impact
-4. **Testing** - Each component has its own test suite
+### Service Dependencies
 
-## Common Workflows
+```
+MongoDB (required by Server API and Subscriber)
+  ↓
+Server API (provides authentication for WebSocket)
+  ↓
+WebSocket Server (handles real-time collaboration)
+  ↓
+UI (connects to both API and WebSocket)
 
-### Adding New Workflow Actions
-1. Implement in `engine/runtime/action-*/`
-2. Register in engine mapping files
-3. Update server action schemas
-4. Add UI components for action configuration
+Engine (standalone, coordinated by Server via GCP Batch)
+```
 
-### Frontend Development
-- Use Storybook for component development
-- Real-time features require WebSocket testing
-- Geospatial features need sample data
+### Critical Startup Order
 
-### Backend API Changes
-- Update GraphQL schema in `server/api/gql/`
-- Run `make gql` to regenerate code
-- Update UI with `yarn gql` for TypeScript types
+1. **MongoDB** - Database must be running first
+2. **Server API** - Provides authentication service
+3. **WebSocket Server** - Depends on API for auth
+4. **UI** - Connects to both API and WebSocket
 
-## Git Commit Guidelines
+**Important**: Server API must be running before starting WebSocket server!
 
-When creating git commits, do not include Claude Code attribution or "Generated with Claude Code" messages in commit messages. Keep commit messages clean and focused on the actual changes made.
+## Development Best Practices
+
+### Code Quality
+
+Each component has its own quality checks:
+- **Engine**: `cargo make format && cargo make clippy && cargo make test`
+- **Server**: `make lint && make test`
+- **UI**: `yarn lint && yarn type && yarn format:write && yarn test`
+
+Always run the appropriate checks before committing changes.
+
+### Testing Strategy
+
+- **Unit Tests** - Each component has its own test suite
+- **Integration Tests** - Server has e2e tests for API workflows
+- **End-to-End** - Manual testing across full stack for critical flows
+- **Real-time Features** - Test with multiple clients for collaboration
+
+### Git Workflow
+
+**Commit Message Guidelines**:
+- Keep messages clean and focused on actual changes
+- Do not include Claude Code attribution or "Generated with Claude Code" messages
+- Follow conventional commit format when appropriate: `feat:`, `fix:`, `chore:`, etc.
+
+**Branch Strategy**:
+- `main` - Production-ready code
+- Feature branches for new development
+- Component-specific changes can often be isolated to one directory
+
+### Performance Considerations
+
+- **Engine** - Parallel processing of geospatial features
+- **Server** - GraphQL DataLoader pattern for N+1 queries, Redis caching
+- **UI** - Code splitting, memoization, virtual scrolling
+- **Real-time** - WebSocket connection pooling, efficient Yjs updates
+
+### Security Best Practices
+
+- **Authentication** - JWT tokens from Auth0/Cognito validated at all layers
+- **Authorization** - Workspace/project permissions checked via RBAC
+- **Secrets** - Never commit credentials, use environment variables
+- **Input Validation** - Validate at API boundaries (GraphQL resolvers, engine inputs)
+- **Cloud Security** - GCP service accounts with minimal required permissions
+
+## Troubleshooting
+
+### WebSocket Connection Issues
+- Verify Server API is running (WebSocket depends on it for auth)
+- Check `FLOW_WS_ENDPOINT` in UI configuration
+- Review WebSocket server logs for authentication errors
+
+### Job Execution Failures
+- Check GCP credentials and permissions
+- Verify engine can access cloud storage buckets
+- Review job logs in Server subscriber service
+- Check workflow definition format
+
+### GraphQL Type Mismatches
+- Ensure both `server/api: make gql` and `ui: yarn gql` have been run
+- Restart dev servers after schema changes
+- Check for manual edits to generated files
+
+### Real-time Sync Issues
+- Verify WebSocket connection is established
+- Check Yjs document state in browser devtools
+- Review network tab for WebSocket messages
+- Ensure multiple clients are in same workspace context
+
+## Component Documentation
+
+For detailed component-specific guidance:
+- **Engine Development** - [engine/CLAUDE.md](engine/CLAUDE.md)
+- **Server Development** - [server/CLAUDE.md](server/CLAUDE.md)
+- **UI Development** - [ui/CLAUDE.md](ui/CLAUDE.md)
