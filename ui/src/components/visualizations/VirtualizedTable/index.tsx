@@ -137,13 +137,13 @@ function VirtualizedTable<TData, TValue>({
   }, [selectedFeatureId, data]);
 
   useEffect(() => {
-    if (selectedRowIndex !== -1 && selectedFeatureId) {
+    if (selectedRowIndex !== -1) {
       virtualizer.scrollToIndex(selectedRowIndex, {
         align: "start",
         behavior: "auto",
       });
     }
-  }, [selectedRowIndex, selectedFeatureId, virtualizer]);
+  }, [selectedRowIndex, virtualizer]);
 
   return (
     <div className="flex h-full flex-col">

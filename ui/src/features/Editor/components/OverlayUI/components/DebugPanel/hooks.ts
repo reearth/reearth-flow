@@ -433,8 +433,7 @@ export default () => {
 
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {
-      const currId = selectedFeatureId;
-      if (currId !== featureId) {
+      if (selectedFeatureId !== featureId) {
         setSelectedFeatureId(featureId);
         if (detailsOverlayOpen && featureId) {
           const matchingRow = featureIdMap?.get(JSON.stringify(featureId));
