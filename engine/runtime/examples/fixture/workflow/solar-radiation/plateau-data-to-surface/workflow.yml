@@ -3,7 +3,9 @@ id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
 name: "Solar Radiation time to TIMEVALUE workflow"
 entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
-  cityGmlPath: null 
+  cityGmlPath: null
+  codelists: null
+  schemas: null
 graphs:
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
     name: entry_point
@@ -17,9 +19,21 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
               },
             ]
+
       - id: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+        name: FeatureCityGmlReader
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value")["cityGmlPath"]
+
+      - id: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
         name: IdentityMapper
         type: action
         action: AttributeManager
@@ -28,11 +42,12 @@ graphs:
           - attribute: zw
             method: create
             value: |
-              "DUMMY"     
+              "DUMMY"
+
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
         name: SolarEnergyResultCsvWriter
         type: action
-        action: NoopSink          
+        action: NoopSink
 
     edges:
       - id: df024cb8-d597-11f0-bbbe-7c70db10a7e3
@@ -40,8 +55,13 @@ graphs:
         to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         fromPort: default
         toPort: default
-      - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
+      - id: c81d5e2f-f6b9-11f0-a879-7c70db10a7e4
         from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+        to: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
+        fromPort: default
+        toPort: default
+      - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
+        from: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
         to: f184fdfe-d597-11f0-945f-7c70db10a7e3
         fromPort: default
-        toPort: default      
+        toPort: default
