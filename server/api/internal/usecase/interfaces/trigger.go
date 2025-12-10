@@ -11,7 +11,7 @@ import (
 )
 
 type CreateTriggerParam struct {
-	Enabled      *bool
+	Enabled      bool
 	Description  string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
