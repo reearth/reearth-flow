@@ -56,6 +56,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		User:          NewUser(GQLClient.UserRepo),
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
 		Websocket:     client,
+		WorkerConfig:  NewWorkerConfig(r, permissionChecker),
 	}
 }
 

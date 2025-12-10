@@ -2,12 +2,14 @@ use reearth_flow_geometry::types::{
     geometry::Geometry3D, multi_polygon::MultiPolygon3D, polygon::Polygon3D,
 };
 
-use crate::reader::{read_indices, read_positions, GltfReaderError};
+use crate::reader::{read_indices, read_positions_with_transform, GltfReaderError};
+use crate::scene::Transform;
 
-/// Creates a MultiPolygon3D from GLTF primitives
-pub fn create_multipolygon_from_primitives(
+/// Creates a MultiPolygon3D from GLTF primitives with optional transform
+pub fn create_multipolygon_from_primitives_with_transform(
     primitives: &[gltf::Primitive],
     buffer_data: &[Vec<u8>],
+    transform: Option<&Transform>,
 ) -> Result<MultiPolygon3D<f64>, GltfReaderError> {
     let mut polygons = Vec::new();
 
@@ -16,7 +18,7 @@ pub fn create_multipolygon_from_primitives(
             .get(&gltf::Semantic::Positions)
             .ok_or_else(|| GltfReaderError::Accessor("Primitive has no positions".to_string()))?;
 
-        let positions = read_positions(&position_accessor, buffer_data)?;
+        let positions = read_positions_with_transform(&position_accessor, buffer_data, transform)?;
 
         if let Some(indices_accessor) = primitive.indices() {
             let indices = read_indices(&indices_accessor, buffer_data)?;
@@ -97,13 +99,23 @@ pub fn create_multipolygon_from_primitives(
     Ok(MultiPolygon3D::new(polygons))
 }
 
-/// Creates a Geometry3D from GLTF primitives
-/// Returns Polygon if single polygon, MultiPolygon otherwise
-pub fn create_geometry_from_primitives(
+/// Creates a MultiPolygon3D from GLTF primitives (backwards compatible, no transform)
+pub fn create_multipolygon_from_primitives(
     primitives: &[gltf::Primitive],
     buffer_data: &[Vec<u8>],
+) -> Result<MultiPolygon3D<f64>, GltfReaderError> {
+    create_multipolygon_from_primitives_with_transform(primitives, buffer_data, None)
+}
+
+/// Creates a Geometry3D from GLTF primitives with optional transform
+/// Returns Polygon if single polygon, MultiPolygon otherwise
+pub fn create_geometry_from_primitives_with_transform(
+    primitives: &[gltf::Primitive],
+    buffer_data: &[Vec<u8>],
+    transform: Option<&Transform>,
 ) -> Result<Geometry3D<f64>, GltfReaderError> {
-    let multipolygon = create_multipolygon_from_primitives(primitives, buffer_data)?;
+    let multipolygon =
+        create_multipolygon_from_primitives_with_transform(primitives, buffer_data, transform)?;
     let polygons = multipolygon.0;
 
     let geometry = if polygons.len() == 1 {
@@ -115,6 +127,15 @@ pub fn create_geometry_from_primitives(
     Ok(geometry)
 }
 
+/// Creates a Geometry3D from GLTF primitives (backwards compatible, no transform)
+/// Returns Polygon if single polygon, MultiPolygon otherwise
+pub fn create_geometry_from_primitives(
+    primitives: &[gltf::Primitive],
+    buffer_data: &[Vec<u8>],
+) -> Result<Geometry3D<f64>, GltfReaderError> {
+    create_geometry_from_primitives_with_transform(primitives, buffer_data, None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,15 +144,7 @@ mod tests {
 
     #[test]
     fn test_parse_rectangle_glb() {
-        // Minimal GLB with rectangle (0,0,0)-(1,1,0) as two triangles
-        // Vertices: (0,0,0), (1,0,0), (1,1,0), (0,1,0)
-        // Triangles: [0,1,2] and [0,2,3]
-        let glb_base64 = "Z2xURgIAAAA4AgAA4AEAAEpTT057ImFzc2V0Ijp7InZlcnNpb24iOiIyLjAifSwic2NlbmUiOjAsInNjZW5lcyI6W3sibm9kZXMiOlswXX1dLCJub2RlcyI6W3sibWVzaCI6MH1dLCJtZXNoZXMiOlt7InByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjB9LCJpbmRpY2VzIjoxLCJtb2RlIjo0fV19XSwiYWNjZXNzb3JzIjpbeyJidWZmZXJWaWV3IjowLCJjb21wb25lbnRUeXBlIjo1MTI2LCJjb3VudCI6NCwidHlwZSI6IlZFQzMiLCJtaW4iOlswLjAsMC4wLDAuMF0sIm1heCI6WzEuMCwxLjAsMC4wXX0seyJidWZmZXJWaWV3IjoxLCJjb21wb25lbnRUeXBlIjo1MTIzLCJjb3VudCI6NiwidHlwZSI6IlNDQUxBUiJ9XSwiYnVmZmVyVmlld3MiOlt7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MCwiYnl0ZUxlbmd0aCI6NDh9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo0OCwiYnl0ZUxlbmd0aCI6MTJ9XSwiYnVmZmVycyI6W3siYnl0ZUxlbmd0aCI6NjB9XX0gICA8AAAAQklOAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAQACAAAAAgADAA==";
-
-        use base64::Engine;
-        let glb_bytes = base64::engine::general_purpose::STANDARD
-            .decode(glb_base64)
-            .unwrap();
+        let glb_bytes = crate::test_utils::load_testdata("minimal_rectangle.glb");
         let content = Bytes::from(glb_bytes);
 
         let gltf = parse_gltf(&content).unwrap();
