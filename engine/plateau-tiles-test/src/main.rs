@@ -400,9 +400,6 @@ fn extract_flow_zip_outputs(flow_dir: &Path) {
             if file.name().ends_with('/') {
                 fs::create_dir_all(&outpath).unwrap();
             } else {
-                if let Some(parent) = outpath.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
                 let mut outfile = fs::File::create(&outpath).unwrap();
                 std::io::copy(&mut file, &mut outfile).unwrap();
             }

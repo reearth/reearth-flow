@@ -342,7 +342,6 @@ graphs:
       - id: 1e29f24a-620b-472c-805f-8295bf5920c2
         from: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
         to: 8510992d-2546-4e89-a09b-f31ff435bbb7
-
         fromPort: default
         toPort: default
       - id: 28abe7a9-8bdc-414d-b15e-90cb2a451a70
