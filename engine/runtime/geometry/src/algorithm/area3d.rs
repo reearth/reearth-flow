@@ -52,6 +52,7 @@ where
     tmp
 }
 
+/// Computes 2D surface area of planar geometries in 3D space (NOT volume).
 pub trait Area3D<T>
 where
     T: CoordNum,
