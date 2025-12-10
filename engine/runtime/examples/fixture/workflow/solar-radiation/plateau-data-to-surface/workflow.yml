@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
 name: "Solar Radiation time to TIMEVALUE workflow"
-entryGraphId: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
+entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
   cityGmlPath: null 
 graphs:
@@ -40,7 +40,7 @@ graphs:
         to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         fromPort: default
         toPort: default
-      - id: fca3cc60-d597-11f0-a879-7c70db10a7e
+      - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
         from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         to: f184fdfe-d597-11f0-945f-7c70db10a7e3
         fromPort: default
