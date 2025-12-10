@@ -3,6 +3,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::types::{geometry::Geometry3D, multi_polygon::MultiPolygon3D};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -10,6 +11,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -100,6 +102,13 @@ fn default_true() -> bool {
     true
 }
 
+struct MeshInfo<'a> {
+    primitives: Vec<gltf::Primitive<'a>>,
+    mesh_name: Option<String>,
+    node_name: Option<String>,
+    transform: reearth_flow_gltf::Transform,
+}
+
 #[async_trait::async_trait]
 impl Source for GltfReader {
     async fn initialize(&self, _ctx: NodeContext) {}
@@ -145,121 +154,128 @@ async fn read_gltf(
 
     let buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
 
+    // Collect lightweight mesh info with transforms (just traversal, no heavy geometry processing)
+    let mut mesh_infos = Vec::new();
+    for scene in gltf.scenes() {
+        reearth_flow_gltf::traverse_scene(
+            &scene,
+            |node, world_transform| -> Result<(), SourceError> {
+                if let Some(mesh) = node.mesh() {
+                    let primitives: Vec<_> = mesh.primitives().collect();
+                    if !primitives.is_empty() {
+                        mesh_infos.push(MeshInfo {
+                            primitives,
+                            mesh_name: mesh.name().map(|s| s.to_string()),
+                            node_name: if params.include_nodes {
+                                node.name().map(|s| s.to_string())
+                            } else {
+                                None
+                            },
+                            transform: world_transform.clone(),
+                        });
+                    }
+                }
+                Ok(())
+            },
+        )?;
+    }
+
+    // Process and send features based on merge_meshes setting
     if params.merge_meshes {
-        // Merge all meshes into single feature
-        let mut all_primitives = Vec::new();
-        let mut mesh_names = Vec::new();
-        let mut node_names = Vec::new();
+        // Collect all geometries and names for merging
+        if !mesh_infos.is_empty() {
+            let mut geometries = Vec::new();
+            let mut all_mesh_names = std::collections::HashSet::new();
+            let mut all_node_names = std::collections::HashSet::new();
+            let mut total_primitives = 0;
 
-        // Collect all scenes to keep them alive while we process primitives
-        let scenes: Vec<_> = gltf.scenes().collect();
+            for mesh_info in mesh_infos {
+                let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+                    &mesh_info.primitives,
+                    &buffer_data,
+                    Some(&mesh_info.transform),
+                )
+                .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
 
-        for scene in &scenes {
-            reearth_flow_gltf::traverse_scene(
-                scene,
-                |node, _transform| -> Result<(), SourceError> {
-                    if let Some(mesh) = node.mesh() {
-                        all_primitives.extend(mesh.primitives());
-                        if let Some(mesh_name) = mesh.name() {
-                            if !mesh_names.contains(&mesh_name.to_string()) {
-                                mesh_names.push(mesh_name.to_string());
-                            }
-                        }
-                    }
-                    if params.include_nodes {
-                        if let Some(node_name) = node.name() {
-                            if !node_names.contains(&node_name.to_string()) {
-                                node_names.push(node_name.to_string());
-                            }
-                        }
-                    }
-                    Ok(())
-                },
-            )?;
-        }
+                geometries.push(geometry);
+                if let Some(name) = mesh_info.mesh_name {
+                    all_mesh_names.insert(name);
+                }
+                if let Some(name) = mesh_info.node_name {
+                    all_node_names.insert(name);
+                }
+                total_primitives += mesh_info.primitives.len();
+            }
 
-        if !all_primitives.is_empty() {
-            // WARNING: Merged geometry loses individual node transforms!
-            // This is the existing behavior - all primitives are combined in local space
-            let flow_geometry = reearth_flow_gltf::create_geometry_from_primitives(
-                &all_primitives,
-                &buffer_data,
-            )
-            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+            let merged_geometry = merge_geometries(geometries.iter().collect());
+            let merged_mesh_names: Vec<String> = all_mesh_names.into_iter().collect();
+            let merged_node_names: Vec<String> = all_node_names.into_iter().collect();
 
             send_feature(
                 &sender,
-                flow_geometry,
-                &mesh_names,
-                &node_names,
-                all_primitives.len(),
+                merged_geometry,
+                &merged_mesh_names,
+                &merged_node_names,
+                total_primitives,
                 params,
             )
             .await?;
         }
     } else {
-        // Emit one feature per mesh (with transforms applied)
-        for scene in gltf.scenes() {
-            let mut features_to_send = Vec::new();
+        // Process and send each geometry immediately without collecting
+        for mesh_info in mesh_infos {
+            let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+                &mesh_info.primitives,
+                &buffer_data,
+                Some(&mesh_info.transform),
+            )
+            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
 
-            reearth_flow_gltf::traverse_scene(
-                &scene,
-                |node, world_transform| -> Result<(), SourceError> {
-                    if let Some(mesh) = node.mesh() {
-                        let primitives: Vec<_> = mesh.primitives().collect();
-                        if !primitives.is_empty() {
-                            let flow_geometry =
-                                reearth_flow_gltf::create_geometry_from_primitives_with_transform(
-                                    &primitives,
-                                    &buffer_data,
-                                    Some(world_transform),
-                                )
-                                .map_err(|e| {
-                                    SourceError::GltfReader(format!(
-                                        "Failed to create geometry: {e}"
-                                    ))
-                                })?;
+            let mesh_names = mesh_info.mesh_name.map(|n| vec![n]).unwrap_or_default();
+            let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
 
-                            let mesh_names =
-                                mesh.name().map(|n| vec![n.to_string()]).unwrap_or_default();
-                            let node_names = if params.include_nodes {
-                                node.name().map(|n| vec![n.to_string()]).unwrap_or_default()
-                            } else {
-                                vec![]
-                            };
-
-                            features_to_send.push((
-                                flow_geometry,
-                                mesh_names,
-                                node_names,
-                                primitives.len(),
-                            ));
-                        }
-                    }
-                    Ok(())
-                },
-            )?;
-
-            for (flow_geometry, mesh_names, node_names, primitive_count) in features_to_send {
-                send_feature(
-                    &sender,
-                    flow_geometry,
-                    &mesh_names,
-                    &node_names,
-                    primitive_count,
-                    params,
-                )
-                .await?;
-            }
+            send_feature(
+                &sender,
+                geometry,
+                &mesh_names,
+                &node_names,
+                mesh_info.primitives.len(),
+                params,
+            )
+            .await?;
         }
     }
 
     Ok(())
 }
 
+fn merge_geometries(geometries: Vec<&Geometry3D<f64>>) -> Geometry3D<f64> {
+    let mut all_polygons = Vec::new();
+
+    for geometry in geometries {
+        match geometry {
+            Geometry3D::Polygon(polygon) => {
+                all_polygons.push(polygon.clone());
+            }
+            Geometry3D::MultiPolygon(multipolygon) => {
+                all_polygons.extend(multipolygon.0.iter().cloned());
+            }
+            _ => {
+                // Ignore non-polygon geometries (shouldn't happen with GLTF)
+            }
+        }
+    }
+
+    if all_polygons.len() == 1 {
+        Geometry3D::Polygon(all_polygons.into_iter().next().unwrap())
+    } else {
+        Geometry3D::MultiPolygon(MultiPolygon3D::new(all_polygons))
+    }
+}
+
 async fn send_feature(
     sender: &Sender<(Port, IngestionMessage)>,
-    flow_geometry: reearth_flow_geometry::types::geometry::Geometry3D<f64>,
+    flow_geometry: Geometry3D<f64>,
     mesh_names: &[String],
     node_names: &[String],
     primitive_count: usize,
