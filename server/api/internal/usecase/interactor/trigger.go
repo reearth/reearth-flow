@@ -233,18 +233,18 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
-		// return nil, interfaces.ErrJobCreationFailed
+		return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
-		// return nil, err
+		return nil, err
 	}
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
-		// return nil, err
+		return nil, err
 	}
 
 	tx.Commit()
@@ -344,7 +344,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	j.SetGCPJobID(gcpJobID)
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		log.Errorf("Failed to save time-driven job %s with GCP ID: %v", j.ID(), err)
-		// return nil, err
+		return nil, err
 	}
 
 	// Update last triggered time
