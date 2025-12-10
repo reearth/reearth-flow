@@ -148,6 +148,15 @@ pub(super) struct GeoPackageWriterParam {
     /// Metadata to write to gpkg_metadata table (optional)
     #[serde(default)]
     pub(super) metadata: Option<GeoPackageMetadata>,
+    /// Geometry validation mode: how to handle geometry type mismatches (default: Warn)
+    #[serde(default = "default_geometry_validation_mode")]
+    pub(super) geometry_validation_mode: GeometryValidationMode,
+    /// Skip features with empty or null geometries (default: true)
+    #[serde(default = "default_skip_empty_geometries")]
+    pub(super) skip_empty_geometries: bool,
+    /// Validate and sanitize attribute names for SQL compatibility (default: true)
+    #[serde(default = "default_validate_attribute_names")]
+    pub(super) validate_attribute_names: bool,
 }
 
 fn default_table_name() -> String {
@@ -188,6 +197,33 @@ fn default_primary_key_column() -> String {
 
 fn default_auto_primary_key() -> bool {
     true
+}
+
+fn default_geometry_validation_mode() -> GeometryValidationMode {
+    GeometryValidationMode::Warn
+}
+
+fn default_skip_empty_geometries() -> bool {
+    true
+}
+
+fn default_validate_attribute_names() -> bool {
+    true
+}
+
+/// Geometry validation mode for handling type mismatches
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum GeometryValidationMode {
+    /// Skip features with mismatched geometry types silently
+    Skip,
+    /// Log a warning and skip features with mismatched geometry types (default)
+    #[default]
+    Warn,
+    /// Fail the entire operation if geometry type mismatch is detected
+    Strict,
+    /// Attempt to coerce geometry to target type (e.g., Point to MultiPoint)
+    Coerce,
 }
 
 /// Metadata configuration for GeoPackage
@@ -330,6 +366,12 @@ impl Sink for GeoPackageWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
+        // Validate geometry
+        let validation_result = self.validate_geometry(feature, &self.params.geometry_type)?;
+        if validation_result == ValidationResult::Skip {
+            return Ok(());
+        }
+
         // Determine which layer this feature belongs to
         let layer_name = if let Some(ref group_attr) = self.params.layer_group_attribute {
             feature
@@ -345,30 +387,49 @@ impl Sink for GeoPackageWriter {
             None
         };
 
-        // Helper closure to update schema
+        // Helper closure to update schema with validation
+        let validate_attr_names = self.params.validate_attribute_names;
         let update_schema = |schema: &mut IndexMap<String, AttributeType>,
                              key_str: String,
                              value: &AttributeValue,
                              geom_col: &str,
-                             pk_col: &str| {
+                             pk_col: &str|
+         -> Result<(), BoxedError> {
             if key_str != geom_col && key_str != pk_col && key_str != "fid" && key_str != "id" {
+                // Sanitize attribute name if validation is enabled
+                let sanitized_key = if validate_attr_names {
+                    sanitize_sql_identifier(&key_str)
+                } else {
+                    key_str.clone()
+                };
+
+                // Check name length
+                if sanitized_key.len() > 255 {
+                    tracing::warn!(
+                        "Attribute name '{}' exceeds 255 characters, truncating",
+                        &sanitized_key[..50]
+                    );
+                    return Ok(());
+                }
+
                 if matches!(value, AttributeValue::Null) {
-                    if !schema.contains_key(&key_str) {
-                        schema.insert(key_str, AttributeType::Text);
+                    if !schema.contains_key(&sanitized_key) {
+                        schema.insert(sanitized_key, AttributeType::Text);
                     }
-                    return;
+                    return Ok(());
                 }
 
                 let new_type = AttributeType::from_attribute_value(value);
-                if let Some(existing_type) = schema.get(&key_str) {
+                if let Some(existing_type) = schema.get(&sanitized_key) {
                     let promoted_type = existing_type.promote(&new_type);
                     if promoted_type != *existing_type {
-                        schema.insert(key_str, promoted_type);
+                        schema.insert(sanitized_key, promoted_type);
                     }
                 } else {
-                    schema.insert(key_str, new_type);
+                    schema.insert(sanitized_key, new_type);
                 }
             }
+            Ok(())
         };
 
         if let Some(layer) = layer_name {
@@ -381,7 +442,7 @@ impl Sink for GeoPackageWriter {
                     value,
                     &self.params.geometry_column,
                     &self.params.primary_key_column,
-                );
+                )?;
             }
             layer_data.features.push(feature.clone());
         } else {
@@ -393,7 +454,7 @@ impl Sink for GeoPackageWriter {
                     value,
                     &self.params.geometry_column,
                     &self.params.primary_key_column,
-                );
+                )?;
             }
             self.buffer.push(feature.clone());
         }
@@ -997,10 +1058,12 @@ impl GeoPackageWriter {
     }
 
     async fn create_feature_table(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        // Validate and sanitize schema before table creation
+        let validated_schema = self.validate_schema(&self.schema)?;
         self.create_feature_table_for_layer(
             adapter,
             &self.params.table_name,
-            &self.schema,
+            &validated_schema,
             &self.buffer,
         )
         .await
@@ -1013,6 +1076,9 @@ impl GeoPackageWriter {
         schema: &IndexMap<String, AttributeType>,
         features: &[Feature],
     ) -> Result<(), BoxedError> {
+        // Validate table name
+        let _ = self.sanitize_attribute_name(table_name)?;
+
         // Build column definitions with proper SQL identifier quoting
         let pk_def = if self.params.auto_primary_key {
             format!(
@@ -1513,6 +1579,436 @@ impl GeoPackageWriter {
 
         (min_x, min_y, max_x, max_y)
     }
+
+    /// Validate a feature's geometry against the expected type
+    fn validate_geometry(
+        &self,
+        feature: &Feature,
+        expected_type: &str,
+    ) -> Result<ValidationResult, BoxedError> {
+        // Check for empty geometry
+        if is_geometry_empty(&feature.geometry) {
+            if self.params.skip_empty_geometries {
+                return Ok(ValidationResult::Skip);
+            } else {
+                return Err(SinkError::GeoPackageWriter(
+                    "Empty geometry detected and skip_empty_geometries is false".to_string(),
+                )
+                .into());
+            }
+        }
+
+        // If GEOMETRY type, accept any geometry
+        if expected_type.to_uppercase() == "GEOMETRY" {
+            return Ok(ValidationResult::Valid);
+        }
+
+        let actual_type = get_geometry_type_name(&feature.geometry);
+        let expected_upper = expected_type.to_uppercase();
+        let actual_upper = actual_type.to_uppercase();
+
+        // Check if types match (including Z/M variants)
+        let base_expected = expected_upper
+            .trim_end_matches('Z')
+            .trim_end_matches('M')
+            .trim_end_matches("ZM");
+        let base_actual = actual_upper
+            .trim_end_matches('Z')
+            .trim_end_matches('M')
+            .trim_end_matches("ZM");
+
+        if base_expected == base_actual {
+            return Ok(ValidationResult::Valid);
+        }
+
+        // Handle mismatch based on validation mode
+        match self.params.geometry_validation_mode {
+            GeometryValidationMode::Skip => Ok(ValidationResult::Skip),
+            GeometryValidationMode::Warn => {
+                tracing::warn!(
+                    "Geometry type mismatch: expected {}, got {}. Skipping feature.",
+                    expected_type,
+                    actual_type
+                );
+                Ok(ValidationResult::Skip)
+            }
+            GeometryValidationMode::Strict => Err(SinkError::GeoPackageWriter(format!(
+                "Geometry type mismatch: expected {}, got {}",
+                expected_type, actual_type
+            ))
+            .into()),
+            GeometryValidationMode::Coerce => {
+                // Try to coerce geometry
+                if can_coerce_geometry(base_actual, base_expected) {
+                    Ok(ValidationResult::Coerce)
+                } else {
+                    tracing::warn!(
+                        "Cannot coerce {} to {}. Skipping feature.",
+                        actual_type,
+                        expected_type
+                    );
+                    Ok(ValidationResult::Skip)
+                }
+            }
+        }
+    }
+
+    /// Validate and sanitize attribute name for SQL compatibility
+    fn sanitize_attribute_name(&self, name: &str) -> Result<String, BoxedError> {
+        if !self.params.validate_attribute_names {
+            return Ok(name.to_string());
+        }
+
+        // Check length limit (SQLite allows up to 1 million characters, but we use 255 for compatibility)
+        if name.len() > 255 {
+            return Err(SinkError::GeoPackageWriter(format!(
+                "Attribute name '{}' exceeds maximum length of 255 characters",
+                &name[..50]
+            ))
+            .into());
+        }
+
+        // Check for empty name
+        if name.is_empty() {
+            return Err(
+                SinkError::GeoPackageWriter("Empty attribute name is not allowed".to_string())
+                    .into(),
+            );
+        }
+
+        // Check for reserved SQL keywords and sanitize
+        let sanitized = sanitize_sql_identifier(name);
+
+        // Check if name starts with a digit
+        if sanitized.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            return Ok(format!("_{}", sanitized));
+        }
+
+        Ok(sanitized)
+    }
+
+    /// Validate all attribute names in schema and return sanitized version
+    fn validate_schema(
+        &self,
+        schema: &IndexMap<String, AttributeType>,
+    ) -> Result<IndexMap<String, AttributeType>, BoxedError> {
+        let mut sanitized_schema = IndexMap::new();
+        let mut seen_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        for (name, attr_type) in schema {
+            let sanitized_name = self.sanitize_attribute_name(name)?;
+
+            // Check for duplicate names after sanitization
+            let lower_name = sanitized_name.to_lowercase();
+            if seen_names.contains(&lower_name) {
+                // Add suffix to make unique
+                let mut unique_name = sanitized_name.clone();
+                let mut counter = 1;
+                while seen_names.contains(&unique_name.to_lowercase()) {
+                    unique_name = format!("{}_{}", sanitized_name, counter);
+                    counter += 1;
+                }
+                tracing::warn!(
+                    "Duplicate attribute name '{}' renamed to '{}'",
+                    name,
+                    unique_name
+                );
+                seen_names.insert(unique_name.to_lowercase());
+                sanitized_schema.insert(unique_name, attr_type.clone());
+            } else {
+                seen_names.insert(lower_name);
+                sanitized_schema.insert(sanitized_name, attr_type.clone());
+            }
+        }
+
+        Ok(sanitized_schema)
+    }
+}
+
+/// Result of geometry validation
+#[derive(Debug, Clone, PartialEq)]
+enum ValidationResult {
+    /// Geometry is valid
+    Valid,
+    /// Skip this feature
+    Skip,
+    /// Coerce geometry to target type
+    Coerce,
+}
+
+/// Check if a geometry is empty
+fn is_geometry_empty(geometry: &Geometry) -> bool {
+    match &geometry.value {
+        GeometryValue::None => true,
+        GeometryValue::FlowGeometry2D(geom) => is_geometry_2d_empty(geom),
+        GeometryValue::FlowGeometry3D(geom) => is_geometry_3d_empty(geom),
+        _ => false,
+    }
+}
+
+fn is_geometry_2d_empty(geom: &Geometry2D) -> bool {
+    match geom {
+        Geometry2D::Point(_) => false, // Points can't be empty
+        Geometry2D::Line(l) => l.start == l.end,
+        Geometry2D::LineString(ls) => ls.0.is_empty(),
+        Geometry2D::Polygon(p) => p.exterior().0.is_empty(),
+        Geometry2D::MultiPoint(mp) => mp.0.is_empty(),
+        Geometry2D::MultiLineString(mls) => mls.0.is_empty(),
+        Geometry2D::MultiPolygon(mpoly) => mpoly.0.is_empty(),
+        Geometry2D::Rect(r) => r.min() == r.max(),
+        Geometry2D::Triangle(_) => false, // Triangles with 3 points are never empty
+        Geometry2D::GeometryCollection(gc) => gc.is_empty(),
+        // Handle additional geometry types
+        Geometry2D::CSG(_) | Geometry2D::TriangularMesh(_) | Geometry2D::Solid(_) => false,
+    }
+}
+
+fn is_geometry_3d_empty(geom: &Geometry3D) -> bool {
+    match geom {
+        Geometry3D::Point(_) => false, // Points can't be empty
+        Geometry3D::Line(l) => l.start == l.end,
+        Geometry3D::LineString(ls) => ls.0.is_empty(),
+        Geometry3D::Polygon(p) => p.exterior().0.is_empty(),
+        Geometry3D::MultiPoint(mp) => mp.0.is_empty(),
+        Geometry3D::MultiLineString(mls) => mls.0.is_empty(),
+        Geometry3D::MultiPolygon(mpoly) => mpoly.0.is_empty(),
+        Geometry3D::Rect(r) => r.min() == r.max(),
+        Geometry3D::Triangle(_) => false, // Triangles with 3 points are never empty
+        Geometry3D::GeometryCollection(gc) => gc.is_empty(),
+        Geometry3D::Solid(_) => false, // Assume solids are not empty
+        // Handle additional geometry types
+        Geometry3D::CSG(_) | Geometry3D::TriangularMesh(_) => false,
+    }
+}
+
+/// Get the geometry type name
+fn get_geometry_type_name(geometry: &Geometry) -> String {
+    match &geometry.value {
+        GeometryValue::None => "NONE".to_string(),
+        GeometryValue::FlowGeometry2D(geom) => get_geometry_2d_type_name(geom),
+        GeometryValue::FlowGeometry3D(geom) => get_geometry_3d_type_name(geom),
+        GeometryValue::CityGmlGeometry(_) => "GEOMETRY".to_string(),
+    }
+}
+
+fn get_geometry_2d_type_name(geom: &Geometry2D) -> String {
+    match geom {
+        Geometry2D::Point(_) => "POINT".to_string(),
+        Geometry2D::Line(_) | Geometry2D::LineString(_) => "LINESTRING".to_string(),
+        Geometry2D::Polygon(_) | Geometry2D::Rect(_) | Geometry2D::Triangle(_) => {
+            "POLYGON".to_string()
+        }
+        Geometry2D::MultiPoint(_) => "MULTIPOINT".to_string(),
+        Geometry2D::MultiLineString(_) => "MULTILINESTRING".to_string(),
+        Geometry2D::MultiPolygon(_) => "MULTIPOLYGON".to_string(),
+        Geometry2D::GeometryCollection(_) => "GEOMETRYCOLLECTION".to_string(),
+        Geometry2D::CSG(_) | Geometry2D::TriangularMesh(_) | Geometry2D::Solid(_) => {
+            "GEOMETRY".to_string()
+        }
+    }
+}
+
+fn get_geometry_3d_type_name(geom: &Geometry3D) -> String {
+    match geom {
+        Geometry3D::Point(_) => "POINTZ".to_string(),
+        Geometry3D::Line(_) | Geometry3D::LineString(_) => "LINESTRINGZ".to_string(),
+        Geometry3D::Polygon(_) | Geometry3D::Rect(_) | Geometry3D::Triangle(_) => {
+            "POLYGONZ".to_string()
+        }
+        Geometry3D::MultiPoint(_) => "MULTIPOINTZ".to_string(),
+        Geometry3D::MultiLineString(_) => "MULTILINESTRINGZ".to_string(),
+        Geometry3D::MultiPolygon(_) => "MULTIPOLYGONZ".to_string(),
+        Geometry3D::GeometryCollection(_) => "GEOMETRYCOLLECTIONZ".to_string(),
+        Geometry3D::Solid(_) => "POLYHEDRALSURFACEZ".to_string(),
+        Geometry3D::CSG(_) | Geometry3D::TriangularMesh(_) => "GEOMETRYZ".to_string(),
+    }
+}
+
+/// Check if geometry can be coerced from one type to another
+fn can_coerce_geometry(from: &str, to: &str) -> bool {
+    match (from, to) {
+        // Point can be coerced to MultiPoint
+        ("POINT", "MULTIPOINT") => true,
+        // LineString can be coerced to MultiLineString
+        ("LINESTRING", "MULTILINESTRING") => true,
+        // Polygon can be coerced to MultiPolygon
+        ("POLYGON", "MULTIPOLYGON") => true,
+        // Any single type can be added to a GeometryCollection
+        (_, "GEOMETRYCOLLECTION") => true,
+        _ => false,
+    }
+}
+
+/// Sanitize an identifier for SQL use
+fn sanitize_sql_identifier(name: &str) -> String {
+    // Replace invalid characters with underscore
+    let sanitized: String = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+
+    // Check for reserved keywords
+    if is_sql_reserved_keyword(&sanitized.to_uppercase()) {
+        format!("{}_", sanitized)
+    } else {
+        sanitized
+    }
+}
+
+/// Check if a name is a SQL reserved keyword
+fn is_sql_reserved_keyword(name: &str) -> bool {
+    // Common SQL and SQLite reserved keywords
+    const RESERVED_KEYWORDS: &[&str] = &[
+        "ABORT",
+        "ACTION",
+        "ADD",
+        "AFTER",
+        "ALL",
+        "ALTER",
+        "ANALYZE",
+        "AND",
+        "AS",
+        "ASC",
+        "ATTACH",
+        "AUTOINCREMENT",
+        "BEFORE",
+        "BEGIN",
+        "BETWEEN",
+        "BY",
+        "CASCADE",
+        "CASE",
+        "CAST",
+        "CHECK",
+        "COLLATE",
+        "COLUMN",
+        "COMMIT",
+        "CONFLICT",
+        "CONSTRAINT",
+        "CREATE",
+        "CROSS",
+        "CURRENT",
+        "CURRENT_DATE",
+        "CURRENT_TIME",
+        "CURRENT_TIMESTAMP",
+        "DATABASE",
+        "DEFAULT",
+        "DEFERRABLE",
+        "DEFERRED",
+        "DELETE",
+        "DESC",
+        "DETACH",
+        "DISTINCT",
+        "DO",
+        "DROP",
+        "EACH",
+        "ELSE",
+        "END",
+        "ESCAPE",
+        "EXCEPT",
+        "EXCLUSIVE",
+        "EXISTS",
+        "EXPLAIN",
+        "FAIL",
+        "FILTER",
+        "FIRST",
+        "FOLLOWING",
+        "FOR",
+        "FOREIGN",
+        "FROM",
+        "FULL",
+        "GLOB",
+        "GROUP",
+        "HAVING",
+        "IF",
+        "IGNORE",
+        "IMMEDIATE",
+        "IN",
+        "INDEX",
+        "INDEXED",
+        "INITIALLY",
+        "INNER",
+        "INSERT",
+        "INSTEAD",
+        "INTERSECT",
+        "INTO",
+        "IS",
+        "ISNULL",
+        "JOIN",
+        "KEY",
+        "LAST",
+        "LEFT",
+        "LIKE",
+        "LIMIT",
+        "MATCH",
+        "NATURAL",
+        "NO",
+        "NOT",
+        "NOTHING",
+        "NOTNULL",
+        "NULL",
+        "NULLS",
+        "OF",
+        "OFFSET",
+        "ON",
+        "OR",
+        "ORDER",
+        "OTHERS",
+        "OUTER",
+        "OVER",
+        "PARTITION",
+        "PLAN",
+        "PRAGMA",
+        "PRECEDING",
+        "PRIMARY",
+        "QUERY",
+        "RAISE",
+        "RANGE",
+        "RECURSIVE",
+        "REFERENCES",
+        "REGEXP",
+        "REINDEX",
+        "RELEASE",
+        "RENAME",
+        "REPLACE",
+        "RESTRICT",
+        "RIGHT",
+        "ROLLBACK",
+        "ROW",
+        "ROWS",
+        "SAVEPOINT",
+        "SELECT",
+        "SET",
+        "TABLE",
+        "TEMP",
+        "TEMPORARY",
+        "THEN",
+        "TIES",
+        "TO",
+        "TRANSACTION",
+        "TRIGGER",
+        "UNBOUNDED",
+        "UNION",
+        "UNIQUE",
+        "UPDATE",
+        "USING",
+        "VACUUM",
+        "VALUES",
+        "VIEW",
+        "VIRTUAL",
+        "WHEN",
+        "WHERE",
+        "WINDOW",
+        "WITH",
+        "WITHOUT",
+    ];
+
+    RESERVED_KEYWORDS.contains(&name)
 }
 
 fn calculate_geometry_bbox(geometry: &Geometry) -> Option<(f64, f64, f64, f64)> {

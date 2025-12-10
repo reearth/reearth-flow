@@ -1,4 +1,4 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.35s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.33s
      Running `target/debug/reearth-flow schema-action --language-file-path schema/i18n/actions/es.json`
 {
   "actions": [
@@ -3240,6 +3240,15 @@
             "default": "GEOMETRY",
             "type": "string"
           },
+          "geometryValidationMode": {
+            "description": "Geometry validation mode: how to handle geometry type mismatches (default: Warn)",
+            "default": "warn",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryValidationMode"
+              }
+            ]
+          },
           "layerGroupAttribute": {
             "description": "Attribute name to use for grouping features into multiple tables (optional) When set, features will be written to different tables based on the value of this attribute",
             "default": null,
@@ -3278,6 +3287,11 @@
             "default": "fid",
             "type": "string"
           },
+          "skipEmptyGeometries": {
+            "description": "Skip features with empty or null geometries (default: true)",
+            "default": true,
+            "type": "boolean"
+          },
           "srsId": {
             "description": "Spatial Reference System ID (default: 4326 for WGS84)",
             "default": 4326,
@@ -3297,6 +3311,11 @@
             "description": "Table name to create (default: \"features\")",
             "default": "features",
             "type": "string"
+          },
+          "validateAttributeNames": {
+            "description": "Validate and sanitize attribute names for SQL compatibility (default: true)",
+            "default": true,
+            "type": "boolean"
           },
           "zMode": {
             "description": "Z coordinate handling mode (default: Optional)",
@@ -3342,6 +3361,39 @@
                 ]
               }
             }
+          },
+          "GeometryValidationMode": {
+            "description": "Geometry validation mode for handling type mismatches",
+            "oneOf": [
+              {
+                "description": "Skip features with mismatched geometry types silently",
+                "type": "string",
+                "enum": [
+                  "skip"
+                ]
+              },
+              {
+                "description": "Log a warning and skip features with mismatched geometry types (default)",
+                "type": "string",
+                "enum": [
+                  "warn"
+                ]
+              },
+              {
+                "description": "Fail the entire operation if geometry type mismatch is detected",
+                "type": "string",
+                "enum": [
+                  "strict"
+                ]
+              },
+              {
+                "description": "Attempt to coerce geometry to target type (e.g., Point to MultiPoint)",
+                "type": "string",
+                "enum": [
+                  "coerce"
+                ]
+              }
+            ]
           },
           "TableMode": {
             "description": "Table handling mode for GeoPackage writer",
