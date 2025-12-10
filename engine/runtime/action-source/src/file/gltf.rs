@@ -181,47 +181,7 @@ async fn read_gltf(
     }
 
     // Process and send features based on merge_meshes setting
-    if params.merge_meshes {
-        // Collect all geometries and names for merging
-        if !mesh_infos.is_empty() {
-            let mut geometries = Vec::new();
-            let mut all_mesh_names = std::collections::HashSet::new();
-            let mut all_node_names = std::collections::HashSet::new();
-            let mut total_primitives = 0;
-
-            for mesh_info in mesh_infos {
-                let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
-                    &mesh_info.primitives,
-                    &buffer_data,
-                    Some(&mesh_info.transform),
-                )
-                .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
-
-                geometries.push(geometry);
-                if let Some(name) = mesh_info.mesh_name {
-                    all_mesh_names.insert(name);
-                }
-                if let Some(name) = mesh_info.node_name {
-                    all_node_names.insert(name);
-                }
-                total_primitives += mesh_info.primitives.len();
-            }
-
-            let merged_geometry = merge_geometries(geometries.iter().collect());
-            let merged_mesh_names: Vec<String> = all_mesh_names.into_iter().collect();
-            let merged_node_names: Vec<String> = all_node_names.into_iter().collect();
-
-            send_feature(
-                &sender,
-                merged_geometry,
-                &merged_mesh_names,
-                &merged_node_names,
-                total_primitives,
-                params,
-            )
-            .await?;
-        }
-    } else {
+    if !params.merge_meshes {
         // Process and send each geometry immediately without collecting
         for mesh_info in mesh_infos {
             let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
@@ -244,6 +204,43 @@ async fn read_gltf(
             )
             .await?;
         }
+    } else if !mesh_infos.is_empty() {
+        let mut geometries = Vec::new();
+        let mut all_mesh_names = std::collections::HashSet::new();
+        let mut all_node_names = std::collections::HashSet::new();
+        let mut total_primitives = 0;
+
+        for mesh_info in mesh_infos {
+            let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+                &mesh_info.primitives,
+                &buffer_data,
+                Some(&mesh_info.transform),
+            )
+            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+
+            geometries.push(geometry);
+            if let Some(name) = mesh_info.mesh_name {
+                all_mesh_names.insert(name);
+            }
+            if let Some(name) = mesh_info.node_name {
+                all_node_names.insert(name);
+            }
+            total_primitives += mesh_info.primitives.len();
+        }
+
+        let merged_geometry = merge_geometries(geometries.iter().collect());
+        let merged_mesh_names: Vec<String> = all_mesh_names.into_iter().collect();
+        let merged_node_names: Vec<String> = all_node_names.into_iter().collect();
+
+        send_feature(
+            &sender,
+            merged_geometry,
+            &merged_mesh_names,
+            &merged_node_names,
+            total_primitives,
+            params,
+        )
+        .await?;
     }
 
     Ok(())
