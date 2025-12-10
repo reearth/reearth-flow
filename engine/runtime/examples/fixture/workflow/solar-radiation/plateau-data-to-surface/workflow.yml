@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
+name: "Solar Radiation time to TIMEVALUE workflow"
+entryGraphId: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
+with:
+  cityGmlPath: null 
+graphs:
+  - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
+    name: entry_point
+    nodes:
+      - id: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+              },
+            ]
+      - id: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+        name: IdentityMapper
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: zw
+            method: create
+            value: |
+              "DUMMY"     
+      - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
+        name: SolarEnergyResultCsvWriter
+        type: action
+        action: NoopSink          
+
+    edges:
+      - id: df024cb8-d597-11f0-bbbe-7c70db10a7e3
+        from: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
+        to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+        fromPort: default
+        toPort: default
+      - id: fca3cc60-d597-11f0-a879-7c70db10a7e
+        from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+        to: f184fdfe-d597-11f0-945f-7c70db10a7e3
+        fromPort: default
+        toPort: default      

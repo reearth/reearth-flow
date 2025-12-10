@@ -1,0 +1,13 @@
+{
+  "workflowPath": "solar-radiation/plateau-data-to-surface/workflow.yml",
+  "description": "Test solar rediation load plateau data then convert to surface data",
+  "intermediateAssertions": [
+    {
+      "edgeId": "fca3cc60-d597-11f0-a879-7c70db10a7e",
+      "expectedFile": "expected_compute_result.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "cityGmlPath": "input.gml",
+  "skip": false
+}
