@@ -23,7 +23,10 @@ gql:
 gen-policies:
 	go run ./cmd/policy-generator
 
-.PHONY: lint test e2e build run-app run-db gql gen-policies all gen-thrift proto
+swagger:
+	swag init -g cmd/reearth-flow/main.go -o internal/app/docs --parseDependency --parseInternal
+
+.PHONY: lint test e2e build run-app run-db gql gen-policies swagger all gen-thrift proto
 
 all: gen-thrift
 

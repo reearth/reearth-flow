@@ -154,6 +154,18 @@ func loadActionsData(lang string) error {
 	return nil
 }
 
+// listActions godoc
+// @Summary      List actions
+// @Description  Get a list of available workflow actions with optional filtering
+// @Tags         actions
+// @Produce      json
+// @Param        q         query     string  false  "Search query"
+// @Param        category  query     string  false  "Filter by category"
+// @Param        type      query     string  false  "Filter by action type (processor, source, sink)"
+// @Param        lang      query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Success      200       {array}   ActionSummary  "List of actions"
+// @Failure      400       {object}  object         "Invalid request"
+// @Router       /actions [get]
 func listActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	category := c.QueryParam("category")
@@ -180,6 +192,16 @@ func listActions(c echo.Context) error {
 	return c.JSON(http.StatusOK, summaries)
 }
 
+// getSegregatedActions godoc
+// @Summary      Get segregated actions
+// @Description  Get actions organized by category and type
+// @Tags         actions
+// @Produce      json
+// @Param        q     query     string  false  "Search query"
+// @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Success      200   {object}  SegregatedActions  "Actions segregated by category and type"
+// @Failure      400   {object}  object             "Invalid request"
+// @Router       /actions/segregated [get]
 func getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	lang := c.QueryParam("lang")
@@ -277,6 +299,17 @@ func containsCaseInsensitive(slice []string, s string) bool {
 	return false
 }
 
+// getActionDetails godoc
+// @Summary      Get action details
+// @Description  Get detailed information about a specific action
+// @Tags         actions
+// @Produce      json
+// @Param        id    path      string  true   "Action ID/Name"
+// @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Success      200   {object}  Action  "Action details"
+// @Failure      400   {object}  object  "Invalid request"
+// @Failure      404   {object}  object  "Action not found"
+// @Router       /actions/{id} [get]
 func getActionDetails(c echo.Context) error {
 	id := c.Param("id")
 	lang := c.QueryParam("lang")
