@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
-import { AwarenessUser } from "@flow/types";
+import { AwarenessUser, UserDebugRun } from "@flow/types";
 
 export default ({
   yAwareness,
@@ -13,8 +13,10 @@ export default ({
   const [activeUsersDebugRuns, setActiveUsersDebugRuns] = useState<
     AwarenessUser[]
   >([]);
-  const prevDebugRunsRef = useRef<string>("");
+
+  // Track last known debugRun per client (after project filter)
   const prevDebugRunsByClientRef = useRef<Map<number, any>>(new Map());
+
   const broadcastDebugRun = useCallback(
     (jobId: string | null, status?: string) => {
       if (jobId && projectId) {
@@ -33,6 +35,7 @@ export default ({
     },
     [yAwareness, projectId],
   );
+
   useEffect(() => {
     const handleChange = ({
       added,
@@ -44,91 +47,83 @@ export default ({
       removed: number[];
     }) => {
       const myClientId = yAwareness.clientID;
-      // Get fresh data directly from awareness, not from useUsers
-      const states = yAwareness.getStates();
 
-      // Check if any of the changed clients have debugRun modifications
+      // Fresh data directly from awareness
+      const states = yAwareness.getStates() as Map<number, AwarenessUser>;
+      const debugRunsByClient = prevDebugRunsByClientRef.current;
+
       const changedClients = [...added, ...updated, ...removed];
       let hasDebugRunChange = false;
 
+      // Only inspect clients that actually changed
       for (const clientId of changedClients) {
         if (clientId === myClientId) continue;
 
-        const state = states.get(clientId) as Record<string, any> | undefined;
-        const currentDebugRun = state?.debugRun;
-        const prevDebugRun = prevDebugRunsByClientRef.current.get(clientId);
+        const state = states.get(clientId) as
+          | (AwarenessUser & { debugRun?: UserDebugRun })
+          | undefined;
 
-        // Check if debugRun actually changed (not just cursor movement)
-        const debugRunChanged =
-          JSON.stringify(currentDebugRun) !== JSON.stringify(prevDebugRun);
+        const rawDebugRun = state?.debugRun;
 
-        if (debugRunChanged) {
+        // Apply project filter & normalize to null if we don't care about it
+        const currentDebugRun =
+          rawDebugRun &&
+          rawDebugRun.jobId &&
+          (!projectId || rawDebugRun.projectId === projectId)
+            ? rawDebugRun
+            : null;
+
+        const prevDebugRun = debugRunsByClient.get(clientId) ?? null;
+
+        const same =
+          !!currentDebugRun === !!prevDebugRun &&
+          (!currentDebugRun ||
+            (currentDebugRun.jobId === prevDebugRun.jobId &&
+              currentDebugRun.status === prevDebugRun.status &&
+              currentDebugRun.startedAt === prevDebugRun.startedAt &&
+              currentDebugRun.projectId === prevDebugRun.projectId));
+
+        if (!same) {
           hasDebugRunChange = true;
-          break;
+
+          if (currentDebugRun) {
+            debugRunsByClient.set(clientId, currentDebugRun);
+          } else {
+            debugRunsByClient.delete(clientId);
+          }
         }
       }
 
-      // Early exit if no debugRun-related changes
+      // Nothing about debugRun changed for any relevant client → bail
       if (!hasDebugRunChange) {
         return;
       }
 
-      // Now create snapshot to check if actual debugRun data changed
-      const debugRunsSnapshot = Array.from(
-        states.entries() as IterableIterator<[number, AwarenessUser]>,
-      )
-        .filter(
-          ([clientId, state]: [number, Record<string, any>]) =>
-            clientId !== myClientId &&
-            state.debugRun &&
-            state.debugRun.jobId &&
-            (!projectId || state.debugRun.projectId === projectId),
-        )
-        .map(([_clientId, state]: [number, Record<string, any>]) => [
-          state.debugRun.jobId,
-          state.debugRun.status,
-          state.debugRun.startedAt,
-        ]);
+      // Rebuild list of users with active debug runs from our cache
+      const nextActiveUsers: AwarenessUser[] = [];
 
-      const currentSnapshot = JSON.stringify(debugRunsSnapshot);
+      for (const [clientId, debugRun] of debugRunsByClient.entries()) {
+        if (clientId === myClientId) continue;
 
-      // Early exit if debugRun data hasn't actually changed
-      if (currentSnapshot === prevDebugRunsRef.current) {
-        return;
-      }
-      prevDebugRunsRef.current = currentSnapshot;
+        const state = states.get(clientId) as AwarenessUser | undefined;
+        if (!state) continue;
 
-      // Update the per-client debugRun tracking
-      prevDebugRunsByClientRef.current.clear();
-      for (const [clientId, state] of states.entries()) {
-        const stateObj = state as Record<string, any>;
-        if (stateObj.debugRun) {
-          prevDebugRunsByClientRef.current.set(clientId, stateObj.debugRun);
-        }
+        // Ensure the debugRun we expose matches the cached one
+        nextActiveUsers.push({
+          ...(state as AwarenessUser),
+          debugRun,
+        });
       }
 
-      // Now do the full mapping with all user info
-      const otherDebugRuns = Array.from(
-        states.entries() as IterableIterator<[number, AwarenessUser]>,
-      )
-        .filter(
-          ([clientId, state]) =>
-            state.debugRun &&
-            state.debugRun.jobId &&
-            clientId !== myClientId &&
-            (!projectId || state.debugRun.projectId === projectId),
-        )
-        .map(([_clientId, state]) => state as AwarenessUser);
-      setActiveUsersDebugRuns(otherDebugRuns);
+      setActiveUsersDebugRuns(nextActiveUsers);
     };
 
-    // Initial call to populate state - manually call with empty change set
+    // Initial call to populate state – treat all current clients as "added"
     const initialStates = yAwareness.getStates();
     const allClientIds = Array.from(initialStates.keys());
     handleChange({ added: allClientIds, updated: [], removed: [] });
 
     yAwareness.on("change", handleChange);
-
     return () => {
       yAwareness.off("change", handleChange);
     };
@@ -137,7 +132,6 @@ export default ({
   // Cleanup: Clear broadcast when component unmounts
   useEffect(() => {
     return () => {
-      // Clear debug run from awareness directly to avoid dependency issues
       const state = yAwareness.getLocalState();
       if (state?.debugRun) {
         yAwareness.setLocalStateField("debugRun", null);
