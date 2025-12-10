@@ -48,8 +48,10 @@ const CollaborationCard: React.FC<Props> = ({
           {userName.charAt(1)}
         </span>
       </div>
-      <div className="flex flex-col">
-        <span className="text-sm select-none dark:font-light">{userName}</span>
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-sm select-none dark:font-light">
+          {userName}
+        </span>
         {time && (
           <span className="text-sm opacity-55 dark:font-light">
             {t("debugging (started {{time}})", {
