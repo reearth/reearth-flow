@@ -1,0 +1,11 @@
+citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/luse/" = ["493033_luse_6697_op.gml"]
