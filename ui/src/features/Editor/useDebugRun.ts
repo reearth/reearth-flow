@@ -6,13 +6,12 @@ import { useProject, useProjectVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
 import type { Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { toast } from "../NotificationSystem/useToast";
-
-import useDebugAwareness from "./useDebugAwareness";
 
 export default ({
   rawWorkflows,
@@ -24,7 +23,7 @@ export default ({
   const t = useT();
   const [currentProject] = useCurrentProject();
 
-  const { activeDebugRuns, broadcastDebugRun } = useDebugAwareness({
+  const { activeUsersDebugRuns, broadcastDebugRun } = useDebugAwareness({
     yAwareness,
     projectId: currentProject?.id,
   });
@@ -37,7 +36,6 @@ export default ({
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
-
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
 
@@ -167,7 +165,7 @@ export default ({
   );
 
   return {
-    activeDebugRuns,
+    activeUsersDebugRuns,
     handleDebugRunStart,
     handleDebugRunStop,
     loadExternalDebugJob,

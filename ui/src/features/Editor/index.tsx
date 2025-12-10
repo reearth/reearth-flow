@@ -47,7 +47,7 @@ export default function Editor({
     isSaving,
     spotlightUserClientId,
     spotlightUser,
-    activeDebugRuns,
+    activeUsersDebugRuns,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -142,7 +142,7 @@ export default function Editor({
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
             onDebugRunJoin={loadExternalDebugJob}
-            activeDebugRuns={activeDebugRuns}>
+            activeUsersDebugRuns={activeUsersDebugRuns}>
             <Canvas
               nodes={nodes}
               edges={edges}

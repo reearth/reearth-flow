@@ -11,7 +11,7 @@ import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import { UserDebug } from "@flow/types";
+import { AwarenessUser } from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
@@ -23,16 +23,14 @@ import useHooks from "./hooks";
 const tooltipOffset = 6;
 
 type Props = {
-  activeDebugRuns?: UserDebug[];
-
+  activeUsersDebugRuns?: AwarenessUser[];
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
-
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
 };
 
 const DebugActionBar: React.FC<Props> = ({
-  activeDebugRuns,
+  activeUsersDebugRuns,
   onDebugRunJoin,
   onDebugRunStart,
   onDebugRunStop,
@@ -81,7 +79,7 @@ const DebugActionBar: React.FC<Props> = ({
         onClick={handleDebugRunReset}
       />
       <DebugActiveRunsPopover
-        activeDebugRuns={activeDebugRuns}
+        activeUsersDebugRuns={activeUsersDebugRuns}
         showPopover={showPopover}
         onDebugRunJoin={onDebugRunJoin}
         onShowDebugRunsPopover={handleShowDebugActiveRunsPopover}
