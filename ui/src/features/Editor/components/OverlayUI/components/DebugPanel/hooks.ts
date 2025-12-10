@@ -454,5 +454,6 @@ export default () => {
     visualizerType: streamingQuery.visualizerType,
     totalFeatures: streamingQuery.totalFeatures,
     isComplete: streamingQuery.isComplete,
+    isLoadingData: streamingQuery.isLoading || streamingQuery.isStreaming,
   };
 };
