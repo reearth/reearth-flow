@@ -42,25 +42,28 @@ export const useQueries = () => {
     mutationFn: async ({
       workspaceId,
       deploymentId,
+      description,
+      enabled,
       timeDriverInput,
       apiDriverInput,
-      description,
       variables,
     }: {
       workspaceId: string;
       deploymentId: string;
+      description: string;
+      enabled?: boolean | null;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
-      description: string;
       variables?: Variable[];
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
           workspaceId,
           deploymentId,
+          description,
+          enabled,
           timeDriverInput,
           apiDriverInput,
-          description,
           variables: variables ? toGqlVariableInput(variables) : undefined,
         },
       });
@@ -81,12 +84,14 @@ export const useQueries = () => {
   const updateTriggerMutation = useMutation({
     mutationFn: async ({
       triggerId,
+      enabled,
       apiDriverInput,
       timeDriverInput,
       description,
       variables,
     }: {
       triggerId: string;
+      enabled?: boolean | null;
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
       description?: string;
@@ -94,6 +99,7 @@ export const useQueries = () => {
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,
+        enabled,
         apiDriverInput,
         timeDriverInput,
         description,

@@ -101,6 +101,16 @@ const TriggerDetails: React.FC<Props> = ({
                 ]
               : []),
             {
+              id: "enabled",
+              name: t("Enabled"),
+              value:
+                typeof selectedTrigger.enabled === "boolean"
+                  ? selectedTrigger.enabled
+                    ? t("Yes")
+                    : t("No")
+                  : (selectedTrigger.enabled ?? t("N/A")),
+            },
+            {
               id: "lastTriggered",
               name: t("Last Triggered"),
               value: selectedTrigger.lastTriggered ?? t("Never"),

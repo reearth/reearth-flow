@@ -29,6 +29,7 @@ export const useTrigger = () => {
     workspaceId: string,
     deploymentId: string,
     description: string,
+    enabled?: boolean | null,
     timeInterval?: TimeInterval,
     authToken?: string,
     variables?: Variable[],
@@ -38,6 +39,7 @@ export const useTrigger = () => {
       const data = await mutateAsync({
         workspaceId,
         deploymentId,
+        enabled,
         timeDriverInput: timeInterval
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
@@ -62,6 +64,7 @@ export const useTrigger = () => {
 
   const useUpdateTrigger = async (
     triggerId: string,
+    enabled?: boolean | null,
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
@@ -71,6 +74,7 @@ export const useTrigger = () => {
     try {
       const trigger: Trigger | undefined = await mutateAsync({
         triggerId,
+        enabled,
         timeDriverInput: timeInterval
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
