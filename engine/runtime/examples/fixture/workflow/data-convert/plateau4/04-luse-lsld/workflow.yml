@@ -89,6 +89,9 @@ graphs:
             - attribute: luse_class
               expr: |
                 env.get("__value")["luse:class"]
+            - attribute: luse_usage
+              expr: |
+                env.get("__value")["luse:usage"]
             - attribute: core_creationDate
               expr: |
                 env.get("__value")["core:creationDate"]
@@ -125,17 +128,18 @@ graphs:
             "luse"
           minZoom: 8
           maxZoom: 16
+          extent: 65536
           output: |
             file::join_path(env.get("workerArtifactPath"), "luse")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
-            let cityGml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if cityGml.ends_with("_luse_lsld_mvt") {
-              cityGml = cityGml.sub_string(0, cityGml.len() - 14);
-            } else if cityGml.ends_with("_luse_mvt") {
-              cityGml = cityGml.sub_string(0, cityGml.len() - 9);
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_luse_lsld_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 14);
+            } else if city_gml.ends_with("_luse_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 9);
             }
-            file::join_path(artifact, cityGml + "_luse_mvt.zip")
+            file::join_path(artifact, city_gml + "_luse_mvt.zip")
 
       # LSLD processing branch
       - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -224,17 +228,95 @@ graphs:
             "lsld"
           minZoom: 8
           maxZoom: 16
+          extent: 65536
           output: |
             file::join_path(env.get("workerArtifactPath"), "lsld")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
-            let cityGml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if cityGml.ends_with("_luse_lsld_mvt") {
-              cityGml = cityGml.sub_string(0, cityGml.len() - 14);
-            } else if cityGml.ends_with("_lsld_mvt") {
-              cityGml = cityGml.sub_string(0, cityGml.len() - 9);
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_luse_lsld_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 14);
+            } else if city_gml.ends_with("_lsld_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 9);
             }
-            file::join_path(artifact, cityGml + "_lsld_mvt.zip")
+            file::join_path(artifact, city_gml + "_lsld_mvt.zip")
+
+      # Summary CSV generation - LUSE branch
+      - id: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
+        name: StatisticsCalculatorLuse
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: total_features_written
+              expr: |
+                1
+
+      - id: 6a7b8c9d-0003-2a3b-4c5d-6e7f8a9b0c1d
+        name: SummaryMapperLuse
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: key
+              expr: |
+                "luse"
+            - attribute: suffix
+              expr: |
+                "mvt"
+            - attribute: tileset_path
+              expr: |
+                let artifact = env.get("workerArtifactPath");
+                if artifact.starts_with("file://") {
+                  artifact = artifact.sub_string(7);
+                }
+                artifact + "/luse"
+            # - attribute: total_features_written
+            #   valueAttribute: total_features_written
+
+      # Summary CSV generation - LSLD branch
+      - id: 6a7b8c9d-0011-2a3b-4c5d-6e7f8a9b0c1d
+        name: StatisticsCalculatorLsld
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: total_features_written
+              expr: |
+                1
+
+      - id: 6a7b8c9d-0013-2a3b-4c5d-6e7f8a9b0c1d
+        name: SummaryMapperLsld
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: key
+              expr: |
+                "lsld"
+            - attribute: suffix
+              expr: |
+                "mvt"
+            - attribute: tileset_path
+              expr: |
+                let artifact = env.get("workerArtifactPath");
+                if artifact.starts_with("file://") {
+                  artifact = artifact.sub_string(7);
+                }
+                artifact + "/lsld"
+            # - attribute: total_features_written
+            #   valueAttribute: total_features_written
+
+      - id: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+        name: SummaryCSVWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let city_code = env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5];
+            file::join_path(artifact, "summary_" + city_code + ".csv")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -293,5 +375,45 @@ graphs:
       - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
         from: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
         to: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        fromPort: default
+        toPort: default
+
+      # Summary CSV edges - LUSE branch
+      # AttributeMapperLuse → StatisticsCalculatorLuse
+      - id: 2c3d4e5f-0001-8c9d-0e1f-2a3b4c5d6e70
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # StatisticsCalculatorLuse → SummaryMapperLuse (default port outputs aggregated result)
+      - id: 2c3d4e5f-0003-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
+        to: 6a7b8c9d-0003-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # SummaryMapperLuse → SummaryCSVWriter
+      - id: 2c3d4e5f-0004-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0003-2a3b-4c5d-6e7f8a9b0c1d
+        to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+        fromPort: default
+        toPort: default
+
+      # Summary CSV edges - LSLD branch
+      # AttributeMapperLsld → StatisticsCalculatorLsld
+      - id: 2c3d4e5f-0011-8c9d-0e1f-2a3b4c5d6e70
+        from: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        to: 6a7b8c9d-0011-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # StatisticsCalculatorLsld → SummaryMapperLsld (default port outputs aggregated result)
+      - id: 2c3d4e5f-0013-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0011-2a3b-4c5d-6e7f8a9b0c1d
+        to: 6a7b8c9d-0013-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # SummaryMapperLsld → SummaryCSVWriter
+      - id: 2c3d4e5f-0014-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0013-2a3b-4c5d-6e7f8a9b0c1d
+        to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
         fromPort: default
         toPort: default
