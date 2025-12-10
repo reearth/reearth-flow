@@ -1,8 +1,10 @@
+mod align_cesium;
 mod align_mvt;
 mod cast_config;
 mod compare_attributes;
 mod runner;
 mod test_cesium_attributes;
+mod test_cesium_statistics;
 mod test_json_attributes;
 mod test_mvt_attributes;
 mod test_mvt_lines;
@@ -15,6 +17,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 use test_cesium_attributes::CesiumAttributesConfig;
+use test_cesium_statistics::CesiumStatisticsConfig;
 use test_json_attributes::JsonFileConfig;
 use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_lines::MvtLinesConfig;
@@ -62,6 +65,8 @@ struct Tests {
     mvt_lines: Option<MvtLinesConfig>,
     #[serde(default)]
     cesium_attributes: Option<CesiumAttributesConfig>,
+    #[serde(default)]
+    cesium_statistics: Option<CesiumStatisticsConfig>,
 }
 
 fn pack_citymodel_zip(
@@ -249,6 +254,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(cfg) = &tests.cesium_attributes {
             run_test("cesium_attributes", &relative_path_display, || {
                 test_cesium_attributes::test_cesium_attributes(
+                    &fme_dir,
+                    &output_dir.join("flow"),
+                    cfg,
+                )
+            });
+        }
+
+        if let Some(cfg) = &tests.cesium_statistics {
+            run_test("cesium_statistics", &relative_path_display, || {
+                test_cesium_statistics::test_cesium_statistics(
                     &fme_dir,
                     &output_dir.join("flow"),
                     cfg,

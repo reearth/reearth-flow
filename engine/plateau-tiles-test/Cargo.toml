@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.1.1"
+version = "0.1.3"
 edition = "2021"
 
 [dependencies]
@@ -9,6 +9,7 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 toml.workspace = true
 bytes.workspace = true
+gltf.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-gltf.workspace = true
 reearth-flow-runner.workspace = true

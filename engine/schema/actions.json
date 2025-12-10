@@ -5487,6 +5487,22 @@
       ]
     },
     {
+      "name": "PolygonNormalExtractor",
+      "type": "processor",
+      "description": "Extract normal vectors and other properties for polygon features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "PythonScriptProcessor",
       "type": "processor",
       "description": "Execute Python Scripts with Geospatial Data Processing",
