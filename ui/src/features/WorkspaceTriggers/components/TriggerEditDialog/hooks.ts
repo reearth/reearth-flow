@@ -19,7 +19,7 @@ export default ({
   );
 
   const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
-    selectedTrigger.enabled || false,
+    selectedTrigger.enabled ?? false,
   );
   const [updatedEventSource, setUpdatedEventSource] = useState(
     selectedTrigger.eventSource,

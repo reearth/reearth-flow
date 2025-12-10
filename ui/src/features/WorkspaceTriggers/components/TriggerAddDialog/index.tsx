@@ -66,7 +66,6 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
-  console.log("isTriggerEnabled:", isTriggerEnabled);
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
