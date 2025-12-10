@@ -175,6 +175,16 @@ Engine (standalone, coordinated by Server via GCP Batch)
 
 ## Development Best Practices
 
+### Helpful Slash Commands
+
+The following slash commands streamline common development workflows:
+- `/review` - Code review with quality, security, and performance analysis
+- `/test` - Generate tests following component-specific patterns
+- `/explain` - Explain code structure and design decisions
+- `/fix` - Debug and fix issues systematically
+- `/refactor` - Refactor code while preserving functionality
+- `/commit` - Create git commits with automatic style matching
+
 ### Code Quality
 
 Each component has its own quality checks:
@@ -197,6 +207,8 @@ Always run the appropriate checks before committing changes.
 - Keep messages clean and focused on actual changes
 - Do not include Claude Code attribution or "Generated with Claude Code" messages
 - Follow conventional commit format when appropriate: `feat:`, `fix:`, `chore:`, etc.
+
+**Tip**: Use the `/commit` slash command for guided commit creation with automatic style matching.
 
 **Branch Strategy**:
 - `main` - Production-ready code
