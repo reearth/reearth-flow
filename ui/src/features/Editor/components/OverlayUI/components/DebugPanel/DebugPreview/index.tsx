@@ -12,7 +12,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  LoadingSkeleton,
 } from "@flow/components";
 import ThreeJSViewer, {
   type ThreeJSViewerRef,
@@ -39,8 +38,7 @@ type Props = {
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   detectedGeometryType: string | null;
-  visualizerType: "2d-map" | "3d-map" | "3d-model" | null;
-  isComplete?: boolean;
+  visualizerType: "2d-map" | "3d-map" | "3d-model";
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -55,7 +53,6 @@ const DebugPreview: React.FC<Props> = ({
   onFlyToSelectedFeature,
   detectedGeometryType,
   visualizerType,
-  isComplete,
 }) => {
   const t = useT();
   const threeJSViewerRef = useRef<ThreeJSViewerRef>(null);
@@ -65,15 +62,6 @@ const DebugPreview: React.FC<Props> = ({
   }, []);
 
   // Determine if we should show the viewer based on data availability
-  const shouldShowViewer = () => {
-    // Show viewer when:
-    // 1. Stream is complete (we have the total count)
-    // 2. OR we have data and hit the display limit (2000 features)
-    const hasData = selectedOutputData?.features?.length > 0;
-    const hitDisplayLimit = selectedOutputData?.features?.length >= 2000;
-
-    return hasData && (isComplete || hitDisplayLimit);
-  };
 
   const { handleMapLoad } = useHooks({
     mapRef,
@@ -144,26 +132,7 @@ const DebugPreview: React.FC<Props> = ({
 
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
-      {!shouldShowViewer() ? (
-        <div className="flex h-full items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <LoadingSkeleton className="mb-4" />
-            <p className="text-sm">
-              Loading data... {selectedOutputData?.features?.length || 0}{" "}
-              features loaded
-              {selectedOutputData?.features?.length >= 2000 && (
-                <span className="mt-1 block text-xs">
-                  (
-                  {selectedOutputData?.features?.length >= 2000 && !isComplete
-                    ? "Hit display limit of 2000 - viewer will show shortly"
-                    : "Processing..."}
-                  )
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-      ) : visualizerType === "2d-map" ? (
+      {visualizerType === "2d-map" ? (
         <div className="h-full">
           {/* 2D Viewer Header with actions */}
           <div className="py-1">
@@ -243,7 +212,7 @@ const DebugPreview: React.FC<Props> = ({
             />
           </div>
         </div>
-      ) : visualizerType === "3d-model" ? (
+      ) : (
         <div className="h-full">
           {/* 3D Model Viewer Header with actions */}
           <div className="py-1">
@@ -282,20 +251,6 @@ const DebugPreview: React.FC<Props> = ({
               ref={threeJSViewerRef}
               fileContent={selectedOutputData}
             />
-          </div>
-        </div>
-      ) : (
-        <div className="flex h-full items-center justify-center text-muted-foreground">
-          <div className="text-center">
-            <p className="text-sm">
-              {t("No viewer available for this data type")}
-            </p>
-            <p className="mt-1 text-xs">
-              {t("Data type")}: {detectedGeometryType || "Unknown"}
-            </p>
-            <p className="mt-1 text-xs">
-              {t("Visualizer")}: {visualizerType || "Unknown"}
-            </p>
           </div>
         </div>
       )}
