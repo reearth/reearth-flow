@@ -194,7 +194,8 @@ async fn read_gltf(
             let mesh_names = mesh_info.mesh_name.map(|n| vec![n]).unwrap_or_default();
             let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
 
-            send_feature(&sender,
+            send_feature(
+                &sender,
                 geometry,
                 &mesh_names,
                 &node_names,
