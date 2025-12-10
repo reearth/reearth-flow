@@ -30,7 +30,7 @@ type Props = {
   debugJobState?: JobState;
   onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
-  selectedFeature: any;
+  selectedFeatureId: string | null;
   // enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
@@ -48,7 +48,7 @@ const DebugPreview: React.FC<Props> = ({
   onConvertedSelectedFeature,
   mapRef,
   cesiumViewerRef,
-  selectedFeature,
+  selectedFeatureId,
   onSelectedFeature,
   onFlyToSelectedFeature,
   detectedGeometryType,
@@ -100,14 +100,9 @@ const DebugPreview: React.FC<Props> = ({
   }, [selectedOutputData]);
 
   const convertFeature = useCallback(
-    (feature: any) => {
-      if (!feature || !featureMap) return null;
+    (featureId: string | null) => {
+      if (!featureId || !featureMap) return null;
 
-      if ("geometry" in feature && feature.geometry) {
-        return feature;
-      }
-
-      const featureId = feature.properties?._originalId ?? feature.id;
       if (featureId === undefined) return null;
 
       let normalizedId = featureId;
@@ -125,10 +120,10 @@ const DebugPreview: React.FC<Props> = ({
   );
 
   const convertedSelectedFeature = useMemo(() => {
-    const converted = convertFeature(selectedFeature);
+    const converted = convertFeature(selectedFeatureId);
     onConvertedSelectedFeature(converted);
     return converted;
-  }, [selectedFeature, onConvertedSelectedFeature, convertFeature]);
+  }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
 
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
