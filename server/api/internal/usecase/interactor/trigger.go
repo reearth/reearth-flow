@@ -338,7 +338,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
-		// return nil, interfaces.ErrJobCreationFailed
+		return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
