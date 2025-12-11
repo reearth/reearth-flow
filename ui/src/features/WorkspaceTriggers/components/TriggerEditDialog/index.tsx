@@ -13,7 +13,6 @@ import {
   SelectContent,
   SelectItem,
   Input,
-  Switch,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { TimeInterval, Trigger } from "@flow/types";
@@ -39,12 +38,10 @@ const TriggerEditDialog: React.FC<Props> = ({
     updatedTimeInterval,
     updatedDescription,
     variablesChanged,
-    updatedIsTriggerEnabled,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
     handleDescriptionChange,
-    handleTriggerEnableChange,
     handleTriggerUpdate,
     pendingWorkflowData,
     openTriggerProjectVariablesDialog,
@@ -145,18 +142,6 @@ const TriggerEditDialog: React.FC<Props> = ({
               </Select>
             </DialogContentSection>
           )}
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Enable Trigger?")}</Label>
-            <div className="mt-2 flex flex-row items-center gap-2">
-              <Switch
-                checked={updatedIsTriggerEnabled}
-                onCheckedChange={handleTriggerEnableChange}
-              />
-              <span className="text-sm text-muted-foreground">
-                {updatedIsTriggerEnabled ? t("Yes") : t("No")}
-              </span>
-            </div>
-          </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
           <Button
@@ -165,7 +150,6 @@ const TriggerEditDialog: React.FC<Props> = ({
               updatedEventSource === selectedTrigger.eventSource &&
               updatedTimeInterval === selectedTrigger.timeInterval &&
               updatedAuthToken === selectedTrigger.authToken &&
-              updatedIsTriggerEnabled === selectedTrigger.enabled &&
               (updatedDescription === selectedTrigger.description ||
                 !updatedDescription.trim()) &&
               !variablesChanged

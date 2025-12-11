@@ -5,7 +5,7 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 
-import { Button } from "@flow/components";
+import { Button, Switch } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
 
@@ -20,9 +20,19 @@ type Props = {
   title: string;
   content?: DetailsBoxContent[];
   collapsible?: boolean;
+  toggle?: boolean;
+  toggleValue?: boolean;
+  onToggleChange?: (newValue: boolean) => void;
 };
 
-const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
+const DetailsBox: React.FC<Props> = ({
+  title,
+  content,
+  collapsible,
+  toggle,
+  toggleValue,
+  onToggleChange,
+}) => {
   const t = useT();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -69,11 +79,28 @@ const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
   return (
     <div className="rounded-md border dark:font-thin">
       <div
-        className={`flex ${collapsible ? "cursor-pointer" : ""} justify-between px-4 py-2`}
+        className={`flex ${collapsible ? "cursor-pointer" : ""} px-4 py-2`}
         onClick={() => collapsible && setCollapsed(!collapsed)}>
-        <div className="flex items-center gap-4">
+        <div className="flex w-full justify-between gap-4 ">
           <p className="text-xl">{title}</p>
-          {collapsible ? collapsed ? <CaretUpIcon /> : <CaretDownIcon /> : null}
+          <div className="flex items-center gap-2">
+            {toggle && (
+              <div className="flex gap-2">
+                <span className="text-sm font-thin">{t("Is Enabled?")}</span>
+                <Switch
+                  checked={toggleValue}
+                  onCheckedChange={onToggleChange}
+                />
+              </div>
+            )}
+            {collapsible ? (
+              collapsed ? (
+                <CaretUpIcon />
+              ) : (
+                <CaretDownIcon />
+              )
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {!collapsed &&

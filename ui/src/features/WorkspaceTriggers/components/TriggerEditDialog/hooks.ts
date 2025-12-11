@@ -18,9 +18,6 @@ export default ({
     selectedTrigger.description || "",
   );
 
-  const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
-    selectedTrigger.enabled,
-  );
   const [updatedEventSource, setUpdatedEventSource] = useState(
     selectedTrigger.eventSource,
   );
@@ -58,10 +55,6 @@ export default ({
     [],
   );
 
-  const handleTriggerEnableChange = (checked: boolean) => {
-    setUpdatedIsTriggerEnabled(checked);
-  };
-
   const {
     workflowVariablesObject,
     pendingWorkflowData,
@@ -97,7 +90,7 @@ export default ({
 
     await useUpdateTrigger(
       selectedTrigger.id,
-      updatedIsTriggerEnabled,
+      selectedTrigger.enabled,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
@@ -107,7 +100,6 @@ export default ({
     onDialogClose();
   }, [
     selectedTrigger,
-    updatedIsTriggerEnabled,
     updatedEventSource,
     updatedAuthToken,
     updatedTimeInterval,
@@ -136,14 +128,12 @@ export default ({
     updatedAuthToken,
     updatedTimeInterval,
     updatedDescription,
-    updatedIsTriggerEnabled,
     variablesChanged,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
     handleTriggerUpdate,
     handleDescriptionChange,
-    handleTriggerEnableChange,
     workflowVariablesObject,
     pendingWorkflowData,
     openTriggerProjectVariablesDialog,
