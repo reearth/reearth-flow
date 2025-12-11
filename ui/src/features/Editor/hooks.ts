@@ -438,7 +438,10 @@ export default ({
       });
 
       // Helper: recursively find enabled incomers, traversing through disabled nodes
-      const findEnabledIncomers = (node: Node, visited = new Set<string>()): Node[] => {
+      const findEnabledIncomers = (
+        node: Node,
+        visited = new Set<string>(),
+      ): Node[] => {
         if (visited.has(node.id)) return [];
         visited.add(node.id);
 
@@ -459,7 +462,10 @@ export default ({
       };
 
       // Helper: recursively find enabled outgoers, traversing through disabled nodes
-      const findEnabledOutgoers = (node: Node, visited = new Set<string>()): Node[] => {
+      const findEnabledOutgoers = (
+        node: Node,
+        visited = new Set<string>(),
+      ): Node[] => {
         if (visited.has(node.id)) return [];
         visited.add(node.id);
 
@@ -548,7 +554,6 @@ export default ({
               }
             });
           }
-
           nodesToUpdate.push({
             nodeId: node.id,
             isDisabled: false,

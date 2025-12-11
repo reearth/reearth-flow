@@ -97,6 +97,9 @@ export default ({
     id,
   ]);
 
+  const isDisabledNode =
+    sourceNode?.data?.isDisabled || targetNode?.data?.isDisabled;
+
   const handleIntermediateDataSet = useCallback(
     async (autoSelect?: boolean) => {
       if ((!selected && !autoSelect) || !intermediateDataUrl) return;
@@ -219,6 +222,7 @@ export default ({
     jobStatus,
     intermediateDataIsSet,
     hasIntermediateData,
+    isDisabledNode,
     handleDoubleClick,
   };
 };
