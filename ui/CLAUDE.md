@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with the UI component of this repository.
+
+For monorepo architecture, cross-component workflows, and general project guidance, see @../CLAUDE.md
 
 ## Architecture Overview
 
@@ -43,68 +45,147 @@ yarn gql:watch      # Watch mode for GraphQL codegen
 yarn i18n           # Extract i18n strings
 ```
 
-## Project Structure & Key Patterns
+## Project Structure
 
-### State Management Architecture
+### Directory Organization
 
-- **Jotai atoms** (`src/stores/`) for client state
-- **TanStack Query** for server state and caching
-- **Yjs** for collaborative document state (workflows, nodes, edges)
-- **IndexedDB** for local persistence of drafts and offline data
+```
+ui/
+├── src/
+│   ├── features/           # Feature-based modules
+│   │   ├── Editor/         # Main workflow editor with canvas
+│   │   ├── WorkspaceProjects/  # Project management
+│   │   ├── WorkspaceJobs/  # Job execution monitoring
+│   │   ├── Canvas/         # Shared canvas components
+│   │   ├── SharedCanvas/   # Read-only shared workflows
+│   │   └── common/         # Shared feature components
+│   ├── components/         # Reusable UI components
+│   ├── lib/                # Core libraries and utilities
+│   │   ├── yjs/           # Yjs collaboration setup
+│   │   ├── reactFlow/     # ReactFlow configuration
+│   │   └── gql/           # GraphQL client and hooks
+│   ├── stores/            # Jotai state atoms
+│   ├── routes/            # TanStack Router routes
+│   └── hooks/             # Custom React hooks
+├── .storybook/            # Storybook configuration
+└── public/                # Static assets
+```
+
+### Import Aliases
+
+- `@flow/*` maps to `src/*` for cleaner imports
+- Configured in both `tsconfig.json` and `vite.config.ts`
+
+## State Management Architecture
+
+### Multi-layer State Strategy
+
+1. **Client State** - Jotai atoms (`src/stores/`)
+   - UI state (modals, panels, selections)
+   - User preferences
+   - Local workspace state
+
+2. **Server State** - TanStack Query
+   - API data fetching and caching
+   - Optimistic updates for mutations
+   - Real-time subscriptions for job status
+
+3. **Collaborative State** - Yjs
+   - Workflow definitions (nodes, edges, configuration)
+   - Real-time synchronization across clients
+   - Conflict-free replicated data types (CRDTs)
+
+4. **Persistent State** - IndexedDB
+   - Draft workflows
+   - Offline data
+   - User preferences cache
+
+## Key Features & Patterns
 
 ### Real-time Collaboration
 
-- **Yjs integration** (`src/lib/yjs/`) handles collaborative workflow editing
-- **Y-WebSocket** connects to backend WebSocket server
-- **YWorkflowClass** manages workflow document synchronization
-- **useYWorkflow, useYNode, useYEdge** hooks for reactive Yjs state
+**Architecture** (`src/lib/yjs/`):
+- **YWorkflowClass** - Manages workflow document synchronization
+- **Y-WebSocket** - Connects to backend WebSocket server
+- **Hooks**: `useYWorkflow`, `useYNode`, `useYEdge` for reactive Yjs state
+- **Awareness** - Shows other users' cursors and selections
+
+**Integration Flow**:
+1. User opens workflow in editor
+2. UI establishes Y-WebSocket connection
+3. Yjs syncs local state with server
+4. Changes propagate in real-time to all connected clients
+5. Conflicts resolved automatically via CRDT algorithms
 
 ### Visual Workflow Editor
 
-- **ReactFlow** (`src/lib/reactFlow/`) powers the node-based canvas
-- **Node Types**: GeneralNode, BatchNode, NoteNode with custom rendering
-- **Edge Types**: DefaultEdge with custom styling
-- **Custom Handles** for node connection points
-- **Auto-layout** using Dagre for workflow arrangement
+**ReactFlow Integration** (`src/lib/reactFlow/`):
+- **Node Types**:
+  - `GeneralNode` - Standard workflow action nodes
+  - `BatchNode` - Batch processing nodes
+  - `NoteNode` - Annotation and documentation
+- **Edge Types**: `DefaultEdge` with custom styling and validation
+- **Custom Handles** - Connection points with type checking
+- **Auto-layout** - Dagre algorithm for automatic workflow arrangement
+- **Minimap & Controls** - Navigation aids for complex workflows
+
+**Node Interaction**:
+- Drag-and-drop from action palette
+- Click to configure node parameters
+- Connect nodes to define data flow
+- Real-time validation of connections
 
 ### Component System
 
-- **Radix UI primitives** with custom styling in `src/components/`
-- **SchemaForm** for dynamic form generation from JSON schemas
-- **DataTable** with sorting, filtering, and pagination
-- **Visualizations** for Cesium 3D and MapLibre 2D maps
+**Radix UI Integration** (`src/components/`):
+- Accessible primitives with custom styling
+- Consistent design system
+- Dark mode support
 
-### Feature-based Organization
-
-```
-src/features/
-├── Editor/           # Main workflow editor with canvas
-├── WorkspaceProjects/# Project management
-├── WorkspaceJobs/    # Job execution monitoring
-├── Canvas/           # Shared canvas components
-├── SharedCanvas/     # Read-only shared workflows
-└── common/           # Shared feature components
-```
+**Key Components**:
+- **SchemaForm** - Dynamic form generation from JSON schemas (action configuration)
+- **DataTable** - Sortable, filterable tables with pagination
+- **Visualizations** - Cesium 3D and MapLibre 2D map components
+- **Dialog/Modal** - Accessible overlays for workflows
+- **Dropdown/Select** - Type-safe selection components
 
 ### GraphQL Integration
 
-- **Generated types** from server schema in `src/lib/gql/__gen__/`
-- **Feature-specific APIs** (project, job, workspace, etc.) with custom hooks
-- **Real-time subscriptions** for job status updates
-- **Optimistic updates** for better UX during mutations
+**Code Generation** (`src/lib/gql/__gen__/`):
+- Types generated from server schema
+- Type-safe queries and mutations
+- React hooks for all operations
+
+**API Organization**:
+- Feature-specific API modules (project, job, workspace, etc.)
+- Custom hooks wrapping TanStack Query
+- Real-time subscriptions for job updates
+- Optimistic updates for instant UI feedback
+
+**Example Pattern**:
+```typescript
+// Generated types and hooks
+import { useProjectQuery, useUpdateProjectMutation } from '@flow/lib/gql/project'
+
+// Feature-specific usage
+const { data } = useProjectQuery({ id })
+const { mutate } = useUpdateProjectMutation()
+```
 
 ### Routing & Navigation
 
-- **File-based routing** with TanStack Router
-- **Type-safe navigation** with generated route tree
-- **Workspace/Project hierarchy**: `/workspaces/$workspaceId/projects/$projectId`
-- **Lazy loading** for better performance
+**TanStack Router** (`src/routes/`):
+- File-based routing with type safety
+- Generated route tree for autocomplete
+- Workspace/Project hierarchy: `/workspaces/$workspaceId/projects/$projectId`
+- Lazy loading for code splitting
+- Search params validation
 
-## Key Development Patterns
+## Development Patterns
 
 ### Development Workflow & Quality Assurance
 
-**IMPORTANT: Before marking any task as complete, ALWAYS run the following commands:**
+**IMPORTANT: Before marking any task as complete, ALWAYS run:**
 
 ```bash
 yarn lint           # Check for code quality issues
@@ -125,7 +206,6 @@ When using the TodoWrite tool to track progress:
 4. **Only then mark the todo as completed**
 
 Example flow:
-
 ```
 ✅ Good: "I've implemented the streaming fix. Can you test file switching to confirm it works before I mark this todo complete?"
 ❌ Bad: Immediately marking todo complete after implementation without testing confirmation
@@ -151,14 +231,6 @@ If the developer agrees, create developer documentation that includes:
 
 Place documentation files adjacent to the main implementation (e.g., `src/hooks/feature-name.md` for hook implementations) to ensure discoverability.
 
-### Workflow Data Flow
-
-1. **UI creates workflows** via visual editor (ReactFlow)
-2. **Yjs syncs changes** in real-time across clients
-3. **GraphQL mutations** persist to backend database
-4. **Engine processes** workflows via server coordination
-5. **WebSocket subscriptions** provide real-time job status
-
 ### Testing Strategy
 
 - **Vitest** for unit tests with jsdom environment
@@ -166,19 +238,94 @@ Place documentation files adjacent to the main implementation (e.g., `src/hooks/
 - **Storybook** for component development and visual testing
 - **Coverage reporting** with exclusions for generated code
 
-### Import Aliases
+**Testing Patterns**:
+- Test user interactions, not implementation details
+- Mock GraphQL responses with MSW (Mock Service Worker)
+- Test accessibility with `@testing-library/jest-dom`
+- Visual regression testing via Storybook
 
-- `@flow/*` maps to `src/*` for cleaner imports
-- Configured in both `tsconfig.json` and `vite.config.ts`
+### Error Handling
+
+- **GraphQL errors** - Display user-friendly messages
+- **Network errors** - Show retry UI with offline detection
+- **Validation errors** - Inline form validation
+- **Yjs sync errors** - Reconnection logic with backoff
+
+## Common Development Tasks
+
+### Adding New Workflow Actions
+
+1. **Update server schema** for new action type
+2. **Run `yarn gql`** to regenerate types
+3. **Create action component** in appropriate feature directory
+4. **Add to action palette** in Editor
+5. **Implement configuration form** using SchemaForm
+6. **Add validation logic** for connections
+7. **Test in Storybook** and integration tests
+
+### Modifying GraphQL Schema
+
+1. **Server updates schema** in `server/api/gql/*.graphql`
+2. **Run `yarn gql`** to regenerate UI types
+3. **Update affected components** with new types
+4. **Fix TypeScript errors** from type changes
+5. **Test data flow** end-to-end
+
+### Adding New Features
+
+1. **Create feature directory** under `src/features/`
+2. **Define routes** in `src/routes/`
+3. **Create components** with Storybook stories
+4. **Add GraphQL queries/mutations** as needed
+5. **Wire up state management** (Jotai/TanStack Query)
+6. **Add tests** for critical paths
+7. **Document** complex interactions
+
+### Styling Guidelines
+
+- **Use Tailwind utilities** for consistent spacing and colors
+- **Create reusable components** for repeated patterns
+- **Follow Radix UI patterns** for accessible interactions
+- **Support dark mode** via CSS variables
+- **Responsive design** - mobile-first approach
+- **Performance** - Avoid unnecessary re-renders
+
+## UI Data Flow
+
+### Complete Workflow Lifecycle
+
+1. **Create Workflow**
+   - User creates workflow in visual editor (ReactFlow)
+   - Yjs syncs changes in real-time across collaborative clients
+   - GraphQL mutations persist workflow state to backend
+
+2. **Execute Workflow**
+   - User triggers workflow execution
+   - GraphQL mutation creates job on server
+   - Server coordinates with engine for execution
+
+3. **Monitor Execution**
+   - WebSocket subscriptions provide real-time job status updates
+   - Logs streamed via Pub/Sub to UI
+   - Progress updates reflected in job monitoring UI
+
+4. **View Results**
+   - Completed workflows show results in visualizations
+   - Data accessible via cloud storage links
+   - History tracked in job list
+
+For complete end-to-end workflow execution flow across all components, see @../CLAUDE.md
 
 ## Environment Configuration
 
-Uses `FLOW_` prefix for environment variables:
+UI-specific environment variables with `FLOW_` prefix:
 
 - `FLOW_API_ENDPOINT` - GraphQL API URL
 - `FLOW_WS_ENDPOINT` - WebSocket endpoint for real-time features
 - `FLOW_AUTH0_*` - Auth0 configuration
 - `REEARTH_CONFIG_URL` - Remote configuration URL
+
+See @../CLAUDE.md for complete environment configuration across all components.
 
 ## Multi-tenant Architecture
 
@@ -186,3 +333,42 @@ Uses `FLOW_` prefix for environment variables:
 - **Projects** define individual workflows
 - **Real-time collaboration** within workspace contexts
 - **Permission-based access** via Auth0 integration
+
+## Performance Considerations
+
+- **Code splitting** - Route-based with TanStack Router lazy loading
+- **Memoization** - Use `React.memo`, `useMemo`, `useCallback` appropriately
+- **Virtual scrolling** - For large lists and tables
+- **Debouncing** - User input and API calls
+- **Image optimization** - Lazy loading and responsive images
+- **Bundle size** - Monitor with bundle analyzer
+
+## Accessibility Guidelines
+
+- **Semantic HTML** - Use appropriate elements
+- **ARIA labels** - Provide context for screen readers
+- **Keyboard navigation** - All interactions keyboard-accessible
+- **Focus management** - Logical tab order
+- **Color contrast** - WCAG AA compliance
+- **Screen reader testing** - Test with NVDA/JAWS/VoiceOver
+
+## Integration Points
+
+### With Server
+- **GraphQL API** - All data operations
+- **WebSocket** - Real-time collaboration and job updates
+- **Authentication** - JWT tokens via Auth0
+
+### With Engine
+- **Workflow definitions** - JSON format for execution
+- **Job monitoring** - Status and logs streaming
+- **Results** - Cloud storage URLs for outputs
+
+## Security Best Practices
+
+- **Authentication** - Validate tokens on all protected routes
+- **Authorization** - Check workspace/project permissions
+- **XSS prevention** - Sanitize user inputs
+- **CSRF protection** - Use proper headers
+- **Secrets** - Never commit API keys or credentials
+- **Content Security Policy** - Restrict script sources
