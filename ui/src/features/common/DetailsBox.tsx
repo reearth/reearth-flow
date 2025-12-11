@@ -22,7 +22,7 @@ type Props = {
   collapsible?: boolean;
   toggle?: boolean;
   toggleValue?: boolean;
-  onToggleChange?: (newValue: boolean) => void;
+  onToggleChange?: (checked: boolean) => void;
 };
 
 const DetailsBox: React.FC<Props> = ({
@@ -79,30 +79,19 @@ const DetailsBox: React.FC<Props> = ({
   return (
     <div className="rounded-md border dark:font-thin">
       <div
-        className={`flex ${collapsible ? "cursor-pointer" : ""} px-4 py-2`}
+        className={`flex ${collapsible ? "cursor-pointer" : ""} justify-between px-4 py-2`}
         onClick={() => collapsible && setCollapsed(!collapsed)}>
-        <div className="flex w-full justify-between gap-4 ">
+        <div className="flex items-center gap-4">
           <p className="text-xl">{title}</p>
-          <div className="flex items-center gap-2">
-            {toggle && (
-              <div className="flex gap-2">
-                <span className="text-sm font-thin">{t("Is Enabled?")}</span>
-                <Switch
-                  checked={toggleValue}
-                  onCheckedChange={onToggleChange}
-                />
-              </div>
-            )}
-            {collapsible ? (
-              collapsed ? (
-                <CaretUpIcon />
-              ) : (
-                <CaretDownIcon />
-              )
-            ) : null}
-          </div>
+          {collapsible ? collapsed ? <CaretUpIcon /> : <CaretDownIcon /> : null}
         </div>
         <div className="flex items-center gap-2">
+          {!collapsible && toggle && (
+            <div className="flex gap-2">
+              <span className="text-sm font-thin">{t("Is Enabled?")}</span>
+              <Switch checked={toggleValue} onCheckedChange={onToggleChange} />
+            </div>
+          )}
           {!collapsed &&
             downloadContent?.map((detail) =>
               Array.isArray(detail.value) ? (
