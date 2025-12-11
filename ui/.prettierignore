@@ -13,3 +13,5 @@ src/lib/gql/__gen__
 src/routeTree.gen.ts
 
 public/mockServiceWorker.js
+
+CLAUDE.md
