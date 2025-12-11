@@ -298,7 +298,6 @@ pub(super) fn tile_writing_stage(
                 geom_error,
                 limit_texture_resolution.unwrap_or(false),
             )?;
-                eprintln!("max texture size for atlas: {}x{}", max_width, max_height);
 
             // Initialize texture packer config
             // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
