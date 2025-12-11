@@ -9,23 +9,11 @@ use reearth_flow_types::{
     material::{self, Material},
     AttributeValue, Feature, GeometryType,
 };
-use serde::{Deserialize, Serialize};
 
 use super::{tiling, tiling::zxy_from_lng_lat};
+use crate::atlas::GltfFeature;
 
 pub type TileZXYName = (u8, u32, u32);
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SlicedFeature {
-    // polygons [x, y, z, u, v]
-    pub polygons: MultiPolygon<'static, [f64; 5]>,
-    // material ids for each polygon
-    pub polygon_material_ids: Vec<u32>,
-    // materials
-    pub materials: IndexSet<Material>,
-    // attribute values
-    pub attributes: HashMap<String, AttributeValue>,
-}
 
 pub fn slice_to_tiles<E>(
     feature: &Feature,
@@ -33,7 +21,7 @@ pub fn slice_to_tiles<E>(
     min_zoom: u8,
     max_zoom: u8,
     attach_texture: bool,
-    send_feature: impl Fn(TileZXYName, SlicedFeature) -> Result<(), E>,
+    send_feature: impl Fn(TileZXYName, GltfFeature) -> Result<(), E>,
 ) -> Result<(), E> {
     let Some(city_gml) = feature.geometry.value.as_citygml_geometry() else {
         return Ok(());
@@ -42,7 +30,7 @@ pub fn slice_to_tiles<E>(
 
     let slicing_enabled = false;
 
-    let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
+    let mut sliced_tiles: HashMap<(u8, u32, u32), GltfFeature> = HashMap::new();
     let mut materials: IndexSet<Material> = IndexSet::new();
     let default_material = reearth_flow_types::material::X3DMaterial::default();
 
@@ -158,7 +146,7 @@ pub fn slice_to_tiles<E>(
                             slice_polygon(zoom, &poly, &poly_uv, |(z, x, y), poly| {
                                 let sliced_feature =
                                     sliced_tiles.entry((z, x, y)).or_insert_with(|| {
-                                        SlicedFeature {
+                                        GltfFeature {
                                             polygons: MultiPolygon::new(),
                                             attributes: feature
                                                 .attributes
@@ -182,7 +170,7 @@ pub fn slice_to_tiles<E>(
                             let sliced_feature =
                                 sliced_tiles
                                     .entry((z, x, y))
-                                    .or_insert_with(|| SlicedFeature {
+                                    .or_insert_with(|| GltfFeature {
                                         polygons: MultiPolygon::new(),
                                         attributes: feature
                                             .attributes

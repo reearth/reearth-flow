@@ -1,8 +1,6 @@
 use std::{
-    collections::HashSet,
     convert::Infallible,
     fs,
-    hash::RandomState,
     io::BufWriter,
     path::Path,
     sync::{
@@ -11,31 +9,23 @@ use std::{
     },
 };
 
+use ahash::RandomState;
 use atlas_packer::{
     export::{AtlasExporter as _, WebpAtlasExporter},
-    pack::{AtlasPacker, PackedAtlasProvider},
+    pack::AtlasPacker,
     place::{GuillotineTexturePlacer, TexturePlacerConfig},
-    texture::{
-        cache::{TextureCache, TextureSizeCache},
-        DownsampleFactor, PolygonMappedTexture,
-    },
+    texture::cache::{TextureCache, TextureSizeCache},
 };
 use bytemuck::Zeroable;
-use earcut::{utils3d::project3d_to_2d, Earcut};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
-use reearth_flow_common::{
-    texture::{apply_downsample_factor, get_texture_downsample_scale_of_polygon},
-    uri::Uri,
-};
-use reearth_flow_gltf::calculate_normal;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::Context;
-use reearth_flow_types::{material, Feature};
+use reearth_flow_types::Feature;
 use tempfile::tempdir;
-use url::Url;
 
 use super::tiling::{TileContent, TileTree};
 use super::{
@@ -43,6 +33,7 @@ use super::{
     tiling,
 };
 use crate::file::mvt::tileid::TileIdMethod;
+use crate::atlas::{compute_max_texture_size, load_textures_into_packer, process_geometry_with_atlas, encode_metadata};
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
@@ -143,13 +134,6 @@ pub(super) fn feature_sorting_stage(
     }
 
     Ok(())
-}
-
-/// Check if UV coordinates wrap (go outside [0,1] range)
-fn has_wrapping_uvs(uv_coords: &[(f64, f64)]) -> bool {
-    uv_coords.iter().any(|(u, v)| {
-        *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0
-    })
 }
 
 struct TileContext {
@@ -257,315 +241,6 @@ fn transform_features(
     Ok(features)
 }
 
-fn encode_metadata<'a>(
-    features: &'a [SlicedFeature],
-    typename: &str,
-    metadata_encoder: &mut reearth_flow_gltf::MetadataEncoder,
-    ctx: &Context,
-) -> Vec<&'a SlicedFeature> {
-    features
-        .iter()
-        .filter(|feature| {
-            let attributes = feature
-                .attributes
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect();
-            let result = metadata_encoder.add_feature(typename, &attributes);
-            if let Err(e) = result {
-                ctx.event_hub
-                    .error_log(None, format!("Failed to add feature with error = {e:?}"));
-                false
-            } else {
-                true
-            }
-        })
-        .collect::<Vec<_>>()
-}
-
-struct TexturePackingContext {
-    max_width: u32,
-    max_height: u32,
-    wrapping_textures: HashSet<String>,
-}
-
-fn prepare_texture_packing(
-    features: &[&SlicedFeature],
-    tile_id: u64,
-    tile_id_conv: &TileIdMethod,
-    packer: &Mutex<AtlasPacker>,
-    texture_size_cache: &TextureSizeCache,
-    limit_texture_resolution: Option<bool>,
-    tile_zoom: u8,
-    tile_y: u32,
-) -> crate::errors::Result<TexturePackingContext> {
-    let generate_texture_id =
-        |z, x, y, feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}");
-
-    let mut max_width = 0;
-    let mut max_height = 0;
-    let mut wrapping_textures: HashSet<String> = HashSet::new();
-
-    // Load all textures into the Packer (only non-wrapping ones)
-    for (feature_id, feature) in features.iter().enumerate() {
-        for (poly_count, (mat, poly)) in feature
-            .polygons
-            .iter()
-            .zip_eq(feature.polygon_material_ids.iter())
-            .map(move |(poly, orig_mat_id)| {
-                (feature.materials[*orig_mat_id as usize].clone(), poly)
-            })
-            .enumerate()
-        {
-            let t = mat.base_texture.clone();
-            if let Some(base_texture) = t {
-                let original_vertices = poly
-                    .raw_coords()
-                    .iter()
-                    .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                    .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-                let uv_coords = original_vertices
-                    .iter()
-                    .map(|(_, _, _, u, v)| (*u, *v))
-                    .collect::<Vec<(f64, f64)>>();
-
-                let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
-                let texture_id = generate_texture_id(z, x, y, feature_id, poly_count);
-
-                // Check if this texture has wrapping UVs
-                if has_wrapping_uvs(&uv_coords) {
-                    wrapping_textures.insert(texture_id);
-                    continue; // Skip atlas packing for wrapping textures
-                }
-
-                let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
-                    crate::errors::SinkError::cesium3dtiles_writer(
-                        "Failed to convert texture URI to file path",
-                    )
-                })?;
-                let texture_size = texture_size_cache.get_or_insert(&texture_uri);
-
-                let downsample_scale = if limit_texture_resolution.unwrap_or(false) {
-                    get_texture_downsample_scale_of_polygon(
-                        &original_vertices,
-                        texture_size,
-                    ) as f32
-                } else {
-                    1.0
-                };
-
-                let geom_error = tiling::geometric_error(tile_zoom, tile_y);
-                let factor = apply_downsample_factor(geom_error, downsample_scale as f32);
-                let downsample_factor = DownsampleFactor::new(&factor);
-                let cropped_texture = PolygonMappedTexture::new(
-                    &texture_uri,
-                    texture_size,
-                    &uv_coords,
-                    downsample_factor,
-                );
-
-                let scaled_width = (texture_size.0 as f32 * factor) as u32;
-                let scaled_height = (texture_size.1 as f32 * factor) as u32;
-
-                max_width = max_width.max(scaled_width);
-                max_height = max_height.max(scaled_height);
-
-                packer
-                    .lock()
-                    .map_err(|_| {
-                        crate::errors::SinkError::cesium3dtiles_writer(
-                            "Failed to lock the texture packer",
-                        )
-                    })?
-                    .add_texture(texture_id, cropped_texture);
-            }
-        }
-    }
-
-    Ok(TexturePackingContext {
-        max_width: max_width.next_power_of_two(),
-        max_height: max_height.next_power_of_two(),
-        wrapping_textures,
-    })
-}
-
-fn process_geometry_and_triangulate(
-    features: &[&SlicedFeature],
-    tile_id: u64,
-    tile_id_conv: &TileIdMethod,
-    packed: &PackedAtlasProvider,
-    wrapping_textures: &HashSet<String>,
-    atlas_dir: &Path,
-    ext: &str,
-    primitives: &mut reearth_flow_gltf::Primitives,
-    vertices: &mut IndexSet<[u32; 9], RandomState>,
-) -> crate::errors::Result<()> {
-    let generate_texture_id =
-        |z, x, y, feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}");
-
-    for (feature_id, feature) in features.iter().enumerate() {
-        for (poly_count, (mut mat, mut poly)) in feature
-            .polygons
-            .iter()
-            .zip_eq(feature.polygon_material_ids.iter())
-            .map(move |(poly, orig_mat_id)| {
-                (feature.materials[*orig_mat_id as usize].clone(), poly)
-            })
-            .enumerate()
-        {
-            let original_vertices = poly
-                .raw_coords()
-                .iter()
-                .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-            let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
-            let texture_id = generate_texture_id(z, x, y, feature_id, poly_count);
-
-            // Check if this is a wrapping texture
-            if wrapping_textures.contains(&texture_id) {
-                // For wrapping textures, keep the original UVs and use the original texture directly
-                // No need to transform UVs or update material - use as-is
-                // The material already has the correct texture URI from the feature
-            } else if let Some(info) = packed.get_texture_info(&texture_id) {
-                // Place the texture in the atlas (non-wrapping textures only)
-                let atlas_placed_uv_coords = info
-                    .placed_uv_coords
-                    .iter()
-                    .map(|(u, v)| ({ *u }, { *v }))
-                    .collect::<Vec<(f64, f64)>>();
-                let updated_vertices = original_vertices
-                    .iter()
-                    .zip(atlas_placed_uv_coords.iter())
-                    .map(|((x, y, z, _, _), (u, v))| (*x, *y, *z, *u, *v))
-                    .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-                // Apply the UV coordinates placed in the atlas to the original polygon
-                poly.transform_inplace(|&[x, y, z, _, _]| {
-                    let (u, v) = updated_vertices
-                        .iter()
-                        .find(|(x_, y_, z_, _, _)| {
-                            (*x_ - x).abs() < 1e-6
-                                && (*y_ - y).abs() < 1e-6
-                                && (*z_ - z).abs() < 1e-6
-                        })
-                        .map(|(_, _, _, u, v)| (*u, *v))
-                        .unwrap();
-                    [x, y, z, u, v]
-                });
-
-                let atlas_file_name = info.atlas_id.to_string();
-
-                let atlas_uri = atlas_dir
-                    .join(z.to_string())
-                    .join(x.to_string())
-                    .join(y.to_string())
-                    .join(atlas_file_name)
-                    .with_extension(ext);
-
-                // update material
-                mat = material::Material {
-                    base_color: mat.base_color,
-                    base_texture: Some(material::Texture {
-                        uri: Url::from_file_path(atlas_uri).map_err(|_| {
-                            crate::errors::SinkError::cesium3dtiles_writer(
-                                "Failed to convert atlas URI to URL",
-                            )
-                        })?,
-                    }),
-                };
-            }
-
-            let primitive = primitives.entry(mat).or_default();
-            primitive.feature_ids.insert(feature_id as u32);
-
-            if let Some((nx, ny, nz)) =
-                calculate_normal(poly.exterior().iter().map(|v| [v[0], v[1], v[2]]))
-            {
-                let num_outer_points = match poly.hole_indices().first() {
-                    Some(&v) => v as usize,
-                    None => poly.raw_coords().len(),
-                };
-                let mut earcutter = Earcut::new();
-                let mut buf3d: Vec<[f64; 3]> = Vec::new();
-                let mut buf2d: Vec<[f64; 2]> = Vec::new();
-                let mut index_buf: Vec<u32> = Vec::new();
-
-                buf3d.clear();
-                buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
-
-                if project3d_to_2d(&buf3d, num_outer_points, &mut buf2d) {
-                    // earcut
-                    earcutter.earcut(
-                        buf2d.iter().cloned(),
-                        poly.hole_indices(),
-                        &mut index_buf,
-                    );
-
-                    // collect triangles
-                    primitive.indices.extend(index_buf.iter().map(|&idx| {
-                        let [x, y, z, u, v] = poly.raw_coords()[idx as usize];
-                        let vbits = [
-                            (x as f32).to_bits(),
-                            (y as f32).to_bits(),
-                            (z as f32).to_bits(),
-                            (nx as f32).to_bits(),
-                            (ny as f32).to_bits(),
-                            (nz as f32).to_bits(),
-                            (u as f32).to_bits(),
-                            // flip the texture v-coordinate
-                            ((1.0 - v) as f32).to_bits(),
-                            (feature_id as f32).to_bits(), // UNSIGNED_INT can't be used for vertex attribute
-                        ];
-                        let (index, _) = vertices.insert_full(vbits);
-                        index as u32
-                    }));
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn write_gltf_to_storage(
-    ctx: &Context,
-    output_path: &Uri,
-    content_path: &str,
-    translation: [f64; 3],
-    vertices: IndexSet<[u32; 9], RandomState>,
-    primitives: reearth_flow_gltf::Primitives,
-    num_features: usize,
-    metadata_encoder: reearth_flow_gltf::MetadataEncoder,
-    draco_compression: bool,
-) -> crate::errors::Result<()> {
-    let mut buffer = Vec::new();
-    let writer = BufWriter::new(&mut buffer);
-
-    reearth_flow_gltf::write_gltf_glb(
-        writer,
-        Some(translation),
-        vertices,
-        primitives,
-        num_features,
-        metadata_encoder,
-        draco_compression,
-    )
-    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-
-    let storage = ctx
-        .storage_resolver
-        .resolve(output_path)
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-    let output_file_path = output_path.path().join(Path::new(content_path));
-    storage
-        .put_sync(Path::new(&output_file_path), bytes::Bytes::from(buffer))
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-
-    Ok(())
-}
-
 pub(super) fn tile_writing_stage(
     ctx: Context,
     output_path: Uri,
@@ -607,26 +282,40 @@ pub(super) fn tile_writing_stage(
             let features = transform_features(feats, &mut tile_ctx.content, tile_ctx.translation)?;
 
             // Encode metadata and filter valid features
-            let valid_features = encode_metadata(&features, &typename, &mut metadata_encoder, &ctx);
+            let valid_features = encode_metadata(&features, &typename, &mut metadata_encoder);
 
             // Prepare texture packing
+            let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
+            let geom_error = tiling::geometric_error(tile_zoom, tile_y);
+
             let packer = Mutex::new(AtlasPacker::default());
-            let packing_ctx = prepare_texture_packing(
+
+            let geom_error_opt = if limit_texture_resolution.unwrap_or(false) {
+                Some(geom_error)
+            } else {
+                None
+            };
+
+            let wrapping_textures = load_textures_into_packer(
                 &valid_features,
-                tile_id,
-                &tile_id_conv,
                 &packer,
                 &texture_size_cache,
-                limit_texture_resolution,
-                tile_zoom,
-                tile_y,
+                &|feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
+                geom_error_opt,
+            )?;
+
+            let (max_width, max_height) = compute_max_texture_size(
+                &valid_features,
+                &texture_size_cache,
+                &|feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
+                &wrapping_textures,
+                geom_error_opt,
             )?;
 
             // Initialize texture packer config
-            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
             let config = TexturePlacerConfig {
-                width: packing_ctx.max_width.max(1024),
-                height: packing_ctx.max_height.max(1024),
+                width: max_width.max(1024),
+                height: max_height.max(1024),
                 padding: 0,
             };
 
@@ -642,20 +331,24 @@ pub(super) fn tile_writing_stage(
             let ext = exporter.clone().get_extension().to_string();
 
             // Process geometry and triangulate
-            process_geometry_and_triangulate(
+            process_geometry_with_atlas(
                 &valid_features,
-                tile_id,
-                &tile_id_conv,
                 &packed,
-                &packing_ctx.wrapping_textures,
-                &atlas_dir,
+                &wrapping_textures,
                 &ext,
+                |feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
+                |atlas_id| {
+                    atlas_dir
+                        .join(z.to_string())
+                        .join(x.to_string())
+                        .join(y.to_string())
+                        .join(atlas_id.to_string())
+                },
                 &mut primitives,
                 &mut vertices,
             )?;
 
             // Export atlas textures
-            let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
             let atlas_path = atlas_dir
                 .join(z.to_string())
                 .join(x.to_string())
@@ -674,17 +367,28 @@ pub(super) fn tile_writing_stage(
             let content_path = tile_ctx.content.content_path.clone();
             contents.lock().unwrap().push(tile_ctx.content);
 
-            write_gltf_to_storage(
-                &ctx,
-                &output_path,
-                &content_path,
-                tile_ctx.translation,
+            let mut buffer = Vec::new();
+            let writer = BufWriter::new(&mut buffer);
+
+            reearth_flow_gltf::write_gltf_glb(
+                writer,
+                Some(tile_ctx.translation),
                 vertices,
                 primitives,
                 valid_features.len(),
                 metadata_encoder,
                 draco_compression,
-            )?;
+            )
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+
+            let storage = ctx
+                .storage_resolver
+                .resolve(&output_path)
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            let output_file_path = output_path.path().join(Path::new(&content_path));
+            storage
+                .put_sync(Path::new(&output_file_path), bytes::Bytes::from(buffer))
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
             Ok::<(), crate::errors::SinkError>(())
         })?;
