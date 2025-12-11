@@ -108,7 +108,9 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "lastTriggered",
               name: t("Last Triggered"),
-              value: selectedTrigger.lastTriggered ?? t("Never"),
+              value: selectedTrigger.lastTriggered
+                ? formatTimestamp(selectedTrigger.lastTriggered)
+                : t("Never"),
             },
             {
               id: "createdAt",
