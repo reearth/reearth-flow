@@ -168,9 +168,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               <div className="mt-2 flex flex-row items-center gap-2">
                 <Switch
                   checked={isTriggerEnabled}
-                  onCheckedChange={() => {
-                    handleTriggerEnable(!isTriggerEnabled);
-                  }}
+                  onCheckedChange={handleTriggerEnable}
                 />
                 <span className="text-sm text-muted-foreground">
                   {isTriggerEnabled ? t("Yes") : t("No")}

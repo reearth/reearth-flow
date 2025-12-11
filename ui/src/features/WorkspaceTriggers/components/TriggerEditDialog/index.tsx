@@ -150,9 +150,7 @@ const TriggerEditDialog: React.FC<Props> = ({
             <div className="mt-2 flex flex-row items-center gap-2">
               <Switch
                 checked={updatedIsTriggerEnabled}
-                onCheckedChange={() => {
-                  handleTriggerEnableChange(!updatedIsTriggerEnabled);
-                }}
+                onCheckedChange={handleTriggerEnableChange}
               />
               <span className="text-sm text-muted-foreground">
                 {updatedIsTriggerEnabled ? t("Yes") : t("No")}
