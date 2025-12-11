@@ -48,13 +48,15 @@ graphs:
         action: GeometryPartExtractor
 
       # Step 2: CsmapReprojector equivalent - using horizontal reprojector for coordinate transformation
+      # EPSG:4326 (WGS84 Geographic - latitude/longitude in degrees)
+      # EPSG:6677 (JGD2011 Japan Plane Rectangular CS IX - X/Y in meters)
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
         name: HorizontalReprojector
         type: action
         action: HorizontalReprojector
         with:
-          sourceEpsgCode: 4326
-          targetEpsgCode: 4326  # Adjust as needed
+          sourceEpsgCode: 6677  
+          targetEpsgCode: 6677 
 
       # Step 3: GeometryExtractor - extracts geometry to attribute
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
@@ -62,7 +64,7 @@ graphs:
         type: action
         action: GeometryExtractor
         with:
-          outputAttribute: extracted_geometry
+          outputAttribute: _geometry
 
       # Step 4: GeometryCoercer - coerces geometry type (using Polygon to LineString as example)
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
@@ -70,10 +72,10 @@ graphs:
         type: action
         action: GeometryCoercer
         with:
-          targetType: lineString
+          targetType: triangularMesh
 
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
-        name: SolarEnergyResultCsvWriter
+        name: SolarEnergyResultWriter
         type: action
         action: NoopSink
 
