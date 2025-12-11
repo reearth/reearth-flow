@@ -12,6 +12,19 @@ services:
     networks:
       - reearth-flow-net
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: subscriber-jaeger
+    restart: always
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - reearth-flow-net
+
   log-subscriber:
     build:
       context: ../..
@@ -20,6 +33,7 @@ services:
     restart: always
     depends_on:
       - redis
+      - jaeger
     networks:
       - reearth-flow-net
     environment:
@@ -31,3 +45,6 @@ services:
       - REEARTH_FLOW_SUBSCRIBER_PORT=${REEARTH_FLOW_SUBSCRIBER_PORT}
       - REEARTH_FLOW_SUBSCRIBER_REDIS_URL=${REEARTH_FLOW_SUBSCRIBER_REDIS_URL}
       - REEARTH_FLOW_SUBSCRIBER_DB=${REEARTH_FLOW_SUBSCRIBER_DB}
+      - REEARTH_FLOW_SUBSCRIBER_OTEL_ENABLED=${REEARTH_FLOW_SUBSCRIBER_OTEL_ENABLED:-false}
+      - REEARTH_FLOW_SUBSCRIBER_OTEL_EXPORTER_OTLP_ENDPOINT=${REEARTH_FLOW_SUBSCRIBER_OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4317}
+      - REEARTH_FLOW_SUBSCRIBER_OTEL_EXPORTER_OTLP_INSECURE=${REEARTH_FLOW_SUBSCRIBER_OTEL_EXPORTER_OTLP_INSECURE:-true}

@@ -5,6 +5,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use thiserror::Error;
 
+use crate::scene::Transform;
+
 #[derive(Error, Debug)]
 pub enum GltfReaderError {
     #[error("GLTF parsing error: {0}")]
@@ -104,10 +106,11 @@ async fn load_external_buffer(
     Ok(content.to_vec())
 }
 
-/// Read Vec3 positions from an accessor
-pub fn read_positions(
+/// Read Vec3 positions from an accessor with optional transform
+pub fn read_positions_with_transform(
     accessor: &gltf::Accessor,
     buffer_data: &[Vec<u8>],
+    transform: Option<&Transform>,
 ) -> Result<Vec<Coordinate>, GltfReaderError> {
     let view = accessor.view().ok_or_else(|| {
         GltfReaderError::Accessor("Position accessor has no buffer view".to_string())
@@ -133,11 +136,18 @@ pub fn read_positions(
                 let y = read_f32(buffer, offset + 4)?;
                 let z = read_f32(buffer, offset + 8)?;
 
-                positions.push(Coordinate {
+                let mut coord = Coordinate {
                     x: x as f64,
                     y: y as f64,
                     z: z as f64,
-                });
+                };
+
+                // Apply transform if provided
+                if let Some(t) = transform {
+                    coord = t.apply(&coord);
+                }
+
+                positions.push(coord);
             }
         }
         _ => {
@@ -149,6 +159,14 @@ pub fn read_positions(
     }
 
     Ok(positions)
+}
+
+/// Read Vec3 positions from an accessor (backwards compatible, no transform)
+pub fn read_positions(
+    accessor: &gltf::Accessor,
+    buffer_data: &[Vec<u8>],
+) -> Result<Vec<Coordinate>, GltfReaderError> {
+    read_positions_with_transform(accessor, buffer_data, None)
 }
 
 /// Read triangle indices from an accessor (supports U8, U16, U32)
@@ -201,7 +219,7 @@ pub fn read_indices(
     Ok(indices)
 }
 
-pub fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
+pub(crate) fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
     let bytes = buffer
         .get(offset..offset + 4)
         .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
@@ -211,7 +229,7 @@ pub fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
     Ok(f32::from_le_bytes(array))
 }
 
-pub fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
+pub(crate) fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
     let bytes = buffer
         .get(offset..offset + 2)
         .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
@@ -221,7 +239,7 @@ pub fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
     Ok(u16::from_le_bytes(array))
 }
 
-pub fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderError> {
+pub(crate) fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderError> {
     let bytes = buffer
         .get(offset..offset + 4)
         .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;

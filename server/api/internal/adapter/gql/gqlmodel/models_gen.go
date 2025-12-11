@@ -250,6 +250,14 @@ type DeleteProjectPayload struct {
 	ProjectID ID `json:"projectId"`
 }
 
+type DeleteWorkerConfigInput struct {
+	WorkspaceID ID `json:"workspaceId"`
+}
+
+type DeleteWorkerConfigPayload struct {
+	WorkspaceID ID `json:"workspaceId"`
+}
+
 type DeleteWorkspaceInput struct {
 	WorkspaceID ID `json:"workspaceId"`
 }
@@ -654,6 +662,24 @@ type UpdateTriggerInput struct {
 	Variables       []*VariableInput `json:"variables,omitempty"`
 }
 
+type UpdateWorkerConfigInput struct {
+	WorkspaceID                     ID      `json:"workspaceId"`
+	MachineType                     *string `json:"machineType,omitempty"`
+	ComputeCPUMilli                 *int    `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib                *int    `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb                  *int    `json:"bootDiskSizeGB,omitempty"`
+	TaskCount                       *int    `json:"taskCount,omitempty"`
+	MaxConcurrency                  *int    `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize                  *int    `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize               *int    `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold           *int    `json:"featureFlushThreshold,omitempty"`
+	NodeStatusPropagationDelayMilli *int    `json:"nodeStatusPropagationDelayMilli,omitempty"`
+}
+
+type UpdateWorkerConfigPayload struct {
+	Config *WorkerConfig `json:"config"`
+}
+
 type UpdateWorkspaceInput struct {
 	WorkspaceID ID     `json:"workspaceId"`
 	Name        string `json:"name"`
@@ -702,6 +728,22 @@ type VariableInput struct {
 	Key   string        `json:"key"`
 	Type  ParameterType `json:"type"`
 	Value any           `json:"value"`
+}
+
+type WorkerConfig struct {
+	ID                              ID        `json:"id"`
+	MachineType                     *string   `json:"machineType,omitempty"`
+	ComputeCPUMilli                 *int      `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib                *int      `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb                  *int      `json:"bootDiskSizeGB,omitempty"`
+	TaskCount                       *int      `json:"taskCount,omitempty"`
+	MaxConcurrency                  *int      `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize                  *int      `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize               *int      `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold           *int      `json:"featureFlushThreshold,omitempty"`
+	NodeStatusPropagationDelayMilli *int      `json:"nodeStatusPropagationDelayMilli,omitempty"`
+	CreatedAt                       time.Time `json:"createdAt"`
+	UpdatedAt                       time.Time `json:"updatedAt"`
 }
 
 type Workspace struct {

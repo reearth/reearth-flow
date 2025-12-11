@@ -31,6 +31,7 @@ use super::{
     GeoFloat,
 };
 
+// Mesh centroid weighted by 3D area (NOT volume)
 pub trait Centroid {
     type Output;
 

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { Trigger } from "@flow/types";
+import type { Trigger, Variable } from "@flow/types";
 import {
   OrderDirection,
   type PaginationOptions,
@@ -11,8 +11,9 @@ import type {
   ApiDriverInput,
   TimeDriverInput,
   UpdateTriggerInput,
+  VariableInput,
 } from "../__gen__/graphql";
-import { toTrigger } from "../convert";
+import { toGqlParameterType, toTrigger } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum TriggerQueryKeys {
@@ -20,6 +21,18 @@ export enum TriggerQueryKeys {
 }
 
 export const TRIGGERS_FETCH_RATE = 15;
+
+const toGqlVariableInput = (
+  variables: Variable[],
+): VariableInput[] | undefined => {
+  return variables
+    .map((variable) => {
+      const type = toGqlParameterType(variable.type);
+      if (type === undefined) return undefined;
+      return { ...variable, type };
+    })
+    .filter(isDefined);
+};
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -39,7 +52,7 @@ export const useQueries = () => {
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
       description: string;
-      variables?: Record<string, any>;
+      variables?: Variable[];
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -48,7 +61,7 @@ export const useQueries = () => {
           timeDriverInput,
           apiDriverInput,
           description,
-          variables,
+          variables: variables ? toGqlVariableInput(variables) : undefined,
         },
       });
 
@@ -77,14 +90,14 @@ export const useQueries = () => {
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
       description?: string;
-      variables?: Record<string, any>;
+      variables?: Variable[];
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,
         apiDriverInput,
         timeDriverInput,
         description,
-        variables,
+        variables: variables ? toGqlVariableInput(variables) : undefined,
       };
 
       const data = await graphQLContext?.UpdateTrigger({
