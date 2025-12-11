@@ -22,6 +22,7 @@ pub struct TilesetInfo {
 pub struct DetailLevel {
     pub(crate) multipolygon: MultiPolygon3D<f64>,
     pub(crate) geometric_error: f64,
+    pub(crate) has_texture: bool,
 }
 
 /// Find top-level 3D Tiles directories (directories containing tileset.json)
@@ -269,6 +270,13 @@ impl GeometryCollector {
         let indices = read_indices(&indices, buffer_data)
             .map_err(|e| format!("Failed to read indices: {}", e))?;
 
+        // Check if material has any textures
+        let has_material_texture = primitive
+            .material()
+            .pbr_metallic_roughness()
+            .base_color_texture()
+            .is_some();
+
         self.split_by_feature(
             feature_ids,
             positions,
@@ -276,6 +284,7 @@ impl GeometryCollector {
             feature_list,
             glb_path,
             geometric_error,
+            has_material_texture,
         )?;
         Ok(())
     }
@@ -288,6 +297,7 @@ impl GeometryCollector {
         feature_list: &[(String, serde_json::Map<String, Value>)],
         glb_path: &Path,
         geometric_error: f64,
+        has_material_texture: bool,
     ) -> Result<(), String> {
         let mut feature_polygons: HashMap<u32, Vec<Polygon3D<f64>>> = HashMap::new();
 
@@ -326,7 +336,12 @@ impl GeometryCollector {
 
         for (feature_id, polygons) in feature_polygons {
             let gml_id = Self::lookup_gml_id(feature_id, feature_list, glb_path)?;
-            self.store_geometry(gml_id, MultiPolygon3D::new(polygons), geometric_error);
+            self.store_geometry(
+                gml_id,
+                MultiPolygon3D::new(polygons),
+                geometric_error,
+                has_material_texture,
+            );
         }
 
         Ok(())
@@ -353,6 +368,7 @@ impl GeometryCollector {
         gml_id: String,
         multipolygon: MultiPolygon3D<f64>,
         geometric_error: f64,
+        has_material_texture: bool,
     ) {
         let entry = self.result.entry(gml_id).or_default();
 
@@ -360,6 +376,7 @@ impl GeometryCollector {
         entry.push(DetailLevel {
             multipolygon,
             geometric_error,
+            has_texture: has_material_texture,
         });
     }
 }
