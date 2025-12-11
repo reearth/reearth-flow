@@ -1,4 +1,5 @@
 import { ApiResponse } from "./api";
+import { JobStatus } from "./job";
 import type { Workspace } from "./workspace";
 
 export type Me = {
@@ -53,4 +54,11 @@ export type AwarenessUser = {
     startedAt: number;
     status: string;
   };
+};
+
+export type UserDebugRun = {
+  projectId: string;
+  jobId: string;
+  startedAt: number;
+  status: JobStatus;
 };
