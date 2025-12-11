@@ -68,7 +68,7 @@ func TestTrigger_Create(t *testing.T) {
 		Description:  "Daily trigger",
 		EventSource:  "TIME_DRIVEN",
 		TimeInterval: "EVERY_DAY",
-		Enabled:      lo.ToPtr(true),
+		Enabled:      true,
 		Variables:    testVars,
 	}
 
@@ -91,7 +91,7 @@ func TestTrigger_Create(t *testing.T) {
 		Description:  "API trigger",
 		EventSource:  "API_DRIVEN",
 		AuthToken:    "token123",
-		Enabled:      lo.ToPtr(false),
+		Enabled:      false,
 		Variables:    testVars,
 	}
 
