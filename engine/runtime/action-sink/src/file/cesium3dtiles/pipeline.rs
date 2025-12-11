@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     convert::Infallible,
     fs,
     hash::RandomState,
@@ -142,6 +143,13 @@ pub(super) fn feature_sorting_stage(
     }
 
     Ok(())
+}
+
+/// Check if UV coordinates wrap (go outside [0,1] range)
+fn has_wrapping_uvs(uv_coords: &[(f64, f64)]) -> bool {
+    uv_coords.iter().any(|(u, v)| {
+        *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0
+    })
 }
 
 pub(super) fn tile_writing_stage(
@@ -297,7 +305,10 @@ pub(super) fn tile_writing_stage(
             let mut max_width = 0;
             let mut max_height = 0;
 
-            // Load all textures into the Packer
+            // Track which textures have wrapping UVs
+            let mut wrapping_textures: HashSet<String> = HashSet::new();
+
+            // Load all textures into the Packer (only non-wrapping ones)
             for (feature_id, feature) in features.iter().enumerate() {
                 for (poly_count, (mat, poly)) in feature
                     .polygons
@@ -321,6 +332,15 @@ pub(super) fn tile_writing_stage(
                             .iter()
                             .map(|(_, _, _, u, v)| (*u, *v))
                             .collect::<Vec<(f64, f64)>>();
+
+                        let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
+                        let texture_id = generate_texture_id(z, x, y, feature_id, poly_count);
+
+                        // Check if this texture has wrapping UVs
+                        if has_wrapping_uvs(&uv_coords) {
+                            wrapping_textures.insert(texture_id);
+                            continue; // Skip atlas packing for wrapping textures
+                        }
 
                         let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
                             crate::errors::SinkError::cesium3dtiles_writer(
@@ -353,10 +373,6 @@ pub(super) fn tile_writing_stage(
 
                         max_width = max_width.max(scaled_width);
                         max_height = max_height.max(scaled_height);
-
-                        // Unique id required for placement in atlas
-                        let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
-                        let texture_id = generate_texture_id(z, x, y, feature_id, poly_count);
 
                         packer
                             .lock()
@@ -413,8 +429,13 @@ pub(super) fn tile_writing_stage(
                     let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
                     let texture_id = generate_texture_id(z, x, y, feature_id, poly_count);
 
-                    if let Some(info) = packed.get_texture_info(&texture_id) {
-                        // Place the texture in the atlas
+                    // Check if this is a wrapping texture
+                    if wrapping_textures.contains(&texture_id) {
+                        // For wrapping textures, keep the original UVs and use the original texture directly
+                        // No need to transform UVs or update material - use as-is
+                        // The material already has the correct texture URI from the feature
+                    } else if let Some(info) = packed.get_texture_info(&texture_id) {
+                        // Place the texture in the atlas (non-wrapping textures only)
                         let atlas_placed_uv_coords = info
                             .placed_uv_coords
                             .iter()

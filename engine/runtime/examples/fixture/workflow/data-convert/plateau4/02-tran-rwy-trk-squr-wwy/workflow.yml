@@ -170,7 +170,7 @@ graphs:
         with:
           minZoom: 15
           maxZoom: 18
-          attachTexture: false
+          attachTexture: true
           dracoCompression: false
           skipUnexposedAttributes: true
           output: |
