@@ -83,6 +83,11 @@ export default [
   graphqlConfig,
   tailwindConfig,
   {
-    ignores: ["coverage/*", "src/lib/gql/__gen__", "src/routeTree.gen.ts"],
+    ignores: [
+      "coverage/*",
+      "src/lib/gql/__gen__",
+      "src/routeTree.gen.ts",
+      "CLAUDE.md",
+    ],
   },
 ];
