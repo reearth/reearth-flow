@@ -21,80 +21,20 @@ pub fn has_wrapping_uvs(uv_coords: &[(f64, f64)]) -> bool {
     })
 }
 
-pub fn compute_max_texture_size<F>(
-    features: &[&GltfFeature],
-    texture_size_cache: &TextureSizeCache,
-    texture_id_generator: &F,
-    wrapping_textures: &HashSet<String>,
-    geom_error: Option<f64>,
-) -> crate::errors::Result<(u32, u32)>
-where
-    F: Fn(usize, usize) -> String,
-{
-    let mut max_width = 0;
-    let mut max_height = 0;
-    for (feature_id, feature) in features.iter().enumerate() {
-        for (poly_count, (mat, poly)) in feature
-            .polygons
-            .iter()
-            .zip_eq(feature.polygon_material_ids.iter())
-            .map(move |(poly, orig_mat_id)| {
-                (feature.materials[*orig_mat_id as usize].clone(), poly)
-            })
-            .enumerate()
-        {
-            if let Some(base_texture) = mat.base_texture {
-                let texture_id = texture_id_generator(feature_id, poly_count);
-
-                // Skip wrapping textures
-                if wrapping_textures.contains(&texture_id) {
-                    continue;
-                }
-
-                let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
-                    crate::errors::SinkError::GltfWriter(
-                        "Failed to convert texture URI to file path".to_string(),
-                    )
-                })?;
-                let texture_size = texture_size_cache.get_or_insert(&texture_uri);
-
-                let factor = if let Some(geom_error) = geom_error {
-                    let original_vertices = poly
-                        .raw_coords()
-                        .iter()
-                        .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                        .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-                    let downsample_scale = reearth_flow_common::texture::get_texture_downsample_scale_of_polygon(
-                        &original_vertices,
-                        texture_size,
-                    ) as f32;
-                    reearth_flow_common::texture::apply_downsample_factor(geom_error, downsample_scale)
-                } else {
-                    1.0
-                };
-
-                let scaled_width = (texture_size.0 as f32 * factor) as u32;
-                let scaled_height = (texture_size.1 as f32 * factor) as u32;
-
-                max_width = max_width.max(scaled_width);
-                max_height = max_height.max(scaled_height);
-            }
-        }
-    }
-    Ok((max_width.next_power_of_two(), max_height.next_power_of_two()))
-}
-
 pub fn load_textures_into_packer<F>(
     features: &[&GltfFeature],
     packer: &Mutex<AtlasPacker>,
     texture_size_cache: &TextureSizeCache,
     texture_id_generator: &F,
-    geom_error: Option<f64>,
-) -> crate::errors::Result<HashSet<String>>
+    geom_error: f64,
+    limit_texture_resolution: bool,
+) -> crate::errors::Result<(u32, u32, HashSet<String>)>
 where
     F: Fn(usize, usize) -> String,
 {
     let mut wrapping_textures = HashSet::new();
+    let mut max_width = 0;
+    let mut max_height = 0;
 
     for (feature_id, feature) in features.iter().enumerate() {
         for (poly_count, (mat, poly)) in feature
@@ -133,17 +73,17 @@ where
                 })?;
                 let texture_size = texture_size_cache.get_or_insert(&texture_uri);
 
-                let downsample_scale = if let Some(geom_error) = geom_error {
-                    let downsample_scale = reearth_flow_common::texture::get_texture_downsample_scale_of_polygon(
+                let downsample_scale = if limit_texture_resolution {
+                    reearth_flow_common::texture::get_texture_downsample_scale_of_polygon(
                         &original_vertices,
                         texture_size,
-                    ) as f32;
-                    reearth_flow_common::texture::apply_downsample_factor(geom_error, downsample_scale)
+                    ) as f32
                 } else {
                     1.0
                 };
 
-                let downsample_factor = DownsampleFactor::new(&downsample_scale);
+                let factor = reearth_flow_common::texture::apply_downsample_factor(geom_error, downsample_scale);
+                let downsample_factor = DownsampleFactor::new(&factor);
 
                 let texture = PolygonMappedTexture::new(
                     &texture_uri,
@@ -151,6 +91,13 @@ where
                     &uv_coords,
                     downsample_factor,
                 );
+
+                // Track the full texture size after downsampling (like main branch)
+                let scaled_width = (texture_size.0 as f32 * factor) as u32;
+                let scaled_height = (texture_size.1 as f32 * factor) as u32;
+
+                max_width = max_width.max(scaled_width);
+                max_height = max_height.max(scaled_height);
 
                 packer.lock().map_err(|_| {
                     crate::errors::SinkError::GltfWriter(
@@ -161,7 +108,10 @@ where
         }
     }
 
-    Ok(wrapping_textures)
+    let max_width = max_width.next_power_of_two();
+    let max_height = max_height.next_power_of_two();
+
+    Ok((max_width, max_height, wrapping_textures))
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
