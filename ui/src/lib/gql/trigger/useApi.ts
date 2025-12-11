@@ -29,7 +29,7 @@ export const useTrigger = () => {
     workspaceId: string,
     deploymentId: string,
     description: string,
-    enabled?: boolean | null,
+    enabled: boolean,
     timeInterval?: TimeInterval,
     authToken?: string,
     variables?: Variable[],

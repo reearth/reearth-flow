@@ -38,7 +38,7 @@ export type Trigger = {
   timeInterval?: TimeInterval;
   description?: string;
   variables: Variable[];
-  enabled?: boolean | null;
+  enabled: boolean;
 };
 
 export type GetTriggers = {

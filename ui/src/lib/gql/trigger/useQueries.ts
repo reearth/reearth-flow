@@ -51,7 +51,7 @@ export const useQueries = () => {
       workspaceId: string;
       deploymentId: string;
       description: string;
-      enabled?: boolean | null;
+      enabled: boolean;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
       variables?: Variable[];

@@ -257,7 +257,7 @@ export type CreateTriggerInput = {
   apiDriverInput?: InputMaybe<ApiDriverInput>;
   deploymentId: Scalars['ID']['input'];
   description: Scalars['String']['input'];
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  enabled: Scalars['Boolean']['input'];
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   variables?: InputMaybe<Array<VariableInput>>;
   workspaceId: Scalars['ID']['input'];
@@ -1225,7 +1225,7 @@ export type Trigger = Node & {
   deployment: Deployment;
   deploymentId: Scalars['ID']['output'];
   description: Scalars['String']['output'];
-  enabled?: Maybe<Scalars['Boolean']['output']>;
+  enabled: Scalars['Boolean']['output'];
   eventSource: EventSourceType;
   id: Scalars['ID']['output'];
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
@@ -1687,7 +1687,7 @@ export type DeploymentFragment = { __typename?: 'Deployment', id: string, projec
 
 export type VariableFragment = { __typename?: 'Variable', key: string, type: ParameterType, value: any } & { ' $fragmentName'?: 'VariableFragment' };
 
-export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled?: boolean | null, deployment: (
+export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: (
     { __typename?: 'Deployment' }
     & { ' $fragmentRefs'?: { 'DeploymentFragment': DeploymentFragment } }
   ), variables: Array<(
