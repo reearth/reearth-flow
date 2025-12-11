@@ -33,7 +33,7 @@ func TestRedisStorage_SaveUserFacingLogToRedis(t *testing.T) {
 	expectedVal := `{"workflowId":"wf-123","jobId":"job-456","timestamp":"2025-01-11T09:12:54.487779Z","level":"INFO","nodeName":"test-node","nodeId":"node-123","message":"Test user-facing log message"}`
 
 	mClient.
-		On("Set", ctx, expectedKey, expectedVal, 12*time.Hour).
+		On("Set", mock.Anything, expectedKey, expectedVal, 12*time.Hour).
 		Return(nil)
 
 	err := rStorage.SaveUserFacingLogToRedis(ctx, event)
