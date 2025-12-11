@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -19,8 +20,12 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
+  const [detailsFeature, setDetailsFeature] = useState<any>(null);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
-  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
+    null,
+  );
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -158,8 +163,7 @@ export default () => {
             return;
           }
 
-          const featureId =
-            selectedFeature.id || selectedFeature.properties?._originalId;
+          const featureId = selectedFeature.id;
           if (!featureId) {
             console.warn("No feature ID found for Cesium zoom");
             return;
@@ -212,7 +216,7 @@ export default () => {
                 const entityProps = entity.properties?.getValue();
                 if (entityProps) {
                   // Check if this entity has original GeoJSON feature data
-                  const originalId = entityProps._originalId || entityProps.id;
+                  const originalId = entityProps.id;
                   if (
                     originalId === featureId ||
                     JSON.stringify(originalId) === JSON.stringify(featureId)
@@ -403,22 +407,72 @@ export default () => {
     [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
+  const formattedData = useDataColumnizer({
+    parsedData: selectedOutputData,
+    type: fileType,
+  });
+
+  const featureIdMap = useMemo(() => {
+    if (!formattedData.tableData) return null;
+
+    const map = new Map<string | number, any>();
+    formattedData.tableData.forEach((row: any) => {
+      const id = row.id;
+      if (id !== null && id !== undefined) {
+        map.set(id, row);
+      }
+    });
+    return map;
+  }, [formattedData.tableData]);
+
+  // Derive selectedFeature from selectedFeatureId
+  const selectedFeature = useMemo(() => {
+    if (!selectedFeatureId || !featureIdMap) return null;
+    return featureIdMap.get(selectedFeatureId);
+  }, [selectedFeatureId, featureIdMap]);
+
+  const handleFeatureSelect = useCallback(
+    (featureId: string | null) => {
+      if (selectedFeatureId !== featureId) {
+        setSelectedFeatureId(featureId);
+        if (detailsOverlayOpen && featureId) {
+          const matchingRow = featureIdMap?.get(JSON.stringify(featureId));
+          setDetailsFeature(matchingRow);
+        }
+      }
+    },
+    [featureIdMap, selectedFeatureId, detailsOverlayOpen],
+  );
+
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      setSelectedFeature(value);
+      handleFeatureSelect(value?.id ?? null);
     },
-    [setSelectedFeature],
+    [handleFeatureSelect],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      setSelectedFeature(value);
+      handleFeatureSelect(value?.id ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
+      const matchingRow = featureIdMap?.get(value?.id);
+      setDetailsFeature(matchingRow);
+      setDetailsOverlayOpen(true);
     },
-    [convertedSelectedFeature, handleFlyToSelectedFeature, setSelectedFeature],
+    [
+      convertedSelectedFeature,
+      featureIdMap,
+      handleFlyToSelectedFeature,
+      handleFeatureSelect,
+    ],
   );
+
+  const handleCloseFeatureDetails = useCallback(() => {
+    setDetailsOverlayOpen(false);
+    setDetailsFeature(null);
+  }, []);
 
   return {
     debugJobId,
@@ -435,7 +489,11 @@ export default () => {
     selectedOutputData,
     // enableClustering,
     selectedFeature,
-    setSelectedFeature,
+    selectedFeatureId,
+    detailsOverlayOpen,
+    detailsFeature,
+    formattedData,
+    handleFeatureSelect,
     setConvertedSelectedFeature,
     // setEnableClustering,
     handleFullscreenExpand,
@@ -446,6 +504,7 @@ export default () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    handleCloseFeatureDetails,
 
     // Data loading features (always available now)
     streamingQuery: streamingQuery,
@@ -454,5 +513,6 @@ export default () => {
     visualizerType: streamingQuery.visualizerType,
     totalFeatures: streamingQuery.totalFeatures,
     isComplete: streamingQuery.isComplete,
+    isLoadingData: streamingQuery.isLoading || streamingQuery.isStreaming,
   };
 };

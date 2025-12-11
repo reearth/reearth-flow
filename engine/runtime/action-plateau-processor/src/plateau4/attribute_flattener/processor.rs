@@ -951,15 +951,13 @@ mod tests {
         let mut flattener = AttributeFlattener::default();
         let result = flattener.flatten_feature(feature).unwrap();
 
-        // Verify date types - core:creationDate is parsed as DateTime
+        // Verify date types - core:creationDate is parsed as String
         let creation_date = result.get("core:creationDate");
         match creation_date {
-            Some(AttributeValue::DateTime(dt)) => {
-                let datetime_str = dt.to_string();
-                assert!(
-                    datetime_str.starts_with("2025-03-14"),
-                    "core:creationDate should be 2025-03-14, got {}",
-                    datetime_str
+            Some(AttributeValue::String(dt)) => {
+                assert_eq!(
+                    dt, "2025-03-14",
+                    "core:creationDate should be 2025-03-14, got {dt}",
                 );
             }
             _ => panic!(
