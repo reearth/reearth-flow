@@ -103,6 +103,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		Deployment(param.DeploymentID).
 		Description(param.Description).
 		EventSource(param.EventSource).
+		Enabled(param.Enabled).
 		CreatedAt(time.Now()).
 		UpdatedAt(time.Now())
 
@@ -110,12 +111,6 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
 	} else if param.EventSource == "API_DRIVEN" {
 		t = t.AuthToken(param.AuthToken)
-	}
-
-	if param.Enabled != nil {
-		t = t.Enabled(*param.Enabled)
-	} else {
-		t = t.Enabled(true)
 	}
 
 	if len(param.Variables) > 0 {
@@ -238,7 +233,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
-		// return nil, interfaces.ErrJobCreationFailed
+		return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
