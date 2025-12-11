@@ -29,11 +29,11 @@ use tempfile::tempdir;
 
 use super::tiling::{TileContent, TileTree};
 use super::{
-    slice::{slice_to_tiles, SlicedFeature},
+    slice::slice_to_tiles,
     tiling,
 };
 use crate::file::mvt::tileid::TileIdMethod;
-use crate::atlas::{compute_max_texture_size, load_textures_into_packer, process_geometry_with_atlas, encode_metadata};
+use crate::atlas::{load_textures_into_packer, process_geometry_with_atlas, encode_metadata, GltfFeature};
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
@@ -196,12 +196,12 @@ fn transform_features(
     feats: Vec<Vec<u8>>,
     content: &mut TileContent,
     translation: [f64; 3],
-) -> crate::errors::Result<Vec<SlicedFeature>> {
+) -> crate::errors::Result<Vec<GltfFeature>> {
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let mut features = Vec::new();
 
     for serialized_feat in feats.into_iter() {
-        let mut feature: SlicedFeature = serde_json::from_slice(&serialized_feat)
+        let mut feature: GltfFeature = serde_json::from_slice(&serialized_feat)
             .map_err(|e| {
                 crate::errors::SinkError::cesium3dtiles_writer(format!(
                     "Failed to decode_from_slice with {e:?}"
@@ -290,29 +290,18 @@ pub(super) fn tile_writing_stage(
 
             let packer = Mutex::new(AtlasPacker::default());
 
-            let geom_error_opt = if limit_texture_resolution.unwrap_or(false) {
-                Some(geom_error)
-            } else {
-                None
-            };
-
-            let wrapping_textures = load_textures_into_packer(
+            let (max_width, max_height, wrapping_textures) = load_textures_into_packer(
                 &valid_features,
                 &packer,
                 &texture_size_cache,
                 &|feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
-                geom_error_opt,
+                geom_error,
+                limit_texture_resolution.unwrap_or(false),
             )?;
-
-            let (max_width, max_height) = compute_max_texture_size(
-                &valid_features,
-                &texture_size_cache,
-                &|feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
-                &wrapping_textures,
-                geom_error_opt,
-            )?;
+                eprintln!("max texture size for atlas: {}x{}", max_width, max_height);
 
             // Initialize texture packer config
+            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
             let config = TexturePlacerConfig {
                 width: max_width.max(1024),
                 height: max_height.max(1024),

@@ -30,7 +30,7 @@ use serde_json::Value;
 use tempfile::tempdir;
 
 use crate::errors::SinkError;
-use crate::atlas::{compute_max_texture_size, load_textures_into_packer, process_geometry_with_atlas, encode_metadata};
+use crate::atlas::{load_textures_into_packer, process_geometry_with_atlas, encode_metadata};
 use crate::atlas::GltfFeature as ClassFeature;
 
 #[derive(Debug, Clone, Default)]
@@ -239,22 +239,17 @@ impl Sink for GltfWriter {
                     &mut metadata_encoder,
                 );
 
-                let wrapping_textures = load_textures_into_packer(
+                let (max_width, max_height, wrapping_textures) = load_textures_into_packer(
                     &filtered_features,
                     &packer,
                     &texture_size_cache,
                     &|feature_id, poly_count| generate_texture_id(&base_name, feature_id, poly_count),
-                    None,
+                    1.0, // geom_error (dummy value for non-tiled output)
+                    false, // limit_texture_resolution (no downsampling for gltf)
                 )?;
 
-                let (max_width, max_height) = compute_max_texture_size(
-                    &filtered_features,
-                    &texture_size_cache,
-                    &|feature_id, poly_count| generate_texture_id(&base_name, feature_id, poly_count),
-                    &wrapping_textures,
-                    None,
-                )?;
-
+                // initialize texture packer
+                // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 8192
                 let config = TexturePlacerConfig {
                     width: max_width.max(8192),
                     height: max_height.max(8192),
