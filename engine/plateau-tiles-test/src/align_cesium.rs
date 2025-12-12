@@ -1,6 +1,4 @@
-use reearth_flow_geometry::types::{
-    multi_polygon::MultiPolygon3D, polygon::Polygon3D,
-};
+use reearth_flow_geometry::types::{multi_polygon::MultiPolygon3D, polygon::Polygon3D};
 use reearth_flow_gltf::{
     extract_feature_properties, parse_gltf, read_indices, read_mesh_features,
     read_positions_with_transform, traverse_scene, Transform,
