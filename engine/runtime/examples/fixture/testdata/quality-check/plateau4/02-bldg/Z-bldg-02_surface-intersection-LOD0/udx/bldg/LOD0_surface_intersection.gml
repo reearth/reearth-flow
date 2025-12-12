@@ -35,11 +35,11 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList srsDimension="3">
-                    0.0 0.0 0.0
-                    0.0 10.0 0.0
-                    10.0 10.0 0.0
-                    10.0 0.0 0.0
-                    0.0 0.0 0.0
+                    36.64710 137.05268 0.0
+                    36.64710 137.05269 0.0
+                    36.64711 137.05269 0.0
+                    36.64711 137.05268 0.0
+                    36.64710 137.05268 0.0
                   </gml:posList>
                 </gml:LinearRing>
               </gml:exterior>
@@ -67,11 +67,11 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList srsDimension="3">
-                    5.0 5.0 0.0
-                    5.0 15.0 0.0
-                    15.0 15.0 0.0
-                    15.0 5.0 0.0
-                    5.0 5.0 0.0
+                    36.647105 137.052685 0.0
+                    36.647105 137.052695 0.0
+                    36.647115 137.052695 0.0
+                    36.647115 137.052685 0.0
+                    36.647105 137.052685 0.0
                   </gml:posList>
                 </gml:LinearRing>
               </gml:exterior>
@@ -81,5 +81,179 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
       </bldg:lod0FootPrint>
     </bldg:Building>
   </core:cityObjectMember>
+
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_288a3c78-02e5-11f0-9fc6-18ece7a5508c">
+			<core:creationDate>2025-03-21</core:creationDate>
+			<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
+			<bldg:usage codeSpace="../../codelists/Building_usage.xml">461</bldg:usage>
+			<bldg:yearOfConstruction>0001</bldg:yearOfConstruction>
+			<bldg:measuredHeight uom="m">8.6</bldg:measuredHeight>
+			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+			<bldg:lod0RoofEdge>
+				<gml:MultiSurface>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>36.7655869703195 137.04986376040506 0 36.76567755034583 137.04987258408738 0 36.765691660393756 137.04964954436613 0 36.76560108035156 137.04964072094467 0 36.7655869703195 137.04986376040506 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</bldg:lod0RoofEdge>
+			<bldg:lod1Solid>
+				<gml:Solid>
+					<gml:exterior>
+						<gml:CompositeSurface>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.7655869703195 137.04986376040506 4.05827 36.76560108035156 137.04964072094467 4.05827 36.765691660393756 137.04964954436613 4.05827 36.76567755034583 137.04987258408738 4.05827 36.7655869703195 137.04986376040506 4.05827</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.7655869703195 137.04986376040506 4.05827 36.76567755034583 137.04987258408738 4.05827 36.76567755034583 137.04987258408738 11.32386 36.7655869703195 137.04986376040506 11.32386 36.7655869703195 137.04986376040506 4.05827</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.76567755034583 137.04987258408738 4.05827 36.765691660393756 137.04964954436613 4.05827 36.765691660393756 137.04964954436613 11.32386 36.76567755034583 137.04987258408738 11.32386 36.76567755034583 137.04987258408738 4.05827</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.765691660393756 137.04964954436613 4.05827 36.76560108035156 137.04964072094467 4.05827 36.76560108035156 137.04964072094467 11.32386 36.765691660393756 137.04964954436613 11.32386 36.765691660393756 137.04964954436613 4.05827</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.76560108035156 137.04964072094467 4.05827 36.7655869703195 137.04986376040506 4.05827 36.7655869703195 137.04986376040506 11.32386 36.76560108035156 137.04964072094467 11.32386 36.76560108035156 137.04964072094467 4.05827</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.7655869703195 137.04986376040506 11.32386 36.76567755034583 137.04987258408738 11.32386 36.765691660393756 137.04964954436613 11.32386 36.76560108035156 137.04964072094467 11.32386 36.7655869703195 137.04986376040506 11.32386</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:CompositeSurface>
+					</gml:exterior>
+				</gml:Solid>
+			</bldg:lod1Solid>
+		</bldg:Building>
+	</core:cityObjectMember>
+
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_289196ee-02e5-11f0-acf6-18ece7a5508c">
+			<core:creationDate>2025-03-21</core:creationDate>
+			<bldg:class codeSpace="../../codelists/Building_class.xml">3003</bldg:class>
+			<bldg:usage codeSpace="../../codelists/Building_usage.xml">461</bldg:usage>
+			<bldg:yearOfConstruction>0001</bldg:yearOfConstruction>
+			<bldg:measuredHeight uom="m">8.6</bldg:measuredHeight>
+			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+			<bldg:lod0RoofEdge>
+				<gml:MultiSurface>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>36.7655869703195 137.04986376040506 0 36.76560108035156 137.04964072094467 0 36.76537494565953 137.04961866200117 0 36.76536083566718 137.04984170081053 0 36.7655869703195 137.04986376040506 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</bldg:lod0RoofEdge>
+			<bldg:lod1Solid>
+				<gml:Solid>
+					<gml:exterior>
+						<gml:CompositeSurface>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.7655869703195 137.04986376040506 4.04258 36.76536083566718 137.04984170081053 4.04258 36.76537494565953 137.04961866200117 4.04258 36.76560108035156 137.04964072094467 4.04258 36.7655869703195 137.04986376040506 4.04258</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.7655869703195 137.04986376040506 4.04258 36.76560108035156 137.04964072094467 4.04258 36.76560108035156 137.04964072094467 10.7051 36.7655869703195 137.04986376040506 10.7051 36.7655869703195 137.04986376040506 4.04258</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.76560108035156 137.04964072094467 4.04258 36.76537494565953 137.04961866200117 4.04258 36.76537494565953 137.04961866200117 10.7051 36.76560108035156 137.04964072094467 10.7051 36.76560108035156 137.04964072094467 4.04258</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.76537494565953 137.04961866200117 4.04258 36.76536083566718 137.04984170081053 4.04258 36.76536083566718 137.04984170081053 10.7051 36.76537494565953 137.04961866200117 10.7051 36.76537494565953 137.04961866200117 4.04258</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.76536083566718 137.04984170081053 4.04258 36.7655869703195 137.04986376040506 4.04258 36.7655869703195 137.04986376040506 10.7051 36.76536083566718 137.04984170081053 10.7051 36.76536083566718 137.04984170081053 4.04258</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.7655869703195 137.04986376040506 10.7051 36.76560108035156 137.04964072094467 10.7051 36.76537494565953 137.04961866200117 10.7051 36.76536083566718 137.04984170081053 10.7051 36.7655869703195 137.04986376040506 10.7051</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:CompositeSurface>
+					</gml:exterior>
+				</gml:Solid>
+			</bldg:lod1Solid>
+		</bldg:Building>
+	</core:cityObjectMember>
 
 </core:CityModel>

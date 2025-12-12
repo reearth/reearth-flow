@@ -48,7 +48,8 @@ where
     Z: GeoNum,
 {
     fn intersects(&self, rect: &Rect<T, Z>) -> bool {
-        self.intersects(&rect.to_polygon())
+        unimplemented!()
+        // self.intersects(&rect.to_polygon())
     }
 }
 symmetric_intersects_impl!(Rect<T, Z>, Polygon<T, Z>);

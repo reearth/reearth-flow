@@ -6134,6 +6134,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "petgraph 0.6.5",
+ "proj",
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",

@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::polygon;
 
 use super::{
-    conversion::geojson::create_from_rect_type,
     coordinate::{Coordinate, Coordinate2D, Coordinate3D},
     coordnum::{CoordFloat, CoordNum, CoordNumT},
     no_value::NoValue,
@@ -87,18 +86,6 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
         self.max().z - self.min().z
     }
 
-    pub fn to_polygon(self) -> Polygon<T, Z> {
-        polygon![
-            (x: self.min.x, y: self.min.y, z: self.min.z),
-            (x: self.min.x, y: self.max.y, z: self.min.z),
-            (x: self.max.x, y: self.max.y, z: self.min.z),
-            (x: self.max.x, y: self.max.y, z: self.max.z),
-            (x: self.max.x, y: self.min.y, z: self.max.z),
-            (x: self.min.x, y: self.max.y, z: self.max.z),
-            (x: self.min.x, y: self.min.y, z: self.max.z),
-        ]
-    }
-
     pub fn merge(self, other: Self) -> Self {
         let min_x = if self.min.x < other.min.x {
             self.min.x
@@ -148,6 +135,18 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
     }
 }
 
+impl<T: CoordNum> Rect2D<T> {
+    pub fn to_polygon(&self) -> Polygon<T, NoValue> {
+        polygon![
+            (x: self.min.x, y: self.min.y),
+            (x: self.max.x, y: self.min.y),
+            (x: self.max.x, y: self.max.y),
+            (x: self.min.x, y: self.max.y),
+            (x: self.min.x, y: self.min.y),
+        ]
+    }
+}
+
 impl<T: CoordNum + Bounded + RTreeNum> RTreeObject for Rect2D<T> {
     type Envelope = AABB<[T; 2]>;
 
@@ -172,13 +171,47 @@ impl From<Rect2D<f64>> for Vec<NaPoint2<f64>> {
 impl From<Rect3D<f64>> for Vec<NaPoint3<f64>> {
     #[inline]
     fn from(p: Rect3D<f64>) -> Vec<NaPoint3<f64>> {
-        let result = p
-            .to_polygon()
-            .rings()
+        let points = [
+            Coordinate3D {
+                x: p.min.x,
+                y: p.min.y,
+                z: p.min.z,
+            },
+            Coordinate3D {
+                x: p.min.x,
+                y: p.max.y,
+                z: p.min.z,
+            },
+            Coordinate3D {
+                x: p.max.x,
+                y: p.max.y,
+                z: p.min.z,
+            },
+            Coordinate3D {
+                x: p.max.x,
+                y: p.max.y,
+                z: p.max.z,
+            },
+            Coordinate3D {
+                x: p.max.x,
+                y: p.min.y,
+                z: p.max.z,
+            },
+            Coordinate3D {
+                x: p.min.x,
+                y: p.max.y,
+                z: p.max.z,
+            },
+            Coordinate3D {
+                x: p.min.x,
+                y: p.min.y,
+                z: p.max.z,
+            },
+        ];
+        points
             .into_iter()
             .map(|c| c.into())
-            .collect::<Vec<Vec<NaPoint3<f64>>>>();
-        result.into_iter().flatten().collect()
+            .collect::<Vec<NaPoint3<f64>>>()
     }
 }
 
@@ -207,13 +240,6 @@ impl<T: CoordFloat + CoordNumT> Rect3D<T> {
             (self.max.y + self.min.y) / two,
             (self.max.z + self.min.z) / two,
         )
-    }
-}
-
-impl<T: CoordFloat, Z: CoordFloat> From<Rect<T, Z>> for geojson::Value {
-    fn from(rect: Rect<T, Z>) -> Self {
-        let coords = create_from_rect_type(&rect);
-        geojson::Value::Polygon(coords)
     }
 }
 
