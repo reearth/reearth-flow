@@ -519,18 +519,33 @@ export default ({
           if (!hasMultipleIO && incomers.length > 0 && outgoers.length > 0) {
             incomers.forEach((incomer) => {
               outgoers.forEach((outgoer) => {
-                // Each disabled node creates its own bypass edge, even if it's a duplicate
-                // This ensures when nodes are re-enabled independently, the correct bypass edges remain
-                const bypassEdgeId = generateUUID();
-                bypassEdgeIds.push(bypassEdgeId);
-                edgeChanges.push({
-                  type: "add",
-                  item: {
-                    id: bypassEdgeId,
-                    source: incomer.id,
-                    target: outgoer.id,
-                  },
-                });
+                // Check if a bypass edge with this source and target already exists
+                const existingEdge = edges.find(
+                  (e) => e.source === incomer.id && e.target === outgoer.id,
+                );
+                const pendingEdge = edgeChanges.find(
+                  (change) =>
+                    change.type === "add" &&
+                    change.item.source === incomer.id &&
+                    change.item.target === outgoer.id,
+                );
+
+                if (!existingEdge && !pendingEdge) {
+                  // Only create bypass edge if it doesn't already exist
+                  const bypassEdgeId = generateUUID();
+                  bypassEdgeIds.push(bypassEdgeId);
+                  edgeChanges.push({
+                    type: "add",
+                    item: {
+                      id: bypassEdgeId,
+                      source: incomer.id,
+                      target: outgoer.id,
+                    },
+                  });
+                } else if (existingEdge) {
+                  // Track existing edge so we can remove it when re-enabling
+                  bypassEdgeIds.push(existingEdge.id);
+                }
               });
             });
           }
@@ -554,11 +569,86 @@ export default ({
               }
             });
           }
+
+          // Check if any connected nodes are still disabled and create bypass edges if needed
+          const directOutgoers = getOutgoers(node, nodes, edges);
+          const directIncomers = getIncomers(node, nodes, edges);
+          const stillDisabledOutgoers = directOutgoers.filter(
+            (outgoer) => outgoer.data?.isDisabled,
+          );
+          const stillDisabledIncomers = directIncomers.filter(
+            (incomer) => incomer.data?.isDisabled,
+          );
+
+          const newBypassEdgeIds: string[] = [];
+
+          // Check if node has multiple I/O
+          const hasMultipleIO =
+            (node.data.outputs && node.data.outputs.length > 1) ||
+            (node.data.inputs && node.data.inputs.length > 1);
+
+          // If any outgoers are still disabled, create bypass edges to skip them
+          if (!hasMultipleIO && stillDisabledOutgoers.length > 0) {
+            // Find enabled nodes beyond the disabled ones
+            const enabledOutgoers = findEnabledOutgoers(node);
+
+            if (enabledOutgoers.length > 0) {
+              // Create bypass edges from this newly enabled node to enabled nodes ahead
+              // Check for duplicates before creating
+              enabledOutgoers.forEach((outgoer) => {
+                const edgeExists = edges.some(
+                  (e) => e.source === node.id && e.target === outgoer.id,
+                );
+                if (!edgeExists) {
+                  const bypassEdgeId = generateUUID();
+                  newBypassEdgeIds.push(bypassEdgeId);
+                  edgeChanges.push({
+                    type: "add",
+                    item: {
+                      id: bypassEdgeId,
+                      source: node.id,
+                      target: outgoer.id,
+                    },
+                  });
+                }
+              });
+            }
+          }
+
+          // If any incomers are still disabled, create bypass edges from enabled nodes before them
+          if (!hasMultipleIO && stillDisabledIncomers.length > 0) {
+            // Find enabled nodes before the disabled ones
+            const enabledIncomers = findEnabledIncomers(node);
+
+            if (enabledIncomers.length > 0) {
+              // Create bypass edges from enabled nodes behind to this newly enabled node
+              // Check for duplicates before creating
+              enabledIncomers.forEach((incomer) => {
+                const edgeExists = edges.some(
+                  (e) => e.source === incomer.id && e.target === node.id,
+                );
+                if (!edgeExists) {
+                  const bypassEdgeId = generateUUID();
+                  newBypassEdgeIds.push(bypassEdgeId);
+                  edgeChanges.push({
+                    type: "add",
+                    item: {
+                      id: bypassEdgeId,
+                      source: incomer.id,
+                      target: node.id,
+                    },
+                  });
+                }
+              });
+            }
+          }
+
           nodesToUpdate.push({
             nodeId: node.id,
             isDisabled: false,
             disabledEdges: undefined,
-            bypassEdgeIds: undefined,
+            bypassEdgeIds:
+              newBypassEdgeIds.length > 0 ? newBypassEdgeIds : undefined,
           });
         }
       });
@@ -579,6 +669,8 @@ export default ({
     },
     [handleSpotlightUserDeselect],
   );
+
+  console.log("EDGEs:", edges);
 
   return {
     currentWorkflowId,
