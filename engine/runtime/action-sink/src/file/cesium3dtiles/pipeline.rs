@@ -9,11 +9,9 @@ use std::{
     },
 };
 
-use ahash::RandomState;
 use atlas_packer::{
-    export::{AtlasExporter as _, WebpAtlasExporter},
+    export::WebpAtlasExporter,
     pack::AtlasPacker,
-    place::{GuillotineTexturePlacer, TexturePlacerConfig},
     texture::cache::{TextureCache, TextureSizeCache},
 };
 use bytemuck::Zeroable;
@@ -30,7 +28,7 @@ use tempfile::tempdir;
 use super::tiling::{TileContent, TileTree};
 use super::{slice::slice_to_tiles, tiling};
 use crate::atlas::{
-    encode_metadata, load_textures_into_packer, process_geometry_with_atlas, GltfFeature,
+    encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export, GltfFeature,
 };
 use crate::file::mvt::tileid::TileIdMethod;
 
@@ -268,8 +266,6 @@ pub(super) fn tile_writing_stage(
             // Initialize tile context
             let mut tile_ctx = initialize_tile_context(&tile_id_conv, tile_id, &typename);
 
-            let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
-            let mut primitives: reearth_flow_gltf::Primitives = Default::default();
             let mut metadata_encoder = reearth_flow_gltf::MetadataEncoder::new(schema);
 
             // Transform features
@@ -284,47 +280,13 @@ pub(super) fn tile_writing_stage(
 
             let packer = Mutex::new(AtlasPacker::default());
 
-            let (max_width, max_height, wrapping_textures) = load_textures_into_packer(
+            let (max_width, max_height) = load_textures_into_packer(
                 &valid_features,
                 &packer,
                 &texture_size_cache,
                 &|feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
                 geom_error,
                 limit_texture_resolution.unwrap_or(false),
-            )?;
-
-            // Initialize texture packer config
-            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
-            let config =
-                TexturePlacerConfig::new_padded(max_width.max(1024), max_height.max(1024), 0, 2);
-
-            let placer = GuillotineTexturePlacer::new(config.clone());
-            let packer = packer.into_inner().map_err(|_| {
-                crate::errors::SinkError::cesium3dtiles_writer("Failed to get the texture packer")
-            })?;
-
-            // Pack textures into atlas
-            let packed = packer.pack(placer);
-
-            let exporter = WebpAtlasExporter::default();
-            let ext = exporter.clone().get_extension().to_string();
-
-            // Process geometry and triangulate
-            process_geometry_with_atlas(
-                &valid_features,
-                &packed,
-                &wrapping_textures,
-                &ext,
-                |feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
-                |atlas_id| {
-                    atlas_dir
-                        .join(z.to_string())
-                        .join(x.to_string())
-                        .join(y.to_string())
-                        .join(atlas_id.to_string())
-                },
-                &mut primitives,
-                &mut vertices,
             )?;
 
             // Export atlas textures
@@ -334,13 +296,17 @@ pub(super) fn tile_writing_stage(
                 .join(y.to_string());
             fs::create_dir_all(&atlas_path)
                 .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-            packed.export(
-                exporter,
+
+            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
+            let (primitives, vertices) = process_geometry_with_atlas_export(
+                &valid_features,
+                packer,
+                (max_width.max(1024), max_height.max(1024)),
+                WebpAtlasExporter::default(),
                 &atlas_path,
                 &texture_cache,
-                config.width(),
-                config.height(),
-            );
+                |feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
+            )?;
 
             // Write glTF to storage
             let content_path = tile_ctx.content.content_path.clone();

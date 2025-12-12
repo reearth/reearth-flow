@@ -1,9 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use ahash::RandomState;
+use atlas_packer::export::AtlasExporter;
 use atlas_packer::pack::AtlasPacker;
-use atlas_packer::texture::cache::TextureSizeCache;
+use atlas_packer::place::GuillotineTexturePlacer;
+use atlas_packer::place::TexturePlacerConfig;
+use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
 use atlas_packer::texture::{DownsampleFactor, PolygonMappedTexture};
 use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
@@ -43,11 +46,10 @@ pub fn load_textures_into_packer<F>(
     texture_id_generator: &F,
     geom_error: f64,
     limit_texture_resolution: bool,
-) -> crate::errors::Result<(u32, u32, HashSet<String>)>
+) -> crate::errors::Result<(u32, u32)>
 where
     F: Fn(usize, usize) -> String,
 {
-    let mut wrapping_textures = HashSet::new();
     let mut max_width = 0;
     let mut max_height = 0;
 
@@ -73,13 +75,12 @@ where
                     .map(|(_, _, _, u, v)| (*u, *v))
                     .collect::<Vec<(f64, f64)>>();
 
-                let texture_id = texture_id_generator(feature_id, poly_count);
-
                 // Check if this texture has wrapping UVs
                 if has_wrapping_uvs(&uv_coords) {
-                    wrapping_textures.insert(texture_id);
                     continue; // Skip atlas packing for wrapping textures
                 }
+
+                let texture_id = texture_id_generator(feature_id, poly_count);
 
                 let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
                     crate::errors::SinkError::GltfWriter(
@@ -132,14 +133,12 @@ where
     let max_width = max_width.next_power_of_two();
     let max_height = max_height.next_power_of_two();
 
-    Ok((max_width, max_height, wrapping_textures))
+    Ok((max_width, max_height))
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn process_geometry_with_atlas<F, P>(
     features: &[&GltfFeature],
     packed: &atlas_packer::pack::PackedAtlasProvider,
-    wrapping_textures: &std::collections::HashSet<String>,
     ext: &str,
     texture_id_generator: F,
     atlas_path_builder: P,
@@ -168,12 +167,8 @@ where
 
             let texture_id = texture_id_generator(feature_id, poly_count);
 
-            // Check if this is a wrapping texture
-            if wrapping_textures.contains(&texture_id) {
-                // For wrapping textures, keep the original UVs and use the original texture directly
-                // No need to transform UVs or update material - use as-is
-                // The material already has the correct texture URI from the feature
-            } else if let Some(info) = packed.get_texture_info(&texture_id) {
+            // Transform UVs if texture was packed into atlas
+            if let Some(info) = packed.get_texture_info(&texture_id) {
                 let atlas_placed_uv_coords = info
                     .placed_uv_coords
                     .iter()
@@ -259,6 +254,63 @@ where
     Ok(())
 }
 
+/// Process geometry with atlas packing and export
+/// Combines packing, geometry processing, and atlas export into one function
+pub fn process_geometry_with_atlas_export<F, P, E>(
+    features: &[&GltfFeature],
+    packer: Mutex<AtlasPacker>,
+    dimensions: (u32, u32),
+    exporter: E,
+    atlas_path: P,
+    texture_cache: &TextureCache,
+    texture_id_generator: F,
+) -> Result<(Primitives, IndexSet<[u32; 9], RandomState>), crate::errors::SinkError>
+where
+    F: Fn(usize, usize) -> String,
+    P: AsRef<std::path::Path>,
+    E: AtlasExporter + Clone,
+{
+    let mut primitives: Primitives = Default::default();
+    let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
+
+    let (max_width, max_height) = dimensions;
+
+    // Initialize texture packer config
+    let config = TexturePlacerConfig::new_padded(max_width, max_height, 0, 2);
+
+    let placer = GuillotineTexturePlacer::new(config.clone());
+    let packer = packer.into_inner().map_err(|_| {
+        crate::errors::SinkError::GltfWriter("Failed to unwrap texture packer".to_string())
+    })?;
+
+    // Pack textures into atlas
+    let packed = packer.pack(placer);
+
+    let ext = exporter.clone().get_extension().to_string();
+
+    // Process geometry with atlas
+    process_geometry_with_atlas(
+        features,
+        &packed,
+        &ext,
+        &texture_id_generator,
+        |atlas_id| atlas_path.as_ref().join(atlas_id.to_string()),
+        &mut primitives,
+        &mut vertices,
+    )?;
+
+    // Export atlas textures
+    packed.export(
+        exporter,
+        atlas_path.as_ref(),
+        texture_cache,
+        config.width(),
+        config.height(),
+    );
+
+    Ok((primitives, vertices))
+}
+
 pub fn encode_metadata<'a>(
     features: &'a [GltfFeature],
     typename: &str,
@@ -340,9 +392,12 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let (_, _, wrapping_textures) = result.unwrap();
-        assert_eq!(wrapping_textures.len(), 1);
-        assert!(wrapping_textures.contains("tex_0_0"));
+        // Wrapping textures are not added to the packer
+        let packer = packer.into_inner().unwrap();
+        let placer = GuillotineTexturePlacer::new(Default::default());
+        // Pack textures into atlas
+        let packed = packer.pack(placer);
+        assert!(packed.get_texture_info(&texture_id_gen(0, 0)).is_none());
     }
 
     #[test]
@@ -370,7 +425,7 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let (width, height, _) = result.unwrap();
+        let (width, height) = result.unwrap();
 
         // Max width is 100 -> next power of two = 128
         // Max height is 120 -> next power of two = 128
@@ -400,7 +455,7 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let (width, height, _) = result.unwrap();
+        let (width, height) = result.unwrap();
 
         // extremely large geom_error should lead to maximum downsampling
         assert_eq!(width, 1);

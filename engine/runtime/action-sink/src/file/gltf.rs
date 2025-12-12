@@ -4,10 +4,8 @@ use std::io::BufWriter;
 use std::sync::Mutex;
 use std::{str::FromStr, sync::Arc};
 
-use ahash::RandomState;
-use atlas_packer::export::{AtlasExporter, JpegAtlasExporter};
+use atlas_packer::export::JpegAtlasExporter;
 use atlas_packer::pack::AtlasPacker;
-use atlas_packer::place::{GuillotineTexturePlacer, TexturePlacerConfig};
 use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
 use flatgeom::Polygon3;
 use glam::{DMat4, DVec3, DVec4};
@@ -15,7 +13,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_gltf::{BoundingVolume, MetadataEncoder, Primitives};
+use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -30,7 +28,7 @@ use serde_json::Value;
 use tempfile::tempdir;
 
 use crate::atlas::GltfFeature as ClassFeature;
-use crate::atlas::{encode_metadata, load_textures_into_packer, process_geometry_with_atlas};
+use crate::atlas::{encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export};
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
@@ -209,8 +207,6 @@ impl Sink for GltfWriter {
                 let texture_cache = TextureCache::new(100_000_000);
                 let texture_size_cache = TextureSizeCache::new();
 
-                let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
-                let mut primitives: Primitives = Default::default();
                 let mut metadata_encoder = MetadataEncoder::new(&schema);
 
                 let binding = tempdir().unwrap();
@@ -236,7 +232,7 @@ impl Sink for GltfWriter {
                 let filtered_features =
                     encode_metadata(&transformed_features, typename, &mut metadata_encoder);
 
-                let (max_width, max_height, wrapping_textures) = load_textures_into_packer(
+                let (max_width, max_height) = load_textures_into_packer(
                     &filtered_features,
                     &packer,
                     &texture_size_cache,
@@ -247,40 +243,16 @@ impl Sink for GltfWriter {
                     false, // limit_texture_resolution (no downsampling for gltf)
                 )?;
 
-                // initialize texture packer
                 // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 8192
-                let config = TexturePlacerConfig::new_padded(
-                    max_width.max(8192),
-                    max_height.max(8192),
-                    0,
-                    2,
-                );
-
-                let placer = GuillotineTexturePlacer::new(config.clone());
-                let packer = packer.into_inner().unwrap();
-                let packed = packer.pack(placer);
-
-                let exporter = JpegAtlasExporter::default();
-                let ext = exporter.clone().get_extension().to_string();
-
-                process_geometry_with_atlas(
+                let (primitives, vertices) = process_geometry_with_atlas_export(
                     &filtered_features,
-                    &packed,
-                    &wrapping_textures,
-                    &ext,
-                    |feature_id, poly_count| format!("{base_name}_{feature_id}_{poly_count}"),
-                    |atlas_id| atlas_dir.join(atlas_id.to_string()),
-                    &mut primitives,
-                    &mut vertices,
-                )?;
-
-                packed.export(
-                    exporter,
+                    packer,
+                    (max_width.max(8192), max_height.max(8192)),
+                    JpegAtlasExporter::default(),
                     &atlas_dir,
                     &texture_cache,
-                    config.width(),
-                    config.height(),
-                );
+                    |feature_id, poly_count| format!("{base_name}_{feature_id}_{poly_count}"),
+                )?;
 
                 let file_path = {
                     let filename = format!("{}.glb", typename.replace(':', "_"));
