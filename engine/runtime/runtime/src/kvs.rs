@@ -91,3 +91,7 @@ impl KvStore for MemoryKvStore {
         Box::new(self.clone())
     }
 }
+
+#[cfg(test)]
+#[path = "kvs_test.rs"]
+mod kvs_test;
