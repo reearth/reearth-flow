@@ -1,5 +1,5 @@
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate, multi_polygon::MultiPolygon3D, polygon::Polygon3D,
+    multi_polygon::MultiPolygon3D, polygon::Polygon3D,
 };
 use reearth_flow_gltf::{
     extract_feature_properties, parse_gltf, read_indices, read_mesh_features,
@@ -277,28 +277,7 @@ impl GeometryCollector {
             .base_color_texture()
             .is_some();
 
-        self.split_by_feature(
-            feature_ids,
-            positions,
-            indices,
-            feature_list,
-            glb_path,
-            geometric_error,
-            has_material_texture,
-        )?;
-        Ok(())
-    }
-
-    fn split_by_feature(
-        &mut self,
-        feature_ids: Vec<u32>,
-        positions: Vec<Coordinate>,
-        indices: Vec<usize>,
-        feature_list: &[(String, serde_json::Map<String, Value>)],
-        glb_path: &Path,
-        geometric_error: f64,
-        has_material_texture: bool,
-    ) -> Result<(), String> {
+        // Split triangles by feature ID
         let mut feature_polygons: HashMap<u32, Vec<Polygon3D<f64>>> = HashMap::new();
 
         if !indices.len().is_multiple_of(3) {

@@ -10,7 +10,10 @@ use flatgeom::MultiPolygon;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use reearth_flow_gltf::{calculate_normal, Primitives};
-use reearth_flow_types::{material::{self, Material}, AttributeValue};
+use reearth_flow_types::{
+    material::{self, Material},
+    AttributeValue,
+};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -28,9 +31,9 @@ pub struct GltfFeature {
 
 /// Check if UV coordinates wrap (go outside [0,1] range)
 pub fn has_wrapping_uvs(uv_coords: &[(f64, f64)]) -> bool {
-    uv_coords.iter().any(|(u, v)| {
-        *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0
-    })
+    uv_coords
+        .iter()
+        .any(|(u, v)| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
 }
 
 pub fn load_textures_into_packer<F>(
@@ -94,7 +97,10 @@ where
                     1.0
                 };
 
-                let factor = reearth_flow_common::texture::apply_downsample_factor(geom_error, downsample_scale);
+                let factor = reearth_flow_common::texture::apply_downsample_factor(
+                    geom_error,
+                    downsample_scale,
+                );
                 let downsample_factor = DownsampleFactor::new(&factor);
 
                 let texture = PolygonMappedTexture::new(
@@ -111,11 +117,14 @@ where
                 max_width = max_width.max(scaled_width);
                 max_height = max_height.max(scaled_height);
 
-                packer.lock().map_err(|_| {
-                    crate::errors::SinkError::GltfWriter(
-                        "Failed to lock the texture packer".to_string(),
-                    )
-                })?.add_texture(texture_id, texture);
+                packer
+                    .lock()
+                    .map_err(|_| {
+                        crate::errors::SinkError::GltfWriter(
+                            "Failed to lock the texture packer".to_string(),
+                        )
+                    })?
+                    .add_texture(texture_id, texture);
             }
         }
     }
@@ -126,6 +135,7 @@ where
     Ok((max_width, max_height, wrapping_textures))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn process_geometry_with_atlas<F, P>(
     features: &[&GltfFeature],
     packed: &atlas_packer::pack::PackedAtlasProvider,
@@ -223,11 +233,7 @@ where
                 buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
 
                 if project3d_to_2d(&buf3d, num_outer_points, &mut buf2d) {
-                    earcutter.earcut(
-                        buf2d.iter().cloned(),
-                        poly.hole_indices(),
-                        &mut index_buf,
-                    );
+                    earcutter.earcut(buf2d.iter().cloned(), poly.hole_indices(), &mut index_buf);
 
                     primitive.indices.extend(index_buf.iter().map(|&idx| {
                         let [x, y, z, u, v] = poly.raw_coords()[idx as usize];
