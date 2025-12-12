@@ -61,6 +61,10 @@ pub(super) enum PlateauProcessorError {
     UnsharedEdgeDetectorFactory(String),
     #[error("UnsharedEdgeDetector error: {0}")]
     UnsharedEdgeDetector(String),
+    #[error("DestinationMeshCodeExtractor Factory error: {0}")]
+    DestinationMeshCodeExtractorFactory(String),
+    #[error("DestinationMeshCodeExtractor error: {0}")]
+    DestinationMeshCodeExtractor(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

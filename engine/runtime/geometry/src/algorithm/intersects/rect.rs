@@ -2,7 +2,7 @@ use crate::{
     algorithm::GeoNum,
     types::{
         coordinate::Coordinate, coordnum::CoordNum, line::Line, multi_point::MultiPoint,
-        point::Point, rect::Rect, triangle::Triangle,
+        point::Point, rect::Rect,
     },
 };
 
@@ -80,14 +80,3 @@ where
     }
 }
 symmetric_intersects_impl!(Line<T, Z>, Rect<T, Z>);
-
-impl<T, Z> Intersects<Triangle<T, Z>> for Rect<T, Z>
-where
-    T: GeoNum,
-    Z: GeoNum,
-{
-    fn intersects(&self, rhs: &Triangle<T, Z>) -> bool {
-        self.intersects(&rhs.to_polygon())
-    }
-}
-symmetric_intersects_impl!(Triangle<T, Z>, Rect<T, Z>);

@@ -62,16 +62,6 @@ where
     create_polygon_type(&triangle.to_polygon())
 }
 
-pub(crate) fn create_from_rect_type<T, Z>(
-    rect: &crate::types::rect::Rect<T, Z>,
-) -> geojson::PolygonType
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
-    create_polygon_type(&rect.to_polygon())
-}
-
 pub(crate) fn create_multi_line_string_type<T, Z>(
     multi_line_string: &MultiLineString<T, Z>,
 ) -> Vec<geojson::LineStringType>

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::types::{
@@ -17,7 +17,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Expr, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -285,12 +285,12 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: HorizontalReprojectorParam = if let Some(with) = with {
+        let params: HorizontalReprojectorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::HorizontalReprojectorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -308,11 +308,32 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
             .into());
         };
 
-        // Note: We defer projection creation to runtime when we have the actual geometry's EPSG
-        // This allows us to handle geometries that have EPSG codes embedded in them
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+
+        // Compile source EPSG expression if provided
+        let source_epsg_ast = if let Some(ref source_expr) = params.source_epsg_code {
+            Some(expr_engine.compile(source_expr.as_ref()).map_err(|e| {
+                GeometryProcessorError::HorizontalReprojectorFactory(format!(
+                    "Failed to compile source EPSG expression: {e:?}"
+                ))
+            })?)
+        } else {
+            None
+        };
+
+        // Compile target EPSG expression
+        let target_epsg_ast = expr_engine
+            .compile(params.target_epsg_code.as_ref())
+            .map_err(|e| {
+                GeometryProcessorError::HorizontalReprojectorFactory(format!(
+                    "Failed to compile target EPSG expression: {e:?}"
+                ))
+            })?;
+
         Ok(Box::new(HorizontalReprojector {
-            source_epsg_code: params.source_epsg_code,
-            target_epsg_code: params.target_epsg_code,
+            global_params: with,
+            source_epsg_ast,
+            target_epsg_ast,
         }))
     }
 }
@@ -323,22 +344,24 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
 #[serde(rename_all = "camelCase")]
 pub struct HorizontalReprojectorParam {
     /// # Source EPSG Code
-    /// Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry.
+    /// Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry.
     /// This is optional to maintain backward compatibility but recommended to be explicit.
+    /// Can be a constant value (e.g., "4326") or an expression referencing feature attributes.
     #[serde(default)]
-    source_epsg_code: Option<EpsgCode>,
+    source_epsg_code: Option<Expr>,
 
     /// # Target EPSG Code
-    /// Target coordinate system EPSG code for the reprojection.
-    /// Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).
-    #[serde(alias = "epsgCode")]
-    target_epsg_code: EpsgCode,
+    /// Target coordinate system EPSG code expression for the reprojection.
+    /// Can be a constant value (e.g., "4326" for WGS84, "2193" for NZTM2000, "3857" for Web Mercator)
+    /// or an expression referencing feature attributes.
+    target_epsg_code: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct HorizontalReprojector {
-    source_epsg_code: Option<EpsgCode>,
-    target_epsg_code: EpsgCode,
+    global_params: Option<HashMap<String, serde_json::Value>>,
+    source_epsg_ast: Option<rhai::AST>,
+    target_epsg_ast: rhai::AST,
 }
 
 impl Processor for HorizontalReprojector {
@@ -351,11 +374,25 @@ impl Processor for HorizontalReprojector {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
 
-        // Determine source EPSG: from parameter or from geometry
-        let source_epsg = self.source_epsg_code.or(geometry.epsg).ok_or_else(|| {
+        // Evaluate source EPSG expression if provided
+        let source_epsg_from_expr: Option<EpsgCode> = if let Some(ref ast) = self.source_epsg_ast {
+            let value: i64 = scope.eval_ast(ast).map_err(|e| {
+                GeometryProcessorError::HorizontalReprojector(format!(
+                    "Failed to evaluate source EPSG expression: {e}"
+                ))
+            })?;
+            Some(value as EpsgCode)
+        } else {
+            None
+        };
+
+        // Determine source EPSG: from expression, or from geometry
+        let source_epsg = source_epsg_from_expr.or(geometry.epsg).ok_or_else(|| {
             GeometryProcessorError::HorizontalReprojector(
                 "Source EPSG code not specified and geometry has no EPSG information. \
                 Either set sourceEpsgCode parameter or ensure input geometries have EPSG codes."
@@ -363,9 +400,17 @@ impl Processor for HorizontalReprojector {
             )
         })?;
 
+        // Evaluate target EPSG expression
+        let target_epsg: i64 = scope.eval_ast(&self.target_epsg_ast).map_err(|e| {
+            GeometryProcessorError::HorizontalReprojector(format!(
+                "Failed to evaluate target EPSG expression: {e}"
+            ))
+        })?;
+        let target_epsg = target_epsg as EpsgCode;
+
         // Create projection for this transformation
         let from_crs = format!("EPSG:{source_epsg}");
-        let to_crs = format!("EPSG:{}", self.target_epsg_code);
+        let to_crs = format!("EPSG:{target_epsg}");
 
         let proj_transform = proj::Proj::new_known_crs(&from_crs, &to_crs, None).map_err(|e| {
             GeometryProcessorError::HorizontalReprojector(format!(
@@ -378,20 +423,29 @@ impl Processor for HorizontalReprojector {
                 let mut feature = feature.clone();
                 let transformed = transform_geometry_2d(geom, &proj_transform)?;
                 feature.geometry.value = GeometryValue::FlowGeometry2D(transformed);
-                feature.geometry.epsg = Some(self.target_epsg_code);
+                feature.geometry.epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geom) => {
                 let mut feature = feature.clone();
                 let transformed = transform_geometry_3d(geom, &proj_transform)?;
                 feature.geometry.value = GeometryValue::FlowGeometry3D(transformed);
-                feature.geometry.epsg = Some(self.target_epsg_code);
+                feature.geometry.epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
-            GeometryValue::CityGmlGeometry(_) => {
-                return Err(GeometryProcessorError::HorizontalReprojector(
-                    "CityGML geometry reprojection with PROJ not yet implemented. Use the legacy Japanese-only reprojector for CityGML.".to_string()
-                ).into());
+            GeometryValue::CityGmlGeometry(ref geos) => {
+                let mut feature = feature.clone();
+                let mut transformed_geos = geos.clone();
+                transformed_geos
+                    .transform_horizontal(|x, y| {
+                        proj_transform.convert((x, y)).map_err(|e| {
+                            GeometryProcessorError::HorizontalReprojector(e.to_string())
+                        })
+                    })
+                    .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })?;
+                feature.geometry.value = GeometryValue::CityGmlGeometry(transformed_geos);
+                feature.geometry.epsg = Some(target_epsg);
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))

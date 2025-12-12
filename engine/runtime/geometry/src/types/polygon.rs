@@ -400,6 +400,20 @@ impl Polygon3D<f64> {
             interior.transform_offset(x, y, z);
         }
     }
+
+    /// Transforms the X/Y coordinates of all points using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        self.exterior.transform_horizontal(&transform_fn)?;
+        for interior in &mut self.interiors {
+            interior.transform_horizontal(&transform_fn)?;
+        }
+        Ok(())
+    }
 }
 
 pub fn validate_self_intersection<T: GeoFloat, Z: GeoFloat>(polygon: &Polygon<T, Z>) -> Validation {

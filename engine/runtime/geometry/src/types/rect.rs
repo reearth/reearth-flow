@@ -8,11 +8,12 @@ use serde::{Deserialize, Serialize};
 use crate::polygon;
 
 use super::{
-    conversion::geojson::create_from_rect_type,
     coordinate::{Coordinate, Coordinate2D, Coordinate3D},
     coordnum::{CoordFloat, CoordNum, CoordNumT},
+    multi_polygon::MultiPolygon3D,
     no_value::NoValue,
     polygon::Polygon,
+    polygon::Polygon3D,
     traits::Elevation,
 };
 
@@ -87,18 +88,6 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
         self.max().z - self.min().z
     }
 
-    pub fn to_polygon(self) -> Polygon<T, Z> {
-        polygon![
-            (x: self.min.x, y: self.min.y, z: self.min.z),
-            (x: self.min.x, y: self.max.y, z: self.min.z),
-            (x: self.max.x, y: self.max.y, z: self.min.z),
-            (x: self.max.x, y: self.max.y, z: self.max.z),
-            (x: self.max.x, y: self.min.y, z: self.max.z),
-            (x: self.min.x, y: self.max.y, z: self.max.z),
-            (x: self.min.x, y: self.min.y, z: self.max.z),
-        ]
-    }
-
     pub fn merge(self, other: Self) -> Self {
         let min_x = if self.min.x < other.min.x {
             self.min.x
@@ -148,6 +137,18 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
     }
 }
 
+impl<T: CoordNum> Rect2D<T> {
+    pub fn to_polygon(&self) -> Polygon<T, NoValue> {
+        polygon![
+            (x: self.min.x, y: self.min.y),
+            (x: self.max.x, y: self.min.y),
+            (x: self.max.x, y: self.max.y),
+            (x: self.min.x, y: self.max.y),
+            (x: self.min.x, y: self.min.y),
+        ]
+    }
+}
+
 impl<T: CoordNum + Bounded + RTreeNum> RTreeObject for Rect2D<T> {
     type Envelope = AABB<[T; 2]>;
 
@@ -172,13 +173,47 @@ impl From<Rect2D<f64>> for Vec<NaPoint2<f64>> {
 impl From<Rect3D<f64>> for Vec<NaPoint3<f64>> {
     #[inline]
     fn from(p: Rect3D<f64>) -> Vec<NaPoint3<f64>> {
-        let result = p
-            .to_polygon()
-            .rings()
+        let points = [
+            Coordinate3D {
+                x: p.min.x,
+                y: p.min.y,
+                z: p.min.z,
+            },
+            Coordinate3D {
+                x: p.min.x,
+                y: p.max.y,
+                z: p.min.z,
+            },
+            Coordinate3D {
+                x: p.max.x,
+                y: p.max.y,
+                z: p.min.z,
+            },
+            Coordinate3D {
+                x: p.max.x,
+                y: p.max.y,
+                z: p.max.z,
+            },
+            Coordinate3D {
+                x: p.max.x,
+                y: p.min.y,
+                z: p.max.z,
+            },
+            Coordinate3D {
+                x: p.min.x,
+                y: p.max.y,
+                z: p.max.z,
+            },
+            Coordinate3D {
+                x: p.min.x,
+                y: p.min.y,
+                z: p.max.z,
+            },
+        ];
+        points
             .into_iter()
             .map(|c| c.into())
-            .collect::<Vec<Vec<NaPoint3<f64>>>>();
-        result.into_iter().flatten().collect()
+            .collect::<Vec<NaPoint3<f64>>>()
     }
 }
 
@@ -208,12 +243,28 @@ impl<T: CoordFloat + CoordNumT> Rect3D<T> {
             (self.max.z + self.min.z) / two,
         )
     }
-}
 
-impl<T: CoordFloat, Z: CoordFloat> From<Rect<T, Z>> for geojson::Value {
-    fn from(rect: Rect<T, Z>) -> Self {
-        let coords = create_from_rect_type(&rect);
-        geojson::Value::Polygon(coords)
+    /// Converts the 3D rectangle (axis-aligned bounding box) to a MultiPolygon
+    /// representing its 6 faces.
+    pub fn to_multi_polygon(&self) -> MultiPolygon3D<T> {
+        // Define all 8 vertices of the box
+        let v0 = Coordinate::new__(self.min.x, self.min.y, self.min.z);
+        let v1 = Coordinate::new__(self.max.x, self.min.y, self.min.z);
+        let v2 = Coordinate::new__(self.max.x, self.max.y, self.min.z);
+        let v3 = Coordinate::new__(self.min.x, self.max.y, self.min.z);
+        let v4 = Coordinate::new__(self.min.x, self.min.y, self.max.z);
+        let v5 = Coordinate::new__(self.max.x, self.min.y, self.max.z);
+        let v6 = Coordinate::new__(self.max.x, self.max.y, self.max.z);
+        let v7 = Coordinate::new__(self.min.x, self.max.y, self.max.z);
+
+        let bottom = Polygon3D::new(vec![v0, v1, v2, v3, v0].into(), Vec::new());
+        let top = Polygon3D::new(vec![v4, v7, v6, v5, v4].into(), Vec::new());
+        let front = Polygon3D::new(vec![v0, v4, v5, v1, v0].into(), Vec::new());
+        let back = Polygon3D::new(vec![v3, v2, v6, v7, v3].into(), Vec::new());
+        let left = Polygon3D::new(vec![v0, v3, v7, v4, v0].into(), Vec::new());
+        let right = Polygon3D::new(vec![v1, v5, v6, v2, v1].into(), Vec::new());
+
+        MultiPolygon3D::new(vec![bottom, top, front, back, left, right])
     }
 }
 
