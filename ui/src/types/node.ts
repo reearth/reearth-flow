@@ -26,6 +26,10 @@ export type NodeData = {
   customizations?: NodeCustomizations;
   isCollapsed?: boolean;
   isDisabled?: boolean;
+  // Edges stored when node is disabled, to restore when re-enabled
+  disabledEdges?: { id: string; source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null }[];
+  // Bypass edges created when this node was disabled (to remove on re-enable)
+  bypassEdgeIds?: string[];
   // subworkflow nodes
   subworkflowId?: string;
   pseudoInputs?: PseudoPort[];

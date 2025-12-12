@@ -41,6 +41,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     jobStatus,
     intermediateDataIsSet,
     hasIntermediateData,
+    isDisabledNode,
     handleDoubleClick,
   } = useHooks({
     id,
@@ -53,6 +54,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   return (
     <>
       <BaseEdge id={id} path={edgePath} />
+      {isDisabledNode && <path d={edgePath} stroke="#3f4044" fill="none" />}
       <EdgeLabelRenderer>
         {jobStatus === "failed" && (
           <XIcon
@@ -75,7 +77,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           />
         )}
       </EdgeLabelRenderer>
-      {jobStatus === "completed" && (
+      {jobStatus === "completed" && !isDisabledNode && (
         <path
           className="stroke-success"
           d={edgePath}
@@ -84,10 +86,11 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           markerEnd="url(#arrow)"
         />
       )}
-      {jobStatus === "queued" && (
+
+      {jobStatus === "queued" && !isDisabledNode && (
         <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
       )}
-      {jobStatus === "running" && (
+      {jobStatus === "running" && !isDisabledNode && (
         <>
           <path
             d={edgePath}

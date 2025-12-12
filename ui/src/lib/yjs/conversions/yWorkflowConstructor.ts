@@ -41,6 +41,8 @@ export const yNodeConstructor = (node: Node): YNode => {
       customizations: node.data.customizations,
       isCollapsed: node.data.isCollapsed ?? false,
       isDisabled: node.data.isDisabled ?? false,
+      disabledEdges: node.data.disabledEdges,
+      bypassEdgeIds: node.data.bypassEdgeIds,
       // Subworkflow specific
       subworkflowId:
         node.type === "subworkflow"
