@@ -17,6 +17,8 @@ const TriggerVariableRow: React.FC<Props> = ({
   onDefaultValueChange,
 }) => {
   const t = useT();
+
+  console.log("VARIABLE", variable);
   switch (variable.type) {
     case "array":
       return (
@@ -46,7 +48,7 @@ const TriggerVariableRow: React.FC<Props> = ({
           type="number"
           value={variable.defaultValue}
           onChange={(e) => {
-            onDefaultValueChange(index, e.target.value);
+            onDefaultValueChange(index, parseFloat(e.target.value));
           }}
         />
       );
