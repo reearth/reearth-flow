@@ -81,7 +81,10 @@ graphs:
         name: AreaCalculator
         type: action
         action: AreaCalculator
-        with: {}
+        with: 
+          areaType: "planeArea"
+          outputAttribute: "calculated_area"
+          multiplier: 1.0
 
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
         name: SolarEnergyResultWriter

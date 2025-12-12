@@ -151,6 +151,10 @@ pub(super) enum GeometryProcessorError {
     PolygonNormalExtractorFactory(String),
     #[error("PolygonNormalExtractor error: {0}")]
     PolygonNormalExtractor(String),
+    #[error("AreaCalculator Factory error: {0}")]
+    AreaCalculatorFactory(String),
+    #[error("AreaCalculator error: {0}")]
+    AreaCalculator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
