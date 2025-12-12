@@ -246,44 +246,22 @@ impl<T: CoordFloat + CoordNumT> Rect3D<T> {
 
     /// Converts the 3D rectangle (axis-aligned bounding box) to a MultiPolygon
     /// representing its 6 faces.
-    ///
-    /// The faces are ordered as:
-    /// 1. Bottom face (z = min_z)
-    /// 2. Top face (z = max_z)
-    /// 3. Front face (y = min_y)
-    /// 4. Back face (y = max_y)
-    /// 5. Left face (x = min_x)
-    /// 6. Right face (x = max_x)
     pub fn to_multi_polygon(&self) -> MultiPolygon3D<T> {
         // Define all 8 vertices of the box
-        // Bottom face vertices (z = min_z)
-        let v0 = Coordinate::new__(self.min.x, self.min.y, self.min.z); // front-left-bottom
-        let v1 = Coordinate::new__(self.max.x, self.min.y, self.min.z); // front-right-bottom
-        let v2 = Coordinate::new__(self.max.x, self.max.y, self.min.z); // back-right-bottom
-        let v3 = Coordinate::new__(self.min.x, self.max.y, self.min.z); // back-left-bottom
+        let v0 = Coordinate::new__(self.min.x, self.min.y, self.min.z);
+        let v1 = Coordinate::new__(self.max.x, self.min.y, self.min.z);
+        let v2 = Coordinate::new__(self.max.x, self.max.y, self.min.z);
+        let v3 = Coordinate::new__(self.min.x, self.max.y, self.min.z);
+        let v4 = Coordinate::new__(self.min.x, self.min.y, self.max.z);
+        let v5 = Coordinate::new__(self.max.x, self.min.y, self.max.z);
+        let v6 = Coordinate::new__(self.max.x, self.max.y, self.max.z);
+        let v7 = Coordinate::new__(self.min.x, self.max.y, self.max.z);
 
-        // Top face vertices (z = max_z)
-        let v4 = Coordinate::new__(self.min.x, self.min.y, self.max.z); // front-left-top
-        let v5 = Coordinate::new__(self.max.x, self.min.y, self.max.z); // front-right-top
-        let v6 = Coordinate::new__(self.max.x, self.max.y, self.max.z); // back-right-top
-        let v7 = Coordinate::new__(self.min.x, self.max.y, self.max.z); // back-left-top
-
-        // Bottom face (z = min_z) - outward normal -Z
         let bottom = Polygon3D::new(vec![v0, v1, v2, v3, v0].into(), Vec::new());
-
-        // Top face (z = max_z) - outward normal +Z
         let top = Polygon3D::new(vec![v4, v7, v6, v5, v4].into(), Vec::new());
-
-        // Front face (y = min_y) - outward normal -Y
         let front = Polygon3D::new(vec![v0, v4, v5, v1, v0].into(), Vec::new());
-
-        // Back face (y = max_y) - outward normal +Y
         let back = Polygon3D::new(vec![v3, v2, v6, v7, v3].into(), Vec::new());
-
-        // Left face (x = min_x) - outward normal -X
         let left = Polygon3D::new(vec![v0, v3, v7, v4, v0].into(), Vec::new());
-
-        // Right face (x = max_x) - outward normal +X
         let right = Polygon3D::new(vec![v1, v5, v6, v2, v1].into(), Vec::new());
 
         MultiPolygon3D::new(vec![bottom, top, front, back, left, right])
