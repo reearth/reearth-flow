@@ -273,7 +273,7 @@ impl AreaOnAreaOverlayer {
             }
             glue_vertices_closer_than(self.tolerance, vertices);
 
-            let midpolygons = overlay_2d(polygons);
+            let midpolygons = overlay_2d(polygons, self.tolerance);
 
             let overlaid_features = OverlaidFeatures::from_midpolygons(
                 midpolygons,
@@ -293,7 +293,7 @@ impl AreaOnAreaOverlayer {
     }
 }
 
-fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
+fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>, tolerance: f64) -> Vec<MiddlePolygon> {
     let overlay_graph = OverlayGraph::bulk_load(&polygons);
 
     // all (devided) polygons to output
@@ -322,15 +322,11 @@ fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
                         let intersection = subpolygon.polygon.intersection(&polygons[j]);
 
                         // Filter out tiny intersections that are numerical noise
-                        // Use a relative threshold based on the smaller polygon's area
-                        const MIN_AREA_RATIO: f64 = 1e-6;
+                        // Since we are identifying vertices with distance less than `tolerance`,
+                        // the minimum significant area should be that of the square with side-length `tolerance`.
+                        let min_area = tolerance * tolerance;
                         let intersection_area = intersection.unsigned_area2d();
-                        let min_input_area = subpolygon
-                            .polygon
-                            .unsigned_area2d()
-                            .min(polygons[j].unsigned_area2d());
-                        let is_significant_intersection =
-                            intersection_area > min_input_area * MIN_AREA_RATIO;
+                        let is_significant_intersection = intersection_area > min_area;
 
                         if !intersection.is_empty() && is_significant_intersection {
                             new_queue.push(MiddlePolygon {
@@ -585,7 +581,7 @@ mod tests {
             )]),
         ];
 
-        let midpolygons = overlay_2d(polygons);
+        let midpolygons = overlay_2d(polygons, 0.01);
         assert_eq!(midpolygons.len(), 3);
     }
 
@@ -612,7 +608,7 @@ mod tests {
             )]),
         ];
 
-        let midpolygons = overlay_2d(polygons);
+        let midpolygons = overlay_2d(polygons, 0.01);
         assert_eq!(midpolygons.len(), 2);
     }
 }
