@@ -114,7 +114,7 @@ fn verify_monotonic_geometric_error(
 }
 
 #[derive(Default)]
-struct DetailLevelComparisonResult {
+pub struct DetailLevelComparisonResult {
     gml_id: String,
     bounding_box_error: f64,
     mass_center_error: f64,
@@ -143,12 +143,20 @@ fn compare_detail_level(
     gml_id: &str,
     fme_level: &DetailLevel,
     flow_level: &DetailLevel,
-) -> Result<(), String> {
+) -> Result<DetailLevelComparisonResult, String> {
     let mut result = DetailLevelComparisonResult::new(gml_id.to_string());
     let fme_error = fme_level.geometric_error;
     let fme_geometry = &fme_level.multipolygon;
     let flow_error = flow_level.geometric_error;
     let flow_geometry = &flow_level.multipolygon;
+
+    // compare texture
+    if fme_level.has_texture != flow_level.has_texture {
+        return Err(format!(
+            "gml_id '{}': texture presence mismatch between FME ({}) and Flow ({})",
+            gml_id, fme_level.has_texture, flow_level.has_texture
+        ));
+    }
 
     // compare bounding boxes
     let fme_bbox = fme_geometry
@@ -188,6 +196,5 @@ fn compare_detail_level(
         ));
     }
 
-    tracing::debug!("{}", result);
-    Ok(())
+    Ok(result)
 }

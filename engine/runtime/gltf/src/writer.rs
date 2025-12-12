@@ -202,6 +202,15 @@ pub fn write_gltf_glb<W: Write>(
         .map(|material| material.to_gltf(&mut texture_set))
         .collect();
 
+    // Create a single sampler with proper mipmap filtering
+    let gltf_samplers = vec![nusamai_gltf::nusamai_gltf_json::Sampler {
+        mag_filter: Some(nusamai_gltf::nusamai_gltf_json::MagFilter::Linear),
+        min_filter: Some(nusamai_gltf::nusamai_gltf_json::MinFilter::NearestMipmapLinear),
+        wrap_s: nusamai_gltf::nusamai_gltf_json::WrappingMode::Repeat,
+        wrap_t: nusamai_gltf::nusamai_gltf_json::WrappingMode::Repeat,
+        ..Default::default()
+    }];
+
     let gltf_textures: Vec<_> = texture_set
         .into_iter()
         .map(|t| t.to_gltf(&mut image_set))
@@ -269,6 +278,7 @@ pub fn write_gltf_glb<W: Write>(
         }],
         meshes: gltf_meshes,
         materials: gltf_materials,
+        samplers: gltf_samplers,
         textures: gltf_textures,
         images: gltf_images,
         accessors: gltf_accessors,
