@@ -1,4 +1,5 @@
 import { ApiResponse } from "./api";
+import { JobStatus } from "./job";
 import type { Workspace } from "./workspace";
 
 export type Me = {
@@ -47,4 +48,12 @@ export type AwarenessUser = {
   userName: string;
   currentWorkflowId?: string;
   openWorkflowIds?: string[];
+  debugRun?: UserDebugRun;
+};
+
+export type UserDebugRun = {
+  projectId: string;
+  jobId: string;
+  startedAt: number;
+  status: JobStatus;
 };

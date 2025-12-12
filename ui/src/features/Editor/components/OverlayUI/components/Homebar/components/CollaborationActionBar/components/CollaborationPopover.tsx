@@ -2,7 +2,7 @@ import { ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser } from "@flow/types";
 
-import CollaborationCard from "./CollaborationCard";
+import CollaborationCard from "../../../../Collaboration/CollaborationCard";
 
 type Props = {
   self: AwarenessUser;
