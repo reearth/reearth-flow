@@ -14,7 +14,7 @@ mod tests {
     fn test_storage_resolver_resolve_memory() {
         let resolver = StorageResolver::new();
         let uri = Uri::for_test("ram:///test");
-        
+
         let result = resolver.resolve(&uri);
         assert!(result.is_ok());
     }
@@ -23,10 +23,10 @@ mod tests {
     fn test_storage_resolver_resolve_caching() {
         let resolver = StorageResolver::new();
         let uri = Uri::for_test("ram:///test");
-        
+
         let storage1 = resolver.resolve(&uri).unwrap();
         let storage2 = resolver.resolve(&uri).unwrap();
-        
+
         assert!(Arc::ptr_eq(&storage1, &storage2));
     }
 
@@ -35,10 +35,10 @@ mod tests {
         let resolver = StorageResolver::new();
         let uri1 = Uri::for_test("ram:///test1");
         let uri2 = Uri::for_test("file:///test2");
-        
+
         let storage1 = resolver.resolve(&uri1).unwrap();
         let storage2 = resolver.resolve(&uri2).unwrap();
-        
+
         assert!(!Arc::ptr_eq(&storage1, &storage2));
     }
 
@@ -46,11 +46,11 @@ mod tests {
     fn test_storage_resolver_clone() {
         let resolver1 = StorageResolver::new();
         let resolver2 = resolver1.clone();
-        
+
         let uri = Uri::for_test("ram:///test");
         let storage1 = resolver1.resolve(&uri).unwrap();
         let storage2 = resolver2.resolve(&uri).unwrap();
-        
+
         assert!(Arc::ptr_eq(&storage1, &storage2));
     }
 
@@ -59,10 +59,10 @@ mod tests {
         let resolver = StorageResolver::new();
         let uri1 = Uri::for_test("ram:///test/path/file.txt");
         let uri2 = Uri::for_test("ram:///test/another/file.txt");
-        
+
         let storage1 = resolver.resolve(&uri1).unwrap();
         let storage2 = resolver.resolve(&uri2).unwrap();
-        
+
         assert!(Arc::ptr_eq(&storage1, &storage2));
     }
 
@@ -70,9 +70,8 @@ mod tests {
     fn test_storage_resolver_default() {
         let resolver = StorageResolver::default();
         let uri = Uri::for_test("ram:///test");
-        
+
         let result = resolver.resolve(&uri);
         assert!(result.is_ok());
     }
 }
-

@@ -57,7 +57,7 @@ mod tests {
 <bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0">
     <gml:name>テストビル</gml:name>
 </bldg:Building>"#;
-        
+
         let compressed = compress(xml).unwrap();
         let decompressed = decode(compressed).unwrap();
         assert_eq!(xml, decompressed);
@@ -77,4 +77,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

@@ -15,7 +15,7 @@ mod tests {
     fn test_event_hub_clone() {
         let hub1 = EventHub::new(10);
         let _hub2 = hub1.clone();
-        
+
         assert_eq!(hub1.sender.receiver_count(), 2);
     }
 
@@ -23,9 +23,9 @@ mod tests {
     fn test_event_hub_send_info_log() {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
-        
+
         hub.info_log(None, "Test message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -40,9 +40,9 @@ mod tests {
     fn test_event_hub_send_debug_log() {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
-        
+
         hub.debug_log(None, "Debug message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -57,9 +57,9 @@ mod tests {
     fn test_event_hub_send_warn_log() {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
-        
+
         hub.warn_log(None, "Warning message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -74,9 +74,9 @@ mod tests {
     fn test_event_hub_send_error_log() {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
-        
+
         hub.error_log(None, "Error message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -94,12 +94,17 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("test_node"),
         };
-        
+
         hub.info_log_with_node_handle(None, node_handle.clone(), "Node message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
-            Event::Log { level, node_handle: nh, message, .. } => {
+            Event::Log {
+                level,
+                node_handle: nh,
+                message,
+                ..
+            } => {
                 assert_eq!(level, Level::INFO);
                 assert_eq!(message, "Node message");
                 assert_eq!(nh.unwrap().id, node_handle.id);
@@ -115,12 +120,18 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("test_node"),
         };
-        
+
         hub.info_log_with_node_info(None, node_handle.clone(), "NodeName".to_string(), "Message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
-            Event::Log { level, node_handle: nh, node_name, message, .. } => {
+            Event::Log {
+                level,
+                node_handle: nh,
+                node_name,
+                message,
+                ..
+            } => {
                 assert_eq!(level, Level::INFO);
                 assert_eq!(message, "Message");
                 assert_eq!(nh.unwrap().id, node_handle.id);
@@ -137,9 +148,9 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("test_node"),
         };
-        
+
         hub.debug_log_with_node_handle(None, node_handle.clone(), "Debug node message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -157,9 +168,9 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("test_node"),
         };
-        
+
         hub.warn_log_with_node_handle(None, node_handle, "Warning node message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -177,9 +188,9 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("test_node"),
         };
-        
+
         hub.error_log_with_node_handle(None, node_handle, "Error node message");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { level, message, .. } => {
@@ -197,12 +208,17 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("test_node"),
         };
-        
+
         hub.error_log_with_node_info(None, node_handle.clone(), "NodeName".to_string(), "Error");
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
-            Event::Log { level, node_name, message, .. } => {
+            Event::Log {
+                level,
+                node_name,
+                message,
+                ..
+            } => {
                 assert_eq!(level, Level::ERROR);
                 assert_eq!(message, "Error");
                 assert_eq!(node_name, Some("NodeName".to_string()));
@@ -215,9 +231,9 @@ mod tests {
     fn test_event_source_flushed() {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
-        
+
         hub.send(Event::SourceFlushed);
-        
+
         let event = receiver.try_recv().unwrap();
         assert!(matches!(event, Event::SourceFlushed));
     }
@@ -229,12 +245,12 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("proc1"),
         };
-        
+
         hub.send(Event::ProcessorFinished {
             node: node_handle.clone(),
             name: "TestProcessor".to_string(),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::ProcessorFinished { node, name } => {
@@ -252,12 +268,12 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("proc1"),
         };
-        
+
         hub.send(Event::ProcessorFailed {
             node: node_handle.clone(),
             name: "TestProcessor".to_string(),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::ProcessorFailed { node, name } => {
@@ -275,12 +291,12 @@ mod tests {
         let node_handle = NodeHandle {
             id: NodeId::new("sink1"),
         };
-        
+
         hub.send(Event::SinkFinished {
             node: node_handle.clone(),
             name: "TestSink".to_string(),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::SinkFinished { node, name } => {
@@ -295,11 +311,11 @@ mod tests {
     fn test_event_sink_finish_failed() {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
-        
+
         hub.send(Event::SinkFinishFailed {
             name: "FailedSink".to_string(),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::SinkFinishFailed { name } => {
@@ -315,15 +331,18 @@ mod tests {
         let mut receiver = hub.sender.subscribe();
         let feature_id = Uuid::new_v4();
         let edge_id = crate::node::EdgeId::new("edge1");
-        
+
         hub.send(Event::EdgeCompleted {
             feature_id,
             edge_id: edge_id.clone(),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
-            Event::EdgeCompleted { feature_id: fid, edge_id: eid } => {
+            Event::EdgeCompleted {
+                feature_id: fid,
+                edge_id: eid,
+            } => {
                 assert_eq!(fid, feature_id);
                 assert_eq!(eid, edge_id);
             }
@@ -337,15 +356,18 @@ mod tests {
         let mut receiver = hub.sender.subscribe();
         let feature_id = Uuid::new_v4();
         let edge_id = crate::node::EdgeId::new("edge1");
-        
+
         hub.send(Event::EdgePassThrough {
             feature_id,
             edge_id: edge_id.clone(),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
-            Event::EdgePassThrough { feature_id: fid, edge_id: eid } => {
+            Event::EdgePassThrough {
+                feature_id: fid,
+                edge_id: eid,
+            } => {
                 assert_eq!(fid, feature_id);
                 assert_eq!(eid, edge_id);
             }
@@ -361,16 +383,20 @@ mod tests {
             id: NodeId::new("node1"),
         };
         let feature_id = Uuid::new_v4();
-        
+
         hub.send(Event::NodeStatusChanged {
             node_handle: node_handle.clone(),
             status: NodeStatus::Starting,
             feature_id: Some(feature_id),
         });
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
-            Event::NodeStatusChanged { node_handle: nh, status, feature_id: fid } => {
+            Event::NodeStatusChanged {
+                node_handle: nh,
+                status,
+                feature_id: fid,
+            } => {
                 assert_eq!(nh.id, node_handle.id);
                 assert_eq!(status, NodeStatus::Starting);
                 assert_eq!(fid, Some(feature_id));
@@ -391,7 +417,7 @@ mod tests {
         {
             let _receiver = hub.sender.subscribe();
         }
-        
+
         hub.enhanced_flush(100).await;
     }
 
@@ -400,12 +426,12 @@ mod tests {
         let hub = EventHub::new(10);
         let mut receiver1 = hub.sender.subscribe();
         let mut receiver2 = hub.sender.subscribe();
-        
+
         hub.send(Event::SourceFlushed);
-        
+
         let event1 = receiver1.try_recv().unwrap();
         let event2 = receiver2.try_recv().unwrap();
-        
+
         assert!(matches!(event1, Event::SourceFlushed));
         assert!(matches!(event2, Event::SourceFlushed));
     }
@@ -415,15 +441,15 @@ mod tests {
         let capacity = 5;
         let hub = EventHub::new(capacity);
         let mut receiver = hub.sender.subscribe();
-        
+
         for _ in 0..capacity {
             hub.send(Event::SourceFlushed);
         }
-        
+
         for _ in 0..capacity {
             assert!(receiver.try_recv().is_ok());
         }
-        
+
         assert!(receiver.try_recv().is_err());
     }
 
@@ -432,9 +458,9 @@ mod tests {
         let hub = EventHub::new(10);
         let mut receiver = hub.sender.subscribe();
         let number = 42;
-        
+
         hub.info_log(None, format!("Number: {}", number));
-        
+
         let event = receiver.try_recv().unwrap();
         match event {
             Event::Log { message, .. } => {
@@ -444,4 +470,3 @@ mod tests {
         }
     }
 }
-

@@ -268,7 +268,10 @@ where
 mod test {
     use crate::{
         algorithm::{area2d::Area2D, map_coords::MapCoords},
-        types::{coordinate::Coordinate2D, polygon::Polygon2D, line_string::LineString2D, multi_polygon::MultiPolygon2D},
+        types::{
+            coordinate::Coordinate2D, line_string::LineString2D, multi_polygon::MultiPolygon2D,
+            polygon::Polygon2D,
+        },
     };
 
     #[test]
@@ -312,7 +315,7 @@ mod test {
             Coordinate2D::new_(0.0, 0.0),
         ]);
         let polygon = Polygon2D::new(exterior, vec![]);
-        
+
         assert_eq!(polygon.unsigned_area2d(), 100.0);
     }
 
@@ -325,7 +328,7 @@ mod test {
             Coordinate2D::new_(0.0, 0.0),
         ]);
         let polygon = Polygon2D::new(exterior, vec![]);
-        
+
         assert_eq!(polygon.unsigned_area2d(), 50.0);
     }
 
@@ -338,7 +341,7 @@ mod test {
             Coordinate2D::new_(0.0, 20.0),
             Coordinate2D::new_(0.0, 0.0),
         ]);
-        
+
         let hole = LineString2D::new(vec![
             Coordinate2D::new_(5.0, 5.0),
             Coordinate2D::new_(15.0, 5.0),
@@ -346,7 +349,7 @@ mod test {
             Coordinate2D::new_(5.0, 15.0),
             Coordinate2D::new_(5.0, 5.0),
         ]);
-        
+
         let polygon = Polygon2D::new(exterior, vec![hole]);
         assert_eq!(polygon.unsigned_area2d(), 300.0);
     }
@@ -360,10 +363,10 @@ mod test {
             Coordinate2D::new_(139.7503, 35.6854),
             Coordinate2D::new_(139.7503, 35.6851),
         ]);
-        
+
         let polygon = Polygon2D::new(footprint, vec![]);
         let area = polygon.unsigned_area2d();
-        
+
         assert!(area > 0.0);
     }
 
@@ -376,7 +379,7 @@ mod test {
             Coordinate2D::new_(0.0, 5.0),
             Coordinate2D::new_(0.0, 0.0),
         ]);
-        
+
         let poly2_exterior = LineString2D::new(vec![
             Coordinate2D::new_(10.0, 10.0),
             Coordinate2D::new_(15.0, 10.0),
@@ -384,11 +387,11 @@ mod test {
             Coordinate2D::new_(10.0, 15.0),
             Coordinate2D::new_(10.0, 10.0),
         ]);
-        
+
         let poly1 = Polygon2D::new(poly1_exterior, vec![]);
         let poly2 = Polygon2D::new(poly2_exterior, vec![]);
         let multipolygon = MultiPolygon2D::from(vec![poly1, poly2]);
-        
+
         assert_eq!(multipolygon.unsigned_area2d(), 50.0);
     }
 }

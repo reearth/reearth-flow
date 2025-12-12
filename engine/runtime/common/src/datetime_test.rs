@@ -7,7 +7,7 @@ mod tests {
     fn test_try_from() {
         let datetime = try_from("2023-01-15T10:30:00Z");
         assert!(datetime.is_ok());
-        
+
         let dt = datetime.unwrap();
         assert_eq!(dt.year(), 2023);
         assert_eq!(dt.month(), 1);
@@ -37,7 +37,7 @@ mod tests {
         let original = "2023-12-25T00:00:00Z";
         let datetime = try_from(original).unwrap();
         let formatted = datetime.to_rfc3339();
-        
+
         let reparsed = try_from(&formatted).unwrap();
         assert_eq!(datetime.to_rfc3339(), reparsed.to_rfc3339());
     }
@@ -56,7 +56,7 @@ mod tests {
             "2023-01-15T10:30:00+09:00",
             "2023-01-15T10:30:00-05:00",
         ];
-        
+
         for case in test_cases {
             assert!(try_from(case).is_ok(), "Failed to parse: {}", case);
         }
@@ -66,7 +66,7 @@ mod tests {
     fn test_parse_japanese_datetime() {
         let datetime = try_from("2023-04-01T09:00:00+09:00");
         assert!(datetime.is_ok());
-        
+
         let dt = datetime.unwrap();
         assert_eq!(dt.year(), 2023);
         assert_eq!(dt.month(), 4);
@@ -80,4 +80,3 @@ mod tests {
         assert!(try_from("not-a-date").is_err());
     }
 }
-
