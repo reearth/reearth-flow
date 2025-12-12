@@ -14,6 +14,18 @@ use reearth_flow_types::{material::{self, Material}, AttributeValue};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GltfFeature {
+    // polygons [x, y, z, u, v]
+    pub polygons: MultiPolygon<'static, [f64; 5]>,
+    // material ids for each polygon
+    pub polygon_material_ids: Vec<u32>,
+    // materials
+    pub materials: IndexSet<Material>,
+    // attribute values
+    pub attributes: HashMap<String, AttributeValue>,
+}
+
 /// Check if UV coordinates wrap (go outside [0,1] range)
 pub fn has_wrapping_uvs(uv_coords: &[(f64, f64)]) -> bool {
     uv_coords.iter().any(|(u, v)| {
@@ -112,18 +124,6 @@ where
     let max_height = max_height.next_power_of_two();
 
     Ok((max_width, max_height, wrapping_textures))
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GltfFeature {
-    // polygons [x, y, z, u, v]
-    pub polygons: MultiPolygon<'static, [f64; 5]>,
-    // material ids for each polygon
-    pub polygon_material_ids: Vec<u32>,
-    // materials
-    pub materials: IndexSet<Material>,
-    // attribute values
-    pub attributes: HashMap<String, AttributeValue>,
 }
 
 pub fn process_geometry_with_atlas<F, P>(
@@ -270,4 +270,134 @@ pub fn encode_metadata<'a>(
             }
         })
         .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn create_test_texture(dir: &std::path::Path, name: &str, width: u32, height: u32) -> PathBuf {
+        use image::{ImageBuffer, Rgb};
+        let img = ImageBuffer::<Rgb<u8>, _>::new(width, height);
+        let path = dir.join(name);
+        img.save(&path).unwrap();
+        path
+    }
+
+    fn create_test_feature(texture_path: &std::path::Path, uvs: Vec<(f64, f64)>) -> GltfFeature {
+        let coords: Vec<[f64; 5]> = uvs
+            .iter()
+            .enumerate()
+            .map(|(i, (u, v))| [i as f64, i as f64, 0.0, *u, *v])
+            .collect();
+
+        let mut polygons = MultiPolygon::new();
+        polygons.add_exterior(coords);
+
+        GltfFeature {
+            polygons,
+            polygon_material_ids: vec![0],
+            materials: indexmap::indexset! {
+                Material {
+                    base_color: [1.0, 1.0, 1.0, 1.0],
+                    base_texture: Some(material::Texture {
+                        uri: Url::from_file_path(texture_path).unwrap(),
+                    }),
+                }
+            },
+            attributes: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_load_textures_wrapping_detection() {
+        let temp_dir = TempDir::new().unwrap();
+        let texture_path = create_test_texture(temp_dir.path(), "test.png", 64, 64);
+
+        // Feature with wrapping UVs
+        let feature = create_test_feature(&texture_path, vec![(0.0, 0.0), (1.5, 1.0), (0.0, 1.0)]);
+        let features = vec![&feature];
+
+        let packer = Mutex::new(AtlasPacker::default());
+        let texture_size_cache = TextureSizeCache::new();
+        let texture_id_gen = |fid, pid| format!("tex_{}_{}", fid, pid);
+
+        let result = load_textures_into_packer(
+            &features,
+            &packer,
+            &texture_size_cache,
+            &texture_id_gen,
+            0.0,
+            false,
+        );
+
+        assert!(result.is_ok());
+        let (_, _, wrapping_textures) = result.unwrap();
+        assert_eq!(wrapping_textures.len(), 1);
+        assert!(wrapping_textures.contains("tex_0_0"));
+    }
+
+    #[test]
+    fn test_load_textures_max_size_calculation() {
+        let temp_dir = TempDir::new().unwrap();
+        let texture1 = create_test_texture(temp_dir.path(), "test1.png", 64, 64);
+        let texture2 = create_test_texture(temp_dir.path(), "test2.png", 100, 80);
+        let texture3 = create_test_texture(temp_dir.path(), "test3.png", 50, 120);
+
+        let feature1 = create_test_feature(&texture1, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let feature2 = create_test_feature(&texture2, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let feature3 = create_test_feature(&texture3, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let features = vec![&feature1, &feature2, &feature3];
+
+        let packer = Mutex::new(AtlasPacker::default());
+        let texture_size_cache = TextureSizeCache::new();
+
+        let result = load_textures_into_packer(
+            &features,
+            &packer,
+            &texture_size_cache,
+            &|f, p| format!("{}_{}", f, p),
+            0.0,
+            false,
+        );
+
+        assert!(result.is_ok());
+        let (width, height, _) = result.unwrap();
+
+        // Max width is 100 -> next power of two = 128
+        // Max height is 120 -> next power of two = 128
+        assert_eq!(width, 128);
+        assert_eq!(height, 128);
+    }
+
+    #[test]
+    fn test_load_textures_downsampling() {
+        let temp_dir = TempDir::new().unwrap();
+        let texture_path = create_test_texture(temp_dir.path(), "test.png", 256, 256);
+
+        let feature = create_test_feature(&texture_path, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let features = vec![&feature];
+
+        let packer = Mutex::new(AtlasPacker::default());
+        let texture_size_cache = TextureSizeCache::new();
+
+        // Test with downsample_factor = 0.5
+        let result = load_textures_into_packer(
+            &features,
+            &packer,
+            &texture_size_cache,
+            &|f, p| format!("{}_{}", f, p),
+            9e9,
+            true,
+        );
+
+        assert!(result.is_ok());
+        let (width, height, _) = result.unwrap();
+
+        // extremely large geom_error should lead to maximum downsampling
+        assert_eq!(width, 1);
+        assert_eq!(height, 1);
+    }
 }
