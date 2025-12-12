@@ -51,7 +51,7 @@ graphs:
       # TODO: check plateau data EpsgCode specification or cityGML data sourceEpsgCode
       # EPSG:4326 (WGS84 Geographic - latitude/longitude in degrees)
       # EPSG:6677 (JGD2011 Japan Plane Rectangular CS IX - X/Y in meters)
-      # TODO: This node is skipped, add it back before PR
+      # Notice: This node is skipped in workflow.yml
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
         name: HorizontalReprojector
         type: action
@@ -74,7 +74,7 @@ graphs:
         type: action
         action: GeometryCoercer
         with:
-          targetType: lineString
+          targetType: triangularMesh
 
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
         name: SolarEnergyResultWriter
@@ -100,8 +100,13 @@ graphs:
         toPort: default
       - id: 880aeb74-d635-11f0-9209-6c02e0440ed6
         from: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
-        to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+        to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
         fromPort: extracted
+        toPort: default
+      - id: 9346a6ae-d635-11f0-a2e4-6c02e0440ed6
+        from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+        to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+        fromPort: default
         toPort: default
       - id: 9fdfcbfc-d635-11f0-b6fe-6c02e0440ed6
         from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
