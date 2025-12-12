@@ -13,5 +13,6 @@
     }
   },
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "epsg": 6677
 }
