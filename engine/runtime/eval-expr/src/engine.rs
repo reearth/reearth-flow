@@ -295,7 +295,7 @@ mod tests {
         let result: bool = engine
             .eval("math::abs(env.get(\"measured_height\") - env.get(\"calculated_height\")) < 1.0")
             .unwrap();
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]
