@@ -333,7 +333,7 @@ dependencies = [
 [[package]]
 name = "atlas-packer"
 version = "0.0.0"
-source = "git+https://github.com/reearth/atlas-packer?tag=v0.0.2#91c9449caab3e16d77d2bbb312386386bbf68c9f"
+source = "git+https://github.com/reearth/atlas-packer?tag=v0.0.3#4f99fa237780004a4b0e57a095d088d7cdabb529"
 dependencies = [
  "clap",
  "hashbrown 0.15.5",

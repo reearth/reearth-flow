@@ -250,11 +250,12 @@ impl Sink for GltfWriter {
 
                 // initialize texture packer
                 // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 8192
-                let config = TexturePlacerConfig {
-                    width: max_width.max(8192),
-                    height: max_height.max(8192),
-                    padding: 0,
-                };
+                let config = TexturePlacerConfig::new_padded(
+                    max_width.max(8192),
+                    max_height.max(8192),
+                    0,
+                    2,
+                );
 
                 let placer = GuillotineTexturePlacer::new(config.clone());
                 let packer = packer.into_inner().unwrap();
@@ -278,8 +279,8 @@ impl Sink for GltfWriter {
                     exporter,
                     &atlas_dir,
                     &texture_cache,
-                    config.width,
-                    config.height,
+                    config.width(),
+                    config.height(),
                 );
 
                 let file_path = {
