@@ -29,9 +29,9 @@ use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 use tempfile::tempdir;
 
-use crate::errors::SinkError;
-use crate::atlas::{load_textures_into_packer, process_geometry_with_atlas, encode_metadata};
 use crate::atlas::GltfFeature as ClassFeature;
+use crate::atlas::{encode_metadata, load_textures_into_packer, process_geometry_with_atlas};
+use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
 pub struct GltfWriterSinkFactory;
@@ -233,18 +233,17 @@ impl Sink for GltfWriter {
                     &ellipsoid,
                 );
 
-                let filtered_features = encode_metadata(
-                    &transformed_features,
-                    typename,
-                    &mut metadata_encoder,
-                );
+                let filtered_features =
+                    encode_metadata(&transformed_features, typename, &mut metadata_encoder);
 
                 let (max_width, max_height, wrapping_textures) = load_textures_into_packer(
                     &filtered_features,
                     &packer,
                     &texture_size_cache,
-                    &|feature_id, poly_count| generate_texture_id(&base_name, feature_id, poly_count),
-                    1.0, // geom_error (dummy value for non-tiled output)
+                    &|feature_id, poly_count| {
+                        generate_texture_id(&base_name, feature_id, poly_count)
+                    },
+                    1.0,   // geom_error (dummy value for non-tiled output)
                     false, // limit_texture_resolution (no downsampling for gltf)
                 )?;
 
@@ -373,13 +372,13 @@ fn transform_features_to_local_enu(
 // Helper methods for GltfWriter
 impl GltfWriter {
     fn entry(&mut self, feature_type: &str) -> &mut ClassFeatures {
-        return self.classified_features
+        self.classified_features
             .entry(feature_type.to_string())
             .or_insert_with(|| ClassFeatures {
                 feature_type: feature_type.to_string(),
                 features: Vec::new(),
                 bounding_volume: BoundingVolume::default(),
-            });
+            })
     }
 
     fn compute_global_bounding_volume(&self) -> BoundingVolume {

@@ -28,12 +28,11 @@ use reearth_flow_types::Feature;
 use tempfile::tempdir;
 
 use super::tiling::{TileContent, TileTree};
-use super::{
-    slice::slice_to_tiles,
-    tiling,
+use super::{slice::slice_to_tiles, tiling};
+use crate::atlas::{
+    encode_metadata, load_textures_into_packer, process_geometry_with_atlas, GltfFeature,
 };
 use crate::file::mvt::tileid::TileIdMethod;
-use crate::atlas::{load_textures_into_packer, process_geometry_with_atlas, encode_metadata, GltfFeature};
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
@@ -150,11 +149,8 @@ fn initialize_tile_context(
     let (tile_zoom, tile_x, tile_y) = tile_id_conv.id_to_zxy(tile_id);
 
     let (min_lat, max_lat) = tiling::y_slice_range(tile_zoom, tile_y);
-    let (min_lng, max_lng) = tiling::x_slice_range(
-        tile_zoom,
-        tile_x as i32,
-        tiling::x_step(tile_zoom, tile_y),
-    );
+    let (min_lng, max_lng) =
+        tiling::x_slice_range(tile_zoom, tile_x as i32, tiling::x_step(tile_zoom, tile_y));
 
     // Use the tile center as the translation of the glTF mesh
     let translation = {
@@ -201,12 +197,11 @@ fn transform_features(
     let mut features = Vec::new();
 
     for serialized_feat in feats.into_iter() {
-        let mut feature: GltfFeature = serde_json::from_slice(&serialized_feat)
-            .map_err(|e| {
-                crate::errors::SinkError::cesium3dtiles_writer(format!(
-                    "Failed to decode_from_slice with {e:?}"
-                ))
-            })?;
+        let mut feature: GltfFeature = serde_json::from_slice(&serialized_feat).map_err(|e| {
+            crate::errors::SinkError::cesium3dtiles_writer(format!(
+                "Failed to decode_from_slice with {e:?}"
+            ))
+        })?;
 
         feature
             .polygons
@@ -224,8 +219,7 @@ fn transform_features(
                 // - z-up to y-up
                 // - subtract the translation
                 // - The origin of atlas-packer is in the lower right.
-                let (x, y, z) =
-                    geodetic_to_geocentric(&ellipsoid, lng, lat, height);
+                let (x, y, z) = geodetic_to_geocentric(&ellipsoid, lng, lat, height);
                 [
                     x - translation[0],
                     z - translation[1],
@@ -301,12 +295,8 @@ pub(super) fn tile_writing_stage(
 
             // Initialize texture packer config
             // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
-            let config = TexturePlacerConfig::new_padded(
-                max_width.max(1024),
-                max_height.max(1024),
-                0,
-                2,
-            );
+            let config =
+                TexturePlacerConfig::new_padded(max_width.max(1024), max_height.max(1024), 0, 2);
 
             let placer = GuillotineTexturePlacer::new(config.clone());
             let packer = packer.into_inner().map_err(|_| {
