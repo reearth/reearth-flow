@@ -28,7 +28,9 @@ use serde_json::Value;
 use tempfile::tempdir;
 
 use crate::atlas::GltfFeature as ClassFeature;
-use crate::atlas::{encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export};
+use crate::atlas::{
+    encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export,
+};
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]

@@ -111,7 +111,6 @@ where
                     downsample_factor,
                 );
 
-                // Track the full texture size after downsampling (like main branch)
                 let scaled_width = (texture_size.0 as f32 * factor) as u32;
                 let scaled_height = (texture_size.1 as f32 * factor) as u32;
 
@@ -344,12 +343,18 @@ mod tests {
         path
     }
 
-    fn create_test_feature(texture_path: &std::path::Path, uvs: Vec<(f64, f64)>) -> GltfFeature {
-        let coords: Vec<[f64; 5]> = uvs
-            .iter()
-            .enumerate()
-            .map(|(i, (u, v))| [i as f64, i as f64, 0.0, *u, *v])
-            .collect();
+    fn create_test_feature(
+        texture_path: &std::path::Path,
+        uvs: Vec<(f64, f64)>,
+        offset_x: f64,
+    ) -> GltfFeature {
+        // Create coplanar square polygon at z=0 with x offset
+        let coords: Vec<[f64; 5]> = vec![
+            [offset_x, 0.0, 0.0, uvs[0].0, uvs[0].1],
+            [offset_x + 1.0, 0.0, 0.0, uvs[1].0, uvs[1].1],
+            [offset_x + 1.0, 1.0, 0.0, uvs[2].0, uvs[2].1],
+            [offset_x, 1.0, 0.0, uvs[3].0, uvs[3].1],
+        ];
 
         let mut polygons = MultiPolygon::new();
         polygons.add_exterior(coords);
@@ -375,7 +380,11 @@ mod tests {
         let texture_path = create_test_texture(temp_dir.path(), "test.png", 64, 64);
 
         // Feature with wrapping UVs
-        let feature = create_test_feature(&texture_path, vec![(0.0, 0.0), (1.5, 1.0), (0.0, 1.0)]);
+        let feature = create_test_feature(
+            &texture_path,
+            vec![(0.0, 0.0), (1.5, 0.0), (1.5, 1.0), (0.0, 1.0)],
+            0.0,
+        );
         let features = vec![&feature];
 
         let packer = Mutex::new(AtlasPacker::default());
@@ -407,9 +416,21 @@ mod tests {
         let texture2 = create_test_texture(temp_dir.path(), "test2.png", 100, 80);
         let texture3 = create_test_texture(temp_dir.path(), "test3.png", 50, 120);
 
-        let feature1 = create_test_feature(&texture1, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
-        let feature2 = create_test_feature(&texture2, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
-        let feature3 = create_test_feature(&texture3, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let feature1 = create_test_feature(
+            &texture1,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
+        let feature2 = create_test_feature(
+            &texture2,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
+        let feature3 = create_test_feature(
+            &texture3,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
         let features = vec![&feature1, &feature2, &feature3];
 
         let packer = Mutex::new(AtlasPacker::default());
@@ -438,7 +459,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let texture_path = create_test_texture(temp_dir.path(), "test.png", 256, 256);
 
-        let feature = create_test_feature(&texture_path, vec![(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let feature = create_test_feature(
+            &texture_path,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
         let features = vec![&feature];
 
         let packer = Mutex::new(AtlasPacker::default());
@@ -460,5 +485,165 @@ mod tests {
         // extremely large geom_error should lead to maximum downsampling
         assert_eq!(width, 1);
         assert_eq!(height, 1);
+    }
+
+    #[test]
+    fn test_process_geometry_with_atlas_export_uv_mapping() {
+        use atlas_packer::export::PngAtlasExporter;
+        use image::{ImageBuffer, Rgb, RgbImage};
+
+        let temp_path = tempfile::tempdir().expect("create temp dir").keep();
+
+        // Create two 256x256 textures with distinct colors based on position
+        let img1: RgbImage = ImageBuffer::from_fn(256, 256, |x, y| Rgb([x as u8, y as u8, 10]));
+        let path1 = temp_path.join("texture1.png");
+        img1.save(&path1).expect("save texture1");
+
+        let img2: RgbImage = ImageBuffer::from_fn(256, 256, |x, y| Rgb([x as u8, y as u8, 20]));
+        let path2 = temp_path.join("texture2.png");
+        img2.save(&path2).expect("save texture2");
+
+        // Create test features with non-overlapping polygons
+        let feature1 = create_test_feature(
+            &path1,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
+        let feature2 = create_test_feature(
+            &path2,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            2.0,
+        );
+
+        let features = vec![&feature1, &feature2];
+
+        // Setup packer and load textures
+        let packer = Mutex::new(AtlasPacker::default());
+        let texture_size_cache = TextureSizeCache::new();
+        let texture_id_gen = |fid: usize, pid: usize| format!("tex_{}_{}", fid, pid);
+
+        load_textures_into_packer(
+            &features,
+            &packer,
+            &texture_size_cache,
+            &texture_id_gen,
+            0.0,
+            false,
+        )
+        .expect("load textures");
+
+        // Create atlas output directory
+        let atlas_dir = temp_path.join("atlas");
+        std::fs::create_dir(&atlas_dir).expect("create atlas dir");
+
+        // Setup texture cache
+        let texture_cache = TextureCache::new(200_000_000);
+
+        // Process geometry and export atlas with large dimensions to pack both textures together
+        let (primitives, vertices) = process_geometry_with_atlas_export(
+            &features,
+            packer,
+            (1000, 1000),
+            PngAtlasExporter {
+                ext: "png".to_string(),
+            },
+            &atlas_dir,
+            &texture_cache,
+            texture_id_gen,
+        )
+        .expect("process geometry");
+
+        assert!(!primitives.is_empty(), "primitives should not be empty");
+        assert!(!vertices.is_empty(), "vertices should not be empty");
+
+        // Verify primitives structure
+        assert_eq!(
+            primitives.len(),
+            1,
+            "should have 1 material group for 1 atlas texture"
+        );
+        let (material, primitive) = primitives.iter().next().unwrap();
+        assert!(
+            material.base_texture.is_some(),
+            "material should have a base texture"
+        );
+        let texture_uri = material.base_texture.as_ref().unwrap().uri.to_string();
+        assert!(
+            texture_uri.contains("atlas"),
+            "texture should be from atlas directory"
+        );
+        assert!(
+            texture_uri.ends_with(".png"),
+            "texture should be PNG format"
+        );
+        assert!(
+            !primitive.indices.is_empty(),
+            "primitive should have indices"
+        );
+        assert!(
+            !primitive.feature_ids.is_empty(),
+            "primitive should have feature IDs"
+        );
+        assert_eq!(
+            primitive.indices.len(),
+            12,
+            "should have 12 indices for 2 quads"
+        );
+
+        // Read back the exported atlas
+        let atlas_path = atlas_dir.join("0.png");
+        assert!(atlas_path.exists(), "atlas file should exist");
+
+        let atlas_img = image::open(&atlas_path).expect("open atlas");
+        let atlas_rgb = atlas_img.to_rgb8();
+
+        // Build HashMap: world position (x,y,z) -> expected color from original texture
+        let mut expected_colors: HashMap<(i32, i32, i32), [u8; 3]> = HashMap::new();
+
+        for (feature, orig_img) in [(&feature1, &img1), (&feature2, &img2)] {
+            let poly = feature.polygons.iter().next().expect("get polygon");
+            for coord in poly.raw_coords() {
+                let [x, y, z, u, v] = coord;
+                let tex_x = (u * 255.0) as u32;
+                let tex_y = ((1.0 - v) * 255.0) as u32; // V is flipped in vertex buffer (line 242)
+                let pixel = orig_img.get_pixel(tex_x, tex_y);
+
+                let key = (
+                    (*x * 1000.0) as i32,
+                    (*y * 1000.0) as i32,
+                    (*z * 1000.0) as i32,
+                );
+                expected_colors.insert(key, pixel.0);
+            }
+        }
+
+        // Verify: for each vertex, sample atlas at packed UV and compare to expected color
+        for vertex_bits in vertices.iter() {
+            let v_x = f32::from_bits(vertex_bits[0]);
+            let v_y = f32::from_bits(vertex_bits[1]);
+            let v_z = f32::from_bits(vertex_bits[2]);
+            let u_packed = f32::from_bits(vertex_bits[6]) as f64;
+            let v_packed = f32::from_bits(vertex_bits[7]) as f64;
+
+            let key = (
+                (v_x * 1000.0) as i32,
+                (v_y * 1000.0) as i32,
+                (v_z * 1000.0) as i32,
+            );
+            let expected = expected_colors
+                .get(&key)
+                .expect("vertex should have expected color");
+
+            // Sample atlas at packed UV
+            let atlas_x = (u_packed * atlas_rgb.width() as f64) as u32;
+            let atlas_y = (v_packed * atlas_rgb.height() as f64) as u32;
+            let atlas_pixel = atlas_rgb.get_pixel(atlas_x, atlas_y);
+
+            assert_eq!(
+                atlas_pixel.0, *expected,
+                "Color mismatch at pos=({:.1},{:.1},{:.1}) uv=({:.4},{:.4})",
+                v_x, v_y, v_z, u_packed, v_packed
+            );
+        }
     }
 }
