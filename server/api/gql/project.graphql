@@ -49,6 +49,8 @@ input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
   file: Upload!
+  previousJobId: ID
+  startNodeId: ID
 }
 
 # Payload

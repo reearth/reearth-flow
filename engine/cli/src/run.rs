@@ -21,6 +21,8 @@ pub fn build_run_command() -> Command {
         .arg(dataframe_state_cli_arg())
         .arg(action_log_cli_arg())
         .arg(vars_arg())
+        .arg(previous_job_id_arg())
+        .arg(start_node_id_arg())
 }
 
 fn workflow_cli_arg() -> Arg {
@@ -68,6 +70,20 @@ fn vars_arg() -> Arg {
         .display_order(5)
 }
 
+fn previous_job_id_arg() -> Arg {
+    Arg::new("previous_job_id")
+        .long("previous-job-id")
+        .help("Job ID to reuse intermediate data from")
+        .required(false)
+}
+
+fn start_node_id_arg() -> Arg {
+    Arg::new("start_node_id")
+        .long("start-node-id")
+        .help("Start node id for incremental run")
+        .required(false)
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct RunCliCommand {
     workflow_path: String,
@@ -75,6 +91,8 @@ pub struct RunCliCommand {
     dataframe_state_uri: Option<String>,
     action_log_uri: Option<String>,
     vars: HashMap<String, String>,
+    previous_job_id: Option<String>,
+    start_node_id: Option<String>,
 }
 
 impl RunCliCommand {
@@ -100,12 +118,16 @@ impl RunCliCommand {
         } else {
             HashMap::<String, String>::new()
         };
+        let previous_job_id = matches.remove_one::<String>("previous_job_id");
+        let start_node_id = matches.remove_one::<String>("start_node_id");
         Ok(RunCliCommand {
             workflow_path,
             job_id,
             dataframe_state_uri,
             action_log_uri,
             vars,
+            previous_job_id,
+            start_node_id,
         })
     }
 
@@ -162,6 +184,19 @@ impl RunCliCommand {
                 .map_err(crate::errors::Error::init)?,
         );
         let ingress_state = Arc::clone(&feature_state);
+
+        if let Some(prev_job_id) = &self.previous_job_id {
+            tracing::info!(
+                "Incremental run parameter: previous_job_id = {}",
+                prev_job_id
+            );
+        }
+        if let Some(start_node_id) = &self.start_node_id {
+            tracing::info!(
+                "Incremental run parameter: start_node_id = {}",
+                start_node_id
+            );
+        }
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),

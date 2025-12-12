@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -260,7 +261,22 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
+	if p.PreviousJobID != nil {
+		log.Debugfc(ctx, "[RunProject] previousJobId = %s", p.PreviousJobID.String())
+	}
+	if p.StartNodeID != nil {
+		log.Debugfc(ctx, "[RunProject] startNodeId = %s", p.StartNodeID.String())
+	}
+
+	vars := map[string]string{}
+	if p.PreviousJobID != nil {
+		vars["previous_job_id"] = p.PreviousJobID.String()
+	}
+	if p.StartNodeID != nil {
+		vars["start_node_id"] = p.StartNodeID.String()
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), vars, p.ProjectID, prj.Workspace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to submit job: %v", err)
 	}
