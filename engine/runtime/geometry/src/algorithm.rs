@@ -41,16 +41,17 @@ pub mod transverse_mercator_proj;
 pub mod triangle_intersection;
 pub mod utils;
 pub mod winding_order;
+mod bool_ops_old;
 
 pub use relate::Relate;
 
 pub trait GeoFloat:
-    GeoNum + num_traits::Float + num_traits::Signed + num_traits::Bounded + float_next_after::NextAfter
+    GeoNum + Float + num_traits::Signed + num_traits::Bounded + float_next_after::NextAfter
 {
 }
 impl<T> GeoFloat for T where
     T: GeoNum
-        + num_traits::Float
+        + Float
         + num_traits::Signed
         + num_traits::Bounded
         + float_next_after::NextAfter
