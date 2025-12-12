@@ -89,7 +89,7 @@ pub enum ValidationType {
     #[serde(rename = "duplicatePoints")]
     DuplicatePoints,
     #[serde(rename = "duplicateConsecutivePoints")]
-    DuplicateConsecutivePoints,
+    DuplicateConsecutivePoints(f64),
     #[serde(rename = "corruptGeometry")]
     CorruptGeometry,
     #[serde(rename = "selfIntersection")]
@@ -102,8 +102,10 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
             ValidationType::DuplicatePoints => {
                 reearth_flow_geometry::validation::ValidationType::DuplicatePoints
             }
-            ValidationType::DuplicateConsecutivePoints => {
-                reearth_flow_geometry::validation::ValidationType::DuplicateConsecutivePoints
+            ValidationType::DuplicateConsecutivePoints(tolerance) => {
+                reearth_flow_geometry::validation::ValidationType::DuplicateConsecutivePoints(
+                    tolerance,
+                )
             }
             ValidationType::CorruptGeometry => {
                 reearth_flow_geometry::validation::ValidationType::CorruptGeometry

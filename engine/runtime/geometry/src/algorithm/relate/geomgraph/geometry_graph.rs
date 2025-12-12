@@ -118,7 +118,8 @@ where
             GeometryCow::Line(line) => self.add_line(line),
             GeometryCow::Rect(rect) => {
                 // PERF: avoid this conversion/clone?
-                self.add_polygon(&rect.to_polygon());
+                // self.add_polygon(&rect.to_polygon());
+                unimplemented!()
             }
             GeometryCow::Point(point) => {
                 self.add_point(point);

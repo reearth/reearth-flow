@@ -29,61 +29,57 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 			<bldg:lod0RoofEdge>
 				<gml:MultiSurface>
                     <!-- Passes -->
-                    <!--
                     <gml:surfaceMember>
                         <gml:Polygon>
                             <gml:exterior>
                                 <gml:LinearRing>
                                     <gml:posList>
-                                        0.0 0.0 0.0
-                                        1.0 0.0 0.0
-                                        1.0 1.0 0.0
-                                        0.0 1.0 0.0
-                                        0.0 0.0 0.0
+                                        36.64701 137.05270 0.0
+                                        36.64701 137.05272 0.0
+                                        36.64702 137.05272 0.0
+                                        36.64702 137.05270 0.0
+                                        36.64701 137.05270 0.0
                                 </gml:posList>
                                 </gml:LinearRing>
                             </gml:exterior>
                         </gml:Polygon>
                     </gml:surfaceMember>
-                    -->
                     <!-- Fails due to self-intersection -->
                     <gml:surfaceMember>
                         <gml:Polygon>
                             <gml:exterior>
                                 <gml:LinearRing>
                                     <gml:posList>
-                                        0.0 0.0 0.0
-                                        0.0 1.0 0.0
-                                        0.5 1.0 0.0
-                                        0.0 0.5 0.0
-                                        1.0 1.0 0.0
-                                        1.0 0.0 0.0
-                                        0.0 0.0 0.0
+                                        36.64701 137.05270 0.0
+                                        36.64701 137.05272 0.0
+                                        36.64702 137.05272 0.0
+                                        36.64701 137.05271 0.0
+                                        36.64703 137.05272 0.0
+                                        36.64703 137.05270 0.0
+                                        36.64701 137.05270 0.0
                                 </gml:posList>
                                 </gml:LinearRing>
                             </gml:exterior>
                         </gml:Polygon>
                     </gml:surfaceMember>
                     <!-- Fails due to self-crossing -->
-                    <!--
                     <gml:surfaceMember>
                         <gml:Polygon>
                             <gml:exterior>
                                 <gml:LinearRing>
                                     <gml:posList>
-                                        -1.0 0.0 0.0
-                                        1.0 0.0 0.0
-                                        1.0 1.0 0.0
-                                        0.0 1.0 0.0
-                                        0.0 -1.0 0.0
-                                        -1.0 -1.0 0.0
-                                        -1.0 0.0 0.0
-                                </gml:posList>
+                                        36.64701 137.05271 0.0
+                                        36.64703 137.05271 0.0
+                                        36.64703 137.05272 0.0
+                                        36.64702 137.05272 0.0
+                                        36.64702 137.05270 0.0
+                                        36.64701 137.05270 0.0
+                                        36.64701 137.05271 0.0
+ 	                               </gml:posList>
                                 </gml:LinearRing>
                             </gml:exterior>
                         </gml:Polygon>
                     </gml:surfaceMember>
-                    -->
                 </gml:MultiSurface>
 			</bldg:lod0RoofEdge>
 <!--
@@ -150,45 +146,6 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 				</gml:Solid>
 			</bldg:lod1Solid>
 -->
-            <uro:buildingIDAttribute>
-				<uro:BuildingIDAttribute>
-					<uro:buildingID>16211-bldg-78</uro:buildingID>
-					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
-					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
-				</uro:BuildingIDAttribute>
-			</uro:buildingIDAttribute>
-			<uro:buildingDetailAttribute>
-				<uro:BuildingDetailAttribute>
-					<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
-					<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
-					<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
-					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
-					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
-					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">211</uro:landUseType>
-					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4111</uro:detailedUsage>
-					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>
-					<uro:surveyYear>2020</uro:surveyYear>
-				</uro:BuildingDetailAttribute>
-			</uro:buildingDetailAttribute>
-			<uro:bldgDataQualityAttribute>
-				<uro:DataQualityAttribute>
-					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
-					<uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
-					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">100</uro:thematicSrcDesc>
-					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
-					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
-					<uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
-					<uro:publicSurveyDataQualityAttribute>
-						<uro:PublicSurveyDataQualityAttribute>
-							<uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
-							<uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
-							<uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
-							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
-							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
-						</uro:PublicSurveyDataQualityAttribute>
-					</uro:publicSurveyDataQualityAttribute>
-				</uro:DataQualityAttribute>
-			</uro:bldgDataQualityAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 	<core:cityObjectMember>
@@ -275,45 +232,6 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					</gml:exterior>
 				</gml:Solid>
 			</bldg:lod1Solid>
-			<uro:buildingIDAttribute>
-				<uro:BuildingIDAttribute>
-					<uro:buildingID>16211-bldg-77</uro:buildingID>
-					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
-					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
-				</uro:BuildingIDAttribute>
-			</uro:buildingIDAttribute>
-			<uro:buildingDetailAttribute>
-				<uro:BuildingDetailAttribute>
-					<uro:totalFloorArea uom="m2">-9999</uro:totalFloorArea>
-					<uro:buildingFootprintArea uom="m2">-9999</uro:buildingFootprintArea>
-					<uro:buildingRoofEdgeArea uom="m2">15.5</uro:buildingRoofEdgeArea>
-					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
-					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
-					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">231</uro:landUseType>
-					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">461</uro:detailedUsage>
-					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>
-					<uro:surveyYear>2020</uro:surveyYear>
-				</uro:BuildingDetailAttribute>
-			</uro:buildingDetailAttribute>
-			<uro:bldgDataQualityAttribute>
-				<uro:DataQualityAttribute>
-					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
-					<uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
-					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">100</uro:thematicSrcDesc>
-					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
-					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
-					<uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
-					<uro:publicSurveyDataQualityAttribute>
-						<uro:PublicSurveyDataQualityAttribute>
-							<uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
-							<uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
-							<uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
-							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
-							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
-						</uro:PublicSurveyDataQualityAttribute>
-					</uro:publicSurveyDataQualityAttribute>
-				</uro:DataQualityAttribute>
-			</uro:bldgDataQualityAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

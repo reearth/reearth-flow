@@ -5,6 +5,7 @@ use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
     algorithm::{
+        area2d::Area2D,
         bool_ops::BooleanOps,
         bounding_rect::BoundingRect,
         tolerance::glue_vertices_closer_than,
@@ -176,23 +177,7 @@ impl Processor for AreaOnAreaOverlayer {
                     AttributeValue::Null
                 };
 
-                if !self.buffer.contains_key(&key) {
-                    let overlaid = self.overlay();
-                    for feature in &overlaid.area {
-                        fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
-                    }
-                    for feature in &overlaid.remnant {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), REMNANTS_PORT.clone()),
-                        );
-                    }
-                    self.buffer.clear();
-                }
-
-                self.buffer
-                    .entry(key.clone())
-                    .or_default()
-                    .push(feature.clone());
+                self.buffer.entry(key).or_default().push(feature.clone());
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -313,10 +298,7 @@ impl AreaOnAreaOverlayer {
     }
 }
 
-fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
-    // normalize vertices
-    // TODO: This can be removed to improve performance when we choose the right coordinate system.
-    let norm = normalize_vertices_2d_for_multipolygons(&mut polygons);
+fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
     let overlay_graph = OverlayGraph::bulk_load(&polygons);
 
     // all (devided) polygons to output
@@ -344,7 +326,18 @@ fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
                     for subpolygon in queue {
                         let intersection = subpolygon.polygon.intersection(&polygons[j]);
 
-                        if !intersection.is_empty() {
+                        // Filter out tiny intersections that are numerical noise
+                        // Use a relative threshold based on the smaller polygon's area
+                        const MIN_AREA_RATIO: f64 = 1e-6;
+                        let intersection_area = intersection.unsigned_area2d();
+                        let min_input_area = subpolygon
+                            .polygon
+                            .unsigned_area2d()
+                            .min(polygons[j].unsigned_area2d());
+                        let is_significant_intersection =
+                            intersection_area > min_input_area * MIN_AREA_RATIO;
+
+                        if !intersection.is_empty() && is_significant_intersection {
                             new_queue.push(MiddlePolygon {
                                 polygon: intersection,
                                 parents: subpolygon
@@ -371,10 +364,6 @@ fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
             queue
         })
         .flatten()
-        .map(|mut p| {
-            p.polygon.denormalize_vertices_2d(norm);
-            p
-        })
         .collect::<Vec<_>>()
 }
 

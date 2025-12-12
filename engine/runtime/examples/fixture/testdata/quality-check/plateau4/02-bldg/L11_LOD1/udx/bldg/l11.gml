@@ -23,11 +23,11 @@
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
-                                                0.0 0.0 0.0
-                                                1.0 0.0 0.0
-												1.0 1.0 0.0
-												0.0 1.0 0.0
-                                                0.0 0.0 0.0
+                                                34.68339 137.31256 0.0
+                                                34.68340 137.31256 0.0
+												34.68340 137.31257 0.0
+												34.68339 137.31257 0.0
+                                                34.68339 137.31256 0.0
 										</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
@@ -39,11 +39,11 @@
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
-                                                0.0 0.0 0.0
-                                                0.0 0.000001 0.0
-												0.0000005 0.000002 0.0001
-												0.000001 0.000001 0.0
-                                                0.0 0.0 0.0
+                                                34.68339 137.31256 0.0
+												34.68339 137.31257 0.0
+												34.68340 137.31257 0.00001
+                                                34.68340 137.31256 0.0
+                                                34.68339 137.31256 0.0
 											</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
@@ -55,28 +55,12 @@
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
-                                                0.0 0.0 0.0
-                                                0.0 0.000001 0.0
-												0.0000005 0.000002 0.001
-												0.000001 0.000001 0.0
-                                                0.0 0.0 0.0
+                                                34.683397 137.312568 0.0
+												34.683397 137.312570 0.0
+												34.683400 137.312570 0.0
+                                                34.683400 137.312568 0.02
+                                                34.683397 137.312568 0.0
 											</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-							<!-- Passes -->
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>
-                                                0.0 0.0 0.0
-                                                1.0 0.0 0.0
-												1.0 1.0 0.05
-												0.0 1.0 0.0
-                                                0.0 0.0 0.0
-										</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
@@ -87,11 +71,11 @@
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
-                                                0.0 0.0 0.0
-                                                1.0 0.0 0.0
-												1.0 1.0 0.06
-												0.0 1.0 0.0
-                                                0.0 0.0 0.0
+                                                34.6833 137.31250 0.0
+												34.6833 137.31257 0.0
+												34.6834 137.31257 0.04
+                                                34.6834 137.31250 0.0
+                                                34.6833 137.31250 0.0
 										</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>

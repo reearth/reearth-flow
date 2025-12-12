@@ -370,8 +370,7 @@ impl BoundaryExtractor {
 
             // Rectangle boundary is its perimeter
             Geometry3D::Rect(rect) => {
-                let polygon = rect.to_polygon();
-                Some(Geometry3D::LineString(polygon.exterior().clone()))
+                unimplemented!()
             }
 
             // Triangle boundary is its perimeter

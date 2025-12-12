@@ -183,7 +183,7 @@ fn rotate_single_geometry(geometry: &Geometry3D<f64>) -> Option<Geometry3D<f64>>
         Geometry3D::Line(line) => vec![line.start, line.end],
         Geometry3D::LineString(line_string) => line_string.coords().cloned().collect(),
         Geometry3D::Polygon(polygon) => polygon.exterior().coords().cloned().collect(),
-        Geometry3D::Rect(rect) => rect.to_polygon().exterior().coords().cloned().collect(),
+        Geometry3D::Rect(rect) => unimplemented!(),
         Geometry3D::Triangle(triangle) => triangle
             .to_polygon()
             .exterior()
