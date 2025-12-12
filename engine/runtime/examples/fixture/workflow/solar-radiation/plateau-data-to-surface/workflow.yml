@@ -66,9 +66,9 @@ graphs:
         type: action
         action: GeometryExtractor
         with:
-          outputAttribute: _geometry
+          outputAttribute: geometry
 
-      # Step 4: GeometryCoercer - coerces geometry type (using Polygon to LineString as example)
+      # Step 4: GeometryCoercer - coerces geometry type (using triangularMesh to lineString as example)
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
         name: GeometryCoercer
         type: action
