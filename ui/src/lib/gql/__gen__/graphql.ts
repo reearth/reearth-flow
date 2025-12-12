@@ -1136,7 +1136,9 @@ export enum Role {
 
 export type RunProjectInput = {
   file: Scalars['Upload']['input'];
+  previousJobId?: InputMaybe<Scalars['ID']['input']>;
   projectId: Scalars['ID']['input'];
+  startNodeId?: InputMaybe<Scalars['ID']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
