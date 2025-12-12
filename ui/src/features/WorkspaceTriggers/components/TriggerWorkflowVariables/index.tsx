@@ -194,8 +194,12 @@ const TriggerProjectVariablesMappingDialog: React.FC<
           </DialogHeader>
           <div className="flex h-full min-h-0">
             <DialogContentSection className="flex min-h-0 flex-3 flex-col">
-              <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
-                <Table columns={columns} data={variableMappings} />
+              <DialogContentSection className="mt-4 min-h-0 flex-1 overflow-hidden">
+                <Table
+                  columns={columns}
+                  data={variableMappings}
+                  showOrdering={false}
+                />
               </DialogContentSection>
             </DialogContentSection>
           </div>
