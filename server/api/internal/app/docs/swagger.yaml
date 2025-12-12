@@ -1,0 +1,370 @@
+basePath: /
+definitions:
+  internal_app.Action:
+    properties:
+      builtin:
+        type: boolean
+      categories:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      inputPorts:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      outputPorts:
+        items:
+          type: string
+        type: array
+      parameter:
+        additionalProperties: true
+        type: object
+      type:
+        $ref: '#/definitions/internal_app.ActionType'
+    type: object
+  internal_app.ActionSummary:
+    properties:
+      categories:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  internal_app.ActionType:
+    enum:
+    - processor
+    - source
+    - sink
+    type: string
+    x-enum-varnames:
+    - ActionTypeProcessor
+    - ActionTypeSource
+    - ActionTypeSink
+  internal_app.SegregatedActions:
+    properties:
+      byCategory:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/internal_app.ActionSummary'
+          type: array
+        type: object
+      byType:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/internal_app.ActionSummary'
+          type: array
+        type: object
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@reearth.io
+    name: Reearth Flow Support
+    url: https://github.com/reearth/reearth-flow
+  description: API server for Reearth Flow - workflow automation and data processing
+    platform
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://reearth.io/terms/
+  title: Reearth Flow API
+  version: "1.0"
+paths:
+  /actions:
+    get:
+      description: Get a list of available workflow actions with optional filtering
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by action type (processor, source, sink)
+        in: query
+        name: type
+        type: string
+      - description: Language code (en, es, fr, ja, zh)
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of actions
+          schema:
+            items:
+              $ref: '#/definitions/internal_app.ActionSummary'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            type: object
+      summary: List actions
+      tags:
+      - actions
+  /actions/{id}:
+    get:
+      description: Get detailed information about a specific action
+      parameters:
+      - description: Action ID/Name
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Language code (en, es, fr, ja, zh)
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Action details
+          schema:
+            $ref: '#/definitions/internal_app.Action'
+        "400":
+          description: Invalid request
+          schema:
+            type: object
+        "404":
+          description: Action not found
+          schema:
+            type: object
+      summary: Get action details
+      tags:
+      - actions
+  /actions/segregated:
+    get:
+      description: Get actions organized by category and type
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Language code (en, es, fr, ja, zh)
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Actions segregated by category and type
+          schema:
+            $ref: '#/definitions/internal_app.SegregatedActions'
+        "400":
+          description: Invalid request
+          schema:
+            type: object
+      summary: Get segregated actions
+      tags:
+      - actions
+  /api/password-reset:
+    post:
+      consumes:
+      - application/json
+      description: Request password reset or set new password
+      parameters:
+      - description: Password reset information (email only for request, email+token+password
+          for reset)
+        in: body
+        name: reset
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+      summary: Password reset
+      tags:
+      - auth
+  /api/ping:
+    get:
+      description: Health check endpoint that returns "pong"
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: pong
+          schema:
+            type: string
+      summary: Ping endpoint
+      tags:
+      - health
+  /api/signup:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user account
+      parameters:
+      - description: Signup information
+        in: body
+        name: signup
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Signup successful
+          schema:
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: User signup
+      tags:
+      - auth
+  /api/signup/verify:
+    post:
+      consumes:
+      - application/json
+      description: Create a verification request for user signup
+      parameters:
+      - description: Verification request information
+        in: body
+        name: verify
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification created
+        "400":
+          description: Invalid request
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Start signup verification
+      tags:
+      - auth
+  /api/signup/verify/{code}:
+    post:
+      description: Verify user signup with verification code
+      parameters:
+      - description: Verification code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification successful
+          schema:
+            type: object
+        "400":
+          description: Invalid code
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Verify signup code
+      tags:
+      - auth
+  /api/triggers/{triggerId}/execute-scheduled:
+    post:
+      description: Execute a time-driven trigger (scheduled job)
+      parameters:
+      - description: Trigger ID
+        in: path
+        name: triggerId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Execution response with runID, deploymentID, and status
+          schema:
+            type: object
+        "400":
+          description: Invalid trigger ID
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      summary: Execute scheduled trigger
+      tags:
+      - triggers
+  /api/triggers/{triggerId}/run:
+    post:
+      consumes:
+      - application/json
+      description: Execute an API-driven trigger with optional variables and notification
+        URL
+      parameters:
+      - description: Trigger ID
+        in: path
+        name: triggerId
+        required: true
+        type: string
+      - description: Execution request with optional authToken, notificationURL, and
+          variables (with)
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Execution response with runID, deploymentID, and status
+          schema:
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: object
+        "401":
+          description: Missing authentication token
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Execute API trigger
+      tags:
+      - triggers
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

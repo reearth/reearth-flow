@@ -9,12 +9,30 @@ import (
 	http1 "github.com/reearth/reearth-flow/api/internal/adapter/http"
 )
 
+// Ping godoc
+// @Summary      Ping endpoint
+// @Description  Health check endpoint that returns "pong"
+// @Tags         health
+// @Produce      json
+// @Success      200  {string}  string  "pong"
+// @Router       /api/ping [get]
 func Ping() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		return c.JSON(http.StatusOK, "pong")
 	}
 }
 
+// Signup godoc
+// @Summary      User signup
+// @Description  Register a new user account
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        signup  body      object  true  "Signup information"
+// @Success      200     {object}  object  "Signup successful"
+// @Failure      400     {object}  object  "Invalid request"
+// @Router       /api/signup [post]
+// @Security     BearerAuth
 func Signup() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var inp http1.SignupInput
@@ -34,6 +52,16 @@ func Signup() echo.HandlerFunc {
 	}
 }
 
+// PasswordReset godoc
+// @Summary      Password reset
+// @Description  Request password reset or set new password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        reset  body      object  true  "Password reset information (email only for request, email+token+password for reset)"
+// @Success      200    {object}  object  "Success message"
+// @Failure      400    {object}  object  "Bad request"
+// @Router       /api/password-reset [post]
 func PasswordReset() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var inp http1.PasswordResetInput
@@ -66,6 +94,17 @@ func PasswordReset() echo.HandlerFunc {
 	}
 }
 
+// StartSignupVerify godoc
+// @Summary      Start signup verification
+// @Description  Create a verification request for user signup
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        verify  body  object  true  "Verification request information"
+// @Success      200     "Verification created"
+// @Failure      400     {object}  object  "Invalid request"
+// @Router       /api/signup/verify [post]
+// @Security     BearerAuth
 func StartSignupVerify() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var inp http1.CreateVerificationInput
@@ -84,6 +123,16 @@ func StartSignupVerify() echo.HandlerFunc {
 	}
 }
 
+// SignupVerify godoc
+// @Summary      Verify signup code
+// @Description  Verify user signup with verification code
+// @Tags         auth
+// @Produce      json
+// @Param        code  path      string  true  "Verification code"
+// @Success      200   {object}  object  "Verification successful"
+// @Failure      400   {object}  object  "Invalid code"
+// @Router       /api/signup/verify/{code} [post]
+// @Security     BearerAuth
 func SignupVerify() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		code := c.Param("code")
