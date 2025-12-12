@@ -11,6 +11,7 @@ use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
+use crate::incremental::prepare_incremental_feature_store;
 
 pub fn build_run_command() -> Command {
     Command::new("run")
@@ -196,6 +197,27 @@ impl RunCliCommand {
                 "Incremental run parameter: start_node_id = {}",
                 start_node_id
             );
+        }
+
+        if let (Some(prev_job_str), Some(start_node_str)) =
+            (&self.previous_job_id, &self.start_node_id)
+        {
+            let prev_job_id =
+                uuid::Uuid::parse_str(prev_job_str).map_err(crate::errors::Error::init)?;
+            let start_node_id =
+                uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
+
+            prepare_incremental_feature_store(
+                &workflow,
+                job_id,
+                &storage_resolver,
+                prev_job_id,
+                start_node_id,
+            )?;
+        } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
+            tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
+        } else {
+            tracing::info!("No incremental snapshot parameters provided. Running full workflow.");
         }
 
         let logger_factory = Arc::new(LoggerFactory::new(
