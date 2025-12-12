@@ -5,15 +5,10 @@ use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
     algorithm::{
-        area2d::Area2D,
-        bool_ops::BooleanOps,
-        bounding_rect::BoundingRect,
+        area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
         tolerance::glue_vertices_closer_than,
-        utils::{normalize_vertices_2d, NormalizationResult2D},
     },
-    types::{
-        line_string::LineString2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D, rect::Rect2D,
-    },
+    types::{multi_polygon::MultiPolygon2D, rect::Rect2D},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -555,58 +550,6 @@ impl OverlaidFeatures {
         self.area.extend(other.area);
         self.remnant.extend(other.remnant);
     }
-}
-
-fn normalize_vertices_2d_for_multipolygons(
-    polygons: &mut [MultiPolygon2D<f64>],
-) -> NormalizationResult2D<f64> {
-    let mut all_vertices = Vec::new();
-
-    for multi_polygon in polygons.iter() {
-        for polygon in &multi_polygon.0 {
-            for coord in polygon.exterior().coords() {
-                all_vertices.push(*coord);
-            }
-            for interior in polygon.interiors() {
-                for coord in interior.coords() {
-                    all_vertices.push(*coord);
-                }
-            }
-        }
-    }
-
-    let norm = normalize_vertices_2d(&mut all_vertices);
-
-    let mut index = 0;
-
-    for multi_polygon in polygons.iter_mut() {
-        multi_polygon.0 = multi_polygon
-            .0
-            .iter()
-            .map(|p| {
-                let mut exterior = Vec::new();
-                for _ in p.exterior().coords() {
-                    exterior.push(all_vertices[index]);
-                    index += 1;
-                }
-                let exterior = LineString2D::new(exterior);
-
-                let mut interiors = Vec::new();
-                for interior in p.interiors() {
-                    let mut coords = Vec::new();
-                    for _ in interior.coords() {
-                        coords.push(all_vertices[index]);
-                        index += 1;
-                    }
-                    interiors.push(LineString2D::new(coords));
-                }
-
-                Polygon2D::new(exterior, interiors)
-            })
-            .collect::<Vec<_>>();
-    }
-
-    norm
 }
 
 #[cfg(test)]
