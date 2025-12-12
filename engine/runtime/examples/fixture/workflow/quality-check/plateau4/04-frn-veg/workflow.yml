@@ -6,6 +6,7 @@ with:
   schemas:
   codelists:
   outputPath:
+  epsg:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -94,6 +95,13 @@ graphs:
             - expr: |
                 env.get("__value").featureType != "CityModel"
               outputPort: default
+
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: env.get("epsg")
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM
@@ -613,9 +621,14 @@ graphs:
         toPort: default
       - id: bc1dd787-c39b-4fec-8fbc-a7f9911088f3
         from: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        fromPort: default
+        toPort: default
+      - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
         to: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         fromPort: default
-        toPort: default      
+        toPort: default
       - id: 2eb28ad8-d23e-4dba-97b9-bd2bb634c839
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 93045f38-7f7a-4f1a-915e-e6d725ce36fb

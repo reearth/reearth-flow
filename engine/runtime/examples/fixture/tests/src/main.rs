@@ -106,6 +106,10 @@ pub struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub object_lists: Option<String>,
 
+    /// EPSG code for coordinate reference system (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub epsg: Option<i64>,
+
     /// Intermediate data assertions (edge_id -> expected file)
     #[serde(default)]
     pub intermediate_assertions: Vec<IntermediateAssertion>,
@@ -427,6 +431,10 @@ impl TestContext {
             let object_lists_path = self.test_dir.join(object_lists);
             let object_lists_url = format!("file://{}", object_lists_path.display());
             test_variables.insert("objectLists".to_string(), object_lists_url);
+        }
+
+        if let Some(epsg) = &self.profile.epsg {
+            test_variables.insert("epsg".to_string(), epsg.to_string());
         }
 
         test_variables.insert(
@@ -1390,6 +1398,7 @@ mod tests {
             codelists: None,
             schemas: None,
             object_lists: None,
+            epsg: None,
             intermediate_assertions: vec![],
             summary_output: None,
             expect_result_ok_file: None,
@@ -1458,6 +1467,7 @@ mod tests {
             codelists: None,
             schemas: None,
             object_lists: None,
+            epsg: None,
             intermediate_assertions: vec![],
             summary_output: None,
             expect_result_ok_file: None,

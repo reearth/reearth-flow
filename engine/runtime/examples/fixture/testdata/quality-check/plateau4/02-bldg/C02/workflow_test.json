@@ -9,5 +9,6 @@
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "epsg": 6675
 }

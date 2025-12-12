@@ -7,11 +7,14 @@
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": ["図郭不正"]
+      "includeColumns": [
+        "図郭不正"
+      ]
     }
   },
   "cityGmlPath": "udx/bldg/54377084_bldg_6697_op.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "epsg": 6675
 }
