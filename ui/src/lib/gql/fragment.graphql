@@ -76,6 +76,7 @@ fragment Trigger on Trigger {
   variables {
     ...Variable
   }
+  enabled
 }
 
 fragment NodeExecution on NodeExecution {

@@ -38,6 +38,7 @@ export default ({
   );
   const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  const [isTriggerEnabled, setIsTriggerEnabled] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
     DeploymentOrderBy.UpdatedAt,
@@ -190,6 +191,7 @@ export default ({
       workspaceId,
       deploymentId,
       description,
+      isTriggerEnabled,
       eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
       eventSource === "API_DRIVEN" ? authToken : undefined,
       variablesToSave,
@@ -206,6 +208,7 @@ export default ({
     eventSource,
     authToken,
     timeInterval,
+    isTriggerEnabled,
     setShowDialog,
     createTrigger,
     description,
@@ -223,6 +226,10 @@ export default ({
     [t, toast],
   );
 
+  const handleTriggerEnable = (checked: boolean) => {
+    setIsTriggerEnabled(checked);
+  };
+
   return {
     createdTrigger,
     eventSources,
@@ -235,6 +242,7 @@ export default ({
     deploymentId,
     isFetching,
     isDebouncingSearch,
+    isTriggerEnabled,
     totalPages,
     currentPage,
     currentSortValue,
@@ -252,6 +260,7 @@ export default ({
     handleSelectEventSource,
     handleSelectTimeInterval,
     handleTriggerCreation,
+    handleTriggerEnable,
     setCurrentPage,
     handleSortChange,
     // Project Params for Workflow Variables

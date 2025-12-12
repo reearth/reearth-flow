@@ -17,6 +17,7 @@ export default ({
   const [updatedDescription, setUpdatedDescription] = useState(
     selectedTrigger.description || "",
   );
+
   const [updatedEventSource, setUpdatedEventSource] = useState(
     selectedTrigger.eventSource,
   );
@@ -89,6 +90,7 @@ export default ({
 
     await useUpdateTrigger(
       selectedTrigger.id,
+      selectedTrigger.enabled,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
