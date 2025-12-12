@@ -3578,12 +3578,28 @@ Validate Feature Geometry Quality
   },
   "definitions": {
     "ValidationType": {
-      "type": "string",
-      "enum": [
-        "duplicatePoints",
-        "duplicateConsecutivePoints",
-        "corruptGeometry",
-        "selfIntersection"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "duplicatePoints",
+            "corruptGeometry",
+            "selfIntersection"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "duplicateConsecutivePoints"
+          ],
+          "properties": {
+            "duplicateConsecutivePoints": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }
@@ -3809,21 +3825,30 @@ Reproject Geometry to Different Coordinate System
   "properties": {
     "sourceEpsgCode": {
       "title": "Source EPSG Code",
-      "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+      "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
       "default": null,
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint16",
-      "minimum": 0.0
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "targetEpsgCode": {
       "title": "Target EPSG Code",
-      "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+      "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }

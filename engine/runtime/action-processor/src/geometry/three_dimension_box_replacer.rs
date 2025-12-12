@@ -113,14 +113,13 @@ impl Processor for ThreeDimensionBoxReplacer {
         let max_z = parse_f64(attributes.get(&self.max_z))?;
         let min = Coordinate::new__(min_x, min_y, min_z);
         let max = Coordinate::new__(max_x, max_y, max_z);
-        panic!("Rect geometry is not supported anymore");
-        // let rectangle = Rect::new(min, max);
-        // let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(
-        //     FlowGeometry3D::Polygon(rectangle.to_polygon()),
-        // ));
-        // let mut feature = ctx.feature.clone();
-        // feature.geometry = geometry;
-        // fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        let rectangle = Rect::new(min, max);
+        let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(
+            FlowGeometry3D::MultiPolygon(rectangle.to_multi_polygon()),
+        ));
+        let mut feature = ctx.feature.clone();
+        feature.geometry = geometry;
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 

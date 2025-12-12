@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     algorithm::{
-        contains::Contains, coordinate_position::CoordPos, dimensions::Dimensions, tolerance,
-        GeoFloat, GeoNum, Relate,
+        contains::Contains, coordinate_position::CoordPos, dimensions::Dimensions, GeoFloat,
+        GeoNum, Relate,
     },
     types::{
         coordinate::Coordinate,

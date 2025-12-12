@@ -42,18 +42,6 @@ symmetric_intersects_impl!(Line<T, Z>, Polygon<T, Z>);
 symmetric_intersects_impl!(Polygon<T, Z>, LineString<T, Z>);
 symmetric_intersects_impl!(Polygon<T, Z>, MultiLineString<T, Z>);
 
-impl<T, Z> Intersects<Rect<T, Z>> for Polygon<T, Z>
-where
-    T: GeoNum,
-    Z: GeoNum,
-{
-    fn intersects(&self, rect: &Rect<T, Z>) -> bool {
-        unimplemented!()
-        // self.intersects(&rect.to_polygon())
-    }
-}
-symmetric_intersects_impl!(Rect<T, Z>, Polygon<T, Z>);
-
 impl<T, Z> Intersects<Triangle<T, Z>> for Polygon<T, Z>
 where
     T: GeoNum,

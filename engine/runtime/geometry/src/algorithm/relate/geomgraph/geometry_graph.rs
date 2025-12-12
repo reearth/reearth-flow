@@ -116,9 +116,10 @@ where
         }
         match geometry {
             GeometryCow::Line(line) => self.add_line(line),
-            GeometryCow::Rect(rect) => {
-                // PERF: avoid this conversion/clone?
-                // self.add_polygon(&rect.to_polygon());
+            GeometryCow::Rect(_rect) => {
+                // TODO: Only a 2D polygon implements to_polygon() function, and
+                // we cannnot statically distinguish 2D or 3D with the current implementation, so
+                // this has to wait for geometry refactoring.
                 unimplemented!()
             }
             GeometryCow::Point(point) => {
