@@ -421,9 +421,9 @@ impl RunWorkerCommand {
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
             prepare_incremental_feature_store(
-                &workflow,
+                workflow,
                 job_id,
-                &storage_resolver,
+                storage_resolver.as_ref(),
                 prev_job_id,
                 start_node_id,
             )?;
