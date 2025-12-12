@@ -301,11 +301,12 @@ pub(super) fn tile_writing_stage(
 
             // Initialize texture packer config
             // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
-            let config = TexturePlacerConfig {
-                width: max_width.max(1024),
-                height: max_height.max(1024),
-                padding: 0,
-            };
+            let config = TexturePlacerConfig::new_padded(
+                max_width.max(1024),
+                max_height.max(1024),
+                0,
+                2,
+            );
 
             let placer = GuillotineTexturePlacer::new(config.clone());
             let packer = packer.into_inner().map_err(|_| {
@@ -347,8 +348,8 @@ pub(super) fn tile_writing_stage(
                 exporter,
                 &atlas_path,
                 &texture_cache,
-                config.width,
-                config.height,
+                config.width(),
+                config.height(),
             );
 
             // Write glTF to storage
