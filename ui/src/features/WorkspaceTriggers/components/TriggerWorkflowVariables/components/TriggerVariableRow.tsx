@@ -18,7 +18,6 @@ const TriggerVariableRow: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  console.log("VARIABLE", variable);
   switch (variable.type) {
     case "array":
       return (
