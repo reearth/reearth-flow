@@ -856,7 +856,7 @@ mod tests {
         // Test data with consecutive points 0.9cm apart
         let line_string = LineString(vec![
             Coordinate::new_(0.0, 0.0),
-            Coordinate::new_(0.000000081, 0.0),
+            Coordinate::new_(0.002, 0.0),
             Coordinate::new_(1.0, 0.0),
         ]);
 
@@ -876,7 +876,7 @@ mod tests {
         // Test data with consecutive points 2cm apart
         let line_string = LineString(vec![
             Coordinate::new_(0.0, 0.0),
-            Coordinate::new_(0.00000018, 0.0),
+            Coordinate::new_(0.02, 0.0),
             Coordinate::new_(1.0, 0.0),
         ]);
 
