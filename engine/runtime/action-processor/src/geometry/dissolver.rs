@@ -24,7 +24,7 @@ pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 
 /// # Attribute Accumulation Strategy
 /// Defines how attributes should be handled when dissolving multiple features into one
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum AttributeAccumulationStrategy {
     /// # Drop Incoming Attributes
@@ -35,13 +35,8 @@ pub enum AttributeAccumulationStrategy {
     MergeAttributes,
     /// # Use Attributes From One Feature
     /// The output inherits the attributes of one representative feature (the last feature in the group)
+    #[default]
     UseOneFeature,
-}
-
-impl Default for AttributeAccumulationStrategy {
-    fn default() -> Self {
-        Self::UseOneFeature
-    }
 }
 
 #[derive(Debug, Clone, Default)]

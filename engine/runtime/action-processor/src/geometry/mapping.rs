@@ -4,7 +4,9 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
+    appearance_remover::AppearanceRemoverFactory,
     area_on_area_overlayer::AreaOnAreaOverlayerFactory,
+    boundary_extractor::BoundaryExtractorFactory,
     bounds_extractor::BoundsExtractorFactory,
     bufferer::BuffererFactory,
     center_point_replacer::CenterPointReplacerFactory,
@@ -19,6 +21,7 @@ use super::{
     extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory,
     filter::GeometryFilterFactory,
+    footprint_replacer::FootprintReplacerFactory,
     geometry_part_extractor::GeometryPartExtractorFactory,
     hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory,
@@ -28,24 +31,30 @@ use super::{
     offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory,
     planarity_filter::PlanarityFilterFactory,
+    polygon_normal_extractor::PolygonNormalExtractorFactory,
     refiner::RefinerFactory,
+    remover::GeometryRemoverFactory,
     replacer::GeometryReplacerFactory,
     solid_boundary_validator::SolidBoundaryValidatorFactory,
+    spatial_filter::SpatialFilterFactory,
     splitter::GeometrySplitterFactory,
-    surface_footprint_replacer::SurfaceFootprintReplacerFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
+    three_dimension_forcer::ThreeDimensionForcerFactory,
     three_dimension_planarity_rotator::ThreeDimensionPlanarityRotatorFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
     two_dimension_forcer::TwoDimensionForcerFactory,
     validator::GeometryValidatorFactory,
     value_filter::GeometryValueFilterFactory,
+    vertex_counter::VertexCounterFactory,
     vertex_remover::VertexRemoverFactory,
     vertical_reprojector::VerticalReprojectorFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
+        Box::<AppearanceRemoverFactory>::default(),
         Box::<ExtruderFactory>::default(),
+        Box::<BoundaryExtractorFactory>::default(),
         Box::<ThreeDimensionPlanarityRotatorFactory>::default(),
         Box::<ThreeDimensionBoxReplacerFactory>::default(),
         Box::<GeometryFilterFactory>::default(),
@@ -54,6 +63,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<HorizontalReprojectorFactory>::default(),
         Box::<VerticalReprojectorFactory>::default(),
         Box::<TwoDimensionForcerFactory>::default(),
+        Box::<ThreeDimensionForcerFactory>::default(),
         Box::<GeometryExtractorFactory>::default(),
         Box::<OrientationExtractorFactory>::default(),
         Box::<GeometryFilterFactory>::default(),
@@ -72,6 +82,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<BoundsExtractorFactory>::default(),
         Box::<ClipperFactory>::default(),
         Box::<RefinerFactory>::default(),
+        Box::<GeometryRemoverFactory>::default(),
         Box::<GeometryValueFilterFactory>::default(),
         Box::<ElevationExtractorFactory>::default(),
         Box::<DissolverFactory>::default(),
@@ -79,11 +90,14 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<OffsetterFactory>::default(),
         Box::<ConvexHullAccumulatorFactory>::default(),
         Box::<JPStandardGridAccumulatorFactory>::default(),
-        Box::<SurfaceFootprintReplacerFactory>::default(),
+        Box::<FootprintReplacerFactory>::default(),
         Box::<GeometryPartExtractorFactory>::default(),
         Box::<SolidBoundaryValidatorFactory>::default(),
         Box::<CSGBuilderFactory>::default(),
         Box::<CSGEvaluatorFactory>::default(),
+        Box::<VertexCounterFactory>::default(),
+        Box::<SpatialFilterFactory>::default(),
+        Box::<PolygonNormalExtractorFactory>::default(),
     ];
     factories
         .into_iter()

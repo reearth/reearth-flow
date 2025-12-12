@@ -131,7 +131,8 @@ pub fn slice_to_tiles<E>(
                     let (mat_idx, _) = materials.insert_full(mat);
                     // Slice polygon for each zoom level
                     for zoom in min_zoom..=max_zoom {
-                        if zoom <= max_zoom {
+                        // Don't filter at max_zoom - include all features at highest detail
+                        if zoom < max_zoom {
                             let geom_error = {
                                 let (_, _, y) =
                                     tiling::scheme::zxy_from_lng_lat(zoom, lng_center, lat_center);
@@ -167,18 +168,7 @@ pub fn slice_to_tiles<E>(
                                                 .filter(|(k, _)| {
                                                     feature_schema.fields().contains(&k.to_string())
                                                 })
-                                                .map(|(k, v)| {
-                                                    if let AttributeValue::Number(value) = v {
-                                                        (
-                                                            k.to_string(),
-                                                            AttributeValue::String(
-                                                                value.to_string(),
-                                                            ),
-                                                        )
-                                                    } else {
-                                                        (k.to_string(), v.clone())
-                                                    }
-                                                })
+                                                .map(|(k, v)| (k.to_string(), v))
                                                 .collect(),
                                             polygon_material_ids: Default::default(),
                                             materials: Default::default(), // set later
@@ -203,10 +193,6 @@ pub fn slice_to_tiles<E>(
                                                 feature_schema.fields().contains(&k.to_string())
                                             })
                                             .map(|(k, v)| match v {
-                                                AttributeValue::Number(value) => (
-                                                    k.to_string(),
-                                                    AttributeValue::String(value.to_string()),
-                                                ),
                                                 AttributeValue::DateTime(value) => (
                                                     k.to_string(),
                                                     AttributeValue::String(value.to_string()),

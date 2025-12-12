@@ -40,9 +40,8 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
-          format: citygml
           dataset: |
             env.get("__value")["path"]
 
@@ -96,7 +95,7 @@ graphs:
       - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         name: FileWriterTsvFilePath
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |

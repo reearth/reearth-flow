@@ -18,6 +18,8 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     DEFAULT_ENTRY_GRAPH_ID,
   );
 
+  const isMainWorkflow = currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID;
+
   const rawWorkflows = Array.from(yWorkflows.entries()).map(([, yw]) =>
     rebuildWorkflow(yw),
   );
@@ -90,6 +92,7 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     edges,
     openWorkflows,
     openNode,
+    isMainWorkflow,
     handleOpenNode,
     handleNodeSettings,
     handleWorkflowOpen,

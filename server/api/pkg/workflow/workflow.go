@@ -1,11 +1,11 @@
 package workflow
 
 type Workflow struct {
+	// Meta      *string
+	url       string
 	id        ID
 	project   ProjectID
 	workspace WorkspaceID
-	// Meta      *string
-	url string
 }
 
 func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, url string) *Workflow {

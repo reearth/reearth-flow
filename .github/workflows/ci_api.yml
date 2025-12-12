@@ -2,7 +2,6 @@ name: ci-api
 on:
   workflow_call:
 env:
-  RUST_VERSION: "1.88"
   GO_VERSION: "1.24"
 
 jobs:
@@ -40,41 +39,18 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "server/websocket -> target"
       - name: Install Protoc
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
-      - name: Install Thrift Compiler
-        run: |
-          sudo apt-get install -y thrift-compiler
-      - name: Build WebSocket Library
-        run: |
-          cd ${{ github.workspace }}/server/websocket
-          pwd
-          echo "Building websocket library..."
-          cargo build --release --target-dir ../target --verbose
-          echo "Build completed, checking target directory..."
-          ls -la ../target
-          echo "Checking release directory..."
-          ls -la ../target/release/
       - name: set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'server/api/go.mod'
+          go-version-file: "server/api/go.mod"
           check-latest: true
           cache-dependency-path: server/api/go.sum
       - name: test
         run: |
-          ls -la ${{ github.workspace }}/server/target/release/
-          export LD_LIBRARY_PATH=${{ github.workspace }}/server/target/release:$LD_LIBRARY_PATH
           go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
         env:
           REEARTH_FLOW_DB: mongodb://localhost

@@ -84,7 +84,11 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))?;
         w.write(bytes)
             .await
-            .map_err(|err| format_object_store_error(err, p))
+            .map_err(|err| format_object_store_error(err, p))?;
+        w.close()
+            .await
+            .map_err(|err| format_object_store_error(err, p))?;
+        Ok(())
     }
 
     pub async fn get(&self, location: &Path) -> Result<GetResult> {
@@ -102,7 +106,7 @@ impl Storage {
         let meta = ObjectMeta {
             location: object_store::path::Path::parse(p)?,
             last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as u64,
+            size: meta.content_length(),
             e_tag: meta.etag().map(|x| x.to_string()),
             version: None,
         };
@@ -162,7 +166,7 @@ impl Storage {
         Ok(ObjectMeta {
             location: object_store::path::Path::parse(p)?,
             last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as u64,
+            size: meta.content_length(),
             e_tag: None,
             version: None,
         })

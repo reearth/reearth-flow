@@ -559,13 +559,6 @@ fn slice_line_string(
                     [tx, ty]
                 }));
 
-                // remove closing point if exists
-                if norm_coords_buf.len() >= 2
-                    && norm_coords_buf[0] == *norm_coords_buf.last().unwrap()
-                {
-                    norm_coords_buf.pop();
-                }
-
                 // linestrings must have at least two points
                 if norm_coords_buf.len() < 2 {
                     continue;

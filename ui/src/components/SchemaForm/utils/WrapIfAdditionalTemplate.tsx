@@ -28,8 +28,8 @@ const WrapIfAdditionalTemplate = <
     disabled,
     id,
     label,
-    onDropPropertyClick,
-    onKeyChange,
+    onKeyRename,
+    onRemoveProperty,
     readonly,
     required,
     schema,
@@ -46,7 +46,7 @@ const WrapIfAdditionalTemplate = <
   }
 
   const handleBlur = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onKeyChange(target && target.value);
+    onKeyRename(target && target.value);
 
   return (
     <div key={`${id}-key`} className={cn("gap-4 align-middle", classNames)}>
@@ -66,7 +66,7 @@ const WrapIfAdditionalTemplate = <
         <RemoveButton
           iconType="default"
           disabled={readonly || disabled}
-          onClick={onDropPropertyClick(label)}
+          onClick={() => onRemoveProperty()}
           uiSchema={uiSchema}
           registry={registry}
         />

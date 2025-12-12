@@ -15,6 +15,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 type Props = {
   nodes: Node[];
   edges: Edge[];
+  isMainWorkflow: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
@@ -52,6 +53,7 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 export default ({
   nodes,
   edges,
+  isMainWorkflow,
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
@@ -62,7 +64,7 @@ export default ({
   onCopy,
   onCut,
   onPaste,
-  onNodesDisable,
+  // onNodesDisable,
 }: Props) => {
   const {
     handleNodesChange,
@@ -163,7 +165,7 @@ export default ({
     switch (handler.keys?.join("")) {
       case "r":
         event.preventDefault();
-        onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
+        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "reader");
         break;
       case "t":
         event.preventDefault();
@@ -171,7 +173,7 @@ export default ({
         break;
       case "w":
         event.preventDefault();
-        onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
+        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "writer");
         break;
       case "c":
         if (hasModifier) onCopy?.();
@@ -182,9 +184,9 @@ export default ({
       case "v":
         if (hasModifier) onPaste?.();
         break;
-      case "e":
-        if (hasModifier) onNodesDisable?.();
-        break;
+      // case "e":
+      //   if (hasModifier) onNodesDisable?.();
+      //   break;
     }
   });
 

@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -12,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -20,6 +22,8 @@ type Trigger struct {
 	triggerRepo       repo.Trigger
 	deploymentRepo    repo.Deployment
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
+	paramRepo         repo.Parameter
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -33,6 +37,8 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		triggerRepo:       r.Trigger,
 		deploymentRepo:    r.Deployment,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
+		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -97,12 +103,18 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		Deployment(param.DeploymentID).
 		Description(param.Description).
 		EventSource(param.EventSource).
+		Enabled(param.Enabled).
+		CreatedAt(time.Now()).
 		UpdatedAt(time.Now())
 
 	if param.EventSource == "TIME_DRIVEN" {
 		t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
 	} else if param.EventSource == "API_DRIVEN" {
 		t = t.AuthToken(param.AuthToken)
+	}
+
+	if len(param.Variables) > 0 {
+		t = t.Variables(param.Variables)
 	}
 
 	trg, err := t.Build()
@@ -147,6 +159,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
+	}
+
 	if trigger.EventSource() == "API_DRIVEN" {
 		if p.AuthenticationToken != *trigger.AuthToken() {
 			return nil, fmt.Errorf("invalid auth token")
@@ -158,12 +174,43 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
+	var projectParams map[string]variable.Variable
+	if deployment.Project() != nil {
+		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
+		if err != nil {
+			return nil, err
+		}
+		projectParams = projectParametersToMap(pls)
+	}
+
+	var triggerVars map[string]variable.Variable
+	if tvs := trigger.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
+
+	schema := map[string]variable.Variable{}
+	maps.Copy(schema, projectParams)
+	maps.Copy(schema, triggerVars)
+
+	requestVars := normalizeRequestVars(p.Variables, schema)
+
+	finalVarMap, err := resolveVariables(
+		ModeAPIDriven,
+		projectParams,
+		triggerVars,
+		requestVars,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	j, err := job.New().
 		NewID().
 		Deployment(deployment.ID()).
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -183,7 +230,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
@@ -193,6 +240,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
+	}
+
+	// Update last triggered time
+	trigger.SetLastTriggered(time.Now())
+	if err := i.triggerRepo.Save(ctx, trigger); err != nil {
+		log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
+		// Don't fail the job creation for this @pyshx
 	}
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
@@ -225,11 +279,39 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
+	}
+
 	if trigger.EventSource() != "TIME_DRIVEN" {
 		return nil, fmt.Errorf("trigger is not time-driven")
 	}
 
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
+	if err != nil {
+		return nil, err
+	}
+
+	var projectParams map[string]variable.Variable
+	if deployment.Project() != nil {
+		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
+		if err != nil {
+			return nil, err
+		}
+		projectParams = projectParametersToMap(pls)
+	}
+
+	var triggerVars map[string]variable.Variable
+	if tvs := trigger.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
+
+	finalVarMap, err := resolveVariables(
+		ModeTimeDriven,
+		projectParams,
+		triggerVars,
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +322,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -259,10 +342,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	// Use empty variables for time-driven triggers
-	variables := make(map[string]interface{})
-
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variables, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
@@ -333,6 +413,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		t.SetEventSource(trigger.EventSourceType(param.EventSource))
 		t.SetTimeInterval("")
 		t.SetAuthToken(param.AuthToken)
+	}
+
+	if param.Enabled != nil {
+		t.SetEnabled(*param.Enabled)
+	}
+
+	if param.Variables != nil {
+		t.SetVariables(param.Variables)
 	}
 
 	if err := i.triggerRepo.Save(ctx, t); err != nil {

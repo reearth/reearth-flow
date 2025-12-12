@@ -1,14 +1,16 @@
 pub(super) mod cesium3dtiles;
+pub(super) mod citygml;
 pub(super) mod csv;
 pub(super) mod czml;
 pub(super) mod excel;
 pub(super) mod excel_writer;
 pub(super) mod geojson;
+pub(super) mod geopackage;
 pub(super) mod gltf;
 pub(super) mod json;
 pub(super) mod mvt;
 pub(super) mod obj;
 pub(super) mod shapefile;
-pub(crate) mod writer;
+pub(super) mod writer_geometry;
 pub(super) mod xml;
 pub(super) mod zip;

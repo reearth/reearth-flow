@@ -1,0 +1,57 @@
+type WorkerConfig {
+  id: ID!
+  machineType: String
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  taskCount: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  nodeStatusPropagationDelayMilli: Int
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# InputType
+
+input UpdateWorkerConfigInput {
+  workspaceId: ID!
+  machineType: String
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  taskCount: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  nodeStatusPropagationDelayMilli: Int
+}
+
+input DeleteWorkerConfigInput {
+  workspaceId: ID!
+}
+
+# Payload
+
+type UpdateWorkerConfigPayload {
+  config: WorkerConfig!
+}
+
+type DeleteWorkerConfigPayload {
+  workspaceId: ID!
+}
+
+# Query and Mutation
+
+extend type Query {
+  workerConfig(workspaceId: ID!): WorkerConfig
+}
+
+extend type Mutation {
+  updateWorkerConfig(input: UpdateWorkerConfigInput!): UpdateWorkerConfigPayload
+  deleteWorkerConfig(input: DeleteWorkerConfigInput!): DeleteWorkerConfigPayload
+}
+

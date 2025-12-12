@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,6 +23,7 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
 	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
+	"github.com/reearth/reearth-flow/subscriber/internal/telemetry"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
 )
@@ -29,6 +31,7 @@ import (
 const databaseName = "reearth-flow"
 
 func main() {
+
 	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -38,6 +41,68 @@ func main() {
 		log.Fatalf("failed to load config: %v", cerr)
 	}
 	log.Printf("config: %s", conf.Print())
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := fmt.Fprintf(w, "Subscriber is running"); err != nil {
+			log.Printf("failed to write response: %v", err)
+		}
+	})
+
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := fmt.Fprintf(w, "OK"); err != nil {
+			log.Printf("failed to write response: %v", err)
+		}
+	})
+
+	listener, err := net.Listen("tcp", ":"+conf.Port)
+	if err != nil {
+		log.Fatalf("failed to listen on port %s: %v", conf.Port, err)
+	}
+	log.Printf("[subscriber] HTTP server listening on port %s", conf.Port)
+
+	server := &http.Server{
+		Handler: http.DefaultServeMux,
+	}
+
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			log.Printf("[subscriber] HTTP server error: %v", err)
+			cancel()
+		}
+	}()
+
+	// Initialize OpenTelemetry
+	tel, err := telemetry.New(ctx, telemetry.Config{
+		Enabled:      conf.TelemetryEnabled,
+		TracerType:   conf.TracerType,
+		GCPProjectID: conf.GCPProject,
+		OTLPEndpoint: conf.OTLPEndpoint,
+		Insecure:     conf.OTLPInsecure,
+	})
+	if err != nil {
+		log.Fatalf("failed to initialize telemetry: %v", err)
+	}
+	defer func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := tel.Shutdown(shutdownCtx); err != nil {
+			log.Printf("failed to shutdown telemetry: %v", err)
+		}
+	}()
+	if conf.TelemetryEnabled {
+		tracerType := conf.TracerType
+		if tracerType == "" {
+			if conf.GCPProject != "" {
+				tracerType = "gcp (auto)"
+			} else {
+				tracerType = "otlp (auto)"
+			}
+		}
+		log.Printf("[subscriber] OpenTelemetry enabled, tracer type: %s", tracerType)
+	} else {
+		log.Println("[subscriber] OpenTelemetry disabled")
+	}
 
 	// Initialize PubSub client
 	pubsubClient, err := pubsub.NewClient(ctx, conf.GCPProject)
@@ -165,32 +230,26 @@ func main() {
 		log.Println("User facing log subscription ID not provided, user facing log subscriber will not be started")
 	}
 
-	// Set up HTTP server
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := fmt.Fprintf(w, "Subscriber is running"); err != nil {
-			log.Printf("failed to write response: %v", err)
-		}
-	})
+	if conf.JobCompleteSubscriptionID != "" {
+		jobStorage := infrastructure.NewJobStorageImpl(redisStorage)
+		jobSub := pubsubClient.Subscriber(conf.JobCompleteSubscriptionID)
+		jobSubAdapter := flow_pubsub.NewRealSubscription(jobSub)
+		jobSubscriberUC := interactor.NewJobSubscriberUseCase(jobStorage)
+		jobSubscriber := flow_pubsub.NewJobSubscriber(jobSubAdapter, jobSubscriberUC)
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		if _, err := fmt.Fprintf(w, "OK"); err != nil {
-			log.Printf("failed to write response: %v", err)
-		}
-	})
-
-	server := &http.Server{
-		Addr:    ":" + conf.Port,
-		Handler: http.DefaultServeMux,
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting job complete subscriber...")
+			if err := jobSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Job complete subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Job complete subscriber stopped")
+		}()
+	} else {
+		log.Println("Job complete subscription ID not provided, job subscriber will not be started")
 	}
-
-	go func() {
-		log.Printf("[subscriber] Starting HTTP server on port %s...", conf.Port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("[subscriber] HTTP server error: %v", err)
-			cancel()
-		}
-	}()
 
 	// Set up graceful shutdown handler
 	go func() {

@@ -34,9 +34,9 @@ const NodeDeletionDialog: React.FC<Props> = ({
 
   return (
     <ConfirmationDialog
-      title={t("Are you sure you want to delete an input or output node?")}
+      title={t("Are you sure you want to delete an input or output action?")}
       description={t(
-        "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.",
+        "Input and Output actions are required for the workflow to run. By deleting an action you may cause unexpected behavior.",
       )}
       isOpen={!!showBeforeDeleteDialog}
       confirmDisabled={!showBeforeDeleteDialog}

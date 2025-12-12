@@ -189,115 +189,26 @@ impl Sink for GltfWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(city_gml) = feature.geometry.value.as_citygml_geometry() else {
-            return Err(
-                SinkError::GltfWriter("Feature is not a CityGML geometry".to_string()).into(),
-            );
-        };
-        let Some(feature_type) = feature.metadata.feature_type.clone() else {
-            return Err(SinkError::GltfWriter("Feature type is missing".to_string()).into());
-        };
-        let mut materials: IndexSet<Material> = IndexSet::new();
-        let default_material = reearth_flow_types::material::X3DMaterial::default();
-        let mut local_bvol = BoundingVolume::default();
-        let mut class_feature = ClassFeature {
-            polygons: flatgeom::MultiPolygon::new(),
-            attributes: feature
-                .attributes
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone()))
-                .collect(),
-            polygon_material_ids: Default::default(),
-            materials: Default::default(),
-            feature_id: None,
-            feature_type: feature_type.clone(),
-        };
-        for entry in city_gml.gml_geometries.iter() {
-            match entry.ty {
-                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                    // for each polygon
-                    for (((poly, poly_uv), poly_mat), poly_tex) in entry
-                        .polygons
-                        .iter()
-                        .zip_eq(
-                            city_gml
-                                .polygon_uvs
-                                .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize),
-                        )
-                        .zip_eq(
-                            city_gml.polygon_materials
-                                [entry.pos as usize..(entry.pos + entry.len) as usize]
-                                .iter(),
-                        )
-                        .zip_eq(
-                            city_gml.polygon_textures
-                                [entry.pos as usize..(entry.pos + entry.len) as usize]
-                                .iter(),
-                        )
-                    {
-                        let poly: Polygon3 = poly.clone().into();
-                        let mat = if self.attach_texture {
-                            let orig_mat = poly_mat
-                                .and_then(|idx| city_gml.materials.get(idx as usize))
-                                .unwrap_or(&default_material)
-                                .clone();
-                            let orig_tex =
-                                poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
-                            Material {
-                                base_color: orig_mat.diffuse_color.into(),
-                                base_texture: orig_tex.map(|tex| material::Texture {
-                                    uri: tex.uri.clone(),
-                                }),
-                            }
-                        } else {
-                            Material {
-                                base_color: default_material.diffuse_color.into(),
-                                base_texture: None,
-                            }
-                        };
-                        let (mat_idx, _) = materials.insert_full(mat);
-                        let mut ring_buffer: Vec<[f64; 5]> = Vec::new();
-                        poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
-                            |(ri, (ring, uv_ring))| {
-                                ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
-                                    |(c, uv)| {
-                                        let [lng, lat, height] = c;
-                                        ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
 
-                                        local_bvol.min_lng = local_bvol.min_lng.min(lng);
-                                        local_bvol.max_lng = local_bvol.max_lng.max(lng);
-                                        local_bvol.min_lat = local_bvol.min_lat.min(lat);
-                                        local_bvol.max_lat = local_bvol.max_lat.max(lat);
-                                        local_bvol.min_height = local_bvol.min_height.min(height);
-                                        local_bvol.max_height = local_bvol.max_height.max(height);
-                                    },
-                                );
-                                if ri == 0 {
-                                    class_feature.polygons.add_exterior(ring_buffer.drain(..));
-                                    class_feature.polygon_material_ids.push(mat_idx as u32);
-                                } else {
-                                    class_feature.polygons.add_interior(ring_buffer.drain(..));
-                                }
-                            },
-                        );
-                    }
-                }
-                GeometryType::Curve => {
-                    unimplemented!()
-                }
-                GeometryType::Point => {
-                    unimplemented!()
-                }
+        match &feature.geometry.value {
+            reearth_flow_types::geometry::GeometryValue::CityGmlGeometry(city_gml) => {
+                self.process_citygml(city_gml, feature)?;
+            }
+            reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(geo) => {
+                self.process_flow_geometry_3d(geo, feature)?;
+            }
+            _ => {
+                return Err(SinkError::GltfWriter(
+                    "Unsupported geometry type. Expected CityGmlGeometry or FlowGeometry3D"
+                        .to_string(),
+                )
+                .into());
             }
         }
-        class_feature.materials = materials;
-        {
-            let feats = self.classified_features.entry(feature_type).or_default();
-            feats.features.push(class_feature);
-            feats.bounding_volume.update(&local_bvol);
-        }
+
         Ok(())
     }
+
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let ellipsoid = nusamai_projection::ellipsoid::wgs84();
         // Bounding volume for the entire dataset
@@ -638,6 +549,324 @@ impl Sink for GltfWriter {
                     .map_err(crate::errors::SinkError::gltf_writer)?;
                 Ok::<(), crate::errors::SinkError>(())
             })?;
+
+        Ok(())
+    }
+}
+
+// Helper methods for GltfWriter
+impl GltfWriter {
+    fn process_citygml(
+        &mut self,
+        city_gml: &reearth_flow_types::geometry::CityGmlGeometry,
+        feature: &reearth_flow_types::Feature,
+    ) -> Result<(), BoxedError> {
+        let Some(feature_type) = feature.metadata.feature_type.clone() else {
+            return Err(SinkError::GltfWriter("Feature type is missing".to_string()).into());
+        };
+        let mut materials: IndexSet<Material> = IndexSet::new();
+        let default_material = reearth_flow_types::material::X3DMaterial::default();
+        let mut local_bvol = BoundingVolume::default();
+        let mut class_feature = ClassFeature {
+            polygons: flatgeom::MultiPolygon::new(),
+            attributes: feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect(),
+            polygon_material_ids: Default::default(),
+            materials: Default::default(),
+            feature_id: None,
+            feature_type: feature_type.clone(),
+        };
+        for entry in city_gml.gml_geometries.iter() {
+            match entry.ty {
+                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                    // for each polygon
+                    for (((poly, poly_uv), poly_mat), poly_tex) in entry
+                        .polygons
+                        .iter()
+                        .zip_eq(
+                            city_gml
+                                .polygon_uvs
+                                .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize),
+                        )
+                        .zip_eq(
+                            city_gml.polygon_materials
+                                [entry.pos as usize..(entry.pos + entry.len) as usize]
+                                .iter(),
+                        )
+                        .zip_eq(
+                            city_gml.polygon_textures
+                                [entry.pos as usize..(entry.pos + entry.len) as usize]
+                                .iter(),
+                        )
+                    {
+                        let poly: Polygon3 = poly.clone().into();
+                        let mat = if self.attach_texture {
+                            let orig_mat = poly_mat
+                                .and_then(|idx| city_gml.materials.get(idx as usize))
+                                .unwrap_or(&default_material)
+                                .clone();
+                            let orig_tex =
+                                poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
+                            Material {
+                                base_color: orig_mat.diffuse_color.into(),
+                                base_texture: orig_tex.map(|tex| material::Texture {
+                                    uri: tex.uri.clone(),
+                                }),
+                            }
+                        } else {
+                            Material {
+                                base_color: default_material.diffuse_color.into(),
+                                base_texture: None,
+                            }
+                        };
+                        let (mat_idx, _) = materials.insert_full(mat);
+                        let mut ring_buffer: Vec<[f64; 5]> = Vec::new();
+                        poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
+                            |(ri, (ring, uv_ring))| {
+                                ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
+                                    |(c, uv)| {
+                                        let [lng, lat, height] = c;
+                                        ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
+
+                                        local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                                        local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                                        local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                                        local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                                        local_bvol.min_height = local_bvol.min_height.min(height);
+                                        local_bvol.max_height = local_bvol.max_height.max(height);
+                                    },
+                                );
+                                if ri == 0 {
+                                    class_feature.polygons.add_exterior(ring_buffer.drain(..));
+                                    class_feature.polygon_material_ids.push(mat_idx as u32);
+                                } else {
+                                    class_feature.polygons.add_interior(ring_buffer.drain(..));
+                                }
+                            },
+                        );
+                    }
+                }
+                GeometryType::Curve => {
+                    unimplemented!()
+                }
+                GeometryType::Point => {
+                    unimplemented!()
+                }
+            }
+        }
+        class_feature.materials = materials;
+        {
+            let feats = self.classified_features.entry(feature_type).or_default();
+            feats.features.push(class_feature);
+            feats.bounding_volume.update(&local_bvol);
+        }
+        Ok(())
+    }
+
+    fn process_flow_geometry_3d(
+        &mut self,
+        geo: &reearth_flow_geometry::types::geometry::Geometry3D<f64>,
+        feature: &reearth_flow_types::Feature,
+    ) -> Result<(), BoxedError> {
+        use reearth_flow_geometry::types::geometry::Geometry3D;
+
+        // Only support Solid, Polygon, and MultiPolygon for now
+        match geo {
+            Geometry3D::Solid(solid) => {
+                self.convert_solid_to_gltf(solid, feature)?;
+            }
+            Geometry3D::Polygon(polygon) => {
+                self.convert_polygon_to_gltf(polygon, feature)?;
+            }
+            Geometry3D::MultiPolygon(multi_polygon) => {
+                for polygon in multi_polygon.iter() {
+                    self.convert_polygon_to_gltf(polygon, feature)?;
+                }
+            }
+            _ => {
+                return Err(SinkError::GltfWriter(
+                    "Only Solid, Polygon, and MultiPolygon are supported for FlowGeometry3D export"
+                        .to_string(),
+                )
+                .into());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn convert_polygon_to_gltf(
+        &mut self,
+        polygon: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
+        feature: &reearth_flow_types::Feature,
+    ) -> Result<(), BoxedError> {
+        use flatgeom::Polygon3 as FlatPolygon3;
+
+        let feature_type = feature
+            .metadata
+            .feature_type
+            .clone()
+            .unwrap_or_else(|| "Building".to_string());
+
+        // Convert Polygon3D to flatgeom::Polygon format [x, y, z, u, v]
+        let flat_polygon: FlatPolygon3 = polygon.clone().into();
+
+        let mut multi_polygon = flatgeom::MultiPolygon::new();
+        let mut local_bvol = BoundingVolume::default();
+
+        // Add exterior ring
+        let exterior_coords: Vec<[f64; 5]> = flat_polygon
+            .exterior()
+            .iter()
+            .map(|coord| {
+                let [lng, lat, height] = [coord[0], coord[1], coord[2]];
+                // Update bounding volume
+                local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                local_bvol.min_height = local_bvol.min_height.min(height);
+                local_bvol.max_height = local_bvol.max_height.max(height);
+                [lng, lat, height, 0.0, 0.0]
+            })
+            .collect();
+        multi_polygon.add_exterior(exterior_coords);
+
+        // Add interior rings (holes)
+        for interior in flat_polygon.interiors() {
+            let interior_coords: Vec<[f64; 5]> = interior
+                .iter()
+                .map(|coord| {
+                    let [lng, lat, height] = [coord[0], coord[1], coord[2]];
+                    // Update bounding volume
+                    local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                    local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                    local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                    local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                    local_bvol.min_height = local_bvol.min_height.min(height);
+                    local_bvol.max_height = local_bvol.max_height.max(height);
+                    [lng, lat, height, 0.0, 0.0]
+                })
+                .collect();
+            multi_polygon.add_interior(interior_coords);
+        }
+
+        // Create default material for the polygon
+        let default_material = Material {
+            base_color: [1.0, 1.0, 1.0, 1.0],
+            base_texture: None,
+        };
+        let mut materials = IndexSet::new();
+        materials.insert(default_material);
+
+        let class_feature = ClassFeature {
+            polygons: multi_polygon,
+            polygon_material_ids: vec![0], // One material ID for the one polygon
+            materials,
+            attributes: feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect(),
+            feature_id: None,
+            feature_type: feature_type.clone(),
+        };
+
+        // Add to classified features and update bounding volume
+        let feats = self.classified_features.entry(feature_type).or_default();
+        feats.features.push(class_feature);
+        feats.bounding_volume.update(&local_bvol);
+
+        Ok(())
+    }
+
+    fn convert_solid_to_gltf(
+        &mut self,
+        solid: &reearth_flow_geometry::types::solid::Solid3D<f64>,
+        feature: &reearth_flow_types::Feature,
+    ) -> Result<(), BoxedError> {
+        let feature_type = feature
+            .metadata
+            .feature_type
+            .clone()
+            .unwrap_or_else(|| "Building".to_string());
+
+        // Extract all faces from the solid
+        let faces = solid.all_faces();
+
+        if faces.is_empty() {
+            return Ok(());
+        }
+
+        // Track bounding volume across all faces
+        let mut local_bvol = BoundingVolume::default();
+
+        // Create a single MultiPolygon containing all faces
+        let mut multi_polygon = flatgeom::MultiPolygon::new();
+        let mut polygon_count = 0;
+
+        // Convert each face to a polygon and add it to the multi_polygon
+        for face in faces.iter() {
+            let coords = &face.0;
+
+            if coords.len() < 3 {
+                continue; // Skip degenerate faces
+            }
+
+            // Convert face coordinates to [x, y, z, u, v] format
+            let face_coords: Vec<[f64; 5]> = coords
+                .iter()
+                .map(|coord| {
+                    let lng = coord.x;
+                    let lat = coord.y;
+                    let height = coord.z;
+                    // Update bounding volume
+                    local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                    local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                    local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                    local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                    local_bvol.min_height = local_bvol.min_height.min(height);
+                    local_bvol.max_height = local_bvol.max_height.max(height);
+                    [lng, lat, height, 0.0, 0.0]
+                })
+                .collect();
+
+            multi_polygon.add_exterior(face_coords);
+            polygon_count += 1;
+        }
+
+        // Create default material
+        let default_material = Material {
+            base_color: [1.0, 1.0, 1.0, 1.0],
+            base_texture: None,
+        };
+        let mut materials = IndexSet::new();
+        materials.insert(default_material);
+
+        // Create material IDs - one per face/polygon (all use material 0)
+        let polygon_material_ids = vec![0; polygon_count];
+
+        // Create a single ClassFeature for all faces of the solid
+        let class_feature = ClassFeature {
+            polygons: multi_polygon,
+            polygon_material_ids,
+            materials,
+            attributes: feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect(),
+            feature_id: None,
+            feature_type: feature_type.clone(),
+        };
+
+        // Add to classified features and update bounding volume
+        let feats = self.classified_features.entry(feature_type).or_default();
+        feats.features.push(class_feature);
+        feats.bounding_volume.update(&local_bvol);
 
         Ok(())
     }

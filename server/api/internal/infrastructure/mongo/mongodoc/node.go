@@ -8,12 +8,12 @@ import (
 )
 
 type NodeExecutionDocument struct {
+	StartedAt   *time.Time `bson:"startedAt,omitempty"`
+	CompletedAt *time.Time `bson:"completedAt,omitempty"`
 	ID          string     `bson:"id"`
 	JobID       string     `bson:"jobId"`
 	NodeID      string     `bson:"nodeId"`
 	Status      string     `bson:"status"`
-	StartedAt   *time.Time `bson:"startedAt,omitempty"`
-	CompletedAt *time.Time `bson:"completedAt,omitempty"`
 }
 
 type NodeExecutionConsumer = Consumer[*NodeExecutionDocument, *graph.NodeExecution]

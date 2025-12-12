@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -73,9 +74,29 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		return nil, err
 	}
 
+	var prevJobID *id.JobID
+	if input.PreviousJobID != nil {
+		pjid, err := id.JobIDFrom(string(*input.PreviousJobID))
+		if err != nil {
+			return nil, err
+		}
+		prevJobID = &pjid
+	}
+
+	var startNodeUUID *uuid.UUID
+	if input.StartNodeID != nil {
+		nid, err := uuid.Parse(string(*input.StartNodeID))
+		if err != nil {
+			return nil, err
+		}
+		startNodeUUID = &nid
+	}
+
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
-		ProjectID: pid,
-		Workflow:  gqlmodel.FromFile(&input.File),
+		ProjectID:     pid,
+		Workflow:      gqlmodel.FromFile(&input.File),
+		PreviousJobID: prevJobID,
+		StartNodeID:   startNodeUUID,
 	})
 	if err != nil {
 		return nil, err

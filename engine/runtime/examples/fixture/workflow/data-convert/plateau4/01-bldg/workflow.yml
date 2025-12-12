@@ -54,14 +54,14 @@ graphs:
               method: convert
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
-                let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
-                let gmlCityCode = buildingIdAttributes["uro:city_code"];
-                if gmlCityCode != () && gmlCityCode != "" {
-                  gmlCityCode
+                let building_id_attributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                let gml_city_code = building_id_attributes["uro:city_code"];
+                if gml_city_code != () && gml_city_code != "" {
+                  gml_city_code
                 } else {
-                  let featureCityCode = env.get("__value").cityCode;
-                  if featureCityCode != () && featureCityCode != "" {
-                    featureCityCode
+                  let feature_city_code = env.get("__value").cityCode;
+                  if feature_city_code != () && feature_city_code != "" {
+                    feature_city_code
                   } else {
                     env.get("cityCode") ?? "30406"
                   }
@@ -71,8 +71,8 @@ graphs:
               method: create
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
-                let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
-                buildingIdAttributes["uro:city"] ?? env.get("__value").cityName
+                let building_id_attributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                building_id_attributes["uro:city"] ?? env.get("__value").cityName
 
       - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
         name: AttributeConversionTable
@@ -119,7 +119,7 @@ graphs:
             - attribute: _lod_type
               method: create
               value: |
-                env.get("__lod_type") ?? "undefined"
+                env.get("__lod_type")
             - attribute: feature_type
               method: create
               value: |
@@ -419,16 +419,26 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod1")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod1_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod1_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod1.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
             }
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
@@ -440,16 +450,26 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod2")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod2")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod2_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod2_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod2.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
             }
 
       - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
@@ -461,16 +481,26 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod2_no_texture")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod2_no_texture")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod2_no_texture_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod2_no_texture_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod2_no_texture.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_no_texture.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
             }
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
@@ -482,16 +512,26 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod3")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod3_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod3_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod3.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3.zip")
             }
 
       - id: 990ff798-168a-496e-a20a-b428de6a9ec0
@@ -503,16 +543,26 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod3_no_texture")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod3_no_texture")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod3_no_texture_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod3_no_texture_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod3_no_texture.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_no_texture.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
             }
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
@@ -524,16 +574,26 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod4")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod4")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod4_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod4_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod4.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4.zip")
             }
 
       - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
@@ -545,16 +605,26 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod4_no_texture")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, "bldg_lod4_no_texture")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "bldg_lod4_no_texture_" + env.get("__value").city_code)
+              file::join_path(artifact, "bldg_lod4_no_texture_" + city_code)
             }
           compressOutput: |
-            if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod4_no_texture.zip")
+            let city_code = env.get("__value").city_code;
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_bldg") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            }
+
+            if env.get("__value").baseCityCode == city_code {
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_no_texture.zip")
             } else {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
             }
 
     edges:

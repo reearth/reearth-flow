@@ -60,6 +60,10 @@ export function convertFeatureToEntity(
     return entity;
   }
 
+  if (convertCityGmlSurfaceGeometry(entity, geometry, properties)) {
+    return entity;
+  }
+
   if (convertSurfaceGeometry(entity, geometry, properties)) {
     return entity;
   }
@@ -417,6 +421,200 @@ function convertBuildingGeometry(
   }
 
   return false;
+}
+
+/**
+ * Convert non-building CityGML geometry (Zones, LandUse, Relief, etc.)
+ * Handles gmlGeometries structure for any CityGML type that isn't a building
+ * Creates a single merged polygon entity instead of separate surfaces
+ */
+function convertCityGmlSurfaceGeometry(
+  entity: Entity,
+  geometry: CityGmlGeometry,
+  properties: Record<string, any>,
+): boolean {
+  // Access the CityGML geometry structure
+  const gmlGeometries =
+    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
+
+  if (!gmlGeometries || !Array.isArray(gmlGeometries)) {
+    return false;
+  }
+
+  // Check if this is building geometry - if so, skip (will be handled by convertBuildingGeometry)
+  const hasBuildingAttributes =
+    properties &&
+    (properties["bldg:measuredHeight"] ||
+      properties["bldg:usage"] ||
+      properties["bldg:class"] ||
+      properties.gmlName?.includes("bldg:") ||
+      properties.cityGmlAttributes?.["bldg:measuredHeight"] ||
+      properties.cityGmlAttributes?.["bldg:usage"] ||
+      properties.cityGmlAttributes?.["bldg:class"]);
+
+  if (hasBuildingAttributes) {
+    return false; // Let convertBuildingGeometry handle this
+  }
+
+  // Determine feature type for styling
+  const featureType =
+    properties?.gmlName ||
+    properties?.featureType ||
+    properties?.metadata?.featureType ||
+    "CityGML Feature";
+
+  // Extract feature information for InfoBox
+  const featureId =
+    properties?.gmlId || properties?.id || properties?.metadata?.featureId;
+  const lodLevel = properties?.metadata?.lod;
+
+  // Collect all polygons to merge into one entity
+  const allPolygonHierarchies: PolygonHierarchy[] = [];
+  let totalVertices = 0;
+
+  gmlGeometries.forEach((geom: any) => {
+    if (geom.polygons && Array.isArray(geom.polygons)) {
+      geom.polygons.forEach((polygon: any) => {
+        if (polygon.exterior && Array.isArray(polygon.exterior)) {
+          const positions = convertCoordinatesToPositions(polygon.exterior);
+          if (positions.length >= 3) {
+            allPolygonHierarchies.push(new PolygonHierarchy(positions));
+            totalVertices += positions.length;
+          }
+        }
+      });
+    }
+  });
+
+  if (allPolygonHierarchies.length === 0) {
+    return false;
+  }
+
+  // Determine material based on feature type
+  let material: ColorMaterialProperty;
+  let displayName: string;
+
+  if (featureType.includes("Zone") || featureType.includes("urf:")) {
+    material = new ColorMaterialProperty(Color.YELLOW.withAlpha(0.6));
+    displayName = "Zone";
+  } else if (featureType.includes("LandUse")) {
+    material = new ColorMaterialProperty(Color.GREEN.withAlpha(0.6));
+    displayName = "Land Use";
+  } else if (featureType.includes("Relief")) {
+    material = new ColorMaterialProperty(Color.BROWN.withAlpha(0.6));
+    displayName = "Relief";
+  } else if (featureType.includes("WaterBody")) {
+    material = new ColorMaterialProperty(Color.BLUE.withAlpha(0.6));
+    displayName = "Water Body";
+  } else {
+    material = new ColorMaterialProperty(Color.CYAN.withAlpha(0.6));
+    displayName = "Surface";
+  }
+
+  // Create a single polygon entity with all the polygons
+  // For flat ground-level features, use height = 0 and CLAMP_TO_GROUND
+  entity.polygon = new PolygonGraphics({
+    hierarchy: new ConstantProperty(allPolygonHierarchies[0]),
+    material: material,
+    outline: new ConstantProperty(false), // Disable outline for terrain-clamped polygons
+    outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
+    outlineWidth: new ConstantProperty(2),
+    height: new ConstantProperty(0), // Required for heightReference to work
+    heightReference: new ConstantProperty(HeightReference.CLAMP_TO_GROUND),
+  });
+
+  // If there are multiple polygons, store them as additional entities
+  if (allPolygonHierarchies.length > 1) {
+    const additionalEntities: Entity[] = [];
+    for (let i = 1; i < allPolygonHierarchies.length; i++) {
+      const additionalEntity = new Entity({
+        id: `${entity.id}_polygon_${i}`,
+        polygon: new PolygonGraphics({
+          hierarchy: new ConstantProperty(allPolygonHierarchies[i]),
+          material: material,
+          outline: new ConstantProperty(false), // Disable outline for terrain-clamped polygons
+          outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
+          outlineWidth: new ConstantProperty(2),
+          height: new ConstantProperty(0), // Required for heightReference to work
+          heightReference: new ConstantProperty(
+            HeightReference.CLAMP_TO_GROUND,
+          ),
+        }),
+      });
+      additionalEntities.push(additionalEntity);
+    }
+    // Store additional entities on the main entity for rendering
+    (entity as any).additionalPolygons = additionalEntities;
+  }
+
+  // Create InfoBox content
+  const infoBoxHtml = `
+  <div style="font-family: sans-serif; line-height: 1.4;">
+    <h3 style="margin: 0 0 10px 0; color: #2c3e50;">📍 ${featureType}</h3>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      ${
+        featureId
+          ? `<tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 4px 8px 4px 0; font-weight: bold; width: 40%;">ID:</td>
+        <td style="padding: 4px 0;">${featureId}</td>
+      </tr>`
+          : ""
+      }
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 4px 8px 4px 0; font-weight: bold;">Type:</td>
+        <td style="padding: 4px 0;">${featureType}</td>
+      </tr>
+      ${
+        lodLevel
+          ? `<tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 4px 8px 4px 0; font-weight: bold;">LOD:</td>
+        <td style="padding: 4px 0;">${lodLevel}</td>
+      </tr>`
+          : ""
+      }
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 4px 8px 4px 0; font-weight: bold;">Polygons:</td>
+        <td style="padding: 4px 0;">${allPolygonHierarchies.length}</td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 8px 4px 0; font-weight: bold;">Total Vertices:</td>
+        <td style="padding: 4px 0;">${totalVertices}</td>
+      </tr>
+    </table>
+
+    ${
+      Object.keys(properties?.cityGmlAttributes || {}).length > 0
+        ? `
+      <h4 style="margin: 10px 0 5px 0; color: #2c3e50;">Attributes</h4>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        ${Object.entries(properties.cityGmlAttributes)
+          .map(
+            ([key, value]) => `
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 2px 8px 2px 0; font-weight: bold;">${key}:</td>
+            <td style="padding: 2px 0;">${value}</td>
+          </tr>
+        `,
+          )
+          .join("")}
+      </table>
+    `
+        : ""
+    }
+  </div>`;
+
+  entity.description = new ConstantProperty(infoBoxHtml);
+
+  // Store properties on the entity
+  const propertyBag = new PropertyBag(properties);
+  propertyBag.addProperty("cityGmlType", displayName);
+  propertyBag.addProperty("featureType", featureType);
+  propertyBag.addProperty("polygonCount", allPolygonHierarchies.length);
+  propertyBag.addProperty("totalVertices", totalVertices);
+  entity.properties = propertyBag;
+
+  return true;
 }
 
 /**

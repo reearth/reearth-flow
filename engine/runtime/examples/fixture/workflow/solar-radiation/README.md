@@ -32,7 +32,7 @@ PowerGeneration (Expression 7)
   ↓
 FinalPotential (Expression 8)
   ↓
-FileWriter (CSV Output)
+CsvWriter (CSV Output)
 ```
 
 ## Running the Workflow

@@ -18,6 +18,7 @@ import {
 import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
@@ -36,9 +37,23 @@ const TriggerDetails: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-
+  const { useUpdateTrigger } = useTrigger();
   const { history } = useRouter();
   const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
+  const updateTrigger = useUpdateTrigger;
+
+  const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
+    selectedTrigger?.enabled,
+  );
+
+  const handleTriggerEnableChange = useCallback(
+    async (checked: boolean) => {
+      if (!selectedTrigger) return;
+      setUpdatedIsTriggerEnabled(checked);
+      await updateTrigger(selectedTrigger.id, checked);
+    },
+    [selectedTrigger, updateTrigger],
+  );
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
   const apiUrl = config().api || window.location.origin;
@@ -49,41 +64,45 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "id",
               name: t("ID"),
-              value: selectedTrigger.id || t("Unknown or deleted trigger"),
+              value: selectedTrigger.id ?? t("Unknown or deleted trigger"),
             },
             {
               id: "triggerId",
               name: t("Trigger Description"),
-              value: selectedTrigger.description || t("N/A"),
+              value: selectedTrigger.description ?? t("N/A"),
             },
             {
               id: "deploymentId",
               name: t("Deployment Id"),
-              value: selectedTrigger.deploymentId || t("N/A"),
+              value: selectedTrigger.deploymentId ?? t("N/A"),
             },
             {
               id: "projectName",
               name: t("Project Name"),
               value:
-                selectedTrigger.deployment.projectName ||
+                selectedTrigger.deployment.projectName ??
                 t("Unknown or deleted project"),
             },
             {
               id: "deploymentDescription",
               name: t("Deployment Description"),
-              value: selectedTrigger.deployment.description || t("N/A"),
+              value: selectedTrigger.deployment.description
+                ? selectedTrigger.variables
+                  ? `${selectedTrigger.deployment.description} ${t("[defaults overridden]")}`
+                  : selectedTrigger.deployment.description
+                : t("N/A"),
             },
             {
               id: "eventSource",
               name: t("Event Source"),
-              value: selectedTrigger.eventSource,
+              value: selectedTrigger.eventSource ?? t("N/A"),
             },
             ...(selectedTrigger.eventSource === "API_DRIVEN"
               ? [
                   {
                     id: "authToken",
                     name: t("Auth Token"),
-                    value: selectedTrigger.authToken || t("N/A"),
+                    value: selectedTrigger.authToken ?? t("N/A"),
                   },
                 ]
               : []),
@@ -92,31 +111,31 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "timeInterval",
                     name: t("Time Interval"),
-                    value: selectedTrigger.timeInterval || t("N/A"),
+                    value: selectedTrigger.timeInterval ?? t("N/A"),
                   },
                 ]
               : []),
             {
               id: "lastTriggered",
               name: t("Last Triggered"),
-              value: selectedTrigger.lastTriggered || t("Never"),
+              value: selectedTrigger.lastTriggered
+                ? formatTimestamp(selectedTrigger.lastTriggered)
+                : t("Never"),
             },
             {
               id: "createdAt",
               name: t("Created At"),
-              value:
-                formatTimestamp(selectedTrigger.createdAt) || t("Never") || "",
+              value: formatTimestamp(selectedTrigger.createdAt) ?? t("Never"),
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value:
-                formatTimestamp(selectedTrigger.updatedAt) || t("Never") || "",
+              value: formatTimestamp(selectedTrigger.updatedAt) ?? t("Never"),
             },
             {
               id: "workflowUrl",
               name: t("Workflow Url"),
-              value: selectedTrigger.deployment.workflowUrl || t("N/A"),
+              value: selectedTrigger.deployment.workflowUrl ?? t("N/A"),
             },
           ]
         : undefined,
@@ -161,7 +180,13 @@ const TriggerDetails: React.FC<Props> = ({
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox title={t("Trigger Details")} content={details} />
+          <DetailsBox
+            title={t("Trigger Details")}
+            content={details}
+            toggle
+            toggleValue={updatedIsTriggerEnabled}
+            onToggleChange={handleTriggerEnableChange}
+          />
         </div>
         {selectedTrigger?.eventSource === "API_DRIVEN" && (
           <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
@@ -208,7 +233,7 @@ const TriggerDetails: React.FC<Props> = ({
                 <TooltipContent side="top" align="end" className="bg-primary">
                   <div className="max-w-[300px] text-xs text-muted-foreground">
                     {t(
-                      'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
+                      'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in actions.',
                     )}
                   </div>
                 </TooltipContent>

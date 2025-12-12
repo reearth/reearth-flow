@@ -30,15 +30,17 @@ const BaseInputTemplate = <
 >(
   props: BaseInputTemplateProps<T, S, F>,
 ) => {
-  const { schema, formContext, id, name, value, uiSchema } = props;
-  // Extract context from formContext
+  const { schema, registry, id, name, value, uiSchema } = props;
+
+  const formContext = registry.formContext as ExtendedFormContext;
+
   const {
     onEditorOpen,
     onPythonEditorOpen,
     onAssetsOpen,
     originalSchema,
     actionName,
-  } = (formContext as ExtendedFormContext) || {};
+  } = formContext || {};
 
   // Check if this field is marked as an Expr type in the UI schema
   let isExprField = uiSchema?.["ui:exprType"] === "rhai";

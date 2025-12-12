@@ -100,6 +100,9 @@ impl SinkFactory for MVTSinkFactory {
                 min_zoom: params.min_zoom,
                 max_zoom: params.max_zoom,
                 compress_output,
+                skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
+                colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
+                extent: params.extent.unwrap_or(4096) as i32,
             },
             join_handles: Vec::new(),
         };
@@ -141,6 +144,15 @@ pub struct MVTWriterParam {
     /// # Compress Output
     /// Optional expression to determine whether to compress the output tiles
     pub(super) compress_output: Option<Expr>,
+    /// # Skip Unexposed Attributes
+    /// Skip attributes with double underscore prefix
+    pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Colon to Underscore
+    /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
+    pub(super) colon_to_underscore: Option<bool>,
+    /// # Extent
+    /// MVT tile resolution. Default is 4096.
+    pub(super) extent: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +162,9 @@ pub struct MVTWriterCompiledParam {
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
     pub(super) compress_output: Option<rhai::AST>,
+    pub(super) skip_unexposed_attributes: bool,
+    pub(super) colon_to_underscore: bool,
+    pub(super) extent: i32,
 }
 
 impl Sink for MVTWriter {
@@ -318,6 +333,9 @@ impl MVTWriter {
         let gctx = gctx.clone();
         let name = self.name().to_string();
         let compress_output = compress_output.clone();
+        let skip_unexposed_attributes = self.params.skip_unexposed_attributes;
+        let colon_to_underscore = self.params.colon_to_underscore;
+        let extent = self.params.extent;
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
         std::thread::spawn(move || {
@@ -331,6 +349,9 @@ impl MVTWriter {
                     &out,
                     receiver_sorted,
                     tile_id_conv,
+                    skip_unexposed_attributes,
+                    colon_to_underscore,
+                    extent,
                 );
                 if let Err(err) = &result {
                     gctx.event_hub.error_log(

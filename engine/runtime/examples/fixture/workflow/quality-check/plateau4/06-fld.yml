@@ -1,0 +1,490 @@
+id: d5277b70-7263-44c9-b1c3-aa43081b9e59
+name: PLATEAU4 Quality Check 06 Flood Zone
+entryGraphId: 0a2f610f-b92c-483b-a76a-e6143c3ab249
+with:
+  cityGmlPath: null
+  codelists: null
+  schemas: null
+  outputPath: null
+  epsgCode: null
+graphs:
+- id: 0a2f610f-b92c-483b-a76a-e6143c3ab249
+  name: EntryPoint
+  nodes:
+  - id: 04f359e7-3c19-4b3a-9859-3cd7de61eec9
+    name: InputFeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("cityGmlPath"),
+            codelists: env.get("codelists"),
+            schemas: env.get("schemas"),
+            outputPath: env.get("outputPath"),
+            epsgCode: env.get("epsgCode"),
+          },
+        ]
+  - id: 0aeb935e-bc3e-4867-96f3-122d504fcde6
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+  - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      destPrefix: udx
+      sourceDataset: |
+        env.get("__value")["cityGmlPath"]
+      extractArchive: true
+  - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
+    name: FeatureFilterByGml
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").extension == "gml"
+        outputPort: default
+  - id: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
+    name: UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+  - id: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
+    name: FldScaleExtractor
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _fld_scale
+        method: create
+        value: |
+          let filename = env.get("__value")["_gml_filename"];
+          if filename == () {
+            return ();
+          }
+          // Split by underscore and look for l1 or l2
+          let parts = filename.split("_");
+          for part in parts {
+            if part == "l1" || part.starts_with("l1.") {
+              return "l1";
+            }
+            if part == "l2" || part.starts_with("l2.") {
+              return "l2";
+            }
+          }
+          return ();
+  - id: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    name: AttributeCleanup
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _folder_root
+        method: remove
+      - attribute: _dir_root
+        method: remove
+      - attribute: _dir_codelists
+        method: remove
+      - attribute: _dir_schemas
+        method: remove
+  - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    name: Sorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - _udx_dirs
+      - _fld_scale
+      - _gml_filename
+      order: ascending
+  - id: 5d6e7f8a-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+    name: Counter
+    type: action
+    action: FeatureCounter
+    with:
+      outputAttribute: _file_index
+      groupBy:
+      - _udx_dirs
+      countStart: 1
+  - id: 5a3b2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    name: FaceExtractor
+    type: action
+    action: PLATEAU4.FaceExtractor
+    with:
+      cityGmlPathAttribute: path
+  - id: 6a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      epsgCode: 6670
+  - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    name: GeometryValidator
+    type: action
+    action: GeometryValidator
+    with:
+      validationTypes:
+      - duplicateConsecutivePoints
+      - corruptGeometry
+  - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
+    name: TwoDimensionForcer
+    type: action
+    action: TwoDimensionForcer
+    with: {}
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    name: PLATEAU4.UnsharedEdgeDetector
+    type: action
+    action: PLATEAU4.UnsharedEdgeDetector
+    with:
+      tolerance: 1.0
+  - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
+    name: UnsharedEdgeCounter
+    type: action
+    action: AttributeAggregator
+    with:
+      aggregateAttributes:
+      - newAttribute: udxDirs
+        attribute: udxDirs
+      - newAttribute: _file_index
+        attribute: _file_index
+      calculationAttribute: _num_unshared_edges
+      calculationValue: 1
+      method: count
+  - id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+    name: DegenerateTriangleCounter
+    type: action
+    action: AttributeAggregator
+    with:
+      aggregateAttributes:
+      - newAttribute: udxDirs
+        attribute: udxDirs
+      - newAttribute: _file_index
+        attribute: _file_index
+      calculationAttribute: _num_degenerate_triangles
+      calculationValue: 1
+      method: count
+  - id: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
+    name: MergeSummaryWithDegenerateCount
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - udxDirs
+      - _file_index
+      supplierAttribute:
+      - udxDirs
+      - _file_index
+  - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    name: MergeSummaryWithUnsharedEdges
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - udxDirs
+      - _file_index
+      supplierAttribute:
+      - udxDirs
+      - _file_index
+  - id: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+    name: PrepareSummaryForCSV
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: Folder
+        expr: |
+          env.get("__value").udxDirs
+      - attribute: Index
+        expr: |
+          env.get("__value")._file_index
+      - attribute: Filename
+        expr: |
+          env.get("__value").name
+      - attribute: 頂点数が不正な三角形
+        expr: |
+          env.get("__value")._num_incorrect_num_vertices
+      - attribute: 向きが不正な三角形
+        expr: |
+          env.get("__value")._num_wrong_orientation
+      - attribute: 閉じていない三角形
+        expr: |
+          env.get("__value")._num_not_closed
+      - attribute: 線状・点状の三角形
+        expr: |
+          env.get("__value")._num_degenerate_triangles ?? 0
+      - attribute: 共有先のない辺
+        expr: |
+          env.get("__value")._num_unshared_edges ?? 0
+  - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    name: PrepareSummaryForJSON
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: 頂点数が不正な三角形
+        expr: |
+          env.get("__value")._num_incorrect_num_vertices
+      - attribute: 閉じていない三角形
+        expr: |
+          env.get("__value")._num_not_closed
+      - attribute: 向きが不正な三角形
+        expr: |
+          env.get("__value")._num_wrong_orientation
+      - attribute: 線状・点状の三角形
+        expr: |
+          env.get("__value")._num_degenerate_triangles ?? 0
+      - attribute: 共有先のない辺
+        expr: |
+          env.get("__value")._num_unshared_edges ?? 0
+      - attribute: _json_filename
+        expr: |
+          env.get("__value")._json_filename
+  - id: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+    name: CSVWriter
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        let base_path = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let folder = env.get("__value").Folder;
+        if folder == () || folder == "" {
+          return file::join_path(base_path, "06_浸水想定区域_fld.csv");
+        }
+        // Remove leading "fld/" if present
+        let path = folder;
+        if path.starts_with("fld/") {
+          path = path.sub_string(4, path.len());
+        }
+        // Create hierarchical path: 06_浸水想定区域_fld/{path}.csv
+        let csv_filepath = "06_浸水想定区域_fld/" + path + ".csv";
+        file::join_path(base_path, csv_filepath)
+  - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+    name: JSONWriter
+    type: action
+    action: FeatureWriter
+    with:
+      format: json
+      converter: |
+        if env.get("__features").is_empty() {
+          []
+        } else {
+          let feature = env.get("__features")[0];
+          [
+            #{
+              name: "頂点数が不正な三角形",
+              count: feature["頂点数が不正な三角形"],
+            },
+            #{
+              name: "閉じていない三角形",
+              count: feature["閉じていない三角形"],
+            },
+            #{
+              name: "向きが不正な三角形",
+              count: feature["向きが不正な三角形"],
+            },
+            #{
+              name: "線状・点状の三角形",
+              count: feature["線状・点状の三角形"],
+            },
+            #{
+              name: "共有先のない辺",
+              count: feature["共有先のない辺"],
+            }
+          ]
+        }
+      output: |
+        let base_path = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
+        file::join_path(base_path, json_filename)
+  - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    name: StatisticsCalculatorTotalErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      calculations:
+      - newAttribute: totalErrorCount
+        expr: |
+          let v1 = env.get("__value")["頂点数が不正な三角形"] ?? 0;
+          let v2 = env.get("__value")["閉じていない三角形"] ?? 0;
+          let v3 = env.get("__value")["向きが不正な三角形"] ?? 0;
+          let v4 = env.get("__value")["線状・点状の三角形"] ?? 0;
+          let v5 = env.get("__value")["共有先のない辺"] ?? 0;
+          v1 + v2 + v3 + v4 + v5
+  - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    name: FeatureFilterNoErrors
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["totalErrorCount"] == 0
+        outputPort: default
+  - id: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+    name: FileWriterQcResultOk
+    type: action
+    action: JsonWriter
+    with:
+      converter: '[]'
+      output: |
+        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        file::join_path(dirname, filename)
+  edges:
+  - id: b54bb6e9-9bee-407c-a11d-58436552a745
+    from: 04f359e7-3c19-4b3a-9859-3cd7de61eec9
+    to: 0aeb935e-bc3e-4867-96f3-122d504fcde6
+    fromPort: default
+    toPort: default
+  - id: 205e077b-2464-4b02-a6b7-760957506e27
+    from: 0aeb935e-bc3e-4867-96f3-122d504fcde6
+    to: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
+    fromPort: default
+    toPort: default
+  - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe6
+    from: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
+    to: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
+    fromPort: default
+    toPort: default
+  - id: 4fe403d4-b3e2-41f3-b155-c7050aba3c8b
+    from: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
+    to: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
+    fromPort: default
+    toPort: default
+  - id: 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    from: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
+    to: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
+    fromPort: default
+    toPort: default
+  - id: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    from: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
+    to: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    fromPort: default
+    toPort: default
+  - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    from: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    to: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    fromPort: default
+    toPort: default
+  - id: 6d7e8f9a-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    to: 5d6e7f8a-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+    fromPort: default
+    toPort: default
+  - id: 9705ee13-25e6-4237-b60e-4e89828a1774
+    from: 5d6e7f8a-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+    to: 5a3b2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    fromPort: default
+    toPort: default
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    from: 5a3b2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    to: 6a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    fromPort: all
+    toPort: default
+  - id: 9c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f
+    from: 6a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    to: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
+    fromPort: default
+    toPort: default
+  - id: 8c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    from: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
+    to: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    fromPort: default
+    toPort: default
+  - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
+    from: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
+    to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    fromPort: default
+    toPort: default
+  - id: 8f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    to: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
+    fromPort: unshared
+    toPort: default
+  - id: b0c9d8e7-f6a5-4b3c-2d1e-0f9a8b7c6d5e
+    from: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    to: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+    fromPort: failed
+    toPort: default
+  - id: 9a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    from: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: default
+    toPort: supplier
+  - id: 9d7e8f9a-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    from: 5a3b2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    to: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
+    fromPort: summary
+    toPort: requestor
+  - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+    from: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+    to: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
+    fromPort: default
+    toPort: supplier
+  - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5e
+    from: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: merged
+    toPort: requestor
+  - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c6a
+    from: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: unmerged
+    toPort: requestor
+  - id: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+    fromPort: merged
+    toPort: default
+  - id: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6f
+    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+    fromPort: unmerged
+    toPort: default
+  - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+    from: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+    to: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+    fromPort: default
+    toPort: default
+  - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    to: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    fromPort: merged
+    toPort: default
+  - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e80
+    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    to: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    fromPort: unmerged
+    toPort: default
+  - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    from: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    to: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+    fromPort: default
+    toPort: default
+  - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+    from: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    fromPort: default
+    toPort: default
+  - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    from: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    to: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    fromPort: default
+    toPort: default
+  - id: 6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    from: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    to: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+    fromPort: default
+    toPort: default

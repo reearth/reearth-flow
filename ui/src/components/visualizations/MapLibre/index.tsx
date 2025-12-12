@@ -33,8 +33,8 @@ const MapLibre: React.FC<Props> = ({
 }) => {
   const handleMapClick = useCallback(
     (e: maplibregl.MapLayerMouseEvent) => {
-      if (e.features?.[0]) {
-        onSelectedFeature(e.features[0]);
+      if (e.features?.[0]?.id) {
+        onSelectedFeature(e.features[0].id);
       } else {
         onSelectedFeature(undefined);
       }
@@ -44,8 +44,8 @@ const MapLibre: React.FC<Props> = ({
 
   const handleMapDoubleClick = useCallback(
     (e: maplibregl.MapLayerMouseEvent) => {
-      if (e.features?.[0]) {
-        onSelectedFeature(e.features[0]);
+      if (e.features?.[0]?.id) {
+        onSelectedFeature(e.features[0].id);
         onFlyToSelectedFeature?.(e.features[0]);
       }
     },
