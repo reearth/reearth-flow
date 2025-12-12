@@ -76,6 +76,13 @@ graphs:
         with:
           targetType: lineString
 
+       # Step 5: Calculates the planar or sloped area of polygon geometries and adds the results as attributes.
+      - id: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
+        name: AreaCalculator
+        type: action
+        action: AreaCalculator
+        with: {}
+
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
         name: SolarEnergyResultWriter
         type: action
@@ -108,8 +115,15 @@ graphs:
         to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
         fromPort: default
         toPort: default
-      - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
+
+      - id: 58e227b6-d72c-11f0-a7f6-6c02e0440ed6
         from: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
+        to: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
+        fromPort: default
+        toPort: default
+
+      - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
+        from: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
         to: f184fdfe-d597-11f0-945f-7c70db10a7e3
         fromPort: default
         toPort: default
