@@ -1,3 +1,5 @@
+// atlas builder shared between glTF and 3D Tiles generation
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -83,8 +85,8 @@ where
                 let texture_id = texture_id_generator(feature_id, poly_count);
 
                 let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
-                    crate::errors::SinkError::GltfWriter(
-                        "Failed to convert texture URI to file path".to_string(),
+                    crate::errors::SinkError::atlas_builder(
+                        "Failed to convert texture URI to file path",
                     )
                 })?;
                 let texture_size = texture_size_cache.get_or_insert(&texture_uri);
@@ -120,9 +122,7 @@ where
                 packer
                     .lock()
                     .map_err(|_| {
-                        crate::errors::SinkError::GltfWriter(
-                            "Failed to lock the texture packer".to_string(),
-                        )
+                        crate::errors::SinkError::atlas_builder("Failed to lock the texture packer")
                     })?
                     .add_texture(texture_id, texture);
             }
@@ -200,8 +200,8 @@ where
                     base_color: mat.base_color,
                     base_texture: Some(material::Texture {
                         uri: Url::from_file_path(atlas_uri).map_err(|_| {
-                            crate::errors::SinkError::GltfWriter(
-                                "Failed to convert atlas URI to URL".to_string(),
+                            crate::errors::SinkError::atlas_builder(
+                                "Failed to convert atlas URI to URL",
                             )
                         })?,
                     }),
@@ -278,9 +278,9 @@ where
     let config = TexturePlacerConfig::new_padded(max_width, max_height, 0, 2);
 
     let placer = GuillotineTexturePlacer::new(config.clone());
-    let packer = packer.into_inner().map_err(|_| {
-        crate::errors::SinkError::GltfWriter("Failed to unwrap texture packer".to_string())
-    })?;
+    let packer = packer
+        .into_inner()
+        .map_err(|_| crate::errors::SinkError::atlas_builder("Failed to unwrap texture packer"))?;
 
     // Pack textures into atlas
     let packed = packer.pack(placer);
