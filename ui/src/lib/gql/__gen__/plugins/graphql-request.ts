@@ -258,7 +258,7 @@ export type CreateTriggerInput = {
   apiDriverInput?: InputMaybe<ApiDriverInput>;
   deploymentId: Scalars['ID']['input'];
   description: Scalars['String']['input'];
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  enabled: Scalars['Boolean']['input'];
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   variables?: InputMaybe<Array<VariableInput>>;
   workspaceId: Scalars['ID']['input'];
@@ -317,6 +317,15 @@ export type DeleteProjectInput = {
 export type DeleteProjectPayload = {
   __typename?: 'DeleteProjectPayload';
   projectId: Scalars['ID']['output'];
+};
+
+export type DeleteWorkerConfigInput = {
+  workspaceId: Scalars['ID']['input'];
+};
+
+export type DeleteWorkerConfigPayload = {
+  __typename?: 'DeleteWorkerConfigPayload';
+  workspaceId: Scalars['ID']['output'];
 };
 
 export type DeleteWorkspaceInput = {
@@ -478,6 +487,7 @@ export type Mutation = {
   deleteMe?: Maybe<DeleteMePayload>;
   deleteProject?: Maybe<DeleteProjectPayload>;
   deleteTrigger: Scalars['Boolean']['output'];
+  deleteWorkerConfig?: Maybe<DeleteWorkerConfigPayload>;
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
   importProject: Scalars['Boolean']['output'];
@@ -501,6 +511,7 @@ export type Mutation = {
   updateParameters: Array<Parameter>;
   updateProject?: Maybe<ProjectPayload>;
   updateTrigger: Trigger;
+  updateWorkerConfig?: Maybe<UpdateWorkerConfigPayload>;
   updateWorkspace?: Maybe<UpdateWorkspacePayload>;
 };
 
@@ -579,6 +590,11 @@ export type MutationDeleteProjectArgs = {
 
 export type MutationDeleteTriggerArgs = {
   triggerId: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteWorkerConfigArgs = {
+  input: DeleteWorkerConfigInput;
 };
 
 
@@ -700,6 +716,11 @@ export type MutationUpdateProjectArgs = {
 
 export type MutationUpdateTriggerArgs = {
   input: UpdateTriggerInput;
+};
+
+
+export type MutationUpdateWorkerConfigArgs = {
+  input: UpdateWorkerConfigInput;
 };
 
 
@@ -910,6 +931,7 @@ export type Query = {
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
   triggers: TriggerConnection;
+  workerConfig?: Maybe<WorkerConfig>;
 };
 
 
@@ -1079,6 +1101,11 @@ export type QueryTriggersArgs = {
   workspaceId: Scalars['ID']['input'];
 };
 
+
+export type QueryWorkerConfigArgs = {
+  workspaceId: Scalars['ID']['input'];
+};
+
 export type RemoveMemberFromWorkspaceInput = {
   userId: Scalars['ID']['input'];
   workspaceId: Scalars['ID']['input'];
@@ -1110,7 +1137,9 @@ export enum Role {
 
 export type RunProjectInput = {
   file: Scalars['Upload']['input'];
+  previousJobId?: InputMaybe<Scalars['ID']['input']>;
   projectId: Scalars['ID']['input'];
+  startNodeId?: InputMaybe<Scalars['ID']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -1199,7 +1228,7 @@ export type Trigger = Node & {
   deployment: Deployment;
   deploymentId: Scalars['ID']['output'];
   description: Scalars['String']['output'];
-  enabled?: Maybe<Scalars['Boolean']['output']>;
+  enabled: Scalars['Boolean']['output'];
   eventSource: EventSourceType;
   id: Scalars['ID']['output'];
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
@@ -1307,6 +1336,25 @@ export type UpdateTriggerInput = {
   variables?: InputMaybe<Array<VariableInput>>;
 };
 
+export type UpdateWorkerConfigInput = {
+  bootDiskSizeGB?: InputMaybe<Scalars['Int']['input']>;
+  channelBufferSize?: InputMaybe<Scalars['Int']['input']>;
+  computeCpuMilli?: InputMaybe<Scalars['Int']['input']>;
+  computeMemoryMib?: InputMaybe<Scalars['Int']['input']>;
+  featureFlushThreshold?: InputMaybe<Scalars['Int']['input']>;
+  machineType?: InputMaybe<Scalars['String']['input']>;
+  maxConcurrency?: InputMaybe<Scalars['Int']['input']>;
+  nodeStatusPropagationDelayMilli?: InputMaybe<Scalars['Int']['input']>;
+  taskCount?: InputMaybe<Scalars['Int']['input']>;
+  threadPoolSize?: InputMaybe<Scalars['Int']['input']>;
+  workspaceId: Scalars['ID']['input'];
+};
+
+export type UpdateWorkerConfigPayload = {
+  __typename?: 'UpdateWorkerConfigPayload';
+  config: WorkerConfig;
+};
+
 export type UpdateWorkspaceInput = {
   name: Scalars['String']['input'];
   workspaceId: Scalars['ID']['input'];
@@ -1363,6 +1411,23 @@ export type VariableInput = {
   key: Scalars['String']['input'];
   type: ParameterType;
   value: Scalars['Any']['input'];
+};
+
+export type WorkerConfig = {
+  __typename?: 'WorkerConfig';
+  bootDiskSizeGB?: Maybe<Scalars['Int']['output']>;
+  channelBufferSize?: Maybe<Scalars['Int']['output']>;
+  computeCpuMilli?: Maybe<Scalars['Int']['output']>;
+  computeMemoryMib?: Maybe<Scalars['Int']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  featureFlushThreshold?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['ID']['output'];
+  machineType?: Maybe<Scalars['String']['output']>;
+  maxConcurrency?: Maybe<Scalars['Int']['output']>;
+  nodeStatusPropagationDelayMilli?: Maybe<Scalars['Int']['output']>;
+  taskCount?: Maybe<Scalars['Int']['output']>;
+  threadPoolSize?: Maybe<Scalars['Int']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type Workspace = Node & {
@@ -1583,7 +1648,7 @@ export type DeploymentFragment = { __typename?: 'Deployment', id: string, projec
 
 export type VariableFragment = { __typename?: 'Variable', key: string, type: ParameterType, value: any };
 
-export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> };
+export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> };
 
 export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null };
 
@@ -1807,14 +1872,14 @@ export type CreateTriggerMutationVariables = Exact<{
 }>;
 
 
-export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } };
+export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } };
 
 export type UpdateTriggerMutationVariables = Exact<{
   input: UpdateTriggerInput;
 }>;
 
 
-export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } };
+export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } };
 
 export type DeleteTriggerMutationVariables = Exact<{
   triggerId: Scalars['ID']['input'];
@@ -1830,7 +1895,7 @@ export type GetTriggersQueryVariables = Exact<{
 }>;
 
 
-export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2005,6 +2070,7 @@ export const TriggerFragmentDoc = gql`
   variables {
     ...Variable
   }
+  enabled
 }
     ${DeploymentFragmentDoc}
 ${VariableFragmentDoc}`;

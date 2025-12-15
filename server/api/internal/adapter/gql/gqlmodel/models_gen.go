@@ -196,7 +196,7 @@ type CreateTriggerInput struct {
 	Description     string           `json:"description"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
-	Enabled         *bool            `json:"enabled,omitempty"`
+	Enabled         bool             `json:"enabled"`
 	Variables       []*VariableInput `json:"variables,omitempty"`
 }
 
@@ -517,9 +517,11 @@ type RemoveParametersInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID   ID             `json:"projectId"`
-	WorkspaceID ID             `json:"workspaceId"`
-	File        graphql.Upload `json:"file"`
+	ProjectID     ID             `json:"projectId"`
+	WorkspaceID   ID             `json:"workspaceId"`
+	File          graphql.Upload `json:"file"`
+	PreviousJobID *ID            `json:"previousJobId,omitempty"`
+	StartNodeID   *ID            `json:"startNodeId,omitempty"`
 }
 
 type RunProjectPayload struct {
@@ -570,7 +572,7 @@ type Trigger struct {
 	Description   string          `json:"description"`
 	AuthToken     *string         `json:"authToken,omitempty"`
 	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
-	Enabled       *bool           `json:"enabled,omitempty"`
+	Enabled       bool            `json:"enabled"`
 	Variables     []*Variable     `json:"variables"`
 }
 

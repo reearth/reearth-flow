@@ -5,7 +5,7 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 
-import { Button } from "@flow/components";
+import { Button, Switch } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
 
@@ -20,9 +20,19 @@ type Props = {
   title: string;
   content?: DetailsBoxContent[];
   collapsible?: boolean;
+  toggle?: boolean;
+  toggleValue?: boolean;
+  onToggleChange?: (checked: boolean) => void;
 };
 
-const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
+const DetailsBox: React.FC<Props> = ({
+  title,
+  content,
+  collapsible,
+  toggle,
+  toggleValue,
+  onToggleChange,
+}) => {
   const t = useT();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -76,6 +86,12 @@ const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
           {collapsible ? collapsed ? <CaretUpIcon /> : <CaretDownIcon /> : null}
         </div>
         <div className="flex items-center gap-2">
+          {!collapsible && toggle && (
+            <div className="flex gap-2">
+              <span className="text-sm font-thin">{t("Is Enabled?")}</span>
+              <Switch checked={toggleValue} onCheckedChange={onToggleChange} />
+            </div>
+          )}
           {!collapsed &&
             downloadContent?.map((detail) =>
               Array.isArray(detail.value) ? (

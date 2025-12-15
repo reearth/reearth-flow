@@ -13,6 +13,7 @@ import {
   SelectContent,
   SelectItem,
   Input,
+  Switch,
 } from "@flow/components";
 import { DeploymentsDialog } from "@flow/features/WorkspaceDeployments/components/DeploymentsDialog";
 import { useT } from "@flow/lib/i18n";
@@ -40,6 +41,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     deploymentId,
     isFetching,
     isDebouncingSearch,
+    isTriggerEnabled,
     totalPages,
     currentPage,
     currentSortValue,
@@ -55,6 +57,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     handleSelectEventSource,
     handleSelectTimeInterval,
     handleTriggerCreation,
+    handleTriggerEnable,
     setCurrentPage,
     handleSortChange,
     pendingWorkflowData,
@@ -63,7 +66,6 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
-
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
@@ -161,6 +163,18 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 </Select>
               </DialogContentSection>
             )}
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Enable Trigger?")}</Label>
+              <div className="mt-2 flex flex-row items-center gap-2">
+                <Switch
+                  checked={isTriggerEnabled}
+                  onCheckedChange={handleTriggerEnable}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {isTriggerEnabled ? t("Yes") : t("No")}
+                </span>
+              </div>
+            </DialogContentSection>
             <DialogContentSection>
               <p className="dark:font-light">
                 {t("Are you sure you want to proceed?")}

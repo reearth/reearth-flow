@@ -734,6 +734,7 @@ func TestTriggersPagination(t *testing.T) {
 				"timeDriverInput": map[string]interface{}{
 					"interval": "EVERY_DAY",
 				},
+				"enabled": true,
 			},
 		}
 
