@@ -51,6 +51,8 @@ impl ProcessorFactory for AreaCalculatorFactory {
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let calculator: AreaCalculator = if let Some(with) = with {
+            // using a serde_json roundtrip (converting to Value and then back from Value) as
+            // a way to deserialize the HashMap<String, Value> parameter into an AreaCalculator struct.
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::AreaCalculatorFactory(format!(
                     "Failed to serialize 'with' parameter: {e}"
@@ -133,16 +135,15 @@ impl Processor for AreaCalculator {
         // Calculate area based on the geometry type
         let area = match &geometry.value {
             GeometryValue::None => 0.0,
-            GeometryValue::FlowGeometry2D(geom_2d) => {
-                geom_2d.unsigned_area2d() * self.multiplier
-            }
+            GeometryValue::FlowGeometry2D(geom_2d) => geom_2d.unsigned_area2d() * self.multiplier,
             GeometryValue::FlowGeometry3D(geom_3d) => {
                 // For 3D geometries, the behavior depends on the area type
                 match self.area_type {
                     AreaType::PlaneArea => {
                         // For plane area, we convert the 3D geometry to 2D (dropping Z coordinates)
                         // and then calculate the area
-                        let projected_2d: reearth_flow_geometry::types::geometry::Geometry2D<_> = geom_3d.clone().into();
+                        let projected_2d: reearth_flow_geometry::types::geometry::Geometry2D<_> =
+                            geom_3d.clone().into();
                         projected_2d.unsigned_area2d() * self.multiplier
                     }
                     AreaType::SlopedArea => {
@@ -159,7 +160,9 @@ impl Processor for AreaCalculator {
                         match self.area_type {
                             AreaType::PlaneArea => {
                                 // Convert 3D polygon to 2D for plane area calculation
-                                let projected_2d: reearth_flow_geometry::types::polygon::Polygon2D<_> = polygon.clone().into();
+                                let projected_2d: reearth_flow_geometry::types::polygon::Polygon2D<
+                                    _,
+                                > = polygon.clone().into();
                                 total_area += projected_2d.unsigned_area2d();
                             }
                             AreaType::SlopedArea => {
@@ -176,7 +179,9 @@ impl Processor for AreaCalculator {
         let mut new_feature = feature.clone();
         new_feature.attributes.insert(
             self.output_attribute.clone(),
-            AttributeValue::Number(serde_json::Number::from_f64(area).unwrap_or_else(|| serde_json::Number::from(0))),
+            AttributeValue::Number(
+                serde_json::Number::from_f64(area).unwrap_or_else(|| serde_json::Number::from(0)),
+            ),
         );
 
         fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
