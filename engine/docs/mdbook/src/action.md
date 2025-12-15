@@ -5451,6 +5451,20 @@ Filter Features by Geometry Planarity
 ### Category
 * Geometry
 
+## PolygonNormalExtractor
+### Type
+* processor
+### Description
+Extract normal vectors and other properties for polygon features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## PythonScriptProcessor
 ### Type
 * processor

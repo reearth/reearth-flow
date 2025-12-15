@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
@@ -28,8 +29,10 @@ type UpdateProjectParam struct {
 }
 
 type RunProjectParam struct {
-	Workflow  *file.File
-	ProjectID id.ProjectID
+	Workflow      *file.File
+	ProjectID     id.ProjectID
+	PreviousJobID *id.JobID
+	StartNodeID   *uuid.UUID
 }
 
 var (

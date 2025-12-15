@@ -68,7 +68,7 @@ func TestTrigger_Create(t *testing.T) {
 		Description:  "Daily trigger",
 		EventSource:  "TIME_DRIVEN",
 		TimeInterval: "EVERY_DAY",
-		Enabled:      lo.ToPtr(true),
+		Enabled:      true,
 		Variables:    testVars,
 	}
 
@@ -84,6 +84,7 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, variablesToSimpleMap(testVars), variablesToSimpleMap(got.Variables()))
 	assert.False(t, got.CreatedAt().IsZero())
 	assert.False(t, got.UpdatedAt().IsZero())
+	assert.Nil(t, got.LastTriggered())
 
 	param = interfaces.CreateTriggerParam{
 		WorkspaceID:  wid,
@@ -91,7 +92,7 @@ func TestTrigger_Create(t *testing.T) {
 		Description:  "API trigger",
 		EventSource:  "API_DRIVEN",
 		AuthToken:    "token123",
-		Enabled:      lo.ToPtr(false),
+		Enabled:      false,
 		Variables:    testVars,
 	}
 
@@ -103,6 +104,7 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, "token123", *got.AuthToken())
 	assert.Equal(t, variablesToSimpleMap(testVars), variablesToSimpleMap(got.Variables()))
 	assert.False(t, got.Enabled())
+	assert.Nil(t, got.LastTriggered())
 
 	param.DeploymentID = id.NewDeploymentID()
 	got, err = i.Create(ctx, param)
@@ -136,17 +138,19 @@ func TestTrigger_Update(t *testing.T) {
 	}
 
 	createdTime := time.Now()
+	lastTriggered := createdTime.Add(-1 * time.Hour)
 	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
-		"id":           tid.String(),
-		"workspaceid":  wid.String(),
-		"deploymentid": did.String(),
-		"description":  "Original trigger",
-		"eventsource":  "TIME_DRIVEN",
-		"timeinterval": "EVERY_DAY",
-		"enabled":      true,
-		"variables":    initialVarsDoc,
-		"createdat":    createdTime,
-		"updatedat":    createdTime,
+		"id":            tid.String(),
+		"workspaceid":   wid.String(),
+		"deploymentid":  did.String(),
+		"description":   "Original trigger",
+		"eventsource":   "TIME_DRIVEN",
+		"timeinterval":  "EVERY_DAY",
+		"enabled":       true,
+		"variables":     initialVarsDoc,
+		"createdat":     createdTime,
+		"updatedat":     createdTime,
+		"lasttriggered": lastTriggered,
 	})
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
@@ -200,6 +204,9 @@ func TestTrigger_Update(t *testing.T) {
 	assert.Equal(t, variablesToSimpleMap(updateVars), variablesToSimpleMap(got.Variables()))
 	assert.Equal(t, createdTime, got.CreatedAt())
 	assert.True(t, got.UpdatedAt().After(createdTime))
+	if assert.NotNil(t, got.LastTriggered()) {
+		assert.Equal(t, lastTriggered, *got.LastTriggered())
+	}
 
 	// Test updating deployment
 	param = interfaces.UpdateTriggerParam{
@@ -219,6 +226,9 @@ func TestTrigger_Update(t *testing.T) {
 	assert.Equal(t, variablesToSimpleMap(updateVars), variablesToSimpleMap(got.Variables()))
 	assert.Equal(t, createdTime, got.CreatedAt())
 	assert.True(t, got.UpdatedAt().After(createdTime))
+	if assert.NotNil(t, got.LastTriggered()) {
+		assert.Equal(t, lastTriggered, *got.LastTriggered())
+	}
 
 	// Test updating with invalid trigger ID
 	param.ID = id.NewTriggerID()
@@ -260,19 +270,21 @@ func TestTrigger_Fetch(t *testing.T) {
 		},
 	}
 	createdTime := time.Now()
+	lastTriggered := createdTime.Add(-30 * time.Minute)
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
 		bson.M{
-			"id":           tid1.String(),
-			"workspaceid":  wid.String(),
-			"deploymentid": did.String(),
-			"description":  "Daily trigger",
-			"eventsource":  "TIME_DRIVEN",
-			"timeinterval": "EVERY_DAY",
-			"createdat":    createdTime,
-			"updatedat":    createdTime,
-			"enabled":      true,
-			"variables":    testVarsDoc,
+			"id":            tid1.String(),
+			"workspaceid":   wid.String(),
+			"deploymentid":  did.String(),
+			"description":   "Daily trigger",
+			"eventsource":   "TIME_DRIVEN",
+			"timeinterval":  "EVERY_DAY",
+			"createdat":     createdTime,
+			"updatedat":     createdTime,
+			"enabled":       true,
+			"variables":     testVarsDoc,
+			"lasttriggered": lastTriggered,
 		},
 		bson.M{
 			"id":           tid2.String(),
@@ -301,6 +313,8 @@ func TestTrigger_Fetch(t *testing.T) {
 	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(got))
+
+	// tid1
 	assert.Equal(t, tid1, got[0].ID())
 	assert.Equal(t, "Daily trigger", got[0].Description())
 	assert.True(t, got[0].Enabled())
@@ -308,7 +322,11 @@ func TestTrigger_Fetch(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"FETCH_VAR": "fetched_value"}, vars0)
 	assert.Equal(t, createdTime, got[0].CreatedAt())
 	assert.Equal(t, createdTime, got[0].UpdatedAt())
+	if assert.NotNil(t, got[0].LastTriggered()) {
+		assert.Equal(t, lastTriggered, *got[0].LastTriggered())
+	}
 
+	// tid2
 	assert.Equal(t, tid2, got[1].ID())
 	assert.Equal(t, "API trigger", got[1].Description())
 	assert.False(t, got[1].Enabled())
@@ -316,6 +334,7 @@ func TestTrigger_Fetch(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"FETCH_VAR": "fetched_value"}, vars1)
 	assert.Equal(t, createdTime, got[1].CreatedAt())
 	assert.Equal(t, createdTime, got[1].UpdatedAt())
+	assert.Nil(t, got[1].LastTriggered())
 }
 
 func TestTrigger_Delete(t *testing.T) {

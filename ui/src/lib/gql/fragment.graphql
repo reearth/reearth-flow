@@ -53,6 +53,12 @@ fragment Deployment on Deployment {
   }
 }
 
+fragment Variable on Variable {
+  key
+  type
+  value
+}
+
 fragment Trigger on Trigger {
   id
   createdAt
@@ -67,7 +73,10 @@ fragment Trigger on Trigger {
   authToken
   timeInterval
   description
-  variables
+  variables {
+    ...Variable
+  }
+  enabled
 }
 
 fragment NodeExecution on NodeExecution {
