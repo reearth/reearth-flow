@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use reearth_flow_geometry::algorithm::convex_hull::ConvexHull;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry_collection::GeometryCollection;
+use reearth_flow_geometry::types::line_string::LineString;
+use reearth_flow_geometry::types::polygon::Polygon;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -179,7 +180,9 @@ impl ConvexHullAccumulator {
                 .filter_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
                 .collect::<Vec<_>>(),
         );
-        let convex_hull = collection.convex_hull();
+
+        // TODO: FIX THIS
+        let convex_hull = Polygon::new(LineString::new(Vec::new()), Vec::new());
 
         let mut feature = Feature::new();
         if let (Some(group_by), Some(last_feature)) = (&self.group_by, buffered_features_2d.last())
