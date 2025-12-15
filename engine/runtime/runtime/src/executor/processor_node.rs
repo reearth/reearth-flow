@@ -293,7 +293,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         index,
                         &ctx,
                         &self.node_name,
-                        &self.node_handle.id.to_string(),
+                        &self.node_handle.id.as_ref(),
                     );
 
                     let has_failed_clone = has_failed.clone();
