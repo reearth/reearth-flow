@@ -57,8 +57,7 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          sourceEpsgCode: 6677  
-          targetEpsgCode: 6677 
+          targetEpsgCode: "6677"
 
       # Step 3: GeometryExtractor - extracts geometry to attribute
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
@@ -97,7 +96,7 @@ graphs:
         to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         fromPort: default
         toPort: default
-   
+     
       - id: 64b4690c-d635-11f0-ab47-6c02e0440ed6
         from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         to: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
