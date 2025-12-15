@@ -210,7 +210,6 @@ impl<T: CoordFloat, Z: CoordFloat> From<Geometry<T, Z>> for geojson::Value {
             Geometry::MultiPoint(multi_point) => multi_point.into(),
             Geometry::MultiLineString(multi_line_string) => multi_line_string.into(),
             Geometry::MultiPolygon(multi_point) => multi_point.into(),
-            Geometry::Rect(rect) => rect.into(),
             Geometry::Triangle(triangle) => triangle.into(),
             Geometry::GeometryCollection(gc) => {
                 let mut geometries = Vec::new();

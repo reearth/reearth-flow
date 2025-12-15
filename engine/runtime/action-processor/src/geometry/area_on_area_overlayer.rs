@@ -5,14 +5,10 @@ use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
     algorithm::{
-        bool_ops::BooleanOps,
-        bounding_rect::BoundingRect,
+        area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
         tolerance::glue_vertices_closer_than,
-        utils::{normalize_vertices_2d, NormalizationResult2D},
     },
-    types::{
-        line_string::LineString2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D, rect::Rect2D,
-    },
+    types::{multi_polygon::MultiPolygon2D, rect::Rect2D},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -176,23 +172,7 @@ impl Processor for AreaOnAreaOverlayer {
                     AttributeValue::Null
                 };
 
-                if !self.buffer.contains_key(&key) {
-                    let overlaid = self.overlay();
-                    for feature in &overlaid.area {
-                        fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
-                    }
-                    for feature in &overlaid.remnant {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), REMNANTS_PORT.clone()),
-                        );
-                    }
-                    self.buffer.clear();
-                }
-
-                self.buffer
-                    .entry(key.clone())
-                    .or_default()
-                    .push(feature.clone());
+                self.buffer.entry(key).or_default().push(feature.clone());
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -293,7 +273,7 @@ impl AreaOnAreaOverlayer {
             }
             glue_vertices_closer_than(self.tolerance, vertices);
 
-            let midpolygons = overlay_2d(polygons);
+            let midpolygons = overlay_2d(polygons, self.tolerance);
 
             let overlaid_features = OverlaidFeatures::from_midpolygons(
                 midpolygons,
@@ -313,10 +293,7 @@ impl AreaOnAreaOverlayer {
     }
 }
 
-fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
-    // normalize vertices
-    // TODO: This can be removed to improve performance when we choose the right coordinate system.
-    let norm = normalize_vertices_2d_for_multipolygons(&mut polygons);
+fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>, tolerance: f64) -> Vec<MiddlePolygon> {
     let overlay_graph = OverlayGraph::bulk_load(&polygons);
 
     // all (devided) polygons to output
@@ -344,7 +321,14 @@ fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
                     for subpolygon in queue {
                         let intersection = subpolygon.polygon.intersection(&polygons[j]);
 
-                        if !intersection.is_empty() {
+                        // Filter out tiny intersections that are numerical noise
+                        // Since we are identifying vertices with distance less than `tolerance`,
+                        // the minimum significant area should be that of the square with side-length `tolerance`.
+                        let min_area = tolerance * tolerance;
+                        let intersection_area = intersection.unsigned_area2d();
+                        let is_significant_intersection = intersection_area > min_area;
+
+                        if !intersection.is_empty() && is_significant_intersection {
                             new_queue.push(MiddlePolygon {
                                 polygon: intersection,
                                 parents: subpolygon
@@ -371,10 +355,6 @@ fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
             queue
         })
         .flatten()
-        .map(|mut p| {
-            p.polygon.denormalize_vertices_2d(norm);
-            p
-        })
         .collect::<Vec<_>>()
 }
 
@@ -568,58 +548,6 @@ impl OverlaidFeatures {
     }
 }
 
-fn normalize_vertices_2d_for_multipolygons(
-    polygons: &mut [MultiPolygon2D<f64>],
-) -> NormalizationResult2D<f64> {
-    let mut all_vertices = Vec::new();
-
-    for multi_polygon in polygons.iter() {
-        for polygon in &multi_polygon.0 {
-            for coord in polygon.exterior().coords() {
-                all_vertices.push(*coord);
-            }
-            for interior in polygon.interiors() {
-                for coord in interior.coords() {
-                    all_vertices.push(*coord);
-                }
-            }
-        }
-    }
-
-    let norm = normalize_vertices_2d(&mut all_vertices);
-
-    let mut index = 0;
-
-    for multi_polygon in polygons.iter_mut() {
-        multi_polygon.0 = multi_polygon
-            .0
-            .iter()
-            .map(|p| {
-                let mut exterior = Vec::new();
-                for _ in p.exterior().coords() {
-                    exterior.push(all_vertices[index]);
-                    index += 1;
-                }
-                let exterior = LineString2D::new(exterior);
-
-                let mut interiors = Vec::new();
-                for interior in p.interiors() {
-                    let mut coords = Vec::new();
-                    for _ in interior.coords() {
-                        coords.push(all_vertices[index]);
-                        index += 1;
-                    }
-                    interiors.push(LineString2D::new(coords));
-                }
-
-                Polygon2D::new(exterior, interiors)
-            })
-            .collect::<Vec<_>>();
-    }
-
-    norm
-}
-
 #[cfg(test)]
 mod tests {
     use reearth_flow_geometry::types::{
@@ -653,7 +581,7 @@ mod tests {
             )]),
         ];
 
-        let midpolygons = overlay_2d(polygons);
+        let midpolygons = overlay_2d(polygons, 0.01);
         assert_eq!(midpolygons.len(), 3);
     }
 
@@ -680,7 +608,7 @@ mod tests {
             )]),
         ];
 
-        let midpolygons = overlay_2d(polygons);
+        let midpolygons = overlay_2d(polygons, 0.01);
         assert_eq!(midpolygons.len(), 2);
     }
 }

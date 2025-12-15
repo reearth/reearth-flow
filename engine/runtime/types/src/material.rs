@@ -120,6 +120,7 @@ impl Texture {
 
         if extension == Some("webp".to_string()) {
             nusamai_gltf::nusamai_gltf_json::Texture {
+                sampler: Some(0), // Reference the sampler with proper mipmap filtering
                 extensions: Some(
                     nusamai_gltf::nusamai_gltf_json::extensions::texture::TextureExtensions {
                         ext_texture_webp: Some(
@@ -135,6 +136,7 @@ impl Texture {
             }
         } else {
             nusamai_gltf::nusamai_gltf_json::Texture {
+                sampler: Some(0), // Reference the sampler with proper mipmap filtering
                 source: Some(image_index as u32),
                 ..Default::default()
             }

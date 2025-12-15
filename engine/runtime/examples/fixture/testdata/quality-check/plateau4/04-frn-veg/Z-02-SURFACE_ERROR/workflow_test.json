@@ -7,16 +7,21 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_frn_veg.json",
-      "includeFields": ["面のエラー"]
+      "includeFields": [
+        "面のエラー"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
-      "includeColumns": ["面のエラー"]
+      "includeColumns": [
+        "面のエラー"
+      ]
     }
   },
   "cityGmlPath": "udx/frn/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": false,
-  "skip": true
+  "skip": true,
+  "epsg": 6677
 }

@@ -250,8 +250,14 @@ export default ({
     [fitView, handleYLayoutChange],
   );
 
-  const { handleDebugRunStart, handleDebugRunStop } = useDebugRun({
+  const {
+    handleDebugRunStart,
+    handleDebugRunStop,
+    loadExternalDebugJob,
+    activeUsersDebugRuns,
+  } = useDebugRun({
     rawWorkflows,
+    yAwareness,
   });
 
   const handleBeforeDeleteNodes = useCallback(
@@ -396,6 +402,8 @@ export default ({
     showBeforeDeleteDialog,
     spotlightUserClientId,
     spotlightUser,
+    activeUsersDebugRuns,
+    loadExternalDebugJob,
     handleWorkflowDeployment,
     handleProjectShare,
     handleCurrentProjectExport,

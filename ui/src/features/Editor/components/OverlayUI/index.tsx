@@ -66,6 +66,8 @@ type OverlayUIProps = {
   onProjectSnapshotSave: () => Promise<void>;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
+  activeUsersDebugRuns?: AwarenessUser[];
+  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   children?: React.ReactNode;
 };
 
@@ -99,6 +101,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
+  activeUsersDebugRuns,
+  onDebugRunJoin,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
@@ -146,6 +150,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             <div
               className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/20 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
               <DebugActionBar
+                activeUsersDebugRuns={activeUsersDebugRuns}
+                onDebugRunJoin={onDebugRunJoin}
                 onDebugRunStart={onDebugRunStart}
                 onDebugRunStop={onDebugRunStop}
               />

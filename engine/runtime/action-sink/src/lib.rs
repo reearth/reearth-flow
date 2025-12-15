@@ -1,3 +1,4 @@
+mod atlas;
 pub mod echo;
 pub mod errors;
 pub mod file;

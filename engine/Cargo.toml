@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.214"
+version = "0.0.216"
 
 [profile.dev]
 opt-level = 0
@@ -87,7 +87,7 @@ async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.89"
 async_zip = { version = "0.0.17", features = ["full"] }
-atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.2" }
+atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.3" }
 base64 = "0.22.1"
 bincode = { version = "2.0.1", default-features = false, features = [
   "serde",
