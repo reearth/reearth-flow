@@ -12,6 +12,7 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::info_span;
@@ -25,6 +26,7 @@ use crate::{
     node::{NodeHandle, NodeStatus, Sink},
 };
 
+use super::reader_intermediate::ReaderIntermediateMeta;
 use super::receiver_loop::ReceiverLoop;
 use super::{execution_dag::ExecutionDag, receiver_loop::init_select};
 
@@ -61,6 +63,9 @@ pub struct SinkNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
+    reader_meta: ReaderIntermediateMeta,
+    /// State for writing reader intermediate data
+    feature_state: Arc<State>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -82,6 +87,9 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         };
 
         let (node_handles, receivers) = dag.collect_receivers(node_index);
+
+        let reader_meta = ReaderIntermediateMeta::collect(dag, node_index, &node_handles);
+        let feature_state = dag.feature_state();
 
         let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
@@ -107,6 +115,8 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             expr_engine: ctx.expr_engine.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
+            reader_meta,
+            feature_state,
         }
     }
 
@@ -193,6 +203,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
+                    self.reader_meta.append_if_reader(
+                        &self.feature_state,
+                        index,
+                        &ctx,
+                        &self.node_name,
+                        &self.node_handle.id.to_string(),
+                    );
+
                     let result = self.on_op(ctx.clone());
 
                     if let Err(e) = result {
