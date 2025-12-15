@@ -70,7 +70,19 @@ impl ReaderIntermediateMeta {
             return;
         }
 
-        let file_id = self.incoming_edge_ids[input_index].to_string();
+        let file_id = match self.incoming_edge_ids.get(input_index) {
+            Some(edge_id) => edge_id.to_string(),
+            None => {
+                tracing::warn!(
+                    "ReaderIntermediateMeta: incoming_edge_ids is missing index {} for node={}({})",
+                    input_index,
+                    node_name,
+                    node_id,
+                );
+                return;
+            }
+        };
+
         if let Err(e) = feature_state.append_sync(&ctx.feature, &file_id) {
             tracing::warn!(
                 "reader-intermediate-append failed: node={}({}) edge_id={} err={:?}",
