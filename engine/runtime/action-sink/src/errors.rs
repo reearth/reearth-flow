@@ -62,6 +62,8 @@ pub enum SinkError {
     CityGmlWriterFactory(String),
     #[error("CityGML Writer error: {0}")]
     CityGmlWriter(String),
+    #[error("Atlas Builder error: {0}")]
+    AtlasBuilder(String),
     #[error("Geometry export error: {0}")]
     GeometryExport(#[from] GeometryExportError),
 }
@@ -109,6 +111,10 @@ impl SinkError {
 
     pub fn citygml_writer<T: ToString>(message: T) -> Self {
         Self::CityGmlWriter(message.to_string())
+    }
+
+    pub fn atlas_builder<T: ToString>(message: T) -> Self {
+        Self::AtlasBuilder(message.to_string())
     }
 }
 
