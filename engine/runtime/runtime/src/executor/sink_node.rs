@@ -208,7 +208,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                         index,
                         &ctx,
                         &self.node_name,
-                        &self.node_handle.id.as_ref(),
+                        self.node_handle.id.as_ref(),
                     );
 
                     let result = self.on_op(ctx.clone());
