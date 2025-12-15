@@ -68,6 +68,9 @@ export default ({
     return undefined;
   }, [api, debugJobState?.jobId, id]);
 
+  const isDisabledNode =
+    sourceNode?.data?.isDisabled || targetNode?.data?.isDisabled;
+
   useEffect(() => {
     if (intermediateDataUrl) {
       if (
@@ -203,6 +206,7 @@ export default ({
     intermediateDataIsSet,
     debugJobState?.selectedIntermediateData,
     debugJobState?.status,
+    isDisabledNode,
     handleIntermediateDataSet,
   ]);
 
@@ -219,6 +223,7 @@ export default ({
     jobStatus,
     intermediateDataIsSet,
     hasIntermediateData,
+    isDisabledNode,
     handleDoubleClick,
   };
 };

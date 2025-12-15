@@ -3,90 +3,112 @@ import type { Edge, EngineReadyEdge } from "@flow/types";
 
 import { generateUUID } from "../generateUUID";
 
-/**
- * Reconnects edges around disabled nodes to maintain workflow connectivity.
- * For example, if A → B → C and B is disabled, creates A → C.
- *
- * For nodes with multiple inputs/outputs, creates all possible connections (Cartesian product).
- * All reconnected edges use default ports for simplicity.
- *
- * This function iteratively processes disabled nodes until all are bypassed, which is necessary
- * for handling cases like A → B → C → D where both B and C are disabled (should result in A → D).
- */
+const edgeKey = (
+  e: Pick<Edge, "source" | "target" | "sourceHandle" | "targetHandle">,
+) =>
+  `${e.source}:${e.sourceHandle ?? DEFAULT_EDGE_PORT}->${e.target}:${e.targetHandle ?? DEFAULT_EDGE_PORT}`;
+
 const reconnectAroundDisabledNodes = (
   edges: Edge[],
   enabledNodeIds: Set<string>,
 ): Edge[] => {
-  let currentEdges = edges;
-  let hasChanges = true;
+  let currentEdges = edges.slice();
 
-  // Keep processing until no more disabled nodes can be bypassed
-  while (hasChanges) {
-    hasChanges = false;
+  // Dedup existing edges (optional but usually helpful)
+  const seen = new Set<string>();
+  currentEdges = currentEdges.filter((e) => {
+    const k = edgeKey(e);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 
-    // Find all disabled node IDs in current edge set
-    const allNodeIds = new Set<string>();
-    currentEdges.forEach(edge => {
-      allNodeIds.add(edge.source);
-      allNodeIds.add(edge.target);
-    });
+  while (true) {
+    // Build adjacency maps once per iteration
+    const incomingByTarget = new Map<string, Edge[]>();
+    const outgoingBySource = new Map<string, Edge[]>();
 
-    const disabledNodeIds = Array.from(allNodeIds).filter(
-      nodeId => !enabledNodeIds.has(nodeId)
-    );
-
-    if (disabledNodeIds.length === 0) {
-      break;
+    for (const e of currentEdges) {
+      {
+        let arr = incomingByTarget.get(e.target);
+        if (!arr) {
+          incomingByTarget.set(e.target, []);
+          arr = incomingByTarget.get(e.target);
+        }
+        if (arr) {
+          arr.push(e);
+        }
+      }
+      {
+        let arr = outgoingBySource.get(e.source);
+        if (!arr) {
+          outgoingBySource.set(e.source, []);
+          arr = outgoingBySource.get(e.source);
+        }
+        if (arr) {
+          arr.push(e);
+        }
+      }
     }
 
-    // Build bypass connections for each disabled node
-    const bypassEdges: Edge[] = [];
-
-    disabledNodeIds.forEach(disabledNodeId => {
-      // Find all edges coming into the disabled node
-      const incomingEdges = currentEdges.filter(edge => edge.target === disabledNodeId);
-
-      // Find all edges going out of the disabled node
-      const outgoingEdges = currentEdges.filter(edge => edge.source === disabledNodeId);
-
-      // If the disabled node has no incoming edges, it's a start node - skip it
-      // If the disabled node has no outgoing edges, it's an end node - skip it
-      if (incomingEdges.length === 0 || outgoingEdges.length === 0) {
-        return;
+    // Find a disabled node that is "bypassable" (has both in & out)
+    let disabledToBypass: string | null = null;
+    for (const nodeId of new Set(
+      currentEdges.flatMap((e) => [e.source, e.target]),
+    )) {
+      if (enabledNodeIds.has(nodeId)) continue;
+      const ins = incomingByTarget.get(nodeId) ?? [];
+      const outs = outgoingBySource.get(nodeId) ?? [];
+      if (ins.length > 0 && outs.length > 0) {
+        disabledToBypass = nodeId;
+        break;
       }
+    }
 
-      // Create bypass edges: connect all inputs to all outputs (Cartesian product)
-      incomingEdges.forEach(inEdge => {
-        outgoingEdges.forEach(outEdge => {
-          bypassEdges.push({
-            id: generateUUID(),
-            source: inEdge.source,
-            target: outEdge.target,
-            sourceHandle: DEFAULT_EDGE_PORT,
-            targetHandle: DEFAULT_EDGE_PORT,
-          });
-        });
-      });
+    if (!disabledToBypass) break;
 
-      hasChanges = true;
-    });
+    const incomingEdges = incomingByTarget.get(disabledToBypass) ?? [];
+    const outgoingEdges = outgoingBySource.get(disabledToBypass) ?? [];
 
-    // Filter out edges that connect to/from disabled nodes
-    const validEdges = currentEdges.filter(
-      edge => enabledNodeIds.has(edge.source) && enabledNodeIds.has(edge.target)
+    // Create bypass edges (Cartesian product)
+    const newEdges: Edge[] = [];
+    for (const inEdge of incomingEdges) {
+      for (const outEdge of outgoingEdges) {
+        // Avoid trivial self-loops (optional; adjust if your engine supports them)
+        if (inEdge.source === outEdge.target) continue;
+
+        const bypass: Edge = {
+          id: generateUUID(),
+          source: inEdge.source,
+          target: outEdge.target,
+          sourceHandle: DEFAULT_EDGE_PORT,
+          targetHandle: DEFAULT_EDGE_PORT,
+        };
+
+        const k = edgeKey(bypass);
+        if (!seen.has(k)) {
+          seen.add(k);
+          newEdges.push(bypass);
+        }
+      }
+    }
+
+    // Remove only edges incident to the node we bypassed
+    currentEdges = currentEdges.filter(
+      (e) => e.source !== disabledToBypass && e.target !== disabledToBypass,
     );
 
-    // Combine valid edges with bypass edges for next iteration
-    currentEdges = [...validEdges, ...bypassEdges];
+    currentEdges.push(...newEdges);
   }
 
-  return currentEdges;
+  // Finally, return only enabled→enabled edges
+  return currentEdges.filter(
+    (e) => enabledNodeIds.has(e.source) && enabledNodeIds.has(e.target),
+  );
 };
 
 export const convertEdges = (enabledNodeIds: Set<string>, edges?: Edge[]) => {
   if (!edges) return [];
-
-  // Reconnect edges around disabled nodes to maintain workflow connectivity
   const reconnectedEdges = reconnectAroundDisabledNodes(edges, enabledNodeIds);
 
   const convertedEdges: EngineReadyEdge[] = reconnectedEdges.map((edge) => {
