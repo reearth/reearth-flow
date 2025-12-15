@@ -7,16 +7,21 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_lsld.json",
-      "includeFields": ["面のエラー"]
+      "includeFields": [
+        "面のエラー"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "07_土砂災害警戒区域_検査結果一覧.csv",
-      "includeColumns": ["面のエラー"]
+      "includeColumns": [
+        "面のエラー"
+      ]
     }
   },
   "cityGmlPath": "udx/lsld/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "epsg": 6677
 }

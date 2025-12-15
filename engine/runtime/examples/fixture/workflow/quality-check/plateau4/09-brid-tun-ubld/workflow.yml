@@ -7,6 +7,7 @@ with:
   schemas: null
   objectLists: null
   outputPath: null
+  epsg: null
 graphs:
 - !include ../../../../graphs/lod_splitter_with_dm.yml
 - !include ../../../../graphs/surface_validator.yml
@@ -81,6 +82,12 @@ graphs:
       flatten: true
       dataset: |
         env.get("__value")["gmlPath"]
+  - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: env.get("epsg")
   - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
     name: AttributeManager
     type: action
@@ -535,6 +542,11 @@ graphs:
     toPort: default
   - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
     from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+    to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    fromPort: default
+    toPort: default
+  - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+    from: 10df06f3-cafa-4abd-ba94-04ac71dae467
     to: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
     fromPort: default
     toPort: default

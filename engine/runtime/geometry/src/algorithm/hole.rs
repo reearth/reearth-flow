@@ -41,11 +41,7 @@ impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Face<T, Z> {}
 
 impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Solid<T, Z> {}
 
-impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Rect<T, Z> {
-    fn hole_count(&self) -> usize {
-        self.to_polygon().hole_count()
-    }
-}
+impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Rect<T, Z> {}
 
 impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Geometry<T, Z> {
     fn hole_count(&self) -> usize {

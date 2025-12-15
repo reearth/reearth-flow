@@ -214,6 +214,19 @@ impl CityGmlGeometry {
             .for_each(|feature| feature.transform_offset(x, y, z));
     }
 
+    /// Transforms the X/Y coordinates of all geometries using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for gml_geometry in &mut self.gml_geometries {
+            gml_geometry.transform_horizontal(&transform_fn)?;
+        }
+        Ok(())
+    }
+
     pub fn get_vertices(&self) -> Vec<Coordinate3D<f64>> {
         let mut vertices = Vec::new();
         for gml_geometry in &self.gml_geometries {
@@ -322,6 +335,25 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_offset(x, y, z));
+    }
+
+    /// Transforms the X/Y coordinates of all geometries using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: &F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for poly in &mut self.polygons {
+            poly.transform_horizontal(transform_fn)?;
+        }
+        for line in &mut self.line_strings {
+            line.transform_horizontal(transform_fn)?;
+        }
+        for composite in &mut self.composite_surfaces {
+            composite.transform_horizontal(transform_fn)?;
+        }
+        Ok(())
     }
 }
 
