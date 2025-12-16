@@ -85,14 +85,16 @@ where
 
 impl<T> Area3D<T> for LineString3D<T>
 where
-    T: CoordNum,
+    T: CoordFloat,
 {
     fn signed_area3d(&self) -> T {
-        T::zero()
+        let polygon = Polygon3D::new(self.clone(), vec![]);
+        polygon.signed_area3d()
     }
 
     fn unsigned_area3d(&self) -> T {
-        T::zero()
+        let polygon = Polygon3D::new(self.clone(), vec![]);
+        polygon.unsigned_area3d()
     }
 }
 
