@@ -64,39 +64,39 @@
     --success: oklch(72% 0.18 145);
   }
   .dark {
-    --background: oklch(26% 0 0); /* dark gray */
-    --foreground: oklch(98.5% 0 0); /* near white */
-    --card: oklch(23% 0 0); /* darker gray */
-    --card-foreground: oklch(98.5% 0 0);
-    --popover: oklch(29% 0.005 270);
-    --popover-foreground: oklch(98.5% 0 0);
-    --primary: oklch(32% 0.005 270);
-    --primary-foreground: oklch(55% 0.005 270);
-    --secondary: oklch(23% 0 0);
-    --secondary-foreground: oklch(98.5% 0 0);
-    --muted: oklch(18% 0 0);
-    --muted-foreground: oklch(68% 0.005 270);
-    --accent: oklch(38% 0.005 270);
-    --accent-foreground: oklch(85% 0.005 270);
+    --background: oklch(26% 0.003 270); /* dark gray with barely visible cool tint */
+    --foreground: oklch(97% 0.002 270); /* near white with hint of warmth */
+    --card: oklch(23% 0.003 270); /* darker gray card */
+    --card-foreground: oklch(97% 0.002 270);
+    --popover: oklch(29% 0.004 270); /* slightly lighter popover */
+    --popover-foreground: oklch(97% 0.002 270);
+    --primary: oklch(32% 0.006 270); /* dark primary with subtle tint */
+    --primary-foreground: oklch(55% 0.006 270);
+    --secondary: oklch(23% 0.003 270); /* dark secondary */
+    --secondary-foreground: oklch(97% 0.002 270);
+    --muted: oklch(18% 0.002 270); /* very dark muted */
+    --muted-foreground: oklch(68% 0.006 270);
+    --accent: oklch(38% 0.008 275); /* subtle accent with cool tint */
+    --accent-foreground: oklch(85% 0.006 270);
     --destructive: oklch(62% 0.22 25); /* red */
     --destructive-foreground: oklch(98.5% 0 0);
-    --border: oklch(38% 0.005 270);
-    --input: oklch(18% 0 0);
-    --ring: oklch(12% 0.02 270);
+    --border: oklch(38% 0.006 270); /* border with subtle cool tint */
+    --input: oklch(18% 0.002 270); /* darker input */
+    --ring: oklch(12% 0.004 270); /* subtle ring */
     /* Custom Flow colors */
-    --logo: oklch(62% 0.19 155); /* vibrant green for dark mode */
-    /* Workflow colors */
-    --node-entrance: oklch(45% 0.24 320); /* purple */
-    --node-exit: oklch(43% 0.24 290); /* violet */
-    --node-reader: oklch(35% 0.08 230); /* teal */
-    --node-transformer: oklch(32% 0.13 15); /* burgundy */
-    --node-writer: oklch(40.956% 0.05666 85.875); /* dark olive/brown */
-    --node-subworkflow: oklch(40% 0.19 310); /* purple */
-    /* Selected Node colors */
-    --node-reader-selected: oklch(40% 0.09 230);
-    --node-transformer-selected: oklch(37% 0.14 15);
-    --node-writer-selected: oklch(50% 0.07 85.875); 
-    --node-subworkflow-selected: oklch(45% 0.24 320);
+    --logo: oklch(68% 0.17 155); /* softer pastel green for dark mode */
+    /* Workflow colors - slightly softer pastels */
+    --node-entrance: oklch(60% 0.20 320); /* softer purple */
+    --node-exit: oklch(58% 0.20 290); /* softer violet */
+    --node-reader: oklch(50% 0.10 230); /* softer teal */
+    --node-transformer: oklch(48% 0.15 15); /* softer burgundy */
+    --node-writer: oklch(55% 0.08 85.875); /* softer olive/brown */
+    --node-subworkflow: oklch(55% 0.18 310); /* softer purple */
+    /* Selected Node colors - brighter pastels */
+    --node-reader-selected: oklch(55% 0.12 230);
+    --node-transformer-selected: oklch(53% 0.17 15);
+    --node-writer-selected: oklch(60% 0.10 85.875);
+    --node-subworkflow-selected: oklch(60% 0.22 320);
   }
 }
 @layer base {
