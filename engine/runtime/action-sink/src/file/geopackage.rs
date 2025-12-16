@@ -78,6 +78,9 @@ impl SinkFactory for GeoPackageWriterFactory {
             buffer: Default::default(),
             schema: Default::default(),
             layer_buffers: Default::default(),
+            streaming_temp_path: None,
+            streaming_features_written: 0,
+            streaming_initialized: false,
         };
         Ok(Box::new(sink))
     }
@@ -95,6 +98,12 @@ pub(super) struct GeoPackageWriter {
     pub(super) buffer: Vec<Feature>,
     pub(super) schema: IndexMap<String, AttributeType>,
     pub(super) layer_buffers: HashMap<String, LayerData>,
+    /// Temporary file path for streaming mode
+    streaming_temp_path: Option<std::path::PathBuf>,
+    /// Total features written in streaming mode
+    streaming_features_written: usize,
+    /// Flag indicating if streaming mode is initialized
+    streaming_initialized: bool,
 }
 
 /// # GeoPackageWriter Parameters
@@ -157,6 +166,29 @@ pub(super) struct GeoPackageWriterParam {
     /// Validate and sanitize attribute names for SQL compatibility (default: true)
     #[serde(default = "default_validate_attribute_names")]
     pub(super) validate_attribute_names: bool,
+
+    /// Number of inserts between commits within a batch (default: 0 = commit per batch)
+    /// Setting this to a lower value increases commit frequency for better durability
+    #[serde(default)]
+    pub(super) commit_frequency: usize,
+
+    /// Defer index creation until after all data is inserted (default: false)
+    /// When true, spatial indexes are created after bulk insert for better performance
+    #[serde(default)]
+    pub(super) defer_index_creation: bool,
+
+    /// Run ANALYZE after bulk insert to optimize query performance (default: false)
+    #[serde(default)]
+    pub(super) run_analyze: bool,
+
+    /// In streaming mode, features are written to database during process() calls
+    /// instead of buffering all features until finish()
+    #[serde(default)]
+    pub(super) streaming_mode: bool,
+
+    /// Only used when streaming_mode is true
+    #[serde(default = "default_feature_buffer_limit")]
+    pub(super) feature_buffer_limit: usize,
 }
 
 fn default_table_name() -> String {
@@ -209,6 +241,10 @@ fn default_skip_empty_geometries() -> bool {
 
 fn default_validate_attribute_names() -> bool {
     true
+}
+
+fn default_feature_buffer_limit() -> usize {
+    10000
 }
 
 /// Geometry validation mode for handling type mismatches
@@ -279,11 +315,11 @@ pub(super) enum TableMode {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub(super) enum AttributeType {
-    Boolean,  // Lowest priority (can be promoted)
+    Boolean, // Lowest priority (can be promoted)
     Integer,
     Real,
     Blob,
-    Text, 
+    Text,
 }
 
 impl AttributeType {
@@ -459,11 +495,33 @@ impl Sink for GeoPackageWriter {
             self.buffer.push(feature.clone());
         }
 
+        if self.params.streaming_mode {
+            let should_flush = if self.params.layer_group_attribute.is_some() {
+                // Multi-layer mode: check total features across all layers
+                self.layer_buffers
+                    .values()
+                    .map(|l| l.features.len())
+                    .sum::<usize>()
+                    >= self.params.feature_buffer_limit
+            } else {
+                // Single-layer mode
+                self.buffer.len() >= self.params.feature_buffer_limit
+            };
+
+            if should_flush {
+                self.streaming_flush()?;
+            }
+        }
+
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        if self.buffer.is_empty() {
+        if self.params.streaming_mode && self.streaming_initialized {
+            return self.streaming_finalize(ctx);
+        }
+
+        if self.buffer.is_empty() && self.layer_buffers.is_empty() {
             return Ok(());
         }
 
@@ -562,6 +620,8 @@ impl GeoPackageWriter {
             // Initialize GeoPackage structure
             self.init_geopackage_structure(&adapter).await?;
 
+            let mut layers_to_index: Vec<(String, Vec<Feature>)> = Vec::new();
+
             if !self.layer_buffers.is_empty() {
                 for (layer_name, layer_data) in &self.layer_buffers {
                     self.create_feature_table_for_layer(
@@ -580,9 +640,15 @@ impl GeoPackageWriter {
                     )
                     .await?;
 
-                    if self.params.create_spatial_index {
-                        self.create_spatial_index_for_layer(&adapter, layer_name, &layer_data.features)
-                            .await?;
+                    if self.params.create_spatial_index && !self.params.defer_index_creation {
+                        self.create_spatial_index_for_layer(
+                            &adapter,
+                            layer_name,
+                            &layer_data.features,
+                        )
+                        .await?;
+                    } else if self.params.create_spatial_index {
+                        layers_to_index.push((layer_name.clone(), layer_data.features.clone()));
                     }
 
                     // Register geometry type constraint extension if enabled
@@ -603,8 +669,10 @@ impl GeoPackageWriter {
                 )
                 .await?;
 
-                if self.params.create_spatial_index {
+                if self.params.create_spatial_index && !self.params.defer_index_creation {
                     self.create_spatial_index(&adapter).await?;
+                } else if self.params.create_spatial_index {
+                    layers_to_index.push((self.params.table_name.clone(), self.buffer.clone()));
                 }
 
                 // Register geometry type constraint extension if enabled
@@ -616,6 +684,30 @@ impl GeoPackageWriter {
                     .await?;
             }
 
+            if self.params.defer_index_creation {
+                tracing::debug!(
+                    "Creating deferred spatial indexes for {} layers",
+                    layers_to_index.len()
+                );
+                for (layer_name, features) in &layers_to_index {
+                    self.create_spatial_index_for_layer(&adapter, layer_name, features)
+                        .await?;
+                }
+            }
+
+            if self.params.run_analyze {
+                if !self.layer_buffers.is_empty() {
+                    for layer_name in self.layer_buffers.keys() {
+                        self.run_analyze_for_table(&adapter, layer_name).await?;
+                    }
+                } else {
+                    self.run_analyze_for_table(&adapter, &self.params.table_name)
+                        .await?;
+                }
+                // Final database optimization
+                self.optimize_database(&adapter).await?;
+            }
+
             Ok::<(), BoxedError>(())
         })?;
 
@@ -623,6 +715,267 @@ impl GeoPackageWriter {
             .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to read temp file: {e}")))?;
 
         Ok(content)
+    }
+
+    fn streaming_initialize(&mut self) -> Result<(), BoxedError> {
+        if self.streaming_initialized {
+            return Ok(());
+        }
+
+        let temp_file = tempfile::NamedTempFile::new().map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to create streaming temp file: {e}"))
+        })?;
+
+        let temp_path = temp_file.into_temp_path();
+        let db_path = temp_path.to_path_buf();
+
+        let db_path_str = db_path.to_str().ok_or_else(|| {
+            SinkError::GeoPackageWriter("Failed to get streaming temp file path".to_string())
+        })?;
+
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to create runtime: {e}")))?;
+
+        rt.block_on(async {
+            let adapter = SqlAdapter::new(&format!("sqlite://{db_path_str}"), 1)
+                .await
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!(
+                        "Failed to connect to streaming database: {e}"
+                    ))
+                })?;
+
+            self.init_geopackage_structure(&adapter).await?;
+
+            if self.params.layer_group_attribute.is_some() {
+                for (layer_name, layer_data) in &self.layer_buffers {
+                    self.create_feature_table_for_layer(
+                        &adapter,
+                        layer_name,
+                        &layer_data.schema,
+                        &layer_data.features,
+                    )
+                    .await?;
+                }
+            } else {
+                self.create_feature_table(&adapter).await?;
+            }
+
+            Ok::<(), BoxedError>(())
+        })?;
+
+        self.streaming_temp_path = Some(db_path);
+        self.streaming_initialized = true;
+
+        tracing::debug!("Streaming mode initialized");
+
+        Ok(())
+    }
+
+    fn streaming_flush(&mut self) -> Result<(), BoxedError> {
+        if !self.streaming_initialized {
+            self.streaming_initialize()?;
+        }
+
+        let db_path = self.streaming_temp_path.as_ref().ok_or_else(|| {
+            SinkError::GeoPackageWriter("Streaming temp path not set".to_string())
+        })?;
+
+        let db_path_str = db_path.to_str().ok_or_else(|| {
+            SinkError::GeoPackageWriter("Failed to get streaming temp file path".to_string())
+        })?;
+
+        let buffer_count = if self.params.layer_group_attribute.is_some() {
+            self.layer_buffers
+                .values()
+                .map(|l| l.features.len())
+                .sum::<usize>()
+        } else {
+            self.buffer.len()
+        };
+
+        if buffer_count == 0 {
+            return Ok(());
+        }
+
+        tracing::debug!(
+            "Streaming flush: writing {} features to database",
+            buffer_count
+        );
+
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to create runtime: {e}")))?;
+
+        rt.block_on(async {
+            let adapter = SqlAdapter::new(&format!("sqlite://{db_path_str}"), 1)
+                .await
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!(
+                        "Failed to connect to streaming database: {e}"
+                    ))
+                })?;
+
+            if self.params.layer_group_attribute.is_some() {
+                // Multi-layer mode: flush each layer
+                for (layer_name, layer_data) in &self.layer_buffers {
+                    if !layer_data.features.is_empty() {
+                        self.insert_features_batched(
+                            &adapter,
+                            layer_name,
+                            &layer_data.schema,
+                            &layer_data.features,
+                        )
+                        .await?;
+                    }
+                }
+            } else {
+                // Single-layer mode
+                self.insert_features_batched(
+                    &adapter,
+                    &self.params.table_name,
+                    &self.schema,
+                    &self.buffer,
+                )
+                .await?;
+            }
+
+            Ok::<(), BoxedError>(())
+        })?;
+
+        // Update counts and clear buffers for garbage collection
+        self.streaming_features_written += buffer_count;
+
+        if self.params.layer_group_attribute.is_some() {
+            for layer_data in self.layer_buffers.values_mut() {
+                layer_data.features.clear();
+                layer_data.features.shrink_to_fit(); // Hint to GC
+            }
+        } else {
+            self.buffer.clear();
+            self.buffer.shrink_to_fit(); // Hint to GC
+        }
+
+        tracing::debug!(
+            "Streaming flush complete. Total features written: {}",
+            self.streaming_features_written
+        );
+
+        Ok(())
+    }
+
+    fn streaming_finalize(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let db_path = self.streaming_temp_path.as_ref().ok_or_else(|| {
+            SinkError::GeoPackageWriter("Streaming temp path not set".to_string())
+        })?;
+
+        let db_path_str = db_path.to_str().ok_or_else(|| {
+            SinkError::GeoPackageWriter("Failed to get streaming temp file path".to_string())
+        })?;
+
+        tracing::debug!(
+            "Finalizing streaming mode. Total features: {}",
+            self.streaming_features_written
+        );
+
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to create runtime: {e}")))?;
+
+        rt.block_on(async {
+            let adapter = SqlAdapter::new(&format!("sqlite://{db_path_str}"), 1)
+                .await
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!(
+                        "Failed to connect to streaming database: {e}"
+                    ))
+                })?;
+
+            if self.params.layer_group_attribute.is_some() {
+                for (layer_name, layer_data) in &self.layer_buffers {
+                    if !layer_data.features.is_empty() {
+                        self.insert_features_batched(
+                            &adapter,
+                            layer_name,
+                            &layer_data.schema,
+                            &layer_data.features,
+                        )
+                        .await?;
+                    }
+                }
+            } else if !self.buffer.is_empty() {
+                self.insert_features_batched(
+                    &adapter,
+                    &self.params.table_name,
+                    &self.schema,
+                    &self.buffer,
+                )
+                .await?;
+            }
+
+            if self.params.create_spatial_index {
+                if self.params.layer_group_attribute.is_some() {
+                    for (layer_name, layer_data) in &self.layer_buffers {
+                        self.create_spatial_index_for_layer(
+                            &adapter,
+                            layer_name,
+                            &layer_data.features,
+                        )
+                        .await?;
+                    }
+                } else {
+                    self.create_spatial_index(&adapter).await?;
+                }
+            }
+
+            if self.params.layer_group_attribute.is_some() {
+                for layer_name in self.layer_buffers.keys() {
+                    self.register_geometry_type_constraint(&adapter, layer_name)
+                        .await?;
+                    self.write_metadata(&adapter, layer_name).await?;
+                }
+            } else {
+                self.register_geometry_type_constraint(&adapter, &self.params.table_name)
+                    .await?;
+                self.write_metadata(&adapter, &self.params.table_name)
+                    .await?;
+            }
+
+            if self.params.run_analyze {
+                if self.params.layer_group_attribute.is_some() {
+                    for layer_name in self.layer_buffers.keys() {
+                        self.run_analyze_for_table(&adapter, layer_name).await?;
+                    }
+                } else {
+                    self.run_analyze_for_table(&adapter, &self.params.table_name)
+                        .await?;
+                }
+                self.optimize_database(&adapter).await?;
+            }
+
+            Ok::<(), BoxedError>(())
+        })?;
+
+        let gpkg_data = std::fs::read(db_path).map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to read streaming database: {e}"))
+        })?;
+
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let output = self.params.output.clone();
+        let scope = expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(output.as_ref())
+            .unwrap_or_else(|_| output.as_ref().to_string());
+        let output_uri = Uri::from_str(path.as_str())?;
+
+        let storage = storage_resolver
+            .resolve(&output_uri)
+            .map_err(SinkError::geopackage_writer)?;
+
+        storage.put_sync(output_uri.path().as_path(), Bytes::from(gpkg_data))?;
+
+        tracing::debug!("Streaming mode finalized. Output written to: {}", path);
+
+        Ok(())
     }
 
     fn update_existing_geopackage(
@@ -683,8 +1036,16 @@ impl GeoPackageWriter {
             self.update_gpkg_contents_bbox(&adapter).await?;
 
             // Create spatial index if requested and table was newly created
-            if self.params.create_spatial_index && (drop_existing_table || !table_exists) {
+            let should_create_index = self.params.create_spatial_index
+                && (drop_existing_table || !table_exists || self.params.defer_index_creation);
+            if should_create_index {
                 self.create_spatial_index(&adapter).await?;
+            }
+
+            if self.params.run_analyze {
+                self.run_analyze_for_table(&adapter, &self.params.table_name)
+                    .await?;
+                self.optimize_database(&adapter).await?;
             }
 
             Ok::<(), BoxedError>(())
@@ -720,9 +1081,10 @@ impl GeoPackageWriter {
             "DROP TABLE IF EXISTS {}",
             quote_identifier(&self.params.table_name)
         );
-        adapter.execute(&drop_table).await.map_err(|e| {
-            SinkError::GeoPackageWriter(format!("Failed to drop table: {e}"))
-        })?;
+        adapter
+            .execute(&drop_table)
+            .await
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to drop table: {e}")))?;
 
         // Remove from gpkg_contents
         let delete_contents = format!(
@@ -738,9 +1100,7 @@ impl GeoPackageWriter {
             self.params.table_name.replace('\'', "''")
         );
         adapter.execute(&delete_geom_cols).await.map_err(|e| {
-            SinkError::GeoPackageWriter(format!(
-                "Failed to delete from gpkg_geometry_columns: {e}"
-            ))
+            SinkError::GeoPackageWriter(format!("Failed to delete from gpkg_geometry_columns: {e}"))
         })?;
 
         // Drop spatial index if exists
@@ -774,9 +1134,10 @@ impl GeoPackageWriter {
             "PRAGMA table_info({})",
             quote_identifier(&self.params.table_name)
         );
-        let rows = adapter.fetch_many(&query).await.map_err(|e| {
-            SinkError::GeoPackageWriter(format!("Failed to get table info: {e}"))
-        })?;
+        let rows = adapter
+            .fetch_many(&query)
+            .await
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to get table info: {e}")))?;
 
         let existing_columns: HashMap<String, String> = rows
             .iter()
@@ -992,7 +1353,9 @@ impl GeoPackageWriter {
             )
             .await
             .map_err(|e| {
-                SinkError::GeoPackageWriter(format!("Failed to create gpkg_metadata_reference: {e}"))
+                SinkError::GeoPackageWriter(format!(
+                    "Failed to create gpkg_metadata_reference: {e}"
+                ))
             })?;
 
         Ok(())
@@ -1112,7 +1475,10 @@ impl GeoPackageWriter {
         );
 
         adapter.execute(&create_table).await.map_err(|e| {
-            SinkError::GeoPackageWriter(format!("Failed to create feature table '{}': {e}", table_name))
+            SinkError::GeoPackageWriter(format!(
+                "Failed to create feature table '{}': {e}",
+                table_name
+            ))
         })?;
 
         // Calculate bounding box for this layer
@@ -1181,7 +1547,10 @@ impl GeoPackageWriter {
         if has_z && !base_type.ends_with('Z') && !base_type.ends_with("ZM") {
             format!("{}Z", base_type)
         } else if !has_z && (base_type.ends_with('Z') || base_type.ends_with("ZM")) {
-            base_type.trim_end_matches('Z').trim_end_matches("ZM").to_string()
+            base_type
+                .trim_end_matches('Z')
+                .trim_end_matches("ZM")
+                .to_string()
         } else {
             base_type
         }
@@ -1227,6 +1596,13 @@ impl GeoPackageWriter {
             self.params.batch_size
         };
 
+        let commit_frequency =
+            if self.params.commit_frequency == 0 || self.params.commit_frequency >= batch_size {
+                batch_size
+            } else {
+                self.params.commit_frequency
+            };
+
         // Process features in batches with transaction
         for batch in features.chunks(batch_size) {
             // Begin transaction
@@ -1234,22 +1610,33 @@ impl GeoPackageWriter {
                 SinkError::GeoPackageWriter(format!("Failed to begin transaction: {e}"))
             })?;
 
+            let mut inserts_since_commit = 0;
             let result = async {
                 for feature in batch {
                     // Convert geometry with Z coordinate handling
                     let processed_geometry = self.process_geometry_z(&feature.geometry)?;
                     let geom_blob = geometry_to_gpkg_wkb(&processed_geometry, self.params.srs_id)?;
 
-                    let insert_query = self.build_insert_query_for_layer(
-                        table_name,
-                        schema,
-                        feature,
-                        &geom_blob,
-                    )?;
+                    let insert_query =
+                        self.build_insert_query_for_layer(table_name, schema, feature, &geom_blob)?;
 
                     adapter.execute(&insert_query).await.map_err(|e| {
                         SinkError::GeoPackageWriter(format!("Failed to insert feature: {e}"))
                     })?;
+
+                    inserts_since_commit += 1;
+
+                    if commit_frequency > 0 && inserts_since_commit >= commit_frequency {
+                        adapter.execute("COMMIT").await.map_err(|e| {
+                            SinkError::GeoPackageWriter(format!(
+                                "Failed to commit transaction: {e}"
+                            ))
+                        })?;
+                        adapter.execute("BEGIN TRANSACTION").await.map_err(|e| {
+                            SinkError::GeoPackageWriter(format!("Failed to begin transaction: {e}"))
+                        })?;
+                        inserts_since_commit = 0;
+                    }
                 }
                 Ok::<(), BoxedError>(())
             }
@@ -1257,7 +1644,6 @@ impl GeoPackageWriter {
 
             match result {
                 Ok(()) => {
-                    // Commit transaction
                     adapter.execute("COMMIT").await.map_err(|e| {
                         SinkError::GeoPackageWriter(format!("Failed to commit transaction: {e}"))
                     })?;
@@ -1352,7 +1738,6 @@ impl GeoPackageWriter {
         ))
     }
 
-
     async fn create_spatial_index(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
         self.create_spatial_index_for_layer(adapter, &self.params.table_name, &self.buffer)
             .await
@@ -1411,7 +1796,9 @@ impl GeoPackageWriter {
                         max_y
                     );
                     adapter.execute(&insert_rtree).await.map_err(|e| {
-                        SinkError::GeoPackageWriter(format!("Failed to populate spatial index: {e}"))
+                        SinkError::GeoPackageWriter(format!(
+                            "Failed to populate spatial index: {e}"
+                        ))
                     })?;
                 }
             }
@@ -1562,6 +1949,72 @@ impl GeoPackageWriter {
         Ok(())
     }
 
+    async fn run_analyze_for_table(
+        &self,
+        adapter: &SqlAdapter,
+        table_name: &str,
+    ) -> Result<(), BoxedError> {
+        if !self.params.run_analyze {
+            return Ok(());
+        }
+
+        tracing::debug!("Running ANALYZE on table '{}'", table_name);
+
+        let analyze_query = format!("ANALYZE {}", quote_identifier(table_name));
+        adapter.execute(&analyze_query).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!(
+                "Failed to run ANALYZE on table '{}': {e}",
+                table_name
+            ))
+        })?;
+
+        let rtree_table = format!(
+            "rtree_{}_{}",
+            table_name.replace(|c: char| !c.is_alphanumeric() && c != '_', "_"),
+            self.params
+                .geometry_column
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+        );
+
+        let check_rtree = format!(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{}'",
+            rtree_table.replace('\'', "''")
+        );
+        if let Ok(rows) = adapter.fetch_many(&check_rtree).await {
+            if let Some(row) = rows.first() {
+                if let Ok(cnt) = row.try_get::<i32, _>(0) {
+                    if cnt > 0 {
+                        let analyze_rtree = format!("ANALYZE {}", quote_identifier(&rtree_table));
+                        let _ = adapter.execute(&analyze_rtree).await;
+                    }
+                }
+            }
+        }
+
+        let _ = adapter.execute("ANALYZE sqlite_master").await;
+
+        tracing::debug!("ANALYZE completed for table '{}'", table_name);
+
+        Ok(())
+    }
+
+    async fn optimize_database(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        if !self.params.run_analyze {
+            return Ok(());
+        }
+
+        tracing::debug!("Optimizing database after bulk insert");
+
+        // Run full ANALYZE on the database
+        adapter
+            .execute("ANALYZE")
+            .await
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to run ANALYZE: {e}")))?;
+
+
+        Ok(())
+    }
+
     fn calculate_bbox(&self) -> (f64, f64, f64, f64) {
         let mut min_x = f64::INFINITY;
         let mut min_y = f64::INFINITY;
@@ -1670,10 +2123,10 @@ impl GeoPackageWriter {
 
         // Check for empty name
         if name.is_empty() {
-            return Err(
-                SinkError::GeoPackageWriter("Empty attribute name is not allowed".to_string())
-                    .into(),
-            );
+            return Err(SinkError::GeoPackageWriter(
+                "Empty attribute name is not allowed".to_string(),
+            )
+            .into());
         }
 
         // Check for reserved SQL keywords and sanitize
@@ -2545,14 +2998,9 @@ fn attribute_value_to_sql_string(value: &AttributeValue) -> Result<String, Boxed
 /// Convert 3D geometry to 2D by dropping Z coordinates
 fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
     use reearth_flow_geometry::types::{
-        coordinate::Coordinate2D,
-        line_string::LineString2D,
-        multi_line_string::MultiLineString2D,
-        multi_point::MultiPoint2D,
-        multi_polygon::MultiPolygon2D,
-        no_value::NoValue,
-        point::Point2D,
-        polygon::Polygon2D,
+        coordinate::Coordinate2D, line_string::LineString2D, multi_line_string::MultiLineString2D,
+        multi_point::MultiPoint2D, multi_polygon::MultiPolygon2D, no_value::NoValue,
+        point::Point2D, polygon::Polygon2D,
     };
 
     match geom {
@@ -2560,7 +3008,11 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
         Geometry3D::LineString(ls) => {
             let coords: Vec<Coordinate2D<f64>> = ls
                 .coords()
-                .map(|c| Coordinate2D { x: c.x, y: c.y, z: NoValue })
+                .map(|c| Coordinate2D {
+                    x: c.x,
+                    y: c.y,
+                    z: NoValue,
+                })
                 .collect();
             Ok(Geometry2D::LineString(LineString2D::new(coords)))
         }
@@ -2568,7 +3020,11 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
             let exterior: Vec<Coordinate2D<f64>> = poly
                 .exterior()
                 .coords()
-                .map(|c| Coordinate2D { x: c.x, y: c.y, z: NoValue })
+                .map(|c| Coordinate2D {
+                    x: c.x,
+                    y: c.y,
+                    z: NoValue,
+                })
                 .collect();
             let interiors: Vec<LineString2D<f64>> = poly
                 .interiors()
@@ -2576,7 +3032,11 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
                 .map(|ring| {
                     let coords: Vec<Coordinate2D<f64>> = ring
                         .coords()
-                        .map(|c| Coordinate2D { x: c.x, y: c.y, z: NoValue })
+                        .map(|c| Coordinate2D {
+                            x: c.x,
+                            y: c.y,
+                            z: NoValue,
+                        })
                         .collect();
                     LineString2D::new(coords)
                 })
@@ -2597,7 +3057,11 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
                 .map(|ls| {
                     let coords: Vec<Coordinate2D<f64>> = ls
                         .coords()
-                        .map(|c| Coordinate2D { x: c.x, y: c.y, z: NoValue })
+                        .map(|c| Coordinate2D {
+                            x: c.x,
+                            y: c.y,
+                            z: NoValue,
+                        })
                         .collect();
                     LineString2D::new(coords)
                 })
@@ -2611,7 +3075,11 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
                     let exterior: Vec<Coordinate2D<f64>> = poly
                         .exterior()
                         .coords()
-                        .map(|c| Coordinate2D { x: c.x, y: c.y, z: NoValue })
+                        .map(|c| Coordinate2D {
+                            x: c.x,
+                            y: c.y,
+                            z: NoValue,
+                        })
                         .collect();
                     let interiors: Vec<LineString2D<f64>> = poly
                         .interiors()
@@ -2619,7 +3087,11 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
                         .map(|ring| {
                             let coords: Vec<Coordinate2D<f64>> = ring
                                 .coords()
-                                .map(|c| Coordinate2D { x: c.x, y: c.y, z: NoValue })
+                                .map(|c| Coordinate2D {
+                                    x: c.x,
+                                    y: c.y,
+                                    z: NoValue,
+                                })
                                 .collect();
                             LineString2D::new(coords)
                         })
@@ -2629,19 +3101,18 @@ fn convert_3d_to_2d(geom: &Geometry3D) -> Result<Geometry2D, BoxedError> {
                 .collect();
             Ok(Geometry2D::MultiPolygon(MultiPolygon2D::new(polys)))
         }
-        _ => Err(SinkError::GeoPackageWriter("Unsupported 3D geometry type for conversion".to_string()).into()),
+        _ => Err(SinkError::GeoPackageWriter(
+            "Unsupported 3D geometry type for conversion".to_string(),
+        )
+        .into()),
     }
 }
 
 /// Convert 2D geometry to 3D by adding Z=0 to all coordinates
 fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
     use reearth_flow_geometry::types::{
-        coordinate::Coordinate3D,
-        line_string::LineString3D,
-        multi_line_string::MultiLineString3D,
-        multi_point::MultiPoint3D,
-        multi_polygon::MultiPolygon3D,
-        point::Point3D,
+        coordinate::Coordinate3D, line_string::LineString3D, multi_line_string::MultiLineString3D,
+        multi_point::MultiPoint3D, multi_polygon::MultiPolygon3D, point::Point3D,
         polygon::Polygon3D,
     };
 
@@ -2650,7 +3121,11 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
         Geometry2D::LineString(ls) => {
             let coords: Vec<Coordinate3D<f64>> = ls
                 .coords()
-                .map(|c| Coordinate3D { x: c.x, y: c.y, z: 0.0 })
+                .map(|c| Coordinate3D {
+                    x: c.x,
+                    y: c.y,
+                    z: 0.0,
+                })
                 .collect();
             Ok(Geometry3D::LineString(LineString3D::new(coords)))
         }
@@ -2658,7 +3133,11 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
             let exterior: Vec<Coordinate3D<f64>> = poly
                 .exterior()
                 .coords()
-                .map(|c| Coordinate3D { x: c.x, y: c.y, z: 0.0 })
+                .map(|c| Coordinate3D {
+                    x: c.x,
+                    y: c.y,
+                    z: 0.0,
+                })
                 .collect();
             let interiors: Vec<LineString3D<f64>> = poly
                 .interiors()
@@ -2666,7 +3145,11 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
                 .map(|ring| {
                     let coords: Vec<Coordinate3D<f64>> = ring
                         .coords()
-                        .map(|c| Coordinate3D { x: c.x, y: c.y, z: 0.0 })
+                        .map(|c| Coordinate3D {
+                            x: c.x,
+                            y: c.y,
+                            z: 0.0,
+                        })
                         .collect();
                     LineString3D::new(coords)
                 })
@@ -2677,10 +3160,8 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
             )))
         }
         Geometry2D::MultiPoint(mp) => {
-            let points: Vec<Point3D<f64>> = mp
-                .iter()
-                .map(|p| Point3D::new(p.x(), p.y(), 0.0))
-                .collect();
+            let points: Vec<Point3D<f64>> =
+                mp.iter().map(|p| Point3D::new(p.x(), p.y(), 0.0)).collect();
             Ok(Geometry3D::MultiPoint(MultiPoint3D::from(points)))
         }
         Geometry2D::MultiLineString(mls) => {
@@ -2689,7 +3170,11 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
                 .map(|ls| {
                     let coords: Vec<Coordinate3D<f64>> = ls
                         .coords()
-                        .map(|c| Coordinate3D { x: c.x, y: c.y, z: 0.0 })
+                        .map(|c| Coordinate3D {
+                            x: c.x,
+                            y: c.y,
+                            z: 0.0,
+                        })
                         .collect();
                     LineString3D::new(coords)
                 })
@@ -2703,7 +3188,11 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
                     let exterior: Vec<Coordinate3D<f64>> = poly
                         .exterior()
                         .coords()
-                        .map(|c| Coordinate3D { x: c.x, y: c.y, z: 0.0 })
+                        .map(|c| Coordinate3D {
+                            x: c.x,
+                            y: c.y,
+                            z: 0.0,
+                        })
                         .collect();
                     let interiors: Vec<LineString3D<f64>> = poly
                         .interiors()
@@ -2711,7 +3200,11 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
                         .map(|ring| {
                             let coords: Vec<Coordinate3D<f64>> = ring
                                 .coords()
-                                .map(|c| Coordinate3D { x: c.x, y: c.y, z: 0.0 })
+                                .map(|c| Coordinate3D {
+                                    x: c.x,
+                                    y: c.y,
+                                    z: 0.0,
+                                })
                                 .collect();
                             LineString3D::new(coords)
                         })
@@ -2721,6 +3214,9 @@ fn convert_2d_to_3d(geom: &Geometry2D) -> Result<Geometry3D, BoxedError> {
                 .collect();
             Ok(Geometry3D::MultiPolygon(MultiPolygon3D::new(polys)))
         }
-        _ => Err(SinkError::GeoPackageWriter("Unsupported 2D geometry type for conversion".to_string()).into()),
+        _ => Err(SinkError::GeoPackageWriter(
+            "Unsupported 2D geometry type for conversion".to_string(),
+        )
+        .into()),
     }
 }

@@ -3215,10 +3215,34 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "format": "uint",
       "minimum": 0.0
     },
+    "commitFrequency": {
+      "description": "Number of inserts between commits within a batch (default: 0 = commit per batch) Setting this to a lower value increases commit frequency for better durability",
+      "default": 0,
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0.0
+    },
     "createSpatialIndex": {
       "description": "Create RTree spatial index (default: true)",
       "default": true,
       "type": "boolean"
+    },
+    "deferIndexCreation": {
+      "description": "Defer index creation until after all data is inserted (default: false) When true, spatial indexes are created after bulk insert for better performance",
+      "default": false,
+      "type": "boolean"
+    },
+    "enableGeometryTypeConstraint": {
+      "description": "Enable geometry type constraint extension (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "featureBufferLimit": {
+      "description": "Maximum number of features to buffer before auto-flush in streaming mode (default: 10000) Only used when streaming_mode is true",
+      "default": 10000,
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0.0
     },
     "geometryColumn": {
       "description": "Geometry column name (default: \"geom\")",
@@ -3230,12 +3254,33 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "default": "GEOMETRY",
       "type": "string"
     },
+    "geometryValidationMode": {
+      "description": "Geometry validation mode: how to handle geometry type mismatches (default: Warn)",
+      "default": "warn",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryValidationMode"
+        }
+      ]
+    },
     "layerGroupAttribute": {
       "description": "Attribute name to use for grouping features into multiple tables (optional) When set, features will be written to different tables based on the value of this attribute",
       "default": null,
       "type": [
         "string",
         "null"
+      ]
+    },
+    "metadata": {
+      "description": "Metadata to write to gpkg_metadata table (optional)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeoPackageMetadata"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "output": {
@@ -3256,11 +3301,26 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "default": "fid",
       "type": "string"
     },
+    "runAnalyze": {
+      "description": "Run ANALYZE after bulk insert to optimize query performance (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "skipEmptyGeometries": {
+      "description": "Skip features with empty or null geometries (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
     "srsId": {
       "description": "Spatial Reference System ID (default: 4326 for WGS84)",
       "default": 4326,
       "type": "integer",
       "format": "int32"
+    },
+    "streamingMode": {
+      "description": "Enable streaming mode for very large datasets (default: false) In streaming mode, features are written to database during process() calls instead of buffering all features until finish()",
+      "default": false,
+      "type": "boolean"
     },
     "tableMode": {
       "description": "Table handling mode: CreateIfNeeded (default), UseExisting (append), or DropAndCreate",
@@ -3276,6 +3336,11 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       "default": "features",
       "type": "string"
     },
+    "validateAttributeNames": {
+      "description": "Validate and sanitize attribute names for SQL compatibility (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
     "zMode": {
       "description": "Z coordinate handling mode (default: Optional)",
       "default": "optional",
@@ -3289,6 +3354,70 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
   "definitions": {
     "Expr": {
       "type": "string"
+    },
+    "GeoPackageMetadata": {
+      "description": "Metadata configuration for GeoPackage",
+      "type": "object",
+      "required": [
+        "content"
+      ],
+      "properties": {
+        "content": {
+          "description": "Metadata content (XML, JSON, or plain text)",
+          "type": "string"
+        },
+        "mimeType": {
+          "description": "MIME type of metadata (default: \"text/xml\")",
+          "default": "text/xml",
+          "type": "string"
+        },
+        "scope": {
+          "description": "Metadata scope (default: \"dataset\")",
+          "default": "dataset",
+          "type": "string"
+        },
+        "standardUri": {
+          "description": "URI for metadata standard (e.g., \"http://www.isotc211.org/2005/gmd\")",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "GeometryValidationMode": {
+      "description": "Geometry validation mode for handling type mismatches",
+      "oneOf": [
+        {
+          "description": "Skip features with mismatched geometry types silently",
+          "type": "string",
+          "enum": [
+            "skip"
+          ]
+        },
+        {
+          "description": "Log a warning and skip features with mismatched geometry types (default)",
+          "type": "string",
+          "enum": [
+            "warn"
+          ]
+        },
+        {
+          "description": "Fail the entire operation if geometry type mismatch is detected",
+          "type": "string",
+          "enum": [
+            "strict"
+          ]
+        },
+        {
+          "description": "Attempt to coerce geometry to target type (e.g., Point to MultiPoint)",
+          "type": "string",
+          "enum": [
+            "coerce"
+          ]
+        }
+      ]
     },
     "TableMode": {
       "description": "Table handling mode for GeoPackage writer",
