@@ -4,4 +4,5 @@ pub mod node;
 pub mod processor_node;
 pub mod receiver_loop;
 pub mod sink_node;
+pub mod source_intermediate;
 pub mod source_node;
