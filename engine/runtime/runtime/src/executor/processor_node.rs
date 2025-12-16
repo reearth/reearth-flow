@@ -27,8 +27,8 @@ use crate::{
     node::{NodeHandle, Processor},
 };
 
-use super::reader_intermediate::ReaderIntermediateMeta;
 use super::receiver_loop::init_select;
+use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
 static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
@@ -76,8 +76,8 @@ pub struct ProcessorNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
-    reader_meta: ReaderIntermediateMeta,
-    /// State for writing reader intermediate data
+    source_intermediate_recorder: SourceIntermediateRecorder,
+    /// State for writing source intermediate data
     feature_state: Arc<State>,
 }
 
@@ -126,7 +126,8 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let kv_store = Arc::clone(&ctx.kv_store);
         let num_threads = processor.num_threads();
 
-        let reader_meta = ReaderIntermediateMeta::collect(dag, node_index, &node_handles);
+        let source_intermediate_recorder =
+            SourceIntermediateRecorder::collect(dag, node_index, &node_handles);
         let feature_state = dag.feature_state();
 
         Self {
@@ -149,7 +150,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
-            reader_meta,
+            source_intermediate_recorder,
             feature_state,
         }
     }
@@ -288,7 +289,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
-                    self.reader_meta.append_if_reader(
+                    self.source_intermediate_recorder.record_if_from_source(
                         &self.feature_state,
                         index,
                         &ctx,
