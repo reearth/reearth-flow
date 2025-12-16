@@ -23,91 +23,83 @@
 @layer base {
   /* TODO: Fix light mode colors and enable light mode */
   :root {
-    --background: 255, 255, 255;
-    --foreground: 39, 39, 42;
-    --card: 244, 247, 250;
-    --card-foreground: 39, 39, 42;
-    --popover: 250, 250, 250;
-    --popover-foreground: 49, 49, 42;
-    /* --primary: 244, 247, 250; */
-    --primary: 242, 242, 242;
-    --primary-foreground: 51, 51, 56;
-    --secondary: 244, 247, 250;
-    /* --secondary: 244, 247, 250; */
-    --secondary-foreground: 31, 31, 34;
-    --muted: 161, 161, 170;
-    --muted-foreground: 26, 26, 26;
-    --accent: 212, 212, 216;
-    --accent-foreground: 63, 63, 70;
-    --destructive: 239, 68, 68;
-    --destructive-foreground: 250, 250, 250;
-    --warning: 255, 159, 67;
-    --warning-foreground: 250, 250, 250;
-    --border: 202, 202, 202;
-    --border-secondary: 175, 174, 174;
-    --input: 228, 228, 231;
-    --ring: 24, 24, 27;
+    --background: oklch(100% 0 0); /* white */
+    --foreground: oklch(26% 0 0); /* near black */
+    --card: oklch(96.5% 0.005 240); /* light blue-gray */
+    --card-foreground: oklch(26% 0 0);
+    --popover: oklch(98.5% 0 0); /* very light gray */
+    --popover-foreground: oklch(30% 0 0);
+    --primary: oklch(95% 0 0); /* light gray */
+    --primary-foreground: oklch(32% 0 0);
+    --secondary: oklch(96.5% 0.005 240);
+    --secondary-foreground: oklch(23% 0 0);
+    --muted: oklch(68% 0.005 270); /* medium gray */
+    --muted-foreground: oklch(18% 0 0);
+    --accent: oklch(85% 0.005 270); /* light gray-blue */
+    --accent-foreground: oklch(38% 0.005 270);
+    --destructive: oklch(62% 0.22 25); /* red */
+    --destructive-foreground: oklch(98.5% 0 0);
+    --warning: oklch(75% 0.15 65); /* orange */
+    --warning-foreground: oklch(98.5% 0 0);
+    --border: oklch(82% 0 0); /* medium-light gray */
+    --border-secondary: oklch(72% 0 0);
+    --input: oklch(90% 0.005 270);
+    --ring: oklch(16% 0.01 270);
     --radius: 0.5rem;
     /* Custom Flow colors */
-    --logo: 0, 163, 64;
+    --logo: oklch(62% 0.19 155); /* green */
     /* Workflow colors */
-    --node-entrance: 162, 28, 175;
-    --node-exit: 126, 34, 206;
-    --node-reader: 22, 78, 99;
-    --node-transformer: 99, 22, 40;
-    --node-writer: 72, 62, 28;
-    --node-subworkflow: 111, 32, 119;
+    --node-entrance: oklch(45% 0.24 320); /* purple */
+    --node-exit: oklch(43% 0.24 290); /* violet */
+    --node-reader: oklch(35% 0.08 230); /* teal */
+    --node-transformer: oklch(32% 0.13 15); /* burgundy */
+    --node-writer: oklch(40.956% 0.05666 85.875); /* dark olive/brown */
+    --node-subworkflow: oklch(40% 0.19 310); /* purple */
     /* Selected Node colors */
-    --node-reader-selected: 25, 94, 117;
-    --node-transformer-selected: 117, 34, 54;
-    --node-writer-selected: 102, 84, 32;
-    --node-subworkflow-selected: 162, 28, 175;
+    --node-reader-selected: oklch(40% 0.09 230);
+    --node-transformer-selected: oklch(37% 0.14 15);
+    --node-writer-selected: oklch(50% 0.07 85.875); 
+    --node-subworkflow-selected: oklch(45% 0.24 320);
     /* success green */
-    --success: 34, 197, 94;
-    --canvas-background: 243, 238, 242;
+    --success: oklch(72% 0.18 145);
+    --canvas-background: oklch(95.5% 0 0);
   }
   .dark {
-    --background: 39, 39, 42;
-    --foreground: 250, 250, 250;
-    --card: 31, 31, 34;
-    /* --card: 39, 39, 42; */
-    --card-foreground: 250, 250, 250;
-    --popover: 49, 49, 53;
-    --popover-foreground: 250, 250, 250;
-    --primary: 51, 51, 56;
-    --primary-foreground: 126, 126, 129;
-    --secondary: 31, 31, 34;
-    --secondary-foreground: 250, 250, 250;
-    --muted: 26, 26, 26;
-    --muted-foreground: 161, 161, 170;
-    --accent: 63, 63, 70;
-    --accent-foreground: 212, 212, 216;
-    --destructive: 239, 67, 67;
-    --destructive-foreground: 250, 250, 250;
-    --border: 63, 63, 70;
-    --input: 26, 26, 26;
-    --ring: 2, 8, 23;
+    --background: oklch(26% 0 0); /* dark gray */
+    --foreground: oklch(98.5% 0 0); /* near white */
+    --card: oklch(23% 0 0); /* darker gray */
+    --card-foreground: oklch(98.5% 0 0);
+    --popover: oklch(29% 0.005 270);
+    --popover-foreground: oklch(98.5% 0 0);
+    --primary: oklch(32% 0.005 270);
+    --primary-foreground: oklch(55% 0.005 270);
+    --secondary: oklch(23% 0 0);
+    --secondary-foreground: oklch(98.5% 0 0);
+    --muted: oklch(18% 0 0);
+    --muted-foreground: oklch(68% 0.005 270);
+    --accent: oklch(38% 0.005 270);
+    --accent-foreground: oklch(85% 0.005 270);
+    --destructive: oklch(62% 0.22 25); /* red */
+    --destructive-foreground: oklch(98.5% 0 0);
+    --border: oklch(38% 0.005 270);
+    --input: oklch(18% 0 0);
+    --ring: oklch(12% 0.02 270);
   }
 }
-/* Note: following two @layer is need to ensure code reflects previous styles from Tailwind 3 */
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: rgb(var(--border));
+    border-color: var(--border);
   }
-}
 
-@layer base {
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-}
 
-@layer base {
   * {
     @apply no-scrollbar;
   }
@@ -120,19 +112,19 @@
 /* Animation for active node - shadow */
 @keyframes cycleActiveColorsShadow {
   0% {
-    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--primary);
   }
   25% {
-    box-shadow: 0 0 5px 2px rgba(var(--success), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--success);
   }
   50% {
-    box-shadow: 0 0 5px 2px rgba(var(--warning), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--warning);
   }
   75% {
-    box-shadow: 0 0 5px 2px rgba(var(--destructive), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--destructive);
   }
   100% {
-    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--primary);
   }
 }
 
@@ -158,19 +150,19 @@
 /* Animation for active node - border */
 @keyframes cycleActiveColorsBorder {
   0% {
-    border-color: rgba(var(--primary));
+    border-color: var(--primary);
   }
   25% {
-    border-color: rgba(var(--success));
+    border-color: var(--success);
   }
   50% {
-    border-color: rgba(var(--warning));
+    border-color: var(--warning);
   }
   75% {
-    border-color: rgba(var(--destructive));
+    border-color: var(--destructive);
   }
   100% {
-    border-color: rgba(var(--primary));
+    border-color: var(--primary);
   }
 }
 
@@ -211,39 +203,39 @@
 /* Animation for queued node - shadow */
 @keyframes cycleColorsShadow {
   0% {
-    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--foreground);
   }
   50% {
-    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--primary);
   }
   100% {
-    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--foreground);
   }
 }
 
 /* Animation for queued node - background */
 @keyframes cycleColors {
   0% {
-    background-color: rgba(var(--foreground));
+    background-color: var(--foreground);
   }
   50% {
-    background-color: rgba(var(--primary));
+    background-color: var(--primary);
   }
   100% {
-    background-color: rgba(var(--foreground));
+    background-color: var(--foreground);
   }
 }
 
 /* Animation for queued node - border */
 @keyframes cycleColorsBorder {
   0% {
-    border-color: rgba(var(--foreground));
+    border-color: var(--foreground);
   }
   50% {
-    border-color: rgba(var(--primary));
+    border-color: var(--primary);
   }
   100% {
-    border-color: rgba(var(--foreground));
+    border-color: var(--foreground);
   }
 }
 
@@ -262,13 +254,6 @@
 }
 
 /* Animation for queued node END */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 /* We need to set the z-index to -1 so that the nodes are rendered behind the edges */
 .react-flow__node-batch {

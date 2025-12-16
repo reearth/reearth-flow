@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config = {
-  darkMode: ["class"],
+  darkMode: "class",
   important: true,
   content: ["./src/**/*.{ts,tsx}"],
   prefix: "",
@@ -15,59 +15,59 @@ const config = {
     },
     extend: {
       colors: {
-        border: "rgba(var(--border))",
-        input: "rgba(var(--input))",
-        ring: "rgba(var(--ring))",
-        background: "rgba(var(--background))",
-        foreground: "rgba(var(--foreground))",
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
         primary: {
-          DEFAULT: "rgba(var(--primary))",
-          foreground: "rgba(var(--primary-foreground))",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
         secondary: {
-          DEFAULT: "rgba(var(--secondary))",
-          foreground: "rgba(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
         destructive: {
-          DEFAULT: "rgba(var(--destructive))",
-          foreground: "rgba(var(--destructive-foreground))",
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
         },
         warning: {
-          DEFAULT: "rgba(var(--warning))",
-          foreground: "rgba(var(--warning-foreground))",
+          DEFAULT: "var(--warning)",
+          foreground: "var(--warning-foreground)",
         },
         muted: {
-          DEFAULT: "rgba(var(--muted))",
-          foreground: "rgba(var(--muted-foreground))",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
         accent: {
-          DEFAULT: "rgba(var(--accent))",
-          foreground: "rgba(var(--accent-foreground))",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
         },
         popover: {
-          DEFAULT: "rgba(var(--popover))",
-          foreground: "rgba(var(--popover-foreground))",
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
         },
         card: {
-          DEFAULT: "rgba(var(--card))",
-          foreground: "rgba(var(--card-foreground))",
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
         },
-        logo: "rgba(var(--logo))",
+        logo: "var(--logo)",
         node: {
-          entrance: "rgba(var(--node-entrance))",
-          exit: "rgba(var(--node-exit))",
-          transformer: "rgba(var(--node-transformer))",
-          reader: "rgba(var(--node-reader))",
-          writer: "rgba(var(--node-writer))",
-          subworkflow: "rgba(var(--node-subworkflow))",
-          "reader-selected": "rgba(var(--node-reader-selected))",
-          "writer-selected": "rgba(var(--node-writer-selected))",
-          "transformer-selected": "rgba(var(--node-transformer-selected))",
-          "subworkflow-selected": "rgba(var(--node-subworkflow-selected))",
+          entrance: "var(--node-entrance)",
+          exit: "var(--node-exit)",
+          transformer: "var(--node-transformer)",
+          reader: "var(--node-reader)",
+          writer: "var(--node-writer)",
+          subworkflow: "var(--node-subworkflow)",
+          "reader-selected": "var(--node-reader-selected)",
+          "writer-selected": "var(--node-writer-selected)",
+          "transformer-selected": "var(--node-transformer-selected)",
+          "subworkflow-selected": "var(--node-subworkflow-selected)",
         },
-        success: "rgba(var(--success))",
+        success: "var(--success)",
         canvas: {
-          background: "rgba(var(--canvas-background))",
+          background: "var(--canvas-background)",
         },
       },
       borderRadius: {
@@ -98,6 +98,6 @@ const config = {
   },
   plugins: [require("tailwindcss-animate")], // eslint-disable-line
   safelist: ["line-clamp-2", "loading-pulse"],
-} satisfies Config;
+} as const satisfies Config;
 
 export default config;

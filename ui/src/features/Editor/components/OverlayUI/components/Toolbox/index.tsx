@@ -180,14 +180,14 @@ const Toolbox: React.FC<Props> = ({
               <IconButton
                 className={`dndnode-${tool.id} h-8 w-18 cursor-grab text-white backdrop-blur-xs ${
                   tool.id === "reader"
-                    ? "bg-node-reader hover:bg-node-reader/80 hover:text-white dark:bg-node-reader/40 dark:hover:bg-node-reader/80"
+                    ? "bg-node-reader hover:bg-node-reader/80 hover:text-white dark:bg-node-reader/60 dark:hover:bg-node-reader/80"
                     : tool.id === "writer"
-                      ? "bg-node-writer hover:bg-node-writer/80 hover:text-white dark:bg-node-writer/40 dark:hover:bg-node-writer/80"
+                      ? "bg-node-writer hover:bg-node-writer/80 hover:text-white dark:bg-node-writer/60 dark:hover:bg-node-writer/80"
                       : tool.id === "subworkflow"
-                        ? "bg-node-subworkflow/90 hover:bg-node-subworkflow/80 hover:text-white  dark:bg-node-subworkflow/40 dark:hover:bg-node-subworkflow/80"
+                        ? "bg-node-subworkflow/90 hover:bg-node-subworkflow/80 hover:text-white  dark:bg-node-subworkflow/60 dark:hover:bg-node-subworkflow/80"
                         : tool.id === "batch" || tool.id === "note"
-                          ? "bg-zinc-600 hover:bg-zinc-700/80 hover:text-white dark:bg-primary/40 dark:hover:bg-primary/80"
-                          : "bg-node-transformer hover:bg-node-transformer/80 hover:text-white dark:bg-node-transformer/40 dark:hover:bg-node-transformer/80"
+                          ? "bg-zinc-600 hover:bg-zinc-700/80 hover:text-white dark:bg-primary/60 dark:hover:bg-primary/80"
+                          : "bg-node-transformer hover:bg-node-transformer/80 hover:text-white dark:bg-node-transformer/60 dark:hover:bg-node-transformer/80"
                 }`}
                 tooltipPosition="bottom"
                 tooltipOffset={4}
