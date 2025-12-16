@@ -10,6 +10,9 @@ use reearth_flow_geometry::types::polygon::Polygon3D;
 use crate::error::Error;
 use crate::{AttributeValue, CityGmlGeometry, Geometry, GeometryValue, GmlGeometry};
 
+// Convert nusamai geometry to reearth_flow_geometry Geometry
+// Expect well-formed geometries parsed by nusamai_citygml:
+// if the geometry contains NaN, the duplicate equality check fails and coordinate list will contain duplicates
 impl TryFrom<Entity> for Geometry {
     type Error = Error;
 
@@ -82,7 +85,19 @@ impl TryFrom<Entity> for Geometry {
                     geometry_feature.line_strings.extend(linestrings);
                     Some(geometry_feature)
                 }
-                GeometryType::Point => unimplemented!(),
+                GeometryType::Point => {
+                    let mut points = Vec::<Coordinate3D<f64>>::new();
+                    for idx_point in geoms
+                        .multipoint
+                        .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                    {
+                        let coord = geoms.vertices[idx_point as usize];
+                        points.push(Coordinate3D::new__(coord[0], coord[1], coord[2]));
+                    }
+                    let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                    geometry_feature.points.extend(points);
+                    Some(geometry_feature)
+                }
             }
         };
         for geometry in geometries.iter() {
@@ -131,11 +146,13 @@ impl TryFrom<Entity> for Geometry {
                 let mut poly_textures = Vec::with_capacity(total_polygons);
                 let mut poly_uvs = flatgeom::MultiPolygon::new();
 
+                let mut ring_idx = 0;
                 for &(start, end) in &polygon_ranges {
                     for global_idx in start..end {
                         let poly = geoms.multipolygon.get(global_idx as usize);
                         for (i, ring) in poly.rings().enumerate() {
-                            let ring_id = geoms.ring_ids.get(global_idx as usize);
+                            let ring_id = geoms.ring_ids.get(ring_idx as usize);
+                            ring_idx += 1;
                             let tex = ring_id
                                 .and_then(|id| id.clone())
                                 .and_then(|id| theme.ring_id_to_texture.get(&id));

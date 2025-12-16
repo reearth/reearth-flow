@@ -40,3 +40,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "plateau-tiles-test"
 path = "src/main.rs"
+
+[[bin]]
+name = "inspect-tileset"
+path = "src/bin/inspect_tileset.rs"

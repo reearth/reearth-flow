@@ -298,6 +298,7 @@ pub struct GmlGeometry {
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
     pub line_strings: Vec<LineString3D<f64>>,
+    pub points: Vec<Coordinate3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
     pub composite_surfaces: Vec<GmlGeometry>,
@@ -315,6 +316,9 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_inplace(jgd2wgs));
+        self.points
+            .iter_mut()
+            .for_each(|point| point.transform_inplace(jgd2wgs));
     }
 
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
@@ -324,6 +328,9 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_offset(x, y, z));
+        self.points
+            .iter_mut()
+            .for_each(|point| point.transform_offset(x, y, z));
     }
 
     /// Transforms the X/Y coordinates of all geometries using the provided function.
@@ -444,6 +451,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             len: geometry.len,
             polygons: Vec::new(),
             line_strings: Vec::new(),
+            points: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
             composite_surfaces: Vec::new(),

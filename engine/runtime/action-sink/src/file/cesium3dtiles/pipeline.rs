@@ -41,7 +41,7 @@ pub(super) fn geometry_slicing_stage(
     max_zoom: u8,
     attach_texture: bool,
 ) -> crate::errors::Result<()> {
-    upstream.iter().par_bridge().try_for_each(|parcel| {
+    upstream.iter().try_for_each(|parcel| {
         slice_to_tiles(
             parcel,
             schema,

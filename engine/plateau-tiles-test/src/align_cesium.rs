@@ -18,9 +18,10 @@ pub struct TilesetInfo {
 
 #[derive(Debug, Clone)]
 pub struct DetailLevel {
-    pub(crate) multipolygon: MultiPolygon3D<f64>,
-    pub(crate) geometric_error: f64,
-    pub(crate) has_texture: bool,
+    pub multipolygon: MultiPolygon3D<f64>,
+    pub geometric_error: f64,
+    pub source_idx: Option<u32>,
+    pub texture_name: Option<String>,
 }
 
 /// Find top-level 3D Tiles directories (directories containing tileset.json)
@@ -268,12 +269,21 @@ impl GeometryCollector {
         let indices = read_indices(&indices, buffer_data)
             .map_err(|e| format!("Failed to read indices: {}", e))?;
 
-        // Check if material has any textures
-        let has_material_texture = primitive
-            .material()
+        // Extract texture information if present
+        let material = primitive.material();
+        let texture_info = material
             .pbr_metallic_roughness()
             .base_color_texture()
-            .is_some();
+            .map(|tex_info| {
+                let texture = tex_info.texture();
+                let source_idx = texture.source().index() as u32;
+                let texture_name = texture
+                    .source()
+                    .name()
+                    .map(|s| s.to_string())
+                    .or_else(|| Some(format!("texture_{}", source_idx)));
+                (source_idx, texture_name)
+            });
 
         // Split triangles by feature ID
         let mut feature_polygons: HashMap<u32, Vec<Polygon3D<f64>>> = HashMap::new();
@@ -313,12 +323,18 @@ impl GeometryCollector {
 
         for (feature_id, polygons) in feature_polygons {
             let gml_id = Self::lookup_gml_id(feature_id, feature_list, glb_path)?;
-            self.store_geometry(
-                gml_id,
-                MultiPolygon3D::new(polygons),
+            let (source_idx, texture_name) = match texture_info.clone() {
+                Some((idx, name)) => (Some(idx), name),
+                None => (None, None),
+            };
+
+            // Just append - features are added in depth order as we traverse the tree
+            self.result.entry(gml_id).or_default().push(DetailLevel {
+                multipolygon: MultiPolygon3D::new(polygons),
                 geometric_error,
-                has_material_texture,
-            );
+                source_idx,
+                texture_name,
+            });
         }
 
         Ok(())
@@ -338,23 +354,6 @@ impl GeometryCollector {
                     feature_id, glb_path
                 )
             })
-    }
-
-    fn store_geometry(
-        &mut self,
-        gml_id: String,
-        multipolygon: MultiPolygon3D<f64>,
-        geometric_error: f64,
-        has_material_texture: bool,
-    ) {
-        let entry = self.result.entry(gml_id).or_default();
-
-        // Just append - features are added in depth order as we traverse the tree
-        entry.push(DetailLevel {
-            multipolygon,
-            geometric_error,
-            has_texture: has_material_texture,
-        });
     }
 }
 
