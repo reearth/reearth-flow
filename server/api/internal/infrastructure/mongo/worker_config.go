@@ -21,23 +21,23 @@ func NewWorkerConfig(client *mongox.Client) repo.WorkerConfig {
 	return &WorkerConfig{client: client.WithCollection("worker_config")}
 }
 
-func (r *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID) (*workerconfig.WorkerConfig, error) {
-	return r.findOne(ctx, bson.M{"workspace": workspace.String()})
+func (r *WorkerConfig) FindByID(ctx context.Context, wid id.WorkerConfigID) (*workerconfig.WorkerConfig, error) {
+	return r.findOne(ctx, bson.M{"id": wid.String()})
 }
 
-func (r *WorkerConfig) FindByWorkspaces(ctx context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error) {
-	if len(workspaces) == 0 {
+func (r *WorkerConfig) FindByIDs(ctx context.Context, ids []id.WorkerConfigID) ([]*workerconfig.WorkerConfig, error) {
+	if len(ids) == 0 {
 		return nil, nil
 	}
 
-	workspaceStrs := make([]string, len(workspaces))
-	for i, w := range workspaces {
-		workspaceStrs[i] = w.String()
+	idStrs := make([]string, len(ids))
+	for i, wid := range ids {
+		idStrs[i] = wid.String()
 	}
 
 	filter := bson.M{
-		"workspace": bson.M{
-			"$in": workspaceStrs,
+		"id": bson.M{
+			"$in": idStrs,
 		},
 	}
 
@@ -49,16 +49,27 @@ func (r *WorkerConfig) FindByWorkspaces(ctx context.Context, workspaces []id.Wor
 	return c.Result, nil
 }
 
+func (r *WorkerConfig) FindAll(ctx context.Context) (*workerconfig.WorkerConfig, error) {
+	c := mongodoc.NewWorkerConfigConsumer()
+	if err := r.client.Find(ctx, bson.M{}, c); err != nil {
+		return nil, err
+	}
+	if len(c.Result) == 0 {
+		return nil, nil
+	}
+	return c.Result[0], nil
+}
+
 func (r *WorkerConfig) Save(ctx context.Context, cfg *workerconfig.WorkerConfig) error {
-	d, id := mongodoc.NewWorkerConfig(cfg)
+	d, docID := mongodoc.NewWorkerConfig(cfg)
 	if d == nil {
 		return nil
 	}
-	return r.client.SaveOne(ctx, id, d)
+	return r.client.SaveOne(ctx, docID, d)
 }
 
-func (r *WorkerConfig) Remove(ctx context.Context, workspace id.WorkspaceID) error {
-	return r.client.RemoveOne(ctx, bson.M{"workspace": workspace.String()})
+func (r *WorkerConfig) Remove(ctx context.Context, wid id.WorkerConfigID) error {
+	return r.client.RemoveOne(ctx, bson.M{"id": wid.String()})
 }
 
 func (r *WorkerConfig) findOne(ctx context.Context, filter interface{}) (*workerconfig.WorkerConfig, error) {

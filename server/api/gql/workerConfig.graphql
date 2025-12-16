@@ -17,7 +17,6 @@ type WorkerConfig {
 # InputType
 
 input UpdateWorkerConfigInput {
-  workspaceId: ID!
   machineType: String
   computeCpuMilli: Int
   computeMemoryMib: Int
@@ -30,10 +29,6 @@ input UpdateWorkerConfigInput {
   nodeStatusPropagationDelayMilli: Int
 }
 
-input DeleteWorkerConfigInput {
-  workspaceId: ID!
-}
-
 # Payload
 
 type UpdateWorkerConfigPayload {
@@ -41,17 +36,16 @@ type UpdateWorkerConfigPayload {
 }
 
 type DeleteWorkerConfigPayload {
-  workspaceId: ID!
+  id: ID!
 }
 
 # Query and Mutation
 
 extend type Query {
-  workerConfig(workspaceId: ID!): WorkerConfig
+  workerConfig: WorkerConfig
 }
 
 extend type Mutation {
   updateWorkerConfig(input: UpdateWorkerConfigInput!): UpdateWorkerConfigPayload
-  deleteWorkerConfig(input: DeleteWorkerConfigInput!): DeleteWorkerConfigPayload
+  deleteWorkerConfig: DeleteWorkerConfigPayload
 }
-

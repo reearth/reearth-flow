@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 type queryResolver struct{ *Resolver }
@@ -144,12 +143,8 @@ func (r *queryResolver) Parameters(ctx context.Context, projectID gqlmodel.ID) (
 	return loaders(ctx).Parameter.FindByProject(ctx, projectID)
 }
 
-func (r *queryResolver) WorkerConfig(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.WorkerConfig, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	cfg, err := usecases(ctx).WorkerConfig.FindByWorkspace(ctx, wid)
+func (r *queryResolver) WorkerConfig(ctx context.Context) (*gqlmodel.WorkerConfig, error) {
+	cfg, err := usecases(ctx).WorkerConfig.Fetch(ctx)
 	if err != nil {
 		return nil, err
 	}
