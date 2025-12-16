@@ -1,5 +1,4 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-# current progress: I could see intermediate data from edge: 64b4690c-d635-11f0-ab47-6c02e0440ed6
 id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
 name: "Solar Radiation plateau data to surface workflow"
 entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
@@ -48,10 +47,6 @@ graphs:
         action: GeometryPartExtractor
 
       # Step 2: CsmapReprojector equivalent - using horizontal reprojector for coordinate transformation
-      # TODO: check plateau data EpsgCode specification or cityGML data sourceEpsgCode
-      # EPSG:4326 (WGS84 Geographic - latitude/longitude in degrees)
-      # EPSG:6677 (JGD2011 Japan Plane Rectangular CS IX - X/Y in meters)
-      # TODO: This node is skipped, add it back before PR
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
         name: HorizontalReprojector
         type: action
