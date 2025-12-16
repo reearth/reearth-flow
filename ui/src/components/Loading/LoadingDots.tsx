@@ -21,7 +21,7 @@ const LoadingDots = () => {
       {dotColors.map((colorClass, index) => (
         <div
           key={index}
-          className={`h-3 w-6 rounded ${colorClass} animate-wave ${delayClasses[index]}`}
+          className={`h-2 w-11 rounded-lg ${colorClass} animate-wave ${delayClasses[index]}`}
         />
       ))}
     </div>

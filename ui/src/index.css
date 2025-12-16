@@ -47,7 +47,7 @@
     --ring: oklch(16% 0.01 270);
     --radius: 0.5rem;
     /* Custom Flow colors */
-    --logo: oklch(62% 0.19 155); /* green */
+    --logo: oklch(70% 0.16 155); /* pastel green for light mode */
     /* Workflow colors - lighter & moderately saturated for light mode */
     --node-entrance: oklch(65% 0.18 320); /* light purple */
     --node-exit: oklch(63% 0.18 290); /* light violet */
@@ -83,6 +83,8 @@
     --border: oklch(38% 0.005 270);
     --input: oklch(18% 0 0);
     --ring: oklch(12% 0.02 270);
+    /* Custom Flow colors */
+    --logo: oklch(62% 0.19 155); /* vibrant green for dark mode */
     /* Workflow colors */
     --node-entrance: oklch(45% 0.24 320); /* purple */
     --node-exit: oklch(43% 0.24 290); /* violet */

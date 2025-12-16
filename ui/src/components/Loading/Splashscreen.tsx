@@ -24,11 +24,13 @@ const Loading: React.FC<{ show?: boolean; className?: string }> = ({
         "fixed top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-secondary",
         className,
       )}>
-      <div className="flex items-center gap-8">
+      <div className="mb-10 flex items-center gap-8">
         <FlowLogo className="size-[65px]" />
         {/* <FlowLogo className="loading-pulse size-[85px]" /> */}
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-2xl dark:font-thin">{brandName || "Flow"}</p>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-4xl font-light dark:font-thin">
+            {brandName || "Flow"}
+          </p>
           <LoadingDots />
         </div>
       </div>
