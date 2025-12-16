@@ -10,37 +10,47 @@ import (
 )
 
 type WorkerConfig struct {
-	data map[id.WorkspaceID]*workerconfig.WorkerConfig
+	data map[id.WorkerConfigID]*workerconfig.WorkerConfig
 	lock sync.RWMutex
 }
 
 func NewWorkerConfig() repo.WorkerConfig {
 	return &WorkerConfig{
-		data: map[id.WorkspaceID]*workerconfig.WorkerConfig{},
+		data: map[id.WorkerConfigID]*workerconfig.WorkerConfig{},
 	}
 }
 
-func (r *WorkerConfig) FindByWorkspace(_ context.Context, workspace id.WorkspaceID) (*workerconfig.WorkerConfig, error) {
+func (r *WorkerConfig) FindByID(_ context.Context, wid id.WorkerConfigID) (*workerconfig.WorkerConfig, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	if cfg, ok := r.data[workspace]; ok {
+	if cfg, ok := r.data[wid]; ok {
 		return workerconfig.Clone(cfg), nil
 	}
 	return nil, nil
 }
 
-func (r *WorkerConfig) FindByWorkspaces(_ context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error) {
+func (r *WorkerConfig) FindByIDs(_ context.Context, ids []id.WorkerConfigID) ([]*workerconfig.WorkerConfig, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	result := make([]*workerconfig.WorkerConfig, 0, len(workspaces))
-	for _, workspace := range workspaces {
-		if cfg, ok := r.data[workspace]; ok {
+	result := make([]*workerconfig.WorkerConfig, 0, len(ids))
+	for _, wid := range ids {
+		if cfg, ok := r.data[wid]; ok {
 			result = append(result, workerconfig.Clone(cfg))
 		}
 	}
 	return result, nil
+}
+
+func (r *WorkerConfig) FindAll(_ context.Context) (*workerconfig.WorkerConfig, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	for _, cfg := range r.data {
+		return workerconfig.Clone(cfg), nil
+	}
+	return nil, nil
 }
 
 func (r *WorkerConfig) Save(_ context.Context, config *workerconfig.WorkerConfig) error {
@@ -51,14 +61,14 @@ func (r *WorkerConfig) Save(_ context.Context, config *workerconfig.WorkerConfig
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	r.data[config.Workspace()] = workerconfig.Clone(config)
+	r.data[config.ID()] = workerconfig.Clone(config)
 	return nil
 }
 
-func (r *WorkerConfig) Remove(_ context.Context, workspace id.WorkspaceID) error {
+func (r *WorkerConfig) Remove(_ context.Context, wid id.WorkerConfigID) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	delete(r.data, workspace)
+	delete(r.data, wid)
 	return nil
 }

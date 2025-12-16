@@ -8,8 +8,9 @@ import (
 )
 
 type WorkerConfig interface {
-	FindByWorkspace(ctx context.Context, workspace id.WorkspaceID) (*workerconfig.WorkerConfig, error)
-	FindByWorkspaces(ctx context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error)
+	FindByID(ctx context.Context, id id.WorkerConfigID) (*workerconfig.WorkerConfig, error)
+	FindByIDs(ctx context.Context, ids []id.WorkerConfigID) ([]*workerconfig.WorkerConfig, error)
+	FindAll(ctx context.Context) (*workerconfig.WorkerConfig, error)
 	Save(ctx context.Context, config *workerconfig.WorkerConfig) error
-	Remove(ctx context.Context, workspace id.WorkspaceID) error
+	Remove(ctx context.Context, id id.WorkerConfigID) error
 }

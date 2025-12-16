@@ -250,12 +250,8 @@ type DeleteProjectPayload struct {
 	ProjectID ID `json:"projectId"`
 }
 
-type DeleteWorkerConfigInput struct {
-	WorkspaceID ID `json:"workspaceId"`
-}
-
 type DeleteWorkerConfigPayload struct {
-	WorkspaceID ID `json:"workspaceId"`
+	ID ID `json:"id"`
 }
 
 type DeleteWorkspaceInput struct {
@@ -665,7 +661,6 @@ type UpdateTriggerInput struct {
 }
 
 type UpdateWorkerConfigInput struct {
-	WorkspaceID                     ID      `json:"workspaceId"`
 	MachineType                     *string `json:"machineType,omitempty"`
 	ComputeCPUMilli                 *int    `json:"computeCpuMilli,omitempty"`
 	ComputeMemoryMib                *int    `json:"computeMemoryMib,omitempty"`

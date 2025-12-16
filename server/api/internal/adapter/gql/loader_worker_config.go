@@ -21,20 +21,20 @@ func NewWorkerConfigLoader(usecase interfaces.WorkerConfig) *WorkerConfigLoader 
 }
 
 func (c *WorkerConfigLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.WorkerConfig, []error) {
-	wids, err := util.TryMap(ids, gqlmodel.ToID[id.Workspace])
+	wids, err := util.TryMap(ids, gqlmodel.ToID[id.WorkerConfig])
 	if err != nil {
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.FindByWorkspaces(ctx, wids)
+	res, err := c.usecase.FindByIDs(ctx, wids)
 	if err != nil {
 		return nil, []error{err}
 	}
 
-	configMap := make(map[id.WorkspaceID]*gqlmodel.WorkerConfig)
+	configMap := make(map[id.WorkerConfigID]*gqlmodel.WorkerConfig)
 	for _, cfg := range res {
 		if cfg != nil {
-			configMap[cfg.Workspace()] = gqlmodel.ToWorkerConfig(cfg)
+			configMap[cfg.ID()] = gqlmodel.ToWorkerConfig(cfg)
 		}
 	}
 

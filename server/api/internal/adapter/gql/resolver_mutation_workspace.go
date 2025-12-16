@@ -87,14 +87,8 @@ func (r *mutationResolver) UpdateMemberOfWorkspace(ctx context.Context, input gq
 }
 
 func (r *mutationResolver) UpdateWorkerConfig(ctx context.Context, input gqlmodel.UpdateWorkerConfigInput) (*gqlmodel.UpdateWorkerConfigPayload, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-
 	res, err := usecases(ctx).WorkerConfig.Update(
 		ctx,
-		wid,
 		input.MachineType,
 		input.ComputeCPUMilli,
 		input.ComputeMemoryMib,
@@ -113,15 +107,20 @@ func (r *mutationResolver) UpdateWorkerConfig(ctx context.Context, input gqlmode
 	return &gqlmodel.UpdateWorkerConfigPayload{Config: gqlmodel.ToWorkerConfig(res)}, nil
 }
 
-func (r *mutationResolver) DeleteWorkerConfig(ctx context.Context, input gqlmodel.DeleteWorkerConfigInput) (*gqlmodel.DeleteWorkerConfigPayload, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+func (r *mutationResolver) DeleteWorkerConfig(ctx context.Context) (*gqlmodel.DeleteWorkerConfigPayload, error) {
+	cfg, err := usecases(ctx).WorkerConfig.Fetch(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := usecases(ctx).WorkerConfig.Delete(ctx, wid); err != nil {
+	var configID gqlmodel.ID
+	if cfg != nil {
+		configID = gqlmodel.IDFrom(cfg.ID())
+	}
+
+	if err := usecases(ctx).WorkerConfig.Delete(ctx); err != nil {
 		return nil, err
 	}
 
-	return &gqlmodel.DeleteWorkerConfigPayload{WorkspaceID: input.WorkspaceID}, nil
+	return &gqlmodel.DeleteWorkerConfigPayload{ID: configID}, nil
 }
