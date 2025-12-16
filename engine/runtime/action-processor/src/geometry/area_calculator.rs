@@ -75,21 +75,16 @@ impl ProcessorFactory for AreaCalculatorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum AreaType {
     #[serde(alias = "plane_area")]
     #[serde(alias = "planeArea")]
+    #[default]
     PlaneArea,
     #[serde(alias = "sloped_area")]
     #[serde(alias = "slopedArea")]
     SlopedArea,
-}
-
-impl Default for AreaType {
-    fn default() -> Self {
-        AreaType::PlaneArea
-    }
 }
 
 /// # AreaCalculator Parameters
