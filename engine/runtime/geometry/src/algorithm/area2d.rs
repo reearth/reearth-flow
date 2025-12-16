@@ -84,14 +84,16 @@ where
 
 impl<T> Area2D<T> for LineString2D<T>
 where
-    T: CoordNum,
+    T: CoordFloat,
 {
     fn signed_area2d(&self) -> T {
-        T::zero()
+        let polygon = Polygon2D::new(self.clone(), vec![]);
+        polygon.signed_area2d()
     }
 
     fn unsigned_area2d(&self) -> T {
-        T::zero()
+        let polygon = Polygon2D::new(self.clone(), vec![]);
+        polygon.unsigned_area2d()
     }
 }
 
