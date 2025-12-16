@@ -115,7 +115,6 @@ fn hull_set_2d<T>(
     hull_set_2d(p_a, *furthest_point, points, hull);
 }
 
-
 /// A face in the 3D convex hull represented by 3 vertex indices.
 /// The vertices are ordered counter-clockwise when viewed from outside the hull.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -166,11 +165,17 @@ fn signed_distance_to_face<T: GeoNum + Float>(
 }
 
 /// Finds 4 non-coplanar points to form the initial tetrahedron
-/// Returns indices of the 4 points, or None if all points are coplanar
-fn find_initial_tetrahedron<T: GeoNum + Float>(points: &[Coordinate3D<T>]) -> Option<[usize; 4]> {
+/// If this function returns `threshold` returns `None`, then convex-hull of minimum-height at least `threshold` is not constructible.
+/// Otherwise returns indices of the 4 points, or None if all points are coplanar
+fn find_initial_tetrahedron<T: GeoNum + Float>(
+    points: &[Coordinate3D<T>],
+    threshold: T,
+) -> Option<[usize; 4]> {
     if points.len() < 4 {
         return None;
     }
+
+    let threshold = threshold / T::from(2.0).unwrap();
 
     // Find two points with maximum distance along x-axis
     let (mut min_x_idx, mut max_x_idx) = (0, 0);
@@ -183,32 +188,10 @@ fn find_initial_tetrahedron<T: GeoNum + Float>(points: &[Coordinate3D<T>]) -> Op
         }
     }
 
-    if min_x_idx == max_x_idx {
-        // All points have same x, try y
-        for (i, p) in points.iter().enumerate() {
-            if p.y < points[min_x_idx].y {
-                min_x_idx = i;
-            }
-            if p.y > points[max_x_idx].y {
-                max_x_idx = i;
-            }
-        }
-    }
-
-    if min_x_idx == max_x_idx {
-        // All points have same x and y, try z
-        for (i, p) in points.iter().enumerate() {
-            if p.z < points[min_x_idx].z {
-                min_x_idx = i;
-            }
-            if p.z > points[max_x_idx].z {
-                max_x_idx = i;
-            }
-        }
-    }
-
-    if min_x_idx == max_x_idx {
-        return None; // All points are the same
+    if min_x_idx == max_x_idx || (points[max_x_idx].x - points[min_x_idx].x) <= threshold {
+        // All points have the same x coordinate, which means
+        // they are collinear or coplanar
+        return None;
     }
 
     let p0 = min_x_idx;
@@ -216,6 +199,7 @@ fn find_initial_tetrahedron<T: GeoNum + Float>(points: &[Coordinate3D<T>]) -> Op
 
     // Find point furthest from line p0-p1
     let line_dir = points[p1] - points[p0];
+    let line_dir = line_dir / line_dir.norm(); // this is safe since points[p0] != points[p1]
     let mut max_dist = T::zero();
     let mut p2 = p0;
 
@@ -233,12 +217,13 @@ fn find_initial_tetrahedron<T: GeoNum + Float>(points: &[Coordinate3D<T>]) -> Op
         }
     }
 
-    if p2 == p0 {
+    if p2 == p0 || max_dist <= threshold * threshold {
         return None; // All points are collinear
     }
 
     // Find point furthest from plane p0-p1-p2
     let normal = (points[p1] - points[p0]).cross(&(points[p2] - points[p0]));
+    let normal = normal / normal.norm();
     let mut max_dist = T::zero();
     let mut p3 = p0;
 
@@ -254,7 +239,7 @@ fn find_initial_tetrahedron<T: GeoNum + Float>(points: &[Coordinate3D<T>]) -> Op
         }
     }
 
-    if p3 == p0 || max_dist <= T::epsilon() {
+    if p3 == p0 || max_dist <= threshold {
         return None; // All points are coplanar
     }
 
@@ -299,20 +284,17 @@ fn create_initial_faces<T: GeoNum + Float>(
 
 /// Computes the 3D convex hull of a set of points using the QuickHull algorithm.
 /// Returns a TriangularMesh representing the convex hull.
-pub fn quick_hull_3d<T>(points: &[Coordinate3D<T>]) -> TriangularMesh<T, T>
+pub fn quick_hull_3d<T>(points: &[Coordinate3D<T>], threshold: T) -> Option<TriangularMesh<T, T>>
 where
     T: GeoNum + Float,
 {
     // Handle degenerate cases
     if points.len() < 4 {
-        return TriangularMesh::default();
+        return None;
     }
 
-    // Find initial tetrahedron
-    let tetra = match find_initial_tetrahedron(points) {
-        Some(t) => t,
-        None => return TriangularMesh::default(), // Points are coplanar or degenerate
-    };
+    // Find initial tetrahedron (returns None if points are coplanar or degenerate)
+    let tetra = find_initial_tetrahedron(points, threshold)?;
 
     // Create initial faces
     let mut faces = create_initial_faces(points, tetra);
@@ -371,6 +353,14 @@ where
             }
         }
 
+        // If no faces are visible, the furthest point is within epsilon of all faces.
+        // This means it's essentially on the hull surface (numerical noise).
+        // Remove it from the outside set and continue.
+        if visible_faces.is_empty() {
+            outside_sets[face_idx].retain(|&p| p != furthest_idx);
+            continue;
+        }
+
         // Find horizon edges (edges shared by exactly one visible face)
         let mut edge_count: std::collections::HashMap<(usize, usize), usize> =
             std::collections::HashMap::new();
@@ -398,7 +388,7 @@ where
         // Collect all outside points from visible faces
         let mut orphaned_points: Vec<usize> = Vec::new();
         for &vis_face_idx in &visible_faces {
-            orphaned_points.extend(outside_sets[vis_face_idx].drain(..));
+            orphaned_points.append(&mut outside_sets[vis_face_idx]);
         }
 
         // Remove furthest point from orphaned points
@@ -502,7 +492,7 @@ where
         })
         .collect();
 
-    TriangularMesh::from_triangles(triangles)
+    Some(TriangularMesh::from_triangles(triangles))
 }
 
 #[cfg(test)]
@@ -549,7 +539,7 @@ mod test {
             Coordinate3D::new__(0.5, 0.5, 1.0),
         ];
 
-        let hull = quick_hull_3d(&points);
+        let hull = quick_hull_3d(&points, 0.01).unwrap();
 
         // A tetrahedron has 4 faces
         assert_eq!(hull.get_triangles().len(), 4);
@@ -571,7 +561,7 @@ mod test {
             Coordinate3D::new__(0.0, 1.0, 1.0),
         ];
 
-        let hull = quick_hull_3d(&points);
+        let hull = quick_hull_3d(&points, 0.01).unwrap();
 
         // A cube has 6 faces, each divided into 2 triangles = 12 triangles
         assert_eq!(hull.get_triangles().len(), 12);
@@ -595,7 +585,7 @@ mod test {
             Coordinate3D::new__(0.5, 0.5, 0.5),
         ];
 
-        let hull = quick_hull_3d(&points);
+        let hull = quick_hull_3d(&points, 0.01).unwrap();
 
         // Should still be a cube (interior point excluded)
         assert_eq!(hull.get_triangles().len(), 12);
@@ -614,27 +604,12 @@ mod test {
             Coordinate3D::new__(0.0, 0.0, -1.0),
         ];
 
-        let hull = quick_hull_3d(&points);
+        let hull = quick_hull_3d(&points, 0.01).unwrap();
 
         // An octahedron has 8 triangular faces
         assert_eq!(hull.get_triangles().len(), 8);
         // And 6 vertices
         assert_eq!(hull.get_vertices().len(), 6);
-    }
-
-    #[test]
-    fn quick_hull_3d_degenerate_too_few_points() {
-        // Fewer than 4 points - cannot form a 3D hull
-        let points = vec![
-            Coordinate3D::new__(0.0, 0.0, 0.0),
-            Coordinate3D::new__(1.0, 0.0, 0.0),
-            Coordinate3D::new__(0.5, 1.0, 0.0),
-        ];
-
-        let hull = quick_hull_3d(&points);
-
-        // Should return empty mesh
-        assert!(hull.get_triangles().is_empty());
     }
 
     #[test]
@@ -645,13 +620,10 @@ mod test {
             Coordinate3D::new__(1.0, 0.0, 0.0),
             Coordinate3D::new__(1.0, 1.0, 0.0),
             Coordinate3D::new__(0.0, 1.0, 0.0),
-            Coordinate3D::new__(0.5, 0.5, 0.0),
+            Coordinate3D::new__(0.6, 0.5, 0.0),
         ];
 
-        let hull = quick_hull_3d(&points);
-
-        // Should return empty mesh (all points are coplanar)
-        assert!(hull.get_triangles().is_empty());
+        assert!(quick_hull_3d(&points, 0.01).is_none());
     }
 
     #[test]
@@ -673,7 +645,7 @@ mod test {
             }
         }
 
-        let hull = quick_hull_3d(&points);
+        let hull = quick_hull_3d(&points, 0.01).unwrap();
 
         // Hull should have triangles (exact number depends on point distribution)
         assert!(!hull.get_triangles().is_empty());

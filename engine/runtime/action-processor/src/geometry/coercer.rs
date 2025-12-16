@@ -228,8 +228,10 @@ impl GeometryCoercer {
                         feature.geometry = geometry;
                     }
                     CoerceTarget::TriangularMesh => {
+                        const DEFAULT_TOLERANCE: f64 = 1e-6;
+                        let faces = polygon.rings();
                         let triangular_mesh =
-                            TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
+                            TriangularMesh::<f64, f64>::from_faces(&faces, DEFAULT_TOLERANCE)?;
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
                             triangular_mesh,
@@ -271,8 +273,10 @@ impl GeometryCoercer {
                         feature.geometry = geometry;
                     }
                     CoerceTarget::TriangularMesh => {
+                        const DEFAULT_TOLERANCE: f64 = 1e-6;
+                        let faces: Vec<_> = polygons.iter().flat_map(|p| p.rings()).collect();
                         let triangular_mesh =
-                            TriangularMesh::<f64, f64>::try_from(polygons.clone().0)?;
+                            TriangularMesh::<f64, f64>::from_faces(&faces, DEFAULT_TOLERANCE)?;
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
                             triangular_mesh,
@@ -327,9 +331,11 @@ impl GeometryCoercer {
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 CoerceTarget::TriangularMesh => {
+                    const DEFAULT_TOLERANCE: f64 = 1e-6;
                     for polygon in geo_feature.polygons.iter() {
+                        let face = polygon.clone().into_merged_contour()?;
                         let triangular_mesh =
-                            TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
+                            TriangularMesh::<f64, f64>::from_faces(&[face], DEFAULT_TOLERANCE)?;
                         geometries.push(Geometry3D::TriangularMesh(triangular_mesh));
                     }
                     let geo = if let Some(first) = geometries.first() {

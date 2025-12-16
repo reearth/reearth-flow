@@ -81,12 +81,12 @@ impl CSG<f64, f64> {
         self.right.transform_inplace(jgd2wgs);
     }
 
-    pub fn evaluate(self) -> Result<Solid3D<f64>, String> {
-        let right = self.right.evaluate()?;
-        let left = self.left.evaluate()?;
-        let mut right = right.as_triangle_mesh()?;
-        let mut left = left.as_triangle_mesh()?;
-        let mut union = left.clone().union(right.clone())?;
+    pub fn evaluate(self, tolerance: f64) -> Result<Solid3D<f64>, String> {
+        let right = self.right.evaluate(tolerance)?;
+        let left = self.left.evaluate(tolerance)?;
+        let mut right = right.as_triangle_mesh(tolerance)?;
+        let mut left = left.as_triangle_mesh(tolerance)?;
+        let mut union = left.clone().union(right.clone(), tolerance)?;
         let norm = normalize_vertices(union.get_vertices_mut());
         right
             .get_vertices_mut()
@@ -258,10 +258,10 @@ impl CSGChild<f64, f64> {
         }
     }
 
-    fn evaluate(self) -> Result<Solid3D<f64>, String> {
+    fn evaluate(self, tolerance: f64) -> Result<Solid3D<f64>, String> {
         match self {
             CSGChild::Solid(geom) => Ok(geom),
-            CSGChild::CSG(csg) => csg.evaluate(),
+            CSGChild::CSG(csg) => csg.evaluate(tolerance),
         }
     }
 }

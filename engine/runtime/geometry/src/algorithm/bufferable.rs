@@ -1,11 +1,14 @@
 use geo_buffer::buffer_multi_polygon as geo_buffer_multi_polygon;
 
-use crate::{algorithm::convex_hull::quick_hull_2d, types::{
-    coordinate::{Coordinate, Coordinate2D},
-    line_string::LineString2D,
-    multi_polygon::MultiPolygon2D,
-    polygon::Polygon2D,
-}};
+use crate::{
+    algorithm::convex_hull::quick_hull_2d,
+    types::{
+        coordinate::{Coordinate, Coordinate2D},
+        line_string::LineString2D,
+        multi_polygon::MultiPolygon2D,
+        polygon::Polygon2D,
+    },
+};
 
 const DEFAULT_INTERPOLATION_ANGLE: f64 = 0.1;
 

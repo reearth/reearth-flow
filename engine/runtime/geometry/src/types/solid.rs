@@ -91,14 +91,14 @@ impl Solid3D<f64> {
         self.elevation() == 0.0
     }
 
-    pub fn as_triangle_mesh(self) -> Result<TriangularMesh<f64>, String> {
+    pub fn as_triangle_mesh(self, tolerance: f64) -> Result<TriangularMesh<f64>, String> {
         match self.boundary_surface {
             BoundarySurface::Faces(faces) => {
                 let faces = faces
                     .into_iter()
                     .map(|f| f.into())
                     .collect::<Vec<LineString3D<f64>>>();
-                TriangularMesh::from_faces(&faces)
+                TriangularMesh::from_faces(&faces, tolerance)
             }
             BoundarySurface::TriangularMesh(mesh) => Ok(mesh),
         }
