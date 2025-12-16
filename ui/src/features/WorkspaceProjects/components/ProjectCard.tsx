@@ -113,7 +113,7 @@ const ProjectCard: React.FC<Props> = ({
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
         <div
           className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-xs" : ""}`}>
-          <p className="line-clamp-4 overflow-hidden text-center text-sm break-words text-ellipsis whitespace-normal text-secondary dark:font-light dark:text-foreground">
+          <p className="wrap-break-words line-clamp-4 overflow-hidden text-center text-sm text-ellipsis whitespace-normal text-secondary dark:font-light dark:text-foreground">
             {description}
           </p>
         </div>
@@ -124,7 +124,7 @@ const ProjectCard: React.FC<Props> = ({
             <DropdownMenuTrigger
               className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-primary"
               onClick={(e) => e.stopPropagation()}>
-              <DotsThreeVerticalIcon className="size-[24px]" />
+              <DotsThreeVerticalIcon className="size-6" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"

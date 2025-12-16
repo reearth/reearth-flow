@@ -97,7 +97,6 @@ const config = {
     },
   },
   plugins: [require("tailwindcss-animate")], // eslint-disable-line
-  safelist: ["line-clamp-2", "loading-pulse"],
-} as const satisfies Config;
+} satisfies Config;
 
 export default config;
