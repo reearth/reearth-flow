@@ -4,22 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/usecasex"
 )
 
 type WorkerConfig struct {
 	repo              repo.WorkerConfig
-	workspaceRepo     accountrepo.Workspace
 	transaction       usecasex.Transaction
 	permissionChecker gateway.PermissionChecker
 }
@@ -27,7 +22,6 @@ type WorkerConfig struct {
 func NewWorkerConfig(r *repo.Container, permissionChecker gateway.PermissionChecker) interfaces.WorkerConfig {
 	return &WorkerConfig{
 		repo:              r.WorkerConfig,
-		workspaceRepo:     r.Workspace,
 		transaction:       r.Transaction,
 		permissionChecker: permissionChecker,
 	}
@@ -37,25 +31,32 @@ func (i *WorkerConfig) checkPermission(ctx context.Context, action string) error
 	return checkPermission(ctx, i.permissionChecker, rbac.ResourceWorkspace, action)
 }
 
-func (i *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID) (*workerconfig.WorkerConfig, error) {
+func (i *WorkerConfig) FindByID(ctx context.Context, wid id.WorkerConfigID) (*workerconfig.WorkerConfig, error) {
 	if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 
-	return i.repo.FindByWorkspace(ctx, workspace)
+	return i.repo.FindByID(ctx, wid)
 }
 
-func (i *WorkerConfig) FindByWorkspaces(ctx context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error) {
+func (i *WorkerConfig) FindByIDs(ctx context.Context, ids []id.WorkerConfigID) ([]*workerconfig.WorkerConfig, error) {
 	if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 
-	return i.repo.FindByWorkspaces(ctx, workspaces)
+	return i.repo.FindByIDs(ctx, ids)
+}
+
+func (i *WorkerConfig) Fetch(ctx context.Context) (*workerconfig.WorkerConfig, error) {
+	if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
+		return nil, err
+	}
+
+	return i.repo.FindAll(ctx)
 }
 
 func (i *WorkerConfig) Update(
 	ctx context.Context,
-	workspaceID id.WorkspaceID,
 	machineType *string,
 	computeCpuMilli *int,
 	computeMemoryMib *int,
@@ -83,17 +84,7 @@ func (i *WorkerConfig) Update(
 		}
 	}()
 
-	userRole, err := i.getUserWorkspaceRole(ctx, workspaceID)
-	if err != nil {
-		if skipPermissionCheck {
-			userRole = workspace.RoleOwner
-		} else {
-			return nil, fmt.Errorf("failed to get user workspace role: %w", err)
-		}
-	}
-
-	if err := validateWorkerConfigByRole(
-		userRole,
+	if err := validateWorkerConfig(
 		machineType,
 		computeCpuMilli,
 		computeMemoryMib,
@@ -108,13 +99,13 @@ func (i *WorkerConfig) Update(
 		return nil, err
 	}
 
-	cfg, err := i.repo.FindByWorkspace(ctx, workspaceID)
+	cfg, err := i.repo.FindAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if cfg == nil {
-		cfg = workerconfig.New(workspaceID)
+		cfg = workerconfig.New()
 	}
 
 	if machineType != nil {
@@ -156,7 +147,7 @@ func (i *WorkerConfig) Update(
 	return cfg, nil
 }
 
-func (i *WorkerConfig) Delete(ctx context.Context, workspace id.WorkspaceID) error {
+func (i *WorkerConfig) Delete(ctx context.Context) error {
 	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return err
 	}
@@ -173,39 +164,20 @@ func (i *WorkerConfig) Delete(ctx context.Context, workspace id.WorkspaceID) err
 		}
 	}()
 
-	if err := i.repo.Remove(ctx, workspace); err != nil {
+	cfg, err := i.repo.FindAll(ctx)
+	if err != nil {
+		return err
+	}
+	if cfg == nil {
+		return nil
+	}
+
+	if err := i.repo.Remove(ctx, cfg.ID()); err != nil {
 		return err
 	}
 
 	tx.Commit()
 	return nil
-}
-
-func (i *WorkerConfig) getUserWorkspaceRole(ctx context.Context, workspaceID id.WorkspaceID) (workspace.Role, error) {
-	u := adapter.ReearthxUser(ctx)
-	if u == nil {
-		return "", fmt.Errorf("user not found in context")
-	}
-
-	accWorkspaceID := convertToAccountWorkspaceID(workspaceID)
-
-	ws, err := i.workspaceRepo.FindByID(ctx, accWorkspaceID)
-	if err != nil {
-		return "", err
-	}
-
-	if ws.Members() != nil {
-		member := ws.Members().User(accountdomain.UserID(u.ID()))
-		if member != nil {
-			return workspace.Role(member.Role), nil
-		}
-	}
-
-	return "", fmt.Errorf("user is not a member of this workspace")
-}
-
-func convertToAccountWorkspaceID(flowID id.WorkspaceID) accountdomain.WorkspaceID {
-	return accountdomain.WorkspaceID(flowID)
 }
 
 type ConfigLimits struct {
@@ -222,91 +194,40 @@ type ConfigLimits struct {
 	MinNodeStatusDelayMilli  int
 }
 
-func getConfigLimitsByRole(role workspace.Role) ConfigLimits {
-	basicMachineTypes := map[string]bool{
-		"e2-standard-2": true,
-		"e2-standard-4": true,
-	}
-
-	vipMachineTypes := map[string]bool{
-		"e2-standard-2": true,
-		"e2-standard-4": true,
-		"e2-standard-8": true,
-		"e2-highmem-2":  true,
-		"e2-highmem-4":  true,
-		"e2-highcpu-2":  true,
-		"e2-highcpu-4":  true,
-		"n2-standard-2": true,
-		"n2-standard-4": true,
-	}
-
-	adminMachineTypes := map[string]bool{
-		"e2-standard-2":  true,
-		"e2-standard-4":  true,
-		"e2-standard-8":  true,
-		"e2-standard-16": true,
-		"e2-highmem-2":   true,
-		"e2-highmem-4":   true,
-		"e2-highmem-8":   true,
-		"e2-highmem-16":  true,
-		"e2-highcpu-2":   true,
-		"e2-highcpu-4":   true,
-		"e2-highcpu-8":   true,
-		"e2-highcpu-16":  true,
-		"n2-standard-2":  true,
-		"n2-standard-4":  true,
-		"n2-standard-8":  true,
-		"n2-standard-16": true,
-	}
-
-	switch role {
-	case workspace.RoleOwner:
-		return ConfigLimits{
-			AllowedMachineTypes:      adminMachineTypes,
-			MaxComputeCpuMilli:       64000,
-			MaxComputeMemoryMib:      131072,
-			MaxBootDiskSizeGB:        1000,
-			MaxTaskCount:             20,
-			MaxConcurrency:           64,
-			MaxThreadPoolSize:        200,
-			MaxChannelBufferSize:     8192,
-			MaxFeatureFlushThreshold: 20000,
-			MaxNodeStatusDelayMilli:  30000,
-			MinNodeStatusDelayMilli:  50,
-		}
-	case workspace.RoleMaintainer:
-		return ConfigLimits{
-			AllowedMachineTypes:      vipMachineTypes,
-			MaxComputeCpuMilli:       32000,
-			MaxComputeMemoryMib:      65536,
-			MaxBootDiskSizeGB:        500,
-			MaxTaskCount:             10,
-			MaxConcurrency:           32,
-			MaxThreadPoolSize:        100,
-			MaxChannelBufferSize:     4096,
-			MaxFeatureFlushThreshold: 10000,
-			MaxNodeStatusDelayMilli:  10000,
-			MinNodeStatusDelayMilli:  100,
-		}
-	default:
-		return ConfigLimits{
-			AllowedMachineTypes:      basicMachineTypes,
-			MaxComputeCpuMilli:       8000,
-			MaxComputeMemoryMib:      16384,
-			MaxBootDiskSizeGB:        200,
-			MaxTaskCount:             5,
-			MaxConcurrency:           16,
-			MaxThreadPoolSize:        50,
-			MaxChannelBufferSize:     2048,
-			MaxFeatureFlushThreshold: 5000,
-			MaxNodeStatusDelayMilli:  5000,
-			MinNodeStatusDelayMilli:  200,
-		}
+func getConfigLimits() ConfigLimits {
+	return ConfigLimits{
+		AllowedMachineTypes: map[string]bool{
+			"e2-standard-2":  true,
+			"e2-standard-4":  true,
+			"e2-standard-8":  true,
+			"e2-standard-16": true,
+			"e2-highmem-2":   true,
+			"e2-highmem-4":   true,
+			"e2-highmem-8":   true,
+			"e2-highmem-16":  true,
+			"e2-highcpu-2":   true,
+			"e2-highcpu-4":   true,
+			"e2-highcpu-8":   true,
+			"e2-highcpu-16":  true,
+			"n2-standard-2":  true,
+			"n2-standard-4":  true,
+			"n2-standard-8":  true,
+			"n2-standard-16": true,
+		},
+		MaxComputeCpuMilli:       64000,
+		MaxComputeMemoryMib:      131072,
+		MaxBootDiskSizeGB:        1000,
+		MaxTaskCount:             20,
+		MaxConcurrency:           64,
+		MaxThreadPoolSize:        200,
+		MaxChannelBufferSize:     8192,
+		MaxFeatureFlushThreshold: 20000,
+		MaxNodeStatusDelayMilli:  30000,
+		MinNodeStatusDelayMilli:  50,
 	}
 }
 
-func validateWorkerConfigByRole(
-	role workspace.Role,
+func validateWorkerConfig(
 	machineType *string,
 	computeCpuMilli *int,
 	computeMemoryMib *int,
@@ -318,11 +239,11 @@ func validateWorkerConfigByRole(
 	featureFlushThreshold *int,
 	nodeStatusDelayMilli *int,
 ) error {
-	limits := getConfigLimitsByRole(role)
+	limits := getConfigLimits()
 
 	if machineType != nil && *machineType != "" {
 		if !limits.AllowedMachineTypes[*machineType] {
-			return fmt.Errorf("machine type '%s' is not allowed for role %s", *machineType, role)
+			return fmt.Errorf("machine type '%s' is not allowed", *machineType)
 		}
 	}
 
@@ -331,7 +252,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("computeCpuMilli must be at least 500, got %d", *computeCpuMilli)
 		}
 		if *computeCpuMilli > limits.MaxComputeCpuMilli {
-			return fmt.Errorf("computeCpuMilli exceeds maximum of %d for role %s, got %d", limits.MaxComputeCpuMilli, role, *computeCpuMilli)
+			return fmt.Errorf("computeCpuMilli exceeds maximum of %d, got %d", limits.MaxComputeCpuMilli, *computeCpuMilli)
 		}
 	}
 
@@ -340,7 +261,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("computeMemoryMib must be at least 512, got %d", *computeMemoryMib)
 		}
 		if *computeMemoryMib > limits.MaxComputeMemoryMib {
-			return fmt.Errorf("computeMemoryMib exceeds maximum of %d for role %s, got %d", limits.MaxComputeMemoryMib, role, *computeMemoryMib)
+			return fmt.Errorf("computeMemoryMib exceeds maximum of %d, got %d", limits.MaxComputeMemoryMib, *computeMemoryMib)
 		}
 	}
 
@@ -349,7 +270,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("bootDiskSizeGB must be at least 10, got %d", *bootDiskSizeGB)
 		}
 		if *bootDiskSizeGB > limits.MaxBootDiskSizeGB {
-			return fmt.Errorf("bootDiskSizeGB exceeds maximum of %d for role %s, got %d", limits.MaxBootDiskSizeGB, role, *bootDiskSizeGB)
+			return fmt.Errorf("bootDiskSizeGB exceeds maximum of %d, got %d", limits.MaxBootDiskSizeGB, *bootDiskSizeGB)
 		}
 	}
 
@@ -358,7 +279,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("taskCount must be at least 1, got %d", *taskCount)
 		}
 		if *taskCount > limits.MaxTaskCount {
-			return fmt.Errorf("taskCount exceeds maximum of %d for role %s, got %d", limits.MaxTaskCount, role, *taskCount)
+			return fmt.Errorf("taskCount exceeds maximum of %d, got %d", limits.MaxTaskCount, *taskCount)
 		}
 	}
 
@@ -367,7 +288,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("maxConcurrency must be at least 1, got %d", *maxConcurrency)
 		}
 		if *maxConcurrency > limits.MaxConcurrency {
-			return fmt.Errorf("maxConcurrency exceeds maximum of %d for role %s, got %d", limits.MaxConcurrency, role, *maxConcurrency)
+			return fmt.Errorf("maxConcurrency exceeds maximum of %d, got %d", limits.MaxConcurrency, *maxConcurrency)
 		}
 	}
 
@@ -376,7 +297,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("threadPoolSize must be at least 1, got %d", *threadPoolSize)
 		}
 		if *threadPoolSize > limits.MaxThreadPoolSize {
-			return fmt.Errorf("threadPoolSize exceeds maximum of %d for role %s, got %d", limits.MaxThreadPoolSize, role, *threadPoolSize)
+			return fmt.Errorf("threadPoolSize exceeds maximum of %d, got %d", limits.MaxThreadPoolSize, *threadPoolSize)
 		}
 	}
 
@@ -385,7 +306,7 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("channelBufferSize must be at least 1, got %d", *channelBufferSize)
 		}
 		if *channelBufferSize > limits.MaxChannelBufferSize {
-			return fmt.Errorf("channelBufferSize exceeds maximum of %d for role %s, got %d", limits.MaxChannelBufferSize, role, *channelBufferSize)
+			return fmt.Errorf("channelBufferSize exceeds maximum of %d, got %d", limits.MaxChannelBufferSize, *channelBufferSize)
 		}
 	}
 
@@ -394,16 +315,16 @@ func validateWorkerConfigByRole(
 			return fmt.Errorf("featureFlushThreshold must be at least 1, got %d", *featureFlushThreshold)
 		}
 		if *featureFlushThreshold > limits.MaxFeatureFlushThreshold {
-			return fmt.Errorf("featureFlushThreshold exceeds maximum of %d for role %s, got %d", limits.MaxFeatureFlushThreshold, role, *featureFlushThreshold)
+			return fmt.Errorf("featureFlushThreshold exceeds maximum of %d, got %d", limits.MaxFeatureFlushThreshold, *featureFlushThreshold)
 		}
 	}
 
 	if nodeStatusDelayMilli != nil {
 		if *nodeStatusDelayMilli < limits.MinNodeStatusDelayMilli {
-			return fmt.Errorf("nodeStatusPropagationDelayMilli must be at least %d for role %s, got %d", limits.MinNodeStatusDelayMilli, role, *nodeStatusDelayMilli)
+			return fmt.Errorf("nodeStatusPropagationDelayMilli must be at least %d, got %d", limits.MinNodeStatusDelayMilli, *nodeStatusDelayMilli)
 		}
 		if *nodeStatusDelayMilli > limits.MaxNodeStatusDelayMilli {
-			return fmt.Errorf("nodeStatusPropagationDelayMilli exceeds maximum of %d for role %s, got %d", limits.MaxNodeStatusDelayMilli, role, *nodeStatusDelayMilli)
+			return fmt.Errorf("nodeStatusPropagationDelayMilli exceeds maximum of %d, got %d", limits.MaxNodeStatusDelayMilli, *nodeStatusDelayMilli)
 		}
 	}
 

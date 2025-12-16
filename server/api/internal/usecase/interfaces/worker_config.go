@@ -8,11 +8,11 @@ import (
 )
 
 type WorkerConfig interface {
-	FindByWorkspace(context.Context, id.WorkspaceID) (*workerconfig.WorkerConfig, error)
-	FindByWorkspaces(context.Context, []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error)
+	FindByID(context.Context, id.WorkerConfigID) (*workerconfig.WorkerConfig, error)
+	FindByIDs(context.Context, []id.WorkerConfigID) ([]*workerconfig.WorkerConfig, error)
+	Fetch(context.Context) (*workerconfig.WorkerConfig, error)
 	Update(
 		ctx context.Context,
-		workspace id.WorkspaceID,
 		machineType *string,
 		computeCpuMilli *int,
 		computeMemoryMib *int,
@@ -24,5 +24,5 @@ type WorkerConfig interface {
 		featureFlushThreshold *int,
 		nodeStatusDelayMilli *int,
 	) (*workerconfig.WorkerConfig, error)
-	Delete(context.Context, id.WorkspaceID) error
+	Delete(context.Context) error
 }

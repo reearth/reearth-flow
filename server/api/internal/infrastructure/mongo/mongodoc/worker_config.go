@@ -8,6 +8,7 @@ import (
 )
 
 type WorkerConfigDocument struct {
+	ID                    string    `bson:"id"`
 	CreatedAt             time.Time `bson:"created_at"`
 	UpdatedAt             time.Time `bson:"updated_at"`
 	MachineType           *string   `bson:"machine_type,omitempty"`
@@ -20,7 +21,6 @@ type WorkerConfigDocument struct {
 	ChannelBufferSize     *int      `bson:"channel_buffer_size,omitempty"`
 	FeatureFlushThreshold *int      `bson:"feature_flush_threshold,omitempty"`
 	NodeStatusDelayMilli  *int      `bson:"node_status_delay_milli,omitempty"`
-	Workspace             string    `bson:"workspace"`
 }
 
 func NewWorkerConfig(cfg *workerconfig.WorkerConfig) (*WorkerConfigDocument, string) {
@@ -29,7 +29,7 @@ func NewWorkerConfig(cfg *workerconfig.WorkerConfig) (*WorkerConfigDocument, str
 	}
 
 	d := &WorkerConfigDocument{
-		Workspace:             cfg.Workspace().String(),
+		ID:                    cfg.ID().String(),
 		MachineType:           cfg.MachineType(),
 		ComputeCpuMilli:       cfg.ComputeCpuMilli(),
 		ComputeMemoryMib:      cfg.ComputeMemoryMib(),
@@ -43,7 +43,7 @@ func NewWorkerConfig(cfg *workerconfig.WorkerConfig) (*WorkerConfigDocument, str
 		CreatedAt:             cfg.CreatedAt(),
 		UpdatedAt:             cfg.UpdatedAt(),
 	}
-	return d, cfg.Workspace().String()
+	return d, cfg.ID().String()
 }
 
 type WorkerConfigConsumer = Consumer[*WorkerConfigDocument, *workerconfig.WorkerConfig]
@@ -58,21 +58,27 @@ func (d *WorkerConfigDocument) Model() (*workerconfig.WorkerConfig, error) {
 	if d == nil {
 		return nil, nil
 	}
-	ws, err := id.WorkspaceIDFrom(d.Workspace)
+	wid, err := id.WorkerConfigIDFrom(d.ID)
 	if err != nil {
 		return nil, err
 	}
-	cfg := workerconfig.New(ws)
-	cfg.SetMachineType(d.MachineType)
-	cfg.SetComputeCpuMilli(d.ComputeCpuMilli)
-	cfg.SetComputeMemoryMib(d.ComputeMemoryMib)
-	cfg.SetBootDiskSizeGB(d.BootDiskSizeGB)
-	cfg.SetTaskCount(d.TaskCount)
-	cfg.SetMaxConcurrency(d.MaxConcurrency)
-	cfg.SetThreadPoolSize(d.ThreadPoolSize)
-	cfg.SetChannelBufferSize(d.ChannelBufferSize)
-	cfg.SetFeatureFlushThreshold(d.FeatureFlushThreshold)
-	cfg.SetNodeStatusPropagationDelayMilli(d.NodeStatusDelayMilli)
-	cfg.ReplaceTimestamps(d.CreatedAt, d.UpdatedAt)
+	cfg, err := workerconfig.NewBuilder().
+		ID(wid).
+		MachineType(d.MachineType).
+		ComputeCpuMilli(d.ComputeCpuMilli).
+		ComputeMemoryMib(d.ComputeMemoryMib).
+		BootDiskSizeGB(d.BootDiskSizeGB).
+		TaskCount(d.TaskCount).
+		MaxConcurrency(d.MaxConcurrency).
+		ThreadPoolSize(d.ThreadPoolSize).
+		ChannelBufferSize(d.ChannelBufferSize).
+		FeatureFlushThreshold(d.FeatureFlushThreshold).
+		NodeStatusPropagationDelayMilli(d.NodeStatusDelayMilli).
+		CreatedAt(d.CreatedAt).
+		UpdatedAt(d.UpdatedAt).
+		Build()
+	if err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }

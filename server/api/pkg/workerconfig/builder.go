@@ -16,8 +16,8 @@ func NewBuilder() *Builder {
 }
 
 func (b *Builder) Build() (*WorkerConfig, error) {
-	if b.c.workspace.IsNil() {
-		return nil, errors.New("workspace is required")
+	if b.c.id.IsNil() {
+		return nil, errors.New("id is required")
 	}
 
 	if b.c.createdAt.IsZero() {
@@ -38,8 +38,8 @@ func (b *Builder) MustBuild() *WorkerConfig {
 	return r
 }
 
-func (b *Builder) Workspace(workspace id.WorkspaceID) *Builder {
-	b.c.workspace = workspace
+func (b *Builder) ID(wid id.WorkerConfigID) *Builder {
+	b.c.id = wid
 	return b
 }
 
