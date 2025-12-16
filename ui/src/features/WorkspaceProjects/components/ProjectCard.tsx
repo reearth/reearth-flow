@@ -98,22 +98,21 @@ const ProjectCard: React.FC<Props> = ({
           </p>
         )}
         <FlowLogo
-          className={`size-[120px] translate-x-20 opacity-50 ${description ? "group:hover:opacity-90" : ""}`}
+          className={`size-[120px] translate-x-20 opacity-60 dark:opacity-40 ${description ? "group:hover:opacity-90" : ""}`}
         />
       </CardContent>
       <CardHeader className="px-2 py-1">
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
-        <p className="text-xs text-zinc-800 dark:font-thin dark:text-zinc-400">
+        <p className="text-xs font-light text-zinc-800 dark:font-thin dark:text-zinc-400">
           {t("Last modified:")} {updatedAt}
         </p>
       </CardFooter>
       <div
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
-        <div
-          className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-xs" : ""}`}>
-          <p className="wrap-break-words line-clamp-4 overflow-hidden text-center text-sm text-ellipsis whitespace-normal text-secondary dark:font-light dark:text-foreground">
+        <div className="flex h-[120px] items-center justify-center rounded-t-lg bg-black/10 p-4 backdrop-blur-xs dark:bg-black/30">
+          <p className="wrap-break-words line-clamp-4 overflow-hidden text-center text-sm text-ellipsis whitespace-normal dark:font-light dark:text-foreground">
             {description}
           </p>
         </div>

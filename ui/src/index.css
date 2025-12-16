@@ -23,46 +23,45 @@
 @layer base {
   /* TODO: Fix light mode colors and enable light mode */
   :root {
-    --background: oklch(100% 0 0); /* white */
-    --foreground: oklch(26% 0 0); /* near black */
-    --card: oklch(96.5% 0.005 240); /* light blue-gray */
-    --card-foreground: oklch(26% 0 0);
-    --popover: oklch(98.5% 0 0); /* very light gray */
-    --popover-foreground: oklch(30% 0 0);
-    --primary: oklch(95% 0 0); /* light gray */
-    --primary-foreground: oklch(32% 0 0);
-    --secondary: oklch(96.5% 0.005 240);
-    --secondary-foreground: oklch(23% 0 0);
-    --muted: oklch(68% 0.005 270); /* medium gray */
-    --muted-foreground: oklch(18% 0 0);
-    --accent: oklch(85% 0.005 270); /* light gray-blue */
-    --accent-foreground: oklch(38% 0.005 270);
+    --background: oklch(97% 0.008 250); /* soft cool white */
+    --foreground: oklch(28% 0.01 270); /* soft dark gray with subtle cool tint */
+    --card: oklch(98% 0.006 240); /* very light cool card */
+    --card-foreground: oklch(28% 0.01 270);
+    --popover: oklch(99% 0.004 250); /* subtle cool popover */
+    --popover-foreground: oklch(28% 0.01 270);
+    --primary: oklch(94% 0.008 260); /* soft lavender-gray */
+    --primary-foreground: oklch(30% 0.01 270);
+    --secondary: oklch(98.5% 0.008 270); /* very light lavender */
+    --secondary-foreground: oklch(28% 0.01 270);
+    --muted: oklch(68% 0.01 270); /* slightly more saturated medium gray */
+    --muted-foreground: oklch(20% 0.008 270);
+    --accent: oklch(88% 0.015 280); /* soft pastel accent */
+    --accent-foreground: oklch(32% 0.012 280);
     --destructive: oklch(62% 0.22 25); /* red */
     --destructive-foreground: oklch(98.5% 0 0);
     --warning: oklch(75% 0.15 65); /* orange */
     --warning-foreground: oklch(98.5% 0 0);
-    --border: oklch(82% 0 0); /* medium-light gray */
-    --border-secondary: oklch(72% 0 0);
-    --input: oklch(90% 0.005 270);
+    --border: oklch(85% 0.006 260); /* soft cool border */
+    --border-secondary: oklch(75% 0.008 260);
+    --input: oklch(92% 0.008 270); /* slightly cooler input */
     --ring: oklch(16% 0.01 270);
     --radius: 0.5rem;
     /* Custom Flow colors */
     --logo: oklch(62% 0.19 155); /* green */
-    /* Workflow colors */
-    --node-entrance: oklch(45% 0.24 320); /* purple */
-    --node-exit: oklch(43% 0.24 290); /* violet */
-    --node-reader: oklch(35% 0.08 230); /* teal */
-    --node-transformer: oklch(32% 0.13 15); /* burgundy */
-    --node-writer: oklch(40.956% 0.05666 85.875); /* dark olive/brown */
-    --node-subworkflow: oklch(40% 0.19 310); /* purple */
-    /* Selected Node colors */
-    --node-reader-selected: oklch(40% 0.09 230);
-    --node-transformer-selected: oklch(37% 0.14 15);
-    --node-writer-selected: oklch(50% 0.07 85.875); 
-    --node-subworkflow-selected: oklch(45% 0.24 320);
+    /* Workflow colors - lighter & moderately saturated for light mode */
+    --node-entrance: oklch(65% 0.18 320); /* light purple */
+    --node-exit: oklch(63% 0.18 290); /* light violet */
+    --node-reader: oklch(55% 0.09 230); /* light teal */
+    --node-transformer: oklch(52% 0.14 15); /* light burgundy */
+    --node-writer: oklch(60% 0.07 85.875); /* light olive/brown */
+    --node-subworkflow: oklch(60% 0.16 310); /* light purple */
+    /* Selected Node colors - brighter & more saturated */
+    --node-reader-selected: oklch(60% 0.11 230);
+    --node-transformer-selected: oklch(57% 0.16 15);
+    --node-writer-selected: oklch(65% 0.09 85.875);
+    --node-subworkflow-selected: oklch(65% 0.20 320);
     /* success green */
     --success: oklch(72% 0.18 145);
-    --canvas-background: oklch(95.5% 0 0);
   }
   .dark {
     --background: oklch(26% 0 0); /* dark gray */
@@ -84,6 +83,18 @@
     --border: oklch(38% 0.005 270);
     --input: oklch(18% 0 0);
     --ring: oklch(12% 0.02 270);
+    /* Workflow colors */
+    --node-entrance: oklch(45% 0.24 320); /* purple */
+    --node-exit: oklch(43% 0.24 290); /* violet */
+    --node-reader: oklch(35% 0.08 230); /* teal */
+    --node-transformer: oklch(32% 0.13 15); /* burgundy */
+    --node-writer: oklch(40.956% 0.05666 85.875); /* dark olive/brown */
+    --node-subworkflow: oklch(40% 0.19 310); /* purple */
+    /* Selected Node colors */
+    --node-reader-selected: oklch(40% 0.09 230);
+    --node-transformer-selected: oklch(37% 0.14 15);
+    --node-writer-selected: oklch(50% 0.07 85.875); 
+    --node-subworkflow-selected: oklch(45% 0.24 320);
   }
 }
 @layer base {
