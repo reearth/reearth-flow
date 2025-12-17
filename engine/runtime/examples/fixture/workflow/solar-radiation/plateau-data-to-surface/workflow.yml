@@ -62,18 +62,15 @@ graphs:
         with:
           outputAttribute: geometry
 
-      # Step 4: GeometryCoercer - coerces geometry type (using triangularMesh to lineString as example)
-      # TODO: check implement new target type to polygon (option1)?
+      # Step 4: GeometryCoercer - convert geometry to polygon
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
         name: GeometryCoercer
         type: action
         action: GeometryCoercer
         with:
-          targetType: triangularMesh
+          targetType: polygon
 
-      # TODO: explicitly convert the geometry from lineString back to polygon
-
-       # Step 5: Calculates the planar or sloped area of polygon geometries and adds the results as attributes.
+      # Step 5: Calculates the planar or sloped area of polygon geometries and adds the results as attributes.
       - id: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
         name: AreaCalculator
         type: action
@@ -104,7 +101,6 @@ graphs:
       - id: 7c860ca2-d635-11f0-8011-6c02e0440ed6
         from: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
         to: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
-        # unfiltered is like the else part
         fromPort: default
         toPort: default
    
