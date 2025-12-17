@@ -109,7 +109,7 @@ pub fn triangles_intersection(
         let l1 = Line3D::new_(t[i], t[j]);
         for [k, l] in [[0, 1], [1, 2], [0, 2]] {
             let l2 = Line3D::new_(s[k], s[l]);
-            if let Some(p) = &l1.intersection(&l2, Some(epsilon)) {
+            if let Some(p) = &l1.intersection(&l2, epsilon) {
                 let intersection = (*p * norm_avg) + avg;
                 intersection_points.push(intersection);
             }

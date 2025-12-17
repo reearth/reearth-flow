@@ -192,14 +192,18 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     }
 
     /// Create a triangular mesh from a list of faces by triangulating each face.
-    pub fn from_faces(faces: &[LineString3D<T>]) -> Result<Self, String> {
-        let epsilon = T::from(1e-10).unwrap();
+    pub fn from_faces(faces: &[LineString3D<T>], tolerance: Option<T>) -> Result<Self, String> {
+        let tolerance = if let Some(tol) = tolerance {
+            tol
+        } else {
+            T::from(1e-6).unwrap() // Default tolerance
+        };
         let mut out = Self::default();
         let mut vertices = Vec::new();
         for v in faces.iter().flat_map(|f| f.0.iter()) {
             if vertices
                 .iter()
-                .all(|&existing_v: &Coordinate3D<T>| (existing_v - *v).norm() >= epsilon)
+                .all(|&existing_v: &Coordinate3D<T>| (existing_v - *v).norm() >= tolerance)
             {
                 vertices.push(*v);
             }
@@ -221,15 +225,17 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
                 let mut tri_indices = [0usize; 3];
                 for (i, &vertex) in triangle.iter().enumerate() {
                     // Get or insert vertex index
-                    let vertex_index =
-                        match vertices.iter().position(|&v| (v - vertex).norm() < epsilon) {
-                            Some(idx) => idx,
-                            None => {
-                                let idx = out.vertices.len();
-                                out.vertices.push(vertex);
-                                idx
-                            }
-                        };
+                    let vertex_index = match vertices
+                        .iter()
+                        .position(|&v| (v - vertex).norm() < tolerance)
+                    {
+                        Some(idx) => idx,
+                        None => {
+                            let idx = out.vertices.len();
+                            out.vertices.push(vertex);
+                            idx
+                        }
+                    };
 
                     tri_indices[i] = vertex_index;
                 }
@@ -347,14 +353,14 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         }
 
         // Triangulate the face by the following process:
-        // 1. Find the vertex with the positive angle.
+        // 1. Find a vertex with positive angle.
         // 2. Create a triangle with the two adjacent vertices.
         // 3. Remove the vertex from the face.
         // 4. Update the angles of the adjacent vertices.
         // 5. Repeat until the face boundary is empty.
         let mut triangles = Vec::new();
         while !face.is_empty() {
-            // Find the vertex with the positive outer angle
+            // Find a vertex with positive outer angle
             // A polygon in an Euclidean space must have at least one convex vertex
             let removed_vtx_idx = angles
                 .iter()
@@ -794,18 +800,18 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     }
 }
 
-impl TryFrom<Vec<Polygon3D<f64>>> for TriangularMesh<f64> {
-    type Error = String;
-    fn try_from(faces: Vec<Polygon3D<f64>>) -> Result<Self, String> {
+impl TriangularMesh<f64> {
+    fn try_from_polygons(
+        faces: Vec<Polygon3D<f64>>,
+        tolerance: Option<f64>,
+    ) -> Result<Self, String> {
         let mut new_faces: Vec<super::line_string::LineString> = Vec::new();
         for f in faces {
-            new_faces.push(f.into_merged_contour()?);
+            new_faces.push(f.into_merged_contour(tolerance)?);
         }
-        Self::from_faces(&new_faces)
+        Self::from_faces(&new_faces, tolerance)
     }
-}
 
-impl TriangularMesh<f64> {
     pub fn create_simple_obj(&self, output_path: Option<&str>) {
         use std::io::Write;
         let filename = output_path.unwrap_or("union_output.obj");
@@ -887,7 +893,7 @@ impl TriangularMesh<f64> {
     /// takes in another triangular mesh and returns a new triangular mesh representing the union of the two meshes.
     /// When two meshes intersect, there will be new vertices and edges created at the intersection.
     /// When the two meshes intersect at a face (i.e. they have the identical face), then the face will be merged.
-    pub fn union(self, other: Self) -> Result<Self, String> {
+    pub fn union(self, other: Self, tolerance: f64) -> Result<Self, String> {
         let Self {
             vertices: vertices1,
             triangles: triangles1,
@@ -1435,6 +1441,7 @@ impl TriangularMesh<f64> {
                             .copied()
                             .chain(boundary.iter().copied())
                             .collect::<Vec<_>>(),
+                        1e-6,
                     )
                     .is_some()
                 })
@@ -1443,7 +1450,8 @@ impl TriangularMesh<f64> {
             poly.interiors_push(boundary);
         }
 
-        let mut out: TriangularMesh<f64> = polygons.try_into()?;
+        let mut out: TriangularMesh<f64> =
+            TriangularMesh::try_from_polygons(polygons, Some(tolerance))?;
         denormalize_vertices(&mut out.vertices, norm);
         Ok(out)
     }
@@ -1639,71 +1647,74 @@ pub mod tests {
     }
 
     pub fn get_cube() -> TriangularMesh<f64> {
-        TriangularMesh::try_from(vec![
-            // Bottom face
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 1.0, 0.0),
-                    Coordinate3D::new__(0.0, 1.0, 0.0),
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                ]),
-                vec![],
-            ),
-            // Top face
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(0.0, 0.0, 1.0),
-                    Coordinate3D::new__(1.0, 0.0, 1.0),
-                    Coordinate3D::new__(1.0, 1.0, 1.0),
-                    Coordinate3D::new__(0.0, 1.0, 1.0),
-                    Coordinate3D::new__(0.0, 0.0, 1.0),
-                ]),
-                vec![],
-            ),
-            // Side faces
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 0.0, 1.0),
-                    Coordinate3D::new__(0.0, 0.0, 1.0),
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                ]),
-                vec![],
-            ),
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(1.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 1.0, 0.0),
-                    Coordinate3D::new__(1.0, 1.0, 1.0),
-                    Coordinate3D::new__(1.0, 0.0, 1.0),
-                    Coordinate3D::new__(1.0, 0.0, 0.0),
-                ]),
-                vec![],
-            ),
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(1.0, 1.0, 0.0),
-                    Coordinate3D::new__(0.0, 1.0, 0.0),
-                    Coordinate3D::new__(0.0, 1.0, 1.0),
-                    Coordinate3D::new__(1.0, 1.0, 1.0),
-                    Coordinate3D::new__(1.0, 1.0, 0.0),
-                ]),
-                vec![],
-            ),
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(0.0, 1.0, 0.0),
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                    Coordinate3D::new__(0.0, 0.0, 1.0),
-                    Coordinate3D::new__(0.0, 1.0, 1.0),
-                    Coordinate3D::new__(0.0, 1.0, 0.0),
-                ]),
-                vec![],
-            ),
-        ])
+        TriangularMesh::try_from_polygons(
+            vec![
+                // Bottom face
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 1.0, 0.0),
+                        Coordinate3D::new__(0.0, 1.0, 0.0),
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                // Top face
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(0.0, 0.0, 1.0),
+                        Coordinate3D::new__(1.0, 0.0, 1.0),
+                        Coordinate3D::new__(1.0, 1.0, 1.0),
+                        Coordinate3D::new__(0.0, 1.0, 1.0),
+                        Coordinate3D::new__(0.0, 0.0, 1.0),
+                    ]),
+                    vec![],
+                ),
+                // Side faces
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 0.0, 1.0),
+                        Coordinate3D::new__(0.0, 0.0, 1.0),
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(1.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 1.0, 0.0),
+                        Coordinate3D::new__(1.0, 1.0, 1.0),
+                        Coordinate3D::new__(1.0, 0.0, 1.0),
+                        Coordinate3D::new__(1.0, 0.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(1.0, 1.0, 0.0),
+                        Coordinate3D::new__(0.0, 1.0, 0.0),
+                        Coordinate3D::new__(0.0, 1.0, 1.0),
+                        Coordinate3D::new__(1.0, 1.0, 1.0),
+                        Coordinate3D::new__(1.0, 1.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(0.0, 1.0, 0.0),
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                        Coordinate3D::new__(0.0, 0.0, 1.0),
+                        Coordinate3D::new__(0.0, 1.0, 1.0),
+                        Coordinate3D::new__(0.0, 1.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+            ],
+            Some(1e-3),
+        )
         .unwrap()
     }
 
@@ -1806,7 +1817,7 @@ pub mod tests {
             cube2
         };
 
-        let union = cube1.union(cube2).unwrap();
+        let union = cube1.union(cube2, 1e-3).unwrap();
         assert_eq!(union.triangles.len(), 24);
         assert_eq!(union.vertices.len(), 16);
     }
@@ -1837,7 +1848,7 @@ pub mod tests {
             edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
         };
 
-        let union = t1.union(t2).unwrap();
+        let union = t1.union(t2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 8);
         assert!(union
             .vertices
@@ -1876,7 +1887,7 @@ pub mod tests {
             edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
         };
 
-        let union = t1.union(t2).unwrap();
+        let union = t1.union(t2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 8);
         assert!(union
             .vertices
@@ -1915,7 +1926,7 @@ pub mod tests {
             edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
         };
 
-        let union = t1.union(t2).unwrap();
+        let union = t1.union(t2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 8);
         assert!(union
             .vertices
@@ -1937,7 +1948,7 @@ pub mod tests {
             cube2
         };
 
-        let union = cube1.union(cube2).unwrap();
+        let union = cube1.union(cube2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 24);
         // No triangles should be degenerate.
         for t in union.triangles {
@@ -1960,7 +1971,7 @@ pub mod tests {
             cube2
         };
 
-        let union = cube1.union(cube2).unwrap();
+        let union = cube1.union(cube2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 30);
         // No triangles should be degenerate.
         for t in union.triangles {
@@ -1983,7 +1994,7 @@ pub mod tests {
             cube2
         };
 
-        let union = cube1.union(cube2).unwrap();
+        let union = cube1.union(cube2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 22);
         // No triangles should be degenerate.
         for t in union.triangles {
@@ -1999,50 +2010,53 @@ pub mod tests {
 
     #[test]
     fn test_union_joint_case4() {
-        let tetrahedron1 = TriangularMesh::try_from(vec![
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                    Coordinate3D::new__(2.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 2.0, 0.0),
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                ]),
-                vec![],
-            ),
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                    Coordinate3D::new__(2.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 1.0, 2.0),
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                ]),
-                vec![],
-            ),
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(2.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 2.0, 0.0),
-                    Coordinate3D::new__(1.0, 1.0, 2.0),
-                    Coordinate3D::new__(2.0, 0.0, 0.0),
-                ]),
-                vec![],
-            ),
-            Polygon3D::new(
-                LineString3D::new(vec![
-                    Coordinate3D::new__(1.0, 2.0, 0.0),
-                    Coordinate3D::new__(0.0, 0.0, 0.0),
-                    Coordinate3D::new__(1.0, 1.0, 2.0),
-                    Coordinate3D::new__(1.0, 2.0, 0.0),
-                ]),
-                vec![],
-            ),
-        ])
+        let tetrahedron1 = TriangularMesh::try_from_polygons(
+            vec![
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                        Coordinate3D::new__(2.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 2.0, 0.0),
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                        Coordinate3D::new__(2.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 1.0, 2.0),
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(2.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 2.0, 0.0),
+                        Coordinate3D::new__(1.0, 1.0, 2.0),
+                        Coordinate3D::new__(2.0, 0.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+                Polygon3D::new(
+                    LineString3D::new(vec![
+                        Coordinate3D::new__(1.0, 2.0, 0.0),
+                        Coordinate3D::new__(0.0, 0.0, 0.0),
+                        Coordinate3D::new__(1.0, 1.0, 2.0),
+                        Coordinate3D::new__(1.0, 2.0, 0.0),
+                    ]),
+                    vec![],
+                ),
+            ],
+            Some(1e-3),
+        )
         .unwrap();
 
         let mut tetrahedron2 = tetrahedron1.clone();
         tetrahedron2.transform_offset(0.0, 0.0, -1.0);
 
-        let union = tetrahedron1.union(tetrahedron2).unwrap();
+        let union = tetrahedron1.union(tetrahedron2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 11);
     }
 }

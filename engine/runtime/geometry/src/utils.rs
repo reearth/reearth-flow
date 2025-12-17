@@ -10,7 +10,7 @@ use crate::{
         GeoNum,
     },
     types::{
-        coordinate::{Coordinate, Coordinate2D},
+        coordinate::{Coordinate, Coordinate2D, Coordinate3D},
         coordnum::{CoordFloat, CoordNum},
         line::Line,
         line_string::LineString,
@@ -299,10 +299,7 @@ pub struct PointsCoplanar {
     pub center: Point3D<f64>,
 }
 
-pub fn are_points_coplanar(
-    points: Vec<nalgebra::Point3<f64>>,
-    tolerance: f64,
-) -> Option<PointsCoplanar> {
+pub fn are_points_coplanar(points: &[Coordinate3D<f64>], tolerance: f64) -> Option<PointsCoplanar> {
     let n = points.len();
     if points.len() < 3 {
         return None; // Three points or less are always on the same plane.
@@ -311,14 +308,15 @@ pub fn are_points_coplanar(
     // Calculate the mean value of the point cloud.
     let mean: nalgebra::Vector3<f64> = points
         .iter()
-        .map(|p| p.coords)
+        .map(|p| nalgebra::Vector3::new(p.x, p.y, p.z))
         .sum::<nalgebra::Vector3<f64>>()
         / (n as f64);
 
     // Calculate the covariance matrix
     let mut covariance_matrix = DMatrix::<f64>::zeros(3, 3);
     for point in points {
-        let centered = point.coords - mean;
+        let point = nalgebra::Vector3::new(point.x, point.y, point.z);
+        let centered = point - mean;
         covariance_matrix += centered * centered.transpose();
     }
     covariance_matrix /= n as f64;
@@ -426,20 +424,18 @@ where
     if line_string.0.len() < 3 {
         return None; // Less than 3 points cannot define a plane
     }
-
-    let points: Result<Vec<nalgebra::Point3<f64>>, &str> = line_string
+    let points = line_string
         .coords()
         .map(|coord| {
-            Ok(nalgebra::Point3::new(
-                coord.x.to_f64().ok_or("Failed to convert x coordinate")?,
-                coord.y.to_f64().ok_or("Failed to convert y coordinate")?,
-                coord.z.to_f64().ok_or("Failed to convert z coordinate")?,
+            Some(Coordinate3D::new__(
+                coord.x.to_f64()?,
+                coord.y.to_f64()?,
+                coord.z.to_f64()?,
             ))
         })
-        .collect();
+        .collect::<Option<Vec<_>>>()?;
 
-    let points = points.ok()?;
-    are_points_coplanar(points, tolerance)
+    are_points_coplanar(&points, tolerance)
 }
 
 /// Rotate a planar LineString to lie on the XY plane (Z=0)

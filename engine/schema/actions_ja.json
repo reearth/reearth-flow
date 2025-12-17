@@ -1084,7 +1084,31 @@
       "name": "CSGEvaluator",
       "type": "processor",
       "description": "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CSG Evaluator Parameters",
+        "description": "Configure evaluation parameters for CSG operations",
+        "type": "object",
+        "required": [
+          "tolerance"
+        ],
+        "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"
@@ -5498,7 +5522,60 @@
       "name": "PlanarityFilter",
       "type": "processor",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Planarity Filter Parameters",
+        "description": "Configure how to filter features based on geometry planarity",
+        "type": "object",
+        "required": [
+          "threshold"
+        ],
+        "properties": {
+          "filterType": {
+            "title": "Filter Type",
+            "description": "The method to use for planarity detection",
+            "default": "covariance",
+            "allOf": [
+              {
+                "$ref": "#/definitions/PlanarityFilterType"
+              }
+            ]
+          },
+          "threshold": {
+            "title": "Threshold",
+            "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "PlanarityFilterType": {
+            "description": "Filter type for planarity check",
+            "oneOf": [
+              {
+                "description": "Uses covariance matrix eigenvalue analysis",
+                "type": "string",
+                "enum": [
+                  "covariance"
+                ]
+              },
+              {
+                "description": "Uses minimum height of the 3D convex hull",
+                "type": "string",
+                "enum": [
+                  "height"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"
@@ -5780,7 +5857,31 @@
       "name": "SolidBoundaryValidator",
       "type": "processor",
       "description": "Validates the Solid Boundary Geometry",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Solid Boundary Validator Parameters",
+        "description": "Configure validation parameters for solid boundary geometry",
+        "type": "object",
+        "required": [
+          "tolerance"
+        ],
+        "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"

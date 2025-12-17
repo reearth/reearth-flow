@@ -1,7 +1,7 @@
-use super::{coords_iter::CoordsIter, GeoNum};
+use super::GeoNum;
 
 pub mod qhull;
-pub use qhull::quick_hull;
+pub use qhull::{quick_hull_2d, quick_hull_3d};
 
 pub mod graham;
 pub use graham::graham_hull;
@@ -12,29 +12,8 @@ use crate::{
         utils::lex_cmp,
         winding_order::Winding,
     },
-    types::{coordinate::Coordinate, line_string::LineString, polygon::Polygon},
+    types::{coordinate::Coordinate, line_string::LineString},
 };
-
-pub trait ConvexHull<'a, T, Z> {
-    type ScalarXY: GeoNum;
-    type ScalarZ: GeoNum;
-    fn convex_hull(&'a self) -> Polygon<Self::ScalarXY, Self::ScalarZ>;
-}
-
-impl<'a, T, Z, G> ConvexHull<'a, T, Z> for G
-where
-    T: GeoNum,
-    Z: GeoNum,
-    G: CoordsIter<ScalarXY = T, ScalarZ = Z>,
-{
-    type ScalarXY = T;
-    type ScalarZ = Z;
-
-    fn convex_hull(&'a self) -> Polygon<T, Z> {
-        let mut exterior: Vec<_> = self.exterior_coords_iter().collect();
-        Polygon::new(quick_hull(&mut exterior), vec![])
-    }
-}
 
 fn trivial_hull<T, Z>(points: &mut [Coordinate<T, Z>], include_on_hull: bool) -> LineString<T, Z>
 where

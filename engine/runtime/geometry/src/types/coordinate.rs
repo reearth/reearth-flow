@@ -529,10 +529,6 @@ impl<T: CoordNum> From<Coordinate2D<T>> for GeoCoord<T> {
     }
 }
 
-pub fn are_coplanar(points: &[Coordinate3D<f64>]) -> Option<PointsCoplanar> {
-    let points = points
-        .iter()
-        .map(|c| NaPoint3::new(c.x, c.y, c.z))
-        .collect();
-    are_points_coplanar(points, 1e-6)
+pub fn are_coplanar(points: &[Coordinate3D<f64>], tolerance: f64) -> Option<PointsCoplanar> {
+    are_points_coplanar(points, tolerance)
 }

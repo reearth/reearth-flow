@@ -230,6 +230,10 @@ graphs:
     name: PlanarityFilter
     type: action
     action: PlanarityFilter
+    with:
+      filterType: height
+      threshold: |
+        0.01
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -2146,7 +2150,8 @@ graphs:
     action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
-      epsgCode: env.get("prcs") ?? "10168"
+      epsgCode: |
+        env.get("epsg")
       meshcodeAttr: meshcode
   - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
     name: MeshCodeTester
@@ -2229,6 +2234,9 @@ graphs:
     name: SolidBoundaryValidator
     type: action
     action: SolidBoundaryValidator
+    with:
+      tolerance: |
+        0.01
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
     type: action
@@ -2480,6 +2488,8 @@ graphs:
     action: CSGEvaluator
     with:
       operation: intersection
+      tolerance: |
+        0.01
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperSolidIntersection
     type: action

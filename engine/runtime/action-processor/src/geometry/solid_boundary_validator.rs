@@ -1,5 +1,5 @@
 use core::f64;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
@@ -12,7 +12,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue};
+use rhai::AST;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -35,7 +37,7 @@ impl ProcessorFactory for SolidBoundaryValidatorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(SolidBoundaryValidatorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -53,16 +55,58 @@ impl ProcessorFactory for SolidBoundaryValidatorFactory {
             REJECTED_PORT.clone(),
         ]
     }
+
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        _with: Option<HashMap<String, Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let processor = SolidBoundaryValidator {};
+        let params: SolidBoundaryValidatorParam = if let Some(with_val) = with.clone() {
+            let value: Value = serde_json::to_value(with_val).map_err(|e| {
+                GeometryProcessorError::SolidBoundaryValidatorFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::SolidBoundaryValidatorFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            return Err(GeometryProcessorError::SolidBoundaryValidatorFactory(
+                "Missing required parameter `with` containing `tolerance`".to_string(),
+            )
+            .into());
+        };
+
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let tolerance_ast = expr_engine
+            .compile(params.tolerance.as_ref())
+            .map_err(|e| {
+                GeometryProcessorError::SolidBoundaryValidatorFactory(format!(
+                    "Failed to compile tolerance expression: {e:?}"
+                ))
+            })?;
+
+        let processor = SolidBoundaryValidator {
+            global_params: with,
+            tolerance_ast,
+        };
         Ok(Box::new(processor))
     }
+}
+
+/// # Solid Boundary Validator Parameters
+/// Configure validation parameters for solid boundary geometry
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SolidBoundaryValidatorParam {
+    /// # Tolerance
+    /// Tolerance value for geometry operations (as an expression evaluating to f64).
+    /// Used for vertex merging and face triangulation.
+    pub tolerance: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -78,12 +122,16 @@ enum IssueType {
     WrongFaceOrientation,
     NotConnected,
     SelfIntersection,
+    SurfaceIssue,
 }
 
 /// # Solid Boundary Validator
 /// Configure which validation checks to perform on feature geometries
 #[derive(Debug, Clone)]
-pub struct SolidBoundaryValidator {}
+pub struct SolidBoundaryValidator {
+    global_params: Option<HashMap<String, Value>>,
+    tolerance_ast: AST,
+}
 
 impl Processor for SolidBoundaryValidator {
     fn num_threads(&self) -> usize {
@@ -97,6 +145,10 @@ impl Processor for SolidBoundaryValidator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
+
+        // Evaluate tolerance expression at runtime with feature context
+        let tolerance = self.evaluate_tolerance(feature, &ctx)?;
+
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
@@ -144,7 +196,7 @@ impl Processor for SolidBoundaryValidator {
 
                 let mut polygons = Vec::new();
                 for p in &geom.polygons {
-                    polygons.push(p.clone().into_merged_contour()?);
+                    polygons.push(p.clone().into_merged_contour(Some(tolerance))?);
                 }
                 polygons
             }
@@ -156,7 +208,22 @@ impl Processor for SolidBoundaryValidator {
         };
 
         // Extract vertices, edges, and triangles from the solid
-        let mesh = TriangularMesh::from_faces(&faces)?;
+        let Ok(mesh) = TriangularMesh::from_faces(&faces, Some(tolerance)) else {
+            // If triangulation fails, then it is a surface issue.
+            let mut feature = feature.clone();
+            feature.attributes.insert(
+                Attribute::new("solid_boundary_issues"),
+                AttributeValue::from(
+                    serde_json::to_value(&ValidationResult {
+                        issue_count: 1,
+                        issue: IssueType::SurfaceIssue,
+                    })
+                    .unwrap(),
+                ),
+            );
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+            return Ok(());
+        };
         if mesh.is_empty() {
             // If triangulation fails, send to rejected port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -237,6 +304,22 @@ impl Processor for SolidBoundaryValidator {
 }
 
 impl SolidBoundaryValidator {
+    /// Evaluate the tolerance expression at runtime with feature context
+    fn evaluate_tolerance(
+        &self,
+        feature: &Feature,
+        ctx: &ExecutorContext,
+    ) -> Result<f64, BoxedError> {
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
+        scope.eval_ast::<f64>(&self.tolerance_ast).map_err(|e| {
+            GeometryProcessorError::SolidBoundaryValidatorFactory(format!(
+                "Failed to evaluate tolerance expression: {e:?}"
+            ))
+            .into()
+        })
+    }
+
     fn check_orientation(
         faces: &[LineString3D<f64>],
         vertices: &[Coordinate3D<f64>],

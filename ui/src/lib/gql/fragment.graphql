@@ -215,3 +215,19 @@ fragment CmsAsset on CMSAsset {
   public
   createdAt
 }
+
+fragment WorkerConfig on WorkerConfig {
+  id
+  machineType
+  computeCpuMilli
+  computeMemoryMib
+  bootDiskSizeGB
+  taskCount
+  maxConcurrency
+  threadPoolSize
+  channelBufferSize
+  featureFlushThreshold
+  nodeStatusPropagationDelayMilli
+  createdAt
+  updatedAt
+}

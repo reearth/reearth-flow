@@ -228,8 +228,8 @@ impl GeometryCoercer {
                         feature.geometry = geometry;
                     }
                     CoerceTarget::TriangularMesh => {
-                        let triangular_mesh =
-                            TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
+                        let faces = polygon.rings();
+                        let triangular_mesh = TriangularMesh::<f64, f64>::from_faces(&faces, None)?;
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
                             triangular_mesh,
@@ -271,8 +271,8 @@ impl GeometryCoercer {
                         feature.geometry = geometry;
                     }
                     CoerceTarget::TriangularMesh => {
-                        let triangular_mesh =
-                            TriangularMesh::<f64, f64>::try_from(polygons.clone().0)?;
+                        let faces: Vec<_> = polygons.iter().flat_map(|p| p.rings()).collect();
+                        let triangular_mesh = TriangularMesh::<f64, f64>::from_faces(&faces, None)?;
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
                             triangular_mesh,
@@ -328,8 +328,9 @@ impl GeometryCoercer {
                 }
                 CoerceTarget::TriangularMesh => {
                     for polygon in geo_feature.polygons.iter() {
+                        let face = polygon.clone().into_merged_contour(None)?;
                         let triangular_mesh =
-                            TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
+                            TriangularMesh::<f64, f64>::from_faces(&[face], None)?;
                         geometries.push(Geometry3D::TriangularMesh(triangular_mesh));
                     }
                     let geo = if let Some(first) = geometries.first() {
