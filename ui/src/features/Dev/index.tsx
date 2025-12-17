@@ -1,32 +1,242 @@
 import { FC } from "react";
 
-import { Label, Switch } from "@flow/components";
+import { Button, Input, Label, LoadingSkeleton } from "@flow/components";
+
+import { WorkerConfigDeleitionDialog } from "./components";
+import useHooks from "./hooks";
 
 const Dev: FC = () => {
+  const {
+    workerConfig,
+    isLoading,
+    formData,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    handleChange,
+    handleDelete,
+    handleSubmit,
+  } = useHooks();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-6 p-6">
+        <LoadingSkeleton className="h-8 w-1/3" />
+      </div>
+    );
+  }
+  console.log("workerConfig", workerConfig);
   return (
     <div className="flex w-full flex-col gap-6 p-6">
       <div className="flex flex-col gap-4">
-        <h4 className="text-lg font-extralight">Dev Configs</h4>
+        <h4 className="text-lg font-extralight">Worker Configuration</h4>
         <p className="text-sm">
-          This page activates development-specific feature flags and is only
-          available when the app is launched in development mode.
+          Configure worker settings for workflow execution. These settings
+          control the compute resources and behavior of workflow workers.
         </p>
         <div className="h-px bg-gray-200" />
       </div>
-      <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium">
-            Vivamus gravida mauris eget tincidunt posuere.
-          </Label>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Vivamus gravida mauris eget tincidunt posuere. Vestibulum vulputate
-            diam libero, ut gravida ante consectetur vitae.
-          </p>
-          <div className="mt-2 flex items-center space-x-3">
-            <Switch />
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="machineType" className="text-sm font-medium">
+              Machine Type
+            </Label>
+            <Input
+              id="machineType"
+              type="text"
+              value={formData.machineType}
+              onChange={(e) => handleChange("machineType", e.target.value)}
+              placeholder="e.g., n1-standard-4"
+            />
+            <p className="text-xs text-muted-foreground">
+              The GCP machine type for the worker (e.g., n1-standard-4)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="computeCpuMilli" className="text-sm font-medium">
+              Compute CPU (milli-cores)
+            </Label>
+            <Input
+              id="computeCpuMilli"
+              type="number"
+              value={formData.computeCpuMilli}
+              onChange={(e) => handleChange("computeCpuMilli", e.target.value)}
+              placeholder="e.g., 4000"
+            />
+            <p className="text-xs text-muted-foreground">
+              CPU allocation in milli-cores (1000 = 1 CPU core)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="computeMemoryMib" className="text-sm font-medium">
+              Compute Memory (MiB)
+            </Label>
+            <Input
+              id="computeMemoryMib"
+              type="number"
+              value={formData.computeMemoryMib}
+              onChange={(e) => handleChange("computeMemoryMib", e.target.value)}
+              placeholder="e.g., 8192"
+            />
+            <p className="text-xs text-muted-foreground">
+              Memory allocation in mebibytes (1024 MiB = 1 GiB)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="bootDiskSizeGB" className="text-sm font-medium">
+              Boot Disk Size (GB)
+            </Label>
+            <Input
+              id="bootDiskSizeGB"
+              type="number"
+              value={formData.bootDiskSizeGB}
+              onChange={(e) => handleChange("bootDiskSizeGB", e.target.value)}
+              placeholder="e.g., 100"
+            />
+            <p className="text-xs text-muted-foreground">
+              Boot disk size in gigabytes (must be at least 10 GB)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="taskCount" className="text-sm font-medium">
+              Task Count
+            </Label>
+            <Input
+              id="taskCount"
+              type="number"
+              value={formData.taskCount}
+              onChange={(e) => handleChange("taskCount", e.target.value)}
+              placeholder="e.g., 10"
+            />
+            <p className="text-xs text-muted-foreground">
+              Number of parallel tasks
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="maxConcurrency" className="text-sm font-medium">
+              Max Concurrency
+            </Label>
+            <Input
+              id="maxConcurrency"
+              type="number"
+              value={formData.maxConcurrency}
+              onChange={(e) => handleChange("maxConcurrency", e.target.value)}
+              placeholder="e.g., 4"
+            />
+            <p className="text-xs text-muted-foreground">
+              Maximum concurrent operations
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="threadPoolSize" className="text-sm font-medium">
+              Thread Pool Size
+            </Label>
+            <Input
+              id="threadPoolSize"
+              type="number"
+              value={formData.threadPoolSize}
+              onChange={(e) => handleChange("threadPoolSize", e.target.value)}
+              placeholder="e.g., 8"
+            />
+            <p className="text-xs text-muted-foreground">
+              Size of the worker thread pool
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="channelBufferSize" className="text-sm font-medium">
+              Channel Buffer Size
+            </Label>
+            <Input
+              id="channelBufferSize"
+              type="number"
+              value={formData.channelBufferSize}
+              onChange={(e) =>
+                handleChange("channelBufferSize", e.target.value)
+              }
+              placeholder="e.g., 1000"
+            />
+            <p className="text-xs text-muted-foreground">
+              Internal channel buffer size
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="featureFlushThreshold"
+              className="text-sm font-medium">
+              Feature Flush Threshold
+            </Label>
+            <Input
+              id="featureFlushThreshold"
+              type="number"
+              value={formData.featureFlushThreshold}
+              onChange={(e) =>
+                handleChange("featureFlushThreshold", e.target.value)
+              }
+              placeholder="e.g., 1000"
+            />
+            <p className="text-xs text-muted-foreground">
+              Number of features before flushing to storage
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="nodeStatusPropagationDelayMilli"
+              className="text-sm font-medium">
+              Node Status Delay (ms)
+            </Label>
+            <Input
+              id="nodeStatusPropagationDelayMilli"
+              type="number"
+              value={formData.nodeStatusPropagationDelayMilli}
+              onChange={(e) =>
+                handleChange("nodeStatusPropagationDelayMilli", e.target.value)
+              }
+              placeholder="e.g., 100"
+            />
+            <p className="text-xs text-muted-foreground">
+              Delay in milliseconds for node status propagation
+            </p>
           </div>
         </div>
-      </div>
+
+        <div className="flex justify-between gap-4">
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={!workerConfig}
+            onClick={() => setIsDeleteDialogOpen(true)}>
+            Delete Configuration
+          </Button>
+
+          <Button type="submit" variant="default">
+            Update Configuration
+          </Button>
+        </div>
+      </form>
+      {isDeleteDialogOpen && (
+        <WorkerConfigDeleitionDialog
+          isDeleteDialogOpen={isDeleteDialogOpen}
+          setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+          onWorkerConfigDelete={handleDelete}
+        />
+      )}
+      {workerConfig && (
+        <div className="mt-4 rounded-md bg-muted p-4">
+          <p className="text-xs text-muted-foreground">
+            Last updated: {new Date(workerConfig.updatedAt).toLocaleString()}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
