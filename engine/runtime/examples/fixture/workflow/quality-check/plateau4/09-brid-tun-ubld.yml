@@ -230,6 +230,10 @@ graphs:
     name: PlanarityFilter
     type: action
     action: PlanarityFilter
+    with:
+      filterType: height
+      threshold: |
+        0.01
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -1072,6 +1076,9 @@ graphs:
     name: SolidBoundaryValidator
     type: action
     action: SolidBoundaryValidator
+    with:
+      tolerance: |
+        0.01
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
     type: action
