@@ -11,6 +11,7 @@ import { memo, useEffect, useRef, useState } from "react";
 
 import {
   IconButton,
+  LoadingSkeleton,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -46,9 +47,12 @@ const DebugPanel: React.FC = () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    selectedFeature,
-    setSelectedFeature,
+    selectedFeatureId,
+    detailsOverlayOpen,
+    detailsFeature,
+    formattedData,
     setConvertedSelectedFeature,
+    handleFeatureSelect,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
@@ -57,11 +61,12 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    handleCloseFeatureDetails,
     // Data properties
     detectedGeometryType,
     visualizerType,
     totalFeatures,
-    isComplete,
+    isLoadingData,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -192,7 +197,7 @@ const DebugPanel: React.FC = () => {
                     defaultValue={dataURLs[0].key}
                     value={selectedDataURL}
                     onValueChange={handleSelectedDataChange}>
-                    <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
+                    <SelectTrigger className="h-[26px] w-auto max-w-[300px] text-xs font-bold">
                       <SelectValue placeholder={t("Select Data to Preview")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -207,36 +212,51 @@ const DebugPanel: React.FC = () => {
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
-                    fileType={fileType}
-                    selectedFeature={selectedFeature}
+                    selectedFeatureId={selectedFeatureId}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
                     detectedGeometryType={detectedGeometryType || undefined}
                     totalFeatures={totalFeatures || undefined}
+                    detailsOverlayOpen={detailsOverlayOpen}
+                    detailsFeature={detailsFeature}
+                    formattedData={formattedData}
+                    onCloseFeatureDetails={handleCloseFeatureDetails}
                   />
                 </div>
               </ResizablePanel>
-              {!minimized && (
-                <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
+              {visualizerType && (
+                <>
+                  {!minimized && (
+                    <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
+                  )}
+                  <ResizablePanel defaultSize={40} minSize={20}>
+                    {isLoadingData ? (
+                      <div className="flex h-full items-center justify-center">
+                        <div className="text-center text-muted-foreground">
+                          <LoadingSkeleton className="mb-4" />
+                          <p className="text-sm">{t("Loading data...")}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <DebugPreview
+                        debugJobState={debugJobState}
+                        dataURLs={dataURLs}
+                        fileType={fileType}
+                        selectedOutputData={selectedOutputData}
+                        selectedFeatureId={selectedFeatureId}
+                        mapRef={mapRef}
+                        cesiumViewerRef={cesiumViewerRef}
+                        onConvertedSelectedFeature={setConvertedSelectedFeature}
+                        onSelectedFeature={handleFeatureSelect}
+                        onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                        // Data detection props
+                        detectedGeometryType={detectedGeometryType}
+                        visualizerType={visualizerType}
+                      />
+                    )}
+                  </ResizablePanel>
+                </>
               )}
-              <ResizablePanel defaultSize={40} minSize={20}>
-                <DebugPreview
-                  debugJobState={debugJobState}
-                  dataURLs={dataURLs}
-                  fileType={fileType}
-                  selectedOutputData={selectedOutputData}
-                  selectedFeature={selectedFeature}
-                  mapRef={mapRef}
-                  cesiumViewerRef={cesiumViewerRef}
-                  onConvertedSelectedFeature={setConvertedSelectedFeature}
-                  onSelectedFeature={setSelectedFeature}
-                  onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                  // Data detection props
-                  detectedGeometryType={detectedGeometryType}
-                  visualizerType={visualizerType}
-                  isComplete={isComplete}
-                />
-              </ResizablePanel>
             </ResizablePanelGroup>
           </TabsContent>
         )}

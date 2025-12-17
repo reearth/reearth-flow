@@ -1,14 +1,17 @@
 version: "2"
-
 linters:
+  enable:
+    - govet
+  settings:
+    govet:
+      enable:
+        - fieldalignment
   exclusions:
     presets:
       - comments
       - common-false-positives
       - legacy
       - std-error-handling
-
-
 formatters:
   enable:
     - gofmt

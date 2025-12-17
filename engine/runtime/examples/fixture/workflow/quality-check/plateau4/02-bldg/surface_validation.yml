@@ -20,23 +20,25 @@ nodes:
     subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
   - id: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
-    name: AttributeManagerLod0InvalidSurface
+    name: AttributeMapperLod0InvalidSurface
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
         - attribute: issue
-          method: create
-          value: |
+          expr: |
             let value = env.get("__value");
             if value.validationResult?.details != () {
               return value.validationResult.details[0][0];
@@ -45,65 +47,6 @@ nodes:
               return value.issue;
             }
             "UnknownError"
-
-        # remove
-        - attribute: validationResult
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: holeCount
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: dumpGeometry
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        #
-        - attribute: baseCityCode
-          method: remove
-        - attribute: cityCode
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: objectListPath
-          method: remove
 
   - id: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
     name: FeatureWriterLod0IncorrectOrientation
@@ -166,23 +109,25 @@ nodes:
     subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
   - id: c2e8f4a6-9b3d-4e7c-8a5f-1d9b6e4c7f2a
-    name: AttributeManagerLod1InvalidSurface
+    name: AttributeMapperLod1InvalidSurface
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
         - attribute: issue
-          method: create
-          value: |
+          expr: |
             let value = env.get("__value");
             if value.validationResult?.details != () {
               return value.validationResult.details[0][0];
@@ -191,65 +136,6 @@ nodes:
               return value.issue;
             }
             "UnknownError"
-
-        # remove
-        - attribute: validationResult
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: holeCount
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: dumpGeometry
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        #
-        - attribute: baseCityCode
-          method: remove
-        - attribute: cityCode
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: objectListPath
-          method: remove
 
   - id: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
     name: FeatureWriterLod1InvalidSurface
@@ -278,13 +164,13 @@ nodes:
     with:
       routingPort: errorCountLod1InvalidSurface
 
-  # SurfaceValidator3D (LOD2,3,4)
-  # FIXME: replace this with GeometryFilter.
-  #   Send `Surface`s to `SurfaceValidator3D` and `Solid`s to `SolidBoundaryValidator`
+
   - id: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
-    name: Dummy_GeometryFilter
+    name: GeometryFilterSurfaceOrSolid
     type: action
-    action: NoopProcessor
+    action: GeometryFilter
+    with:
+      filterType: geometryType
 
   - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
     name: PLATEAU3.SurfaceValidator3D_LOD2-4
@@ -310,23 +196,25 @@ nodes:
             if env.get("__value").lod == "4" { 1 } else { 0 }
 
   - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
-    name: AttributeManagerLod2-4InvalidSurface
+    name: AttributeMapperLod2-4InvalidSurface
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
         - attribute: issue
-          method: create
-          value: |
+          expr: |
             let value = env.get("__value");
             if value.validationResult?.details != () {
               return value.validationResult.details[0][0];
@@ -335,65 +223,6 @@ nodes:
               return value.issue;
             }
             "UnknownError"
-
-        # remove
-        - attribute: validationResult
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: holeCount
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: dumpGeometry
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        #
-        - attribute: baseCityCode
-          method: remove
-        - attribute: cityCode
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: objectListPath
-          method: remove
 
   - id: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
     name: FeatureWriterLod2-4InvalidSurface
@@ -431,7 +260,7 @@ nodes:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
 
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     name: TwoDimensionForcer
@@ -447,6 +276,7 @@ nodes:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
       generateList: list
+      tolerance: 0.01
 
   - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
     name: FeatureFilterByAreaOnAreaOverlap
@@ -537,7 +367,7 @@ nodes:
     action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
-      epsgCode: env.get("prcs") ?? "6675"
+      epsgCode: env.get("prcs") ?? "10168"
       meshcodeAttr: "meshcode"
 
   - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
@@ -644,69 +474,26 @@ nodes:
           outputPort: notClosed
 
   - id: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
-    name: AttributeManagerSolidBoundaryInvalidNotClosed
+    name: AttributeMapperSolidBoundaryInvalidNotClosed
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
-        - attribute: issue
-          method: create
-          value: |
-            "Surface Not Closed"
-        # remove
-        - attribute: solid_boundary_issues
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: maxLod
-          method: remove
+      mappers:
         - attribute: filename
-          method: remove
-        - attribute: gmlPath
-          method: remove
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: issue
+          expr: |
+            "Surface Not Closed"
 
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
@@ -746,69 +533,26 @@ nodes:
       routingPort: errorCountLod1NotClosedSolid
 
   - id: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
-    name: AttributeManagerSolidBoundaryInvalidOtherIssues
+    name: AttributeMapperSolidBoundaryInvalidOtherIssues
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
-        - attribute: issue
-          method: create
-          value: |
-            "InvalidSolidBoundaries"
-        # remove
-        - attribute: solid_boundary_issues
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: maxLod
-          method: remove
+      mappers:
         - attribute: filename
-          method: remove
-        - attribute: gmlPath
-          method: remove
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: issue
+          expr: |
+            "InvalidSolidBoundaries"
 
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     name: FeatureWriterL14-BoundaryOtherIssues
@@ -928,10 +672,61 @@ nodes:
       routingPort: errorCountLod1SolidIssues
 
   # Solid Intersection Test
+  - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    name: GeometryExtractorSolidIntersection
+    type: action
+    action: GeometryExtractor
+    with:
+      outputAttribute: _solid_geometry
+
+  - id: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    name: FootprintReplacerSolidIntersection
+    type: action
+    action: FootprintReplacer
+
+  - id: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    name: AreaOnAreaOverlayerSolidIntersection
+    type: action
+    action: AreaOnAreaOverlayer
+    with:
+      accumulationMode: dropIncomingAttributes
+      outputAttribute: overlap
+      generateList: list
+
+  - id: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    name: FeatureFilterSolidIntersectionOverlap
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").overlap > 1
+          outputPort: overlapping
+
   - id: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
     name: PLATEAU4.SolidIntersectionTestPairCreator
     type: action
     action: PLATEAU4.SolidIntersectionTestPairCreator
+    with:
+      listAttribute: list
+      gmlIdAttribute: gmlId
+      pairIdAttribute: pair_id
+
+  # Step 6a: Restore original solid geometry from attribute (for port A)
+  - id: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    name: GeometryReplacerSolidIntersectionA
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
+
+  # Step 6b: Restore original solid geometry from attribute (for port B)
+  - id: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    name: GeometryReplacerSolidIntersectionB
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
 
   - id: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
     name: CSGBuilder
@@ -1160,7 +955,7 @@ edges:
   - id: 1a5f3c8d-9e2b-4d7a-8c6f-5b9e3d2a6f8c
     from: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
-    fromPort: default
+    fromPort: surface
     toPort: default
 
   - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
@@ -1300,19 +1095,19 @@ edges:
   - id: 2fef6fd8-b678-5fa7-0d81-a350ae46aeee
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod2
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
 
   - id: 3ffa7ae9-c789-6fb8-1e92-b461bf57bfff
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod3
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
 
   - id: 4ffb8bfa-d890-7fc9-2fa3-c572cf68cfff
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod4
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
 
   - id: bf5d73d5-a6c6-4a06-bd22-52a02fdbd96f
@@ -1470,46 +1265,86 @@ edges:
     fromPort: default
     toPort: default
 
-  # Solid Intersection Test - 
-  # LODSplitterWithDM lod1 port to PairCreator
+  # Solid Intersection Test -
+  # LODSplitterWithDM lod1-4 ports to GeometryExtractor
   - id: 82f70cb1-eff7-4c90-82dc-6bf5568d69d6
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod1
     toPort: default
 
-  # LODSplitterWithDM lod2 port to PairCreator
   - id: 93f81dc2-f008-5db1-93ed-7cf6679e7ae7
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod2
     toPort: default
 
-  # LODSplitterWithDM lod3 port to PairCreator
   - id: a4f92ed3-f119-6ec2-a4fe-8df7789e8bf8
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod3
     toPort: default
 
-  # LODSplitterWithDM lod4 port to PairCreator
   - id: b5fa3fe4-f22a-7fd3-b5ff-9ef889af9cf9
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod4
     toPort: default
 
-  # PairCreator to CSGBuilder
-  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+  # GeometryExtractor to FootprintReplacer
+  - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    fromPort: default
+    toPort: default
+
+  # FootprintReplacer to AreaOnAreaOverlayer
+  - id: f7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    from: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    to: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    fromPort: footprint
+    toPort: default
+
+  # AreaOnAreaOverlayer to FeatureFilter
+  - id: f8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    from: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    to: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    fromPort: area
+    toPort: default
+
+  # FeatureFilter to PairCreator
+  - id: f9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f
+    from: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: overlapping
+    toPort: default
+
+  # PairCreator A to GeometryReplacerA
+  - id: fae1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a
     from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
-    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    to: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
     fromPort: A
+    toPort: default
+
+  # PairCreator B to GeometryReplacerB
+  - id: fbf2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b
+    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    fromPort: B
+    toPort: default
+
+  # GeometryReplacerA to CSGBuilder left
+  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+    from: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    fromPort: default
     toPort: left
 
+  # GeometryReplacerB to CSGBuilder right
   - id: 540094e9-bf1e-441b-81a6-6dc100dcce64
-    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    from: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
     to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
-    fromPort: B
+    fromPort: default
     toPort: right
 
   # CSGBuilder to CSGEvaluator

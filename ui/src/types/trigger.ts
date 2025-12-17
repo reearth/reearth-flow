@@ -1,5 +1,6 @@
 import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
+import type { VarType } from "./projectVariables";
 
 export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
 export enum TriggerOrderBy {
@@ -18,6 +19,12 @@ export enum TimeIntervalEnum {
 
 export type TimeInterval = keyof typeof TimeIntervalEnum;
 
+export type Variable = {
+  key: string;
+  type: VarType;
+  value: any;
+};
+
 export type Trigger = {
   id: string;
   createdAt: string;
@@ -30,6 +37,8 @@ export type Trigger = {
   authToken?: string;
   timeInterval?: TimeInterval;
   description?: string;
+  variables: Variable[];
+  enabled: boolean;
 };
 
 export type GetTriggers = {

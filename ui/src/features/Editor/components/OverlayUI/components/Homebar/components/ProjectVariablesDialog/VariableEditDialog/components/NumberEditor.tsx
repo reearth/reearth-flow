@@ -18,7 +18,6 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     if (value === "") {
       onUpdate({
         ...variable,
-        defaultValue: "",
       });
       return;
     }
@@ -28,19 +27,21 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     if (numberRegex.test(value)) {
       // Validate against min/max constraints
       const numValue = parseFloat(value);
-      if (!isNaN(numValue)) {
+
+      // Only update if it's a valid complete number (not partial input like "1." or "-")
+      if (!isNaN(numValue) && value !== "-" && !value.endsWith(".")) {
         if (config.min !== undefined && numValue < config.min) {
           return; // Block input if below minimum
         }
         if (config.max !== undefined && numValue > config.max) {
           return; // Block input if above maximum
         }
-      }
 
-      onUpdate({
-        ...variable,
-        defaultValue: value,
-      });
+        onUpdate({
+          ...variable,
+          defaultValue: numValue,
+        });
+      }
     }
     // If invalid number format, don't update (effectively blocks the input)
   };
@@ -105,7 +106,7 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         </Label>
         <Input
           id="default-value"
-          type="text"
+          type="number"
           value={variable.defaultValue || ""}
           onChange={(e) => handleDefaultValueChange(e.target.value)}
           onKeyDown={handleKeyDown}

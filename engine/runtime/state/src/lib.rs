@@ -179,6 +179,20 @@ impl State {
             Ok(Cow::Borrowed(bytes))
         }
     }
+
+    pub fn copy_jsonl_from_state(&self, src: &State, id: &str) -> Result<()> {
+        let src_path = src.id_to_location(id, src.jsonl_ext());
+        let dst_path = self.id_to_location(id, self.jsonl_ext());
+
+        let bytes = src
+            .storage
+            .get_sync(src_path.as_path())
+            .map_err(Error::other)?;
+
+        self.storage
+            .put_sync(dst_path.as_path(), bytes)
+            .map_err(Error::other)
+    }
 }
 
 #[cfg(test)]

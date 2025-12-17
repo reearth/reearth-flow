@@ -19,8 +19,8 @@ import (
 
 // TODO: Remove this file once the migration is complete.
 type Auth0 struct {
-	base           string
 	client         *http.Client
+	base           string
 	disableLogging bool
 }
 
@@ -29,9 +29,9 @@ type response struct {
 	Name             string `json:"name"`
 	UserName         string `json:"username"`
 	Email            string `json:"email"`
-	EmailVerified    bool   `json:"email_verified"`
 	Message          string `json:"message"`
 	ErrorDescription string `json:"error_description"`
+	EmailVerified    bool   `json:"email_verified"`
 }
 
 func (u response) Into() accountgateway.AuthenticatorUser {

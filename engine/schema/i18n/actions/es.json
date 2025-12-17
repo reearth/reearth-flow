@@ -57,6 +57,10 @@
       "description": "Escribe las entidades en un archivo"
     },
     {
+      "name": "CityGmlWriter",
+      "description": "Escribe entidades en archivos CityGML 2.0"
+    },
+    {
       "name": "Clipper",
       "description": "Divide las entidades candidatas utilizando entidades recortadoras, de modo que las partes dentro o fuera de las recortadoras se produzcan por separado"
     },
@@ -173,20 +177,20 @@
       "description": "Extrae propiedades de un archivo"
     },
     {
-      "name": "FileReader",
-      "description": "Lee entidades desde un archivo"
-    },
-    {
-      "name": "FileWriter",
-      "description": "Escribe entidades en un archivo"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "Lee características de un archivo GeoJSON"
     },
     {
       "name": "GeoJsonWriter",
       "description": "Escribe entidades en un archivo GeoJSON"
+    },
+    {
+      "name": "GeoPackageReader",
+      "description": "Lee características geográficas de archivos GeoPackage (.gpkg) con soporte para características vectoriales, mosaicos y metadatos"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "Escribe características geográficas en archivos GeoPackage (.gpkg) con estructura SQLite adecuada, indexación espacial y tablas de metadatos"
     },
     {
       "name": "GeometryCoercer",
@@ -391,6 +395,10 @@
     {
       "name": "TwoDimensionForcer",
       "description": "Fuerza una geometría a ser bidimensional."
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)"
     },
     {
       "name": "VertexRemover",

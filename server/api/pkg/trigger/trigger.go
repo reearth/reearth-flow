@@ -2,6 +2,8 @@ package trigger
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type (
@@ -24,16 +26,18 @@ const (
 )
 
 type Trigger struct {
-	id            ID
 	createdAt     time.Time
 	updatedAt     time.Time
 	lastTriggered *time.Time
-	workspaceId   WorkspaceID
-	deploymentId  DeploymentID
-	description   string
-	eventSource   EventSourceType
 	authToken     *string
 	timeInterval  *TimeInterval
+	description   string
+	eventSource   EventSourceType
+	variables     []variable.Variable
+	id            ID
+	workspaceId   WorkspaceID
+	deploymentId  DeploymentID
+	enabled       bool
 }
 
 func (t *Trigger) ID() ID {
@@ -76,6 +80,14 @@ func (t *Trigger) TimeInterval() *TimeInterval {
 	return t.timeInterval
 }
 
+func (t *Trigger) Enabled() bool {
+	return t.enabled
+}
+
+func (t *Trigger) Variables() []variable.Variable {
+	return t.variables
+}
+
 func (t *Trigger) SetLastTriggered(lastTriggered time.Time) {
 	t.lastTriggered = &lastTriggered
 	t.updatedAt = time.Now()
@@ -103,6 +115,16 @@ func (t *Trigger) SetDeployment(deploymentId DeploymentID) {
 
 func (t *Trigger) SetTimeInterval(interval TimeInterval) {
 	t.timeInterval = &interval
+	t.updatedAt = time.Now()
+}
+
+func (t *Trigger) SetEnabled(enabled bool) {
+	t.enabled = enabled
+	t.updatedAt = time.Now()
+}
+
+func (t *Trigger) SetVariables(variables []variable.Variable) {
+	t.variables = variables
 	t.updatedAt = time.Now()
 }
 

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::hash::Hash;
 
+use nusamai_citygml::{GmlGeometryType, PropertyType};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::coordnum::CoordNum;
@@ -213,6 +214,19 @@ impl CityGmlGeometry {
             .for_each(|feature| feature.transform_offset(x, y, z));
     }
 
+    /// Transforms the X/Y coordinates of all geometries using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for gml_geometry in &mut self.gml_geometries {
+            gml_geometry.transform_horizontal(&transform_fn)?;
+        }
+        Ok(())
+    }
+
     pub fn get_vertices(&self) -> Vec<Coordinate3D<f64>> {
         let mut vertices = Vec::new();
         for gml_geometry in &self.gml_geometries {
@@ -289,6 +303,7 @@ pub struct GmlGeometry {
     pub id: Option<String>,
     #[serde(rename = "type")]
     pub ty: GeometryType,
+    pub gml_trait: Option<GmlGeometryTrait>,
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
@@ -320,6 +335,25 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_offset(x, y, z));
+    }
+
+    /// Transforms the X/Y coordinates of all geometries using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: &F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for poly in &mut self.polygons {
+            poly.transform_horizontal(transform_fn)?;
+        }
+        for line in &mut self.line_strings {
+            line.transform_horizontal(transform_fn)?;
+        }
+        for composite in &mut self.composite_surfaces {
+            composite.transform_horizontal(transform_fn)?;
+        }
+        Ok(())
     }
 }
 
@@ -412,6 +446,10 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
         Self {
             id,
             ty: geometry.ty.into(),
+            gml_trait: GmlGeometryTrait::maybe_new(
+                geometry.property_name,
+                geometry.gml_geometry_type,
+            ),
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,
@@ -420,6 +458,27 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
             composite_surfaces: Vec::new(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GmlGeometryTrait {
+    pub property: PropertyType,
+    pub gml_geometry_type: GmlGeometryType,
+}
+
+impl GmlGeometryTrait {
+    pub fn maybe_new(
+        property: Option<PropertyType>,
+        gml_geometry_type: Option<GmlGeometryType>,
+    ) -> Option<Self> {
+        match (property, gml_geometry_type) {
+            (Some(prop), Some(ty)) => Some(Self {
+                property: prop,
+                gml_geometry_type: ty,
+            }),
+            _ => None,
         }
     }
 }

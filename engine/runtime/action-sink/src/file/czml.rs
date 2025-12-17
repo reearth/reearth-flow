@@ -112,7 +112,7 @@ impl Sink for CzmlWriter {
         let key = if let Some(group_by) = &self.params.group_by {
             let key = group_by
                 .iter()
-                .map(|k| feature.get(&k).cloned().unwrap_or(AttributeValue::Null))
+                .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
                 .collect::<Vec<_>>();
             AttributeValue::Array(key)
         } else {
@@ -139,7 +139,7 @@ impl Sink for CzmlWriter {
             };
             let storage = storage_resolver
                 .resolve(&file_path)
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::czml_writer)?;
             let (sender, receiver) = std::sync::mpsc::sync_channel(1000);
             let gctx = ctx.as_context();
 
@@ -154,7 +154,7 @@ impl Sink for CzmlWriter {
                             for packet in packets {
                                 let bytes = serde_json::to_vec(&packet).unwrap();
                                 if sender.send(bytes).is_err() {
-                                    return Err(SinkError::CzmlWriter(
+                                    return Err(SinkError::czml_writer(
                                         "Failed to send packet".to_string(),
                                     ));
                                 };

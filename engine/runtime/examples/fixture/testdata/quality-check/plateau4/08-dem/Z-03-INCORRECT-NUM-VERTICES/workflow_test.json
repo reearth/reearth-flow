@@ -1,0 +1,26 @@
+{
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "description": "Test for plateau4 08 incorrect number of vertices.",
+  "intermediateAssertions": [
+    {
+      "edgeId": "078eb78e-d9dc-4e99-a250-78a354118fcd",
+      "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_dem.json",
+      "includeFields": ["不正な頂点の数"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "08_地形_検査結果一覧.csv",
+      "includeColumns": ["不正な頂点の数"]
+    }
+  },
+  "cityGmlPath": "udx/dem/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

@@ -7,11 +7,10 @@ graphs:
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FileReader
+        name: CityGmlReader
         type: action
-        action: FileReader
+        action: CityGmlReader
         with:
-          format: citygml
           dataset: |
             file::join_path(env.get("currentPath"), file::convert_slice_to_slash("runtime/examples/fixture/workflow/requirement/plateau4/a009-10/files/523107_luse_6697_op.gml"))
 

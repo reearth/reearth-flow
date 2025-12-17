@@ -49,7 +49,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData }) => {
         viewer.entities.add(entity);
         newEntities.push(entity);
 
-        // Add surface entities if they exist
+        // Add surface entities if they exist (for buildings with walls/roofs/floors)
         const entityWithSurfaces = entity as any;
         if (
           entityWithSurfaces.surfaces &&
@@ -59,6 +59,19 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData }) => {
             viewer.entities.add(surfaceEntity);
             newEntities.push(surfaceEntity);
           });
+        }
+
+        // Add additional polygon entities if they exist (for zones with multiple polygons)
+        if (
+          entityWithSurfaces.additionalPolygons &&
+          Array.isArray(entityWithSurfaces.additionalPolygons)
+        ) {
+          entityWithSurfaces.additionalPolygons.forEach(
+            (additionalEntity: any) => {
+              viewer.entities.add(additionalEntity);
+              newEntities.push(additionalEntity);
+            },
+          );
         }
       }
     });

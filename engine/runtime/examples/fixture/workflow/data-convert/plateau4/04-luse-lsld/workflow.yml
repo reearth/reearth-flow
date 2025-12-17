@@ -10,7 +10,7 @@ with:
   targetPackages:
     - luse
     - lsld
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
@@ -39,67 +39,21 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
           format: citygml
           dataset: |
             env.get("__value")["path"]
 
-      - id: dc498449-5478-4bff-abaa-59f2d160925f
-        name: PLATEAU4.MaxLodExtractor
+      - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
+        name: AttributeFlattener
         type: action
-        action: PLATEAU4.MaxLodExtractor
-        with:
-          cityGmlPathAttribute: path
-          maxLodAttribute: maxLod
+        action: PLATEAU4.AttributeFlattener
 
-      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        name: AttributeAggregatorByMaxLod
+      - id: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
+        name: TwoDimensionForcer
         type: action
-        action: AttributeAggregator
-        with:
-          aggregateAttributes:
-          - newAttribute: file
-            attributeValue: |
-              file::extract_filename(env.get("__value")["path"])
-          - newAttribute: type
-            attributeValue: |
-              env.get("__feature_type")
-          - newAttribute: maxLod
-            attributeValue: |
-              env.get("__value").maxLod
-          calculation: |
-            1
-          calculationAttribute: count
-          method: count
-
-      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        name: AttributeMapperByMaxLod
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-          - attribute: code
-            expr: |
-              env.get("__value").file[0..6]
-          - attribute: type
-            expr: |
-              env.get("__value")["type"].split(":")[0]
-          - attribute: maxLod
-            expr: |
-              env.get("__value").maxLod
-          - attribute: file
-            expr: |
-              env.get("__value").file
-
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: FileWriterTsvFilePath
-        type: action
-        action: FileWriter
-        with:
-          format: csv
-          output: |
-            file::join_path(env.get("outputPath"), "maxLod.csv")
+        action: TwoDimensionForcer
 
       - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
         name: FeatureFilterByPackage
@@ -114,6 +68,7 @@ graphs:
                 env.get("__value")["package"] == "lsld"
               outputPort: lsld
 
+      # LUSE processing branch
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeMapperLuse
         type: action
@@ -121,21 +76,51 @@ graphs:
         with:
           mappers:
             - attribute: meshcode
-              valueAttribute: meshCode
+              expr: |
+                file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
             - attribute: city_code
               valueAttribute: cityCode
             - attribute: city_name
               valueAttribute: cityName
             - attribute: feature_type
-              valueAttribute: gmlName
+              valueAttribute: featureType
             - attribute: gml_id
               valueAttribute: gmlId
             - attribute: luse_class
-              parentAttribute: cityGmlAttributes
-              childAttribute: luse:class
+              expr: |
+                env.get("__value")["luse:class"]
+            - attribute: luse_usage
+              expr: |
+                env.get("__value")["luse:usage"]
+            - attribute: core_creationDate
+              expr: |
+                env.get("__value")["core:creationDate"]
+            - attribute: uro_urbanPlanType
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:urbanPlanType"]
+            - attribute: uro_prefecture
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:prefecture"]
+            - attribute: uro_city
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:city"]
+            - attribute: uro_surveyYear
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:surveyYear"]
+            - attribute: uro_areaInSquareMeter
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:areaInSquareMeter"]
+            - attribute: uro_orgLandUse
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:orgLandUse"]
+            - attribute: uro_geometrySrcDescLod1
+              expr: |
+                env.get("__value")["uro:DataQualityAttribute_uro:geometrySrcDescLod1"]
+            - attribute: attributes
+              valueAttribute: attributes
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: MVTWriter
+        name: MVTWriterLuse
         type: action
         action: MVTWriter
         with:
@@ -143,10 +128,195 @@ graphs:
             "luse"
           minZoom: 8
           maxZoom: 16
+          extent: 65536
           output: |
-            file::join_path(env.get("outputPath"), "luse")
+            file::join_path(env.get("workerArtifactPath"), "luse")
           compressOutput: |
-            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_luse_mvt.zip")
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_luse_lsld_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 14);
+            } else if city_gml.ends_with("_luse_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 9);
+            }
+            file::join_path(artifact, city_gml + "_luse_mvt.zip")
+
+      # LSLD processing branch
+      - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        name: AttributeMapperLsld
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              expr: |
+                file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: featureType
+            - attribute: gml_id
+              valueAttribute: gmlId
+            - attribute: core_creationDate
+              expr: |
+                env.get("__value")["core:creationDate"]
+            - attribute: urf_validFrom
+              expr: |
+                env.get("__value")["urf:validFrom"]
+            - attribute: urf_prefecture
+              expr: |
+                env.get("__value")["urf:prefecture"]
+            - attribute: urf_location
+              expr: |
+                env.get("__value")["urf:location"]
+            - attribute: urf_disasterType
+              expr: |
+                env.get("__value")["urf:disasterType"]
+            - attribute: urf_areaType
+              expr: |
+                env.get("__value")["urf:areaType"]
+            - attribute: urf_zoneNumber
+              expr: |
+                env.get("__value")["urf:zoneNumber"]
+            - attribute: urf_zoneName
+              expr: |
+                env.get("__value")["urf:zoneName"]
+            - attribute: urf_status
+              expr: |
+                env.get("__value")["urf:status"]
+            - attribute: uro_geometrySrcDescLod1
+              expr: |
+                env.get("__value")["uro:DataQualityAttribute_uro:geometrySrcDescLod1"]
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: sort_order
+              expr: |
+                let area_type = env.get("__value")["urf:areaType_code"];
+                if area_type == () { area_type = env.get("__value")["urf:areaType"]; }
+                if area_type == "1" || area_type == 1 { 1 }
+                else if area_type == "2" || area_type == 2 { 2 }
+                else if area_type == "3" || area_type == 3 { 3 }
+                else if area_type == "4" || area_type == 4 { 4 }
+                else { 999 }
+
+      - id: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        name: FeatureSorterLsld
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - sort_order
+          order: ascending
+
+      - id: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+        name: AttributeManagerLsldRemoveSortOrder
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: sort_order
+              method: remove
+
+      - id: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        name: MVTWriterLsld
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            "lsld"
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "lsld")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_luse_lsld_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 14);
+            } else if city_gml.ends_with("_lsld_mvt") {
+              city_gml = city_gml.sub_string(0, city_gml.len() - 9);
+            }
+            file::join_path(artifact, city_gml + "_lsld_mvt.zip")
+
+      # Summary CSV generation - LUSE branch
+      - id: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
+        name: StatisticsCalculatorLuse
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: total_features_written
+              expr: |
+                1
+
+      - id: 6a7b8c9d-0003-2a3b-4c5d-6e7f8a9b0c1d
+        name: SummaryMapperLuse
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: key
+              expr: |
+                "luse"
+            - attribute: suffix
+              expr: |
+                "mvt"
+            - attribute: tileset_path
+              expr: |
+                let artifact = env.get("workerArtifactPath");
+                if artifact.starts_with("file://") {
+                  artifact = artifact.sub_string(7);
+                }
+                artifact + "/luse"
+            # - attribute: total_features_written
+            #   valueAttribute: total_features_written
+
+      # Summary CSV generation - LSLD branch
+      - id: 6a7b8c9d-0011-2a3b-4c5d-6e7f8a9b0c1d
+        name: StatisticsCalculatorLsld
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: total_features_written
+              expr: |
+                1
+
+      - id: 6a7b8c9d-0013-2a3b-4c5d-6e7f8a9b0c1d
+        name: SummaryMapperLsld
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: key
+              expr: |
+                "lsld"
+            - attribute: suffix
+              expr: |
+                "mvt"
+            - attribute: tileset_path
+              expr: |
+                let artifact = env.get("workerArtifactPath");
+                if artifact.starts_with("file://") {
+                  artifact = artifact.sub_string(7);
+                }
+                artifact + "/lsld"
+            # - attribute: total_features_written
+            #   valueAttribute: total_features_written
+
+      - id: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+        name: SummaryCSVWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let city_code = env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5];
+            file::join_path(artifact, "summary_" + city_code + ".csv")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -159,32 +329,22 @@ graphs:
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
         fromPort: default
         toPort: default
-      - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
-        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: dc498449-5478-4bff-abaa-59f2d160925f
-        fromPort: default
-        toPort: default
-      - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
-        from: dc498449-5478-4bff-abaa-59f2d160925f
-        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        fromPort: default
-        toPort: default
-      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
-        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        fromPort: default
-        toPort: default
-      - id: 993360df-5cfd-4525-9626-bfe13fa62117
-        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        fromPort: default
-        toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        to: 3820b7e2-a1ca-436b-acb0-72b907c8b246
+        fromPort: default
+        toPort: default
+      - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
+        from: 3820b7e2-a1ca-436b-acb0-72b907c8b246
+        to: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
         fromPort: default
         toPort: default
       - id: 1e29f24a-620b-472c-805f-8295bf5920c2
+        from: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
+        to: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        fromPort: default
+        toPort: default
+      - id: 28abe7a9-8bdc-414d-b15e-90cb2a451a70
         from: 8510992d-2546-4e89-a09b-f31ff435bbb7
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: luse
@@ -192,5 +352,67 @@ graphs:
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: default
+        toPort: default
+
+      # LSLD branch edges
+      - id: 1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b
+        from: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        to: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        fromPort: lsld
+        toPort: default
+      - id: 2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c
+        from: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        to: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        fromPort: default
+        toPort: default
+      - id: 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+        from: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+        fromPort: default
+        toPort: default
+      - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+        from: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+        to: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        fromPort: default
+        toPort: default
+
+      # Summary CSV edges - LUSE branch
+      # AttributeMapperLuse → StatisticsCalculatorLuse
+      - id: 2c3d4e5f-0001-8c9d-0e1f-2a3b4c5d6e70
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # StatisticsCalculatorLuse → SummaryMapperLuse (default port outputs aggregated result)
+      - id: 2c3d4e5f-0003-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
+        to: 6a7b8c9d-0003-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # SummaryMapperLuse → SummaryCSVWriter
+      - id: 2c3d4e5f-0004-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0003-2a3b-4c5d-6e7f8a9b0c1d
+        to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+        fromPort: default
+        toPort: default
+
+      # Summary CSV edges - LSLD branch
+      # AttributeMapperLsld → StatisticsCalculatorLsld
+      - id: 2c3d4e5f-0011-8c9d-0e1f-2a3b4c5d6e70
+        from: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        to: 6a7b8c9d-0011-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # StatisticsCalculatorLsld → SummaryMapperLsld (default port outputs aggregated result)
+      - id: 2c3d4e5f-0013-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0011-2a3b-4c5d-6e7f8a9b0c1d
+        to: 6a7b8c9d-0013-2a3b-4c5d-6e7f8a9b0c1d
+        fromPort: default
+        toPort: default
+      # SummaryMapperLsld → SummaryCSVWriter
+      - id: 2c3d4e5f-0014-8c9d-0e1f-2a3b4c5d6e70
+        from: 6a7b8c9d-0013-2a3b-4c5d-6e7f8a9b0c1d
+        to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
         fromPort: default
         toPort: default

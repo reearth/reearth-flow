@@ -3,6 +3,7 @@ mod doc_action;
 mod dot;
 mod errors;
 mod factory;
+mod incremental;
 mod logger;
 mod run;
 mod schema_action;

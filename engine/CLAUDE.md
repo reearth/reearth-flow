@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with the Engine component of this repository.
+
+For monorepo architecture, cross-component workflows, and general project guidance, see @../CLAUDE.md
 
 ## Development Commands
 
@@ -32,10 +34,12 @@ cargo run --package reearth-flow-cli -- doc-action
 ```
 
 ### Development Dependencies
-- **Linux/Debian**: `libxml2-dev`, `pkg-config`
-- **macOS**: `brew install libxml2 pkg-config`
-- **Windows**: vcpkg with libxml2
+- **Linux/Debian**: `apt-get install libxml2-dev pkg-config libproj-dev`
+- **macOS**: `brew install libxml2 pkg-config proj`
+- **Windows**: vcpkg with libxml2 and proj
 - **Optional WASM support**: Python 3.11 + `pip install py2wasm`
+
+**Note**: PROJ library is required for coordinate system transformations in the HorizontalReprojector action.
 
 ## Architecture Overview
 
@@ -168,14 +172,15 @@ ls <working_dir>/projects/<project>/jobs/<job_id>/action-log/
 
 **Note**: Keep feature writing enabled during development - intermediate data is essential for debugging complex workflow issues.
 
-## Git Commit Guidelines
+## Code Quality Requirements
 
-When creating git commits, do not include Claude Code attribution or "Generated with Claude Code" messages in commit messages. Keep commit messages clean and focused on the actual changes made.
+**Before marking any task as complete, ALWAYS run:**
 
-## Development Memo
-
-- **Implementation Guideline**: After completing implementation, always run `cargo test`, `cargo make clippy` and `cargo fmt --all`
-- Clippy Reminder: When using clippy, use `cargo make clippy`. Make sure to run it as the last step after completing modifications.
+```bash
+cargo make format     # Format code
+cargo make clippy     # Run linting
+cargo make test       # Ensure all tests pass
+```
 
 ## Runtime Architecture Deep Dive
 
@@ -200,5 +205,17 @@ The engine implements an actor model where each node (source, processor, sink) r
    - **I/O efficiency**: Async I/O for sources reading files/network
    - **spawn_blocking management**: Tokio manages the thread pool
 
-## Commit Message Guidelines
-- Keep commit messages concise with just a subject line, without Claude Code attribution or detailed explanations.
+## Integration Points
+
+### With Server
+- **Workflow definitions** - Receives YAML/JSON workflows from server
+- **Job execution** - Coordinated via Google Cloud Batch
+- **Results** - Writes output to cloud storage (GCS/S3)
+- **Logs** - Publishes execution logs to Google Pub/Sub
+
+### With UI
+- **Action schemas** - Provides JSON schemas for action configuration
+- **Workflow validation** - Validates workflow structure and connections
+- **Documentation** - Generates action documentation for UI display
+
+See @../CLAUDE.md for complete integration architecture across all components.

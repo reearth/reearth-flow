@@ -96,7 +96,7 @@ const RangeWidget = <
             onChange={handleSliderChange}
             onBlur={(e) => onBlur?.(id, Number(e.target.value))}
             onFocus={(e) => onFocus?.(id, Number(e.target.value))}
-            aria-describedby={ariaDescribedByIds<T>(id)}
+            aria-describedby={ariaDescribedByIds(id)}
             aria-invalid={rawErrors.length > 0}
             className="h-2 cursor-pointer appearance-none rounded-lg bg-secondary"
             style={{

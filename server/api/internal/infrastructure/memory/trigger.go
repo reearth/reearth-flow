@@ -14,9 +14,9 @@ import (
 )
 
 type Trigger struct {
-	lock sync.Mutex
 	data map[id.TriggerID]*trigger.Trigger
 	f    repo.WorkspaceFilter
+	lock sync.Mutex
 }
 
 func NewTrigger() *Trigger {

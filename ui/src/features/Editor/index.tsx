@@ -47,6 +47,8 @@ export default function Editor({
     isSaving,
     spotlightUserClientId,
     spotlightUser,
+    activeUsersDebugRuns,
+    loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -68,6 +70,7 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleWorkflowAddFromSelection,
     handleDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
@@ -137,15 +140,19 @@ export default function Editor({
             onProjectSnapshotSave={handleProjectSnapshotSave}
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
-            onLayoutChange={handleLayoutChange}>
+            onLayoutChange={handleLayoutChange}
+            onDebugRunJoin={loadExternalDebugJob}
+            activeUsersDebugRuns={activeUsersDebugRuns}>
             <Canvas
               nodes={nodes}
               edges={edges}
               yDoc={yDoc}
               users={users}
               currentWorkflowId={currentWorkflowId}
+              isMainWorkflow={isMainWorkflow}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
+              onWorkflowAddFromSelection={handleWorkflowAddFromSelection}
               onNodesAdd={handleNodesAdd}
               onBeforeDelete={handleBeforeDeleteNodes}
               onNodesChange={handleNodesChange}

@@ -71,7 +71,7 @@ export default ({
     rawWorkflows,
     currentYWorkflow,
     handleYWorkflowAdd,
-    // handleYWorkflowAddFromSelection,
+    handleYWorkflowAddFromSelection,
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
@@ -204,6 +204,7 @@ export default ({
     nodes,
     edges,
     rawWorkflows,
+    isMainWorkflow,
     handleWorkflowUpdate: handleYWorkflowUpdate,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
@@ -249,8 +250,14 @@ export default ({
     [fitView, handleYLayoutChange],
   );
 
-  const { handleDebugRunStart, handleDebugRunStop } = useDebugRun({
+  const {
+    handleDebugRunStart,
+    handleDebugRunStop,
+    loadExternalDebugJob,
+    activeUsersDebugRuns,
+  } = useDebugRun({
     rawWorkflows,
+    yAwareness,
   });
 
   const handleBeforeDeleteNodes = useCallback(
@@ -305,7 +312,11 @@ export default ({
 
       switch (handler.keys?.join("")) {
         case "s":
-          if (hasModifier && !isSaving) handleProjectSnapshotSave?.();
+          if (hasModifier && !isSaving && !hasShift)
+            handleProjectSnapshotSave?.();
+          if (hasModifier && hasShift)
+            handleYWorkflowAddFromSelection(nodes, edges);
+
           break;
         case "z":
           if (hasModifier && hasShift) handleYWorkflowRedo?.();
@@ -391,6 +402,8 @@ export default ({
     showBeforeDeleteDialog,
     spotlightUserClientId,
     spotlightUser,
+    activeUsersDebugRuns,
+    loadExternalDebugJob,
     handleWorkflowDeployment,
     handleProjectShare,
     handleCurrentProjectExport,
@@ -398,6 +411,7 @@ export default ({
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
+    handleWorkflowAddFromSelection: handleYWorkflowAddFromSelection,
     handleWorkflowRename,
     handleWorkflowOpen,
     handleWorkflowClose,

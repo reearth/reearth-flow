@@ -86,6 +86,21 @@ impl LineString3D<f64> {
         }
     }
 
+    /// Transforms the X/Y coordinates of all points using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for coord in &mut self.0 {
+            let (new_x, new_y) = transform_fn(coord.x, coord.y)?;
+            coord.x = new_x;
+            coord.y = new_y;
+        }
+        Ok(())
+    }
+
     /// Calculates the exterior angle sum of the LineString, assuming that the line is closed and that the line is planar.
     /// The sign of the angle sum is determined by the normal vector `n`. If `n` is not provided, it is estimated from the cross products of the first segments.
     pub fn exterior_angle_sum(&self, n: Option<Coordinate3D<f64>>) -> f64 {
@@ -210,7 +225,7 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
         Self(value)
     }
 
-    pub fn points(&self) -> PointsIter<T, Z> {
+    pub fn points(&'_ self) -> PointsIter<'_, T, Z> {
         PointsIter(self.0.iter())
     }
 

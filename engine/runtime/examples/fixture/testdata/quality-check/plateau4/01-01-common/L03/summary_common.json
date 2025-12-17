@@ -1,0 +1,42 @@
+[
+  {
+    "name": "L01エラー",
+    "count": 0
+  },
+  {
+    "name": "L04エラー",
+    "count": 0
+  },
+  {
+    "name": "不正なcodeSpace数",
+    "count": 1
+  },
+  {
+    "name": "L05CRS識別子",
+    "count": 0
+  },
+  {
+    "name": "L06エラー",
+    "count": 0
+  },
+  {
+    "name": "T03エラー",
+    "count": 0
+  },
+  {
+    "name": "xlink参照先なし",
+    "count": 0
+  },
+  {
+    "name": "gml:id重複",
+    "count": 0
+  },
+  {
+    "name": "gml:id書式不正",
+    "count": 0
+  },
+  {
+    "name": "L-frn-01エラー",
+    "count": 0
+  }
+]

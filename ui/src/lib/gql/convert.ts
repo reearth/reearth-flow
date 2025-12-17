@@ -16,6 +16,7 @@ import {
   type CmsModelFragment,
   type CmsItemFragment,
   type CmsAssetFragment,
+  type UserFacingLogFragment,
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   type UserFacingLogLevel as GraphqlUserFacingLogLevel,
@@ -50,8 +51,6 @@ import type {
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
-
-import { UserFacingLogFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -102,10 +101,16 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   workspaceId: trigger.workspaceId,
   createdAt: trigger.createdAt,
   updatedAt: trigger.updatedAt,
+  lastTriggered: trigger.lastTriggered ?? undefined,
   eventSource: trigger.eventSource,
+  enabled: trigger.enabled,
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
+  variables: trigger.variables.map((v) => ({
+    ...v,
+    type: toUserParamVarType(v.type),
+  })),
 });
 
 export const toNodeExecution = (

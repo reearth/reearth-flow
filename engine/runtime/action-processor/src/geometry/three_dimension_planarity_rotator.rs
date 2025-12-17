@@ -133,6 +133,7 @@ fn rotate_geometry(geometry: &Geometry3D<f64>) -> Vec<RotatedGeometry> {
         Geometry3D::Polygon(_) => vec![RotatedGeometry::from_original(geometry.clone())],
         Geometry3D::Rect(_) => vec![RotatedGeometry::from_original(geometry.clone())],
         Geometry3D::Triangle(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::TriangularMesh(_) => vec![RotatedGeometry::from_original(geometry.clone())],
         Geometry3D::Solid(solid) => solid
             .all_faces()
             .iter()
@@ -182,7 +183,6 @@ fn rotate_single_geometry(geometry: &Geometry3D<f64>) -> Option<Geometry3D<f64>>
         Geometry3D::Line(line) => vec![line.start, line.end],
         Geometry3D::LineString(line_string) => line_string.coords().cloned().collect(),
         Geometry3D::Polygon(polygon) => polygon.exterior().coords().cloned().collect(),
-        Geometry3D::Rect(rect) => rect.to_polygon().exterior().coords().cloned().collect(),
         Geometry3D::Triangle(triangle) => triangle
             .to_polygon()
             .exterior()
@@ -190,12 +190,7 @@ fn rotate_single_geometry(geometry: &Geometry3D<f64>) -> Option<Geometry3D<f64>>
             .cloned()
             .collect(),
         // other geometries has multiple surfaces
-        Geometry3D::Solid(_) => return None,
-        Geometry3D::MultiPoint(_) => return None,
-        Geometry3D::MultiPolygon(_) => return None,
-        Geometry3D::MultiLineString(_) => return None,
-        Geometry3D::GeometryCollection(_) => return None,
-        Geometry3D::CSG(_) => return None,
+        _ => return None,
     };
 
     let surface_points = surface_coords

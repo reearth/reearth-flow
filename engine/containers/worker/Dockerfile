@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.88-slim-bookworm AS builder
+FROM rust:1.91-slim-bookworm AS builder
 
 ARG NAME=reearth-flow
 WORKDIR /usr/src/${NAME}
@@ -26,7 +26,9 @@ RUN  \
     libxml2-dev \
     pkg-config \
     clang \
-    libdbus-1-dev
+    libdbus-1-dev \
+    libproj-dev \
+    sqlite3
 
 RUN echo "ja_JP UTF-8" > /etc/locale.gen && locale-gen
 
@@ -38,6 +40,7 @@ RUN \
     --mount=type=bind,source=runtime,target=runtime \
     --mount=type=bind,source=cli,target=cli \
     --mount=type=bind,source=plateau-gis-quality-checker,target=plateau-gis-quality-checker \
+    --mount=type=bind,source=plateau-tiles-test,target=plateau-tiles-test \
     --mount=type=bind,source=worker,target=worker \
     cargo build --package reearth-flow-worker --bin reearth-flow-worker --release && mv target/release/reearth-flow-worker /tmp/reearth-flow-worker
 
@@ -50,7 +53,8 @@ RUN \
     apt-get install -y \
     ca-certificates \
     libxml2 \
-    python3 && \
+    python3 \
+    libproj25 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin

@@ -7,16 +7,21 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_tran.json",
-      "includeFields": ["L-TRAN-02 隣接面重複"]
+      "includeFields": [
+        "L-TRAN-02 隣接面重複"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "03_交通_検査結果一覧.csv",
-      "includeColumns": ["L-TRAN-02 隣接面重複"]
+      "includeColumns": [
+        "L-TRAN-02 隣接面重複"
+      ]
     }
   },
   "cityGmlPath": "udx/tran/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": false,
-  "skip": true
+  "skip": true,
+  "epsg": 6677
 }

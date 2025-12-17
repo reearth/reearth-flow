@@ -1,11 +1,12 @@
 id: efb10562-9fec-4d8b-8348-1714751f03cf
-name: "PLATEAU4-quality-check-03-tran-surface-orientation"
+name: "PLATEAU4-quality-check-05-luse-urf-area"
 entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
 with:
   cityGmlPath:
   schemas:
   codelists:
   outputPath:
+  epsg:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -94,6 +95,13 @@ graphs:
             - expr: |
                 env.get("__value").featureType != "CityModel"
               outputPort: default
+
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: env.get("epsg")
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM
@@ -382,11 +390,10 @@ graphs:
 
       # Write qc_result_ok file
       - id: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae
-        name: FileWriterQcResultOk
+        name: JsonWriterQcResultOk
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
@@ -443,6 +450,11 @@ graphs:
         toPort: default
       - id: bc1dd787-c39b-4fec-8fbc-a7f9911088f3
         from: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        fromPort: default
+        toPort: default
+      - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
         to: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         fromPort: default
         toPort: default

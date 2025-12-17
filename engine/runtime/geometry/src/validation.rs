@@ -100,6 +100,8 @@ pub enum ValidationProblem {
     ElementsTouchOnALine,
     /// Two Polygons of a MultiPolygon are identical
     ElementsAreIdentical,
+    /// Degenerate Geometry
+    DegenerateGeometry,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -275,6 +277,9 @@ impl Display for ValidationProblemReport {
                     ValidationProblem::ElementsAreIdentical => {
                         str_buffer.push("Two Polygons of MultiPolygons are identical".to_string())
                     }
+                    ValidationProblem::DegenerateGeometry => {
+                        str_buffer.push("Degenerate Geometry".to_string())
+                    }
                 };
                 str_buffer.into_iter().rev().collect::<Vec<_>>().join("")
             })
@@ -285,10 +290,10 @@ impl Display for ValidationProblemReport {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ValidationType {
     DuplicatePoints,
-    DuplicateConsecutivePoints,
+    DuplicateConsecutivePoints(f64),
     CorruptGeometry,
     SelfIntersection,
 }
@@ -426,7 +431,7 @@ where
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for LineString<T, Z>
 {
@@ -441,19 +446,13 @@ impl<
             }
         }
         match valid_type {
-            ValidationType::DuplicateConsecutivePoints => {
-                for i in 0..self.0.len().saturating_sub(1) {
-                    let p1 = &self.0[i];
-                    let p2 = &self.0[i + 1];
-                    if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
-                        if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
-                            reason.push(ValidationProblemAtPosition(
-                                ValidationProblem::DuplicateConsecutivePoints,
-                                ValidationProblemPosition::LineString(CoordinatePosition(
-                                    i as isize,
-                                )),
-                            ));
-                        }
+            ValidationType::DuplicateConsecutivePoints(tolerance) => {
+                for (i, e) in self.0.windows(2).enumerate() {
+                    if (e[0] - e[1]).norm().to_f64().unwrap_or(f64::INFINITY) <= tolerance {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::DuplicateConsecutivePoints,
+                            ValidationProblemPosition::LineString(CoordinatePosition(i as isize)),
+                        ));
                     }
                 }
             }
@@ -496,14 +495,14 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for MultiLineString<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
         match valid_type {
-            ValidationType::DuplicateConsecutivePoints => {
+            ValidationType::DuplicateConsecutivePoints(_tolerance) => {
                 for (line_idx, line_string) in self.0.iter().enumerate() {
                     if let Some(result) = line_string.validate(valid_type.clone()) {
                         for problem in result.0.iter() {
@@ -549,29 +548,25 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Polygon<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
         match valid_type {
-            ValidationType::DuplicateConsecutivePoints => {
+            ValidationType::DuplicateConsecutivePoints(tolerance) => {
                 // Check exterior ring
                 let coords: Vec<Coordinate<T, Z>> = self.exterior().coords().cloned().collect();
-                for i in 0..coords.len().saturating_sub(1) {
-                    let p1 = &coords[i];
-                    let p2 = &coords[i + 1];
-                    if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
-                        if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
-                            reason.push(ValidationProblemAtPosition(
-                                ValidationProblem::DuplicateConsecutivePoints,
-                                ValidationProblemPosition::Polygon(
-                                    RingRole::Exterior,
-                                    CoordinatePosition(i as isize),
-                                ),
-                            ));
-                        }
+                for (i, e) in coords.windows(2).enumerate() {
+                    if (e[0] - e[1]).norm().to_f64().unwrap_or(f64::INFINITY) <= tolerance {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::DuplicateConsecutivePoints,
+                            ValidationProblemPosition::Polygon(
+                                RingRole::Exterior,
+                                CoordinatePosition(i as isize),
+                            ),
+                        ));
                     }
                 }
 
@@ -711,7 +706,7 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for MultiPolygon<T, Z>
 {
@@ -792,26 +787,23 @@ impl<
     > Validator<T, Z> for Rect<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
-        let polygon = self.to_polygon();
-        if let Some(result) = polygon.validate(valid_type.clone()) {
-            for problem in result.0.iter() {
-                reason.push(ValidationProblemAtPosition(
-                    problem.0.clone(),
-                    ValidationProblemPosition::Rect(RingRole::Exterior, CoordinatePosition(-1)),
-                ));
-            }
+        if valid_type != ValidationType::CorruptGeometry {
+            return None;
         }
-        if reason.is_empty() {
-            None
+        if self.min.x >= self.max.x || self.min.y >= self.max.y || self.min.z >= self.max.z {
+            let issue = ValidationProblemAtPosition(
+                ValidationProblem::DegenerateGeometry,
+                ValidationProblemPosition::Rect(RingRole::Exterior, CoordinatePosition(-1)),
+            );
+            Some(ValidationProblemReport(vec![issue]))
         } else {
-            Some(ValidationProblemReport(reason))
+            None
         }
     }
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Geometry<T, Z>
 {
@@ -827,6 +819,7 @@ impl<
             Geometry::MultiPolygon(mp) => mp.validate(valid_type),
             Geometry::Rect(rect) => rect.validate(valid_type),
             Geometry::Triangle(_) => unimplemented!(),
+            Geometry::TriangularMesh(tm) => tm.validate(valid_type),
             Geometry::Solid(s) => s.validate(valid_type),
             Geometry::GeometryCollection(gc) => {
                 let mut reason = Vec::new();
@@ -863,12 +856,12 @@ mod tests {
         // Test data with consecutive points 0.9cm apart
         let line_string = LineString(vec![
             Coordinate::new_(0.0, 0.0),
-            Coordinate::new_(0.000000081, 0.0),
+            Coordinate::new_(0.002, 0.0),
             Coordinate::new_(1.0, 0.0),
         ]);
 
         let report = line_string
-            .validate(ValidationType::DuplicateConsecutivePoints)
+            .validate(ValidationType::DuplicateConsecutivePoints(0.01))
             .expect("Expected validation error but got None");
 
         assert_eq!(report.error_count(), 1);
@@ -883,12 +876,12 @@ mod tests {
         // Test data with consecutive points 2cm apart
         let line_string = LineString(vec![
             Coordinate::new_(0.0, 0.0),
-            Coordinate::new_(0.00000018, 0.0),
+            Coordinate::new_(0.02, 0.0),
             Coordinate::new_(1.0, 0.0),
         ]);
 
         assert_eq!(
-            line_string.validate(ValidationType::DuplicateConsecutivePoints),
+            line_string.validate(ValidationType::DuplicateConsecutivePoints(0.01)),
             None
         );
     }

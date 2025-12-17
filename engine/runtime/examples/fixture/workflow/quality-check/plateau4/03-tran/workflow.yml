@@ -1,12 +1,13 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: b9ca5efa-c20d-4587-891c-5bda5c869db4
-name: "PLATEAU4-quality-check-03-tran-surface-orientation"
+name: "PLATEAU4-quality-check-03-tran"
 entryGraphId: 742b6f3e-2a63-490a-aec2-829b10fea5f2
 with:
   cityGmlPath:
   schemas:
   codelists:
   outputPath:
+  epsg:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -85,6 +86,13 @@ graphs:
           flatten: true
           dataset: |
             env.get("__value")["path"]
+
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: env.get("epsg")
 
       # Unreferenced XLink detection for L-TRAN-03
       - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
@@ -309,7 +317,7 @@ graphs:
         type: action
         action: GeometryCoercer
         with:
-          coercerType: lineString
+          targetType: lineString
 
       # Separate LOD1 and LOD2,3
       - id: effce2ee-bc3b-4256-8efb-27622e141f05
@@ -690,9 +698,8 @@ graphs:
       - id: 6f05d51b-3587-4625-8b9d-5f0ca614eed5
         name: FileWriterQcResultOk
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
@@ -744,6 +751,11 @@ graphs:
         toPort: default
       - id: 3c9b1831-266b-492b-a51f-dbf3848882c2
         from: 242e339a-c7df-4be4-82f7-3223a6ed2145
+        to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        fromPort: default
+        toPort: default
+      - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
         to: 51431704-ac14-41cd-988b-88141dc6e326
         fromPort: default
         toPort: default

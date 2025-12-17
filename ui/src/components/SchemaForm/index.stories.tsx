@@ -6,7 +6,7 @@ import {
 } from "@radix-ui/react-icons";
 import { RJSFSchema } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
-import type { Meta } from "@storybook/react";
+import type { Meta } from "@storybook/react-vite";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../buttons";

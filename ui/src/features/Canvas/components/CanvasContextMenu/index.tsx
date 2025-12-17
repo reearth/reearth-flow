@@ -8,7 +8,7 @@ import {
   ScissorsIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { EdgeChange, XYPosition } from "@xyflow/react";
+import { Edge, EdgeChange, XYPosition } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -24,11 +24,14 @@ import { Node, NodeChange } from "@flow/types";
 type Props = {
   contextMenu: ContextMenuMeta;
   data?: Node | Node[];
+  edges: Edge[];
   allNodes: Node[];
+  isMainWorkflow: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onWorkflowOpen?: (workflowId: string) => void;
+  onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodesDeleteCleanup?: (nodes: Node[]) => void;
   onNodeSettings?: (e: React.MouseEvent | undefined, nodeId: string) => void;
   onCopy?: (node?: Node) => void;
@@ -41,8 +44,11 @@ type Props = {
 const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
+  edges,
   allNodes,
+  isMainWorkflow,
   onWorkflowOpen,
+  onWorkflowAddFromSelection,
   onNodeSettings,
   onNodesChange,
   onNodesDeleteCleanup,
@@ -87,6 +93,10 @@ const CanvasContextMenu: React.FC<Props> = ({
     [onWorkflowOpen],
   );
 
+  const handleWorkflowAddFromSelection = useCallback(() => {
+    onWorkflowAddFromSelection?.(allNodes, edges);
+  }, [onWorkflowAddFromSelection, allNodes, edges]);
+
   const handleNodeDelete = useCallback(
     async (node?: Node, nodes?: Node[]) => {
       if (!nodes && !node) return;
@@ -102,6 +112,16 @@ const CanvasContextMenu: React.FC<Props> = ({
       }
     },
     [onBeforeDelete, onNodesChange, onNodesDeleteCleanup],
+  );
+
+  const clipboardHasReadersOrWriters =
+    !isMainWorkflow &&
+    value?.clipboard?.nodes?.some(
+      (n: any) => n.type === "reader" || n.type === "writer",
+    );
+
+  const containsReadersOrWriters = nodes?.some(
+    (n) => n.type === "reader" || n.type === "writer",
   );
 
   const menuItems = useMemo(() => {
@@ -143,7 +163,8 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
           ),
-          disabled: !value?.clipboard || !onPaste,
+          disabled:
+            !value?.clipboard || !onPaste || clipboardHasReadersOrWriters,
           onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
@@ -159,6 +180,27 @@ const CanvasContextMenu: React.FC<Props> = ({
             },
           ]
         : []),
+      ...(nodes
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Create Subworkflow"),
+                icon: <GraphIcon weight="light" />,
+                shortcut: (
+                  <ContextMenuShortcut
+                    keyBinding={{ key: "s", commandKey: true, shiftKey: true }}
+                  />
+                ),
+                disabled:
+                  !onNodesChange || !onEdgesChange || containsReadersOrWriters,
+                onCallback: wrapWithClose(() =>
+                  handleWorkflowAddFromSelection(),
+                ),
+              },
+            },
+          ]
+        : []),
       {
         type: "action",
         props: {
@@ -167,7 +209,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               ? [node]
               : nodes?.filter((n) => n.selected) || [];
             const anyEnabled = selectedNodes.some((n) => !n.data?.isDisabled);
-            return anyEnabled ? t("Disable Node") : t("Enable Node");
+            return anyEnabled ? t("Disable Action") : t("Enable Action");
           })(),
           icon: (() => {
             const selectedNodes = node
@@ -183,7 +225,8 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "e", commandKey: true }} />
           ),
-          disabled: (!nodes && !node) || !onNodesDisable,
+          // disabled: (!nodes && !node) || !onNodesDisable,
+          disabled: true,
           onCallback: wrapWithClose(
             () => onNodesDisable?.(node ? [node] : undefined) ?? (() => {}),
           ),
@@ -194,7 +237,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: t("Node Settings"),
+                label: t("Action Settings"),
                 icon: <GearFineIcon weight="light" />,
                 onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
               },
@@ -214,7 +257,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: node ? t("Delete Node") : t("Delete Selection"),
+                label: node ? t("Delete Action") : t("Delete Selection"),
                 icon: <TrashIcon weight="light" />,
                 destructive: true,
                 disabled: !onNodesChange || !onEdgesChange,
@@ -231,6 +274,8 @@ const CanvasContextMenu: React.FC<Props> = ({
     t,
     node,
     nodes,
+    clipboardHasReadersOrWriters,
+    containsReadersOrWriters,
     onCopy,
     onCut,
     onPaste,
@@ -243,6 +288,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     handleNodeDelete,
     handleNodeSettingsOpen,
     handleSubworkflowOpen,
+    handleWorkflowAddFromSelection,
   ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;

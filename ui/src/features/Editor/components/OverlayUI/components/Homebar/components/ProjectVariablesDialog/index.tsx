@@ -231,7 +231,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <ChalkboardTeacherIcon />
-                    {t("Project Variables")}
+                    {t("Workflow Variables")}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

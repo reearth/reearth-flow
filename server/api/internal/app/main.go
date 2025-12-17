@@ -65,7 +65,7 @@ func Start(debug bool, version string) {
 	}
 
 	// AccountGQLClient
-	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.DynamicAuthTransport{})
+	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.NewDynamicAuthTransport())
 
 	serverCfg := &ServerConfig{
 		Config:            conf,
@@ -116,19 +116,19 @@ func Start(debug bool, version string) {
 }
 
 type WebServer struct {
-	address   string
 	appServer *echo.Echo
+	address   string
 }
 
 type ServerConfig struct {
+	PermissionChecker gateway.PermissionChecker
 	Config            *config.Config
-	Debug             bool
 	Repos             *repo.Container
 	AccountRepos      *accountrepo.Container // TODO: Remove this field once the migration is complete.
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container // TODO: Remove this field once the migration is complete.
-	PermissionChecker gateway.PermissionChecker
 	AccountGQLClient  *gql.Client
+	Debug             bool
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {

@@ -115,7 +115,7 @@ impl Processor for ThreeDimensionBoxReplacer {
         let max = Coordinate::new__(max_x, max_y, max_z);
         let rectangle = Rect::new(min, max);
         let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(
-            FlowGeometry3D::Polygon(rectangle.to_polygon()),
+            FlowGeometry3D::MultiPolygon(rectangle.to_multi_polygon()),
         ));
         let mut feature = ctx.feature.clone();
         feature.geometry = geometry;

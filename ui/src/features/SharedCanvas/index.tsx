@@ -123,6 +123,7 @@ const SharedCanvas: React.FC<Props> = ({
                   </div>
                 </div>
                 <Canvas
+                  isMainWorkflow={isMainWorkflow}
                   readonly
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}

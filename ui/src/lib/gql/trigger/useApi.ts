@@ -6,6 +6,7 @@ import type {
   TimeInterval,
   Trigger,
   UpdateTrigger,
+  Variable,
 } from "@flow/types";
 import { PaginationOptions } from "@flow/types/paginationOptions";
 
@@ -28,19 +29,22 @@ export const useTrigger = () => {
     workspaceId: string,
     deploymentId: string,
     description: string,
+    enabled: boolean,
     timeInterval?: TimeInterval,
     authToken?: string,
+    variables?: Variable[],
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
-
     try {
       const data = await mutateAsync({
         workspaceId,
         deploymentId,
+        enabled,
         timeDriverInput: timeInterval
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        variables,
         description,
       });
       toast({
@@ -60,19 +64,23 @@ export const useTrigger = () => {
 
   const useUpdateTrigger = async (
     triggerId: string,
+    enabled?: boolean | null,
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
+    variables?: Variable[],
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {
       const trigger: Trigger | undefined = await mutateAsync({
         triggerId,
+        enabled,
         timeDriverInput: timeInterval
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
         description,
+        variables,
       });
       toast({
         title: t("Trigger Updated"),

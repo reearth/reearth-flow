@@ -6,9 +6,9 @@ import (
 )
 
 type ExecutionRequest struct {
+	With            map[string]interface{} `json:"with,omitempty"`
 	AuthToken       string                 `json:"authToken,omitempty"`
 	NotificationURL string                 `json:"notificationUrl,omitempty"`
-	With            map[string]interface{} `json:"with,omitempty"`
 }
 
 type ExecutionResponse struct {

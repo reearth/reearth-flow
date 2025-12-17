@@ -85,3 +85,42 @@ func (r *mutationResolver) UpdateMemberOfWorkspace(ctx context.Context, input gq
 
 	return &gqlmodel.UpdateMemberOfWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
 }
+
+func (r *mutationResolver) UpdateWorkerConfig(ctx context.Context, input gqlmodel.UpdateWorkerConfigInput) (*gqlmodel.UpdateWorkerConfigPayload, error) {
+	res, err := usecases(ctx).WorkerConfig.Update(
+		ctx,
+		input.MachineType,
+		input.ComputeCPUMilli,
+		input.ComputeMemoryMib,
+		input.BootDiskSizeGb,
+		input.TaskCount,
+		input.MaxConcurrency,
+		input.ThreadPoolSize,
+		input.ChannelBufferSize,
+		input.FeatureFlushThreshold,
+		input.NodeStatusPropagationDelayMilli,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.UpdateWorkerConfigPayload{Config: gqlmodel.ToWorkerConfig(res)}, nil
+}
+
+func (r *mutationResolver) DeleteWorkerConfig(ctx context.Context) (*gqlmodel.DeleteWorkerConfigPayload, error) {
+	cfg, err := usecases(ctx).WorkerConfig.Fetch(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var configID gqlmodel.ID
+	if cfg != nil {
+		configID = gqlmodel.IDFrom(cfg.ID())
+	}
+
+	if err := usecases(ctx).WorkerConfig.Delete(ctx); err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.DeleteWorkerConfigPayload{ID: configID}, nil
+}

@@ -23,11 +23,11 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
     },
     {
       accessorKey: "nodeId",
-      header: t("Node Id"),
+      header: t("Action Id"),
     },
     {
       accessorKey: "nodeName",
-      header: t("Node Name"),
+      header: t("Action Name"),
     },
     {
       accessorKey: "level",

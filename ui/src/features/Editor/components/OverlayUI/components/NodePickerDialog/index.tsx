@@ -54,7 +54,7 @@ const NodePickerDialog: React.FC<Props> = ({
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
-        <DialogTitle>{t("Choose action")}</DialogTitle>
+        <DialogTitle>{t("Choose Action")}</DialogTitle>
         <div className="flex items-center gap-2 p-2">
           <Input
             className="mx-auto w-full focus-visible:ring-0"
@@ -70,7 +70,14 @@ const NodePickerDialog: React.FC<Props> = ({
             </SelectTrigger>
             <SelectContent>
               {actionTypes.map((actionType) => (
-                <SelectItem key={actionType.value} value={actionType.value}>
+                <SelectItem
+                  key={actionType.value}
+                  value={actionType.value}
+                  disabled={
+                    (actionType.value === "reader" ||
+                      actionType.value === "writer") &&
+                    !isMainWorkflow
+                  }>
                   {actionType.label}
                 </SelectItem>
               ))}

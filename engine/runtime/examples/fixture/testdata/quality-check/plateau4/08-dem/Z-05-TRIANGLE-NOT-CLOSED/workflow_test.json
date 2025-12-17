@@ -1,0 +1,26 @@
+{
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "description": "Test for plateau4 08 not-closed triangle error.",
+  "intermediateAssertions": [
+    {
+      "edgeId": "e7d05d16-c412-43d5-a1af-3e754eb10b02",
+      "expectedFile": "intermediate_not_closed.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_dem.json",
+      "includeFields": ["閉じていない三角形"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "08_地形_検査結果一覧.csv",
+      "includeColumns": ["閉じていない三角形"]
+    }
+  },
+  "cityGmlPath": "udx/dem/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

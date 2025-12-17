@@ -37,7 +37,7 @@ pub(super) fn write_excel(
         .unwrap_or_else(|| "Sheet1".to_string());
     worksheet
         .set_name(sheet_name)
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::excel_writer)?;
 
     let mut title_map = std::collections::HashMap::new();
     if let Some(first_row) = features.first() {
@@ -49,7 +49,7 @@ pub(super) fn write_excel(
                     key.clone().into_inner(),
                     &Default::default(),
                 )
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::excel_writer)?;
             title_map.insert(key.clone().into_inner(), col_num);
         }
     }
@@ -83,7 +83,7 @@ pub(super) fn write_excel(
                     )?;
                 }
                 None => {
-                    return Err(crate::errors::SinkError::file_writer(format!(
+                    return Err(crate::errors::SinkError::excel_writer(format!(
                         "Key '{}' not found in title_map",
                         key.clone().into_inner()
                     )));
@@ -93,17 +93,17 @@ pub(super) fn write_excel(
     }
     let buf = workbook
         .save_to_buffer()
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::excel_writer)?;
 
     let storage = storage_resolver
         .resolve(output)
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::excel_writer)?;
     let uri_path = output.path();
     let path = Path::new(&uri_path);
 
     storage
         .put_sync(path, bytes::Bytes::from(buf))
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::excel_writer)?;
 
     Ok(())
 }
@@ -122,7 +122,7 @@ fn write_cell_value(
 
     worksheet
         .write_string_with_format(row as u32, col as u16, &cell_value, &Default::default())
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::excel_writer)?;
 
     Ok(())
 }
@@ -140,7 +140,7 @@ fn write_cell_formatting(
         let format = parse_formatting(formatting_str.as_str())?;
         worksheet
             .write_string_with_format(row as u32, col as u16, "", &format)
-            .map_err(crate::errors::SinkError::file_writer)?;
+            .map_err(crate::errors::SinkError::excel_writer)?;
     }
 
     Ok(())
@@ -158,7 +158,7 @@ fn write_cell_formula(
     {
         worksheet
             .write_formula(row as u32, col as u16, Formula::new(formula_str))
-            .map_err(crate::errors::SinkError::file_writer)?;
+            .map_err(crate::errors::SinkError::excel_writer)?;
     }
 
     Ok(())
@@ -176,7 +176,7 @@ fn write_cell_hyperlink(
     {
         worksheet
             .write_url(row as u32, col as u16, Url::new(hyperlink_str))
-            .map_err(crate::errors::SinkError::file_writer)?;
+            .map_err(crate::errors::SinkError::excel_writer)?;
     }
 
     Ok(())
@@ -191,19 +191,19 @@ fn write_map_entry(
 ) -> Result<(), crate::errors::SinkError> {
     worksheet
         .write_string_with_format(*row_index as u32, 0, &key, &Default::default())
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::excel_writer)?;
 
     match value {
         AttributeValue::String(s) => {
             worksheet
                 .write_string_with_format(*row_index as u32, 1, &s, &Default::default())
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::excel_writer)?;
         }
         AttributeValue::Number(n) => {
             if let Some(num) = n.as_f64() {
                 worksheet
                     .write_number(*row_index as u32, 1, num)
-                    .map_err(crate::errors::SinkError::file_writer)?;
+                    .map_err(crate::errors::SinkError::excel_writer)?;
             } else {
                 worksheet
                     .write_string_with_format(
@@ -212,13 +212,13 @@ fn write_map_entry(
                         n.to_string(),
                         &Default::default(),
                     )
-                    .map_err(crate::errors::SinkError::file_writer)?;
+                    .map_err(crate::errors::SinkError::excel_writer)?;
             }
         }
         AttributeValue::Bool(b) => {
             worksheet
                 .write_boolean(*row_index as u32, 1, b)
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::excel_writer)?;
         }
         AttributeValue::Array(arr) => {
             for (col_num, value) in arr.iter().enumerate() {
@@ -231,13 +231,13 @@ fn write_map_entry(
                                 s,
                                 &Default::default(),
                             )
-                            .map_err(crate::errors::SinkError::file_writer)?;
+                            .map_err(crate::errors::SinkError::excel_writer)?;
                     }
                     AttributeValue::Number(n) => {
                         if let Some(num) = n.as_f64() {
                             worksheet
                                 .write_number(*row_index as u32, col_num as u16 + 1, num)
-                                .map_err(crate::errors::SinkError::file_writer)?;
+                                .map_err(crate::errors::SinkError::excel_writer)?;
                         } else {
                             worksheet
                                 .write_string_with_format(
@@ -246,13 +246,13 @@ fn write_map_entry(
                                     n.to_string(),
                                     &Default::default(),
                                 )
-                                .map_err(crate::errors::SinkError::file_writer)?;
+                                .map_err(crate::errors::SinkError::excel_writer)?;
                         }
                     }
                     AttributeValue::Bool(b) => {
                         worksheet
                             .write_boolean(*row_index as u32, col_num as u16 + 1, *b)
-                            .map_err(crate::errors::SinkError::file_writer)?;
+                            .map_err(crate::errors::SinkError::excel_writer)?;
                     }
                     _ => {}
                 }
@@ -333,16 +333,16 @@ fn parse_formatting(formatting_str: &str) -> Result<Format, crate::errors::SinkE
         let mut parts = pair.splitn(2, ',');
         let key = parts
             .next()
-            .ok_or_else(|| crate::errors::SinkError::file_writer("Invalid formatting key"))?;
+            .ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid formatting key"))?;
         let value = parts
             .next()
-            .ok_or_else(|| crate::errors::SinkError::file_writer("Invalid formatting value"))?;
+            .ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid formatting value"))?;
         match key {
             "font" => builder = builder.set_font_name(value.to_string()),
             "size" => {
                 let size = value
                     .parse::<f64>()
-                    .map_err(|_| crate::errors::SinkError::file_writer("Invalid font size"))?;
+                    .map_err(|_| crate::errors::SinkError::excel_writer("Invalid font size"))?;
                 builder = builder.set_font_size(size);
             }
             "color" => builder = builder.set_font_color(value),
@@ -351,17 +351,17 @@ fn parse_formatting(formatting_str: &str) -> Result<Format, crate::errors::SinkE
             "background_color" => builder = builder.set_background_color(value),
             "align" => {
                 let align = ExcelFormatAlign::try_from(value)
-                    .map_err(crate::errors::SinkError::file_writer)?;
+                    .map_err(crate::errors::SinkError::excel_writer)?;
                 builder = builder.set_align(align.0);
             }
             "underline" => {
                 let underline = ExcelFormatUnderline::try_from(value)
-                    .map_err(crate::errors::SinkError::file_writer)?;
+                    .map_err(crate::errors::SinkError::excel_writer)?;
                 builder = builder.set_underline(underline.0);
             }
             "wrap" => builder = builder.set_text_wrap(),
             _ => {
-                return Err(crate::errors::SinkError::file_writer(
+                return Err(crate::errors::SinkError::excel_writer(
                     "Unknown formatting key",
                 ))
             }
@@ -375,11 +375,11 @@ fn parse_formatting(formatting_str: &str) -> Result<Format, crate::errors::SinkE
 //     let mut format = Format::new();
 //     for pair in row_formatting.split(';') {
 //         let mut parts = pair.splitn(2, ',');
-//         let key = parts.next().ok_or_else(|| crate::errors::SinkError::file_writer("Invalid row formatting key"))?;
-//         let value = parts.next().ok_or_else(|| crate::errors::SinkError::file_writer("Invalid row formatting value"))?;
+//         let key = parts.next().ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid row formatting key"))?;
+//         let value = parts.next().ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid row formatting value"))?;
 //         match key {
-//             "row_height" => format.set_row_height(value.parse().map_err(|_| crate::errors::SinkError::file_writer("Invalid row height"))?),
-//             _ => return Err(crate::errors::SinkError::file_writer("Unknown row formatting key")),
+//             "row_height" => format.set_row_height(value.parse().map_err(|_| crate::errors::SinkError::excel_writer("Invalid row height"))?),
+//             _ => return Err(crate::errors::SinkError::excel_writer("Unknown row formatting key")),
 //         }
 //     }
 //     Ok(format)
@@ -405,7 +405,7 @@ impl TryFrom<&str> for ExcelFormatAlign {
             "VerticalCenter" => Ok(ExcelFormatAlign(FormatAlign::VerticalCenter)),
             "VerticalJustify" => Ok(ExcelFormatAlign(FormatAlign::VerticalJustify)),
             "VerticalDistributed" => Ok(ExcelFormatAlign(FormatAlign::VerticalDistributed)),
-            _ => Err(crate::errors::SinkError::file_writer(format!(
+            _ => Err(crate::errors::SinkError::excel_writer(format!(
                 "Invalid alignment value: {value}"
             ))),
         }
@@ -424,7 +424,7 @@ impl TryFrom<&str> for ExcelFormatUnderline {
             "Double" => Ok(ExcelFormatUnderline(FormatUnderline::Double)),
             "SingleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::SingleAccounting)),
             "DoubleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::DoubleAccounting)),
-            _ => Err(crate::errors::SinkError::file_writer(format!(
+            _ => Err(crate::errors::SinkError::excel_writer(format!(
                 "Invalid underline value: {value}"
             ))),
         }

@@ -2,6 +2,8 @@ package job
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type JobBuilder struct {
@@ -25,6 +27,11 @@ func (b *JobBuilder) MustBuild() *Job {
 		panic(err)
 	}
 	return r
+}
+
+func (b *JobBuilder) BatchStatus(batchStatus *Status) *JobBuilder {
+	b.j.batchStatus = batchStatus
+	return b
 }
 
 func (b *JobBuilder) ID(id ID) *JobBuilder {
@@ -94,5 +101,15 @@ func (b *JobBuilder) WorkerLogsURL(workerLogsURL string) *JobBuilder {
 
 func (b *JobBuilder) UserFacingLogsURL(userFacingLogsURL string) *JobBuilder {
 	b.j.userFacingLogsURL = userFacingLogsURL
+	return b
+}
+
+func (b *JobBuilder) WorkerStatus(workerStatus *Status) *JobBuilder {
+	b.j.workerStatus = workerStatus
+	return b
+}
+
+func (b *JobBuilder) Variables(variables []variable.Variable) *JobBuilder {
+	b.j.variables = variables
 	return b
 }

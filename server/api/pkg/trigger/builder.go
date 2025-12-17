@@ -3,6 +3,8 @@ package trigger
 import (
 	"errors"
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type Builder struct {
@@ -83,6 +85,21 @@ func (b *Builder) AuthToken(token string) *Builder {
 
 func (b *Builder) TimeInterval(interval TimeInterval) *Builder {
 	b.t.timeInterval = &interval
+	return b
+}
+
+func (b *Builder) Enabled(enabled bool) *Builder {
+	b.t.enabled = enabled
+	return b
+}
+
+func (b *Builder) Variables(variables []variable.Variable) *Builder {
+	b.t.variables = variables
+	return b
+}
+
+func (b *Builder) CreatedAt(createdAt time.Time) *Builder {
+	b.t.createdAt = createdAt
 	return b
 }
 
