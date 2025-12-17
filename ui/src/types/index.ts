@@ -19,3 +19,4 @@ export * from "./workflow";
 export * from "./workspace";
 export * from "./user";
 export * from "./cmsIntegration";
+export * from "./workerConfig";

@@ -319,13 +319,9 @@ export type DeleteProjectPayload = {
   projectId: Scalars['ID']['output'];
 };
 
-export type DeleteWorkerConfigInput = {
-  workspaceId: Scalars['ID']['input'];
-};
-
 export type DeleteWorkerConfigPayload = {
   __typename?: 'DeleteWorkerConfigPayload';
-  workspaceId: Scalars['ID']['output'];
+  id: Scalars['ID']['output'];
 };
 
 export type DeleteWorkspaceInput = {
@@ -590,11 +586,6 @@ export type MutationDeleteProjectArgs = {
 
 export type MutationDeleteTriggerArgs = {
   triggerId: Scalars['ID']['input'];
-};
-
-
-export type MutationDeleteWorkerConfigArgs = {
-  input: DeleteWorkerConfigInput;
 };
 
 
@@ -1101,11 +1092,6 @@ export type QueryTriggersArgs = {
   workspaceId: Scalars['ID']['input'];
 };
 
-
-export type QueryWorkerConfigArgs = {
-  workspaceId: Scalars['ID']['input'];
-};
-
 export type RemoveMemberFromWorkspaceInput = {
   userId: Scalars['ID']['input'];
   workspaceId: Scalars['ID']['input'];
@@ -1347,7 +1333,6 @@ export type UpdateWorkerConfigInput = {
   nodeStatusPropagationDelayMilli?: InputMaybe<Scalars['Int']['input']>;
   taskCount?: InputMaybe<Scalars['Int']['input']>;
   threadPoolSize?: InputMaybe<Scalars['Int']['input']>;
-  workspaceId: Scalars['ID']['input'];
 };
 
 export type UpdateWorkerConfigPayload = {
@@ -1672,6 +1657,8 @@ export type CmsItemFragment = { __typename?: 'CMSItem', id: string, fields: any,
 
 export type CmsAssetFragment = { __typename?: 'CMSAsset', id: string, uuid: string, projectId: string, filename: string, size: number, previewType?: string | null, url: string, archiveExtractionStatus?: string | null, public: boolean, createdAt: any };
 
+export type WorkerConfigFragment = { __typename?: 'WorkerConfig', id: string, machineType?: string | null, computeCpuMilli?: number | null, computeMemoryMib?: number | null, bootDiskSizeGB?: number | null, taskCount?: number | null, maxConcurrency?: number | null, threadPoolSize?: number | null, channelBufferSize?: number | null, featureFlushThreshold?: number | null, nodeStatusPropagationDelayMilli?: number | null, createdAt: any, updatedAt: any };
+
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
   keyword?: InputMaybe<Scalars['String']['input']>;
@@ -1920,6 +1907,23 @@ export type UpdateMeMutationVariables = Exact<{
 
 
 export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
+
+export type GetWorkerConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetWorkerConfigQuery = { __typename?: 'Query', workerConfig?: { __typename?: 'WorkerConfig', id: string, machineType?: string | null, computeCpuMilli?: number | null, computeMemoryMib?: number | null, bootDiskSizeGB?: number | null, taskCount?: number | null, maxConcurrency?: number | null, threadPoolSize?: number | null, channelBufferSize?: number | null, featureFlushThreshold?: number | null, nodeStatusPropagationDelayMilli?: number | null, createdAt: any, updatedAt: any } | null };
+
+export type UpdateWorkerConfigMutationVariables = Exact<{
+  input: UpdateWorkerConfigInput;
+}>;
+
+
+export type UpdateWorkerConfigMutation = { __typename?: 'Mutation', updateWorkerConfig?: { __typename?: 'UpdateWorkerConfigPayload', config: { __typename?: 'WorkerConfig', id: string, machineType?: string | null, computeCpuMilli?: number | null, computeMemoryMib?: number | null, bootDiskSizeGB?: number | null, taskCount?: number | null, maxConcurrency?: number | null, threadPoolSize?: number | null, channelBufferSize?: number | null, featureFlushThreshold?: number | null, nodeStatusPropagationDelayMilli?: number | null, createdAt: any, updatedAt: any } } | null };
+
+export type DeleteWorkerConfigMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type DeleteWorkerConfigMutation = { __typename?: 'Mutation', deleteWorkerConfig?: { __typename?: 'DeleteWorkerConfigPayload', id: string } | null };
 
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
@@ -2207,6 +2211,23 @@ export const CmsAssetFragmentDoc = gql`
   archiveExtractionStatus
   public
   createdAt
+}
+    `;
+export const WorkerConfigFragmentDoc = gql`
+    fragment WorkerConfig on WorkerConfig {
+  id
+  machineType
+  computeCpuMilli
+  computeMemoryMib
+  bootDiskSizeGB
+  taskCount
+  maxConcurrency
+  threadPoolSize
+  channelBufferSize
+  featureFlushThreshold
+  nodeStatusPropagationDelayMilli
+  createdAt
+  updatedAt
 }
     `;
 export const GetAssetsDocument = gql`
@@ -2712,6 +2733,29 @@ export const UpdateMeDocument = gql`
   }
 }
     `;
+export const GetWorkerConfigDocument = gql`
+    query GetWorkerConfig {
+  workerConfig {
+    ...WorkerConfig
+  }
+}
+    ${WorkerConfigFragmentDoc}`;
+export const UpdateWorkerConfigDocument = gql`
+    mutation UpdateWorkerConfig($input: UpdateWorkerConfigInput!) {
+  updateWorkerConfig(input: $input) {
+    config {
+      ...WorkerConfig
+    }
+  }
+}
+    ${WorkerConfigFragmentDoc}`;
+export const DeleteWorkerConfigDocument = gql`
+    mutation DeleteWorkerConfig {
+  deleteWorkerConfig {
+    id
+  }
+}
+    `;
 export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
@@ -2957,6 +3001,15 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UpdateMe(variables: UpdateMeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateMeMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateMeMutation>({ document: UpdateMeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateMe', 'mutation', variables);
+    },
+    GetWorkerConfig(variables?: GetWorkerConfigQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkerConfigQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkerConfigQuery>({ document: GetWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkerConfig', 'query', variables);
+    },
+    UpdateWorkerConfig(variables: UpdateWorkerConfigMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkerConfigMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkerConfigMutation>({ document: UpdateWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkerConfig', 'mutation', variables);
+    },
+    DeleteWorkerConfig(variables?: DeleteWorkerConfigMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkerConfigMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkerConfigMutation>({ document: DeleteWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkerConfig', 'mutation', variables);
     },
     CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>({ document: CreateWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkspace', 'mutation', variables);

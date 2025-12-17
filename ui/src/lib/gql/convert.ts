@@ -20,6 +20,7 @@ import {
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   type UserFacingLogLevel as GraphqlUserFacingLogLevel,
+  type WorkerConfigFragment,
   ParameterType,
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
@@ -48,6 +49,7 @@ import type {
   CmsSchemaFieldType,
   CmsAsset,
   UserFacingLog,
+  WorkerConfig,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
@@ -243,6 +245,25 @@ export const toCmsAsset = (cmsAsset: CmsAssetFragment): CmsAsset => ({
   archiveExtractionStatus: cmsAsset.archiveExtractionStatus ?? undefined,
   public: cmsAsset.public,
   createdAt: formatDate(cmsAsset.createdAt),
+});
+
+export const toWorkerConfig = (
+  workerConfig: WorkerConfigFragment,
+): WorkerConfig => ({
+  id: workerConfig.id,
+  machineType: workerConfig.machineType ?? undefined,
+  computeCpuMilli: workerConfig.computeCpuMilli ?? undefined,
+  computeMemoryMib: workerConfig.computeMemoryMib ?? undefined,
+  bootDiskSizeGB: workerConfig.bootDiskSizeGB ?? undefined,
+  taskCount: workerConfig.taskCount ?? undefined,
+  maxConcurrency: workerConfig.maxConcurrency ?? undefined,
+  threadPoolSize: workerConfig.threadPoolSize ?? undefined,
+  channelBufferSize: workerConfig.channelBufferSize ?? undefined,
+  featureFlushThreshold: workerConfig.featureFlushThreshold ?? undefined,
+  nodeStatusPropagationDelayMilli:
+    workerConfig.nodeStatusPropagationDelayMilli ?? undefined,
+  createdAt: formatDate(workerConfig.createdAt),
+  updatedAt: formatDate(workerConfig.updatedAt),
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
