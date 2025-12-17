@@ -6,6 +6,7 @@ with:
   schemas:
   codelists:
   outputPath:
+  epsg:
 graphs:
   - id: 79dc8232-d5dd-4c60-be2c-85ca1409619c
     name: entry_point
@@ -80,6 +81,8 @@ graphs:
         with:
           errorAttribute: _validation_error
           rejectInvalid: false
+          epsgCode: |
+            env.get("epsg")
 
       # Branch 1: Incorrect number of vertices
       - id: 21bb4a5e-5975-443b-8a38-6332789681dd

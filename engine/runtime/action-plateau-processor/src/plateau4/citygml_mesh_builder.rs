@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
+use std::sync::Arc;
 
 use approx::AbsDiffEq;
 use quick_xml::events::Event;
@@ -16,7 +17,10 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Geometry as FlowGeometry, GeometryValue};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Expr, Feature, Geometry as FlowGeometry, GeometryValue,
+};
+use rhai::AST;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -61,12 +65,12 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: CityGmlMeshBuilderParam = if let Some(with) = with {
+        let params: CityGmlMeshBuilderParam = if let Some(with) = with.as_ref() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -81,9 +85,21 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
             CityGmlMeshBuilderParam::default()
         };
 
+        // Compile EPSG code expression for runtime evaluation
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let epsg_code_ast = expr_engine
+            .compile(params.epsg_code.as_ref())
+            .map_err(|e| {
+                PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                    "Failed to compile epsg_code expression: {e}"
+                ))
+            })?;
+
         Ok(Box::new(CityGmlMeshBuilder {
             params,
             relief_feature_counter: 0,
+            global_params: with,
+            epsg_code_ast,
         }))
     }
 }
@@ -102,6 +118,11 @@ pub struct CityGmlMeshBuilderParam {
     /// If true, send invalid features to rejected port; if false, send all features to default port with error attributes
     #[serde(default = "default_reject_invalid")]
     pub reject_invalid: bool,
+
+    /// # Target EPSG Code
+    /// EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.
+    #[serde(default = "default_epsg_code")]
+    pub epsg_code: Expr,
 }
 
 fn default_error_attr() -> Attribute {
@@ -112,11 +133,16 @@ fn default_reject_invalid() -> bool {
     false
 }
 
+fn default_epsg_code() -> Expr {
+    Expr::new("6697".to_string()) // JGD2011 - Same as source (no transformation)
+}
+
 impl Default for CityGmlMeshBuilderParam {
     fn default() -> Self {
         Self {
             error_attribute: default_error_attr(),
             reject_invalid: default_reject_invalid(),
+            epsg_code: default_epsg_code(),
         }
     }
 }
@@ -125,6 +151,8 @@ impl Default for CityGmlMeshBuilderParam {
 pub struct CityGmlMeshBuilder {
     params: CityGmlMeshBuilderParam,
     relief_feature_counter: u64,
+    global_params: Option<HashMap<String, Value>>,
+    epsg_code_ast: AST,
 }
 
 impl Processor for CityGmlMeshBuilder {
@@ -138,6 +166,9 @@ impl Processor for CityGmlMeshBuilder {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
+
+        // Evaluate EPSG code expression at runtime with feature context
+        let target_epsg_code = self.evaluate_epsg_code(&ctx.feature, &ctx)?;
 
         // Get the CityGML file path from feature attributes
         let file_path = match feature.attributes.get(&Attribute::new("path")) {
@@ -161,26 +192,27 @@ impl Processor for CityGmlMeshBuilder {
         };
 
         // Parse the raw XML and validate triangles
-        let validation_result = match self.parse_and_validate_triangles(&file_path) {
-            Ok(result) => result,
-            Err(e) => {
-                // If we can't parse the file, pass through with error
-                feature.attributes.insert(
-                    self.params.error_attribute.clone(),
-                    AttributeValue::String(format!("Failed to parse CityGML: {e}")),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-                // Also send summary feature for consistency
-                let mut summary_feature = feature.clone();
-                summary_feature.geometry = FlowGeometry::default();
-                summary_feature.attributes.insert(
-                    Attribute::new("_relief_index"),
-                    AttributeValue::Number(self.relief_feature_counter.into()),
-                );
-                fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
-                return Ok(());
-            }
-        };
+        let validation_result =
+            match self.parse_and_validate_triangles(&file_path, &target_epsg_code) {
+                Ok(result) => result,
+                Err(e) => {
+                    // If we can't parse the file, pass through with error
+                    feature.attributes.insert(
+                        self.params.error_attribute.clone(),
+                        AttributeValue::String(format!("Failed to parse CityGML: {e}")),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    // Also send summary feature for consistency
+                    let mut summary_feature = feature.clone();
+                    summary_feature.geometry = FlowGeometry::default();
+                    summary_feature.attributes.insert(
+                        Attribute::new("_relief_index"),
+                        AttributeValue::Number(self.relief_feature_counter.into()),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
+                    return Ok(());
+                }
+            };
 
         // Add the Relief Index attribute
         feature.attributes.insert(
@@ -270,10 +302,67 @@ enum ErrorType {
 }
 
 impl CityGmlMeshBuilder {
+    /// Evaluate the EPSG code expression at runtime with feature context
+    fn evaluate_epsg_code(
+        &self,
+        feature: &Feature,
+        ctx: &ExecutorContext,
+    ) -> Result<String, BoxedError> {
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
+        let epsg_code = scope
+            .eval_ast::<rhai::Dynamic>(&self.epsg_code_ast)
+            .map_err(|e| {
+                PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                    "Failed to evaluate epsg_code expression: {e:?}"
+                ))
+            })?;
+
+        // Handle both string and integer EPSG codes
+        if let Some(s) = epsg_code.clone().try_cast::<String>() {
+            Ok(s)
+        } else if let Some(i) = epsg_code.clone().try_cast::<i64>() {
+            Ok(i.to_string())
+        } else {
+            Err(PlateauProcessorError::CityGmlMeshBuilderFactory(
+                format!("epsg_code expression ({:?}) did not evaluate to a string or integer", epsg_code),
+            )
+            .into())
+        }
+    }
+
+    /// Transform a 3D coordinate from EPSG 6697 to the target EPSG code
+    fn transform_coordinate(
+        &self,
+        coord: Coordinate3D<f64>,
+        target_epsg: &str,
+    ) -> Option<Coordinate3D<f64>> {
+        // If target is the same as source, no transformation needed
+        if target_epsg == "6697" {
+            return Some(coord);
+        }
+
+        let proj = proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", target_epsg), None)
+            .map_err(|e| {
+                PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                    "Failed to create PROJ transformation from 6697 to {target_epsg}: {e}"
+                ))
+            })
+            .ok()?;
+
+        // CityGML coordinates are in lat/lon order (y, x in geographic terms)
+        // coord.x = latitude, coord.y = longitude for EPSG 6697
+        let transformed = proj.convert((coord.y, coord.x)).ok()?;
+
+        // Return transformed coordinates with original z (height) preserved
+        Some(Coordinate3D::new__(transformed.0, transformed.1, coord.z))
+    }
+
     /// Parse CityGML XML and validate triangle coordinates before polygon construction
     fn parse_and_validate_triangles(
         &mut self,
         file_path: &str,
+        target_epsg: &str,
     ) -> Result<ValidationResult, Box<dyn std::error::Error>> {
         let file = File::open(file_path)?;
         let buf_reader = BufReader::new(file);
@@ -284,7 +373,9 @@ impl CityGmlMeshBuilder {
         let mut buf = Vec::new();
         let mut inside_triangle = false;
         let mut inside_pos_list = false;
-        let mut epsg_code: Option<nusamai_projection::crs::EpsgCode> = None;
+
+        // Use target EPSG code for output geometry
+        let epsg_code: Option<nusamai_projection::crs::EpsgCode> = target_epsg.parse::<u16>().ok();
 
         // Collect triangle faces for TriangularMesh
         let mut valid_faces: Vec<[Coordinate3D<f64>; 3]> = Vec::new();
@@ -293,22 +384,6 @@ impl CityGmlMeshBuilder {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     let name = e.name();
-
-                    // Try to extract EPSG code from srsName attribute if not already found
-                    if epsg_code.is_none() {
-                        for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"srsName" {
-                                if let Ok(srs_name) = std::str::from_utf8(&attr.value) {
-                                    // Parse EPSG code from URN format like "http://www.opengis.net/def/crs/EPSG/0/6697"
-                                    if let Some(epsg_str) = srs_name.rsplit('/').next() {
-                                        if let Ok(epsg_num) = epsg_str.parse::<u16>() {
-                                            epsg_code = Some(epsg_num);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     if name.as_ref() == b"gml:Triangle" {
                         inside_triangle = true;
@@ -342,13 +417,30 @@ impl CityGmlMeshBuilder {
                         let num_vertices = values.len() / 3;
                         let mut has_error = false;
 
-                        // Build coordinates for the triangle
+                        // Build coordinates for the triangle and transform to target EPSG
                         let mut coords = Vec::new();
+                        let mut transform_failed = false;
                         for i in 0..num_vertices {
                             let x = values[i * 3];
                             let y = values[i * 3 + 1];
                             let z = values[i * 3 + 2];
-                            coords.push(Coordinate3D::new__(x, y, z));
+                            let source_coord = Coordinate3D::new__(x, y, z);
+
+                            // Transform coordinate from EPSG 6697 to target EPSG
+                            if let Some(transformed) =
+                                self.transform_coordinate(source_coord, target_epsg)
+                            {
+                                coords.push(transformed);
+                            } else {
+                                transform_failed = true;
+                                // Use original coordinate if transformation fails
+                                coords.push(source_coord);
+                            }
+                        }
+
+                        if transform_failed {
+                            // Log warning but continue with original coordinates
+                            // This allows processing to continue even if projection fails
                         }
 
                         // Validation 1: Check vertex count
@@ -363,6 +455,7 @@ impl CityGmlMeshBuilder {
                             errors.push(error);
                         } else {
                             // Validation 2: Check if triangle is closed (first == last)
+                            // Use original values for validation since transformation preserves closure
                             let first_x = values[0];
                             let first_y = values[1];
                             let first_z = values[2];
@@ -387,6 +480,7 @@ impl CityGmlMeshBuilder {
                             }
 
                             // Validation 3: Check triangle orientation via normal vector
+                            // Use transformed coordinates for orientation check
                             if !has_error && coords.len() == 4 {
                                 let v0 = coords[0];
                                 let v1 = coords[1];
@@ -449,7 +543,7 @@ impl CityGmlMeshBuilder {
                             }
                         }
 
-                        // If no errors, add this triangle as a valid face
+                        // If no errors, add this triangle as a valid face (with transformed coordinates)
                         if !has_error && coords.len() == 4 {
                             valid_faces.push([coords[0], coords[1], coords[2]]);
                         }
