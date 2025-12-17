@@ -721,7 +721,7 @@ mod tests {
 <bldg:Building gml:id="test">
     <gml:name>Test</gml:name>
 </bldg:Building>"#;
-        
+
         let result = parse(xml);
         assert!(result.is_ok());
     }
@@ -734,7 +734,7 @@ mod tests {
         <gml:name>Test
     </bldg:Building>
 </root>"#;
-        
+
         let result = parse(xml);
         assert!(result.is_err());
     }
@@ -745,7 +745,7 @@ mod tests {
 <root xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:bldg=\"http://www.opengis.net/citygml/building/2.0\">\n\
     <bldg:Building xlink:href=\"#nonexistent_id\"/>\n\
 </root>";
-        
+
         let doc = parse(xml);
         assert!(doc.is_ok());
     }
@@ -760,7 +760,7 @@ mod tests {
 </root>"#,
             long_value
         );
-        
+
         let result = parse(&xml);
         assert!(result.is_ok());
     }
@@ -773,7 +773,7 @@ mod tests {
         <gml:pos>139.75031234567890 35.68512345678901</gml:pos>
     </gml:Point>
 </root>"#;
-        
+
         let result = parse(xml);
         assert!(result.is_ok());
     }
@@ -784,7 +784,7 @@ mod tests {
 <root xmlns:test="http://test.com">
     <test:name>&lt;Building&gt; &amp; "Special"</test:name>
 </root>"#;
-        
+
         let result = parse(xml);
         assert!(result.is_ok());
     }
@@ -796,7 +796,7 @@ mod tests {
       xmlns:bldg="http://different.url">
     <bldg:Building/>
 </root>"#;
-        
+
         let result = parse(xml);
         assert!(result.is_ok() || result.is_err());
     }
@@ -807,7 +807,7 @@ mod tests {
 <root xmlns:gml="http://www.opengis.net/gml">
     <gml:Element/>
 </root>"#;
-        
+
         let doc = parse(xml).unwrap();
         let result = evaluate(&doc, "//nonexistent:Element");
         assert!(result.is_err() || result.is_ok());
@@ -824,7 +824,7 @@ mod tests {
             xml.push_str(&format!("</test:level{}>", i));
         }
         xml.push_str("</root>");
-        
+
         let result = parse(&xml);
         assert!(result.is_ok());
     }
@@ -836,4 +836,3 @@ mod tests {
         assert!(result.is_ok());
     }
 }
-
