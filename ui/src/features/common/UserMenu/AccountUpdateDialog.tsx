@@ -87,10 +87,11 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   // Update saved theme when dialog opens
   useEffect(() => {
     return () => {
+      if (selectedTheme === theme) return;
       setSavedTheme(theme);
       setSelectedTheme(theme);
     };
-  }, [isOpen, theme]);
+  }, [isOpen, selectedTheme, theme]);
 
   const handleUpdateMe = async () => {
     setLoading(true);
