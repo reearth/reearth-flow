@@ -5515,7 +5515,7 @@ Filter Features by Geometry Planarity
     },
     "threshold": {
       "title": "Threshold",
-      "description": "The threshold value for planarity check. For height mode: the maximum allowed convex hull minimum height.",
+      "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height.",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"
