@@ -82,6 +82,7 @@ impl SinkFactory for GeoPackageWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct GeoPackageWriter {
     pub(super) params: GeoPackageWriterParam,
     pub(super) buffer: Vec<Feature>,
@@ -93,6 +94,7 @@ pub(super) struct GeoPackageWriter {
 /// Configuration for writing features to GeoPackage files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct GeoPackageWriterParam {
     /// Output path for the GeoPackage file to create
     pub(super) output: Expr,
@@ -137,6 +139,7 @@ fn default_create_spatial_index() -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) enum AttributeType {
     Integer,
     Real,

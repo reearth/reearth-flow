@@ -6352,7 +6352,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-analyzer"
-version = "0.0.199"
+version = "0.0.217"
 dependencies = [
  "chrono",
  "crossbeam-channel",
@@ -6384,7 +6384,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-analyzer-core"
-version = "0.0.199"
+version = "0.0.217"
 dependencies = [
  "bytes",
  "chrono",
@@ -6402,7 +6402,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-analyzer-core-derive"
-version = "0.0.199"
+version = "0.0.217"
 dependencies = [
  "proc-macro2",
  "quote",

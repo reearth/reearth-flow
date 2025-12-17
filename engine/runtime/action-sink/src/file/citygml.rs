@@ -101,6 +101,7 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// Output file path expression
@@ -121,6 +122,7 @@ fn default_pretty_print() -> Option<bool> {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CityGmlWriterSink {
     params: CityGmlWriterParam,
     lod_mask: LodMask,

@@ -54,6 +54,7 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct PolygonNormalExtractor {}
 
 impl Processor for PolygonNormalExtractor {

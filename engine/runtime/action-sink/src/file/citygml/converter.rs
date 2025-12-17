@@ -262,6 +262,7 @@ pub fn compute_envelope(geometry: &CityGmlGeometry) -> Option<BoundingEnvelope> 
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BoundingEnvelope {
     pub lower: Coordinate3D<f64>,
     pub upper: Coordinate3D<f64>,

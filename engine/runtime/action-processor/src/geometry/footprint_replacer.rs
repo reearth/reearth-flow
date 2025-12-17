@@ -63,6 +63,7 @@ impl ProcessorFactory for FootprintReplacerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FootprintReplacer;
 
 impl Processor for FootprintReplacer {
