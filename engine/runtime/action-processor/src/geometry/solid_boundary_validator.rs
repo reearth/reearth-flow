@@ -195,7 +195,7 @@ impl Processor for SolidBoundaryValidator {
 
                 let mut polygons = Vec::new();
                 for p in &geom.polygons {
-                    polygons.push(p.clone().into_merged_contour()?);
+                    polygons.push(p.clone().into_merged_contour(tolerance)?);
                 }
                 polygons
             }

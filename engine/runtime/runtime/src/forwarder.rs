@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::env;
 use std::sync::{Arc, Mutex};
 
 use crossbeam::channel::Sender;
+use once_cell::sync::Lazy;
 use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
 
@@ -9,6 +11,13 @@ use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::feature_store::{FeatureWriter, FeatureWriterKey};
+
+static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_FEATURE_WRITER_DISABLE")
+        .ok()
+        .map(|s| s.to_lowercase() == "true")
+        .unwrap_or(false)
+});
 
 use crate::node::{NodeHandle, Port};
 
@@ -94,42 +103,44 @@ impl ChannelManager {
             }
             sender_port
         };
-        if let Some(sender_ports) = sender_ports.get(&ctx.port) {
-            for port in sender_ports {
-                if let Some(writers) = self
-                    .feature_writers
-                    .get(&FeatureWriterKey(ctx.port.clone(), port.clone()))
-                {
-                    for writer in writers {
-                        let edge_id = writer.edge_id();
-                        let feature_id = ctx.feature.id;
-                        let mut writer = writer.clone();
-                        let feature = ctx.feature.clone();
-                        let event_hub = self.event_hub.clone();
-                        let node_handle = self.owner.clone();
+        if !*FEATURE_WRITER_DISABLE {
+            if let Some(sender_ports) = sender_ports.get(&ctx.port) {
+                for port in sender_ports {
+                    if let Some(writers) = self
+                        .feature_writers
+                        .get(&FeatureWriterKey(ctx.port.clone(), port.clone()))
+                    {
+                        for writer in writers {
+                            let edge_id = writer.edge_id();
+                            let feature_id = ctx.feature.id;
+                            let mut writer = writer.clone();
+                            let feature = ctx.feature.clone();
+                            let event_hub = self.event_hub.clone();
+                            let node_handle = self.owner.clone();
 
-                        let edge_id_clone = edge_id.clone();
-                        self.event_hub.send(Event::EdgePassThrough {
-                            feature_id,
-                            edge_id: edge_id_clone,
-                        });
+                            let edge_id_clone = edge_id.clone();
+                            self.event_hub.send(Event::EdgePassThrough {
+                                feature_id,
+                                edge_id: edge_id_clone,
+                            });
 
-                        self.runtime.block_on(async move {
-                            let result = writer.write(&feature).await;
-                            let node = node_handle.clone();
-                            if let Err(e) = result {
-                                event_hub.error_log_with_node_handle(
-                                    None,
-                                    node,
-                                    format!("Failed to write feature: {e}"),
-                                );
-                            } else {
-                                event_hub.send(Event::EdgeCompleted {
-                                    feature_id,
-                                    edge_id,
-                                });
-                            }
-                        });
+                            self.runtime.block_on(async move {
+                                let result = writer.write(&feature).await;
+                                let node = node_handle.clone();
+                                if let Err(e) = result {
+                                    event_hub.error_log_with_node_handle(
+                                        None,
+                                        node,
+                                        format!("Failed to write feature: {e}"),
+                                    );
+                                } else {
+                                    event_hub.send(Event::EdgeCompleted {
+                                        feature_id,
+                                        edge_id,
+                                    });
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -155,30 +166,32 @@ impl ChannelManager {
     }
 
     pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
-        let all_writers = self
-            .feature_writers
-            .values()
-            .flatten()
-            .cloned()
-            .collect::<Vec<_>>();
-        let node_handle = self.owner.clone();
-        self.runtime.block_on(async {
-            let futures = all_writers.iter().map(|writer| {
-                let writer = writer.clone();
-                let node = node_handle.clone();
-                async move {
-                    let result = writer.flush().await;
-                    if let Err(e) = result {
-                        self.event_hub.error_log_with_node_handle(
-                            None,
-                            node,
-                            format!("Failed to flush feature writer: {e}"),
-                        );
+        if !*FEATURE_WRITER_DISABLE {
+            let all_writers = self
+                .feature_writers
+                .values()
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>();
+            let node_handle = self.owner.clone();
+            self.runtime.block_on(async {
+                let futures = all_writers.iter().map(|writer| {
+                    let writer = writer.clone();
+                    let node = node_handle.clone();
+                    async move {
+                        let result = writer.flush().await;
+                        if let Err(e) = result {
+                            self.event_hub.error_log_with_node_handle(
+                                None,
+                                node,
+                                format!("Failed to flush feature writer: {e}"),
+                            );
+                        }
                     }
-                }
+                });
+                futures::future::join_all(futures).await;
             });
-            futures::future::join_all(futures).await;
-        });
+        }
         self.send_non_op(ExecutorOperation::Terminate { ctx })?;
         self.event_hub.info_log_with_node_handle(
             None,

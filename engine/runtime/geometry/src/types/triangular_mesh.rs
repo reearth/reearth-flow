@@ -348,14 +348,14 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         }
 
         // Triangulate the face by the following process:
-        // 1. Find the vertex with the positive angle.
+        // 1. Find the vertex with positive angle.
         // 2. Create a triangle with the two adjacent vertices.
         // 3. Remove the vertex from the face.
         // 4. Update the angles of the adjacent vertices.
         // 5. Repeat until the face boundary is empty.
         let mut triangles = Vec::new();
         while !face.is_empty() {
-            // Find the vertex with the positive outer angle
+            // Find the vertex with positive outer angle
             // A polygon in an Euclidean space must have at least one convex vertex
             let removed_vtx_idx = angles
                 .iter()
@@ -799,7 +799,7 @@ impl TriangularMesh<f64> {
     fn try_from_polygons(faces: Vec<Polygon3D<f64>>, tolerance: f64) -> Result<Self, String> {
         let mut new_faces: Vec<super::line_string::LineString> = Vec::new();
         for f in faces {
-            new_faces.push(f.into_merged_contour()?);
+            new_faces.push(f.into_merged_contour(tolerance)?);
         }
         Self::from_faces(&new_faces, tolerance)
     }

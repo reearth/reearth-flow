@@ -333,7 +333,7 @@ impl GeometryCoercer {
                 CoerceTarget::TriangularMesh => {
                     const DEFAULT_TOLERANCE: f64 = 1e-6;
                     for polygon in geo_feature.polygons.iter() {
-                        let face = polygon.clone().into_merged_contour()?;
+                        let face = polygon.clone().into_merged_contour(DEFAULT_TOLERANCE)?;
                         let triangular_mesh =
                             TriangularMesh::<f64, f64>::from_faces(&[face], DEFAULT_TOLERANCE)?;
                         geometries.push(Geometry3D::TriangularMesh(triangular_mesh));

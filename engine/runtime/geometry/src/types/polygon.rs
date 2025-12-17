@@ -20,7 +20,8 @@ use crate::algorithm::utils::{
     normalize_vertices_2d_with_params, normalize_vertices_with_params, NormalizationResult2D,
     NormalizationResult3D,
 };
-use crate::algorithm::GeoFloat;
+use crate::algorithm::{GeoFloat, tolerance};
+use crate::types::line::Line3D;
 
 use super::conversion::geojson::create_polygon_type;
 use super::coordinate::Coordinate;
@@ -254,7 +255,7 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 
 impl Polygon<f64> {
     // Merges all the rings (exterior and interiors) into a single closed LineString.
-    pub fn into_merged_contour(mut self) -> Result<LineString<f64, f64>, String> {
+    pub fn into_merged_contour(mut self, tolerance: f64) -> Result<LineString<f64, f64>, String> {
         let norm = self.normalize_vertices_3d();
         let mut exterior = self.exterior;
         let len = self.interiors.len();
@@ -264,7 +265,7 @@ impl Polygon<f64> {
             let interior = unsafe { interiors.next().unwrap_unchecked() };
             let remaining_interiors = interiors.as_slice();
             exterior =
-                Self::into_merged_contour_single_interior(exterior, interior, remaining_interiors)?;
+                Self::into_merged_contour_single_interior(exterior, interior, remaining_interiors, tolerance)?;
         }
         exterior.denormalize_vertices(norm);
         Ok(exterior)
@@ -274,28 +275,27 @@ impl Polygon<f64> {
         exterior: LineString<f64, f64>,
         mut merging_interior: LineString<f64, f64>,
         remaining_interiors: &[LineString<f64, f64>],
+        tolerance: f64
     ) -> Result<LineString<f64, f64>, String> {
         if merging_interior.is_empty() {
             return Ok(exterior);
         }
 
-        let epsilon = 1e-5;
-
         let (mut x, mut y) = (usize::MAX, usize::MAX);
         'outer: for (i, &v) in exterior.iter().enumerate() {
             'inner: for (j, &w) in merging_interior.iter().enumerate() {
                 // check if the line segment vw intersects with any edge of the exterior ring and the interior rings
-                let e1 = Line::new_(v, w);
+                let e1: Line3D<f64> = Line::new_(v, w);
                 for e2 in exterior
                     .iter()
                     .copied()
                     .zip(exterior.iter().copied().skip(1))
                 {
-                    if (e2.0 - v).norm() < epsilon || (e2.1 - v).norm() < epsilon {
+                    if (e2.0 - v).norm() < tolerance || (e2.1 - v).norm() < tolerance {
                         continue;
                     }
                     let e2 = Line::new_(e2.0, e2.1);
-                    if line_intersection3d(e1, e2).is_some() {
+                    if e1.intersection(&e2, tolerance).is_some() {
                         continue 'inner;
                     }
                 }
@@ -304,11 +304,11 @@ impl Polygon<f64> {
                     .copied()
                     .zip(merging_interior.iter().copied().skip(1))
                 {
-                    if (e2.0 - w).norm() < epsilon || (e2.1 - w).norm() < epsilon {
+                    if (e2.0 - w).norm() < tolerance || (e2.1 - w).norm() < tolerance {
                         continue;
                     }
                     let e2 = Line::new_(e2.0, e2.1);
-                    if line_intersection3d(e1, e2).is_some() {
+                    if e1.intersection(&e2, tolerance).is_some() {
                         continue 'inner;
                     }
                 }
@@ -318,11 +318,11 @@ impl Polygon<f64> {
                         .copied()
                         .zip(interior.iter().copied().skip(1))
                     {
-                        if (e2.0 - w).norm() < epsilon || (e2.1 - w).norm() < epsilon {
+                        if (e2.0 - w).norm() < tolerance || (e2.1 - w).norm() < tolerance {
                             continue;
                         }
                         let e2 = Line::new_(e2.0, e2.1);
-                        if line_intersection3d(e1, e2).is_some() {
+                        if e1.intersection(&e2, tolerance).is_some() {
                             continue 'inner;
                         }
                     }
@@ -331,7 +331,7 @@ impl Polygon<f64> {
                 if exterior
                     .iter()
                     .skip(1)
-                    .filter(|&&k| (k - v).norm() < epsilon)
+                    .filter(|&&k| (k - v).norm() < tolerance)
                     .count()
                     > 1
                 {
@@ -358,8 +358,8 @@ impl Polygon<f64> {
                 .normalize();
             let inner = merging_interior.exterior_angle_sum(Some(n));
             let outer = exterior.exterior_angle_sum(Some(n));
-            if (inner.abs() - outer.abs()).abs() < epsilon {
-                (inner + outer).abs() < epsilon
+            if (inner.abs() - outer.abs()).abs() < tolerance {
+                (inner + outer).abs() < tolerance
             } else {
                 return Err("Failed to determine the orientation of the rings. Possible cases are: 1. degenerate rings, 2. non-planar rings, 3. rings not closed.".to_string());
             }
@@ -920,7 +920,7 @@ mod tests {
             Coordinate::new__(1.0, 1.0, 0.0),
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior]);
-        let merged = polygon.into_merged_contour().unwrap();
+        let merged = polygon.into_merged_contour(0.01).unwrap();
         let expected_coords = vec![
             Coordinate::new__(0.0, 0.0, 0.0),
             Coordinate::new__(1.0, 1.0, 0.0),
@@ -954,7 +954,7 @@ mod tests {
             Coordinate::new__(0.0, 1.0, 0.0),
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior]);
-        let merged = polygon.into_merged_contour().unwrap();
+        let merged = polygon.into_merged_contour(0.01).unwrap();
         assert_eq!(merged.len(), 8);
         let expected_coords = vec![
             Coordinate::new__(-2.0, 0.0, 0.0),
@@ -1092,7 +1092,7 @@ mod tests {
             },
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior2, interior1]);
-        let merged = polygon.into_merged_contour().unwrap();
+        let merged = polygon.into_merged_contour(0.0001).unwrap();
         for e1 in merged.0.iter().zip(merged.0.iter().skip(1)) {
             for e2 in merged.0.iter().zip(merged.0.iter().skip(1)) {
                 if e1.0 == e2.0 || e1.0 == e2.1 || e1.1 == e2.0 || e1.1 == e2.1 {
