@@ -11,6 +11,7 @@ use crate::types::{
     polygon::Polygon3D,
     rect::Rect3D,
     triangle::Triangle3D,
+    triangular_mesh::TriangularMesh,
 };
 
 use super::map_coords::MapCoords;
@@ -88,13 +89,11 @@ where
     T: CoordFloat,
 {
     fn signed_area3d(&self) -> T {
-        let polygon = Polygon3D::new(self.clone(), vec![]);
-        polygon.signed_area3d()
+        T::zero()
     }
 
     fn unsigned_area3d(&self) -> T {
-        let polygon = Polygon3D::new(self.clone(), vec![]);
-        polygon.unsigned_area3d()
+        T::zero()
     }
 }
 
@@ -214,6 +213,39 @@ where
     }
 }
 
+impl<T> Area3D<T> for TriangularMesh<T>
+where
+    T: CoordFloat,
+{
+    fn signed_area3d(&self) -> T {
+        self.get_triangles()
+            .iter()
+            .map(|triangle_indices| {
+                // Create a Triangle3D from the vertex indices
+                let v0 = self.get_vertices()[triangle_indices[0]];
+                let v1 = self.get_vertices()[triangle_indices[1]];
+                let v2 = self.get_vertices()[triangle_indices[2]];
+                let triangle = Triangle3D::new(v0, v1, v2);
+                triangle.signed_area3d()
+            })
+            .fold(T::zero(), |total, area| total + area)
+    }
+
+    fn unsigned_area3d(&self) -> T {
+        self.get_triangles()
+            .iter()
+            .map(|triangle_indices| {
+                // Create a Triangle3D from the vertex indices
+                let v0 = self.get_vertices()[triangle_indices[0]];
+                let v1 = self.get_vertices()[triangle_indices[1]];
+                let v2 = self.get_vertices()[triangle_indices[2]];
+                let triangle = Triangle3D::new(v0, v1, v2);
+                triangle.unsigned_area3d()
+            })
+            .fold(T::zero(), |total, area| total + area)
+    }
+}
+
 impl<T> Area3D<T> for Geometry3D<T>
 where
     T: CoordFloat,
@@ -229,6 +261,7 @@ where
             Geometry3D::MultiPolygon(mp) => mp.signed_area3d(),
             Geometry3D::Rect(r) => r.signed_area3d(),
             Geometry3D::Triangle(t) => t.signed_area3d(),
+            Geometry3D::TriangularMesh(t) => t.signed_area3d(),
             _ => unimplemented!(),
         }
     }
@@ -243,6 +276,7 @@ where
             Geometry3D::MultiPolygon(mp) => mp.unsigned_area3d(),
             Geometry3D::Rect(r) => r.unsigned_area3d(),
             Geometry3D::Triangle(t) => t.unsigned_area3d(),
+            Geometry3D::TriangularMesh(t) => t.unsigned_area3d(),
             _ => unimplemented!(),
         }
     }
