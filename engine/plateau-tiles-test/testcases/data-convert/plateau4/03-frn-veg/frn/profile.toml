@@ -9,8 +9,6 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
 
 [filter.tree]
 "" = ["codelists/", "schemas/"]
-# "udx/frn/" = ["54400098_frn_6697_op.gml", "54400098_frn_6697_appearance/"]
-"udx/frn/" = ["54400098_frn_6697_appearance/"]
 # Warn: some other features in this dataset contains NaN and are excluded.
 # I added NaN check to force return errors in nusamai-citygml,
 # otherwise some nasty bugs occur (hard to debug, related to NaN != NaN)
