@@ -42,6 +42,7 @@ type BatchConfig struct {
 	ComputeMemoryMib                int
 	TaskCount                       int
 	CompressIntermediateData        bool
+	FeatureWriterDisable            bool
 }
 
 type BatchClient interface {
@@ -188,6 +189,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if b.config.CompressIntermediateData {
 					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
+				}
+				if b.config.FeatureWriterDisable {
+					vars["FLOW_RUNTIME_FEATURE_WRITER_DISABLE"] = strconv.FormatBool(b.config.FeatureWriterDisable)
 				}
 
 				return vars
