@@ -2,7 +2,7 @@ import { ApiResponse } from "./api";
 
 export type WorkerConfig = {
   id: string;
-  machineType?: MachineTypeOption;
+  machineType?: string;
   computeCpuMilli?: number;
   computeMemoryMib?: number;
   bootDiskSizeGB?: number;

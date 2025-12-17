@@ -24,7 +24,7 @@ export default () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (workerConfig) {
+    if (workerConfig && !isLoading) {
       setFormData({
         machineType: workerConfig.machineType ?? "",
         computeCpuMilli: workerConfig.computeCpuMilli?.toString() ?? "",
@@ -40,7 +40,7 @@ export default () => {
           workerConfig.nodeStatusPropagationDelayMilli?.toString() ?? "",
       });
     }
-  }, [workerConfig]);
+  }, [workerConfig, isLoading, formData.machineType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
