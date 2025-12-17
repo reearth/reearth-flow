@@ -124,10 +124,10 @@ geojson = "0.24.2"
 glam = "0.30.9"
 # gltf = { version = "1.4", features = ["extensions", "extras"] }
 gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238179ea5a6152c5cf22", features = [
+  "EXT_texture_webp",
   "extensions",
   "extras",
-  "EXT_texture_webp",
-]}
+] }
 hashbrown = { version = "0.15.5", features = ["serde"] }
 hex = "0.4.3"
 home = "0.5.12"
