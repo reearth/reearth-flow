@@ -45,6 +45,7 @@ pub struct PlanarityFilterParam {
     pub filter_type: PlanarityFilterType,
     /// # Threshold
     /// The threshold value for planarity check.
+    /// For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix.
     /// For height mode: the maximum allowed convex hull minimum height.
     pub threshold: Expr,
 }
@@ -297,13 +298,8 @@ fn check_planarity_height(
         if norm < 1e-10 {
             return None; // Collinear points
         }
-        let normal_normalized =
-            Coordinate3D::new__(normal.x / norm, normal.y / norm, normal.z / norm);
-        let center = Coordinate3D::new__(
-            (a.x + b.x + c.x) / 3.0,
-            (a.y + b.y + c.y) / 3.0,
-            (a.z + b.z + c.z) / 3.0,
-        );
+        let normal_normalized = normal / norm;
+        let center = (a + b + c) / 3.0;
         return Some(reearth_flow_geometry::utils::PointsCoplanar {
             normal: reearth_flow_geometry::types::point::Point3D::new_(
                 normal_normalized.x,
