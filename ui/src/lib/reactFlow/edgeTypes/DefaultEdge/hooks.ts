@@ -65,14 +65,13 @@ export default ({
   );
 
   const intermediateDataUrl = useMemo(() => {
-    if (api && debugJobState?.jobId && currentWorkflowId) {
-      if (currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
-        return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
-      } else {
-        return `${api}/artifacts/${debugJobState.jobId}/feature-store/${currentWorkflowId}.${id}.jsonl.zst`;
-      }
+    if (!api || !debugJobState?.jobId) {
+      return undefined;
     }
-    return undefined;
+    if (!currentWorkflowId || currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
+    }
+    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${currentWorkflowId}.${id}.jsonl.zst`;
   }, [api, debugJobState?.jobId, id, currentWorkflowId]);
 
   useEffect(() => {
