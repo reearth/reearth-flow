@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 const config = {
   darkMode: "class",
@@ -96,7 +97,18 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")], // eslint-disable-line
+  plugins: [
+    require("tailwindcss-animate"), // eslint-disable-line
+    // Custom theme variants plugin
+    plugin(({ addVariant }) => {
+      // Add variant for terminal theme
+      addVariant("terminal", '[data-theme="terminal"] &');
+      // Add variants for future themes
+      addVariant("high-contrast", '[data-theme="high-contrast"] &');
+      addVariant("midnight", '[data-theme="midnight"] &');
+      addVariant("synthwave", '[data-theme="synthwave"] &');
+    }),
+  ],
 } satisfies Config;
 
 export default config;

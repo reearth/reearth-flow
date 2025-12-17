@@ -21,7 +21,7 @@ import {
 import { useUser } from "@flow/lib/gql";
 import { AvailableLanguage, localesWithLabel, useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import { useTheme } from "@flow/lib/theme";
+import { Theme, useTheme } from "@flow/lib/theme";
 
 type Errors =
   | "failed"
@@ -53,17 +53,16 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     localesWithLabel[i18n.language as AvailableLanguage] ||
     t("Select Language");
 
-  const themes = [
+  const themes: { value: Theme; label: string; icon: React.ReactNode }[] = [
     { value: "light", label: t("Light"), icon: <SunIcon /> },
     { value: "dark", label: t("Dark"), icon: <MoonIcon /> },
+    { value: "terminal", label: t("Terminal"), icon: <GearIcon /> },
     { value: "system", label: t("System"), icon: <GearIcon /> },
   ];
 
   const { theme, setTheme } = useTheme();
   const currentTheme = themes.filter((t) => t.value === theme)[0];
-  const [selectedTheme, setSelectedTheme] = useState<
-    "light" | "dark" | "system"
-  >(theme);
+  const [selectedTheme, setSelectedTheme] = useState<Theme>(theme);
 
   const handleUpdateMe = async () => {
     setLoading(true);

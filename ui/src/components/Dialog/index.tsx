@@ -21,7 +21,11 @@ const DialogOverlay = forwardRef<
   }
 >(
   (
-    { className, overlayBgClass = "bg-zinc-300/40 dark:bg-black/40", ...props },
+    {
+      className,
+      overlayBgClass = "bg-zinc-300/40 dark:bg-black/40 terminal:bg-black/40",
+      ...props
+    },
     ref,
   ) => (
     <DialogPrimitive.Overlay
