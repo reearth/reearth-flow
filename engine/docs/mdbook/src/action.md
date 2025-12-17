@@ -14,6 +14,65 @@ Removes appearance information (materials, textures) from CityGML geometry
 ### Category
 * Geometry
 
+## AreaCalculator
+### Type
+* processor
+### Description
+Calculates the planar or sloped area of polygon geometries and adds the results as attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AreaCalculator Parameters",
+  "description": "Configuration for calculating areas of geometries.",
+  "type": "object",
+  "properties": {
+    "areaType": {
+      "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+      "default": "planeArea",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AreaType"
+        }
+      ]
+    },
+    "multiplier": {
+      "description": "Multiplier to scale the area values (default: 1.0)",
+      "default": 1.0,
+      "type": "number",
+      "format": "double"
+    },
+    "outputAttribute": {
+      "description": "Name of the attribute to store the calculated area (default: \"area\")",
+      "default": "area",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "AreaType": {
+      "type": "string",
+      "enum": [
+        "planeArea",
+        "slopedArea"
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## AreaOnAreaOverlayer
 ### Type
 * processor
@@ -3321,6 +3380,7 @@ Coerces and converts feature geometries to specified target geometry types
       "type": "string",
       "enum": [
         "lineString",
+        "polygon",
         "triangularMesh"
       ]
     }

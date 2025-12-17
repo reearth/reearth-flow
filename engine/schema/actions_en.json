@@ -17,6 +17,65 @@
       ]
     },
     {
+      "name": "AreaCalculator",
+      "type": "processor",
+      "description": "Calculates the planar or sloped area of polygon geometries and adds the results as attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AreaCalculator Parameters",
+        "description": "Configuration for calculating areas of geometries.",
+        "type": "object",
+        "properties": {
+          "areaType": {
+            "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+            "default": "planeArea",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AreaType"
+              }
+            ]
+          },
+          "multiplier": {
+            "description": "Multiplier to scale the area values (default: 1.0)",
+            "default": 1.0,
+            "type": "number",
+            "format": "double"
+          },
+          "outputAttribute": {
+            "description": "Name of the attribute to store the calculated area (default: \"area\")",
+            "default": "area",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "AreaType": {
+            "type": "string",
+            "enum": [
+              "planeArea",
+              "slopedArea"
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "AreaOnAreaOverlayer",
       "type": "processor",
       "description": "Overlays an area on another area",
@@ -3321,6 +3380,7 @@
             "type": "string",
             "enum": [
               "lineString",
+              "polygon",
               "triangularMesh"
             ]
           }
