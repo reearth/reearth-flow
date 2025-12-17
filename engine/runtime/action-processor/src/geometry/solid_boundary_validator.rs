@@ -122,6 +122,7 @@ enum IssueType {
     WrongFaceOrientation,
     NotConnected,
     SelfIntersection,
+    SurfaceIssue,
 }
 
 /// # Solid Boundary Validator
@@ -207,7 +208,22 @@ impl Processor for SolidBoundaryValidator {
         };
 
         // Extract vertices, edges, and triangles from the solid
-        let mesh = TriangularMesh::from_faces(&faces, Some(tolerance))?;
+        let Ok(mesh) = TriangularMesh::from_faces(&faces, Some(tolerance)) else {
+            // If triangulation fails, then it is a surface issue.
+            let mut feature = feature.clone();
+            feature.attributes.insert(
+                Attribute::new("solid_boundary_issues"),
+                AttributeValue::from(
+                    serde_json::to_value(&ValidationResult {
+                        issue_count: 1,
+                        issue: IssueType::SurfaceIssue,
+                    })
+                    .unwrap(),
+                ),
+            );
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+            return Ok(());
+        };
         if mesh.is_empty() {
             // If triangulation fails, send to rejected port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

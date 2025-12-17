@@ -59,8 +59,8 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: DestinationMeshCodeExtractorParam = if let Some(with_val) = with.clone() {
-            let value: Value = serde_json::to_value(with_val)
+        let params: DestinationMeshCodeExtractorParam = if let Some(with) = with.as_ref() {
+            let value: Value = serde_json::to_value(with)
                 .map_err(|e| format!("Failed to serialize parameters: {e}"))?;
             serde_json::from_value(value)
                 .map_err(|e| format!("Failed to deserialize parameters: {e}"))?
