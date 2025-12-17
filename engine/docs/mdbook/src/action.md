@@ -3380,6 +3380,7 @@ Coerces and converts feature geometries to specified target geometry types
       "type": "string",
       "enum": [
         "lineString",
+        "polygon",
         "triangularMesh"
       ]
     }

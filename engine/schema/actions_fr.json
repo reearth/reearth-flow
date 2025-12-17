@@ -3380,6 +3380,7 @@
             "type": "string",
             "enum": [
               "lineString",
+              "polygon",
               "triangularMesh"
             ]
           }
