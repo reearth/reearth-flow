@@ -5515,7 +5515,7 @@ Filter Features by Geometry Planarity
     },
     "threshold": {
       "title": "Threshold",
-      "description": "The threshold value for planarity check (as an expression evaluating to f64). For covariance mode: the maximum allowed eigenvalue (default: 1e-6). For height mode: the maximum allowed convex hull height.",
+      "description": "The threshold value for planarity check. For height mode: the maximum allowed convex hull minimum height.",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -5531,7 +5531,7 @@ Filter Features by Geometry Planarity
       "description": "Filter type for planarity check",
       "oneOf": [
         {
-          "description": "Uses covariance matrix eigenvalue analysis (existing algorithm)",
+          "description": "Uses covariance matrix eigenvalue analysis",
           "type": "string",
           "enum": [
             "covariance"
