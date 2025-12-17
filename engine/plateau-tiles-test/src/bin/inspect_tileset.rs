@@ -1,4 +1,6 @@
-use plateau_tiles_test::align_cesium::{collect_geometries_by_gmlid, collect_glb_paths_from_tileset};
+use plateau_tiles_test::align_cesium::{
+    collect_geometries_by_gmlid, collect_glb_paths_from_tileset,
+};
 use reearth_flow_gltf::parse_gltf;
 use std::collections::HashSet;
 use std::fs;
@@ -63,7 +65,11 @@ fn extract_texture(
         }
     }
 
-    Err(format!("Texture {} (source_idx={}) not found in tileset", texture_name, source_idx).into())
+    Err(format!(
+        "Texture {} (source_idx={}) not found in tileset",
+        texture_name, source_idx
+    )
+    .into())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -114,14 +120,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for level in detail_levels {
                 if let (Some(idx), Some(name)) = (level.source_idx, &level.texture_name) {
                     names.insert(name.clone());
-                    let Some(output_dir) = &output_dir else { continue; };
-                    if let Err(e) = extract_texture(&tileset_dir, output_dir, idx, name, &mut extracted_cache) {
+                    let Some(output_dir) = &output_dir else {
+                        continue;
+                    };
+                    if let Err(e) =
+                        extract_texture(&tileset_dir, output_dir, idx, name, &mut extracted_cache)
+                    {
                         eprintln!("Warning: Failed to extract texture {}: {}", name, e);
                     }
                 }
             }
 
-            println!("{}: {} levels, texture={:?}", gml_id, detail_levels.len(), names);
+            println!(
+                "{}: {} levels, texture={:?}",
+                gml_id,
+                detail_levels.len(),
+                names
+            );
         }
 
         if !extracted_cache.is_empty() {

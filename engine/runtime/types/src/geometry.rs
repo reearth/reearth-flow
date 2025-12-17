@@ -138,9 +138,7 @@ impl CityGmlGeometry {
 
                 // Extract only the relevant slice of polygon_uvs for this geometry
                 let polygon_uvs = if pos + len <= self.polygon_uvs.0.len() {
-                    MultiPolygon2D::new(
-                        self.polygon_uvs.0[pos..pos + len].to_vec()
-                    )
+                    MultiPolygon2D::new(self.polygon_uvs.0[pos..pos + len].to_vec())
                 } else {
                     MultiPolygon2D::default()
                 };

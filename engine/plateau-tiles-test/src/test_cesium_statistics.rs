@@ -50,8 +50,11 @@ fn test_texture_presence(
     flow_detail_levels: &[DetailLevel],
 ) -> Result<(), String> {
     // all detail levels must have same texture presence (indicated by source_idx)
-    let fme_has_texture = fme_detail_levels.first()
-        .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?.source_idx.is_some();
+    let fme_has_texture = fme_detail_levels
+        .first()
+        .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?
+        .source_idx
+        .is_some();
     eprintln!("fme_has_texture: {}", fme_has_texture);
     for level in fme_detail_levels.iter() {
         if level.source_idx.is_some() != fme_has_texture {
@@ -61,8 +64,11 @@ fn test_texture_presence(
             ));
         }
     }
-    let flow_has_texture = flow_detail_levels.first()
-        .ok_or_else(|| format!("No detail levels for gml_id '{}' in Flow", gml_id))?.source_idx.is_some();
+    let flow_has_texture = flow_detail_levels
+        .first()
+        .ok_or_else(|| format!("No detail levels for gml_id '{}' in Flow", gml_id))?
+        .source_idx
+        .is_some();
     for level in flow_detail_levels.iter() {
         if level.source_idx.is_some() != flow_has_texture {
             return Err(format!(
