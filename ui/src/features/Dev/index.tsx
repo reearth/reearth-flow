@@ -1,6 +1,16 @@
 import { FC } from "react";
 
-import { Button, Input, Label, LoadingSkeleton } from "@flow/components";
+import {
+  Button,
+  Input,
+  Label,
+  LoadingSkeleton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@flow/components";
 
 import { WorkerConfigDeleitionDialog } from "./components";
 import useHooks from "./hooks";
@@ -10,6 +20,7 @@ const Dev: FC = () => {
     workerConfig,
     isLoading,
     formData,
+    machineTypeOptions,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
     handleChange,
@@ -24,7 +35,7 @@ const Dev: FC = () => {
       </div>
     );
   }
-  console.log("workerConfig", workerConfig);
+
   return (
     <div className="flex w-full flex-col gap-6 p-6">
       <div className="flex flex-col gap-4">
@@ -35,22 +46,28 @@ const Dev: FC = () => {
         </p>
         <div className="h-px bg-gray-200" />
       </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="machineType" className="text-sm font-medium">
               Machine Type
             </Label>
-            <Input
-              id="machineType"
-              type="text"
+            <Select
               value={formData.machineType}
-              onChange={(e) => handleChange("machineType", e.target.value)}
-              placeholder="e.g., n1-standard-4"
-            />
+              onValueChange={(value) => handleChange("machineType", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select machine type" />
+              </SelectTrigger>
+              <SelectContent>
+                {machineTypeOptions.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-              The GCP machine type for the worker (e.g., n1-standard-4)
+              The GCP machine type for the worker (e.g., e2-standard-2)
             </p>
           </div>
 
@@ -66,7 +83,8 @@ const Dev: FC = () => {
               placeholder="e.g., 4000"
             />
             <p className="text-xs text-muted-foreground">
-              CPU allocation in milli-cores (1000 = 1 CPU core)
+              CPU allocation in milli-cores (1000 = 1 CPU core). Must be at
+              least 500 and no larger than 64000.
             </p>
           </div>
 
@@ -82,7 +100,8 @@ const Dev: FC = () => {
               placeholder="e.g., 8192"
             />
             <p className="text-xs text-muted-foreground">
-              Memory allocation in mebibytes (1024 MiB = 1 GiB)
+              Memory allocation in mebibytes (1024 MiB = 1 GiB). Must be at
+              least 512 and no larger than 131072.
             </p>
           </div>
 
@@ -98,7 +117,8 @@ const Dev: FC = () => {
               placeholder="e.g., 100"
             />
             <p className="text-xs text-muted-foreground">
-              Boot disk size in gigabytes (must be at least 10 GB)
+              Boot disk size in gigabytes. Must be at least 10 GB and no larger
+              than 1000 GB.
             </p>
           </div>
 
@@ -114,7 +134,8 @@ const Dev: FC = () => {
               placeholder="e.g., 10"
             />
             <p className="text-xs text-muted-foreground">
-              Number of parallel tasks
+              Number of parallel tasks. Must be at least 1 and no larger than
+              20.
             </p>
           </div>
 
@@ -130,7 +151,8 @@ const Dev: FC = () => {
               placeholder="e.g., 4"
             />
             <p className="text-xs text-muted-foreground">
-              Maximum concurrent operations
+              Maximum concurrent operations. Must be at least 1 and no larger
+              than 64.
             </p>
           </div>
 
@@ -146,7 +168,8 @@ const Dev: FC = () => {
               placeholder="e.g., 8"
             />
             <p className="text-xs text-muted-foreground">
-              Size of the worker thread pool
+              Size of the worker thread pool. Must be at least 1 and no larger
+              than 200.
             </p>
           </div>
 
@@ -164,7 +187,8 @@ const Dev: FC = () => {
               placeholder="e.g., 1000"
             />
             <p className="text-xs text-muted-foreground">
-              Internal channel buffer size
+              Internal channel buffer size. Must be at least 1 and no larger
+              than 8192.
             </p>
           </div>
 
@@ -184,7 +208,8 @@ const Dev: FC = () => {
               placeholder="e.g., 1000"
             />
             <p className="text-xs text-muted-foreground">
-              Number of features before flushing to storage
+              Number of features before flushing to storage. Must be at least 1
+              and no larger than 20000.
             </p>
           </div>
 
@@ -204,7 +229,8 @@ const Dev: FC = () => {
               placeholder="e.g., 100"
             />
             <p className="text-xs text-muted-foreground">
-              Delay in milliseconds for node status propagation
+              Delay in milliseconds for node status propagation. Must be at
+              least 50 and no larger than 30000.
             </p>
           </div>
         </div>

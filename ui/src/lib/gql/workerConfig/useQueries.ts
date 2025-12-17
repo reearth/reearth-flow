@@ -21,8 +21,6 @@ export const useQueries = () => {
           ? toWorkerConfig(data.workerConfig)
           : undefined;
       },
-      // enabled: !!workspaceId,
-      staleTime: Infinity,
     });
 
   const updateWorkerConfigMutation = useMutation({
@@ -42,7 +40,9 @@ export const useQueries = () => {
   const deleteWorkerConfigMutation = useMutation({
     mutationFn: async () => {
       const data = await graphQLContext?.DeleteWorkerConfig();
-      return data?.deleteWorkerConfig?.id;
+      return {
+        id: data?.deleteWorkerConfig?.id,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

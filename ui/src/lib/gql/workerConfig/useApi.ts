@@ -64,7 +64,7 @@ export const useWorkerConfig = () => {
         title: "Configuration Deleted",
         description: "Configuration has been successfully deleted.",
       });
-      return { id: data ?? "", ...rest };
+      return { id: data.id ?? "", ...rest };
     } catch (_err) {
       toast({
         title: "Configuration Could Not Be Deleted",
