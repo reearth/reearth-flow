@@ -19,7 +19,7 @@ type WorkspaceMember {
 enum Role {
   # a role who can maintain a project
   maintainer
-  # a eole who can have full controll of project
+  # a role who can have full controll of project
   owner
   # a role who can read project
   reader
