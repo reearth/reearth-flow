@@ -12,7 +12,6 @@ use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
@@ -20,8 +19,6 @@ use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 
 use crate::material::{Texture, X3DMaterial};
-
-static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -147,14 +144,6 @@ impl CityGmlGeometry {
                     .sum::<usize>()
             })
             .sum()
-    }
-    pub fn are_points_coplanar(&self) -> bool {
-        self.gml_geometries.iter().all(|feature| {
-            feature.polygons.iter().all(|poly| {
-                let result = are_points_coplanar(poly.clone().into(), EPSILON);
-                result.is_some()
-            })
-        })
     }
 
     pub fn elevation(&self) -> f64 {

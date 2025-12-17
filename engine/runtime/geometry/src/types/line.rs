@@ -202,10 +202,10 @@ where
     T: CoordFloat + From<Z>,
     Z: CoordFloat + Mul<T, Output = Z> + Div<T, Output = Z>,
 {
-    pub fn intersection(&self, other: &Self, epsilon: Option<T>) -> Option<Coordinate<T, Z>> {
+    pub fn intersection(&self, other: &Self, tolerance: T) -> Option<Coordinate<T, Z>> {
         let (cp, cq) = self.closest_points(other);
         let d = (cp - cq).norm();
-        if d < epsilon.unwrap_or(<T as NumCast>::from(1e-5).unwrap_or_default()) {
+        if d < tolerance {
             Some((cp + cq) / <T as NumCast>::from(2.0).unwrap_or_default())
         } else {
             None
