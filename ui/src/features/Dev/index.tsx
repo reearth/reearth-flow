@@ -80,6 +80,8 @@ const Dev: FC = () => {
               id="computeCpuMilli"
               type="number"
               value={formData.computeCpuMilli}
+              min={500}
+              max={64000}
               onChange={(e) => handleChange("computeCpuMilli", e.target.value)}
               placeholder="e.g., 4000"
             />
@@ -97,11 +99,13 @@ const Dev: FC = () => {
               id="computeMemoryMib"
               type="number"
               value={formData.computeMemoryMib}
+              min={512}
+              max={131072}
               onChange={(e) => handleChange("computeMemoryMib", e.target.value)}
               placeholder="e.g., 8192"
             />
             <p className="text-xs text-muted-foreground">
-              Memory allocation in mebibytes (1024 MiB = 1 GiB). Must be at
+              Memory allocation in megabytes (1024 MiB = 1 GiB). Must be at
               least 512 and no larger than 131072.
             </p>
           </div>
@@ -114,6 +118,8 @@ const Dev: FC = () => {
               id="bootDiskSizeGB"
               type="number"
               value={formData.bootDiskSizeGB}
+              min={10}
+              max={1000}
               onChange={(e) => handleChange("bootDiskSizeGB", e.target.value)}
               placeholder="e.g., 100"
             />
@@ -131,6 +137,8 @@ const Dev: FC = () => {
               id="taskCount"
               type="number"
               value={formData.taskCount}
+              min={1}
+              max={20}
               onChange={(e) => handleChange("taskCount", e.target.value)}
               placeholder="e.g., 10"
             />
@@ -148,6 +156,8 @@ const Dev: FC = () => {
               id="maxConcurrency"
               type="number"
               value={formData.maxConcurrency}
+              min={1}
+              max={64}
               onChange={(e) => handleChange("maxConcurrency", e.target.value)}
               placeholder="e.g., 4"
             />
@@ -165,6 +175,8 @@ const Dev: FC = () => {
               id="threadPoolSize"
               type="number"
               value={formData.threadPoolSize}
+              min={1}
+              max={200}
               onChange={(e) => handleChange("threadPoolSize", e.target.value)}
               placeholder="e.g., 8"
             />
@@ -182,6 +194,8 @@ const Dev: FC = () => {
               id="channelBufferSize"
               type="number"
               value={formData.channelBufferSize}
+              min={1}
+              max={8192}
               onChange={(e) =>
                 handleChange("channelBufferSize", e.target.value)
               }
@@ -203,6 +217,8 @@ const Dev: FC = () => {
               id="featureFlushThreshold"
               type="number"
               value={formData.featureFlushThreshold}
+              min={1}
+              max={20000}
               onChange={(e) =>
                 handleChange("featureFlushThreshold", e.target.value)
               }
@@ -224,6 +240,8 @@ const Dev: FC = () => {
               id="nodeStatusPropagationDelayMilli"
               type="number"
               value={formData.nodeStatusPropagationDelayMilli}
+              min={50}
+              max={30000}
               onChange={(e) =>
                 handleChange("nodeStatusPropagationDelayMilli", e.target.value)
               }

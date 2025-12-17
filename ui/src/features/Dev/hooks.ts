@@ -3,6 +3,25 @@ import { useEffect, useState } from "react";
 import { useWorkerConfig } from "@flow/lib/gql/workerConfig";
 import { MachineTypeOption } from "@flow/types";
 
+const machineTypeOptions = [
+  MachineTypeOption.E2_STANDARD_2,
+  MachineTypeOption.E2_STANDARD_4,
+  MachineTypeOption.E2_STANDARD_8,
+  MachineTypeOption.E2_STANDARD_16,
+  MachineTypeOption.E2_HIGH_MEM_2,
+  MachineTypeOption.E2_HIGH_MEM_4,
+  MachineTypeOption.E2_HIGH_MEM_8,
+  MachineTypeOption.E2_HIGH_MEM_16,
+  MachineTypeOption.E2_HIGH_CPU_2,
+  MachineTypeOption.E2_HIGH_CPU_4,
+  MachineTypeOption.E2_HIGH_CPU_8,
+  MachineTypeOption.E2_HIGH_CPU_16,
+  MachineTypeOption.N2_STANDARD_2,
+  MachineTypeOption.N2_STANDARD_4,
+  MachineTypeOption.N2_STANDARD_8,
+  MachineTypeOption.N2_STANDARD_16,
+];
+
 export default () => {
   const { useGetWorkerConfig, updateWorkerConfig, deleteWorkerConfig } =
     useWorkerConfig();
@@ -85,25 +104,6 @@ export default () => {
     await deleteWorkerConfig();
     setIsDeleteDialogOpen(false);
   };
-
-  const machineTypeOptions = [
-    MachineTypeOption.E2_STANDARD_2,
-    MachineTypeOption.E2_STANDARD_4,
-    MachineTypeOption.E2_STANDARD_8,
-    MachineTypeOption.E2_STANDARD_16,
-    MachineTypeOption.E2_HIGH_MEM_2,
-    MachineTypeOption.E2_HIGH_MEM_4,
-    MachineTypeOption.E2_HIGH_MEM_8,
-    MachineTypeOption.E2_HIGH_MEM_16,
-    MachineTypeOption.E2_HIGH_CPU_2,
-    MachineTypeOption.E2_HIGH_CPU_4,
-    MachineTypeOption.E2_HIGH_CPU_8,
-    MachineTypeOption.E2_HIGH_CPU_16,
-    MachineTypeOption.N2_STANDARD_2,
-    MachineTypeOption.N2_STANDARD_4,
-    MachineTypeOption.N2_STANDARD_8,
-    MachineTypeOption.N2_STANDARD_16,
-  ];
 
   return {
     workerConfig,
