@@ -5,6 +5,7 @@ use nusamai_citygml::{object::ObjectStereotype, GeometryType, Value};
 use nusamai_plateau::Entity;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::line_string::LineString3D;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
 use crate::error::Error;
@@ -18,14 +19,9 @@ impl TryFrom<Entity> for Geometry {
 
     fn try_from(entity: Entity) -> Result<Self, Self::Error> {
         let apperance = entity.appearance_store.read().unwrap();
-        let theme = {
-            apperance
-                .themes
-                .get("rgbTexture")
-                .or_else(|| apperance.themes.get("FMETheme"))
-        };
+        let theme = apperance.themes.get("rgbTexture")
+            .or_else(|| apperance.themes.get("FMETheme"));
         let geoms = entity.geometry_store.read().unwrap();
-        let apperance = entity.appearance_store.read().unwrap();
         let epsg = geoms.epsg;
         // entity must be a Feature
         let Value::Object(obj) = &entity.root else {
@@ -146,13 +142,11 @@ impl TryFrom<Entity> for Geometry {
                 let mut poly_textures = Vec::with_capacity(total_polygons);
                 let mut poly_uvs = flatgeom::MultiPolygon::new();
 
-                let mut ring_idx = 0;
                 for &(start, end) in &polygon_ranges {
                     for global_idx in start..end {
                         let poly = geoms.multipolygon.get(global_idx as usize);
                         for (i, ring) in poly.rings().enumerate() {
-                            let ring_id = geoms.ring_ids.get(ring_idx as usize);
-                            ring_idx += 1;
+                            let ring_id = geoms.ring_ids.get(global_idx as usize);
                             let tex = ring_id
                                 .and_then(|id| id.clone())
                                 .and_then(|id| theme.ring_id_to_texture.get(&id));
@@ -179,6 +173,8 @@ impl TryFrom<Entity> for Geometry {
                                 }
                                 Some((_, uv)) if uv.len() != ring.len() => {
                                     // invalid texture found
+                                    tracing::error!("Invalid texture ring: {:?} uv: {:?}",
+                                        ring, uv);
                                     add_dummy_texture();
                                 }
                                 _ => {
@@ -191,7 +187,7 @@ impl TryFrom<Entity> for Geometry {
                 }
                 // apply textures to polygons
                 geometry_entity.polygon_textures = poly_textures;
-                geometry_entity.polygon_uvs = poly_uvs;
+                geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
             }
         } else {
             // set 'null' appearance if no theme found
@@ -211,7 +207,7 @@ impl TryFrom<Entity> for Geometry {
                     }
                 }
             }
-            geometry_entity.polygon_uvs = poly_uvs;
+            geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
         }
         Ok(Self::new_with(
             epsg,

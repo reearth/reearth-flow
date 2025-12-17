@@ -17,6 +17,7 @@ pub struct TilesetInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DetailLevel {
     pub multipolygon: MultiPolygon3D<f64>,
     pub geometric_error: f64,

@@ -67,7 +67,7 @@ impl Processor for AppearanceRemover {
                 gml.textures.clear();
                 gml.polygon_materials.clear();
                 gml.polygon_textures.clear();
-                gml.polygon_uvs = flatgeom::MultiPolygon::default();
+                gml.polygon_uvs.0.clear();
 
                 let mut geometry = feature.geometry.clone();
                 geometry.value = GeometryValue::CityGmlGeometry(gml);

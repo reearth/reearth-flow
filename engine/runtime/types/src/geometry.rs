@@ -96,7 +96,7 @@ pub struct CityGmlGeometry {
     pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
-    pub polygon_uvs: flatgeom::MultiPolygon<'static, [f64; 2]>,
+    pub polygon_uvs: MultiPolygon2D<f64>,
 }
 
 impl CityGmlGeometry {
@@ -111,16 +111,52 @@ impl CityGmlGeometry {
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
-            polygon_uvs: flatgeom::MultiPolygon::default(),
+            polygon_uvs: MultiPolygon2D::default(),
         }
     }
 
     pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
         self.gml_geometries
             .iter()
-            .map(|feature| CityGmlGeometry {
-                gml_geometries: vec![feature.clone()],
-                ..self.clone()
+            .map(|feature| {
+                let pos = feature.pos as usize;
+                let len = feature.len as usize;
+
+                // Extract only the relevant slice of polygon_materials for this geometry
+                let polygon_materials = if pos + len <= self.polygon_materials.len() {
+                    self.polygon_materials[pos..pos + len].to_vec()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract only the relevant slice of polygon_textures for this geometry
+                let polygon_textures = if pos + len <= self.polygon_textures.len() {
+                    self.polygon_textures[pos..pos + len].to_vec()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract only the relevant slice of polygon_uvs for this geometry
+                let polygon_uvs = if pos + len <= self.polygon_uvs.0.len() {
+                    MultiPolygon2D::new(
+                        self.polygon_uvs.0[pos..pos + len].to_vec()
+                    )
+                } else {
+                    MultiPolygon2D::default()
+                };
+
+                // Clone the feature and reset pos to 0 since it's now the only geometry
+                let mut cloned_feature = feature.clone();
+                cloned_feature.pos = 0;
+
+                CityGmlGeometry {
+                    gml_geometries: vec![cloned_feature],
+                    materials: self.materials.clone(),
+                    textures: self.textures.clone(),
+                    polygon_materials,
+                    polygon_textures,
+                    polygon_uvs,
+                }
             })
             .collect()
     }
