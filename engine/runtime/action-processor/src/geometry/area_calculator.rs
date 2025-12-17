@@ -64,12 +64,7 @@ impl ProcessorFactory for AreaCalculatorFactory {
                 ))
             })?
         } else {
-            // Use defaults if no parameters provided
-            AreaCalculator {
-                area_type: AreaType::PlaneArea,
-                output_attribute: Attribute::new("area".to_string()),
-                multiplier: 1.0,
-            }
+            AreaCalculator::default()
         };
         Ok(Box::new(calculator))
     }
@@ -104,6 +99,16 @@ struct AreaCalculator {
     /// Multiplier to scale the area values (default: 1.0)
     #[serde(default = "default_multiplier")]
     multiplier: f64,
+}
+
+impl Default for AreaCalculator {
+    fn default() -> Self {
+        Self {
+            area_type: AreaType::default(),
+            output_attribute: default_output_attribute(),
+            multiplier: default_multiplier(),
+        }
+    }
 }
 
 fn default_output_attribute() -> Attribute {
