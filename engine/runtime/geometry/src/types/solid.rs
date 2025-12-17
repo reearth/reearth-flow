@@ -91,7 +91,7 @@ impl Solid3D<f64> {
         self.elevation() == 0.0
     }
 
-    pub fn as_triangle_mesh(self, tolerance: f64) -> Result<TriangularMesh<f64>, String> {
+    pub fn as_triangle_mesh(self, tolerance: Option<f64>) -> Result<TriangularMesh<f64>, String> {
         match self.boundary_surface {
             BoundarySurface::Faces(faces) => {
                 let faces = faces

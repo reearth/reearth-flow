@@ -389,8 +389,7 @@ impl BoundaryExtractor {
             Geometry3D::Solid(solid) => {
                 // A solid's boundary is its surface mesh
                 // Try to convert to triangular mesh with default tolerance
-                const DEFAULT_TOLERANCE: f64 = 1e-6;
-                match solid.clone().as_triangle_mesh(DEFAULT_TOLERANCE) {
+                match solid.clone().as_triangle_mesh(None) {
                     Ok(mesh) => Some(Geometry3D::TriangularMesh(mesh)),
                     Err(_) => {
                         // If conversion fails, the solid might be represented as faces

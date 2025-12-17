@@ -419,6 +419,7 @@ fn send_feature_as_non_planar_surface(
         "issue",
         AttributeValue::String("NonPlanarSurface".to_string()),
     );
+    println!("Non-planar surface");
     fw.send(ctx.new_with_feature_and_port(feature, NOT_PLANARITY_PORT.clone()));
 }
 

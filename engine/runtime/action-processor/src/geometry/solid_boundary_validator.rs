@@ -195,7 +195,7 @@ impl Processor for SolidBoundaryValidator {
 
                 let mut polygons = Vec::new();
                 for p in &geom.polygons {
-                    polygons.push(p.clone().into_merged_contour(tolerance)?);
+                    polygons.push(p.clone().into_merged_contour(Some(tolerance))?);
                 }
                 polygons
             }
@@ -207,7 +207,7 @@ impl Processor for SolidBoundaryValidator {
         };
 
         // Extract vertices, edges, and triangles from the solid
-        let mesh = TriangularMesh::from_faces(&faces, tolerance)?;
+        let mesh = TriangularMesh::from_faces(&faces, Some(tolerance))?;
         if mesh.is_empty() {
             // If triangulation fails, send to rejected port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

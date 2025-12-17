@@ -12,15 +12,13 @@ use std::hash::{Hash, Hasher};
 
 use crate::algorithm::contains::Contains;
 use crate::algorithm::coords_iter::CoordsIter;
-use crate::algorithm::line_intersection::{
-    line_intersection, line_intersection3d, LineIntersection,
-};
+use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::utils::{
     denormalize_vertices, normalize_vertices, normalize_vertices_2d,
     normalize_vertices_2d_with_params, normalize_vertices_with_params, NormalizationResult2D,
     NormalizationResult3D,
 };
-use crate::algorithm::{GeoFloat, tolerance};
+use crate::algorithm::GeoFloat;
 use crate::types::line::Line3D;
 
 use super::conversion::geojson::create_polygon_type;
@@ -255,7 +253,11 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 
 impl Polygon<f64> {
     // Merges all the rings (exterior and interiors) into a single closed LineString.
-    pub fn into_merged_contour(mut self, tolerance: f64) -> Result<LineString<f64, f64>, String> {
+    pub fn into_merged_contour(
+        mut self,
+        tolerance: Option<f64>,
+    ) -> Result<LineString<f64, f64>, String> {
+        let tolerance = tolerance.unwrap_or(1e-6);
         let norm = self.normalize_vertices_3d();
         let mut exterior = self.exterior;
         let len = self.interiors.len();
@@ -264,8 +266,12 @@ impl Polygon<f64> {
             // Safe because we are iterating `len` times
             let interior = unsafe { interiors.next().unwrap_unchecked() };
             let remaining_interiors = interiors.as_slice();
-            exterior =
-                Self::into_merged_contour_single_interior(exterior, interior, remaining_interiors, tolerance)?;
+            exterior = Self::into_merged_contour_single_interior(
+                exterior,
+                interior,
+                remaining_interiors,
+                tolerance,
+            )?;
         }
         exterior.denormalize_vertices(norm);
         Ok(exterior)
@@ -275,7 +281,7 @@ impl Polygon<f64> {
         exterior: LineString<f64, f64>,
         mut merging_interior: LineString<f64, f64>,
         remaining_interiors: &[LineString<f64, f64>],
-        tolerance: f64
+        tolerance: f64,
     ) -> Result<LineString<f64, f64>, String> {
         if merging_interior.is_empty() {
             return Ok(exterior);
@@ -920,7 +926,7 @@ mod tests {
             Coordinate::new__(1.0, 1.0, 0.0),
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior]);
-        let merged = polygon.into_merged_contour(0.01).unwrap();
+        let merged = polygon.into_merged_contour(Some(0.01)).unwrap();
         let expected_coords = vec![
             Coordinate::new__(0.0, 0.0, 0.0),
             Coordinate::new__(1.0, 1.0, 0.0),
@@ -954,7 +960,7 @@ mod tests {
             Coordinate::new__(0.0, 1.0, 0.0),
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior]);
-        let merged = polygon.into_merged_contour(0.01).unwrap();
+        let merged = polygon.into_merged_contour(Some(0.01)).unwrap();
         assert_eq!(merged.len(), 8);
         let expected_coords = vec![
             Coordinate::new__(-2.0, 0.0, 0.0),
@@ -1092,15 +1098,15 @@ mod tests {
             },
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior2, interior1]);
-        let merged = polygon.into_merged_contour(0.0001).unwrap();
+        let merged = polygon.into_merged_contour(Some(0.0001)).unwrap();
         for e1 in merged.0.iter().zip(merged.0.iter().skip(1)) {
             for e2 in merged.0.iter().zip(merged.0.iter().skip(1)) {
                 if e1.0 == e2.0 || e1.0 == e2.1 || e1.1 == e2.0 || e1.1 == e2.1 {
                     continue;
                 }
-                let line1 = Line::new_(*e1.0, *e1.1);
+                let line1 = Line3D::new_(*e1.0, *e1.1);
                 let line2 = Line::new_(*e2.0, *e2.1);
-                let intersection = line_intersection3d(line1, line2);
+                let intersection = line1.intersection(&line2, 0.0001);
                 assert!(
                     intersection.is_none(),
                     "Found intersection between edges {line1:?} and {line2:?}"

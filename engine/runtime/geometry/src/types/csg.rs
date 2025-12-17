@@ -84,8 +84,8 @@ impl CSG<f64, f64> {
     pub fn evaluate(self, tolerance: f64) -> Result<Solid3D<f64>, String> {
         let right = self.right.evaluate(tolerance)?;
         let left = self.left.evaluate(tolerance)?;
-        let mut right = right.as_triangle_mesh(tolerance)?;
-        let mut left = left.as_triangle_mesh(tolerance)?;
+        let mut right = right.as_triangle_mesh(Some(tolerance))?;
+        let mut left = left.as_triangle_mesh(Some(tolerance))?;
         let mut union = left.clone().union(right.clone(), tolerance)?;
         let norm = normalize_vertices(union.get_vertices_mut());
         right

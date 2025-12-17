@@ -192,7 +192,12 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     }
 
     /// Create a triangular mesh from a list of faces by triangulating each face.
-    pub fn from_faces(faces: &[LineString3D<T>], tolerance: T) -> Result<Self, String> {
+    pub fn from_faces(faces: &[LineString3D<T>], tolerance: Option<T>) -> Result<Self, String> {
+        let tolerance = if let Some(tol) = tolerance {
+            tol
+        } else {
+            T::from(1e-6).unwrap() // Default tolerance
+        };
         let mut out = Self::default();
         let mut vertices = Vec::new();
         for v in faces.iter().flat_map(|f| f.0.iter()) {
@@ -796,7 +801,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 }
 
 impl TriangularMesh<f64> {
-    fn try_from_polygons(faces: Vec<Polygon3D<f64>>, tolerance: f64) -> Result<Self, String> {
+    fn try_from_polygons(
+        faces: Vec<Polygon3D<f64>>,
+        tolerance: Option<f64>,
+    ) -> Result<Self, String> {
         let mut new_faces: Vec<super::line_string::LineString> = Vec::new();
         for f in faces {
             new_faces.push(f.into_merged_contour(tolerance)?);
@@ -1442,7 +1450,8 @@ impl TriangularMesh<f64> {
             poly.interiors_push(boundary);
         }
 
-        let mut out: TriangularMesh<f64> = TriangularMesh::try_from_polygons(polygons, tolerance)?;
+        let mut out: TriangularMesh<f64> =
+            TriangularMesh::try_from_polygons(polygons, Some(tolerance))?;
         denormalize_vertices(&mut out.vertices, norm);
         Ok(out)
     }
@@ -1704,7 +1713,7 @@ pub mod tests {
                     vec![],
                 ),
             ],
-            1e-3,
+            Some(1e-3),
         )
         .unwrap()
     }
@@ -2040,7 +2049,7 @@ pub mod tests {
                     vec![],
                 ),
             ],
-            1e-3,
+            Some(1e-3),
         )
         .unwrap();
 

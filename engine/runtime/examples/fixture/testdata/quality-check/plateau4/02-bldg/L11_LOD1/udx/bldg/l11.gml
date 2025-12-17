@@ -23,11 +23,19 @@
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
+<<<<<<< Updated upstream
                                                 34.68339 137.31256 0.0
                                                 34.68340 137.31256 0.0
 												34.68340 137.31257 0.0
 												34.68339 137.31257 0.0
                                                 34.68339 137.31256 0.0
+=======
+                                                34.6916 137.3249 0.0
+                                                34.6917 137.3249 0.0
+												34.6917 137.3250 0.0
+												34.6916 137.3250 0.0
+                                                34.6916 137.3249 0.0
+>>>>>>> Stashed changes
 										</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
@@ -39,16 +47,25 @@
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
+<<<<<<< Updated upstream
                                                 34.68339 137.31256 0.0
 												34.68339 137.31257 0.0
 												34.68340 137.31257 0.00001
                                                 34.68340 137.31256 0.0
                                                 34.68339 137.31256 0.0
+=======
+                                                34.6916 137.3249 0.0
+                                                34.6917 137.3249 0.0
+												34.6917 137.3250 0.005
+												34.6916 137.3250 0.0
+                                                34.6916 137.3249 0.0
+>>>>>>> Stashed changes
 											</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
+<<<<<<< Updated upstream
 							<!-- Fails. The failure is caused by the angle tolerance. -->
 							<gml:surfaceMember>
 								<gml:Polygon>
@@ -65,17 +82,27 @@
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
+=======
+>>>>>>> Stashed changes
 							<!-- Fails. The failure is caused by the thicness tolerance. -->
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>
+<<<<<<< Updated upstream
                                                 34.6833 137.31250 0.0
 												34.6833 137.31257 0.0
 												34.6834 137.31257 0.04
                                                 34.6834 137.31250 0.0
                                                 34.6833 137.31250 0.0
+=======
+                                                34.6916 137.3249 0.0
+                                                34.6917 137.3249 0.0
+												34.6917 137.3250 0.05
+												34.6916 137.3250 -0.05
+                                                34.6916 137.3249 0.0
+>>>>>>> Stashed changes
 										</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
