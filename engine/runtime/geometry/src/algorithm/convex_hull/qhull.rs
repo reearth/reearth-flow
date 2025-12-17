@@ -165,7 +165,7 @@ fn signed_distance_to_face<T: GeoNum + Float>(
 }
 
 /// Finds 4 non-coplanar points to form the initial tetrahedron
-/// If this function returns `threshold` returns `None`, then convex-hull of minimum-height at least `threshold` is not constructible.
+/// If this function returns `None`, then convex-hull of minimum-height at least `threshold` is not constructible.
 /// Otherwise returns indices of the 4 points, or None if all points are coplanar
 fn find_initial_tetrahedron<T: GeoNum + Float>(
     points: &[Coordinate3D<T>],

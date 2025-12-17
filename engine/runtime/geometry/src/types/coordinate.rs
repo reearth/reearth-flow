@@ -529,6 +529,6 @@ impl<T: CoordNum> From<Coordinate2D<T>> for GeoCoord<T> {
     }
 }
 
-pub fn are_coplanar(points: &[Coordinate3D<f64>], torelance: f64) -> Option<PointsCoplanar> {
-    are_points_coplanar(points, torelance)
+pub fn are_coplanar(points: &[Coordinate3D<f64>], tolerance: f64) -> Option<PointsCoplanar> {
+    are_points_coplanar(points, tolerance)
 }

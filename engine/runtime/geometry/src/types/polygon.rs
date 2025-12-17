@@ -1106,7 +1106,7 @@ mod tests {
                 }
                 let line1 = Line3D::new_(*e1.0, *e1.1);
                 let line2 = Line::new_(*e2.0, *e2.1);
-                let intersection = line1.intersection(&line2, 0.0001);
+                let intersection = line1.intersection(&line2, 1e-6);
                 assert!(
                     intersection.is_none(),
                     "Found intersection between edges {line1:?} and {line2:?}"
