@@ -172,6 +172,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
+		FeatureWriterDisable:            conf.Worker_FeatureWriterDisable,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)
