@@ -23,7 +23,7 @@ const DialogOverlay = forwardRef<
   (
     {
       className,
-      overlayBgClass = "bg-zinc-300/40 dark:bg-black/40 terminal:bg-black/40",
+      overlayBgClass = "bg-zinc-300/40 dark:bg-black/40 terminal:bg-black/40 midnight:bg-zinc-900/40 synthwave:bg-purple-900/40",
       ...props
     },
     ref,

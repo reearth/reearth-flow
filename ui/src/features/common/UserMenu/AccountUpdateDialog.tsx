@@ -1,5 +1,12 @@
-import { GearIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
-import { useState } from "react";
+import {
+  GearIcon,
+  MoonIcon,
+  MoonStarsIcon,
+  SunIcon,
+  TerminalWindowIcon,
+  WaveformIcon,
+} from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
 
 import {
   Button,
@@ -56,13 +63,34 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   const themes: { value: Theme; label: string; icon: React.ReactNode }[] = [
     { value: "light", label: t("Light"), icon: <SunIcon /> },
     { value: "dark", label: t("Dark"), icon: <MoonIcon /> },
-    { value: "terminal", label: t("Terminal"), icon: <GearIcon /> },
+    {
+      value: "midnight",
+      label: t("Midnight"),
+      icon: <MoonStarsIcon weight="fill" />,
+    },
+    {
+      value: "synthwave",
+      label: t("Synthwave"),
+      icon: <WaveformIcon weight="bold" />,
+    },
+    { value: "terminal", label: t("Terminal"), icon: <TerminalWindowIcon /> },
     { value: "system", label: t("System"), icon: <GearIcon /> },
   ];
 
-  const { theme, setTheme } = useTheme();
+  console.log("themes", themes);
+
+  const { theme, setTheme, previewTheme } = useTheme();
   const currentTheme = themes.filter((t) => t.value === theme)[0];
   const [selectedTheme, setSelectedTheme] = useState<Theme>(theme);
+  const [savedTheme, setSavedTheme] = useState<Theme>(theme);
+
+  // Update saved theme when dialog opens
+  useEffect(() => {
+    return () => {
+      setSavedTheme(theme);
+      setSelectedTheme(theme);
+    };
+  }, [isOpen, theme]);
 
   const handleUpdateMe = async () => {
     setLoading(true);
@@ -89,7 +117,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     }
 
     const input = { name, email, lang: selectedLang };
-    setTheme(selectedTheme);
 
     const { me: user } = await updateMe(input);
     if (!user) {
@@ -97,17 +124,32 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       setLoading(false);
       return;
     }
+
+    // Save theme permanently on successful update
+    setTheme(selectedTheme);
+    setSavedTheme(selectedTheme);
+
     setLoading(false);
+    onOpenChange(false);
   };
   const handleLanguageChange = (lang: string) => {
     setSelectedLang(lang);
   };
 
-  const handleThemeChange = (theme: "light" | "dark" | "system") => {
+  const handleThemeChange = (theme: Theme) => {
     setSelectedTheme(theme);
+    previewTheme(theme); // Preview theme without saving
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      // Revert to saved theme if dialog is closed without saving
+      previewTheme(savedTheme);
+    }
+    onOpenChange(open);
   };
   return (
-    <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>{t("Account settings")}</DialogTitle>

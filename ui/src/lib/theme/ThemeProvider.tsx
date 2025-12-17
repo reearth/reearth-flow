@@ -3,11 +3,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 export const themes = [
   "light",
   "dark",
+  "midnight",
+  "synthwave",
   "terminal",
-  // Coming soon:
-  // "high-contrast",
-  // "midnight",
-  // "synthwave",
   "system",
 ] as const;
 
@@ -19,12 +17,16 @@ export const DEFAULT_THEME: Theme = "dark";
 export const THEME_LABELS: Record<Exclude<Theme, "system">, string> = {
   light: "Light",
   dark: "Dark",
+  midnight: "Midnight",
+  synthwave: "Synthwave",
   terminal: "Terminal",
 };
 
 export const THEME_DESCRIPTIONS: Record<Exclude<Theme, "system">, string> = {
   light: "Soft gray with pastel accents",
   dark: "Dark with subtle cool tones",
+  midnight: "Extra dark for OLED",
+  synthwave: "Neon 80s retro vibes",
   terminal: "Classic green phosphor CRT",
 };
 
@@ -37,11 +39,13 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  previewTheme: (theme: Theme) => void;
 };
 
 const initialState: ThemeProviderState = {
   theme: DEFAULT_THEME,
   setTheme: () => null,
+  previewTheme: () => null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -91,6 +95,10 @@ function ThemeProvider({
     theme,
     setTheme: (theme: Theme) => {
       localStorage.setItem(storageKey, theme);
+      setTheme(theme);
+    },
+    previewTheme: (theme: Theme) => {
+      // Set theme without saving to localStorage
       setTheme(theme);
     },
   };
