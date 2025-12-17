@@ -27,7 +27,7 @@ pub static NOT_PLANARITY_PORT: Lazy<Port> = Lazy::new(|| Port::new("notplanarity
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum PlanarityFilterType {
-    /// Uses covariance matrix eigenvalue analysis (existing algorithm)
+    /// Uses covariance matrix eigenvalue analysis
     #[default]
     Covariance,
     /// Uses minimum height of the 3D convex hull
@@ -44,9 +44,8 @@ pub struct PlanarityFilterParam {
     #[serde(default)]
     pub filter_type: PlanarityFilterType,
     /// # Threshold
-    /// The threshold value for planarity check (as an expression evaluating to f64).
-    /// For covariance mode: the maximum allowed eigenvalue (default: 1e-6).
-    /// For height mode: the maximum allowed convex hull height.
+    /// The threshold value for planarity check.
+    /// For height mode: the maximum allowed convex hull minimum height.
     pub threshold: Expr,
 }
 
@@ -291,8 +290,8 @@ fn check_planarity_height(
         let a = points[0];
         let b = points[1];
         let c = points[2];
-        let ab = Coordinate3D::new__(b.x - a.x, b.y - a.y, b.z - a.z);
-        let ac = Coordinate3D::new__(c.x - a.x, c.y - a.y, c.z - a.z);
+        let ab = b - a;
+        let ac = c - a;
         let normal = ab.cross(&ac);
         let norm = normal.norm();
         if norm < 1e-10 {
@@ -324,6 +323,7 @@ fn check_planarity_height(
     }
 
     // Compute 3D convex hull
+    // we require quick_hull_3d to compute hull with 1% tolerance of the threshold
     let Some(hull) = quick_hull_3d(&points, threshold * 0.01) else {
         let (triangle, n) = points.windows(3).find_map(|w| {
             let [a, b, c] = [w[0], w[1], w[2]];
@@ -350,8 +350,8 @@ fn check_planarity_height(
     let triangles = hull.get_triangles();
 
     if triangles.is_empty() || vertices.is_empty() {
-        // Degenerate case (e.g., all coplanar) - use covariance method as fallback
-        return are_points_coplanar(&points, threshold);
+        // Degenerate case
+        return None;
     }
 
     // Compute minimum height of the convex hull
@@ -381,8 +381,8 @@ fn compute_convex_hull_min_height(
         let c = vertices[tri[2]];
 
         // Compute face normal
-        let ab = Coordinate3D::new__(b.x - a.x, b.y - a.y, b.z - a.z);
-        let ac = Coordinate3D::new__(c.x - a.x, c.y - a.y, c.z - a.z);
+        let ab = b - a;
+        let ac = c - a;
         let normal = ab.cross(&ac);
         let norm = normal.norm();
 
@@ -390,14 +390,14 @@ fn compute_convex_hull_min_height(
             continue; // Degenerate triangle
         }
 
-        let unit_normal = Coordinate3D::new__(normal.x / norm, normal.y / norm, normal.z / norm);
+        let unit_normal = normal / norm;
 
         // Find the extent of all vertices along this normal direction
         let mut min_proj = f64::MAX;
         let mut max_proj = f64::MIN;
 
         for v in vertices {
-            let proj = v.x * unit_normal.x + v.y * unit_normal.y + v.z * unit_normal.z;
+            let proj = v.dot(&unit_normal);
             min_proj = min_proj.min(proj);
             max_proj = max_proj.max(proj);
         }
