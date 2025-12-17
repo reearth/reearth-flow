@@ -336,7 +336,7 @@ fn check_planarity_height(
             } else {
                 None
             }
-        })?; // if no such triangle found, then meaningful normal cannnot be computed. so return `None`.
+        })?; // if no such triangle found, then meaningful normal cannot be computed. so return `None`.
         return Some(reearth_flow_geometry::utils::PointsCoplanar {
             normal: reearth_flow_geometry::types::point::Point3D::new_(n.x, n.y, n.z),
             center: reearth_flow_geometry::types::point::Point3D::new_(
