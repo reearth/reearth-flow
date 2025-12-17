@@ -2,6 +2,7 @@ import { useNodes } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
@@ -13,12 +14,14 @@ import { NodeCustomizations } from "@flow/types";
 
 export default ({
   id,
+  currentWorkflowId,
   source,
   sourceHandleId,
   target,
   selected,
 }: {
   id: string;
+  currentWorkflowId?: string;
   source: string;
   sourceHandleId?: string | null;
   target: string;
@@ -62,11 +65,15 @@ export default ({
   );
 
   const intermediateDataUrl = useMemo(() => {
-    if (api && debugJobState?.jobId) {
-      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
+    if (api && debugJobState?.jobId && currentWorkflowId) {
+      if (currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
+        return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
+      } else {
+        return `${api}/artifacts/${debugJobState.jobId}/feature-store/${currentWorkflowId}.${id}.jsonl.zst`;
+      }
     }
     return undefined;
-  }, [api, debugJobState?.jobId, id]);
+  }, [api, debugJobState?.jobId, id, currentWorkflowId]);
 
   useEffect(() => {
     if (intermediateDataUrl) {
