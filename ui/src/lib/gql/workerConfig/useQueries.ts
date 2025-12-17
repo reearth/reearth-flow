@@ -5,7 +5,7 @@ import { useGraphQLContext } from "@flow/lib/gql";
 import { UpdateWorkerConfigInput } from "../__gen__/graphql";
 import { toWorkerConfig } from "../convert";
 
-import { WorkspaceConfigQueryKeys } from "./useApi";
+import { WorkerConfigQueryKeys } from "./useApi";
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -13,10 +13,9 @@ export const useQueries = () => {
 
   const useGetWorkerConfigQuery = () =>
     useQuery({
-      queryKey: [WorkspaceConfigQueryKeys.GetWorkerConfig],
+      queryKey: [WorkerConfigQueryKeys.GetWorkerConfig],
       queryFn: async () => {
         const data = await graphQLContext?.GetWorkerConfig();
-        if (!data?.workerConfig) return;
         return data?.workerConfig
           ? toWorkerConfig(data.workerConfig)
           : undefined;
@@ -32,7 +31,7 @@ export const useQueries = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [WorkspaceConfigQueryKeys.GetWorkerConfig],
+        queryKey: [WorkerConfigQueryKeys.GetWorkerConfig],
       });
     },
   });
@@ -46,7 +45,8 @@ export const useQueries = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [WorkspaceConfigQueryKeys.GetWorkerConfig],
+        queryKey: [WorkerConfigQueryKeys.GetWorkerConfig],
+        refetchType: "all",
       });
     },
   });

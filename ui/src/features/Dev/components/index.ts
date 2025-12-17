@@ -1,1 +1,1 @@
-export { default as WorkerConfigDeleitionDialog } from "./WorkerConfigDeletionDialog";
+export { default as WorkerConfigDeletionDialog } from "./WorkerConfigDeletionDialog";

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@flow/components";
 
-import { WorkerConfigDeleitionDialog } from "./components";
+import { WorkerConfigDeletionDialog } from "./components";
 import useHooks from "./hooks";
 
 const Dev: FC = () => {
@@ -250,7 +250,7 @@ const Dev: FC = () => {
         </div>
       </form>
       {isDeleteDialogOpen && (
-        <WorkerConfigDeleitionDialog
+        <WorkerConfigDeletionDialog
           isDeleteDialogOpen={isDeleteDialogOpen}
           setIsDeleteDialogOpen={setIsDeleteDialogOpen}
           onWorkerConfigDelete={handleDelete}

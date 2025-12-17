@@ -84,7 +84,6 @@ export default () => {
   const handleDelete = async () => {
     await deleteWorkerConfig();
     setIsDeleteDialogOpen(false);
-    window.location.reload();
   };
 
   const machineTypeOptions = [

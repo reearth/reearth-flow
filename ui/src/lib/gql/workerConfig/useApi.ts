@@ -9,7 +9,7 @@ import { UpdateWorkerConfigInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
-export enum WorkspaceConfigQueryKeys {
+export enum WorkerConfigQueryKeys {
   GetWorkerConfig = "getWorkerConfig",
 }
 
