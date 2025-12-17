@@ -166,50 +166,6 @@ impl GeometryCoercer {
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
-            Geometry2D::MultiLineString(multi_line_string) => {
-                let mut feature = feature.clone();
-                match self.target_type {
-                    CoerceTarget::LineString => {
-                        // Already MultiLineString, no conversion needed
-                        // Keep as is
-                    }
-                    CoerceTarget::Polygon => {
-                        // For each LineString in the MultiLineString, check if it's closed and convert to Polygon
-                        let mut polygons = Vec::new();
-                        for line_string in &multi_line_string.0 {
-                            if line_string.0.len() >= 4
-                                && line_string.0.first() == line_string.0.last()
-                            {
-                                let polygon = Polygon2D::new(line_string.clone(), vec![]);
-                                polygons.push(polygon);
-                            }
-                        }
-                        if polygons.is_empty() {
-                            // No closed line strings, keep as MultiLineString
-                        } else if polygons.len() == 1 {
-                            // Convert to Polygon
-                            let mut geometry = geometry.clone();
-                            geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                                polygons[0].clone(),
-                            ));
-                            feature.geometry = geometry;
-                        } else {
-                            // Convert to MultiPolygon
-                            let multi_polygon =
-                                reearth_flow_geometry::types::multi_polygon::MultiPolygon2D::new(
-                                    polygons,
-                                );
-                            let mut geometry = geometry.clone();
-                            geometry.value = GeometryValue::FlowGeometry2D(
-                                Geometry2D::MultiPolygon(multi_polygon),
-                            );
-                            feature.geometry = geometry;
-                        }
-                    }
-                    CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
-                }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-            }
             Geometry2D::Polygon(polygon) => {
                 let mut feature = feature.clone();
                 match self.target_type {
@@ -232,10 +188,7 @@ impl GeometryCoercer {
                         // Already a polygon, no conversion needed
                         // Keep as is
                     }
-                    CoerceTarget::TriangularMesh => {
-                        // TriangularMesh not supported for 2D polygons - need to handle this properly
-                        Err("Not supported".to_string())?
-                    }
+                    CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
@@ -274,10 +227,7 @@ impl GeometryCoercer {
                         // Already MultiPolygon, no direct conversion to single Polygon
                         // Keep as is or convert to GeometryCollection if there's one polygon
                     }
-                    CoerceTarget::TriangularMesh => {
-                        // TriangularMesh not supported for 2D multi-polygons - need to handle this properly
-                        Err("Not supported".to_string())?
-                    }
+                    CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
@@ -319,92 +269,7 @@ impl GeometryCoercer {
                         }
                     }
                     CoerceTarget::TriangularMesh => {
-                        // Convert line string to polygon first if possible, then to triangular mesh
-                        if line_string.0.len() >= 4 && line_string.0.first() == line_string.0.last()
-                        {
-                            let polygon = Polygon3D::new(line_string.clone(), vec![]);
-                            let triangular_mesh =
-                                TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
-                            let mut geometry = geometry.clone();
-                            geometry.value = GeometryValue::FlowGeometry3D(
-                                Geometry3D::TriangularMesh(triangular_mesh),
-                            );
-                            feature.geometry = geometry;
-                        } else {
-                            // Cannot convert to triangular mesh if it's not a closed polygon
-                            return Err(
-                                "Cannot convert to TriangularMesh: LineString is not closed"
-                                    .to_string(),
-                            );
-                        }
-                    }
-                }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-            }
-            Geometry3D::MultiLineString(multi_line_string) => {
-                let mut feature = feature.clone();
-                match self.target_type {
-                    CoerceTarget::LineString => {
-                        // Already MultiLineString, no conversion needed
-                        // Keep as is
-                    }
-                    CoerceTarget::Polygon => {
-                        // For each LineString in the MultiLineString, check if it's closed and convert to Polygon
-                        let mut polygons = Vec::new();
-                        for line_string in &multi_line_string.0 {
-                            if line_string.0.len() >= 4
-                                && line_string.0.first() == line_string.0.last()
-                            {
-                                let polygon = Polygon3D::new(line_string.clone(), vec![]);
-                                polygons.push(polygon);
-                            }
-                        }
-                        if polygons.is_empty() {
-                            // No closed line strings, keep as MultiLineString
-                        } else if polygons.len() == 1 {
-                            // Convert to Polygon
-                            let mut geometry = geometry.clone();
-                            geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(
-                                polygons[0].clone(),
-                            ));
-                            feature.geometry = geometry;
-                        } else {
-                            // Convert to MultiPolygon
-                            let multi_polygon =
-                                reearth_flow_geometry::types::multi_polygon::MultiPolygon3D::new(
-                                    polygons,
-                                );
-                            let mut geometry = geometry.clone();
-                            geometry.value = GeometryValue::FlowGeometry3D(
-                                Geometry3D::MultiPolygon(multi_polygon),
-                            );
-                            feature.geometry = geometry;
-                        }
-                    }
-                    CoerceTarget::TriangularMesh => {
-                        // Convert line strings to polygons first if they're closed, then to triangular mesh
-                        let mut polygons = Vec::new();
-                        for line_string in &multi_line_string.0 {
-                            if line_string.0.len() >= 4
-                                && line_string.0.first() == line_string.0.last()
-                            {
-                                let polygon = Polygon3D::new(line_string.clone(), vec![]);
-                                polygons.push(polygon);
-                            }
-                        }
-                        if !polygons.is_empty() {
-                            let triangular_mesh = TriangularMesh::<f64, f64>::try_from(polygons)?;
-                            let mut geometry = geometry.clone();
-                            geometry.value = GeometryValue::FlowGeometry3D(
-                                Geometry3D::TriangularMesh(triangular_mesh),
-                            );
-                            feature.geometry = geometry;
-                        } else {
-                            return Err(
-                                "Cannot convert to TriangularMesh: No closed LineStrings found"
-                                    .to_string(),
-                            );
-                        }
+                        return Err("not supported".to_string())?;
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -476,7 +341,6 @@ impl GeometryCoercer {
                     }
                     CoerceTarget::Polygon => {
                         // Already MultiPolygon, no direct conversion to single Polygon
-                        // Keep as is or convert to GeometryCollection if there's one polygon
                     }
                     CoerceTarget::TriangularMesh => {
                         let faces: Vec<_> = polygons.iter().flat_map(|p| p.rings()).collect();
