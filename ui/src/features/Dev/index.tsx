@@ -53,6 +53,7 @@ const Dev: FC = () => {
               Machine Type
             </Label>
             <Select
+              key={formData.machineType ?? "empty"}
               value={formData.machineType}
               onValueChange={(value) => handleChange("machineType", value)}>
               <SelectTrigger>

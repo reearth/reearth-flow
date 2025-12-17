@@ -40,7 +40,7 @@ export default () => {
           workerConfig.nodeStatusPropagationDelayMilli?.toString() ?? "",
       });
     }
-  }, [workerConfig, isLoading, formData.machineType]);
+  }, [workerConfig, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
