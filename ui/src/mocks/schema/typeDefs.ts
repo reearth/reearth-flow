@@ -87,10 +87,10 @@ export const typeDefs = `
   }
 
   enum Role {
-    MAINTAINER
-    OWNER
-    READER
-    WRITER
+    maintainer
+    owner
+    reader
+    writer
   }
 
   # Parameter Types
