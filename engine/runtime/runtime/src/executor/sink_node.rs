@@ -12,6 +12,7 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::info_span;
@@ -26,6 +27,7 @@ use crate::{
 };
 
 use super::receiver_loop::ReceiverLoop;
+use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::init_select};
 
 static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
@@ -61,6 +63,9 @@ pub struct SinkNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
+    source_intermediate_recorder: SourceIntermediateRecorder,
+    /// State for writing source intermediate data
+    feature_state: Arc<State>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -82,6 +87,10 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         };
 
         let (node_handles, receivers) = dag.collect_receivers(node_index);
+
+        let source_intermediate_recorder =
+            SourceIntermediateRecorder::collect(dag, node_index, &node_handles);
+        let feature_state = dag.feature_state();
 
         let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
@@ -107,6 +116,8 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             expr_engine: ctx.expr_engine.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
+            source_intermediate_recorder,
+            feature_state,
         }
     }
 
@@ -193,6 +204,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
+                    self.source_intermediate_recorder.record_if_from_source(
+                        &self.feature_state,
+                        index,
+                        &ctx,
+                        &self.node_name,
+                        self.node_handle.id.as_ref(),
+                    );
+
                     let result = self.on_op(ctx.clone());
 
                     if let Err(e) = result {

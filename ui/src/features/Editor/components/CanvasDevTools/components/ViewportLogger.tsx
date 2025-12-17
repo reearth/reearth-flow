@@ -8,5 +8,10 @@ export default function ViewportLogger() {
       )}, zoom: ${s.transform[2].toFixed(2)}`,
   );
 
-  return <div className="absolute top-[20px] right-[180px]">{viewport}</div>;
+  return (
+    <div className="absolute top-28 right-4 flex flex-col rounded-lg border border-slate-700 bg-slate-800/95 p-2 shadow-lg">
+      <span className="font-bold">Viewport Logger</span>
+      {viewport}
+    </div>
+  );
 }

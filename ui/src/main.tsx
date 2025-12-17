@@ -18,7 +18,7 @@ const router = createRouter({
 loadConfig().finally(async () => {
   // Enable mock server if configured
   const flowConfig = config();
-  const enableMock = flowConfig.mockEnabled || flowConfig.devMode;
+  const enableMock = flowConfig.mockEnabled;
 
   if (enableMock) {
     console.log("🚀 Starting Mock Server for Re:Earth Flow");

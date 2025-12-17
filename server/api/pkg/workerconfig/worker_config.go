@@ -7,6 +7,7 @@ import (
 )
 
 type WorkerConfig struct {
+	id                    id.WorkerConfigID
 	createdAt             time.Time
 	updatedAt             time.Time
 	machineType           *string
@@ -19,20 +20,19 @@ type WorkerConfig struct {
 	channelBufferSize     *int
 	featureFlushThreshold *int
 	nodeStatusDelayMilli  *int
-	workspace             id.WorkspaceID
 }
 
-func New(workspace id.WorkspaceID) *WorkerConfig {
+func New() *WorkerConfig {
 	now := time.Now()
 	return &WorkerConfig{
-		workspace: workspace,
+		id:        id.NewWorkerConfigID(),
 		createdAt: now,
 		updatedAt: now,
 	}
 }
 
-func (c *WorkerConfig) Workspace() id.WorkspaceID {
-	return c.workspace
+func (c *WorkerConfig) ID() id.WorkerConfigID {
+	return c.id
 }
 
 func (c *WorkerConfig) MachineType() *string {
@@ -164,7 +164,7 @@ func Clone(c *WorkerConfig) *WorkerConfig {
 		return nil
 	}
 	return &WorkerConfig{
-		workspace:             c.workspace,
+		id:                    c.id,
 		machineType:           cloneString(c.machineType),
 		computeCpuMilli:       cloneInt(c.computeCpuMilli),
 		computeMemoryMib:      cloneInt(c.computeMemoryMib),

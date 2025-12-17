@@ -322,7 +322,9 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		currentJob.SetBatchStatus(newBatchStatus)
 	}
 
-	if batchStatusChanged || workerEvent != nil {
+	statusChanged := batchStatusChanged || workerEvent != nil
+
+	if statusChanged {
 		// Update legacy status field with computed value
 		currentJob.SetStatus(currentJob.Status())
 
@@ -352,8 +354,6 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
 			}
 		}
-
-		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
 	}
 
 	computedStatus := currentJob.Status()
@@ -366,9 +366,16 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			computedStatus,
 		)
 
+		// For terminal states, run completion handling (artifacts/logs) before notifying.
 		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
 		}
+	}
+
+	// For terminal states we notify only after completion handling,
+	// so subscribers see final outputs/logs together with the final status.
+	if statusChanged {
+		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
 	}
 
 	return nil

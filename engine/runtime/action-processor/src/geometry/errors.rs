@@ -151,6 +151,10 @@ pub(super) enum GeometryProcessorError {
     PolygonNormalExtractorFactory(String),
     #[error("PolygonNormalExtractor error: {0}")]
     PolygonNormalExtractor(String),
+    #[error("PlanarityFilter Factory error: {0}")]
+    PlanarityFilterFactory(String),
+    #[error("PlanarityFilter error: {0}")]
+    PlanarityFilter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

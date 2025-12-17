@@ -13,7 +13,10 @@ import (
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+
+	_ "github.com/reearth/reearth-flow/api/internal/app/docs" // swagger docs
 )
 
 func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
@@ -80,6 +83,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 			playground.Handler("reearth-flow", "/api/graphql"),
 		))
 		log.Infofc(ctx, "gql: GraphQL Playground is available")
+
+		// Swagger UI
+		e.GET("/swagger/*", echoSwagger.WrapHandler)
+		log.Infofc(ctx, "swagger: Swagger UI is available at /swagger/index.html")
 	}
 
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)

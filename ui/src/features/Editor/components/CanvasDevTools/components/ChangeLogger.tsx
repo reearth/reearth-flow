@@ -6,6 +6,8 @@ import {
 } from "@xyflow/react";
 import { useEffect, useRef, useState } from "react";
 
+import { ScrollArea } from "@flow/components";
+
 type ChangeLoggerProps = {
   color?: string;
   limit?: number;
@@ -61,14 +63,19 @@ export default function ChangeLogger({ limit = 20 }: ChangeLoggerProps) {
   }, [onNodesChange, limit]); // eslint-disable-line
 
   return (
-    <div className="react-flow__devtools-changelogger">
+    <div className="react-flow__devtools-changelogger top-28 left-4 max-w-[350px] rounded-lg border border-slate-700 bg-slate-800/95 p-2 ">
       <div className="react-flow__devtools-title">Change Logger</div>
+
       {changes.length === 0 ? (
         <>no changes triggered</>
       ) : (
-        changes.map((change, index) => (
-          <ChangeInfo key={index} change={change} />
-        ))
+        <ScrollArea>
+          <div className="flex max-h-[40vh] flex-col gap-1 ">
+            {changes.map((change, index) => (
+              <ChangeInfo key={index} change={change} />
+            ))}
+          </div>
+        </ScrollArea>
       )}
     </div>
   );
