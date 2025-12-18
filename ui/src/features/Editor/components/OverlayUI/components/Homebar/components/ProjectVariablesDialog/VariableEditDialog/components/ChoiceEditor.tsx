@@ -39,13 +39,13 @@ import {
   CmsLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyProjectVariable, ChoiceConfig } from "@flow/types";
+import { AnyWorkflowVariable, ChoiceConfig } from "@flow/types";
 
 type Props = {
-  variable: AnyProjectVariable;
+  variable: AnyWorkflowVariable;
   assetUrl?: string | null;
   cmsItemAssetUrl?: string | null;
-  onUpdate: (variable: AnyProjectVariable) => void;
+  onUpdate: (variable: AnyWorkflowVariable) => void;
   onDialogOpen?: (dialog: "assets" | "cms") => void;
   clearUrl: () => void;
 };
@@ -95,7 +95,7 @@ export const ChoiceEditor: React.FC<Props> = ({
   ) => {
     setChoiceConfig(config);
 
-    const updatedVariable: AnyProjectVariable = {
+    const updatedVariable: AnyWorkflowVariable = {
       ...variable,
       config: variable.type === "choice" ? config : variable.config,
       defaultValue:

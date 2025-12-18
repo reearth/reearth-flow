@@ -11,7 +11,7 @@ import { Button } from "@flow/components/buttons/BaseButton";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable, VarType } from "@flow/types";
+import { WorkflowVariable, VarType } from "@flow/types";
 
 import { ArrayEditor } from "./components/ArrayEditor";
 // import { AttributeNameEditor } from "./components/AttributeNameEditor";
@@ -25,9 +25,9 @@ import useVariableEditDialog from "./hooks";
 
 type Props = {
   isOpen: boolean;
-  variable: ProjectVariable | null;
+  variable: WorkflowVariable | null;
   onClose: () => void;
-  onUpdate: (variable: ProjectVariable) => void;
+  onUpdate: (variable: WorkflowVariable) => void;
 };
 
 const VariableEditDialog: React.FC<Props> = ({

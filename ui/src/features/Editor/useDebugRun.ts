@@ -2,7 +2,7 @@ import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
-import { useProject, useProjectVariables } from "@flow/lib/gql";
+import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -27,8 +27,10 @@ export default ({
     yAwareness,
     projectId: currentProject?.id,
   });
-  const { useGetProjectVariables } = useProjectVariables();
-  const { projectVariables } = useGetProjectVariables(currentProject?.id ?? "");
+  const { useGetWorkflowVariables } = useWorkflowVariables();
+  const { workflowVariables } = useGetWorkflowVariables(
+    currentProject?.id ?? "",
+  );
 
   const { fitView } = useReactFlow();
 
@@ -41,7 +43,7 @@ export default ({
 
     const engineReadyWorkflow = createEngineReadyWorkflow(
       currentProject.name,
-      projectVariables,
+      workflowVariables,
       rawWorkflows,
     );
 
@@ -88,7 +90,7 @@ export default ({
     }
   }, [
     currentProject,
-    projectVariables,
+    workflowVariables,
     rawWorkflows,
     broadcastDebugRun,
     debugRunState?.jobs,

@@ -1,10 +1,10 @@
-query GetProjectParameters($projectId: ID!) {
+query GetWorkflowParameters($projectId: ID!) {
   parameters(projectId: $projectId) {
     ...Parameter
   }
 }
 
-mutation CreateProjectVariable(
+mutation CreateWorkflowVariable(
   $projectId: ID!
   $input: DeclareParameterInput!
 ) {
@@ -13,22 +13,22 @@ mutation CreateProjectVariable(
   }
 }
 
-mutation UpdateProjectVariable($paramId: ID!, $input: UpdateParameterInput!) {
+mutation UpdateWorkflowVariable($paramId: ID!, $input: UpdateParameterInput!) {
   updateParameter(paramId: $paramId, input: $input) {
     ...Parameter
   }
 }
 
-mutation UpdateProjectVariables($input: ParameterBatchInput!) {
+mutation UpdateWorkflowVariables($input: ParameterBatchInput!) {
   updateParameters(input: $input) {
     ...Parameter
   }
 }
 
-mutation DeleteProjectVariable($input: RemoveParameterInput!) {
+mutation DeleteWorkflowVariable($input: RemoveParameterInput!) {
   removeParameter(input: $input)
 }
 
-mutation DeleteProjectVariables($input: RemoveParametersInput!) {
+mutation DeleteWorkflowVariables($input: RemoveParametersInput!) {
   removeParameters(input: $input)
 }

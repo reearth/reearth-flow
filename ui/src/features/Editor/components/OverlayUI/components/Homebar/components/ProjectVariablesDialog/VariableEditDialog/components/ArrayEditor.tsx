@@ -37,12 +37,12 @@ import {
   Button,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyProjectVariable, ArrayConfig } from "@flow/types";
+import { AnyWorkflowVariable, ArrayConfig } from "@flow/types";
 
 type Props = {
-  variable: AnyProjectVariable;
+  variable: AnyWorkflowVariable;
   assetUrl?: string | null;
-  onUpdate: (variable: AnyProjectVariable) => void;
+  onUpdate: (variable: AnyWorkflowVariable) => void;
   onDialogOpen: (dialog: "assets" | "cms") => void;
   clearUrl: () => void;
 };
@@ -100,7 +100,7 @@ export const ArrayEditor: React.FC<Props> = ({
   const updateVariable = (config: ArrayConfig, items?: any[]) => {
     setArrayConfig(config);
 
-    const updatedVariable: AnyProjectVariable = {
+    const updatedVariable: AnyWorkflowVariable = {
       ...variable,
       config: variable.type === "array" ? config : variable.config,
       defaultValue: items !== undefined ? items : arrayItems,

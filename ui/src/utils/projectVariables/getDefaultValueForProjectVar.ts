@@ -1,4 +1,4 @@
-import { VarType, ProjectVariableConfig } from "@flow/types";
+import { VarType, WorkflowVariableConfig } from "@flow/types";
 
 // type DatabaseConnection = {
 //   host: string;
@@ -95,7 +95,7 @@ export function getDefaultValueForProjectVar(type: VarType): any {
  */
 export function getDefaultConfigForProjectVar<T extends VarType>(
   type: T,
-): ProjectVariableConfig<T> {
+): WorkflowVariableConfig<T> {
   switch (type) {
     case "array":
       return {
@@ -103,14 +103,14 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
         minItems: 0,
         maxItems: 10,
         allowDuplicates: true,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "choice":
       return {
         choices: ["Option 1", "Option 2", "Option 3"],
         displayMode: "dropdown",
         allowMultiple: false,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "coordinate_system":
       return {
@@ -118,13 +118,13 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
         y: "y",
         z: undefined,
         coordinateSystem: "EPSG:4326",
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "color":
       return {
         format: "hex",
         allowAlpha: false,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "database_connection":
       return {
@@ -133,27 +133,27 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
         username: "",
         database: "",
         ssl: false,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "geometry":
       return {
         geometryType: "Point",
         coordinateSystem: "EPSG:4326",
         allowEmpty: false,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "number":
       return {
         min: undefined,
         max: undefined,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "text":
       return {
         minLength: undefined,
         maxLength: undefined,
         multiline: false,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "datetime":
       return {
@@ -162,14 +162,14 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
         allowTime: true,
         minDate: undefined,
         maxDate: undefined,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     case "web_connection":
       return {
         allowedProtocols: ["http", "https"],
         requiresAuth: false,
         timeout: 30000,
-      } as ProjectVariableConfig<T>;
+      } as WorkflowVariableConfig<T>;
 
     // Types that don't have config
     case "attribute_name":
@@ -179,6 +179,6 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
     case "yes_no":
     case "unsupported":
     default:
-      return undefined as ProjectVariableConfig<T>;
+      return undefined as WorkflowVariableConfig<T>;
   }
 }

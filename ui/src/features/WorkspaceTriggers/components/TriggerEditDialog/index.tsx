@@ -44,8 +44,8 @@ const TriggerEditDialog: React.FC<Props> = ({
     handleDescriptionChange,
     handleTriggerUpdate,
     pendingWorkflowData,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
     deploymentDefaultVariables,
     hasVariables,
@@ -82,7 +82,7 @@ const TriggerEditDialog: React.FC<Props> = ({
               <Label>{t("Workflow Variables")}</Label>
               <div
                 className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
+                onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
                 <span className="pr-2 whitespace-nowrap text-muted-foreground">
                   {t("Edit Variables")} ({variableCount})
                 </span>
@@ -160,13 +160,13 @@ const TriggerEditDialog: React.FC<Props> = ({
       </DialogContent>
       {pendingWorkflowData?.variables && (
         <TriggerProjectVariablesMappingDialog
-          isOpen={openTriggerProjectVariablesDialog}
-          onOpenChange={setOpenTriggerProjectVariablesDialog}
+          isOpen={openTriggerWorkflowVariablesDialog}
+          onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData.variables}
           deploymentDefaults={deploymentDefaultVariables}
           workflowName={selectedTrigger.deployment.projectName || ""}
           onConfirm={handleVariablesConfirm}
-          onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
+          onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}
         />
       )}
     </Dialog>

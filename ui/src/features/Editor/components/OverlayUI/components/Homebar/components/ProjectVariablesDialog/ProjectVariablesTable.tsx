@@ -31,19 +31,19 @@ import {
   TableRow,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable } from "@flow/types";
+import { WorkflowVariable } from "@flow/types";
 
 type Props = {
   className?: string;
-  projectVariables: ProjectVariable[];
-  columns: ColumnDef<ProjectVariable, unknown>[];
+  workflowVariables: WorkflowVariable[];
+  columns: ColumnDef<WorkflowVariable, unknown>[];
   onReorder?: (oldIndex: number, newIndex: number) => void;
 };
 
 // Sortable Row Component
 const SortableRow: React.FC<{
   row: any;
-  variable: ProjectVariable;
+  variable: WorkflowVariable;
 }> = ({ row, variable }) => {
   const {
     attributes,
@@ -87,7 +87,7 @@ const SortableRow: React.FC<{
 
 const ProjectVariablesTable: React.FC<Props> = ({
   className,
-  projectVariables,
+  workflowVariables,
   columns,
   onReorder,
 }) => {
@@ -106,10 +106,10 @@ const ProjectVariablesTable: React.FC<Props> = ({
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      const oldIndex = projectVariables.findIndex(
+      const oldIndex = workflowVariables.findIndex(
         (item) => item.id === active.id,
       );
-      const newIndex = projectVariables.findIndex(
+      const newIndex = workflowVariables.findIndex(
         (item) => item.id === over?.id,
       );
 
@@ -123,7 +123,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
   const tableColumns = columns;
 
   const table = useReactTable({
-    data: projectVariables,
+    data: workflowVariables,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -148,7 +148,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
     // manualPagination: true,
   });
 
-  const items = projectVariables.map((item) => item.id);
+  const items = workflowVariables.map((item) => item.id);
 
   if (!onReorder) {
     // Render table without drag and drop if onReorder is not provided
@@ -235,7 +235,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
               strategy={verticalListSortingStrategy}>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => {
-                  const variable = projectVariables[row.index];
+                  const variable = workflowVariables[row.index];
                   return (
                     <SortableRow key={row.id} row={row} variable={variable} />
                   );

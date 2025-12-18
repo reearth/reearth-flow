@@ -21,7 +21,7 @@ import {
 import { Button } from "@flow/components/buttons/BaseButton";
 import {
   getDefaultValue,
-  inferProjectVariableType,
+  inferWorkflowVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import { useT } from "@flow/lib/i18n";
 import { VarType } from "@flow/types";
@@ -42,7 +42,7 @@ type TriggerProjectVariablesMappingDialogProps = {
   variables: WorkflowVariable[] | Record<string, any>[];
   workflowName: string;
   deploymentDefaults?: Record<string, any>; // Optional deployment defaults for reset functionality
-  onConfirm: (projectVariables: any[]) => void;
+  onConfirm: (workflowVariables: any[]) => void;
   onCancel: () => void;
 };
 
@@ -62,7 +62,7 @@ const TriggerProjectVariablesMappingDialog: React.FC<
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
     () =>
       variables.map((variable) => {
-        const inferredType = inferProjectVariableType(
+        const inferredType = inferWorkflowVariableType(
           variable.value,
           variable.name,
         );
@@ -107,13 +107,13 @@ const TriggerProjectVariablesMappingDialog: React.FC<
   }, []);
 
   const handleConfirm = () => {
-    const projectVariables = variableMappings.map((mapping) => ({
+    const workflowVariables = variableMappings.map((mapping) => ({
       name: mapping.name,
       type: mapping.type,
       defaultValue: mapping.defaultValue,
     }));
 
-    onConfirm(projectVariables);
+    onConfirm(workflowVariables);
   };
 
   const handleCancel = () => {

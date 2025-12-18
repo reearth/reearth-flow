@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-import { Asset, ProjectVariable } from "@flow/types";
+import { Asset, WorkflowVariable } from "@flow/types";
 
 export type DialogOptions = "assets" | "cms" | undefined;
 export default ({
@@ -8,15 +8,15 @@ export default ({
   onClose,
   onUpdate,
 }: {
-  variable: ProjectVariable | null;
+  variable: WorkflowVariable | null;
   onClose: () => void;
-  onUpdate: (variable: ProjectVariable) => void;
+  onUpdate: (variable: WorkflowVariable) => void;
 }) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
   const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
   const handleDialogClose = () => setShowDialog(undefined);
-  const [localVariable, setLocalVariable] = useState<ProjectVariable | null>(
+  const [localVariable, setLocalVariable] = useState<WorkflowVariable | null>(
     null,
   );
   const [hasChanges, setHasChanges] = useState(false);
@@ -48,7 +48,7 @@ export default ({
     }
   }, [variable]);
 
-  const handleFieldUpdate = useCallback((updatedVariable: ProjectVariable) => {
+  const handleFieldUpdate = useCallback((updatedVariable: WorkflowVariable) => {
     setLocalVariable(updatedVariable);
     setHasChanges(true);
   }, []);

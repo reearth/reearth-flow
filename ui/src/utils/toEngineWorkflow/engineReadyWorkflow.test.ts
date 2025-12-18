@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import type { Workflow, ProjectVariable } from "@flow/types";
+import type { Workflow, WorkflowVariable } from "@flow/types";
 
 import { consolidateWorkflows } from "./consolidateWorkflows";
 import { createEngineReadyWorkflow } from "./engineReadyWorkflow";
@@ -81,7 +81,7 @@ describe("createEngineReadyWorkflow", () => {
     const mockWorkflows: Workflow[] = [
       { id: "workflow1", name: "Workflow 1", nodes: [], edges: [] },
     ];
-    const mockProjectVariables: ProjectVariable[] = [
+    const mockWorkflowVariables: WorkflowVariable[] = [
       {
         id: "1",
         name: "var1",
@@ -110,13 +110,13 @@ describe("createEngineReadyWorkflow", () => {
 
     const result = createEngineReadyWorkflow(
       "test",
-      mockProjectVariables,
+      mockWorkflowVariables,
       mockWorkflows,
     );
     expect(result).toEqual(mockConsolidatedWorkflow);
     expect(consolidateWorkflows).toHaveBeenCalledWith(
       "test-workflow",
-      mockProjectVariables,
+      mockWorkflowVariables,
       mockWorkflows,
     );
   });
@@ -143,7 +143,7 @@ describe("createEngineReadyWorkflow", () => {
     );
   });
 
-  it("should handle undefined projectVariables parameter", () => {
+  it("should handle undefined workflowVariables parameter", () => {
     const mockWorkflows: Workflow[] = [
       { id: "workflow1", name: "Workflow 1", nodes: [], edges: [] },
     ];
