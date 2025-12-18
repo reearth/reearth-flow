@@ -105,7 +105,7 @@ const ProjectCard: React.FC<Props> = ({
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
-        <p className="text-xs font-light text-zinc-800 dark:font-thin dark:text-zinc-400">
+        <p className="text-xs font-light text-zinc-800 dark:font-thin dark:text-zinc-400 terminal:text-zinc-500 midnight:text-zinc-400 synthwave:text-purple-300">
           {t("Last modified:")} {updatedAt}
         </p>
       </CardFooter>
