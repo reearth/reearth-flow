@@ -120,6 +120,17 @@ impl TryFrom<Entity> for Geometry {
             apperance.textures.iter().cloned().map(Into::into).collect(),
         );
 
+        // Consistency check: total rings vs total polygon rings
+        let total_rings: usize = geoms.ring_ids.len();
+        let total_polygon_rings: usize = geoms.multipolygon.iter().map(|p| p.rings().count()).sum();
+        if total_rings != total_polygon_rings {
+            tracing::error!(
+                "Inconsistent ring count: total_rings={} total_polygon_rings={}",
+                total_rings,
+                total_polygon_rings
+            );
+        }
+
         if let Some(theme) = theme {
             // find and apply materials (only for this feature's polygons)
             {
@@ -143,13 +154,25 @@ impl TryFrom<Entity> for Geometry {
                 let mut poly_textures = Vec::with_capacity(total_polygons);
                 let mut poly_uvs = flatgeom::MultiPolygon::new();
 
+                // Build a lookup table: polygon_index -> starting_ring_index
+                // This pre-computes the cumulative ring count for efficient O(1) lookup
+                let mut polygon_to_ring_start: Vec<usize> =
+                    Vec::with_capacity(geoms.multipolygon.len());
+                let mut cumulative_rings = 0;
+                for poly_idx in 0..geoms.multipolygon.len() {
+                    polygon_to_ring_start.push(cumulative_rings);
+                    cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
+                }
+
                 for &(start, end) in &polygon_ranges {
                     for global_idx in start..end {
                         let poly = geoms.multipolygon.get(global_idx as usize);
+                        let global_ring_idx = polygon_to_ring_start[global_idx as usize];
+
                         for (i, ring) in poly.rings().enumerate() {
-                            let ring_id = geoms.ring_ids.get(global_idx as usize);
+                            let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
                             let tex = ring_id
-                                .and_then(|id| id.clone())
+                                .clone()
                                 .and_then(|id| theme.ring_id_to_texture.get(&id));
 
                             let mut add_dummy_texture = || {
@@ -173,11 +196,11 @@ impl TryFrom<Entity> for Geometry {
                                     }
                                 }
                                 Some((_, uv)) if uv.len() != ring.len() => {
-                                    // invalid texture found
                                     tracing::error!(
-                                        "Invalid texture ring: {} uv: {}",
+                                        "Invalid texture: ring_id={:?}, polygon len={}, uv len={}",
+                                        ring_id,
                                         ring.len(),
-                                        uv.len()
+                                        uv.len(),
                                     );
                                     add_dummy_texture();
                                 }
