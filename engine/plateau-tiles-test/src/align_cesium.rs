@@ -19,10 +19,10 @@ pub struct TilesetInfo {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct DetailLevel {
-    pub multipolygon: MultiPolygon3D<f64>,
-    pub geometric_error: f64,
-    pub source_idx: Option<u32>,
-    pub texture_name: Option<String>,
+    pub(crate) multipolygon: MultiPolygon3D<f64>,
+    pub(crate) geometric_error: f64,
+    pub(crate) source_idx: Option<u32>,
+    pub(crate) texture_name: Option<String>,
 }
 
 /// Find top-level 3D Tiles directories (directories containing tileset.json)

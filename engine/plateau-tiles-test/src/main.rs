@@ -108,7 +108,7 @@ fn pack_citymodel_zip(
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            // Pack progress. Sometimes huge files exist in citymodel folder
+            // Debug, locate huge files in citymodel folder
             tracing::debug!("Packing citymodel file: {}", path.display());
             if path.is_file() {
                 let relative_path = path.strip_prefix(&testcase_citymodel).unwrap();
