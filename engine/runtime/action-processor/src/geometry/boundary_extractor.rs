@@ -482,7 +482,6 @@ impl BoundaryExtractor {
                 continue;
             }
 
-            // Mark start edge as used immediately
             used_edges[start_idx] = true;
 
             let start_v0 = edges[start_idx].0;
@@ -505,7 +504,6 @@ impl BoundaryExtractor {
 
                 // Check if we've closed the loop
                 if next_vertex == start_v0 {
-                    // Closed loop - add closing vertex and stop
                     chain.push(mesh.get_vertices()[next_vertex]);
                     let idx = edge_idx
                         .get(&(
@@ -534,7 +532,7 @@ impl BoundaryExtractor {
                 current_vertex = next_vertex;
             }
 
-            // Traverse backward from start_v0 (only if we didn't close a loop)
+            // Traverse backward from start_v0 only if we didn't close a loop
             if chain.first() != chain.last() {
                 prev_vertex = start_v1;
                 current_vertex = start_v0;
