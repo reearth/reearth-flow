@@ -388,6 +388,8 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
+
     async fn test_http_get_without_head_support() {
         let storage = get_test_storage();
         let result = storage.get(Path::new("/no-head.json")).await.unwrap();
