@@ -157,7 +157,7 @@ pub struct CityGmlMeshBuilder {
 
 impl Processor for CityGmlMeshBuilder {
     fn num_threads(&self) -> usize {
-        20
+        16
     }
 
     fn process(
@@ -302,7 +302,7 @@ enum ErrorType {
 }
 
 impl CityGmlMeshBuilder {
-    /// Evaluate the EPSG code expression at runtime with feature context
+    /// Evaluate the EPSG code expression at runtime
     fn evaluate_epsg_code(
         &self,
         feature: &Feature,
@@ -337,26 +337,20 @@ impl CityGmlMeshBuilder {
         &self,
         coord: Coordinate3D<f64>,
         target_epsg: &str,
-    ) -> Option<Coordinate3D<f64>> {
-        // If target is the same as source, no transformation needed
-        if target_epsg == "6697" {
-            return Some(coord);
-        }
-
+    ) -> Result<Coordinate3D<f64>, BoxedError> {
         let proj = proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", target_epsg), None)
             .map_err(|e| {
                 PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
                     "Failed to create PROJ transformation from 6697 to {target_epsg}: {e}"
                 ))
-            })
-            .ok()?;
+            })?;
 
         // CityGML coordinates are in lat/lon order (y, x in geographic terms)
         // coord.x = latitude, coord.y = longitude for EPSG 6697
-        let transformed = proj.convert((coord.y, coord.x)).ok()?;
-
-        // Return transformed coordinates with original z (height) preserved
-        Some(Coordinate3D::new__(transformed.0, transformed.1, coord.z))
+        let transformed = proj.convert((coord.y, coord.x))?;
+        
+        // z coordinate remains unchanged
+        Ok(Coordinate3D::new__(transformed.0, transformed.1, coord.z))
     }
 
     /// Parse CityGML XML and validate triangle coordinates before polygon construction
@@ -364,7 +358,7 @@ impl CityGmlMeshBuilder {
         &mut self,
         file_path: &str,
         target_epsg: &str,
-    ) -> Result<ValidationResult, Box<dyn std::error::Error>> {
+    ) -> Result<ValidationResult, BoxedError> {
         let file = File::open(file_path)?;
         let buf_reader = BufReader::new(file);
         let mut reader = Reader::from_reader(buf_reader);
@@ -422,7 +416,6 @@ impl CityGmlMeshBuilder {
 
                         // Build coordinates for the triangle and transform to target EPSG
                         let mut coords = Vec::new();
-                        let mut transform_failed = false;
                         for i in 0..num_vertices {
                             let x = values[i * 3];
                             let y = values[i * 3 + 1];
@@ -430,20 +423,8 @@ impl CityGmlMeshBuilder {
                             let source_coord = Coordinate3D::new__(x, y, z);
 
                             // Transform coordinate from EPSG 6697 to target EPSG
-                            if let Some(transformed) =
-                                self.transform_coordinate(source_coord, target_epsg)
-                            {
-                                coords.push(transformed);
-                            } else {
-                                transform_failed = true;
-                                // Use original coordinate if transformation fails
-                                coords.push(source_coord);
-                            }
-                        }
-
-                        if transform_failed {
-                            // Log warning but continue with original coordinates
-                            // This allows processing to continue even if projection fails
+                            let transformed = self.transform_coordinate(source_coord, target_epsg)?;
+                            coords.push(transformed);
                         }
 
                         // Validation 1: Check vertex count
@@ -458,7 +439,6 @@ impl CityGmlMeshBuilder {
                             errors.push(error);
                         } else {
                             // Validation 2: Check if triangle is closed (first == last)
-                            // Use original values for validation since transformation preserves closure
                             let first_x = values[0];
                             let first_y = values[1];
                             let first_z = values[2];
@@ -536,7 +516,7 @@ impl CityGmlMeshBuilder {
                             }
                         }
 
-                        // If no errors, add this triangle as a valid face (with transformed coordinates)
+                        // If no errors, add this triangle as a valid face
                         if !has_error && coords.len() == 4 {
                             valid_faces.push([coords[0], coords[1], coords[2]]);
                         }

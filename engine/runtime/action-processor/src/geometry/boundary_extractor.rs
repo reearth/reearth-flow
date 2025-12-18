@@ -159,7 +159,7 @@ impl Processor for BoundaryExtractor {
     }
 
     fn num_threads(&self) -> usize {
-        20
+        16
     }
 }
 
@@ -524,7 +524,7 @@ impl BoundaryExtractor {
                     ))
                     .unwrap();
                 if used_edges[*idx] {
-                    // Already visited this edge (shouldn't happen in normal cases)
+                    // Already visited this edge
                     break;
                 }
                 used_edges[*idx] = true;
