@@ -71,10 +71,7 @@ pub async fn init_tracing(
         .with_level(true);
 
     if config.enable_cloud_trace {
-        let project_id = config
-            .gcp_project_id
-            .as_ref()
-            .ok_or("GCP project ID is required when cloud trace is enabled")?;
+        let project_id = config.gcp_project_id.clone().unwrap_or_default();
 
         let authorizer_timeout = Duration::from_secs(GCP_AUTHORIZER_TIMEOUT_SECS);
         let authorizer = tokio::time::timeout(
@@ -107,12 +104,15 @@ pub async fn init_tracing(
         tokio::spawn(background_task);
 
         // Create tracer provider with resource attributes
-        let resource = Resource::new(vec![
+        let mut resource_attrs = vec![
             KeyValue::new("service.name", config.service_name.clone()),
             KeyValue::new("cloud.provider", "gcp"),
             KeyValue::new("cloud.platform", "gcp_cloud_run"),
-            KeyValue::new("gcp.project_id", project_id.clone()),
-        ]);
+        ];
+        if !project_id.is_empty() {
+            resource_attrs.push(KeyValue::new("gcp.project_id", project_id.clone()));
+        }
+        let resource = Resource::new(resource_attrs);
 
         let provider = TracerProvider::builder()
             .with_simple_exporter(exporter)
@@ -135,11 +135,18 @@ pub async fn init_tracing(
             .with(otel_layer)
             .init();
 
-        tracing::info!(
-            project_id = %project_id,
-            service_name = %config.service_name,
-            "Google Cloud Trace initialized"
-        );
+        if project_id.is_empty() {
+            tracing::info!(
+                service_name = %config.service_name,
+                "Google Cloud Trace initialized (project_id not configured)"
+            );
+        } else {
+            tracing::info!(
+                project_id = %project_id,
+                service_name = %config.service_name,
+                "Google Cloud Trace initialized"
+            );
+        }
     } else {
         // Initialize subscriber with only fmt layer
         tracing_subscriber::registry()
