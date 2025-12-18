@@ -23,7 +23,6 @@ export default () => {
       projectDescription: string;
       workspace: Workspace;
       yDocBinary: Uint8Array<ArrayBufferLike>;
-      accessToken: string;
       workflowVariables?: AnyWorkflowVariable[];
     }) => {
       try {
@@ -40,7 +39,7 @@ export default () => {
           return;
         }
 
-        if (workflowVariables && workflowVariables.length > 0 && project) {
+        if (workflowVariables && workflowVariables.length > 0) {
           await updateMultipleWorkflowVariables({
             projectId: project.id,
             creates: workflowVariables.map((pv, index) => ({

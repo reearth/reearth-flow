@@ -16,7 +16,7 @@ import { AnyWorkflowVariable, Project } from "@flow/types";
 
 type Props = {
   isOpen: boolean;
-  project: Project;
+  project?: Project;
   onOpenChange: (open: boolean) => void;
   onCancel: () => void;
 };
@@ -30,7 +30,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
   const t = useT();
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
-  const { workflowVariables } = useGetWorkflowVariables(project.id);
+  const { workflowVariables } = useGetWorkflowVariables(project?.id);
 
   const handleCancel = () => {
     onCancel();
