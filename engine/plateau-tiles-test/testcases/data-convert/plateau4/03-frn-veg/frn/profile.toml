@@ -1,0 +1,21 @@
+# test frn (city furniture)
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.cesium_statistics]
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+# Warn: some other features in this dataset contains NaN and are excluded.
+# I added NaN check to force return errors in nusamai-citygml,
+# otherwise some nasty bugs occur (hard to debug, related to NaN != NaN)
+"udx/frn/54400098_frn_6697_op.gml" = [
+    "frn_2c63dcff-2e0d-41f1-9a20-d454b8f54da1",
+    "frn_8aa45471-55f1-430f-b425-1717a7019f0d",
+    "frn_554186af-c9dd-46c1-8e84-5d06ca597114",
+    "frn_16f9ecd6-38a3-47c9-9d02-17597f4d5038",
+    "frn_d8a189a1-809b-439c-b36b-fc8bc3885ae6",
+]

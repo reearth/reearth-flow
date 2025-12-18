@@ -72,7 +72,8 @@ pub fn slice_to_tiles<E>(
                     .zip_eq(
                         city_gml
                             .polygon_uvs
-                            .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize),
+                            .range(entry.pos as usize..(entry.pos + entry.len) as usize)
+                            .into_iter(),
                     )
                     .zip_eq(
                         city_gml.polygon_materials
@@ -86,6 +87,7 @@ pub fn slice_to_tiles<E>(
                     )
                 {
                     let poly: Polygon3 = poly.clone().into();
+                    let poly_uv: Polygon2 = poly_uv.into();
                     let mat = if attach_texture {
                         let orig_mat = poly_mat
                             .and_then(|idx| city_gml.materials.get(idx as usize))
@@ -191,6 +193,7 @@ pub fn slice_to_tiles<E>(
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later
                                     });
+                            assert!(poly.rings().count() == poly_uv.rings().count());
                             poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
                                 |(ri, (ring, uv_ring))| {
                                     ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(

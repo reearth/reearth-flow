@@ -96,7 +96,7 @@ pub struct CityGmlGeometry {
     pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
-    pub polygon_uvs: flatgeom::MultiPolygon<'static, [f64; 2]>,
+    pub polygon_uvs: MultiPolygon2D<f64>,
 }
 
 impl CityGmlGeometry {
@@ -111,16 +111,50 @@ impl CityGmlGeometry {
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
-            polygon_uvs: flatgeom::MultiPolygon::default(),
+            polygon_uvs: MultiPolygon2D::default(),
         }
     }
 
     pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
         self.gml_geometries
             .iter()
-            .map(|feature| CityGmlGeometry {
-                gml_geometries: vec![feature.clone()],
-                ..self.clone()
+            .map(|feature| {
+                let pos = feature.pos as usize;
+                let len = feature.len as usize;
+
+                // Extract only the relevant slice of polygon_materials for this geometry
+                let polygon_materials = if pos + len <= self.polygon_materials.len() {
+                    self.polygon_materials[pos..pos + len].to_vec()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract only the relevant slice of polygon_textures for this geometry
+                let polygon_textures = if pos + len <= self.polygon_textures.len() {
+                    self.polygon_textures[pos..pos + len].to_vec()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract only the relevant slice of polygon_uvs for this geometry
+                let polygon_uvs = if pos + len <= self.polygon_uvs.0.len() {
+                    MultiPolygon2D::new(self.polygon_uvs.0[pos..pos + len].to_vec())
+                } else {
+                    MultiPolygon2D::default()
+                };
+
+                // Clone the feature and reset pos to 0 since it's now the only geometry
+                let mut cloned_feature = feature.clone();
+                cloned_feature.pos = 0;
+
+                CityGmlGeometry {
+                    gml_geometries: vec![cloned_feature],
+                    materials: self.materials.clone(),
+                    textures: self.textures.clone(),
+                    polygon_materials,
+                    polygon_textures,
+                    polygon_uvs,
+                }
             })
             .collect()
     }
@@ -298,6 +332,7 @@ pub struct GmlGeometry {
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
     pub line_strings: Vec<LineString3D<f64>>,
+    pub points: Vec<Coordinate3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
     pub composite_surfaces: Vec<GmlGeometry>,
@@ -315,6 +350,9 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_inplace(jgd2wgs));
+        self.points
+            .iter_mut()
+            .for_each(|point| point.transform_inplace(jgd2wgs));
     }
 
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
@@ -324,6 +362,9 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_offset(x, y, z));
+        self.points
+            .iter_mut()
+            .for_each(|point| point.transform_offset(x, y, z));
     }
 
     /// Transforms the X/Y coordinates of all geometries using the provided function.
@@ -444,6 +485,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             len: geometry.len,
             polygons: Vec::new(),
             line_strings: Vec::new(),
+            points: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
             composite_surfaces: Vec::new(),
