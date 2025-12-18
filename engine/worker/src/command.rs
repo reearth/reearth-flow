@@ -17,6 +17,7 @@ use crate::{
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
+    incremental::prepare_incremental_feature_store,
     logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
@@ -43,6 +44,8 @@ pub fn build_worker_command() -> Command {
         .arg(worker_num_arg())
         .arg(pubsub_backend_arg())
         .arg(vars_arg())
+        .arg(previous_job_id_arg())
+        .arg(start_node_id_arg())
 }
 
 fn workflow_arg() -> Arg {
@@ -91,6 +94,20 @@ fn vars_arg() -> Arg {
         .display_order(5)
 }
 
+fn previous_job_id_arg() -> Arg {
+    Arg::new("previous_job_id")
+        .long("previous-job-id")
+        .help("Job ID to reuse intermediate data from")
+        .required(false)
+}
+
+fn start_node_id_arg() -> Arg {
+    Arg::new("start_node_id")
+        .long("start-node-id")
+        .help("Start node id for incremental run")
+        .required(false)
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RunWorkerCommand {
     workflow: String,
@@ -98,6 +115,8 @@ pub struct RunWorkerCommand {
     vars: HashMap<String, String>,
     worker_num: usize,
     pubsub_backend: String,
+    previous_job_id: Option<String>,
+    start_node_id: Option<String>,
 }
 
 impl RunWorkerCommand {
@@ -132,12 +151,16 @@ impl RunWorkerCommand {
         } else {
             HashMap::<String, String>::new()
         };
+        let previous_job_id = matches.remove_one::<String>("previous_job_id");
+        let start_node_id = matches.remove_one::<String>("start_node_id");
         Ok(Self {
             workflow,
             metadata_path,
             vars,
             worker_num,
             pubsub_backend,
+            previous_job_id,
+            start_node_id,
         })
     }
 
@@ -375,6 +398,40 @@ impl RunWorkerCommand {
             State::new(&feature_state_uri, storage_resolver).map_err(crate::errors::Error::init)?,
         );
         let ingress_state = Arc::clone(&feature_state);
+
+        if let Some(prev_job_id) = &self.previous_job_id {
+            tracing::info!(
+                "Incremental run parameter: previous_job_id = {}",
+                prev_job_id
+            );
+        }
+        if let Some(start_node_id) = &self.start_node_id {
+            tracing::info!(
+                "Incremental run parameter: start_node_id = {}",
+                start_node_id
+            );
+        }
+
+        if let (Some(prev_job_str), Some(start_node_str)) =
+            (&self.previous_job_id, &self.start_node_id)
+        {
+            let prev_job_id =
+                uuid::Uuid::parse_str(prev_job_str).map_err(crate::errors::Error::init)?;
+            let start_node_id =
+                uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
+
+            prepare_incremental_feature_store(
+                workflow,
+                job_id,
+                storage_resolver.as_ref(),
+                prev_job_id,
+                start_node_id,
+            )?;
+        } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
+            tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
+        } else {
+            tracing::info!("No incremental snapshot parameters provided. Running full workflow.");
+        }
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),

@@ -11,6 +11,7 @@ import (
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
+	"github.com/google/uuid"
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -93,6 +94,8 @@ func (b *BatchRepo) SubmitJob(
 	variables map[string]string,
 	projectID id.ProjectID,
 	workspaceID id.WorkspaceID,
+	previousJobID *id.JobID,
+	startNodeID *uuid.UUID,
 ) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 
@@ -109,6 +112,14 @@ func (b *BatchRepo) SubmitJob(
 		binaryPath = "reearth-flow-worker"
 	}
 
+	var flagArgs []string
+	if previousJobID != nil {
+		flagArgs = append(flagArgs, fmt.Sprintf("--previous-job-id %s", previousJobID.String()))
+	}
+	if startNodeID != nil {
+		flagArgs = append(flagArgs, fmt.Sprintf("--start-node-id %s", startNodeID.String()))
+	}
+
 	var varArgs []string
 	if len(variables) > 0 {
 		for k, v := range variables {
@@ -116,12 +127,14 @@ func (b *BatchRepo) SubmitJob(
 		}
 	}
 
+	flagString := strings.Join(flagArgs, " ")
 	varString := strings.Join(varArgs, " ")
 	workflowCommand := fmt.Sprintf(
-		"%s --workflow %q --metadata-path %q %s",
+		"%s --workflow %q --metadata-path %q %s %s",
 		binaryPath,
 		workflowsURL,
 		metadataURL,
+		flagString,
 		varString,
 	)
 

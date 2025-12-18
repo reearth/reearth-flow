@@ -11,14 +11,14 @@ pub fn prepare_incremental_feature_store(
     storage_resolver: &StorageResolver,
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
-) -> crate::Result<()> {
+) -> crate::errors::Result<()> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
         start_node_id
     );
 
-    let prev_feature_store_uri = setup_job_directory("workers", "feature-store", previous_job_id)
+    let prev_feature_store_uri = setup_job_directory("engine", "feature-store", previous_job_id)
         .map_err(crate::errors::Error::init)?;
     tracing::info!(
         "Incremental run: previous feature-store root = {}",
@@ -27,7 +27,7 @@ pub fn prepare_incremental_feature_store(
     let prev_feature_store_state = State::new(&prev_feature_store_uri, storage_resolver)
         .map_err(crate::errors::Error::init)?;
 
-    let reuse_feature_store_uri = setup_job_directory("workers", "previous-feature-store", job_id)
+    let reuse_feature_store_uri = setup_job_directory("engine", "previous-feature-store", job_id)
         .map_err(crate::errors::Error::init)?;
     tracing::info!(
         "Incremental run: reuse feature-store root = {}",
@@ -73,7 +73,7 @@ pub fn prepare_incremental_feature_store(
 pub fn collect_reusable_edge_ids(
     workflow: &Workflow,
     start_node_id: uuid::Uuid,
-) -> crate::Result<Vec<uuid::Uuid>> {
+) -> crate::errors::Result<Vec<uuid::Uuid>> {
     let graph = workflow
         .graphs
         .iter()
