@@ -85,7 +85,7 @@ const SharedCanvasHomeMenu: React.FC<Props> = ({
           onWorkflowChange={onWorkflowChange}
           onWorkflowClose={onWorkflowClose}
         />
-        {showDialog === "workflowVariables" && project && (
+        {showDialog === "workflowVariables" && (
           <SharedCanvasWorkflowVariables
             project={project}
             isOpen={showDialog === "workflowVariables"}

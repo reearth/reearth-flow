@@ -53,7 +53,6 @@ export default ({
         projectName: sharedProject.name,
         projectDescription: sharedProject.description,
         workspace: selectedWorkspace,
-        accessToken,
         workflowVariables,
       });
       toast({
