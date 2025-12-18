@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-import { useProjectVars } from "@flow/hooks";
+import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { WorkflowVariable, VarType } from "@flow/types";
 import {
@@ -80,7 +80,7 @@ export default ({
   const [editingVariable, setEditingVariable] =
     useState<WorkflowVariable | null>(null);
 
-  const { getUserFacingName } = useProjectVars();
+  const { getUserFacingName } = useWorkflowVars();
 
   useEffect(() => {
     if (currentWorkflowVariables) {
