@@ -340,15 +340,15 @@ impl CityGmlMeshBuilder {
     ) -> Result<Coordinate3D<f64>, BoxedError> {
         let proj = proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", target_epsg), None)
             .map_err(|e| {
-                PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
-                    "Failed to create PROJ transformation from 6697 to {target_epsg}: {e}"
-                ))
-            })?;
+            PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                "Failed to create PROJ transformation from 6697 to {target_epsg}: {e}"
+            ))
+        })?;
 
         // CityGML coordinates are in lat/lon order (y, x in geographic terms)
         // coord.x = latitude, coord.y = longitude for EPSG 6697
         let transformed = proj.convert((coord.y, coord.x))?;
-        
+
         // z coordinate remains unchanged
         Ok(Coordinate3D::new__(transformed.0, transformed.1, coord.z))
     }
@@ -423,7 +423,8 @@ impl CityGmlMeshBuilder {
                             let source_coord = Coordinate3D::new__(x, y, z);
 
                             // Transform coordinate from EPSG 6697 to target EPSG
-                            let transformed = self.transform_coordinate(source_coord, target_epsg)?;
+                            let transformed =
+                                self.transform_coordinate(source_coord, target_epsg)?;
                             coords.push(transformed);
                         }
 
