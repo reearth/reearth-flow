@@ -1,14 +1,15 @@
 import { useCallback, useState } from "react";
 
-import { useProject } from "@flow/lib/gql";
+import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import type { Workspace } from "@flow/types";
+import type { AnyWorkflowVariable, Workspace } from "@flow/types";
 
 export default () => {
   const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
   const t = useT();
 
   const { createProject, importProject } = useProject();
+  const { updateMultipleWorkflowVariables } = useWorkflowVariables();
 
   const handleProjectImport = useCallback(
     async ({
@@ -16,12 +17,14 @@ export default () => {
       projectDescription,
       workspace,
       yDocBinary,
+      workflowVariables,
     }: {
       projectName: string;
       projectDescription: string;
       workspace: Workspace;
       yDocBinary: Uint8Array<ArrayBufferLike>;
       accessToken: string;
+      workflowVariables?: AnyWorkflowVariable[];
     }) => {
       try {
         setIsProjectImporting(true);
@@ -37,6 +40,21 @@ export default () => {
           return;
         }
 
+        if (workflowVariables && workflowVariables.length > 0 && project) {
+          await updateMultipleWorkflowVariables({
+            projectId: project.id,
+            creates: workflowVariables.map((pv, index) => ({
+              name: pv.name,
+              defaultValue: pv.defaultValue,
+              type: pv.type,
+              required: pv.required,
+              publicValue: pv.public,
+              index,
+              config: pv.config,
+            })),
+          });
+        }
+
         await importProject(project.id, yDocBinary, workspace.id);
       } catch (error) {
         console.error("Failed to import project:", error);
@@ -44,7 +62,7 @@ export default () => {
         setIsProjectImporting(false);
       }
     },
-    [createProject, importProject, t],
+    [createProject, importProject, updateMultipleWorkflowVariables, t],
   );
 
   return {
