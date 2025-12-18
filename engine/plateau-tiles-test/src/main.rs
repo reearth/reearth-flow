@@ -108,6 +108,8 @@ fn pack_citymodel_zip(
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
+            // Debug, locate huge files in citymodel folder
+            tracing::debug!("Packing citymodel file: {}", path.display());
             if path.is_file() {
                 let relative_path = path.strip_prefix(&testcase_citymodel).unwrap();
                 let zip_path = relative_path.to_string_lossy().to_string();
@@ -128,6 +130,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
+    "data-convert/plateau4/03-frn-veg/frn",
     "data-convert/plateau4/04-luse-lsld/luse",
     "data-convert/plateau4/04-luse-lsld/lsld",
     "data-convert/plateau4/06-area-urf/urf",
@@ -184,16 +187,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
     if stages.contains('r') {
         let _ = fs::remove_dir_all(&output_dir);
-        if !citygml_path.exists() {
-            let zip_stem = profile
-                .citygml_zip_name
-                .strip_suffix(".zip")
-                .unwrap_or(&profile.citygml_zip_name);
-            let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("artifacts")
-                .join("citymodel");
-            pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
-        }
+        tracing::debug!("packing citymodel zip...");
+        let zip_stem = profile
+            .citygml_zip_name
+            .strip_suffix(".zip")
+            .unwrap_or(&profile.citygml_zip_name);
+        let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("artifacts")
+            .join("citymodel");
+        pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
 
         info!(
             "Starting run: {} to {}",
@@ -285,60 +287,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 }
 
 fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
-    if let Some(parent) = fme_dir.parent() {
-        fs::create_dir_all(parent).unwrap();
-    }
-
-    // Check if we need to extract
-    let mut needs_extract = true;
     if fme_dir.exists() {
-        let fme_zip_mtime = fs::metadata(fme_zip_path).unwrap().modified().unwrap();
-        let mut fme_dir_mtime = None;
-
-        for entry in WalkDir::new(fme_dir).into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file() {
-                let mtime = fs::metadata(entry.path()).unwrap().modified().unwrap();
-                if fme_dir_mtime.is_none() || mtime > fme_dir_mtime.unwrap() {
-                    fme_dir_mtime = Some(mtime);
-                }
-            }
-        }
-
-        if let Some(dir_mtime) = fme_dir_mtime {
-            if dir_mtime >= fme_zip_mtime {
-                needs_extract = false;
-            }
-        }
+        fs::remove_dir_all(fme_dir).unwrap();
     }
+    fs::create_dir_all(fme_dir).unwrap();
+    let file = fs::File::open(fme_zip_path).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
 
-    if needs_extract {
-        if fme_dir.exists() {
-            fs::remove_dir_all(fme_dir).unwrap();
-        }
-        fs::create_dir_all(fme_dir).unwrap();
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        let outpath = fme_dir.join(file.name());
 
-        tracing::debug!(
-            "Extracting FME output: {} -> {}",
-            fme_zip_path.display(),
-            fme_dir.display()
-        );
-
-        let file = fs::File::open(fme_zip_path).unwrap();
-        let mut archive = zip::ZipArchive::new(file).unwrap();
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).unwrap();
-            let outpath = fme_dir.join(file.name());
-
-            if file.name().ends_with('/') {
-                fs::create_dir_all(&outpath).unwrap();
-            } else {
-                if let Some(parent) = outpath.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
-                let mut outfile = fs::File::create(&outpath).unwrap();
-                std::io::copy(&mut file, &mut outfile).unwrap();
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath).unwrap();
+        } else {
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent).unwrap();
             }
+            let mut outfile = fs::File::create(&outpath).unwrap();
+            std::io::copy(&mut file, &mut outfile).unwrap();
         }
     }
 }

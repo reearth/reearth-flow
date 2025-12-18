@@ -337,6 +337,7 @@ fn create_surface_feature_from_citygml_polygon(
         len: 1,                     // Single surface has length 1
         composite_surfaces: vec![], // Single surface doesn't need composite surfaces
         line_strings: vec![],       // Single surface doesn't need line strings
+        points: vec![],             // Single surface doesn't need points
         ty: original_gml_geo.ty,
         gml_trait: None, // Extracted geometry loses original trait semantics
         lod: original_gml_geo.lod,
