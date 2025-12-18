@@ -157,6 +157,10 @@ impl Processor for BoundaryExtractor {
     fn name(&self) -> &str {
         "BoundaryExtractor"
     }
+
+    fn num_threads(&self) -> usize {
+        20
+    }
 }
 
 impl BoundaryExtractor {

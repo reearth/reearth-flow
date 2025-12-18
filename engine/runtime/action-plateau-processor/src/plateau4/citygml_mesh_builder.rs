@@ -157,7 +157,7 @@ pub struct CityGmlMeshBuilder {
 
 impl Processor for CityGmlMeshBuilder {
     fn num_threads(&self) -> usize {
-        1
+        20
     }
 
     fn process(
@@ -324,9 +324,10 @@ impl CityGmlMeshBuilder {
         } else if let Some(i) = epsg_code.clone().try_cast::<i64>() {
             Ok(i.to_string())
         } else {
-            Err(PlateauProcessorError::CityGmlMeshBuilderFactory(
-                format!("epsg_code expression ({:?}) did not evaluate to a string or integer", epsg_code),
-            )
+            Err(PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                "epsg_code expression ({:?}) did not evaluate to a string or integer",
+                epsg_code
+            ))
             .into())
         }
     }
