@@ -1,9 +1,20 @@
+import { ChalkboardTeacherIcon, DotsThreeIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
-import { memo } from "react";
+import { memo, useState } from "react";
 
-import { FlowLogo } from "@flow/components";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FlowLogo,
+} from "@flow/components";
 import { WorkflowsDropdown } from "@flow/features/Editor/components/OverlayUI/components/Homebar/components";
+import { useT } from "@flow/lib/i18n";
 import type { Project, Workspace } from "@flow/types";
+
+import { SharedCanvasDialogOptions } from "../../types";
+import SharedCanvasWorkflowVariables from "../SharedCanvasWorkflowVariables";
 
 type Props = {
   currentWorkflowId: string;
@@ -27,6 +38,13 @@ const SharedCanvasHomeMenu: React.FC<Props> = ({
   onWorkflowChange,
 }) => {
   const navigate = useNavigate();
+  const t = useT();
+  const [showDialog, setShowDialog] =
+    useState<SharedCanvasDialogOptions>(undefined);
+
+  const handleDialogOpen = (dialog: SharedCanvasDialogOptions) =>
+    setShowDialog(dialog);
+  const handleDialogClose = () => setShowDialog(undefined);
 
   return (
     <div
@@ -42,14 +60,43 @@ const SharedCanvasHomeMenu: React.FC<Props> = ({
         </div>
         <div className="w-6" />
       </div>
-
       <div className="flex h-[30px] items-center gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            asChild
+            className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary">
+            <DotsThreeIcon weight="light" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="bottom"
+            align="start"
+            sideOffset={10}
+            alignOffset={-6}>
+            <DropdownMenuItem
+              onClick={() => handleDialogOpen("workflowVariables")}>
+              <ChalkboardTeacherIcon weight="thin" size={18} />
+              <p>{t("Workflow Variables")}</p>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <WorkflowsDropdown
           openWorkflows={openWorkflows}
           currentWorkflowId={currentWorkflowId}
           onWorkflowChange={onWorkflowChange}
           onWorkflowClose={onWorkflowClose}
         />
+        {showDialog === "workflowVariables" && (
+          <SharedCanvasWorkflowVariables
+            project={project}
+            isOpen={showDialog === "workflowVariables"}
+            onOpenChange={(open) =>
+              !open
+                ? handleDialogClose()
+                : handleDialogOpen("workflowVariables")
+            }
+            onCancel={handleDialogClose}
+          />
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { Doc } from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectImport } from "@flow/hooks";
+import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import type { Project, Workspace } from "@flow/types";
 
@@ -26,7 +27,10 @@ export default ({
   const navigate = useNavigate();
 
   const { isProjectImporting, handleProjectImport } = useProjectImport();
-
+  const { useGetWorkflowVariables } = useWorkflowVariables();
+  const { workflowVariables } = useGetWorkflowVariables(
+    sharedProject?.id || "",
+  );
   const handleSharedProjectImport = useCallback(async () => {
     if (!sharedYdoc || !sharedProject || !accessToken || !selectedWorkspace) {
       console.error(
@@ -49,7 +53,7 @@ export default ({
         projectName: sharedProject.name,
         projectDescription: sharedProject.description,
         workspace: selectedWorkspace,
-        accessToken,
+        workflowVariables,
       });
       toast({
         title: t("Project Imported"),
@@ -72,10 +76,11 @@ export default ({
       });
     }
   }, [
+    accessToken,
+    selectedWorkspace,
     sharedYdoc,
     sharedProject,
-    selectedWorkspace,
-    accessToken,
+    workflowVariables,
     t,
     navigate,
     toast,
