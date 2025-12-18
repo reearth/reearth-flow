@@ -175,9 +175,9 @@ impl TryFrom<Entity> for Geometry {
                                 Some((_, uv)) if uv.len() != ring.len() => {
                                     // invalid texture found
                                     tracing::error!(
-                                        "Invalid texture ring: {:?} uv: {:?}",
-                                        ring,
-                                        uv
+                                        "Invalid texture ring: {} uv: {}",
+                                        ring.len(),
+                                        uv.len()
                                     );
                                     add_dummy_texture();
                                 }

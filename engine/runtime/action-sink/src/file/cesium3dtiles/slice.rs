@@ -66,7 +66,7 @@ pub fn slice_to_tiles<E>(
         match entry.ty {
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 // for each polygon
-                for (poly_idx, (((poly, poly_uv), poly_mat), poly_tex)) in entry
+                for (((poly, poly_uv), poly_mat), poly_tex) in entry
                     .polygons
                     .iter()
                     .zip_eq(
@@ -85,7 +85,6 @@ pub fn slice_to_tiles<E>(
                             [entry.pos as usize..(entry.pos + entry.len) as usize]
                             .iter(),
                     )
-                    .enumerate()
                 {
                     let poly: Polygon3 = poly.clone().into();
                     let poly_uv: Polygon2 = poly_uv.into();
@@ -197,8 +196,6 @@ pub fn slice_to_tiles<E>(
                             assert!(poly.rings().count() == poly_uv.rings().count());
                             poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
                                 |(ri, (ring, uv_ring))| {
-                                    let ring_count = ring.iter().count();
-                                    let uv_count = uv_ring.iter().count();
                                     ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
                                         |(c, uv)| {
                                             ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
