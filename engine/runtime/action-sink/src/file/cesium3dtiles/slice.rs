@@ -199,16 +199,6 @@ pub fn slice_to_tiles<E>(
                                 |(ri, (ring, uv_ring))| {
                                     let ring_count = ring.iter().count();
                                     let uv_count = uv_ring.iter().count();
-                                    if ring_count != uv_count {
-                                        eprintln!("ERROR: Feature ID: {:?}, Entry LOD: {:?}, Polygon index: {}, Ring index: {}",
-                                            feature.feature_id(), entry.lod, poly_idx, ri);
-                                        eprintln!("  Geometry ring has {} points, UV ring has {} points", ring_count, uv_count);
-                                        eprintln!("  Texture index: {:?}", poly_tex);
-                                        eprintln!("uv: {:?}", poly_uv);
-                                        eprintln!("geom: {:?}", poly);
-                                        // Skip this polygon instead of panicking
-                                        panic!("Mismatched ring and UV lengths");
-                                    }
                                     ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
                                         |(c, uv)| {
                                             ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
