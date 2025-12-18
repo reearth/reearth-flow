@@ -2,13 +2,10 @@ import JSZip from "jszip";
 import { ChangeEvent, useCallback, useRef } from "react";
 
 import { useProjectImport } from "@flow/hooks";
-import { useAuth } from "@flow/lib/auth";
 import { useCurrentWorkspace } from "@flow/stores";
 import { ProjectToImport } from "@flow/types";
 
 export default () => {
-  const { getAccessToken } = useAuth();
-
   const [currentWorkspace] = useCurrentWorkspace();
 
   const fileInputRefProject = useRef<HTMLInputElement>(null);
@@ -49,13 +46,12 @@ export default () => {
           projectDescription: projectMeta.description,
           workspace: currentWorkspace,
           yDocBinary,
-          accessToken: await getAccessToken(),
         });
       } catch (error) {
         console.error("Failed to import project:", error);
       }
     },
-    [currentWorkspace, getAccessToken, handleProjectImport],
+    [currentWorkspace, handleProjectImport],
   );
 
   return {

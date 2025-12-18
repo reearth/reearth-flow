@@ -1,7 +1,7 @@
 import {
   ChalkboardTeacherIcon,
   FileIcon,
-  GearFineIcon,
+  DotsThreeIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -95,7 +95,7 @@ const Homebar: React.FC<Props> = ({
           <DropdownMenuTrigger
             asChild
             className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary">
-            <GearFineIcon weight="thin" />
+            <DotsThreeIcon weight="light" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             side="bottom"
