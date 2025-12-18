@@ -18,6 +18,7 @@ import {
 import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
@@ -36,9 +37,23 @@ const TriggerDetails: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-
+  const { useUpdateTrigger } = useTrigger();
   const { history } = useRouter();
   const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
+  const updateTrigger = useUpdateTrigger;
+
+  const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
+    selectedTrigger?.enabled,
+  );
+
+  const handleTriggerEnableChange = useCallback(
+    async (checked: boolean) => {
+      if (!selectedTrigger) return;
+      setUpdatedIsTriggerEnabled(checked);
+      await updateTrigger(selectedTrigger.id, checked);
+    },
+    [selectedTrigger, updateTrigger],
+  );
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
   const apiUrl = config().api || window.location.origin;
@@ -103,7 +118,9 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "lastTriggered",
               name: t("Last Triggered"),
-              value: selectedTrigger.lastTriggered ?? t("Never"),
+              value: selectedTrigger.lastTriggered
+                ? formatTimestamp(selectedTrigger.lastTriggered)
+                : t("Never"),
             },
             {
               id: "createdAt",
@@ -163,7 +180,13 @@ const TriggerDetails: React.FC<Props> = ({
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox title={t("Trigger Details")} content={details} />
+          <DetailsBox
+            title={t("Trigger Details")}
+            content={details}
+            toggle
+            toggleValue={updatedIsTriggerEnabled}
+            onToggleChange={handleTriggerEnableChange}
+          />
         </div>
         {selectedTrigger?.eventSource === "API_DRIVEN" && (
           <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">

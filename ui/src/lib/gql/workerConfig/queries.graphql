@@ -1,0 +1,19 @@
+query GetWorkerConfig {
+  workerConfig {
+    ...WorkerConfig
+  }
+}
+
+mutation UpdateWorkerConfig($input: UpdateWorkerConfigInput!) {
+  updateWorkerConfig(input: $input) {
+    config {
+      ...WorkerConfig
+    }
+  }
+}
+
+mutation DeleteWorkerConfig {
+  deleteWorkerConfig {
+    id
+  }
+}

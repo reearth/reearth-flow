@@ -17,7 +17,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { TimeInterval, Trigger } from "@flow/types";
 
-import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
 
 import useHooks from "./hooks";
 
@@ -44,8 +44,8 @@ const TriggerEditDialog: React.FC<Props> = ({
     handleDescriptionChange,
     handleTriggerUpdate,
     pendingWorkflowData,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
     deploymentDefaultVariables,
     hasVariables,
@@ -64,9 +64,6 @@ const TriggerEditDialog: React.FC<Props> = ({
     EVERY_MONTH: t("Every Month"),
   };
 
-  // Currently hiding the workflow variables dialog until Phase 2 is ready
-  const showProjectVariablesDialog = false;
-
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
@@ -80,12 +77,12 @@ const TriggerEditDialog: React.FC<Props> = ({
               placeholder={t("Give your trigger a meaningful description...")}
             />
           </DialogContentSection>
-          {hasVariables && showProjectVariablesDialog && (
+          {hasVariables && (
             <DialogContentSection className="flex flex-col">
               <Label>{t("Workflow Variables")}</Label>
               <div
                 className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
+                onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
                 <span className="pr-2 whitespace-nowrap text-muted-foreground">
                   {t("Edit Variables")} ({variableCount})
                 </span>
@@ -161,15 +158,15 @@ const TriggerEditDialog: React.FC<Props> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
-      {pendingWorkflowData?.variables && showProjectVariablesDialog && (
-        <TriggerProjectVariablesMappingDialog
-          isOpen={openTriggerProjectVariablesDialog}
-          onOpenChange={setOpenTriggerProjectVariablesDialog}
+      {pendingWorkflowData?.variables && (
+        <TriggerWorkflowVariablesMappingDialog
+          isOpen={openTriggerWorkflowVariablesDialog}
+          onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData.variables}
           deploymentDefaults={deploymentDefaultVariables}
           workflowName={selectedTrigger.deployment.projectName || ""}
           onConfirm={handleVariablesConfirm}
-          onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
+          onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}
         />
       )}
     </Dialog>

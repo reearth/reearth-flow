@@ -6,12 +6,12 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useAuth } from "@flow/lib/auth";
-import { useProject, useProjectVariables } from "@flow/lib/gql";
+import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { AnyProjectVariable } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 import {
   validateWorkflowJson,
   validateWorkflowYaml,
@@ -39,7 +39,7 @@ export default () => {
   }, []);
 
   const { createProject } = useProject();
-  const { updateMultipleProjectVariables } = useProjectVariables();
+  const { updateMultipleWorkflowVariables } = useWorkflowVariables();
 
   // State for variable mapping dialog
   const [showVariableMapping, setShowVariableMapping] =
@@ -55,8 +55,8 @@ export default () => {
     async (
       canvasReadyWorkflows: any,
       resultsObject: any,
-      projectVariables?: Omit<
-        AnyProjectVariable,
+      workflowVariables?: Omit<
+        AnyWorkflowVariable,
         "id" | "createdAt" | "updatedAt" | "projectId"
       >[],
     ) => {
@@ -70,11 +70,11 @@ export default () => {
 
       if (!project) return console.error("Failed to create project");
 
-      // Create project variables if provided
-      if (projectVariables && projectVariables.length > 0) {
-        await updateMultipleProjectVariables({
+      // Create workflow variables if provided
+      if (workflowVariables && workflowVariables.length > 0) {
+        await updateMultipleWorkflowVariables({
           projectId: project.id,
-          creates: projectVariables.map((pv, index) => ({
+          creates: workflowVariables.map((pv, index) => ({
             name: pv.name,
             defaultValue: pv.defaultValue,
             type: pv.type,
@@ -121,7 +121,7 @@ export default () => {
     [
       currentWorkspace,
       createProject,
-      updateMultipleProjectVariables,
+      updateMultipleWorkflowVariables,
       getAccessToken,
       t,
     ],
@@ -129,8 +129,8 @@ export default () => {
 
   const handleVariableMappingConfirm = useCallback(
     async (
-      projectVariables: Omit<
-        AnyProjectVariable,
+      workflowVariables: Omit<
+        AnyWorkflowVariable,
         "id" | "createdAt" | "updatedAt" | "projectId"
       >[],
     ) => {
@@ -138,7 +138,7 @@ export default () => {
         await executeWorkflowImport(
           pendingWorkflowData.canvasReadyWorkflows,
           pendingWorkflowData.resultsObject,
-          projectVariables,
+          workflowVariables,
         );
         setPendingWorkflowData(null);
         setShowVariableMapping(false);

@@ -1,13 +1,45 @@
 import { useCallback, useState } from "react";
 
+import { inferWorkflowVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
+import { Variable } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-export const useTriggerWorkflowVariables = (
-  initialVariables?: Record<string, any>,
-) => {
+/**
+ * Convert Variable array to Record for internal use
+ */
+const variablesToRecord = (
+  variables?: Variable[],
+): Record<string, any> | undefined => {
+  if (!variables || variables.length === 0) return undefined;
+  return variables.reduce(
+    (acc, v) => {
+      acc[v.key] = v.value;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+};
+
+/**
+ * Convert Record to Variable array (domain type)
+ */
+const recordToVariables = (
+  record?: Record<string, any>,
+): Variable[] | undefined => {
+  if (!record || Object.keys(record).length === 0) return undefined;
+  return Object.entries(record).map(([key, value]) => {
+    const type = inferWorkflowVariableType(value, key);
+    return { key, type, value };
+  });
+};
+
+export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
+  // Convert Variable[] to Record for internal manipulation
+  const initialRecord = variablesToRecord(initialVariables);
+
   const [
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
   ] = useState<boolean>(false);
 
   const [pendingWorkflowData, setPendingWorkflowData] = useState<{
@@ -26,7 +58,7 @@ export const useTriggerWorkflowVariables = (
 
   // Store initial trigger custom variables separately
   const [triggerCustomVariables] = useState<Record<string, any> | undefined>(
-    initialVariables,
+    initialRecord,
   );
 
   const handleWorkflowFetch = useCallback(
@@ -78,13 +110,13 @@ export const useTriggerWorkflowVariables = (
     [triggerCustomVariables],
   );
 
-  const handleVariablesConfirm = useCallback((projectVariables: any[]) => {
+  const handleVariablesConfirm = useCallback((workflowVariables: any[]) => {
     const variablesObj: Record<string, any> = {};
-    projectVariables.forEach((variable) => {
+    workflowVariables.forEach((variable) => {
       variablesObj[variable.name] = variable.defaultValue;
     });
     setWorkflowVariablesObject(variablesObj);
-    setOpenTriggerProjectVariablesDialog(false);
+    setOpenTriggerWorkflowVariablesDialog(false);
   }, []);
 
   const initializeVariables = useCallback((variables: Record<string, any>) => {
@@ -105,11 +137,9 @@ export const useTriggerWorkflowVariables = (
 
   // Compare current variables with deployment defaults
   // Returns undefined if they match (don't save), or only the customized variables if they differ
-  const getVariablesToSave = useCallback(():
-    | Record<string, any>
-    | undefined => {
+  const getVariablesToSave = useCallback((): Variable[] | undefined => {
     if (!workflowVariablesObject || !deploymentDefaultVariables) {
-      return workflowVariablesObject;
+      return recordToVariables(workflowVariablesObject);
     }
 
     const customizedVars: Record<string, any> = {};
@@ -135,14 +165,14 @@ export const useTriggerWorkflowVariables = (
       return undefined;
     }
 
-    return customizedVars;
+    return recordToVariables(customizedVars);
   }, [workflowVariablesObject, deploymentDefaultVariables]);
 
   return {
     pendingWorkflowData,
     workflowVariablesObject,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleWorkflowFetch,
     handleVariablesConfirm,
     initializeVariables,

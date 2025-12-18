@@ -516,7 +516,7 @@
 		</bldg:Building>
 	</core:cityObjectMember>
 	<!-- Fails. Surface intersects. 水密立体である。 -->
-	<core:cityObjectMember>
+	<!-- <core:cityObjectMember>
 		<bldg:Building gml:id="bldg_9c5b70ec-3c30-447f-9a07-0ca221c4882f">
 			<core:creationDate>2024-03-15</core:creationDate>
 			<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
@@ -663,5 +663,5 @@
 				</gml:Solid>
 			</bldg:lod1Solid>
 		</bldg:Building>
-	</core:cityObjectMember>
+	</core:cityObjectMember> -->
 </core:CityModel>

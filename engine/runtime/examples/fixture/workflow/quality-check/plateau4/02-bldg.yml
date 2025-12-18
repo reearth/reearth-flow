@@ -7,6 +7,7 @@ with:
   schemas: null
   objectLists: null
   outputPath: null
+  epsg: null
 graphs:
 - id: 7e98d856-1438-4148-bdcb-91747ef2e405
   name: PLATEAU3.LodSplitterWithDM
@@ -229,6 +230,10 @@ graphs:
     name: PlanarityFilter
     type: action
     action: PlanarityFilter
+    with:
+      filterType: height
+      threshold: |
+        0.01
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -260,7 +265,7 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - duplicateConsecutivePoints
+      - duplicateConsecutivePoints: 0.01
       - selfIntersection
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
@@ -1860,62 +1865,6 @@ graphs:
             return value.issue;
           }
           "UnknownError"
-      - attribute: validationResult
-        method: remove
-      - attribute: surfaceId
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: featureIndex
-        method: remove
-      - attribute: featureId
-        method: remove
-      - attribute: gmlPath
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: holeCount
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: cityGmlAttributes
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: dumpGeometry
-        method: remove
-      - attribute: gmlName
-        method: remove
-      - attribute: geometryName
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: baseCityCode
-        method: remove
-      - attribute: cityCode
-        method: remove
-      - attribute: extension
-        method: remove
-      - attribute: package
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: codelists
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: schemas
-        method: remove
-      - attribute: objectListPath
-        method: remove
   - id: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
     name: FeatureWriterLod0IncorrectOrientation
     type: action
@@ -2021,9 +1970,11 @@ graphs:
     with:
       routingPort: errorCountLod1InvalidSurface
   - id: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
-    name: Dummy_GeometryFilter
+    name: GeometryFilterSurfaceOrSolid
     type: action
-    action: NoopProcessor
+    action: GeometryFilter
+    with:
+      filterType: geometryType
   - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
     name: PLATEAU3.SurfaceValidator3D_LOD2-4
     type: subGraph
@@ -2117,6 +2068,7 @@ graphs:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
       generateList: list
+      tolerance: 0.01
   - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
     name: FeatureFilterByAreaOnAreaOverlap
     type: action
@@ -2198,7 +2150,8 @@ graphs:
     action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
-      epsgCode: env.get("prcs") ?? "6675"
+      epsgCode: |
+        env.get("epsg")
       meshcodeAttr: meshcode
   - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
     name: MeshCodeTester
@@ -2281,6 +2234,9 @@ graphs:
     name: SolidBoundaryValidator
     type: action
     action: SolidBoundaryValidator
+    with:
+      tolerance: |
+        0.01
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
     type: action
@@ -2532,6 +2488,8 @@ graphs:
     action: CSGEvaluator
     with:
       operation: intersection
+      tolerance: |
+        0.01
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperSolidIntersection
     type: action
@@ -2715,7 +2673,7 @@ graphs:
   - id: 1a5f3c8d-9e2b-4d7a-8c6f-5b9e3d2a6f8c
     from: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
-    fromPort: default
+    fromPort: surface
     toPort: default
   - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
     from: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
@@ -2830,17 +2788,17 @@ graphs:
   - id: 2fef6fd8-b678-5fa7-0d81-a350ae46aeee
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod2
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
   - id: 3ffa7ae9-c789-6fb8-1e92-b461bf57bfff
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod3
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
   - id: 4ffb8bfa-d890-7fc9-2fa3-c572cf68cfff
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod4
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
   - id: bf5d73d5-a6c6-4a06-bd22-52a02fdbd96f
     from: ecaceb7b-ff98-4744-acf7-17e80829d6f3
@@ -3257,6 +3215,12 @@ graphs:
         method: remove
       - attribute: gmlName
         method: remove
+  - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: env.get("epsg")
   - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
     name: FeatureFilterBuildingPart
     type: action
@@ -3317,57 +3281,6 @@ graphs:
       - attribute: Filename
         expr: |
           env.get("__value").filename
-      - attribute: WallSurface
-        expr: |
-          env.get("__value").WallSurface ?? 0
-      - attribute: BuildingFurniture
-        expr: |
-          env.get("__value").BuildingFurniture ?? 0
-      - attribute: Building
-        expr: |
-          env.get("__value").Building ?? 0
-      - attribute: OuterCeilingSurface
-        expr: |
-          env.get("__value").OuterCeilingSurface ?? 0
-      - attribute: BuildingInstallation
-        expr: |
-          env.get("__value").BuildingInstallation ?? 0
-      - attribute: ClosureSurface
-        expr: |
-          env.get("__value").ClosureSurface ?? 0
-      - attribute: InteriorWallSurface
-        expr: |
-          env.get("__value").InteriorWallSurface ?? 0
-      - attribute: RoofSurface
-        expr: |
-          env.get("__value").RoofSurface ?? 0
-      - attribute: Room
-        expr: |
-          env.get("__value").Room ?? 0
-      - attribute: OuterFloorSurface
-        expr: |
-          env.get("__value").OuterFloorSurface ?? 0
-      - attribute: GroundSurface
-        expr: |
-          env.get("__value").GroundSurface ?? 0
-      - attribute: Window
-        expr: |
-          env.get("__value").Window ?? 0
-      - attribute: CeilingSurface
-        expr: |
-          env.get("__value").CeilingSurface ?? 0
-      - attribute: BuildingPart
-        expr: |
-          env.get("__value").BuildingPart ?? 0
-      - attribute: FloorSurface
-        expr: |
-          env.get("__value").FloorSurface ?? 0
-      - attribute: Door
-        expr: |
-          env.get("__value").Door ?? 0
-      - attribute: IntBuildingInstallation
-        expr: |
-          env.get("__value").IntBuildingInstallation ?? 0
       - attribute: 市区町村コードエラー
         expr: |
           env.get("__value")._num_incorrect_city_code ?? 0
@@ -3684,6 +3597,11 @@ graphs:
     toPort: default
   - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
     from: e51ebef4-2a0f-4c67-abdc-1583db29a72b
+    to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    fromPort: default
+    toPort: default
+  - id: 10737c99-a56c-42ed-b17e-32bf1163a21e
+    from: 10df06f3-cafa-4abd-ba94-04ac71dae467
     to: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
     fromPort: default
     toPort: default
@@ -3712,11 +3630,6 @@ graphs:
     to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     fromPort: default
     toPort: requestor
-  - id: aa9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d
-    from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-    to: 4712539b-5103-41ee-9359-0333eefb82ef
-    fromPort: featureInstanceCountC02
-    toPort: default
   - id: d9e0f1a2-3b4c-5d6e-7f8a-9b0c1d2e3f4a
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
     to: 4712539b-5103-41ee-9359-0333eefb82ef
@@ -3867,7 +3780,7 @@ graphs:
     to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
     fromPort: merged
     toPort: default
-  - id: f0a1b2c3-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+  - id: 17d7e700-3403-4be4-bc31-f40eabe10d1b
     from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
     fromPort: unmerged

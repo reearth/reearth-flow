@@ -48,65 +48,6 @@ nodes:
             }
             "UnknownError"
 
-        # remove
-        - attribute: validationResult
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: holeCount
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: dumpGeometry
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        #
-        - attribute: baseCityCode
-          method: remove
-        - attribute: cityCode
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: objectListPath
-          method: remove
-
   - id: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
     name: FeatureWriterLod0IncorrectOrientation
     type: action
@@ -223,13 +164,13 @@ nodes:
     with:
       routingPort: errorCountLod1InvalidSurface
 
-  # SurfaceValidator3D (LOD2,3,4)
-  # FIXME: replace this with GeometryFilter.
-  #   Send `Surface`s to `SurfaceValidator3D` and `Solid`s to `SolidBoundaryValidator`
+
   - id: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
-    name: Dummy_GeometryFilter
+    name: GeometryFilterSurfaceOrSolid
     type: action
-    action: NoopProcessor
+    action: GeometryFilter
+    with:
+      filterType: geometryType
 
   - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
     name: PLATEAU3.SurfaceValidator3D_LOD2-4
@@ -335,6 +276,7 @@ nodes:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
       generateList: list
+      tolerance: 0.01
 
   - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
     name: FeatureFilterByAreaOnAreaOverlap
@@ -425,7 +367,8 @@ nodes:
     action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
-      epsgCode: env.get("prcs") ?? "6675"
+      epsgCode: |
+        env.get("epsg")
       meshcodeAttr: "meshcode"
 
   - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
@@ -519,6 +462,9 @@ nodes:
     name: SolidBoundaryValidator
     type: action
     action: SolidBoundaryValidator
+    with:
+      tolerance: |
+        0.01
 
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
@@ -801,6 +747,8 @@ nodes:
     action: CSGEvaluator
     with:
       operation: intersection
+      tolerance: |
+        0.01
 
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperSolidIntersection
@@ -1013,7 +961,7 @@ edges:
   - id: 1a5f3c8d-9e2b-4d7a-8c6f-5b9e3d2a6f8c
     from: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
-    fromPort: default
+    fromPort: surface
     toPort: default
 
   - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
@@ -1153,19 +1101,19 @@ edges:
   - id: 2fef6fd8-b678-5fa7-0d81-a350ae46aeee
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod2
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
 
   - id: 3ffa7ae9-c789-6fb8-1e92-b461bf57bfff
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod3
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
 
   - id: 4ffb8bfa-d890-7fc9-2fa3-c572cf68cfff
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod4
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     toPort: default
 
   - id: bf5d73d5-a6c6-4a06-bd22-52a02fdbd96f

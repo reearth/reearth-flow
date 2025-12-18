@@ -8,13 +8,13 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo } from "react";
+import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
 import {
   isValidConnection,
   CustomConnectionLine,
-  fullEdgeTypes,
+  createFullEdgeTypes,
   simpleEdgeTypes,
   connectionLineStyle,
   nodeTypes,
@@ -114,6 +114,13 @@ const Canvas: React.FC<Props> = ({
     onPaste,
     onNodesDisable,
   });
+
+  // Create edge types with currentWorkflowId injected
+  const fullEdgeTypes = useMemo(
+    () => createFullEdgeTypes(currentWorkflowId),
+    [currentWorkflowId],
+  );
+
   return (
     <ReactFlow
       ref={paneRef}

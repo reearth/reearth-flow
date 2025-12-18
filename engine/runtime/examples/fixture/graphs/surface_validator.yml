@@ -76,6 +76,10 @@ nodes:
     name: PlanarityFilter
     type: action
     action: PlanarityFilter
+    with:
+      filterType: height
+      threshold: |
+        0.01
 
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
@@ -111,7 +115,7 @@ nodes:
     action: GeometryValidator
     with:
       validationTypes:
-        - duplicateConsecutivePoints
+        - duplicateConsecutivePoints: 0.01
         - selfIntersection
 
   ## Ring not closed

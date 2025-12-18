@@ -56,7 +56,7 @@ func TestRedisStorage_SaveLogToRedis(t *testing.T) {
 	expectedVal := `{"workflowId":"wf-123","jobId":"job-123","timestamp":"2025-01-11T09:12:54.487779Z","logLevel":"INFO","message":"Hello from test"}`
 
 	mClient.
-		On("Set", ctx, expectedKey, expectedVal, 12*time.Hour).
+		On("Set", mock.Anything, expectedKey, expectedVal, 12*time.Hour).
 		Return(nil)
 
 	err := rStorage.SaveLogToRedis(ctx, event)

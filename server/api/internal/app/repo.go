@@ -33,7 +33,6 @@ const (
 )
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
-
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 
@@ -173,6 +172,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
+		FeatureWriterDisable:            conf.Worker_FeatureWriterDisable,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)

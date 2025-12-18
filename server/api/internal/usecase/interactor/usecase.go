@@ -11,9 +11,9 @@ import (
 const retry = 2
 
 type uc struct {
-	tx                 bool
 	readableWorkspaces id.WorkspaceIDList
 	writableWorkspaces id.WorkspaceIDList
+	tx                 bool
 }
 
 func Usecase() *uc {

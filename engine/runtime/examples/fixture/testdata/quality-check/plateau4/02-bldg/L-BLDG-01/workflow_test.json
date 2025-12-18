@@ -7,16 +7,21 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_bldg.json",
-      "includeFields": ["LOD1 立体の交差"]
+      "includeFields": [
+        "LOD1 立体の交差"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": ["LOD1 立体の交差"]
+      "includeColumns": [
+        "LOD1 立体の交差"
+      ]
     }
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "epsg": 6675
 }

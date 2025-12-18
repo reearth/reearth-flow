@@ -2,20 +2,30 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test quality check L14",
   "expectedOutput": {
-    "expectedFile": ["02_建築物_立体のエラー.csv", "02_建築物_非水密体.csv"]
+    "expectedFile": [
+      "02_建築物_立体のエラー.csv",
+      "02_建築物_非水密体.csv"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_bldg.json",
-      "includeFields": ["LOD1 非水密立体", "LOD1 立体のエラー"]
+      "includeFields": [
+        "LOD1 非水密立体",
+        "LOD1 立体のエラー"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": ["LOD1 非水密立体", "LOD1 立体のエラー"]
+      "includeColumns": [
+        "LOD1 非水密立体",
+        "LOD1 立体のエラー"
+      ]
     }
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "epsg": 6675
 }

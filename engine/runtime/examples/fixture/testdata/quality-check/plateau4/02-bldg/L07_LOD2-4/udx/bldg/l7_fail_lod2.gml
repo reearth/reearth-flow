@@ -17,22 +17,22 @@
                 <bldg:GroundSurface>
                     <bldg:lod2MultiSurface>
                         <gml:MultiSurface>
-                            <gml:surfaceMember>
-                                <gml:Polygon>
-                                    <gml:exterior>
-                                        <gml:LinearRing>
-                                            <gml:posList>
-                                                0.0 0.0 0.0
-                                                0.000000002 0.0 0.0
-                                                1.0 0.0 0.0
-                                                1.0 1.0 0.0
-                                                0.0 1.0 0.0
-                                                0.0 0.0 0.0
-                                            </gml:posList>
-                                        </gml:LinearRing>
-                                    </gml:exterior>
-                                </gml:Polygon>
-                            </gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>
+                                                34.68339525781 137.325082 0.0
+                                                34.68339525782 137.325082 0.0
+                                                34.6834 137.325082 0.0
+                                                34.6834 137.325083 0.0
+                                                34.68339525781 137.325083 0.0
+                                                34.68339525781 137.325082 0.0
+										    </gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
                         </gml:MultiSurface>
                     </bldg:lod2MultiSurface>
                 </bldg:GroundSurface>

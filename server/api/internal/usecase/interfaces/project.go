@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
@@ -11,25 +12,27 @@ import (
 )
 
 type CreateProjectParam struct {
-	WorkspaceID id.WorkspaceID
 	Name        *string
 	Description *string
 	Archived    *bool
+	WorkspaceID id.WorkspaceID
 }
 
 type UpdateProjectParam struct {
-	ID                id.ProjectID
 	Name              *string
 	Description       *string
 	Archived          *bool
 	IsBasicAuthActive *bool
 	BasicAuthUsername *string
 	BasicAuthPassword *string
+	ID                id.ProjectID
 }
 
 type RunProjectParam struct {
-	ProjectID id.ProjectID
-	Workflow  *file.File
+	Workflow      *file.File
+	ProjectID     id.ProjectID
+	PreviousJobID *id.JobID
+	StartNodeID   *uuid.UUID
 }
 
 var (

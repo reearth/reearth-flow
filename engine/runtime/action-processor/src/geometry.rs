@@ -1,4 +1,5 @@
 pub(crate) mod appearance_remover;
+pub(crate) mod area_calculator;
 pub(crate) mod area_on_area_overlayer;
 pub(crate) mod boundary_extractor;
 pub(crate) mod bounds_extractor;
@@ -27,6 +28,7 @@ pub(crate) mod mapping;
 pub(crate) mod offsetter;
 pub(crate) mod orientation_extractor;
 pub(crate) mod planarity_filter;
+pub(crate) mod polygon_normal_extractor;
 pub(crate) mod refiner;
 pub(crate) mod remover;
 pub(crate) mod replacer;

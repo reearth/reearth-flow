@@ -7,11 +7,15 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_bldg.json",
-      "includeFields": ["不正な建物ID"]
+      "includeFields": [
+        "不正な建物ID"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": ["不正な建物ID"]
+      "includeColumns": [
+        "不正な建物ID"
+      ]
     }
   },
   "cityGmlPath": "udx/bldg/input.gml",
@@ -26,5 +30,6 @@
     }
   ],
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "epsg": 6675
 }

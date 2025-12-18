@@ -369,10 +369,7 @@ impl BoundaryExtractor {
             }
 
             // Rectangle boundary is its perimeter
-            Geometry3D::Rect(rect) => {
-                let polygon = rect.to_polygon();
-                Some(Geometry3D::LineString(polygon.exterior().clone()))
-            }
+            Geometry3D::Rect(rect) => Some(Geometry3D::MultiPolygon(rect.to_multi_polygon())),
 
             // Triangle boundary is its perimeter
             Geometry3D::Triangle(triangle) => {
@@ -391,8 +388,8 @@ impl BoundaryExtractor {
             // Solid boundary is the triangular mesh representing its surface
             Geometry3D::Solid(solid) => {
                 // A solid's boundary is its surface mesh
-                // Try to convert to triangular mesh
-                match solid.clone().as_triangle_mesh() {
+                // Try to convert to triangular mesh with default tolerance
+                match solid.clone().as_triangle_mesh(None) {
                     Ok(mesh) => Some(Geometry3D::TriangularMesh(mesh)),
                     Err(_) => {
                         // If conversion fails, the solid might be represented as faces

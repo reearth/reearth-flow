@@ -5,6 +5,7 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     appearance_remover::AppearanceRemoverFactory,
+    area_calculator::AreaCalculatorFactory,
     area_on_area_overlayer::AreaOnAreaOverlayerFactory,
     boundary_extractor::BoundaryExtractorFactory,
     bounds_extractor::BoundsExtractorFactory,
@@ -31,6 +32,7 @@ use super::{
     offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory,
     planarity_filter::PlanarityFilterFactory,
+    polygon_normal_extractor::PolygonNormalExtractorFactory,
     refiner::RefinerFactory,
     remover::GeometryRemoverFactory,
     replacer::GeometryReplacerFactory,
@@ -73,6 +75,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<LineOnLineOverlayerFactory>::default(),
         Box::<BuffererFactory>::default(),
         Box::<AreaOnAreaOverlayerFactory>::default(),
+        Box::<AreaCalculatorFactory>::default(),
         Box::<GeometryReplacerFactory>::default(),
         Box::<ClosedCurveFilterFactory>::default(),
         Box::<VertexRemoverFactory>::default(),
@@ -96,6 +99,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CSGEvaluatorFactory>::default(),
         Box::<VertexCounterFactory>::default(),
         Box::<SpatialFilterFactory>::default(),
+        Box::<PolygonNormalExtractorFactory>::default(),
     ];
     factories
         .into_iter()

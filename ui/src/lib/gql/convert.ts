@@ -16,9 +16,11 @@ import {
   type CmsModelFragment,
   type CmsItemFragment,
   type CmsAssetFragment,
+  type UserFacingLogFragment,
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   type UserFacingLogLevel as GraphqlUserFacingLogLevel,
+  type WorkerConfigFragment,
   ParameterType,
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
@@ -33,7 +35,7 @@ import type {
   NodeStatus,
   ProjectSnapshotMeta,
   VarType,
-  AnyProjectVariable,
+  AnyWorkflowVariable,
   Workspace,
   Member,
   Asset,
@@ -47,11 +49,10 @@ import type {
   CmsSchemaFieldType,
   CmsAsset,
   UserFacingLog,
+  WorkerConfig,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
-
-import { UserFacingLogFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -102,11 +103,16 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   workspaceId: trigger.workspaceId,
   createdAt: trigger.createdAt,
   updatedAt: trigger.updatedAt,
+  lastTriggered: trigger.lastTriggered ?? undefined,
   eventSource: trigger.eventSource,
+  enabled: trigger.enabled,
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
-  variables: trigger.variables ?? undefined,
+  variables: trigger.variables.map((v) => ({
+    ...v,
+    type: toUserParamVarType(v.type),
+  })),
 });
 
 export const toNodeExecution = (
@@ -241,6 +247,25 @@ export const toCmsAsset = (cmsAsset: CmsAssetFragment): CmsAsset => ({
   createdAt: formatDate(cmsAsset.createdAt),
 });
 
+export const toWorkerConfig = (
+  workerConfig: WorkerConfigFragment,
+): WorkerConfig => ({
+  id: workerConfig.id,
+  machineType: workerConfig.machineType ?? undefined,
+  computeCpuMilli: workerConfig.computeCpuMilli ?? undefined,
+  computeMemoryMib: workerConfig.computeMemoryMib ?? undefined,
+  bootDiskSizeGB: workerConfig.bootDiskSizeGB ?? undefined,
+  taskCount: workerConfig.taskCount ?? undefined,
+  maxConcurrency: workerConfig.maxConcurrency ?? undefined,
+  threadPoolSize: workerConfig.threadPoolSize ?? undefined,
+  channelBufferSize: workerConfig.channelBufferSize ?? undefined,
+  featureFlushThreshold: workerConfig.featureFlushThreshold ?? undefined,
+  nodeStatusPropagationDelayMilli:
+    workerConfig.nodeStatusPropagationDelayMilli ?? undefined,
+  createdAt: formatDate(workerConfig.createdAt),
+  updatedAt: formatDate(workerConfig.updatedAt),
+});
+
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
   switch (status) {
     case "RUNNING":
@@ -291,9 +316,9 @@ export const toNodeStatus = (
   }
 };
 
-export const toProjectVariable = (
+export const toWorkflowVariable = (
   parameter: ParameterFragment,
-): AnyProjectVariable => ({
+): AnyWorkflowVariable => ({
   id: parameter.id,
   name: parameter.name,
   type: toUserParamVarType(parameter.type),

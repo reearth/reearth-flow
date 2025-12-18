@@ -6,6 +6,7 @@ with:
   schemas: null
   codelists: null
   outputPath: null
+  epsg: null
 graphs:
 - id: 7e98d856-1438-4148-bdcb-91747ef2e405
   name: PLATEAU3.LodSplitterWithDM
@@ -228,6 +229,10 @@ graphs:
     name: PlanarityFilter
     type: action
     action: PlanarityFilter
+    with:
+      filterType: height
+      threshold: |
+        0.01
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -259,7 +264,7 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - duplicateConsecutivePoints
+      - duplicateConsecutivePoints: 0.01
       - selfIntersection
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
@@ -685,6 +690,12 @@ graphs:
       flatten: true
       dataset: |
         env.get("__value")["path"]
+  - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: env.get("epsg")
   - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
     name: TransportationXlinkDetector
     type: action
@@ -1242,6 +1253,11 @@ graphs:
     toPort: default
   - id: 3c9b1831-266b-492b-a51f-dbf3848882c2
     from: 242e339a-c7df-4be4-82f7-3223a6ed2145
+    to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    fromPort: default
+    toPort: default
+  - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+    from: 10df06f3-cafa-4abd-ba94-04ac71dae467
     to: 51431704-ac14-41cd-988b-88141dc6e326
     fromPort: default
     toPort: default

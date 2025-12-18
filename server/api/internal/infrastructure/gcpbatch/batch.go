@@ -19,13 +19,9 @@ import (
 )
 
 type BatchConfig struct {
-	AllowedLocations                []string
 	BinaryPath                      string
-	BootDiskSizeGB                  int
 	BootDiskType                    string
 	ChannelBufferSize               string
-	ComputeCpuMilli                 int
-	ComputeMemoryMib                int
 	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
@@ -39,9 +35,14 @@ type BatchConfig struct {
 	Region                          string
 	RustLog                         string
 	SAEmail                         string
-	TaskCount                       int
 	ThreadPoolSize                  string
+	AllowedLocations                []string
+	BootDiskSizeGB                  int
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
+	TaskCount                       int
 	CompressIntermediateData        bool
+	FeatureWriterDisable            bool
 }
 
 type BatchClient interface {
@@ -188,6 +189,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if b.config.CompressIntermediateData {
 					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
+				}
+				if b.config.FeatureWriterDisable {
+					vars["FLOW_RUNTIME_FEATURE_WRITER_DISABLE"] = strconv.FormatBool(b.config.FeatureWriterDisable)
 				}
 
 				return vars

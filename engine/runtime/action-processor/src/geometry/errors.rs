@@ -147,6 +147,18 @@ pub(super) enum GeometryProcessorError {
     VertexCounterFactory(String),
     #[error("VertexCounter error: {0}")]
     VertexCounter(String),
+    #[error("PolygonNormalExtractor Factory error: {0}")]
+    PolygonNormalExtractorFactory(String),
+    #[error("PolygonNormalExtractor error: {0}")]
+    PolygonNormalExtractor(String),
+    #[error("PlanarityFilter Factory error: {0}")]
+    PlanarityFilterFactory(String),
+    #[error("PlanarityFilter error: {0}")]
+    PlanarityFilter(String),
+    #[error("AreaCalculator Factory error: {0}")]
+    AreaCalculatorFactory(String),
+    #[error("AreaCalculator error: {0}")]
+    AreaCalculator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

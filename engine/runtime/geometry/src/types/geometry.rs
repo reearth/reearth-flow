@@ -27,9 +27,6 @@ use super::triangle::Triangle;
 use crate::error::Error;
 use crate::types::csg::CSG;
 use crate::types::triangular_mesh::TriangularMesh;
-use crate::utils::PointsCoplanar;
-
-static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -210,7 +207,6 @@ impl<T: CoordFloat, Z: CoordFloat> From<Geometry<T, Z>> for geojson::Value {
             Geometry::MultiPoint(multi_point) => multi_point.into(),
             Geometry::MultiLineString(multi_line_string) => multi_line_string.into(),
             Geometry::MultiPolygon(multi_point) => multi_point.into(),
-            Geometry::Rect(rect) => rect.into(),
             Geometry::Triangle(triangle) => triangle.into(),
             Geometry::GeometryCollection(gc) => {
                 let mut geometries = Vec::new();
@@ -495,38 +491,8 @@ try_from_geometry_impl!(
 );
 
 impl Geometry2D<f64> {
-    pub fn are_points_coplanar(&self) -> bool {
+    pub fn are_points_coplanar(&self, _tolerance: f64) -> bool {
         true
-    }
-}
-
-impl Geometry3D<f64> {
-    pub fn are_points_coplanar(&self) -> Option<PointsCoplanar> {
-        match self {
-            Geometry::CSG(_csg) => unimplemented!(),
-            Geometry::Point(_) => None,
-            Geometry::Line(_) => None,
-            Geometry::LineString(ls) => {
-                crate::utils::are_points_coplanar(ls.clone().into(), EPSILON)
-            }
-            Geometry::Polygon(polygon) => {
-                crate::utils::are_points_coplanar(polygon.clone().into(), EPSILON)
-            }
-            Geometry::MultiPoint(mpolygon) => {
-                crate::utils::are_points_coplanar(mpolygon.clone().into(), EPSILON)
-            }
-            Geometry::MultiLineString(mls) => {
-                crate::utils::are_points_coplanar(mls.clone().into(), EPSILON)
-            }
-            Geometry::MultiPolygon(mpolygon) => {
-                crate::utils::are_points_coplanar(mpolygon.clone().into(), EPSILON)
-            }
-            Geometry::Rect(rect) => crate::utils::are_points_coplanar((*rect).into(), EPSILON),
-            Geometry::Triangle(_) => unimplemented!(),
-            Geometry::TriangularMesh(_) => unimplemented!(),
-            Geometry::Solid(_) => unimplemented!(),
-            Geometry::GeometryCollection(_) => unimplemented!(),
-        }
     }
 }
 

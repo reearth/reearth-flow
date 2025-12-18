@@ -196,8 +196,7 @@ graphs:
         method: rename
         value: city_name
       - attribute: lod
-        method: rename
-        value: _lod
+        method: remove
       - attribute: gmlId
         method: remove
       - attribute: gmlPropertyName
@@ -213,7 +212,8 @@ graphs:
       - attribute: area
         method: remove
       - attribute: package
-        method: remove
+        method: rename
+        value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -231,12 +231,20 @@ graphs:
       - attribute: name
         method: remove
       - attribute: udxDirs
-        method: rename
-        value: _udxDirs
+        method: remove
       - attribute: featureType
         method: remove
       - attribute: gmlName
         method: remove
+  - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    name: FilterUrfPackage
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["package"] == "urf"
+        outputPort: default
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     name: StripFeatureTypePrefix
     type: action
@@ -401,12 +409,12 @@ graphs:
         env.get("__value").feature_type.split(":")[1]
       minZoom: 8
       maxZoom: 16
-      skipUnderscorePrefix: true
+      skipUnexposedAttributes: true
       colonToUnderscore: true
+      extent: 65536
       output: |
-        let feature_type = env.get("__value").feature_type;
-        feature_type.replace(":", "_");
-        file::join_path(env.get("workerArtifactPath"), feature_type)
+        let d = env.get("__value").__package + "_" + env.get("__value").feature_type.split(":")[1];
+        file::join_path(env.get("workerArtifactPath"), d)
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -435,6 +443,11 @@ graphs:
     toPort: default
   - id: d8e9f0a1-b2c3-d4e5-f6a7-b8c9d0e1f2a3
     from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    to: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    fromPort: default
+    toPort: default
+  - id: a2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
+    from: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     fromPort: default
     toPort: default
