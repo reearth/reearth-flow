@@ -1,10 +1,10 @@
 import { Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable, NumberConfig } from "@flow/types";
+import { WorkflowVariable, NumberConfig } from "@flow/types";
 
 type Props = {
-  variable: ProjectVariable;
-  onUpdate: (variable: ProjectVariable) => void;
+  variable: WorkflowVariable;
+  onUpdate: (variable: WorkflowVariable) => void;
 };
 
 export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {

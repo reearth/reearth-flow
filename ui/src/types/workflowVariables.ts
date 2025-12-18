@@ -104,7 +104,7 @@ export type ArrayConfig = {
 };
 
 // Conditional config type based on VarType
-export type ProjectVariableConfig<T extends VarType> = T extends "array"
+export type WorkflowVariableConfig<T extends VarType> = T extends "array"
   ? ArrayConfig
   : T extends "choice"
     ? ChoiceConfig
@@ -126,26 +126,26 @@ export type ProjectVariableConfig<T extends VarType> = T extends "array"
                     ? WebConnectionConfig
                     : undefined;
 
-export type ProjectVariable<T extends VarType = VarType> = {
+export type WorkflowVariable<T extends VarType = VarType> = {
   id: string;
   name: string;
   defaultValue: any;
   type: T;
   required: boolean;
   public: boolean;
-  config?: ProjectVariableConfig<T>;
+  config?: WorkflowVariableConfig<T>;
   createdAt?: string;
   updatedAt?: string;
   projectId?: string;
 };
 
 // Convenience type for when we don't know the specific type
-export type AnyProjectVariable = ProjectVariable<VarType>;
+export type AnyWorkflowVariable = WorkflowVariable<VarType>;
 
-export type CreateProjectVariable = {
-  projectVariable?: AnyProjectVariable;
+export type CreateWorkflowVariable = {
+  workflowVariable?: AnyWorkflowVariable;
 } & ApiResponse;
 
-export type UpdateProjectVariable = {
-  projectVariable?: AnyProjectVariable;
+export type UpdateWorkflowVariable = {
+  workflowVariable?: AnyWorkflowVariable;
 } & ApiResponse;

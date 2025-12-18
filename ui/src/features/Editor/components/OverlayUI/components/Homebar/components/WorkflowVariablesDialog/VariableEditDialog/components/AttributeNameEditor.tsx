@@ -1,10 +1,10 @@
 import { Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable } from "@flow/types";
+import { WorkflowVariable } from "@flow/types";
 
 type Props = {
-  variable: ProjectVariable;
-  onUpdate: (variable: ProjectVariable) => void;
+  variable: WorkflowVariable;
+  onUpdate: (variable: WorkflowVariable) => void;
 };
 
 export const AttributeNameEditor: React.FC<Props> = ({

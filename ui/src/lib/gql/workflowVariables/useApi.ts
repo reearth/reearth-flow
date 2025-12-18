@@ -1,30 +1,30 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import type { CreateProjectVariable, VarType } from "@flow/types";
+import type { CreateWorkflowVariable, VarType } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
-export const useProjectVariables = () => {
+export const useWorkflowVariables = () => {
   const {
-    useProjectVariablesQuery,
-    createProjectVariablesMutation,
-    updateMultipleProjectVariablesMutation,
-    deleteProjectVariableMutation,
-    deleteProjectVariablesMutation,
+    useWorkflowVariablesQuery,
+    createWorkflowVariablesMutation,
+    updateMultipleWorkflowVariablesMutation,
+    deleteWorkflowVariableMutation,
+    deleteWorkflowVariablesMutation,
   } = useQueries();
 
   const { toast } = useToast();
   const t = useT();
 
-  const useGetProjectVariables = (projectId?: string) => {
-    const { data, ...rest } = useProjectVariablesQuery(projectId);
+  const useGetWorkflowVariables = (projectId?: string) => {
+    const { data, ...rest } = useWorkflowVariablesQuery(projectId);
     return {
-      projectVariables: data,
+      workflowVariables: data,
       ...rest,
     };
   };
 
-  const createProjectVariable = async (
+  const createWorkflowVariable = async (
     projectId: string,
     name: string,
     defaultValue: any,
@@ -33,10 +33,10 @@ export const useProjectVariables = () => {
     publicValue: boolean,
     index: number,
     config?: any,
-  ): Promise<CreateProjectVariable> => {
-    const { mutateAsync, ...rest } = createProjectVariablesMutation;
+  ): Promise<CreateWorkflowVariable> => {
+    const { mutateAsync, ...rest } = createWorkflowVariablesMutation;
     try {
-      const projectVariable = await mutateAsync({
+      const workflowVariable = await mutateAsync({
         projectId,
         name,
         defaultValue,
@@ -55,7 +55,7 @@ export const useProjectVariables = () => {
         ),
       });
 
-      return { projectVariable, ...rest };
+      return { workflowVariable, ...rest };
     } catch (_err) {
       toast({
         title: t("Workflow Variable Creation Failed"),
@@ -63,12 +63,12 @@ export const useProjectVariables = () => {
         variant: "warning",
       });
 
-      return { projectVariable: undefined, ...rest };
+      return { workflowVariable: undefined, ...rest };
     }
   };
 
-  const deleteProjectVariable = async (paramId: string, projectId: string) => {
-    const { mutateAsync, ...rest } = deleteProjectVariableMutation;
+  const deleteWorkflowVariable = async (paramId: string, projectId: string) => {
+    const { mutateAsync, ...rest } = deleteWorkflowVariableMutation;
     try {
       const result = await mutateAsync({ paramId, projectId });
       if (result?.success) {
@@ -91,7 +91,7 @@ export const useProjectVariables = () => {
     }
   };
 
-  const updateMultipleProjectVariables = async (input: {
+  const updateMultipleWorkflowVariables = async (input: {
     projectId: string;
     creates?: {
       name: string;
@@ -117,16 +117,16 @@ export const useProjectVariables = () => {
       newIndex: number;
     }[];
   }) => {
-    const { mutateAsync, ...rest } = updateMultipleProjectVariablesMutation;
+    const { mutateAsync, ...rest } = updateMultipleWorkflowVariablesMutation;
     try {
-      const projectVariables = await mutateAsync(input);
+      const workflowVariables = await mutateAsync(input);
 
       toast({
         title: t("Workflow Variables Updated"),
         description: t("Workflow variables have been updated successfully."),
       });
 
-      return { projectVariables, ...rest };
+      return { workflowVariables, ...rest };
     } catch (err) {
       console.error("Error updating workflow variables:", err);
       toast({
@@ -134,15 +134,15 @@ export const useProjectVariables = () => {
         description: t("There was an error updating workflow variables."),
         variant: "warning",
       });
-      return { projectVariables: [], ...rest };
+      return { workflowVariables: [], ...rest };
     }
   };
 
-  const deleteProjectVariables = async (
+  const deleteWorkflowVariables = async (
     projectId: string,
     paramIds: string[],
   ) => {
-    const { mutateAsync, ...rest } = deleteProjectVariablesMutation;
+    const { mutateAsync, ...rest } = deleteWorkflowVariablesMutation;
     try {
       const result = await mutateAsync({ paramIds, projectId });
       if (result?.success) {
@@ -166,10 +166,10 @@ export const useProjectVariables = () => {
   };
 
   return {
-    useGetProjectVariables,
-    createProjectVariable,
-    updateMultipleProjectVariables,
-    deleteProjectVariable,
-    deleteProjectVariables,
+    useGetWorkflowVariables,
+    createWorkflowVariable,
+    updateMultipleWorkflowVariables,
+    deleteWorkflowVariable,
+    deleteWorkflowVariables,
   };
 };

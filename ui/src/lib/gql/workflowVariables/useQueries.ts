@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { AnyProjectVariable, VarType } from "@flow/types";
+import type { AnyWorkflowVariable, VarType } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { toGqlParameterType, toProjectVariable } from "../convert";
+import { toGqlParameterType, toWorkflowVariable } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum ParameterQueryKeys {
@@ -14,28 +14,28 @@ export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
-  const useProjectVariablesQuery = (projectId?: string) =>
+  const useWorkflowVariablesQuery = (projectId?: string) =>
     useQuery({
       queryKey: [ParameterQueryKeys.GetParameters, projectId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetProjectParameters({
+        const data = await graphQLContext?.GetWorkflowParameters({
           projectId: projectId ?? "",
         });
 
         if (!data) return;
         const { parameters } = data;
-        const projectVars: AnyProjectVariable[] = parameters
+        const workflowVars: AnyWorkflowVariable[] = parameters
           .filter(isDefined)
-          .map((p) => toProjectVariable(p));
+          .map((p) => toWorkflowVariable(p));
 
-        return projectVars;
+        return workflowVars;
       },
       enabled: !!projectId,
       refetchOnMount: false,
       refetchOnWindowFocus: false,
     });
 
-  const createProjectVariablesMutation = useMutation({
+  const createWorkflowVariablesMutation = useMutation({
     mutationFn: async ({
       projectId,
       name,
@@ -57,7 +57,7 @@ export const useQueries = () => {
     }) => {
       const gqlType = toGqlParameterType(type);
       if (!gqlType) return;
-      const data = await graphQLContext?.CreateProjectVariable({
+      const data = await graphQLContext?.CreateWorkflowVariable({
         projectId,
         input: {
           name,
@@ -71,7 +71,7 @@ export const useQueries = () => {
       });
 
       if (data?.declareParameter) {
-        return toProjectVariable(data?.declareParameter);
+        return toWorkflowVariable(data?.declareParameter);
       }
     },
     onSuccess: (parameterDocument) => {
@@ -86,7 +86,7 @@ export const useQueries = () => {
     },
   });
 
-  const deleteProjectVariableMutation = useMutation({
+  const deleteWorkflowVariableMutation = useMutation({
     mutationFn: async ({
       paramId,
       projectId,
@@ -94,7 +94,7 @@ export const useQueries = () => {
       paramId: string;
       projectId: string;
     }) => {
-      const data = await graphQLContext?.DeleteProjectVariable({
+      const data = await graphQLContext?.DeleteWorkflowVariable({
         input: {
           paramId,
         },
@@ -116,7 +116,7 @@ export const useQueries = () => {
     },
   });
 
-  const updateMultipleProjectVariablesMutation = useMutation({
+  const updateMultipleWorkflowVariablesMutation = useMutation({
     mutationFn: async (input: {
       projectId: string;
       creates?: {
@@ -198,12 +198,12 @@ export const useQueries = () => {
         }));
       }
 
-      const data = await graphQLContext?.UpdateProjectVariables({
+      const data = await graphQLContext?.UpdateWorkflowVariables({
         input: multiInput,
       });
 
       if (data?.updateParameters) {
-        return data.updateParameters.map((param) => toProjectVariable(param));
+        return data.updateParameters.map((param) => toWorkflowVariable(param));
       }
       return [];
     },
@@ -214,7 +214,7 @@ export const useQueries = () => {
     },
   });
 
-  const deleteProjectVariablesMutation = useMutation({
+  const deleteWorkflowVariablesMutation = useMutation({
     mutationFn: async ({
       paramIds,
       projectId,
@@ -222,7 +222,7 @@ export const useQueries = () => {
       paramIds: string[];
       projectId: string;
     }) => {
-      const data = await graphQLContext?.DeleteProjectVariables({
+      const data = await graphQLContext?.DeleteWorkflowVariables({
         input: {
           paramIds,
         },
@@ -242,10 +242,10 @@ export const useQueries = () => {
   });
 
   return {
-    useProjectVariablesQuery,
-    createProjectVariablesMutation,
-    updateMultipleProjectVariablesMutation,
-    deleteProjectVariableMutation,
-    deleteProjectVariablesMutation,
+    useWorkflowVariablesQuery,
+    createWorkflowVariablesMutation,
+    updateMultipleWorkflowVariablesMutation,
+    deleteWorkflowVariableMutation,
+    deleteWorkflowVariablesMutation,
   };
 };

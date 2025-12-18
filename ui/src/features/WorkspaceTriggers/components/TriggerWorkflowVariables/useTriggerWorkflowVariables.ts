@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { inferProjectVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
+import { inferWorkflowVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import { Variable } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
@@ -28,7 +28,7 @@ const recordToVariables = (
 ): Variable[] | undefined => {
   if (!record || Object.keys(record).length === 0) return undefined;
   return Object.entries(record).map(([key, value]) => {
-    const type = inferProjectVariableType(value, key);
+    const type = inferWorkflowVariableType(value, key);
     return { key, type, value };
   });
 };
@@ -38,8 +38,8 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
   const initialRecord = variablesToRecord(initialVariables);
 
   const [
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
   ] = useState<boolean>(false);
 
   const [pendingWorkflowData, setPendingWorkflowData] = useState<{
@@ -110,13 +110,13 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
     [triggerCustomVariables],
   );
 
-  const handleVariablesConfirm = useCallback((projectVariables: any[]) => {
+  const handleVariablesConfirm = useCallback((workflowVariables: any[]) => {
     const variablesObj: Record<string, any> = {};
-    projectVariables.forEach((variable) => {
+    workflowVariables.forEach((variable) => {
       variablesObj[variable.name] = variable.defaultValue;
     });
     setWorkflowVariablesObject(variablesObj);
-    setOpenTriggerProjectVariablesDialog(false);
+    setOpenTriggerWorkflowVariablesDialog(false);
   }, []);
 
   const initializeVariables = useCallback((variables: Record<string, any>) => {
@@ -171,8 +171,8 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
   return {
     pendingWorkflowData,
     workflowVariablesObject,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleWorkflowFetch,
     handleVariablesConfirm,
     initializeVariables,

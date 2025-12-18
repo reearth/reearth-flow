@@ -23,18 +23,18 @@ import {
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
 import { useT } from "@flow/lib/i18n";
-import { AnyProjectVariable, VarType } from "@flow/types";
+import { AnyWorkflowVariable, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
-import useProjectVariablesDialog from "./hooks";
-import { ProjectVariablesTable } from "./ProjectVariablesTable";
+import useWorkflowVariablesDialog from "./hooks";
 import VariableEditDialog from "./VariableEditDialog";
+import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
 type Props = {
-  currentProjectVariables?: AnyProjectVariable[];
+  currentWorkflowVariables?: AnyWorkflowVariable[];
   onClose: () => void;
-  onAdd: (projectVariable: AnyProjectVariable) => Promise<void>;
-  onChange: (projectVariable: AnyProjectVariable) => Promise<void>;
+  onAdd: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
+  onChange: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onDeleteBatch?: (ids: string[]) => Promise<void>;
   onBatchUpdate?: (input: {
@@ -82,8 +82,8 @@ const allVarTypes: VarType[] = [
   // "web_connection",
 ];
 
-const ProjectVariableDialog: React.FC<Props> = ({
-  currentProjectVariables,
+const WorkflowVariablesDialog: React.FC<Props> = ({
+  currentWorkflowVariables,
   projectId,
   onClose,
   onAdd,
@@ -95,7 +95,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
   const t = useT();
 
   const {
-    localProjectVariables,
+    localWorkflowVariables,
     pendingChanges,
     isSubmitting,
     editingVariable,
@@ -108,8 +108,8 @@ const ProjectVariableDialog: React.FC<Props> = ({
     handleCancel,
     handleEditVariable,
     handleCloseEdit,
-  } = useProjectVariablesDialog({
-    currentProjectVariables,
+  } = useWorkflowVariablesDialog({
+    currentWorkflowVariables,
     projectId,
     onClose,
     onAdd,
@@ -119,12 +119,12 @@ const ProjectVariableDialog: React.FC<Props> = ({
     onBatchUpdate,
   });
 
-  const columns: ColumnDef<AnyProjectVariable>[] = [
+  const columns: ColumnDef<AnyWorkflowVariable>[] = [
     {
       accessorKey: "name",
       header: t("Name"),
       cell: ({ row }) => {
-        const variable = localProjectVariables[row.index];
+        const variable = localWorkflowVariables[row.index];
         return (
           <NameInput
             variable={variable}
@@ -142,7 +142,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
       accessorKey: "defaultValue",
       header: t("Default Value"),
       cell: ({ row }) => {
-        const variable = localProjectVariables[row.index];
+        const variable = localWorkflowVariables[row.index];
         return <DefaultValueDisplay variable={variable} />;
       },
     },
@@ -155,7 +155,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
           <Switch
             checked={isChecked}
             onCheckedChange={() => {
-              const projectVar = { ...localProjectVariables[row.index] };
+              const projectVar = { ...localWorkflowVariables[row.index] };
               projectVar.required = !isChecked;
               handleLocalUpdate(projectVar);
             }}
@@ -167,7 +167,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
       accessorKey: "public",
       header: t("Public"),
       cell: ({ row }) => {
-        const variable = localProjectVariables[row.index];
+        const variable = localWorkflowVariables[row.index];
         return (
           <Switch
             checked={variable.public}
@@ -184,7 +184,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
       id: "actions",
       header: t("Actions"),
       cell: ({ row }) => {
-        const variable = localProjectVariables[row.index];
+        const variable = localWorkflowVariables[row.index];
         return (
           <div className="flex items-center gap-1">
             <IconButton
@@ -261,8 +261,8 @@ const ProjectVariableDialog: React.FC<Props> = ({
             <div className="flex h-full min-h-0">
               <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
-                  <ProjectVariablesTable
-                    projectVariables={localProjectVariables}
+                  <WorkflowVariablesTable
+                    workflowVariables={localWorkflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
                   />
@@ -295,4 +295,4 @@ const ProjectVariableDialog: React.FC<Props> = ({
   );
 };
 
-export default ProjectVariableDialog;
+export default WorkflowVariablesDialog;

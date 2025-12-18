@@ -1,23 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 
-import { useProjectVars } from "@flow/hooks";
+import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable, VarType } from "@flow/types";
+import { WorkflowVariable, VarType } from "@flow/types";
 import {
   generateUUID,
-  getDefaultConfigForProjectVar,
-  getDefaultValueForProjectVar,
+  getDefaultConfigForWorkflowVar,
+  getDefaultValueForWorkflowVar,
 } from "@flow/utils";
 
 type PendingChange =
   | {
       type: "add";
       tempId: string;
-      projectVariable: ProjectVariable;
+      workflowVariable: WorkflowVariable;
     }
   | {
       type: "update";
-      projectVariable: ProjectVariable;
+      workflowVariable: WorkflowVariable;
     }
   | {
       type: "delete";
@@ -30,7 +30,7 @@ type PendingChange =
     };
 
 export default ({
-  currentProjectVariables,
+  currentWorkflowVariables,
   projectId,
   onClose,
   onAdd,
@@ -39,11 +39,11 @@ export default ({
   onDeleteBatch,
   onBatchUpdate,
 }: {
-  currentProjectVariables?: ProjectVariable[];
+  currentWorkflowVariables?: WorkflowVariable[];
   projectId?: string;
   onClose: () => void;
-  onAdd: (projectVariable: ProjectVariable) => Promise<void>;
-  onChange: (projectVariable: ProjectVariable) => Promise<void>;
+  onAdd: (workflowVariable: WorkflowVariable) => Promise<void>;
+  onChange: (workflowVariable: WorkflowVariable) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onDeleteBatch?: (ids: string[]) => Promise<void>;
   onBatchUpdate?: (input: {
@@ -72,47 +72,47 @@ export default ({
   }) => Promise<void>;
 }) => {
   const t = useT();
-  const [localProjectVariables, setLocalProjectVariables] = useState<
-    ProjectVariable[]
+  const [localWorkflowVariables, setLocalWorkflowVariables] = useState<
+    WorkflowVariable[]
   >([]);
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingVariable, setEditingVariable] =
-    useState<ProjectVariable | null>(null);
+    useState<WorkflowVariable | null>(null);
 
-  const { getUserFacingName } = useProjectVars();
+  const { getUserFacingName } = useWorkflowVars();
 
   useEffect(() => {
-    if (currentProjectVariables) {
-      setLocalProjectVariables([...currentProjectVariables]);
+    if (currentWorkflowVariables) {
+      setLocalWorkflowVariables([...currentWorkflowVariables]);
       setPendingChanges([]);
     }
-  }, [currentProjectVariables, getUserFacingName]);
+  }, [currentWorkflowVariables, getUserFacingName]);
 
   const handleLocalAdd = useCallback(
     (type: VarType) => {
       const tempId = `temp_${generateUUID()}`;
-      const newVariable: ProjectVariable = {
+      const newVariable: WorkflowVariable = {
         id: tempId,
         name: t("New Workflow Variable"),
-        defaultValue: getDefaultValueForProjectVar(type),
-        config: getDefaultConfigForProjectVar(type),
+        defaultValue: getDefaultValueForWorkflowVar(type),
+        config: getDefaultConfigForWorkflowVar(type),
         type,
         required: true,
         public: true,
       };
 
-      setLocalProjectVariables((prev) => [...prev, newVariable]);
+      setLocalWorkflowVariables((prev) => [...prev, newVariable]);
       setPendingChanges((prev) => [
         ...prev,
-        { type: "add", tempId, projectVariable: newVariable },
+        { type: "add", tempId, workflowVariable: newVariable },
       ]);
     },
     [t],
   );
 
-  const handleLocalUpdate = useCallback((updatedVariable: ProjectVariable) => {
-    setLocalProjectVariables((prev) =>
+  const handleLocalUpdate = useCallback((updatedVariable: WorkflowVariable) => {
+    setLocalWorkflowVariables((prev) =>
       prev.map((variable) =>
         variable.id === updatedVariable.id ? updatedVariable : variable,
       ),
@@ -132,7 +132,7 @@ export default ({
           newChanges[existingAddIndex] = {
             type: "add",
             tempId: updatedVariable.id,
-            projectVariable: updatedVariable,
+            workflowVariable: updatedVariable,
           };
           return newChanges;
         }
@@ -141,20 +141,20 @@ export default ({
         const existingUpdateIndex = prev.findIndex(
           (change) =>
             change.type === "update" &&
-            change.projectVariable.id === updatedVariable.id,
+            change.workflowVariable.id === updatedVariable.id,
         );
 
         if (existingUpdateIndex >= 0) {
           const newChanges = [...prev];
           newChanges[existingUpdateIndex] = {
             type: "update",
-            projectVariable: updatedVariable,
+            workflowVariable: updatedVariable,
           };
           return newChanges;
         } else {
           return [
             ...prev,
-            { type: "update", projectVariable: updatedVariable },
+            { type: "update", workflowVariable: updatedVariable },
           ];
         }
       }
@@ -165,15 +165,15 @@ export default ({
 
   const handleDeleteSingle = useCallback(
     (variableId: string) => {
-      const variableIndex = localProjectVariables.findIndex(
+      const variableIndex = localWorkflowVariables.findIndex(
         (variable) => variable.id === variableId,
       );
 
       if (variableIndex === -1) return;
 
-      const varToDelete = localProjectVariables[variableIndex];
+      const varToDelete = localWorkflowVariables[variableIndex];
 
-      setLocalProjectVariables((prev) =>
+      setLocalWorkflowVariables((prev) =>
         prev.filter((variable) => variable.id !== variableId),
       );
 
@@ -191,23 +191,23 @@ export default ({
         );
       }
     },
-    [localProjectVariables],
+    [localWorkflowVariables],
   );
 
   const handleReorder = useCallback(
     (oldIndex: number, newIndex: number) => {
       if (oldIndex === newIndex) return;
 
-      const newProjectVariables = [...localProjectVariables];
-      const [movedItem] = newProjectVariables.splice(oldIndex, 1);
-      newProjectVariables.splice(newIndex, 0, movedItem);
+      const newWorkflowVariables = [...localWorkflowVariables];
+      const [movedItem] = newWorkflowVariables.splice(oldIndex, 1);
+      newWorkflowVariables.splice(newIndex, 0, movedItem);
 
-      setLocalProjectVariables(newProjectVariables);
+      setLocalWorkflowVariables(newWorkflowVariables);
 
       // Track reorder changes for all affected non-temp variables
-      newProjectVariables.forEach((variable, index) => {
+      newWorkflowVariables.forEach((variable, index) => {
         if (!variable.id.startsWith("temp_")) {
-          const originalIndex = localProjectVariables.findIndex(
+          const originalIndex = localWorkflowVariables.findIndex(
             (v) => v.id === variable.id,
           );
           if (originalIndex !== index) {
@@ -227,7 +227,7 @@ export default ({
         }
       });
     },
-    [localProjectVariables],
+    [localWorkflowVariables],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -255,23 +255,23 @@ export default ({
           reorderChanges.length > 0)
       ) {
         const creates = addChanges.map((change) => ({
-          name: change.projectVariable.name,
-          defaultValue: change.projectVariable.defaultValue,
-          config: change.projectVariable.config,
-          type: change.projectVariable.type,
-          required: change.projectVariable.required,
-          publicValue: change.projectVariable.public,
-          index: localProjectVariables.length,
+          name: change.workflowVariable.name,
+          defaultValue: change.workflowVariable.defaultValue,
+          config: change.workflowVariable.config,
+          type: change.workflowVariable.type,
+          required: change.workflowVariable.required,
+          publicValue: change.workflowVariable.public,
+          index: localWorkflowVariables.length,
         }));
 
         const updates = updateChanges.map((change) => ({
-          paramId: change.projectVariable.id,
-          name: change.projectVariable.name,
-          defaultValue: change.projectVariable.defaultValue,
-          config: change.projectVariable.config,
-          type: change.projectVariable.type,
-          required: change.projectVariable.required,
-          publicValue: change.projectVariable.public,
+          paramId: change.workflowVariable.id,
+          name: change.workflowVariable.name,
+          defaultValue: change.workflowVariable.defaultValue,
+          config: change.workflowVariable.config,
+          type: change.workflowVariable.type,
+          required: change.workflowVariable.required,
+          publicValue: change.workflowVariable.public,
         }));
 
         const deletes = deleteChanges.map((change) => change.id);
@@ -290,11 +290,11 @@ export default ({
         });
       } else {
         for (const change of addChanges) {
-          await onAdd(change.projectVariable);
+          await onAdd(change.workflowVariable);
         }
 
         for (const change of updateChanges) {
-          await onChange(change.projectVariable);
+          await onChange(change.workflowVariable);
         }
 
         if (deleteChanges.length > 0) {
@@ -323,7 +323,7 @@ export default ({
     pendingChanges,
     onBatchUpdate,
     projectId,
-    localProjectVariables.length,
+    localWorkflowVariables.length,
     onAdd,
     onChange,
     onDeleteBatch,
@@ -332,14 +332,14 @@ export default ({
   ]);
 
   const handleCancel = useCallback(() => {
-    if (currentProjectVariables) {
-      setLocalProjectVariables([...currentProjectVariables]);
+    if (currentWorkflowVariables) {
+      setLocalWorkflowVariables([...currentWorkflowVariables]);
     }
     setPendingChanges([]);
     onClose();
-  }, [currentProjectVariables, onClose]);
+  }, [currentWorkflowVariables, onClose]);
 
-  const handleEditVariable = useCallback((variable: ProjectVariable) => {
+  const handleEditVariable = useCallback((variable: WorkflowVariable) => {
     setEditingVariable(variable);
   }, []);
 
@@ -348,7 +348,7 @@ export default ({
   }, []);
 
   return {
-    localProjectVariables,
+    localWorkflowVariables,
     pendingChanges,
     isSubmitting,
     editingVariable,
