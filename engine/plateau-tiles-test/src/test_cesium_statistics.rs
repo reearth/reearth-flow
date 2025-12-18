@@ -55,7 +55,6 @@ fn test_texture_presence(
         .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?
         .source_idx
         .is_some();
-    eprintln!("fme_has_texture: {}", fme_has_texture);
     for level in fme_detail_levels.iter() {
         if level.source_idx.is_some() != fme_has_texture {
             return Err(format!(

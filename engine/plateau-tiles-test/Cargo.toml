@@ -33,10 +33,6 @@ zip.workspace = true
 tinymvt.workspace = true
 prost.workspace = true
 
-[lib]
-name = "plateau_tiles_test"
-path = "src/lib.rs"
-
 [[bin]]
 name = "plateau-tiles-test"
 path = "src/main.rs"
