@@ -497,7 +497,7 @@ impl CityGmlMeshBuilder {
                                 let normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
 
                                 // Check if z-component is negative
-                                if normal_z > 0.0 {
+                                if normal_z < 0.0 {
                                     has_error = true;
                                     let error = Error {
                                         error_type: ErrorType::WrongOrientation,
@@ -521,13 +521,13 @@ impl CityGmlMeshBuilder {
                                 let a = a - mean;
                                 let b = b - mean;
                                 let c = c - mean;
-                                (a.normalize(), b.normalize(), c.normalize())
+                                (a, b, c)
                             };
 
                             let ab = (b - a).norm();
                             let ac = (c - a).norm();
                             let bc = (c - b).norm();
-                            let epsilon: f64 = (ab + bc + ac) / (3.0 * 1e5);
+                            let epsilon: f64 = 0.01; // 1 cm in meter units
                             let is_degenerate = (ab + ac).abs_diff_eq(&bc, epsilon)
                                 || (ab + bc).abs_diff_eq(&ac, epsilon)
                                 || (ac + bc).abs_diff_eq(&ab, epsilon);
