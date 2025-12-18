@@ -91,7 +91,7 @@ export function getDefaultValueForWorkflowVar(type: VarType): any {
 }
 
 /**
- * Get default configuration for a project variable type
+ * Get default configuration for a workflow variable type
  */
 export function getDefaultConfigForWorkflowVar<T extends VarType>(
   type: T,

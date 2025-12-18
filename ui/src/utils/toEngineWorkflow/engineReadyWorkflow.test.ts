@@ -77,7 +77,7 @@ describe("createEngineReadyWorkflow", () => {
     );
   });
 
-  it("should pass project variables to consolidateWorkflows", () => {
+  it("should pass workflow variables to consolidateWorkflows", () => {
     const mockWorkflows: Workflow[] = [
       { id: "workflow1", name: "Workflow 1", nodes: [], edges: [] },
     ];
