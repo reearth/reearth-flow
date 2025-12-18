@@ -36,7 +36,7 @@ export type VariableMapping = {
   deploymentDefault: any;
 };
 
-type TriggerProjectVariablesMappingDialogProps = {
+type TriggerWorkflowVariablesMappingDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   variables: WorkflowVariable[] | Record<string, any>[];
@@ -46,8 +46,8 @@ type TriggerProjectVariablesMappingDialogProps = {
   onCancel: () => void;
 };
 
-const TriggerProjectVariablesMappingDialog: React.FC<
-  TriggerProjectVariablesMappingDialogProps
+const TriggerWorkflowVariablesMappingDialog: React.FC<
+  TriggerWorkflowVariablesMappingDialogProps
 > = ({
   isOpen,
   onOpenChange,
@@ -215,4 +215,4 @@ const TriggerProjectVariablesMappingDialog: React.FC<
   );
 };
 
-export default TriggerProjectVariablesMappingDialog;
+export default TriggerWorkflowVariablesMappingDialog;

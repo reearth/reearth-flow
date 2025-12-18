@@ -19,7 +19,7 @@ import {
   Breadcrumb,
   CollaborationActionBar,
   HomeMenu,
-  ProjectVariableDialog,
+  WorkflowVariablesDialog,
   WorkflowsDropdown,
 } from "./components";
 import useHooks from "./hooks";
@@ -121,7 +121,7 @@ const Homebar: React.FC<Props> = ({
         />
       </div>
       {showDialog === "workflowVariables" && (
-        <ProjectVariableDialog
+        <WorkflowVariablesDialog
           currentWorkflowVariables={currentWorkflowVariables}
           projectId={currentProject?.id}
           onClose={handleDialogClose}

@@ -85,7 +85,7 @@ const SortableRow: React.FC<{
   );
 };
 
-const ProjectVariablesTable: React.FC<Props> = ({
+const WorkflowVariablesTable: React.FC<Props> = ({
   className,
   workflowVariables,
   columns,
@@ -257,4 +257,4 @@ const ProjectVariablesTable: React.FC<Props> = ({
   );
 };
 
-export { ProjectVariablesTable };
+export { WorkflowVariablesTable };

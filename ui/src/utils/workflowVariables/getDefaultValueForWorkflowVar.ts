@@ -12,7 +12,7 @@ import { VarType, WorkflowVariableConfig } from "@flow/types";
 //   coordinates: number[];
 // };
 
-export function getDefaultValueForProjectVar(type: VarType): any {
+export function getDefaultValueForWorkflowVar(type: VarType): any {
   switch (type) {
     case "array":
       // Default array as an empty array
@@ -93,7 +93,7 @@ export function getDefaultValueForProjectVar(type: VarType): any {
 /**
  * Get default configuration for a project variable type
  */
-export function getDefaultConfigForProjectVar<T extends VarType>(
+export function getDefaultConfigForWorkflowVar<T extends VarType>(
   type: T,
 ): WorkflowVariableConfig<T> {
   switch (type) {

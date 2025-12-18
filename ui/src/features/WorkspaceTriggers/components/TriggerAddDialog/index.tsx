@@ -19,7 +19,7 @@ import { DeploymentsDialog } from "@flow/features/WorkspaceDeployments/component
 import { useT } from "@flow/lib/i18n";
 
 import { TriggerApiDrivenDetails } from "../TriggerApiDrivenDetail";
-import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
 
 import useHooks from "./hooks";
 
@@ -219,7 +219,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       )}
 
       {pendingWorkflowData?.variables && (
-        <TriggerProjectVariablesMappingDialog
+        <TriggerWorkflowVariablesMappingDialog
           isOpen={openTriggerWorkflowVariablesDialog}
           onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData?.variables || []}

@@ -1760,50 +1760,6 @@ export type ImportProjectMutationVariables = Exact<{
 
 export type ImportProjectMutation = { __typename?: 'Mutation', importProject: boolean };
 
-export type GetWorkflowParametersQueryVariables = Exact<{
-  projectId: Scalars['ID']['input'];
-}>;
-
-
-export type GetWorkflowParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
-
-export type CreateWorkflowVariableMutationVariables = Exact<{
-  projectId: Scalars['ID']['input'];
-  input: DeclareParameterInput;
-}>;
-
-
-export type CreateWorkflowVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
-
-export type UpdateWorkflowVariableMutationVariables = Exact<{
-  paramId: Scalars['ID']['input'];
-  input: UpdateParameterInput;
-}>;
-
-
-export type UpdateWorkflowVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
-
-export type UpdateWorkflowVariablesMutationVariables = Exact<{
-  input: ParameterBatchInput;
-}>;
-
-
-export type UpdateWorkflowVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
-
-export type DeleteWorkflowVariableMutationVariables = Exact<{
-  input: RemoveParameterInput;
-}>;
-
-
-export type DeleteWorkflowVariableMutation = { __typename?: 'Mutation', removeParameter: boolean };
-
-export type DeleteWorkflowVariablesMutationVariables = Exact<{
-  input: RemoveParametersInput;
-}>;
-
-
-export type DeleteWorkflowVariablesMutation = { __typename?: 'Mutation', removeParameters: boolean };
-
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
 }>;
@@ -1924,6 +1880,50 @@ export type DeleteWorkerConfigMutationVariables = Exact<{ [key: string]: never; 
 
 
 export type DeleteWorkerConfigMutation = { __typename?: 'Mutation', deleteWorkerConfig?: { __typename?: 'DeleteWorkerConfigPayload', id: string } | null };
+
+export type GetWorkflowParametersQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetWorkflowParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
+
+export type CreateWorkflowVariableMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  input: DeclareParameterInput;
+}>;
+
+
+export type CreateWorkflowVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
+
+export type UpdateWorkflowVariableMutationVariables = Exact<{
+  paramId: Scalars['ID']['input'];
+  input: UpdateParameterInput;
+}>;
+
+
+export type UpdateWorkflowVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
+
+export type UpdateWorkflowVariablesMutationVariables = Exact<{
+  input: ParameterBatchInput;
+}>;
+
+
+export type UpdateWorkflowVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
+
+export type DeleteWorkflowVariableMutationVariables = Exact<{
+  input: RemoveParameterInput;
+}>;
+
+
+export type DeleteWorkflowVariableMutation = { __typename?: 'Mutation', removeParameter: boolean };
+
+export type DeleteWorkflowVariablesMutationVariables = Exact<{
+  input: RemoveParametersInput;
+}>;
+
+
+export type DeleteWorkflowVariablesMutation = { __typename?: 'Mutation', removeParameters: boolean };
 
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
@@ -2561,44 +2561,6 @@ export const ImportProjectDocument = gql`
   importProject(projectId: $projectId, data: $data)
 }
     `;
-export const GetWorkflowParametersDocument = gql`
-    query GetWorkflowParameters($projectId: ID!) {
-  parameters(projectId: $projectId) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const CreateWorkflowVariableDocument = gql`
-    mutation CreateWorkflowVariable($projectId: ID!, $input: DeclareParameterInput!) {
-  declareParameter(projectId: $projectId, input: $input) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const UpdateWorkflowVariableDocument = gql`
-    mutation UpdateWorkflowVariable($paramId: ID!, $input: UpdateParameterInput!) {
-  updateParameter(paramId: $paramId, input: $input) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const UpdateWorkflowVariablesDocument = gql`
-    mutation UpdateWorkflowVariables($input: ParameterBatchInput!) {
-  updateParameters(input: $input) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const DeleteWorkflowVariableDocument = gql`
-    mutation DeleteWorkflowVariable($input: RemoveParameterInput!) {
-  removeParameter(input: $input)
-}
-    `;
-export const DeleteWorkflowVariablesDocument = gql`
-    mutation DeleteWorkflowVariables($input: RemoveParametersInput!) {
-  removeParameters(input: $input)
-}
-    `;
 export const GetSharedProjectDocument = gql`
     query GetSharedProject($token: String!) {
   sharedProject(token: $token) {
@@ -2754,6 +2716,44 @@ export const DeleteWorkerConfigDocument = gql`
   deleteWorkerConfig {
     id
   }
+}
+    `;
+export const GetWorkflowParametersDocument = gql`
+    query GetWorkflowParameters($projectId: ID!) {
+  parameters(projectId: $projectId) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const CreateWorkflowVariableDocument = gql`
+    mutation CreateWorkflowVariable($projectId: ID!, $input: DeclareParameterInput!) {
+  declareParameter(projectId: $projectId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const UpdateWorkflowVariableDocument = gql`
+    mutation UpdateWorkflowVariable($paramId: ID!, $input: UpdateParameterInput!) {
+  updateParameter(paramId: $paramId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const UpdateWorkflowVariablesDocument = gql`
+    mutation UpdateWorkflowVariables($input: ParameterBatchInput!) {
+  updateParameters(input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const DeleteWorkflowVariableDocument = gql`
+    mutation DeleteWorkflowVariable($input: RemoveParameterInput!) {
+  removeParameter(input: $input)
+}
+    `;
+export const DeleteWorkflowVariablesDocument = gql`
+    mutation DeleteWorkflowVariables($input: RemoveParametersInput!) {
+  removeParameters(input: $input)
 }
     `;
 export const CreateWorkspaceDocument = gql`
@@ -2939,24 +2939,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     ImportProject(variables: ImportProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<ImportProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<ImportProjectMutation>({ document: ImportProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'ImportProject', 'mutation', variables);
     },
-    GetWorkflowParameters(variables: GetWorkflowParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkflowParametersQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkflowParametersQuery>({ document: GetWorkflowParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkflowParameters', 'query', variables);
-    },
-    CreateWorkflowVariable(variables: CreateWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkflowVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkflowVariableMutation>({ document: CreateWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkflowVariable', 'mutation', variables);
-    },
-    UpdateWorkflowVariable(variables: UpdateWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkflowVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkflowVariableMutation>({ document: UpdateWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkflowVariable', 'mutation', variables);
-    },
-    UpdateWorkflowVariables(variables: UpdateWorkflowVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkflowVariablesMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkflowVariablesMutation>({ document: UpdateWorkflowVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkflowVariables', 'mutation', variables);
-    },
-    DeleteWorkflowVariable(variables: DeleteWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkflowVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkflowVariableMutation>({ document: DeleteWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkflowVariable', 'mutation', variables);
-    },
-    DeleteWorkflowVariables(variables: DeleteWorkflowVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkflowVariablesMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkflowVariablesMutation>({ document: DeleteWorkflowVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkflowVariables', 'mutation', variables);
-    },
     GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetSharedProjectQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>({ document: GetSharedProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetSharedProject', 'query', variables);
     },
@@ -3010,6 +2992,24 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     DeleteWorkerConfig(variables?: DeleteWorkerConfigMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkerConfigMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkerConfigMutation>({ document: DeleteWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkerConfig', 'mutation', variables);
+    },
+    GetWorkflowParameters(variables: GetWorkflowParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkflowParametersQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkflowParametersQuery>({ document: GetWorkflowParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkflowParameters', 'query', variables);
+    },
+    CreateWorkflowVariable(variables: CreateWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkflowVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkflowVariableMutation>({ document: CreateWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkflowVariable', 'mutation', variables);
+    },
+    UpdateWorkflowVariable(variables: UpdateWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkflowVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkflowVariableMutation>({ document: UpdateWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkflowVariable', 'mutation', variables);
+    },
+    UpdateWorkflowVariables(variables: UpdateWorkflowVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkflowVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkflowVariablesMutation>({ document: UpdateWorkflowVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkflowVariables', 'mutation', variables);
+    },
+    DeleteWorkflowVariable(variables: DeleteWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkflowVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkflowVariableMutation>({ document: DeleteWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkflowVariable', 'mutation', variables);
+    },
+    DeleteWorkflowVariables(variables: DeleteWorkflowVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkflowVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkflowVariablesMutation>({ document: DeleteWorkflowVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkflowVariables', 'mutation', variables);
     },
     CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>({ document: CreateWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkspace', 'mutation', variables);

@@ -17,7 +17,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { TimeInterval, Trigger } from "@flow/types";
 
-import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
 
 import useHooks from "./hooks";
 
@@ -159,7 +159,7 @@ const TriggerEditDialog: React.FC<Props> = ({
         </DialogFooter>
       </DialogContent>
       {pendingWorkflowData?.variables && (
-        <TriggerProjectVariablesMappingDialog
+        <TriggerWorkflowVariablesMappingDialog
           isOpen={openTriggerWorkflowVariablesDialog}
           onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData.variables}

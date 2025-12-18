@@ -5,8 +5,8 @@ import { useT } from "@flow/lib/i18n";
 import { WorkflowVariable, VarType } from "@flow/types";
 import {
   generateUUID,
-  getDefaultConfigForProjectVar,
-  getDefaultValueForProjectVar,
+  getDefaultConfigForWorkflowVar,
+  getDefaultValueForWorkflowVar,
 } from "@flow/utils";
 
 type PendingChange =
@@ -95,8 +95,8 @@ export default ({
       const newVariable: WorkflowVariable = {
         id: tempId,
         name: t("New Workflow Variable"),
-        defaultValue: getDefaultValueForProjectVar(type),
-        config: getDefaultConfigForProjectVar(type),
+        defaultValue: getDefaultValueForWorkflowVar(type),
+        config: getDefaultConfigForWorkflowVar(type),
         type,
         required: true,
         public: true,

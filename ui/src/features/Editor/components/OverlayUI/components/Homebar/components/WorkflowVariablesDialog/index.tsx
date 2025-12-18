@@ -26,9 +26,9 @@ import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
-import useProjectVariablesDialog from "./hooks";
-import { ProjectVariablesTable } from "./ProjectVariablesTable";
+import useWorkflowVariablesDialog from "./hooks";
 import VariableEditDialog from "./VariableEditDialog";
+import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
 type Props = {
   currentWorkflowVariables?: AnyWorkflowVariable[];
@@ -82,7 +82,7 @@ const allVarTypes: VarType[] = [
   // "web_connection",
 ];
 
-const ProjectVariableDialog: React.FC<Props> = ({
+const WorkflowVariablesDialog: React.FC<Props> = ({
   currentWorkflowVariables,
   projectId,
   onClose,
@@ -108,7 +108,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
     handleCancel,
     handleEditVariable,
     handleCloseEdit,
-  } = useProjectVariablesDialog({
+  } = useWorkflowVariablesDialog({
     currentWorkflowVariables,
     projectId,
     onClose,
@@ -261,7 +261,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
             <div className="flex h-full min-h-0">
               <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
-                  <ProjectVariablesTable
+                  <WorkflowVariablesTable
                     workflowVariables={localWorkflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
@@ -295,4 +295,4 @@ const ProjectVariableDialog: React.FC<Props> = ({
   );
 };
 
-export default ProjectVariableDialog;
+export default WorkflowVariablesDialog;
