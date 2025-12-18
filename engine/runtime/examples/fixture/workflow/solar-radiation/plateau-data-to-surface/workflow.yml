@@ -80,13 +80,13 @@ graphs:
           outputAttribute: "calculated_area"
           multiplier: 1.0
 
-      # Step 7: Compute Polygon normal
+      # Step 6: Compute Polygon normal
       - id: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
         name: PolygonNormalExtractor
         type: action
         action: PolygonNormalExtractor
 
-      # Step 8: Compute α_slope, β_slope and join_key
+      # Step 7: Compute α_slope, β_slope and join_key
       - id: a817e924-dbd7-11f0-935e-7c70db10a7e3
         name: SlopeAnglesCalculator
         type: action
@@ -96,17 +96,15 @@ graphs:
             - attribute: alpha_slope
               method: create
               value: |
-                let slope_value = env.get("__value")["Azimuth"];
-                math::to_radians(parse_float(slope_value))
+                math::to_radians((env.get("__value")["Azimuth"]))
             - attribute: theta_slope
               method: create
               value: |
-                let slope_value = env.get("__value")["Slope"];
-                math::to_radians(parse_float(slope_value))
+                math::to_radians((env.get("__value")["Slope"]))
             - attribute: join_key
               method: create
               value: |
-                env.get("__value")["key"]
+                "key"
 
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
         name: SolarEnergyResultWriter
@@ -162,20 +160,20 @@ graphs:
         fromPort: default
         toPort: default
 
-      - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
-        from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-        to: f184fdfe-d597-11f0-945f-7c70db10a7e3
-        fromPort: default
-        toPort: default        
-
       # - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
       #   from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-      #   to: a817e924-dbd7-11f0-935e-7c70db10a7e3
-      #   fromPort: default
-      #   toPort: default
-
-      # - id: deca3430-dbd8-11f0-979c-7c70db10a7e3
-      #   from: a817e924-dbd7-11f0-935e-7c70db10a7e3
       #   to: f184fdfe-d597-11f0-945f-7c70db10a7e3
       #   fromPort: default
-      #   toPort: default
+      #   toPort: default        
+
+      - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
+        from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
+        to: a817e924-dbd7-11f0-935e-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      - id: deca3430-dbd8-11f0-979c-7c70db10a7e3
+        from: a817e924-dbd7-11f0-935e-7c70db10a7e3
+        to: f184fdfe-d597-11f0-945f-7c70db10a7e3
+        fromPort: default
+        toPort: default
