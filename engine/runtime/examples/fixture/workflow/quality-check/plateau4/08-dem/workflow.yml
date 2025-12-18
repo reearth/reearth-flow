@@ -80,7 +80,6 @@ graphs:
         action: PLATEAU4.CityGmlMeshBuilder
         with:
           errorAttribute: _validation_error
-          rejectInvalid: false
           epsgCode: |
             env.get("epsg")
 

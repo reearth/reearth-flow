@@ -74,7 +74,6 @@ graphs:
     action: PLATEAU4.CityGmlMeshBuilder
     with:
       errorAttribute: _validation_error
-      rejectInvalid: false
       epsgCode: |
         env.get("epsg")
   - id: 21bb4a5e-5975-443b-8a38-6332789681dd

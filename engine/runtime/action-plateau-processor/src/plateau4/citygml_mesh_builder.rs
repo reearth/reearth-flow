@@ -82,7 +82,10 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
                 ))
             })?
         } else {
-            CityGmlMeshBuilderParam::default()
+            return Err(PlateauProcessorError::CityCodeExtractorFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
         };
 
         // Compile EPSG code expression for runtime evaluation
@@ -114,37 +117,13 @@ pub struct CityGmlMeshBuilderParam {
     #[serde(default = "default_error_attr")]
     pub error_attribute: Attribute,
 
-    /// # Reject Invalid Features
-    /// If true, send invalid features to rejected port; if false, send all features to default port with error attributes
-    #[serde(default = "default_reject_invalid")]
-    pub reject_invalid: bool,
-
     /// # Target EPSG Code
     /// EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.
-    #[serde(default = "default_epsg_code")]
     pub epsg_code: Expr,
 }
 
 fn default_error_attr() -> Attribute {
     Attribute::new("_validation_error")
-}
-
-fn default_reject_invalid() -> bool {
-    false
-}
-
-fn default_epsg_code() -> Expr {
-    Expr::new("6697".to_string()) // JGD2011 - Same as source (no transformation)
-}
-
-impl Default for CityGmlMeshBuilderParam {
-    fn default() -> Self {
-        Self {
-            error_attribute: default_error_attr(),
-            reject_invalid: default_reject_invalid(),
-            epsg_code: default_epsg_code(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
