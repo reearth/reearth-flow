@@ -3,7 +3,7 @@ id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
 name: "Solar Radiation plateau data to surface workflow"
 entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
-  cityGmlPath: null 
+  cityGmlPath: null
   targetFeatureType: "bldg:Building"
 graphs:
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
@@ -75,20 +75,12 @@ graphs:
         name: AreaCalculator
         type: action
         action: AreaCalculator
-        with: 
+        with:
           areaType: "slopedArea"
           outputAttribute: "calculated_area"
           multiplier: 1.0
 
-      # Step 6: filter Geometry for area 
-      - id: 36f5b56a-dbd1-11f0-82e3-7c70db10a7e3
-        name: GeometryFilter
-        type: action 
-        action: GeometryFilter
-        with:
-          filterType: none
-
-      # Step 7: Compute Polygon normal 
+      # Step 7: Compute Polygon normal
       - id: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
         name: PolygonNormalExtractor
         type: action
@@ -99,22 +91,22 @@ graphs:
         name: SlopeAnglesCalculator
         type: action
         action: AttributeManager
-        with: 
-          operations: 
-            - attribute: alpha_slope 
-              method: create 
+        with:
+          operations:
+            - attribute: alpha_slope
+              method: create
               value: |
                 let slope_value = env.get("__value")["Azimuth"];
                 math::to_radians(parse_float(slope_value))
             - attribute: theta_slope
-              method: create 
+              method: create
               value: |
                 let slope_value = env.get("__value")["Slope"];
                 math::to_radians(parse_float(slope_value))
             - attribute: join_key
               method: create
               value: |
-                env.get("__value")["key"]              
+                env.get("__value")["key"]
 
       - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
         name: SolarEnergyResultWriter
@@ -127,7 +119,7 @@ graphs:
         to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         fromPort: default
         toPort: default
-     
+
       - id: 64b4690c-d635-11f0-ab47-6c02e0440ed6
         from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
         to: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
@@ -139,52 +131,51 @@ graphs:
         to: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
         fromPort: default
         toPort: default
-   
+
       - id: 880aeb74-d635-11f0-9209-6c02e0440ed6
         from: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
-        to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a 
+        to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
         fromPort: extracted
         toPort: default
-    
+
       - id: 9fdfcbfc-d635-11f0-b6fe-6c02e0440ed6
-        from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a 
-        to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b 
+        from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+        to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
         fromPort: default
         toPort: default
-    
+
       - id: 58e227b6-d72c-11f0-a7f6-6c02e0440ed6
-        from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b 
-        to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c 
+        from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+        to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
         fromPort: default
         toPort: default
-    
+
       - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
         from: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
-        to: 0fa15342-d72c-11f0-b45f-6c02e0440ed6 
-        fromPort: default
-        toPort: default
-    
-      - id: af6c5a38-d971-11f0-9039-7c70db10a7e3
-        from: 0fa15342-d72c-11f0-b45f-6c02e0440ed6 
-        to: 36f5b56a-dbd1-11f0-82e3-7c70db10a7e3
+        to: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
         fromPort: default
         toPort: default
 
-      # TODO: debug why no intermediate data pass through
-      - id: 6568cd06-dbd1-11f0-89e2-7c70db10a7e3
-        from: 36f5b56a-dbd1-11f0-82e3-7c70db10a7e3 
+      - id: af6c5a38-d971-11f0-9039-7c70db10a7e3
+        from: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
         to: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
         fromPort: default
-        toPort: default   
+        toPort: default
 
-      - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3     
+      - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
         from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-        to: a817e924-dbd7-11f0-935e-7c70db10a7e3
-        fromPort: default
-        toPort: default 
-
-      - id: deca3430-dbd8-11f0-979c-7c70db10a7e3
-        from: a817e924-dbd7-11f0-935e-7c70db10a7e3
         to: f184fdfe-d597-11f0-945f-7c70db10a7e3
         fromPort: default
-        toPort: default
+        toPort: default        
+
+      # - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
+      #   from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
+      #   to: a817e924-dbd7-11f0-935e-7c70db10a7e3
+      #   fromPort: default
+      #   toPort: default
+
+      # - id: deca3430-dbd8-11f0-979c-7c70db10a7e3
+      #   from: a817e924-dbd7-11f0-935e-7c70db10a7e3
+      #   to: f184fdfe-d597-11f0-945f-7c70db10a7e3
+      #   fromPort: default
+      #   toPort: default
