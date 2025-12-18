@@ -7,7 +7,7 @@ use approx::AbsDiffEq;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate3D, geometry::Geometry3D, line_string::LineString3D, point::Point3D,
+    coordinate::Coordinate3D, geometry::Geometry3D, line_string::LineString3D,
     triangular_mesh::TriangularMesh,
 };
 use reearth_flow_runtime::{
@@ -336,21 +336,14 @@ impl CityGmlMeshBuilder {
     fn transform_coordinate(
         &self,
         coord: Coordinate3D<f64>,
-        target_epsg: &str,
+        proj: &proj::Proj,
     ) -> Result<Coordinate3D<f64>, BoxedError> {
-        let proj = proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", target_epsg), None)
-            .map_err(|e| {
-            PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
-                "Failed to create PROJ transformation from 6697 to {target_epsg}: {e}"
-            ))
-        })?;
-
         // CityGML coordinates are in lat/lon order (y, x in geographic terms)
         // coord.x = latitude, coord.y = longitude for EPSG 6697
         let transformed = proj.convert((coord.y, coord.x))?;
 
         // z coordinate remains unchanged
-        Ok(Coordinate3D::new__(transformed.0, transformed.1, coord.z))
+        Ok(Coordinate3D::new__(transformed.1, transformed.0, coord.z))
     }
 
     /// Parse CityGML XML and validate triangle coordinates before polygon construction
@@ -375,8 +368,14 @@ impl CityGmlMeshBuilder {
         // Collect triangle faces for TriangularMesh
         let mut valid_faces: Vec<[Coordinate3D<f64>; 3]> = Vec::new();
 
-        const EPSILON: f64 = 1e-2; // 1 cm tolerance
+        const EPSILON: f64 = 1e-6;
 
+        let proj = proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", target_epsg), None)
+            .map_err(|e| {
+            PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                "Failed to create PROJ transformation from 6697 to {target_epsg}: {e}"
+            ))
+        })?;
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
@@ -405,129 +404,110 @@ impl CityGmlMeshBuilder {
                     if !values.len().is_multiple_of(3) {
                         let error = Error {
                             error_type: ErrorType::IncorrectNumVertices,
-                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::Point(
-                                Point3D::new(values[0], values[1], values[2]),
+                            geometry: GeometryValue::None,
+                        };
+                        errors.push(error);
+                        continue;
+                    }
+                    let num_vertices = values.len() / 3;
+
+                    // Build coordinates for the triangle and transform to target EPSG
+                    let mut coords = Vec::new();
+                    for i in 0..num_vertices {
+                        let x = values[i * 3];
+                        let y = values[i * 3 + 1];
+                        let z = values[i * 3 + 2];
+                        let source_coord = Coordinate3D::new__(x, y, z);
+
+                        // Transform coordinate from EPSG 6697 to target EPSG
+                        let transformed = self.transform_coordinate(source_coord, &proj)?;
+                        coords.push(transformed);
+                    }
+
+                    // Validation 1: Check vertex count
+                    if num_vertices != 4 {
+                        let error = Error {
+                            error_type: ErrorType::IncorrectNumVertices,
+                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(
+                                LineString3D::new(coords.clone()),
                             )),
                         };
                         errors.push(error);
-                    } else {
-                        let num_vertices = values.len() / 3;
-                        let mut has_error = false;
-
-                        // Build coordinates for the triangle and transform to target EPSG
-                        let mut coords = Vec::new();
-                        for i in 0..num_vertices {
-                            let x = values[i * 3];
-                            let y = values[i * 3 + 1];
-                            let z = values[i * 3 + 2];
-                            let source_coord = Coordinate3D::new__(x, y, z);
-
-                            // Transform coordinate from EPSG 6697 to target EPSG
-                            let transformed =
-                                self.transform_coordinate(source_coord, target_epsg)?;
-                            coords.push(transformed);
-                        }
-
-                        // Validation 1: Check vertex count
-                        if num_vertices != 4 {
-                            has_error = true;
-                            let error = Error {
-                                error_type: ErrorType::IncorrectNumVertices,
-                                geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(
-                                    LineString3D::new(coords.clone()),
-                                )),
-                            };
-                            errors.push(error);
-                        } else {
-                            // Validation 2: Check if triangle is closed (first == last)
-                            let first_x = values[0];
-                            let first_y = values[1];
-                            let first_z = values[2];
-                            let last_x = values[values.len() - 3];
-                            let last_y = values[values.len() - 2];
-                            let last_z = values[values.len() - 1];
-
-                            let is_closed = (first_x - last_x).abs() < EPSILON
-                                && (first_y - last_y).abs() < EPSILON
-                                && (first_z - last_z).abs() < EPSILON;
-
-                            if !is_closed {
-                                has_error = true;
-                                let error = Error {
-                                    error_type: ErrorType::NotClosed,
-                                    geometry: GeometryValue::FlowGeometry3D(
-                                        Geometry3D::LineString(LineString3D::new(coords.clone())),
-                                    ),
-                                };
-                                errors.push(error);
-                            }
-
-                            // Validation 3: Check triangle orientation via normal vector
-                            // Use transformed coordinates for orientation check
-                            if !has_error && coords.len() == 4 {
-                                let v0 = coords[0];
-                                let v1 = coords[1];
-                                let v2 = coords[2];
-
-                                // Edge vectors
-                                let edge1_x = v1.x - v0.x;
-                                let edge1_y = v1.y - v0.y;
-
-                                let edge2_x = v2.x - v0.x;
-                                let edge2_y = v2.y - v0.y;
-
-                                // Cross product: edge1 × edge2
-                                let normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
-
-                                // Check if z-component is negative
-                                if normal_z < 0.0 {
-                                    has_error = true;
-                                    let error = Error {
-                                        error_type: ErrorType::WrongOrientation,
-                                        geometry: GeometryValue::FlowGeometry3D(
-                                            Geometry3D::LineString(LineString3D::new(
-                                                coords.clone(),
-                                            )),
-                                        ),
-                                    };
-                                    errors.push(error);
-                                }
-                            }
-
-                            // Validation 4: Check for degenerate triangle (area zero)
-                            let a = coords[0];
-                            let b = coords[1];
-                            let c = coords[2];
-
-                            let ab = (b - a).norm();
-                            let ac = (c - a).norm();
-                            let bc = (c - b).norm();
-                            let is_degenerate = (ab + ac).abs_diff_eq(&bc, EPSILON)
-                                || (ab + bc).abs_diff_eq(&ac, EPSILON)
-                                || (ac + bc).abs_diff_eq(&ab, EPSILON);
-                            if is_degenerate {
-                                has_error = true;
-                                let error = Error {
-                                    error_type: ErrorType::DegenerateTriangle,
-                                    geometry: GeometryValue::FlowGeometry3D(
-                                        Geometry3D::LineString(LineString3D::new(coords.clone())),
-                                    ),
-                                };
-                                errors.push(error);
-                            }
-                        }
-
-                        // If no errors, add this triangle as a valid face
-                        if !has_error && coords.len() == 4 {
-                            valid_faces.push([coords[0], coords[1], coords[2]]);
-                        }
+                        continue;
                     }
 
-                    inside_pos_list = false;
+                    // Validation 2: Check if triangle is closed (first == last)
+                    let first = coords[0];
+                    let last = coords[3];
+                    if (first - last).norm() > EPSILON {
+                        let error = Error {
+                            error_type: ErrorType::NotClosed,
+                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(
+                                LineString3D::new(coords.clone()),
+                            )),
+                        };
+                        errors.push(error);
+                        continue;
+                    }
+
+                    // Validation 3: Check triangle orientation via normal vector
+                    // Use transformed coordinates for orientation check
+                    let v0 = coords[0];
+                    let v1 = coords[1];
+                    let v2 = coords[2];
+
+                    // Edge vectors
+                    let edge1_x = v1.x - v0.x;
+                    let edge1_y = v1.y - v0.y;
+
+                    let edge2_x = v2.x - v0.x;
+                    let edge2_y = v2.y - v0.y;
+
+                    // Cross product: edge1 × edge2
+                    let normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+
+                    // Check if z-component is negative
+                    if normal_z > 0.0 {
+                        let error = Error {
+                            error_type: ErrorType::WrongOrientation,
+                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(
+                                LineString3D::new(coords.clone()),
+                            )),
+                        };
+                        errors.push(error);
+                        continue;
+                    }
+
+                    // Validation 4: Check for degenerate triangle (area zero)
+                    let a = coords[0];
+                    let b = coords[1];
+                    let c = coords[2];
+
+                    let ab = (b - a).norm();
+                    let ac = (c - a).norm();
+                    let bc = (c - b).norm();
+                    let is_degenerate = (ab + ac).abs_diff_eq(&bc, EPSILON)
+                        || (ab + bc).abs_diff_eq(&ac, EPSILON)
+                        || (ac + bc).abs_diff_eq(&ab, EPSILON);
+                    if is_degenerate {
+                        let error = Error {
+                            error_type: ErrorType::DegenerateTriangle,
+                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(
+                                LineString3D::new(coords.clone()),
+                            )),
+                        };
+                        errors.push(error);
+                        continue;
+                    }
+
+                    // If no errors, add this triangle as a valid face
+                    valid_faces.push([coords[0], coords[1], coords[2]]);
                 }
                 Ok(Event::End(ref e)) => {
                     let name = e.name();
-                    if name.as_ref() == b"gml:Triangle" {
+                    if name.as_ref() == b"gml:posList" {
+                        inside_pos_list = false;
+                    } else if name.as_ref() == b"gml:Triangle" {
                         inside_triangle = false;
                     }
                 }
