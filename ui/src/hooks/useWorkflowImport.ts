@@ -70,7 +70,7 @@ export default () => {
 
       if (!project) return console.error("Failed to create project");
 
-      // Create project variables if provided
+      // Create workflow variables if provided
       if (workflowVariables && workflowVariables.length > 0) {
         await updateMultipleWorkflowVariables({
           projectId: project.id,
