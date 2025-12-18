@@ -5115,6 +5115,16 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
   "description": "Configure validation rules for CityGML mesh triangles",
   "type": "object",
   "properties": {
+    "epsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
+      "default": "6697",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
     "errorAttribute": {
       "title": "Error Attribute Name",
       "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
@@ -5134,6 +5144,9 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
       "type": "string"
     }
   }

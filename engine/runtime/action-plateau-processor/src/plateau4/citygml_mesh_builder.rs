@@ -381,6 +381,8 @@ impl CityGmlMeshBuilder {
         // Collect triangle faces for TriangularMesh
         let mut valid_faces: Vec<[Coordinate3D<f64>; 3]> = Vec::new();
 
+        const EPSILON: f64 = 1e-2; // 1 cm tolerance
+
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
@@ -464,7 +466,6 @@ impl CityGmlMeshBuilder {
                             let last_y = values[values.len() - 2];
                             let last_z = values[values.len() - 1];
 
-                            const EPSILON: f64 = 1e-10;
                             let is_closed = (first_x - last_x).abs() < EPSILON
                                 && (first_y - last_y).abs() < EPSILON
                                 && (first_z - last_z).abs() < EPSILON;
@@ -517,21 +518,12 @@ impl CityGmlMeshBuilder {
                             let b = coords[1];
                             let c = coords[2];
 
-                            let (a, b, c) = {
-                                let mean = (a + b + c) / 3.0;
-                                let a = a - mean;
-                                let b = b - mean;
-                                let c = c - mean;
-                                (a, b, c)
-                            };
-
                             let ab = (b - a).norm();
                             let ac = (c - a).norm();
                             let bc = (c - b).norm();
-                            let epsilon: f64 = 0.01; // 1 cm in meter units
-                            let is_degenerate = (ab + ac).abs_diff_eq(&bc, epsilon)
-                                || (ab + bc).abs_diff_eq(&ac, epsilon)
-                                || (ac + bc).abs_diff_eq(&ab, epsilon);
+                            let is_degenerate = (ab + ac).abs_diff_eq(&bc, EPSILON)
+                                || (ab + bc).abs_diff_eq(&ac, EPSILON)
+                                || (ac + bc).abs_diff_eq(&ab, EPSILON);
                             if is_degenerate {
                                 has_error = true;
                                 let error = Error {
