@@ -11,6 +11,7 @@ use crate::types::{
     polygon::Polygon2D,
     rect::Rect2D,
     triangle::Triangle2D,
+    triangular_mesh::TriangularMesh,
 };
 
 use super::map_coords::MapCoords;
@@ -84,7 +85,7 @@ where
 
 impl<T> Area2D<T> for LineString2D<T>
 where
-    T: CoordNum,
+    T: CoordFloat,
 {
     fn signed_area2d(&self) -> T {
         T::zero()
@@ -211,6 +212,41 @@ where
     }
 }
 
+impl<T> Area2D<T> for TriangularMesh<T, crate::types::no_value::NoValue>
+where
+    T: CoordFloat,
+{
+    fn signed_area2d(&self) -> T {
+        self.get_triangles()
+            .iter()
+            .map(|triangle_indices| {
+                // Create a Triangle2D from the vertex indices
+                let v0 = self.get_vertices()[triangle_indices[0]];
+                let v1 = self.get_vertices()[triangle_indices[1]];
+                let v2 = self.get_vertices()[triangle_indices[2]];
+
+                let triangle = Triangle2D::new(v0, v1, v2);
+                triangle.signed_area2d()
+            })
+            .fold(T::zero(), |total, area| total + area)
+    }
+
+    fn unsigned_area2d(&self) -> T {
+        self.get_triangles()
+            .iter()
+            .map(|triangle_indices| {
+                // Create a Triangle2D from the vertex indices
+                let v0 = self.get_vertices()[triangle_indices[0]];
+                let v1 = self.get_vertices()[triangle_indices[1]];
+                let v2 = self.get_vertices()[triangle_indices[2]];
+
+                let triangle = Triangle2D::new(v0, v1, v2);
+                triangle.unsigned_area2d()
+            })
+            .fold(T::zero(), |total, area| total + area)
+    }
+}
+
 impl<T> Area2D<T> for Geometry2D<T>
 where
     T: CoordFloat,
@@ -226,6 +262,7 @@ where
             Geometry2D::MultiPolygon(mp) => mp.signed_area2d(),
             Geometry2D::Rect(r) => r.signed_area2d(),
             Geometry2D::Triangle(t) => t.signed_area2d(),
+            Geometry2D::TriangularMesh(t) => t.signed_area2d(),
             _ => unimplemented!(),
         }
     }
@@ -240,6 +277,7 @@ where
             Geometry2D::MultiPolygon(mp) => mp.unsigned_area2d(),
             Geometry2D::Rect(r) => r.unsigned_area2d(),
             Geometry2D::Triangle(t) => t.unsigned_area2d(),
+            Geometry2D::TriangularMesh(t) => t.unsigned_area2d(),
             _ => unimplemented!(),
         }
     }

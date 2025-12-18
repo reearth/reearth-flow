@@ -1,4 +1,5 @@
 pub(crate) mod appearance_remover;
+pub(crate) mod area_calculator;
 pub(crate) mod area_on_area_overlayer;
 pub(crate) mod boundary_extractor;
 pub(crate) mod bounds_extractor;

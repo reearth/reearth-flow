@@ -1,6 +1,7 @@
 import { EdgeTypes } from "@xyflow/react";
+import { createElement } from "react";
 
-import DefaultEdge from "./DefaultEdge";
+import DefaultEdge, { CustomEdgeProps } from "./DefaultEdge";
 import SimpleEdge from "./SimpleEdge";
 
 export const edgeTypes: EdgeTypes = {
@@ -8,9 +9,10 @@ export const edgeTypes: EdgeTypes = {
   simpleEdge: SimpleEdge,
 };
 
-export const fullEdgeTypes: EdgeTypes = {
-  default: DefaultEdge,
-};
+export const createFullEdgeTypes = (currentWorkflowId?: string): EdgeTypes => ({
+  default: (props: CustomEdgeProps) =>
+    createElement(DefaultEdge, { ...props, currentWorkflowId }),
+});
 
 export const simpleEdgeTypes: EdgeTypes = {
   default: SimpleEdge,

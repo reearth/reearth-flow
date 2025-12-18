@@ -155,6 +155,10 @@ pub(super) enum GeometryProcessorError {
     PlanarityFilterFactory(String),
     #[error("PlanarityFilter error: {0}")]
     PlanarityFilter(String),
+    #[error("AreaCalculator Factory error: {0}")]
+    AreaCalculatorFactory(String),
+    #[error("AreaCalculator error: {0}")]
+    AreaCalculator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
