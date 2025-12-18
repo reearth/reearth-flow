@@ -22,9 +22,9 @@ type Props = {
 const MIN_HANDLES_FOR_COLLAPSE = 5;
 
 // Use break-all for long continuous strings (IDs, hashes, paths)
-// Use break-words for normal text with spaces
+// Use break-words for normal text with whitespace
 const getBreakClass = (text: string): string => {
-  return text.includes(" ") ? "break-words" : "break-all";
+  return /\s/.test(text) ? "break-words" : "break-all";
 };
 
 const Handles: React.FC<Props> = ({
