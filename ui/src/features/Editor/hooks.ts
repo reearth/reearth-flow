@@ -251,8 +251,10 @@ export default ({
   );
 
   const {
+    customDebugRunWorkflowVariables,
     handleDebugRunStart,
     handleDebugRunStop,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     activeUsersDebugRuns,
   } = useDebugRun({
@@ -403,6 +405,8 @@ export default ({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    customDebugRunWorkflowVariables,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
     handleProjectShare,

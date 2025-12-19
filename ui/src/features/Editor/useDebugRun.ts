@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
@@ -8,7 +8,7 @@ import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
-import type { Workflow } from "@flow/types";
+import type { AnyWorkflowVariable, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { toast } from "../NotificationSystem/useToast";
@@ -27,10 +27,20 @@ export default ({
     yAwareness,
     projectId: currentProject?.id,
   });
+
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(
     currentProject?.id ?? "",
   );
+
+  const [customDebugRunWorkflowVariables, setCustomDebugRunWorkflowVariables] =
+    useState<AnyWorkflowVariable[] | undefined>(undefined);
+
+  useEffect(() => {
+    if (workflowVariables) {
+      setCustomDebugRunWorkflowVariables(workflowVariables);
+    }
+  }, [workflowVariables]);
 
   const { fitView } = useReactFlow();
 
@@ -43,7 +53,7 @@ export default ({
 
     const engineReadyWorkflow = createEngineReadyWorkflow(
       currentProject.name,
-      workflowVariables,
+      customDebugRunWorkflowVariables,
       rawWorkflows,
     );
 
@@ -90,7 +100,7 @@ export default ({
     }
   }, [
     currentProject,
-    workflowVariables,
+    customDebugRunWorkflowVariables,
     rawWorkflows,
     broadcastDebugRun,
     debugRunState?.jobs,
@@ -166,10 +176,23 @@ export default ({
     [t, currentProject, debugRunState, updateValue, yAwareness],
   );
 
+  const handleDebugRunVariableValueChange = useCallback(
+    (index: number, newValue: any) => {
+      setCustomDebugRunWorkflowVariables((prev) =>
+        prev?.map((variable, i) =>
+          i === index ? { ...variable, defaultValue: newValue } : variable,
+        ),
+      );
+    },
+    [],
+  );
+
   return {
     activeUsersDebugRuns,
+    customDebugRunWorkflowVariables,
     handleDebugRunStart,
     handleDebugRunStop,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
   };
 };

@@ -13,12 +13,18 @@ export default ({
   const [currentProject] = useCurrentProject();
 
   const [showPopover, setShowPopover] = useState<
-    "debugStart" | "debugStop" | "debugRuns" | undefined
+    | "debugStart"
+    | "debugStop"
+    | "debugRuns"
+    | "debugWorkflowVariables"
+    | undefined
   >(undefined);
 
   const handleShowDebugStartPopover = () => setShowPopover("debugStart");
   const handleShowDebugStopPopover = () => setShowPopover("debugStop");
   const handleShowDebugActiveRunsPopover = () => setShowPopover("debugRuns");
+  const handleShowDebugWorkflowVariablesDialog = () =>
+    setShowPopover("debugWorkflowVariables");
   const handlePopoverClose = () => setShowPopover(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
@@ -85,6 +91,7 @@ export default ({
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
     handleShowDebugActiveRunsPopover,
+    handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
   };

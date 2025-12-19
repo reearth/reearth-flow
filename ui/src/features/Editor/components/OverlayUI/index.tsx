@@ -5,6 +5,7 @@ import { Doc } from "yjs";
 import type {
   ActionNodeType,
   Algorithm,
+  AnyWorkflowVariable,
   AwarenessUser,
   Direction,
   Node,
@@ -39,6 +40,7 @@ type OverlayUIProps = {
     name: string;
   }[];
   currentWorkflowId: string;
+  customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
@@ -63,11 +65,12 @@ type OverlayUIProps = {
   onProjectShare: (share: boolean) => void;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
+  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
-  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   children?: React.ReactNode;
 };
 
@@ -85,6 +88,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   spotlightUserClientId,
   openWorkflows,
   currentWorkflowId,
+  customDebugRunWorkflowVariables,
   onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
@@ -97,12 +101,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onProjectShare,
   onDebugRunStart,
   onDebugRunStop,
+  onDebugRunVariableValueChange,
+  onDebugRunJoin,
   onProjectSnapshotSave,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
   activeUsersDebugRuns,
-  onDebugRunJoin,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
@@ -154,6 +159,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
                 onDebugRunJoin={onDebugRunJoin}
                 onDebugRunStart={onDebugRunStart}
                 onDebugRunStop={onDebugRunStop}
+                customDebugRunWorkflowVariables={
+                  customDebugRunWorkflowVariables
+                }
+                onDebugRunVariableValueChange={onDebugRunVariableValueChange}
               />
               <div className="h-4/5 border-r" />
               <ActionBar

@@ -48,6 +48,8 @@ export default function Editor({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    customDebugRunWorkflowVariables,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -126,6 +128,7 @@ export default function Editor({
             isMainWorkflow={isMainWorkflow}
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
+            customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
@@ -137,6 +140,7 @@ export default function Editor({
             onWorkflowDeployment={handleWorkflowDeployment}
             onDebugRunStart={handleDebugRunStart}
             onDebugRunStop={handleDebugRunStop}
+            onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
             onProjectSnapshotSave={handleProjectSnapshotSave}
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}

@@ -1,12 +1,13 @@
 import { Input, Switch, TextArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { AnyWorkflowVariable } from "@flow/types";
 
 import { VariableMapping } from "..";
 
 import TriggerVariableArrayInput from "./TriggerVariableArrayInput";
 
 type Props = {
-  variable: VariableMapping;
+  variable: VariableMapping | AnyWorkflowVariable;
   index: number;
   onDefaultValueChange: (index: number, newValue: any) => void;
 };

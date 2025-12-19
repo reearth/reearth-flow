@@ -2,16 +2,21 @@ import { PlayIcon } from "@phosphor-icons/react";
 
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { AnyWorkflowVariable } from "@flow/types";
 
 type Props = {
   debugRunStarted?: boolean;
+  customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onDebugRunStart: () => Promise<void>;
+  onShowDebugWorkflowVariablesDialog: () => void;
   onPopoverClose: () => void;
 };
 
 const DebugStartPopover: React.FC<Props> = ({
   debugRunStarted,
   onDebugRunStart,
+  customDebugRunWorkflowVariables,
+  onShowDebugWorkflowVariablesDialog,
   onPopoverClose,
 }) => {
   const t = useT();
@@ -36,7 +41,11 @@ const DebugStartPopover: React.FC<Props> = ({
         <div className="flex items-center justify-end">
           <Button
             variant="outline"
-            onClick={handleDebugRunStart}
+            onClick={
+              customDebugRunWorkflowVariables?.length === 0
+                ? handleDebugRunStart
+                : onShowDebugWorkflowVariablesDialog
+            }
             disabled={debugRunStarted}>
             {t("Start")}
           </Button>
