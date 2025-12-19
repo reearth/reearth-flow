@@ -174,7 +174,7 @@ graphs:
             if feature_city_code != () && feature_city_code != "" {
               feature_city_code
             } else {
-              env.get("cityCode") ?? "30406"
+              env.get("cityCode")
             }
           }
       - attribute: cityName
