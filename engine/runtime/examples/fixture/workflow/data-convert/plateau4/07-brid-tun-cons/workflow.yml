@@ -8,6 +8,7 @@ with:
   schemas:
   targetPackages:
     - brid
+    - cons
   workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
@@ -90,6 +91,8 @@ graphs:
               valueAttribute: cityCode
             - attribute: city_name
               valueAttribute: cityName
+            - attribute: __package
+              valueAttribute: package
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
@@ -130,7 +133,7 @@ graphs:
         with:
           reprojectorType: jgd2011ToWgs84
 
-      # 3D Tiles Writers - Bridge outputs (no no_texture variants per FME spec)
+      # 3D Tiles Writers - Bridge/Cons outputs (no no_texture variants per FME spec)
       - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         name: cesium3DTilesWriterByLod1
         type: action
@@ -142,14 +145,16 @@ graphs:
           dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, "brid_lod1")
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod1")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_brid") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_brid_3dtiles_lod1.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
@@ -162,14 +167,16 @@ graphs:
           dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, "brid_lod2")
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod2")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_brid") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_brid_3dtiles_lod2.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod2.zip")
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
         name: cesium3DTilesWriterByLod3
@@ -182,14 +189,16 @@ graphs:
           dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, "brid_lod3")
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod3")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_brid") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_brid_3dtiles_lod3.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         name: cesium3DTilesWriterByLod4
@@ -202,14 +211,16 @@ graphs:
           dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, "brid_lod4")
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod4")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_brid") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_brid_3dtiles_lod4.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod4.zip")
 
     edges:
       # Main processing pipeline
