@@ -264,12 +264,24 @@ impl Cesium3DTilesWriter {
 
     fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let feature = &ctx.feature;
-        let typedef: TypeDef = feature.into();
         let Some(feature_type) = &feature.feature_type() else {
             return Err(SinkError::Cesium3DTilesWriter(
                 "Failed to get feature type".to_string(),
             ));
         };
+
+        // Sanitize schema attribute keys to match the sanitized feature attribute keys
+        let mut sanitized_feature = feature.clone();
+        sanitized_feature.attributes = sanitized_feature
+            .attributes
+            .into_iter()
+            .filter(|(k, _)| {
+                !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+            })
+            .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
+            .collect();
+
+        let typedef: TypeDef = (&sanitized_feature).into();
         self.schema.types.insert(feature_type.clone(), typedef);
         Ok(())
     }

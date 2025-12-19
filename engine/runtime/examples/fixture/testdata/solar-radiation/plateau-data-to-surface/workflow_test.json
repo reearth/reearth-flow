@@ -1,6 +1,0 @@
-{
-  "workflowPath": "solar-radiation/plateau-data-to-surface/workflow.yml",
-  "description": "Test solar rediation load plateau data then convert to surface data",
-  "cityGmlPath": "input.gml",
-  "skip": false
-}
