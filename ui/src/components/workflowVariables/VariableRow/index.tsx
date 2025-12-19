@@ -1,28 +1,28 @@
 import { Input, Switch, TextArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable } from "@flow/types";
+import { AnyWorkflowVariable, TriggerVariableMapping } from "@flow/types";
 
-import { VariableMapping } from "..";
-
-import TriggerVariableArrayInput from "./TriggerVariableArrayInput";
+import VariableArrayInput from "./VariableArrayInput";
 
 type Props = {
-  variable: VariableMapping | AnyWorkflowVariable;
+  variable: TriggerVariableMapping | AnyWorkflowVariable;
   index: number;
   onDefaultValueChange: (index: number, newValue: any) => void;
 };
 
-const TriggerVariableRow: React.FC<Props> = ({
+const VariableRow: React.FC<Props> = ({
   variable,
   index,
   onDefaultValueChange,
 }) => {
   const t = useT();
 
+  console.log("TESTING VARIABLE ROW", variable);
+
   switch (variable.type) {
     case "array":
       return (
-        <TriggerVariableArrayInput
+        <VariableArrayInput
           value={
             Array.isArray(variable.defaultValue) ? variable.defaultValue : []
           }
@@ -49,6 +49,17 @@ const TriggerVariableRow: React.FC<Props> = ({
           value={variable.defaultValue}
           onChange={(e) => {
             onDefaultValueChange(index, parseFloat(e.target.value));
+          }}
+        />
+      );
+    case "choice":
+      return (
+        <Input
+          id={`default-${index}`}
+          type="text"
+          value={variable.defaultValue}
+          onChange={(e) => {
+            onDefaultValueChange(index, e.target.value);
           }}
         />
       );
@@ -107,7 +118,7 @@ const TriggerVariableRow: React.FC<Props> = ({
       }
     default:
       console.error(
-        `Unsupported variable type '${variable.type}' in TriggerVariableRow (index: ${index}).`,
+        `Unsupported variable type '${variable.type}' in Variable Row (index: ${index}).`,
       );
       return (
         <div className="text-sm font-semibold text-red-600">
@@ -118,4 +129,4 @@ const TriggerVariableRow: React.FC<Props> = ({
   }
 };
 
-export { TriggerVariableRow };
+export { VariableRow };

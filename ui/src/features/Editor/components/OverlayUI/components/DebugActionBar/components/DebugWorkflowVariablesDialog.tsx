@@ -11,8 +11,8 @@ import {
   DialogTitle,
   Button,
   DialogFooter,
+  VariableRow,
 } from "@flow/components";
-import { TriggerVariableRow } from "@flow/features/WorkspaceTriggers/components/TriggerWorkflowVariables/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable } from "@flow/types";
 
@@ -52,7 +52,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
         header: t("Default Value"),
         cell: ({ row }) => {
           return (
-            <TriggerVariableRow
+            <VariableRow
               variable={row.original}
               index={row.index}
               onDefaultValueChange={onDebugRunVariableValueChange}
@@ -75,7 +75,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   );
 
   return (
-    <Dialog open>
+    <Dialog open onOpenChange={onDialogClose}>
       <DialogContent
         className="h-[50vh]"
         size="2xl"

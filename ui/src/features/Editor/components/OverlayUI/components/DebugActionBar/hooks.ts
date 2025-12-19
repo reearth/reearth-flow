@@ -12,7 +12,7 @@ export default ({
 }) => {
   const [currentProject] = useCurrentProject();
 
-  const [showPopover, setShowPopover] = useState<
+  const [showOverlayElement, setshowOverlayElement] = useState<
     | "debugStart"
     | "debugStop"
     | "debugRuns"
@@ -20,12 +20,13 @@ export default ({
     | undefined
   >(undefined);
 
-  const handleShowDebugStartPopover = () => setShowPopover("debugStart");
-  const handleShowDebugStopPopover = () => setShowPopover("debugStop");
-  const handleShowDebugActiveRunsPopover = () => setShowPopover("debugRuns");
+  const handleShowDebugStartPopover = () => setshowOverlayElement("debugStart");
+  const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
+  const handleShowDebugActiveRunsPopover = () =>
+    setshowOverlayElement("debugRuns");
   const handleShowDebugWorkflowVariablesDialog = () =>
-    setShowPopover("debugWorkflowVariables");
-  const handlePopoverClose = () => setShowPopover(undefined);
+    setshowOverlayElement("debugWorkflowVariables");
+  const handlePopoverClose = () => setshowOverlayElement(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   const { useGetJob } = useJob();
@@ -83,7 +84,7 @@ export default ({
   };
 
   return {
-    showPopover,
+    showOverlayElement,
     debugRunStarted,
     jobStatus,
     debugJob,

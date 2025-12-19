@@ -25,6 +25,13 @@ export type Variable = {
   value: any;
 };
 
+export type TriggerVariableMapping = {
+  name: string;
+  type: VarType;
+  defaultValue: any;
+  deploymentDefault: any;
+};
+
 export type Trigger = {
   id: string;
   createdAt: string;

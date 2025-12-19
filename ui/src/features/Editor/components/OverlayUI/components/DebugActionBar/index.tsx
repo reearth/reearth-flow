@@ -42,7 +42,7 @@ const DebugActionBar: React.FC<Props> = ({
 }) => {
   const t = useT();
   const {
-    showPopover,
+    showOverlayElement,
     debugRunStarted,
     jobStatus,
     debugJob,
@@ -63,7 +63,7 @@ const DebugActionBar: React.FC<Props> = ({
         onShowDebugWorkflowVariablesDialog={
           handleShowDebugWorkflowVariablesDialog
         }
-        showPopover={showPopover}
+        showPopover={showOverlayElement}
         customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
         onPopoverClose={handlePopoverClose}
         onDebugRunStart={handleDebugRunStart}
@@ -71,7 +71,7 @@ const DebugActionBar: React.FC<Props> = ({
       <StopButton
         jobStatus={jobStatus}
         onShowDebugStopPopover={handleShowDebugStopPopover}
-        showPopover={showPopover}
+        showPopover={showOverlayElement}
         onPopoverClose={handlePopoverClose}
         onDebugRunStop={onDebugRunStop}
       />
@@ -90,13 +90,13 @@ const DebugActionBar: React.FC<Props> = ({
       />
       <DebugActiveRunsPopover
         activeUsersDebugRuns={activeUsersDebugRuns}
-        showPopover={showPopover}
+        showPopover={showOverlayElement}
         onDebugRunJoin={onDebugRunJoin}
         onShowDebugRunsPopover={handleShowDebugActiveRunsPopover}
         onPopoverClose={handlePopoverClose}
         onDebugRunStart={handleDebugRunStart}
       />
-      {showPopover === "debugWorkflowVariables" && (
+      {showOverlayElement === "debugWorkflowVariables" && (
         <DebugWorkflowVariablesDialog
           debugRunWorkflowVariables={customDebugRunWorkflowVariables}
           onDebugRunVariableValueChange={onDebugRunVariableValueChange}
