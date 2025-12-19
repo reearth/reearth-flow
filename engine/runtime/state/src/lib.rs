@@ -193,6 +193,23 @@ impl State {
             .put_sync(dst_path.as_path(), bytes)
             .map_err(Error::other)
     }
+
+    pub async fn copy_jsonl_from_state_async(&self, src: &State, id: &str) -> Result<()> {
+        let src_path = src.id_to_location(id, src.jsonl_ext());
+        let dst_path = self.id_to_location(id, self.jsonl_ext());
+
+        let obj = src
+            .storage
+            .get(src_path.as_path())
+            .await
+            .map_err(Error::other)?;
+        let bytes = obj.bytes().await.map_err(Error::other)?;
+
+        self.storage
+            .put(dst_path.as_path(), bytes)
+            .await
+            .map_err(Error::other)
+    }
 }
 
 #[cfg(test)]
