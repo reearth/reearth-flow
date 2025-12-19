@@ -20,6 +20,13 @@ type Props = {
   onCollapsedToggle?: (isCollapsed: boolean) => void;
 };
 const MIN_HANDLES_FOR_COLLAPSE = 5;
+
+// Use break-all for long continuous strings (IDs, hashes, paths)
+// Use break-words for normal text with whitespace
+const getBreakClass = (text: string): string => {
+  return /\s/.test(text) ? "break-words" : "break-all";
+};
+
 const Handles: React.FC<Props> = ({
   nodeType,
   inputs,
@@ -52,7 +59,7 @@ const Handles: React.FC<Props> = ({
                     })}
                   </div>
 
-                  <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
+                  <p className="w-[90%] pl-1 text-[10px] wrap-break-word italic dark:font-thin">
                     {t("Multiple")}
                   </p>
                 </div>
@@ -75,7 +82,8 @@ const Handles: React.FC<Props> = ({
                   <div>
                     <div className="size-1.5 rounded-full bg-gray-300" />
                   </div>
-                  <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
+                  <p
+                    className={`w-[90%] pl-1 text-[10px] ${getBreakClass(input)} italic dark:font-thin`}>
                     {input}
                   </p>
                 </div>
@@ -88,7 +96,7 @@ const Handles: React.FC<Props> = ({
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
             <div className="relative flex items-center justify-end py-0.5">
               <div className="flex w-full -translate-x-0.5 items-center justify-end">
-                <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
+                <p className="w-[90%] pr-1 text-end text-[10px] wrap-break-word italic dark:font-thin">
                   {t("Multiple")}
                 </p>
                 <div className="flex items-center -space-x-0.75">
@@ -127,7 +135,8 @@ const Handles: React.FC<Props> = ({
                           <div>
                             <div className="size-1.5 rounded-full bg-gray-300" />
                           </div>
-                          <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
+                          <p
+                            className={`w-[90%] pl-1 text-[10px] ${getBreakClass(input)} italic dark:font-thin`}>
                             {input}
                           </p>
                         </div>
@@ -148,7 +157,8 @@ const Handles: React.FC<Props> = ({
                         id={output}
                       />
                       <div className="flex -translate-x-0.5 items-center justify-end">
-                        <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
+                        <p
+                          className={`w-[90%] pr-1 text-end text-[10px] ${getBreakClass(output)} italic dark:font-thin`}>
                           {output}
                         </p>
                         <div className="size-1.5 rounded-full bg-gray-300" />
@@ -173,7 +183,8 @@ const Handles: React.FC<Props> = ({
                   id={output}
                 />
                 <div className="flex w-full -translate-x-0.5 items-center justify-end">
-                  <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
+                  <p
+                    className={`w-[90%] pr-1 text-end text-[10px] ${getBreakClass(output)} italic dark:font-thin`}>
                     {output}
                   </p>
                   <div className="size-1.5 rounded-full bg-gray-300" />
