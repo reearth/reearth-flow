@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { useProjectVariables } from "@flow/lib/gql";
+import { useWorkflowVariables } from "@flow/lib/gql";
 import { useCurrentProject } from "@flow/stores";
 import {
-  ProjectVariable as ProjectVariableType,
-  AnyProjectVariable,
+  WorkflowVariable as WorkflowVariableType,
+  AnyWorkflowVariable,
 } from "@flow/types";
 
 import { DialogOptions } from "../../types";
@@ -15,122 +15,122 @@ export default () => {
   const handleDialogClose = () => setShowDialog(undefined);
 
   const {
-    useGetProjectVariables,
-    createProjectVariable,
-    updateMultipleProjectVariables,
-    deleteProjectVariable,
-    deleteProjectVariables,
-  } = useProjectVariables();
+    useGetWorkflowVariables,
+    createWorkflowVariable,
+    updateMultipleWorkflowVariables,
+    deleteWorkflowVariable,
+    deleteWorkflowVariables,
+  } = useWorkflowVariables();
   const [currentProject] = useCurrentProject();
-  const { projectVariables } = useGetProjectVariables(currentProject?.id);
-  const currentProjectVariables = useMemo(
-    () => projectVariables ?? [],
-    [projectVariables],
+  const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const currentWorkflowVariables = useMemo(
+    () => workflowVariables ?? [],
+    [workflowVariables],
   );
 
-  const handleProjectVariableAdd = useCallback(
-    async (projectVariable: ProjectVariableType) => {
+  const handleWorkflowVariableAdd = useCallback(
+    async (workflowVariable: WorkflowVariableType) => {
       if (!currentProject) return;
 
-      await createProjectVariable(
+      await createWorkflowVariable(
         currentProject.id,
-        projectVariable.name,
-        projectVariable.defaultValue,
-        projectVariable.type,
-        projectVariable.required,
-        projectVariable.public,
-        currentProjectVariables.length,
-        projectVariable.config,
+        workflowVariable.name,
+        workflowVariable.defaultValue,
+        workflowVariable.type,
+        workflowVariable.required,
+        workflowVariable.public,
+        currentWorkflowVariables.length,
+        workflowVariable.config,
       );
     },
-    [currentProject, createProjectVariable, currentProjectVariables.length],
+    [currentProject, createWorkflowVariable, currentWorkflowVariables.length],
   );
 
-  const handleProjectVariableChange = useCallback(
-    async (projectVariable: ProjectVariableType) => {
+  const handleWorkflowVariableChange = useCallback(
+    async (workflowVariable: WorkflowVariableType) => {
       if (!currentProject) return;
 
-      await updateMultipleProjectVariables({
+      await updateMultipleWorkflowVariables({
         projectId: currentProject.id,
         updates: [
           {
-            paramId: projectVariable.id,
-            name: projectVariable.name,
-            defaultValue: projectVariable.defaultValue,
-            type: projectVariable.type,
-            required: projectVariable.required,
-            publicValue: projectVariable.public,
-            config: projectVariable.config,
+            paramId: workflowVariable.id,
+            name: workflowVariable.name,
+            defaultValue: workflowVariable.defaultValue,
+            type: workflowVariable.type,
+            required: workflowVariable.required,
+            publicValue: workflowVariable.public,
+            config: workflowVariable.config,
           },
         ],
       });
     },
-    [updateMultipleProjectVariables, currentProject],
+    [updateMultipleWorkflowVariables, currentProject],
   );
 
-  const handleProjectVariablesBatchUpdate = useCallback(
+  const handleWorkflowVariablesBatchUpdate = useCallback(
     async (input: {
       projectId: string;
       creates?: {
         name: string;
         defaultValue: any;
-        type: ProjectVariableType["type"];
+        type: WorkflowVariableType["type"];
         required: boolean;
         publicValue: boolean;
         index?: number;
-        config?: AnyProjectVariable["config"];
+        config?: AnyWorkflowVariable["config"];
       }[];
       updates?: {
         paramId: string;
         name?: string;
         defaultValue?: any;
-        type?: ProjectVariableType["type"];
+        type?: WorkflowVariableType["type"];
         required?: boolean;
         publicValue?: boolean;
-        config?: AnyProjectVariable["config"];
+        config?: AnyWorkflowVariable["config"];
       }[];
       deletes?: string[];
     }) => {
-      await updateMultipleProjectVariables(input);
+      await updateMultipleWorkflowVariables(input);
     },
-    [updateMultipleProjectVariables],
+    [updateMultipleWorkflowVariables],
   );
 
-  const handleProjectVariableDelete = useCallback(
+  const handleWorkflowVariableDelete = useCallback(
     async (id: string) => {
       if (!currentProject) return;
 
       try {
-        await deleteProjectVariable(id, currentProject.id);
+        await deleteWorkflowVariable(id, currentProject.id);
       } catch (error) {
         console.error("Failed to delete workflow variable:", error);
       }
     },
-    [deleteProjectVariable, currentProject],
+    [deleteWorkflowVariable, currentProject],
   );
 
-  const handleProjectVariablesBatchDelete = useCallback(
+  const handleWorkflowVariablesBatchDelete = useCallback(
     async (ids: string[]) => {
       if (!currentProject) return;
 
       try {
-        await deleteProjectVariables(currentProject.id, ids);
+        await deleteWorkflowVariables(currentProject.id, ids);
       } catch (error) {
         console.error("Failed to delete workflow variables:", error);
       }
     },
-    [deleteProjectVariables, currentProject],
+    [deleteWorkflowVariables, currentProject],
   );
 
   return {
     showDialog,
     currentProject,
-    currentProjectVariables,
-    handleProjectVariableAdd,
-    handleProjectVariableChange,
-    handleProjectVariablesBatchUpdate,
-    handleProjectVariableDelete,
-    handleProjectVariablesBatchDelete,
+    currentWorkflowVariables,
+    handleWorkflowVariableAdd,
+    handleWorkflowVariableChange,
+    handleWorkflowVariablesBatchUpdate,
+    handleWorkflowVariableDelete,
+    handleWorkflowVariablesBatchDelete,
     handleDialogOpen,
     handleDialogClose,
   };

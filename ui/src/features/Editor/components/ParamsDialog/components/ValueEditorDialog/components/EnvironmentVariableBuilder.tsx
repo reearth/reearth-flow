@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
-import { useProjectVariables } from "@flow/lib/gql";
+import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
@@ -36,8 +36,8 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
   const [selectedVariable, setSelectedVariable] = useState("");
   const [customVariableName, setCustomVariableName] = useState("");
 
-  const { useGetProjectVariables } = useProjectVariables();
-  const { projectVariables } = useGetProjectVariables(currentProject?.id);
+  const { useGetWorkflowVariables } = useWorkflowVariables();
+  const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
 
   const accessTypes = [
     {
@@ -172,9 +172,9 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
           {accessType === "project_variable" && (
             <div className="space-y-3">
               <Label className="text-xs">{t("Workflow Variables")}</Label>
-              {projectVariables && projectVariables.length > 0 ? (
+              {workflowVariables && workflowVariables.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
-                  {projectVariables.map((variable) => (
+                  {workflowVariables.map((variable) => (
                     <button
                       key={variable.id}
                       className="flex flex-col rounded border p-3 text-left transition-colors hover:bg-accent/50 focus:bg-accent focus:ring-2 focus:ring-ring focus:outline-none"

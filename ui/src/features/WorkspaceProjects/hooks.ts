@@ -10,8 +10,12 @@ export default () => {
   const ref = useRef<HTMLDivElement>(null);
 
   const [workspace] = useCurrentWorkspace();
+  const [duplicateProject, setDuplicateProject] = useState<undefined | Project>(
+    undefined,
+  );
 
-  const { isDuplicating, handleProjectDuplication } = useProjectDuplicate();
+  const { isDuplicating, handleProjectDuplication } =
+    useProjectDuplicate(duplicateProject);
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { deleteProject, updateProject } = useProject();
@@ -41,9 +45,6 @@ export default () => {
     string | undefined
   >(undefined);
   const [editProject, setEditProject] = useState<undefined | Project>(
-    undefined,
-  );
-  const [duplicateProject, setDuplicateProject] = useState<undefined | Project>(
     undefined,
   );
 

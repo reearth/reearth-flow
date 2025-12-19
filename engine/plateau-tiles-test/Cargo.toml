@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.1.13"
+version = "0.1.17"
 edition = "2021"
 
 [dependencies]
@@ -32,10 +32,6 @@ walkdir.workspace = true
 zip.workspace = true
 tinymvt.workspace = true
 prost.workspace = true
-
-[lib]
-name = "plateau_tiles_test"
-path = "src/lib.rs"
 
 [[bin]]
 name = "plateau-tiles-test"

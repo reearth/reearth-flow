@@ -5114,7 +5114,19 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
   "title": "CityGML Mesh Builder Parameters",
   "description": "Configure validation rules for CityGML mesh triangles",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
+    "epsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
     "errorAttribute": {
       "title": "Error Attribute Name",
       "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
@@ -5124,16 +5136,13 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
           "$ref": "#/definitions/Attribute"
         }
       ]
-    },
-    "rejectInvalid": {
-      "title": "Reject Invalid Features",
-      "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
-      "default": false,
-      "type": "boolean"
     }
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
       "type": "string"
     }
   }

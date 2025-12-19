@@ -126,8 +126,8 @@ export default ({
   const {
     pendingWorkflowData,
     workflowVariablesObject,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleWorkflowFetch,
     handleVariablesConfirm,
     getVariablesToSave,
@@ -140,9 +140,9 @@ export default ({
       pendingWorkflowData.variables &&
       pendingWorkflowData.variables.length > 0
     ) {
-      setOpenTriggerProjectVariablesDialog(true);
+      setOpenTriggerWorkflowVariablesDialog(true);
     }
-  }, [pendingWorkflowData, setOpenTriggerProjectVariablesDialog]);
+  }, [pendingWorkflowData, setOpenTriggerWorkflowVariablesDialog]);
 
   const handleSelectDeployment = (deployment: Deployment) => {
     const deploymentId = deployment.id;
@@ -267,8 +267,8 @@ export default ({
     handleVariablesConfirm,
     pendingWorkflowData,
     workflowVariablesObject,
-    openTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
-    setOpenTriggerProjectVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
   };
 };

@@ -35,7 +35,7 @@ import type {
   NodeStatus,
   ProjectSnapshotMeta,
   VarType,
-  AnyProjectVariable,
+  AnyWorkflowVariable,
   Workspace,
   Member,
   Asset,
@@ -316,9 +316,9 @@ export const toNodeStatus = (
   }
 };
 
-export const toProjectVariable = (
+export const toWorkflowVariable = (
   parameter: ParameterFragment,
-): AnyProjectVariable => ({
+): AnyWorkflowVariable => ({
   id: parameter.id,
   name: parameter.name,
   type: toUserParamVarType(parameter.type),

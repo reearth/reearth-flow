@@ -4,6 +4,6 @@ export type DialogOptions =
   | "version"
   | "assets"
   | "debugStop"
-  | "projectVariables"
+  | "workflowVariables"
   | "collaboration"
   | undefined;

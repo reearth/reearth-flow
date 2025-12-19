@@ -51,6 +51,10 @@ struct Profile {
     workflow_path: Option<String>,
     #[serde(default, rename = "tests")]
     tests: Tests,
+    /// Expected output zip file names mapping: FME directory name -> Flow zip file name
+    /// e.g., { "brid_lod3" = "43206_tamana-shi_city_2024_citygml_2_op_brid_3dtiles_lod3.zip" }
+    #[serde(default)]
+    expected_outputs: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -75,7 +79,15 @@ fn pack_citymodel_zip(
     artifacts_base: &Path,
     output_path: &Path,
 ) {
-    let artifact_dir = artifacts_base.join(zip_stem);
+    // Strip feature type suffix after "_op" for artifact directory lookup
+    // e.g., "43206_tamana-shi_city_2024_citygml_2_op_brid" -> "43206_tamana-shi_city_2024_citygml_2_op"
+    // G空間データ uses "_op" suffix, but Re:Earth CMS adds feature type like "_op_brid"
+    let artifact_stem = if let Some(pos) = zip_stem.rfind("_op_") {
+        &zip_stem[..pos + 3] // Include "_op" but not the feature type suffix
+    } else {
+        zip_stem
+    };
+    let artifact_dir = artifacts_base.join(artifact_stem);
     let testcase_citymodel = testcase_dir.join("citymodel");
 
     if let Some(parent) = output_path.parent() {
@@ -108,6 +120,8 @@ fn pack_citymodel_zip(
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
+            // Debug, locate huge files in citymodel folder
+            tracing::debug!("Packing citymodel file: {}", path.display());
             if path.is_file() {
                 let relative_path = path.strip_prefix(&testcase_citymodel).unwrap();
                 let zip_path = relative_path.to_string_lossy().to_string();
@@ -128,11 +142,13 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
+    "data-convert/plateau4/03-frn-veg/frn",
     "data-convert/plateau4/04-luse-lsld/luse",
     "data-convert/plateau4/04-luse-lsld/lsld",
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
+    "data-convert/plateau4/07-brid-tun-cons/brid",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -184,16 +200,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
     if stages.contains('r') {
         let _ = fs::remove_dir_all(&output_dir);
-        if !citygml_path.exists() {
-            let zip_stem = profile
-                .citygml_zip_name
-                .strip_suffix(".zip")
-                .unwrap_or(&profile.citygml_zip_name);
-            let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("artifacts")
-                .join("citymodel");
-            pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
-        }
+        tracing::debug!("packing citymodel zip...");
+        let zip_stem = profile
+            .citygml_zip_name
+            .strip_suffix(".zip")
+            .unwrap_or(&profile.citygml_zip_name);
+        let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("artifacts")
+            .join("citymodel");
+        pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
 
         info!(
             "Starting run: {} to {}",
@@ -228,7 +243,13 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         // Extract Flow output zip files if present
         let flow_dir = output_dir.join("flow");
-        extract_flow_zip_outputs(&flow_dir);
+        if let Err(e) = extract_flow_zip_outputs(&flow_dir, &profile.expected_outputs) {
+            panic!(
+                "Flow output validation failed for {}: {}",
+                relative_path.display(),
+                e
+            );
+        }
 
         let tests = &profile.tests;
         let relative_path_display = relative_path.display();
@@ -285,71 +306,101 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 }
 
 fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
-    if let Some(parent) = fme_dir.parent() {
-        fs::create_dir_all(parent).unwrap();
-    }
-
-    // Check if we need to extract
-    let mut needs_extract = true;
     if fme_dir.exists() {
-        let fme_zip_mtime = fs::metadata(fme_zip_path).unwrap().modified().unwrap();
-        let mut fme_dir_mtime = None;
-
-        for entry in WalkDir::new(fme_dir).into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file() {
-                let mtime = fs::metadata(entry.path()).unwrap().modified().unwrap();
-                if fme_dir_mtime.is_none() || mtime > fme_dir_mtime.unwrap() {
-                    fme_dir_mtime = Some(mtime);
-                }
-            }
-        }
-
-        if let Some(dir_mtime) = fme_dir_mtime {
-            if dir_mtime >= fme_zip_mtime {
-                needs_extract = false;
-            }
-        }
+        fs::remove_dir_all(fme_dir).unwrap();
     }
+    fs::create_dir_all(fme_dir).unwrap();
+    let file = fs::File::open(fme_zip_path).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
 
-    if needs_extract {
-        if fme_dir.exists() {
-            fs::remove_dir_all(fme_dir).unwrap();
-        }
-        fs::create_dir_all(fme_dir).unwrap();
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        let outpath = fme_dir.join(file.name());
 
-        tracing::debug!(
-            "Extracting FME output: {} -> {}",
-            fme_zip_path.display(),
-            fme_dir.display()
-        );
-
-        let file = fs::File::open(fme_zip_path).unwrap();
-        let mut archive = zip::ZipArchive::new(file).unwrap();
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).unwrap();
-            let outpath = fme_dir.join(file.name());
-
-            if file.name().ends_with('/') {
-                fs::create_dir_all(&outpath).unwrap();
-            } else {
-                if let Some(parent) = outpath.parent() {
-                    fs::create_dir_all(parent).unwrap();
-                }
-                let mut outfile = fs::File::create(&outpath).unwrap();
-                std::io::copy(&mut file, &mut outfile).unwrap();
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath).unwrap();
+        } else {
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent).unwrap();
             }
+            let mut outfile = fs::File::create(&outpath).unwrap();
+            std::io::copy(&mut file, &mut outfile).unwrap();
         }
     }
 }
 
 /// Extract zip files in the flow output directory
 /// This handles the case where MVTWriter or Cesium3DTilesWriter creates compressed output
-fn extract_flow_zip_outputs(flow_dir: &Path) {
+///
+/// If expected_outputs is provided, it validates that the expected zip files exist
+/// and extracts them to the corresponding FME directory names.
+fn extract_flow_zip_outputs(
+    flow_dir: &Path,
+    expected_outputs: &HashMap<String, String>,
+) -> Result<(), String> {
     if !flow_dir.exists() {
-        return;
+        return Ok(());
     }
 
+    // If expected_outputs is specified, validate and extract using the mapping
+    if !expected_outputs.is_empty() {
+        // Find all zip files in the flow directory
+        let zip_files: Vec<_> = fs::read_dir(flow_dir)
+            .into_iter()
+            .flatten()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "zip"))
+            .map(|e| e.path().file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+
+        // Validate that all expected zip files exist
+        for (fme_dir_name, expected_zip_name) in expected_outputs {
+            if !zip_files.contains(expected_zip_name) {
+                return Err(format!(
+                    "Expected output zip file not found: {} (found: {:?})",
+                    expected_zip_name, zip_files
+                ));
+            }
+
+            let zip_path = flow_dir.join(expected_zip_name);
+            let output_dir = flow_dir.join(fme_dir_name);
+
+            if output_dir.exists() {
+                // Already extracted, skip
+                continue;
+            }
+
+            tracing::debug!(
+                "Extracting Flow output: {} -> {}",
+                zip_path.display(),
+                output_dir.display()
+            );
+
+            fs::create_dir_all(&output_dir).unwrap();
+
+            let file = fs::File::open(&zip_path).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i).unwrap();
+                let outpath = output_dir.join(file.name());
+
+                if file.name().ends_with('/') {
+                    fs::create_dir_all(&outpath).unwrap();
+                } else {
+                    if let Some(parent) = outpath.parent() {
+                        fs::create_dir_all(parent).unwrap();
+                    }
+                    let mut outfile = fs::File::create(&outpath).unwrap();
+                    std::io::copy(&mut file, &mut outfile).unwrap();
+                }
+            }
+        }
+
+        return Ok(());
+    }
+
+    // Fallback: automatic extraction without expected_outputs mapping
     // Find all zip files in the flow directory
     let zip_files: Vec<_> = fs::read_dir(flow_dir)
         .into_iter()
@@ -405,6 +456,8 @@ fn extract_flow_zip_outputs(flow_dir: &Path) {
             }
         }
     }
+
+    Ok(())
 }
 
 fn main() {

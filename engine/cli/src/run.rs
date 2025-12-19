@@ -210,7 +210,7 @@ impl RunCliCommand {
             prepare_incremental_feature_store(
                 &workflow,
                 job_id,
-                &storage_resolver,
+                storage_resolver.as_ref(),
                 prev_job_id,
                 start_node_id,
             )?;

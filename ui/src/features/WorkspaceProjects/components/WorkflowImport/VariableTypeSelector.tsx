@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
-import { useProjectVars } from "@flow/hooks";
+import { useWorkflowVars } from "@flow/hooks";
 import { VarType } from "@flow/types";
 
 type VariableTypeSelectorProps = {
@@ -19,7 +19,7 @@ export default function VariableTypeSelector({
   onValueChange,
   disabled = false,
 }: VariableTypeSelectorProps) {
-  const { userFacingName } = useProjectVars();
+  const { userFacingName } = useWorkflowVars();
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className="w-full">

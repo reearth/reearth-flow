@@ -296,6 +296,58 @@
             "json_path": "uro:DataQualityAttribute uro:lod1HeightType"
         }
     ],
+	"brid/brid:Bridge": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "brid:class",
+			"data_type": "string",
+			"json_path": "brid:class"
+		},
+		{
+			"attribute": "brid:function",
+			"data_type": "string",
+			"json_path": "brid:function"
+		},
+		{
+			"attribute": "brid:yearOfConstruction",
+			"data_type": "int",
+			"json_path": "brid:yearOfConstruction"
+		},
+		{
+			"attribute": "uro:surveyYear",
+			"data_type": "int",
+			"json_path": "uro:BridgeStructureAttribute uro:surveyYear"
+		},
+		{
+			"attribute": "uro:riskType",
+			"data_type": "string",
+			"json_path": "uro:BridgeStructureAttribute uro:riskType"
+		},
+		{
+			"attribute": "uro:status",
+			"data_type": "string",
+			"json_path": "uro:BridgeStructureAttribute uro:status"
+		},
+		{
+			"attribute": "uro:referenceDate",
+			"data_type": "date",
+			"json_path": "uro:BridgeStructureAttribute uro:referenceDate"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
 	"rwy/tran:AuxiliaryTrafficArea": [
 		{
 			"attribute": "gml:name",
@@ -12310,6 +12362,97 @@
 			"attribute": "uro:DataQualityAttribute_uro:thematicSrcDesc_code",
 			"data_type": "string",
 			"json_path": "uro:DataQualityAttribute uro:thematicSrcDesc_code"
+		}
+	],
+	"frn/frn:CityFurniture": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"veg/veg:PlantCover": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "veg:class",
+			"data_type": "buffer",
+			"json_path": "veg:class"
+		},
+		{
+			"attribute": "veg:averageHeight",
+			"data_type": "real64",
+			"json_path": "veg:averageHeight"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"veg/veg:SolitaryVegetationObject": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "veg:class",
+			"data_type": "buffer",
+			"json_path": "veg:class"
+		},
+		{
+			"attribute": "veg:function",
+			"data_type": "buffer",
+			"json_path": "veg:function"
+		},
+		{
+			"attribute": "veg:height",
+			"data_type": "real64",
+			"json_path": "veg:height"
+		},
+		{
+			"attribute": "veg:trunkDiameter",
+			"data_type": "real64",
+			"json_path": "veg:trunkDiameter"
+		},
+		{
+			"attribute": "veg:crownDiameter",
+			"data_type": "real64",
+			"json_path": "veg:crownDiameter"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
 	]
 }

@@ -44,6 +44,47 @@ pub fn test_cesium_statistics(
     Ok(())
 }
 
+fn test_texture_presence(
+    gml_id: &str,
+    fme_detail_levels: &[DetailLevel],
+    flow_detail_levels: &[DetailLevel],
+) -> Result<(), String> {
+    // all detail levels must have same texture presence (indicated by source_idx)
+    let fme_has_texture = fme_detail_levels
+        .first()
+        .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?
+        .source_idx
+        .is_some();
+    for level in fme_detail_levels.iter() {
+        if level.source_idx.is_some() != fme_has_texture {
+            return Err(format!(
+                "gml_id '{}': inconsistent texture presence in FME detail levels",
+                gml_id
+            ));
+        }
+    }
+    let flow_has_texture = flow_detail_levels
+        .first()
+        .ok_or_else(|| format!("No detail levels for gml_id '{}' in Flow", gml_id))?
+        .source_idx
+        .is_some();
+    for level in flow_detail_levels.iter() {
+        if level.source_idx.is_some() != flow_has_texture {
+            return Err(format!(
+                "gml_id '{}': inconsistent texture presence in Flow detail levels",
+                gml_id
+            ));
+        }
+    }
+    if fme_has_texture != flow_has_texture {
+        return Err(format!(
+            "gml_id '{}': texture presence differs between FME ({}) and Flow ({})",
+            gml_id, fme_has_texture, flow_has_texture
+        ));
+    }
+    Ok(())
+}
+
 fn align_and_compare(
     fme_geometries: &HashMap<String, Vec<DetailLevel>>,
     flow_geometries: &HashMap<String, Vec<DetailLevel>>,
@@ -68,6 +109,7 @@ fn align_and_compare(
     for gml_id in fme_keys {
         let fme_detail_levels = &fme_geometries[gml_id];
         let flow_detail_levels = &flow_geometries[gml_id];
+        test_texture_presence(gml_id, fme_detail_levels, flow_detail_levels)?;
 
         // Assert geometric error decreases monotonically
         verify_monotonic_geometric_error(gml_id, fme_detail_levels, "FME")?;
@@ -149,14 +191,6 @@ fn compare_detail_level(
     let fme_geometry = &fme_level.multipolygon;
     let flow_error = flow_level.geometric_error;
     let flow_geometry = &flow_level.multipolygon;
-
-    // compare texture
-    if fme_level.has_texture != flow_level.has_texture {
-        return Err(format!(
-            "gml_id '{}': texture presence mismatch between FME ({}) and Flow ({})",
-            gml_id, fme_level.has_texture, flow_level.has_texture
-        ));
-    }
 
     // compare bounding boxes
     let fme_bbox = fme_geometry

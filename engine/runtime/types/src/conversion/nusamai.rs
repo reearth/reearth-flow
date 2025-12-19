@@ -5,24 +5,25 @@ use nusamai_citygml::{object::ObjectStereotype, GeometryType, Value};
 use nusamai_plateau::Entity;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::line_string::LineString3D;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
 use crate::error::Error;
 use crate::{AttributeValue, CityGmlGeometry, Geometry, GeometryValue, GmlGeometry};
 
+// Convert nusamai geometry to reearth_flow_geometry Geometry
+// Expect well-formed geometries parsed by nusamai_citygml:
+// if the geometry contains NaN, the duplicate equality check fails and coordinate list will contain duplicates
 impl TryFrom<Entity> for Geometry {
     type Error = Error;
 
     fn try_from(entity: Entity) -> Result<Self, Self::Error> {
         let apperance = entity.appearance_store.read().unwrap();
-        let theme = {
-            apperance
-                .themes
-                .get("rgbTexture")
-                .or_else(|| apperance.themes.get("FMETheme"))
-        };
+        let theme = apperance
+            .themes
+            .get("rgbTexture")
+            .or_else(|| apperance.themes.get("FMETheme"));
         let geoms = entity.geometry_store.read().unwrap();
-        let apperance = entity.appearance_store.read().unwrap();
         let epsg = geoms.epsg;
         // entity must be a Feature
         let Value::Object(obj) = &entity.root else {
@@ -47,44 +48,55 @@ impl TryFrom<Entity> for Geometry {
         // Build gml_geometries with local pos/len (relative to this feature's polygon arrays)
         let mut gml_geometries = Vec::<GmlGeometry>::new();
         let mut local_pos: u32 = 0;
-        let operation = |geometry: &GeometryRef| -> Option<GmlGeometry> {
-            match geometry.ty {
-                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                    let mut polygons = Vec::<Polygon3D<f64>>::new();
-                    for idx_poly in geoms
-                        .multipolygon
-                        .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
-                    {
-                        let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                        polygons.push(poly.into());
+        let operation =
+            |geometry: &GeometryRef| -> Option<GmlGeometry> {
+                match geometry.ty {
+                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                        let mut polygons = Vec::<Polygon3D<f64>>::new();
+                        for idx_poly in geoms.multipolygon.iter_range(
+                            geometry.pos as usize..(geometry.pos + geometry.len) as usize,
+                        ) {
+                            let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                            polygons.push(poly.into());
+                        }
+                        let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                        geometry_feature.polygons.extend(polygons);
+                        Some(geometry_feature)
                     }
-                    let mut geometry_feature = GmlGeometry::from(geometry.clone());
-                    geometry_feature.polygons.extend(polygons);
-                    Some(geometry_feature)
-                }
-                GeometryType::Curve => {
-                    let mut linestrings = Vec::<LineString3D<f64>>::new();
-                    for idx_linestring in geoms
-                        .multilinestring
-                        .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
-                    {
-                        let linestring = idx_linestring.transform(|c| geoms.vertices[*c as usize]);
-                        // manually collect coordinates instead of using line_string.into()
-                        // This avoids iter_closed() which would incorrectly close the linestring
-                        linestrings.push(
-                            linestring
-                                .iter()
-                                .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
-                                .collect(),
-                        );
+                    GeometryType::Curve => {
+                        let mut linestrings = Vec::<LineString3D<f64>>::new();
+                        for idx_linestring in geoms.multilinestring.iter_range(
+                            geometry.pos as usize..(geometry.pos + geometry.len) as usize,
+                        ) {
+                            let linestring =
+                                idx_linestring.transform(|c| geoms.vertices[*c as usize]);
+                            // manually collect coordinates instead of using line_string.into()
+                            // This avoids iter_closed() which would incorrectly close the linestring
+                            linestrings.push(
+                                linestring
+                                    .iter()
+                                    .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
+                                    .collect(),
+                            );
+                        }
+                        let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                        geometry_feature.line_strings.extend(linestrings);
+                        Some(geometry_feature)
                     }
-                    let mut geometry_feature = GmlGeometry::from(geometry.clone());
-                    geometry_feature.line_strings.extend(linestrings);
-                    Some(geometry_feature)
+                    GeometryType::Point => {
+                        let mut points = Vec::<Coordinate3D<f64>>::new();
+                        for idx_point in geoms.multipoint.iter_range(
+                            geometry.pos as usize..(geometry.pos + geometry.len) as usize,
+                        ) {
+                            let coord = geoms.vertices[idx_point as usize];
+                            points.push(Coordinate3D::new__(coord[0], coord[1], coord[2]));
+                        }
+                        let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                        geometry_feature.points.extend(points);
+                        Some(geometry_feature)
+                    }
                 }
-                GeometryType::Point => unimplemented!(),
-            }
-        };
+            };
         for geometry in geometries.iter() {
             if let Some(mut gml_geo) = operation(geometry) {
                 // Update pos to be local (relative to this feature's arrays)
@@ -107,6 +119,17 @@ impl TryFrom<Entity> for Geometry {
                 .collect(),
             apperance.textures.iter().cloned().map(Into::into).collect(),
         );
+
+        // Consistency check: total rings vs total polygon rings
+        let total_rings: usize = geoms.ring_ids.len();
+        let total_polygon_rings: usize = geoms.multipolygon.iter().map(|p| p.rings().count()).sum();
+        if total_rings != total_polygon_rings {
+            tracing::error!(
+                "Inconsistent ring count: total_rings={} total_polygon_rings={}",
+                total_rings,
+                total_polygon_rings
+            );
+        }
 
         if let Some(theme) = theme {
             // find and apply materials (only for this feature's polygons)
@@ -131,13 +154,25 @@ impl TryFrom<Entity> for Geometry {
                 let mut poly_textures = Vec::with_capacity(total_polygons);
                 let mut poly_uvs = flatgeom::MultiPolygon::new();
 
+                // Build a lookup table: polygon_index -> starting_ring_index
+                // This pre-computes the cumulative ring count for efficient O(1) lookup
+                let mut polygon_to_ring_start: Vec<usize> =
+                    Vec::with_capacity(geoms.multipolygon.len());
+                let mut cumulative_rings = 0;
+                for poly_idx in 0..geoms.multipolygon.len() {
+                    polygon_to_ring_start.push(cumulative_rings);
+                    cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
+                }
+
                 for &(start, end) in &polygon_ranges {
                     for global_idx in start..end {
                         let poly = geoms.multipolygon.get(global_idx as usize);
+                        let global_ring_idx = polygon_to_ring_start[global_idx as usize];
+
                         for (i, ring) in poly.rings().enumerate() {
-                            let ring_id = geoms.ring_ids.get(global_idx as usize);
+                            let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
                             let tex = ring_id
-                                .and_then(|id| id.clone())
+                                .clone()
                                 .and_then(|id| theme.ring_id_to_texture.get(&id));
 
                             let mut add_dummy_texture = || {
@@ -161,7 +196,12 @@ impl TryFrom<Entity> for Geometry {
                                     }
                                 }
                                 Some((_, uv)) if uv.len() != ring.len() => {
-                                    // invalid texture found
+                                    tracing::error!(
+                                        "Invalid texture: ring_id={:?}, polygon len={}, uv len={}",
+                                        ring_id,
+                                        ring.len(),
+                                        uv.len(),
+                                    );
                                     add_dummy_texture();
                                 }
                                 _ => {
@@ -174,7 +214,7 @@ impl TryFrom<Entity> for Geometry {
                 }
                 // apply textures to polygons
                 geometry_entity.polygon_textures = poly_textures;
-                geometry_entity.polygon_uvs = poly_uvs;
+                geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
             }
         } else {
             // set 'null' appearance if no theme found
@@ -194,7 +234,7 @@ impl TryFrom<Entity> for Geometry {
                     }
                 }
             }
-            geometry_entity.polygon_uvs = poly_uvs;
+            geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
         }
         Ok(Self::new_with(
             epsg,

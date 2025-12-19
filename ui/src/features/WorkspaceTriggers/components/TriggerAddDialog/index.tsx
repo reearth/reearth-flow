@@ -19,7 +19,7 @@ import { DeploymentsDialog } from "@flow/features/WorkspaceDeployments/component
 import { useT } from "@flow/lib/i18n";
 
 import { TriggerApiDrivenDetails } from "../TriggerApiDrivenDetail";
-import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
 
 import useHooks from "./hooks";
 
@@ -61,9 +61,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     setCurrentPage,
     handleSortChange,
     pendingWorkflowData,
-    openTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
-    setOpenTriggerProjectVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
   return (
@@ -105,7 +105,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 <Label>{t("Workflow Variables")}</Label>
                 <div
                   className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                  onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
+                  onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
                   <span className="pr-2 whitespace-nowrap text-muted-foreground">
                     {t("Edit Variables")} (
                     {pendingWorkflowData.variables.length})
@@ -219,14 +219,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       )}
 
       {pendingWorkflowData?.variables && (
-        <TriggerProjectVariablesMappingDialog
-          isOpen={openTriggerProjectVariablesDialog}
-          onOpenChange={setOpenTriggerProjectVariablesDialog}
+        <TriggerWorkflowVariablesMappingDialog
+          isOpen={openTriggerWorkflowVariablesDialog}
+          onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData?.variables || []}
           workflowName={pendingWorkflowData?.workflowName || ""}
           deploymentDefaults={deploymentDefaultVariables}
           onConfirm={handleVariablesConfirm}
-          onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
+          onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}
         />
       )}
     </Dialog>

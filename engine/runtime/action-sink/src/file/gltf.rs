@@ -7,7 +7,7 @@ use std::{str::FromStr, sync::Arc};
 use atlas_packer::export::JpegAtlasExporter;
 use atlas_packer::pack::AtlasPacker;
 use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
-use flatgeom::Polygon3;
+use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -394,7 +394,8 @@ impl GltfWriter {
                         .zip_eq(
                             city_gml
                                 .polygon_uvs
-                                .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize),
+                                .range(entry.pos as usize..(entry.pos + entry.len) as usize)
+                                .into_iter(),
                         )
                         .zip_eq(
                             city_gml.polygon_materials
@@ -408,6 +409,7 @@ impl GltfWriter {
                         )
                     {
                         let poly: Polygon3 = poly.clone().into();
+                        let poly_uv: Polygon2 = poly_uv.into();
                         let mat = if self.attach_texture {
                             let orig_mat = poly_mat
                                 .and_then(|idx| city_gml.materials.get(idx as usize))

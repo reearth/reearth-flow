@@ -21,6 +21,7 @@
   "cityGmlPath": "udx/dem/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "epsg": 6677,
   "expectResultOkFile": false,
   "skip": false
 }

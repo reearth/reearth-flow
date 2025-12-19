@@ -1,6 +1,6 @@
 *                   @reearth/flow-admin
-/engine/            @n4to4
-/ui/                @KaWaite
+/engine/            @n4to4 @asrcpq @shunski
+/ui/                @KaWaite @billcookie
 /server/            @pyshx
 /server/api/        @akiyatomohiro @pyshx
 /server/subscriber/ @akiyatomohiro @pyshx

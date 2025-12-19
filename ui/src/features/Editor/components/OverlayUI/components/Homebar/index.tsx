@@ -1,7 +1,7 @@
 import {
   ChalkboardTeacherIcon,
   FileIcon,
-  GearFineIcon,
+  DotsThreeIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -19,7 +19,7 @@ import {
   Breadcrumb,
   CollaborationActionBar,
   HomeMenu,
-  ProjectVariableDialog,
+  WorkflowVariablesDialog,
   WorkflowsDropdown,
 } from "./components";
 import useHooks from "./hooks";
@@ -57,12 +57,12 @@ const Homebar: React.FC<Props> = ({
   const {
     showDialog,
     currentProject,
-    currentProjectVariables,
-    handleProjectVariableAdd,
-    handleProjectVariableChange,
-    handleProjectVariablesBatchUpdate,
-    handleProjectVariableDelete,
-    handleProjectVariablesBatchDelete,
+    currentWorkflowVariables,
+    handleWorkflowVariableAdd,
+    handleWorkflowVariableChange,
+    handleWorkflowVariablesBatchUpdate,
+    handleWorkflowVariableDelete,
+    handleWorkflowVariablesBatchDelete,
     handleDialogOpen,
     handleDialogClose,
   } = useHooks();
@@ -95,7 +95,7 @@ const Homebar: React.FC<Props> = ({
           <DropdownMenuTrigger
             asChild
             className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary">
-            <GearFineIcon weight="thin" />
+            <DotsThreeIcon weight="light" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             side="bottom"
@@ -103,7 +103,7 @@ const Homebar: React.FC<Props> = ({
             sideOffset={10}
             alignOffset={-6}>
             <DropdownMenuItem
-              onClick={() => handleDialogOpen("projectVariables")}>
+              onClick={() => handleDialogOpen("workflowVariables")}>
               <ChalkboardTeacherIcon weight="thin" size={18} />
               <p>{t("Workflow Variables")}</p>
             </DropdownMenuItem>
@@ -120,16 +120,16 @@ const Homebar: React.FC<Props> = ({
           onWorkflowClose={onWorkflowClose}
         />
       </div>
-      {showDialog === "projectVariables" && (
-        <ProjectVariableDialog
-          currentProjectVariables={currentProjectVariables}
+      {showDialog === "workflowVariables" && (
+        <WorkflowVariablesDialog
+          currentWorkflowVariables={currentWorkflowVariables}
           projectId={currentProject?.id}
           onClose={handleDialogClose}
-          onAdd={handleProjectVariableAdd}
-          onChange={handleProjectVariableChange}
-          onDelete={handleProjectVariableDelete}
-          onDeleteBatch={handleProjectVariablesBatchDelete}
-          onBatchUpdate={handleProjectVariablesBatchUpdate}
+          onAdd={handleWorkflowVariableAdd}
+          onChange={handleWorkflowVariableChange}
+          onDelete={handleWorkflowVariableDelete}
+          onDeleteBatch={handleWorkflowVariablesBatchDelete}
+          onBatchUpdate={handleWorkflowVariablesBatchUpdate}
         />
       )}
       {showDialog === "assets" && (
