@@ -26,8 +26,6 @@ const VariableRow: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  console.log("TESTING VARIABLE ROW", variable);
-
   switch (variable.type) {
     case "array":
       return (
