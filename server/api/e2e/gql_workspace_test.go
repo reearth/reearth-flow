@@ -233,7 +233,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation AddMemberToWorkspace { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wid, uid)
+	query := fmt.Sprintf(`mutation AddMemberToWorkspace { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: reader}){ workspace{ id } }}`, wid, uid)
 	request := GraphQLRequest{
 		OperationName: "AddMemberToWorkspace",
 		Query:         query,
@@ -248,7 +248,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK)
 
-	query = fmt.Sprintf(`mutation AddMemberToWorkspace { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wid, uid)
+	query = fmt.Sprintf(`mutation AddMemberToWorkspace { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: reader}){ workspace{ id } }}`, wid, uid)
 	request = GraphQLRequest{
 		OperationName: "AddMemberToWorkspace",
 		Query:         query,
@@ -358,7 +358,7 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation UpdateMemberOfWorkspace { updateMemberOfWorkspace(input: {workspaceId: "%s", userId: "%s", role: WRITER}){ workspace{ id } }}`, wid, uid)
+	query := fmt.Sprintf(`mutation UpdateMemberOfWorkspace { updateMemberOfWorkspace(input: {workspaceId: "%s", userId: "%s", role: writer}){ workspace{ id } }}`, wid, uid)
 	request := GraphQLRequest{
 		OperationName: "UpdateMemberOfWorkspace",
 		Query:         query,
@@ -373,7 +373,7 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK)
 
-	query = fmt.Sprintf(`mutation UpdateMemberOfWorkspace { updateMemberOfWorkspace(input: {workspaceId: "%s", userId: "%s", role: WRITER}){ workspace{ id } }}`, wid2, uid2)
+	query = fmt.Sprintf(`mutation UpdateMemberOfWorkspace { updateMemberOfWorkspace(input: {workspaceId: "%s", userId: "%s", role: writer}){ workspace{ id } }}`, wid2, uid2)
 	request = GraphQLRequest{
 		OperationName: "UpdateMemberOfWorkspace",
 		Query:         query,

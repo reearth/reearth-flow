@@ -1115,10 +1115,10 @@ export type RemoveParametersInput = {
 };
 
 export enum Role {
-  Maintainer = 'MAINTAINER',
-  Owner = 'OWNER',
-  Reader = 'READER',
-  Writer = 'WRITER'
+  Maintainer = 'maintainer',
+  Owner = 'owner',
+  Reader = 'reader',
+  Writer = 'writer'
 }
 
 export type RunProjectInput = {
