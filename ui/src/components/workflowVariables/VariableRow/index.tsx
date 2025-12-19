@@ -1,4 +1,13 @@
-import { Input, Switch, TextArea } from "@flow/components";
+import {
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+  TextArea,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable, TriggerVariableMapping } from "@flow/types";
 
@@ -53,6 +62,36 @@ const VariableRow: React.FC<Props> = ({
         />
       );
     case "choice":
+      if (
+        "config" in variable &&
+        variable.config &&
+        "choices" in variable.config
+      ) {
+        const rawChoices = variable.config.choices;
+        const choices = rawChoices.map((choice: any) => {
+          if (typeof choice === "string") {
+            return { value: choice, label: choice };
+          }
+          return choice;
+        });
+
+        return (
+          <Select
+            value={variable.defaultValue}
+            onValueChange={(newValue) => onDefaultValueChange(index, newValue)}>
+            <SelectTrigger className="h-9 w-[150px]">
+              <SelectValue placeholder={t("Select an option")} />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((option: { value: string; label: string }) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
       return (
         <Input
           id={`default-${index}`}
