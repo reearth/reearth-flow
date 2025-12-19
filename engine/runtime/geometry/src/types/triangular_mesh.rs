@@ -42,38 +42,8 @@ impl<T: CoordNum, Z: CoordNum> TriangularMesh<T, Z> {
         &self.triangles
     }
 
-    pub fn from_triangles(trinangles: Vec<[Coordinate<T, Z>; 3]>) -> Self {
-        let mut mesh = Self::default();
-        for triangle in trinangles {
-            let mut tri_indices = [0usize; 3];
-            for (i, &vertex) in triangle.iter().enumerate() {
-                // Get or insert vertex index
-                let vertex_index = match mesh.vertices.iter().position(|&v| v == vertex) {
-                    Some(idx) => idx,
-                    None => {
-                        let idx = mesh.vertices.len();
-                        mesh.vertices.push(vertex);
-                        idx
-                    }
-                };
-
-                tri_indices[i] = vertex_index;
-            }
-
-            // Add triangle
-            tri_indices.sort_unstable();
-            mesh.triangles.push(tri_indices);
-        }
-        mesh.edges_with_multiplicity = Self::compute_edges_with_multiplicity(&mesh.triangles);
-
-        // Sort triangles for consistent representation
-        mesh.triangles.sort_unstable();
-        mesh.triangles.dedup();
-        mesh
-    }
-
     fn compute_edges_with_multiplicity(triangles: &[[usize; 3]]) -> Vec<([usize; 2], usize)> {
-        let mut edges: Vec<[usize; 2]> = Vec::new();
+        let mut edges: Vec<[usize; 2]> = Vec::with_capacity(triangles.len() * 3);
         for triangle in triangles {
             for [i, j] in [[0, 1], [1, 2], [0, 2]] {
                 let edge = if triangle[i] < triangle[j] {
@@ -100,6 +70,53 @@ impl<T: CoordNum, Z: CoordNum> TriangularMesh<T, Z> {
             }
         }
         edges_with_multiplicity
+    }
+}
+
+impl TriangularMesh<f64, f64> {
+    pub fn from_triangles(trinangles: Vec<[Coordinate3D<f64>; 3]>) -> TriangularMesh<f64, f64> {
+        let mut mesh = TriangularMesh::<f64, f64>::default();
+        mesh.triangles.reserve(trinangles.len());
+        let mut vertices = trinangles
+            .iter()
+            .flatten()
+            .filter(|v| v.x.is_finite() && v.y.is_finite() && v.z.is_finite())
+            .copied()
+            .collect::<Vec<_>>();
+        let vertex_cmp = |a: &Coordinate3D<f64>, b: &Coordinate3D<f64>| {
+            let x_cmp = a.x.partial_cmp(&b.x).unwrap();
+            if x_cmp != std::cmp::Ordering::Equal {
+                return x_cmp;
+            }
+            let y_cmp = a.y.partial_cmp(&b.y).unwrap();
+            if y_cmp != std::cmp::Ordering::Equal {
+                return y_cmp;
+            }
+            a.z.partial_cmp(&b.z).unwrap()
+        };
+        vertices.sort_unstable_by(vertex_cmp);
+        vertices.dedup();
+        for triangle in trinangles {
+            let mut tri_indices = [0usize; 3];
+            for (i, &vertex) in triangle.iter().enumerate() {
+                // Get or insert vertex index
+                let vertex_index = vertices
+                    .binary_search_by(|v| vertex_cmp(v, &vertex))
+                    .unwrap();
+                tri_indices[i] = vertex_index;
+            }
+
+            // Add triangle
+            tri_indices.sort_unstable();
+            mesh.triangles.push(tri_indices);
+        }
+        mesh.edges_with_multiplicity = Self::compute_edges_with_multiplicity(&mesh.triangles);
+
+        // Sort triangles for consistent representation
+        mesh.triangles.sort_unstable();
+        mesh.triangles.dedup();
+        mesh.vertices = vertices;
+        mesh
     }
 }
 
