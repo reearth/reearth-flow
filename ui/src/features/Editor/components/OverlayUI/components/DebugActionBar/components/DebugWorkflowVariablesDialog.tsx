@@ -16,7 +16,6 @@ import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable } from "@flow/types";
 
 type Props = {
-  className?: string;
   debugRunStarted: boolean;
   debugRunWorkflowVariables?: AnyWorkflowVariable[];
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;

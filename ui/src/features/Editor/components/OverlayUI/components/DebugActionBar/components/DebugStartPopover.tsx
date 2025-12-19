@@ -42,7 +42,8 @@ const DebugStartPopover: React.FC<Props> = ({
           <Button
             variant="outline"
             onClick={
-              customDebugRunWorkflowVariables?.length === 0
+              !customDebugRunWorkflowVariables ||
+              customDebugRunWorkflowVariables.length === 0
                 ? handleDebugRunStart
                 : onShowDebugWorkflowVariablesDialog
             }
