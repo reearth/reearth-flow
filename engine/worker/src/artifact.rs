@@ -93,6 +93,7 @@ pub(crate) async fn upload_artifact(
     Ok(())
 }
 
+/// Builds the remote artifact job root URI (e.g., GCS) for the given job.
 pub(crate) fn artifact_job_root_uri(
     metadata: &Metadata,
     job_id: uuid::Uuid,
@@ -103,6 +104,7 @@ pub(crate) fn artifact_job_root_uri(
         .map_err(crate::errors::Error::failed_to_upload_artifact)
 }
 
+/// Builds the remote artifact feature-store root URI for the given job.
 pub(crate) fn artifact_feature_store_root_uri(
     metadata: &Metadata,
     job_id: uuid::Uuid,

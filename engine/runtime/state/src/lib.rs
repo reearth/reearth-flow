@@ -180,6 +180,9 @@ impl State {
         }
     }
 
+    /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (sync).
+    ///
+    /// Prefer this in sync contexts (CLI) where blocking I/O is acceptable.
     pub fn copy_jsonl_from_state(&self, src: &State, id: &str) -> Result<()> {
         let src_path = src.id_to_location(id, src.jsonl_ext());
         let dst_path = self.id_to_location(id, self.jsonl_ext());
@@ -194,6 +197,9 @@ impl State {
             .map_err(Error::other)
     }
 
+    /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (async).
+    ///
+    /// Prefer this in async runtimes (worker) to avoid blocking the executor thread.
     pub async fn copy_jsonl_from_state_async(&self, src: &State, id: &str) -> Result<()> {
         let src_path = src.id_to_location(id, src.jsonl_ext());
         let dst_path = self.id_to_location(id, self.jsonl_ext());
