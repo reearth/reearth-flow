@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+name: "Solar Radiation Combined Workflow"
+entryGraphId: 30204050-d1e2-4f3a-b4c5-d6e7f8a9b0c1
+with:
+  cityGmlPath: null
+  csvFile: |
+    年月日,出,方位[°],南中,高度[°],入り,方位[°]00
+    2023/1/1,7:06,118.3,11:57:59,30.7,16:50,241.7
+    2023/1/2,7:06,118.2,11:58:28,30.8,16:51,241.8
+    2023/1/3,7:06,118.1,11:58:55,30.9,16:52,241.9
+graphs:
+  # Include both workflows as separate graphs
+  - !include ../plateau-data-to-surface/workflow.yml
+  - !include ../time-to-time-value/workflow.yml
+  
+  # Main entry point graph that uses both subgraphs
+  - id: 30204050-d1e2-4f3a-b4c5-d6e7f8a9b0c1
+    name: SolarPotentialCalculator
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+        name: PlateauDataProcessor
+        type: subGraph
+        subGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c  # From included workflow
+
+      - id: 2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q
+        name: TimeDataProcessor
+        type: subGraph
+        subGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3  # From included workflow
+
+      - id: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
+        name: SolarPotentialCalculator
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: solar_potential
+              method: create
+              value: |
+                let surface_area = env.get("__value")["calculated_area"] ?? 0.0;
+                let solar_radiation = env.get("__value")["日射量[kWh/m2]"] ?? 0.0;
+                surface_area * solar_radiation
+
+      - id: 4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s
+        name: OutputRouter
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: default
+
+    edges:
+      - id: c0d1e2f3-g4h5-6i7j-8k9l-0m1n2o3p4q5r
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
+        to: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+        fromPort: default
+        toPort: default
+
+      - id: d1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
+        to: 2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q
+        fromPort: default
+        toPort: default
+
+      - id: e2f3g4h5-i6j7-8k9l-0m1n-2o3p4q5r6s7t
+        from: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+        to: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
+        fromPort: default
+        toPort: default
+
+      - id: f3g4h5i6-j7k8-9l0m-1n2o-3p4q5r6s7t8u
+        from: 2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q
+        to: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
+        fromPort: default
+        toPort: default
+
+      - id: g4h5i6j7-k8l9-0m1n-2o3p-4q5r6s7t8u9v
+        from: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
+        to: 4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s
+        fromPort: default
+        toPort: default
