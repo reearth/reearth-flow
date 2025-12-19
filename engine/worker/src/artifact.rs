@@ -92,3 +92,25 @@ pub(crate) async fn upload_artifact(
     futures::future::try_join_all(futures).await?;
     Ok(())
 }
+
+/// Builds the remote artifact job root URI (e.g., GCS) for the given job.
+pub(crate) fn artifact_job_root_uri(
+    metadata: &Metadata,
+    job_id: uuid::Uuid,
+) -> crate::errors::Result<Uri> {
+    let base = Uri::from_str(metadata.artifact_base_url.as_str())
+        .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+    base.join(job_id.to_string())
+        .map_err(crate::errors::Error::failed_to_upload_artifact)
+}
+
+/// Builds the remote artifact feature-store root URI for the given job.
+pub(crate) fn artifact_feature_store_root_uri(
+    metadata: &Metadata,
+    job_id: uuid::Uuid,
+) -> crate::errors::Result<Uri> {
+    let job_root = artifact_job_root_uri(metadata, job_id)?;
+    job_root
+        .join("feature-store")
+        .map_err(crate::errors::Error::failed_to_upload_artifact)
+}
