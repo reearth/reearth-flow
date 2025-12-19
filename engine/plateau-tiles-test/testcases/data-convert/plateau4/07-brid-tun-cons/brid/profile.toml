@@ -1,0 +1,16 @@
+citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_brid.zip"
+
+[expected_outputs]
+brid_lod3 = "43206_tamana-shi_city_2024_citygml_2_op_brid_3dtiles_lod3.zip"
+
+[tests.cesium_statistics]
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/brid/" = ["49303414_brid_6697_op.gml", "49303414_brid_6697_appearance/"]
