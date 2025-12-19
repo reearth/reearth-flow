@@ -8,6 +8,7 @@ mod test_cesium_statistics;
 mod test_json_attributes;
 mod test_mvt_attributes;
 mod test_mvt_lines;
+mod test_mvt_points;
 mod test_mvt_polygons;
 
 use serde::Deserialize;
@@ -21,6 +22,7 @@ use test_cesium_statistics::CesiumStatisticsConfig;
 use test_json_attributes::JsonFileConfig;
 use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_lines::MvtLinesConfig;
+use test_mvt_points::MvtPointsConfig;
 use test_mvt_polygons::MvtPolygonsConfig;
 use tracing::info;
 use walkdir::WalkDir;
@@ -63,6 +65,8 @@ struct Tests {
     mvt_polygons: Option<MvtPolygonsConfig>,
     #[serde(default)]
     mvt_lines: Option<MvtLinesConfig>,
+    #[serde(default)]
+    mvt_points: Option<MvtPointsConfig>,
     #[serde(default)]
     cesium_attributes: Option<CesiumAttributesConfig>,
     #[serde(default)]
@@ -268,6 +272,12 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(cfg) = &tests.mvt_lines {
             run_test("mvt_lines", &relative_path_display, || {
                 test_mvt_lines::test_mvt_lines(&fme_extracted_dir, &flow_extracted_dir, cfg)
+            });
+        }
+
+        if let Some(cfg) = &tests.mvt_points {
+            run_test("mvt_points", &relative_path_display, || {
+                test_mvt_points::test_mvt_points(&fme_dir, &output_dir.join("flow"), cfg)
             });
         }
 

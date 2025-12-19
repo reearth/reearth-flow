@@ -11,6 +11,8 @@ use reearth_flow_geometry::types::traits::Elevation;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
+use reearth_flow_geometry::types::multi_point::MultiPoint2D;
+use reearth_flow_geometry::types::point::{Point, Point2D};
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use serde::{Deserialize, Serialize};
 
@@ -297,6 +299,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
     fn from(geometry: CityGmlGeometry) -> Self {
         let mut polygons = Vec::<Polygon2D<f64>>::new();
         let mut line_strings = Vec::<LineString2D<f64>>::new();
+        let mut points = Vec::<Point2D<f64>>::new();
 
         for gml_geometry in geometry.gml_geometries {
             for polygon in gml_geometry.polygons {
@@ -305,17 +308,29 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
             for line_string in gml_geometry.line_strings {
                 line_strings.push(line_string.into());
             }
+            for point in gml_geometry.points {
+                // Convert Coordinate3D to Point2D: Coordinate3D -> Point3D -> Point2D
+                let point_3d: Point<f64, f64> = point.into();
+                points.push(point_3d.into());
+            }
+        }
+
+        let has_polygons: u8 = if !polygons.is_empty() { 1 } else { 0 };
+        let has_line_strings: u8 = if !line_strings.is_empty() { 1 } else { 0 };
+        let has_points: u8 = if !points.is_empty() { 1 } else { 0 };
+        if has_polygons + has_line_strings + has_points > 1 {
+            tracing::warn!("CityGML feature contains multiple geometry types. Only one geometry type is supported in FlowGeometry2D. Points will be dropped if polygons or line strings are present.");
         }
 
         // Return geometry based on what's available
         if !polygons.is_empty() {
-            if !line_strings.is_empty() {
-                tracing::warn!("CityGML feature contains both polygons and line strings. Line strings will be dropped");
-            }
             Self::MultiPolygon(MultiPolygon2D::from(polygons))
         } else if !line_strings.is_empty() {
             Self::MultiLineString(MultiLineString2D::new(line_strings))
+        } else if !points.is_empty() {
+            Self::MultiPoint(MultiPoint2D::from(points))
         } else {
+            tracing::warn!("CityGML feature contains no geometries. Returning empty MultiPolygon.");
             Self::MultiPolygon(MultiPolygon2D::from(Vec::new()))
         }
     }
