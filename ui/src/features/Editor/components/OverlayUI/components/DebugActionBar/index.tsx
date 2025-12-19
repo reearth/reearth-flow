@@ -98,7 +98,6 @@ const DebugActionBar: React.FC<Props> = ({
       />
       {showPopover === "debugWorkflowVariables" && (
         <DebugWorkflowVariablesDialog
-          debugRunStarted={debugRunStarted}
           debugRunWorkflowVariables={customDebugRunWorkflowVariables}
           onDebugRunVariableValueChange={onDebugRunVariableValueChange}
           onDebugRunStart={onDebugRunStart}
