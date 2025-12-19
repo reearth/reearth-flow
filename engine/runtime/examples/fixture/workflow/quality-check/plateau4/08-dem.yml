@@ -6,6 +6,7 @@ with:
   schemas: null
   codelists: null
   outputPath: null
+  epsg: null
 graphs:
 - id: 79dc8232-d5dd-4c60-be2c-85ca1409619c
   name: entry_point
@@ -73,7 +74,8 @@ graphs:
     action: PLATEAU4.CityGmlMeshBuilder
     with:
       errorAttribute: _validation_error
-      rejectInvalid: false
+      epsgCode: |
+        env.get("epsg")
   - id: 21bb4a5e-5975-443b-8a38-6332789681dd
     name: AttributeMapperIncorrectNumVertices
     type: action

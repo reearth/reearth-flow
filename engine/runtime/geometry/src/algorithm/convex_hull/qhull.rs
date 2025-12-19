@@ -284,10 +284,10 @@ fn create_initial_faces<T: GeoNum + Float>(
 
 /// Computes the 3D convex hull of a set of points using the QuickHull algorithm.
 /// Returns a TriangularMesh representing the convex hull.
-pub fn quick_hull_3d<T>(points: &[Coordinate3D<T>], threshold: T) -> Option<TriangularMesh<T, T>>
-where
-    T: GeoNum + Float,
-{
+pub fn quick_hull_3d(
+    points: &[Coordinate3D<f64>],
+    threshold: f64,
+) -> Option<TriangularMesh<f64, f64>> {
     // Handle degenerate cases
     if points.len() < 4 {
         return None;
@@ -309,7 +309,7 @@ where
         }
 
         // Find the face this point is furthest outside of
-        let mut max_dist = T::zero();
+        let mut max_dist = 0.0;
         let mut best_face = None;
 
         for (face_idx, face) in faces.iter().enumerate() {
@@ -348,7 +348,7 @@ where
         // Find all faces visible from this point
         let mut visible_faces: Vec<usize> = Vec::new();
         for (i, face) in faces.iter().enumerate() {
-            if signed_distance_to_face(points, face, furthest_point) > T::epsilon() {
+            if signed_distance_to_face(points, face, furthest_point) > 0.0 {
                 visible_faces.push(i);
             }
         }
@@ -420,20 +420,20 @@ where
         if !new_faces.is_empty() {
             // Compute hull centroid approximation using existing faces
             let mut centroid = Coordinate3D::zero();
-            let mut count = T::zero();
+            let mut count = 0.0;
             for face in &faces {
                 centroid = centroid + points[face.vertices[0]];
                 centroid = centroid + points[face.vertices[1]];
                 centroid = centroid + points[face.vertices[2]];
-                count = count + T::from(3.0).unwrap();
+                count += 3.0;
             }
             for face in &new_faces {
                 centroid = centroid + points[face.vertices[0]];
                 centroid = centroid + points[face.vertices[1]];
                 centroid = centroid + points[face.vertices[2]];
-                count = count + T::from(3.0).unwrap();
+                count += 3.0;
             }
-            if count > T::zero() {
+            if count > 0.0 {
                 centroid = centroid / count;
             }
 
@@ -442,11 +442,11 @@ where
                 let face_center = (points[face.vertices[0]]
                     + points[face.vertices[1]]
                     + points[face.vertices[2]])
-                    / T::from(3.0).unwrap();
+                    / 3.0;
                 let normal = face_normal(points, face);
                 let to_centroid = centroid - face_center;
 
-                if normal.dot(&to_centroid) > T::zero() {
+                if normal.dot(&to_centroid) > 0.0 {
                     face.vertices.swap(1, 2);
                 }
             }
@@ -460,7 +460,7 @@ where
         // Redistribute orphaned points to new faces
         for pt_idx in orphaned_points {
             let point = points[pt_idx];
-            let mut max_dist = T::zero();
+            let mut max_dist = 0.0;
             let mut best_face = None;
 
             for (i, face) in faces.iter().enumerate().skip(new_face_start_idx) {
@@ -481,7 +481,7 @@ where
     }
 
     // Convert faces to triangles for TriangularMesh
-    let triangles: Vec<[Coordinate3D<T>; 3]> = faces
+    let triangles: Vec<[Coordinate3D<f64>; 3]> = faces
         .iter()
         .map(|face| {
             [
