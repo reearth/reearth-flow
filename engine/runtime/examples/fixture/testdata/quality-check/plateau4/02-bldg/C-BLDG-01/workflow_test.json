@@ -23,5 +23,6 @@
   "schemas": "schemas",
   "epsg": 6675,
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "objectLists": "16211_city_2024_objectlist_op.xlsx"
 }

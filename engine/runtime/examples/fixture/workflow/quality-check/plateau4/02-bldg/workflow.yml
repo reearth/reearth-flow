@@ -10,6 +10,12 @@ with:
   outputPath:
   epsg:
 graphs:
+  # Common quality check graphs
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
+  # Domain-specific graphs
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
   - !include building_part_validation.yml
@@ -35,6 +41,17 @@ graphs:
                 schemas: env.get("schemas"),
               },
             ]
+
+      # Common quality check subgraphs
+      - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+        name: CommonQualityCheck-01-01
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+        name: CommonQualityCheck-01-02
+        type: subGraph
+        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
 
       - id: c7315341-26b3-4405-9d02-039d721cd225
         name: DirectoryDecompressor
@@ -213,6 +230,27 @@ graphs:
           supplierAttributeValue: |
             env.get("__value").gmlFilename
 
+      # Also merge common error counts
+      - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
+        name: CommonErrorMerger01
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").filename
+          supplierAttributeValue: |
+            env.get("__value").Filename
+
+      - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
+        name: CommonErrorMerger02
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").filename
+          supplierAttributeValue: |
+            env.get("__value").filename
+
       # Phase 3: AttributeMapper for CSV formatting
       - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
         name: SummaryAttributeMapper
@@ -310,6 +348,50 @@ graphs:
             - attribute: "LOD4 立体の交差"
               expr: |
                 env.get("__value")._num_lod4_solid_intersection ?? 0
+            # Common error columns from 01-01-common
+            - attribute: "L01エラー"
+              expr: |
+                env.get("__value")["L01エラー"] ?? 0
+            - attribute: "L02エラー"
+              expr: |
+                env.get("__value")["L02エラー"] ?? 0
+            - attribute: "L03エラー"
+              expr: |
+                env.get("__value")["L03エラー"] ?? 0
+            - attribute: "L04エラー"
+              expr: |
+                env.get("__value")["L04エラー"] ?? 0
+            - attribute: "L05CRS識別子エラー"
+              expr: |
+                if env.get("__value")["L05CRS識別子"] == "Wrong" { 1 } else { 0 }
+            - attribute: "L06エラー"
+              expr: |
+                env.get("__value")["L06エラー"] ?? 0
+            - attribute: "T03エラー"
+              expr: |
+                env.get("__value")["T03エラー"] ?? 0
+            - attribute: "xlink参照先なし"
+              expr: |
+                env.get("__value")["xlink参照先なし"] ?? 0
+            - attribute: "gml:id重複"
+              expr: |
+                env.get("__value")["gml:id重複"] ?? 0
+            - attribute: "gml:id書式不正"
+              expr: |
+                env.get("__value")["gml:id書式不正"] ?? 0
+            - attribute: "L-frn-01エラー"
+              expr: |
+                env.get("__value")["L-frn-01エラー"] ?? 0
+            # Common error columns from 01-02-common
+            - attribute: "C05エラー"
+              expr: |
+                env.get("__value")["C05エラー"] ?? 0
+            - attribute: "C07エラー"
+              expr: |
+                env.get("__value")["C07エラー"] ?? 0
+            - attribute: "C08エラー"
+              expr: |
+                env.get("__value")["C08エラー"] ?? 0
 
       # Phase 4: CSV output
       - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
@@ -420,6 +502,53 @@ graphs:
             - newAttribute: "LOD0-1のBuildingPart"
               expr: |
                 env.get("__value")["LOD0-1のBuildingPart"] ?? 0
+
+            # Common errors from 01-01-common
+            - newAttribute: "L01エラー"
+              expr: |
+                env.get("__value")["L01エラー"] ?? 0
+            - newAttribute: "L02エラー"
+              expr: |
+                env.get("__value")["L02エラー"] ?? 0
+            - newAttribute: "L03エラー"
+              expr: |
+                env.get("__value")["L03エラー"] ?? 0
+            - newAttribute: "L04エラー"
+              expr: |
+                env.get("__value")["L04エラー"] ?? 0
+            - newAttribute: "L05CRS識別子エラー"
+              expr: |
+                env.get("__value")["L05CRS識別子エラー"] ?? 0
+            - newAttribute: "L06エラー"
+              expr: |
+                env.get("__value")["L06エラー"] ?? 0
+            - newAttribute: "T03エラー"
+              expr: |
+                env.get("__value")["T03エラー"] ?? 0
+            - newAttribute: "xlink参照先なし"
+              expr: |
+                env.get("__value")["xlink参照先なし"] ?? 0
+            - newAttribute: "gml:id重複"
+              expr: |
+                env.get("__value")["gml:id重複"] ?? 0
+            - newAttribute: "gml:id書式不正"
+              expr: |
+                env.get("__value")["gml:id書式不正"] ?? 0
+            - newAttribute: "L-frn-01エラー"
+              expr: |
+                env.get("__value")["L-frn-01エラー"] ?? 0
+
+            # Common errors from 01-02-common
+            - newAttribute: "C05エラー"
+              expr: |
+                env.get("__value")["C05エラー"] ?? 0
+            - newAttribute: "C07エラー"
+              expr: |
+                env.get("__value")["C07エラー"] ?? 0
+            - newAttribute: "C08エラー"
+              expr: |
+                env.get("__value")["C08エラー"] ?? 0
+
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
@@ -430,7 +559,10 @@ graphs:
                             "LOD2 境界面のエラー", "LOD2 非水密立体", "LOD2 立体のエラー", "LOD2 立体の交差",
                             "LOD3 境界面のエラー", "LOD3 非水密立体", "LOD3 立体のエラー", "LOD3 立体の交差",
                             "LOD4 境界面のエラー", "LOD4 非水密立体", "LOD4 立体のエラー", "LOD4 立体の交差",
-                            "T-bldg-02エラー", "LOD0-1のBuildingPart", "図郭不正"];
+                            "T-bldg-02エラー", "LOD0-1のBuildingPart", "図郭不正",
+                            "L01エラー", "L02エラー", "L03エラー", "L04エラー", "L05CRS識別子エラー", "L06エラー",
+                            "T03エラー", "xlink参照先なし", "gml:id重複", "gml:id書式不正", "L-frn-01エラー",
+                            "C05エラー", "C07エラー", "C08エラー"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
                 }
@@ -503,6 +635,18 @@ graphs:
             file::join_path(dirname, filename)
 
     edges:
+      # Connect FeatureCreator to common quality check subgraphs
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-0e1f2a3b4c5d
+        from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a  # FeatureCreator
+        to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a    # CommonQualityCheck-01-01
+        fromPort: default
+        toPort: default
+      - id: 2b3c4d5e-6f7a-8b9c-0d1e-1f2a3b4c5d6e
+        from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a  # FeatureCreator
+        to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b    # CommonQualityCheck-01-02
+        fromPort: default
+        toPort: default
+
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
         from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
         to: c7315341-26b3-4405-9d02-039d721cd225
@@ -779,15 +923,55 @@ graphs:
         fromPort: default
         toPort: supplier
 
-      # Phase 3: Merged and unmerged results to AttributeMapper
+      # Phase 3: ErrorSummaryMerger → CommonErrorMerger01
       - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
         from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f  # ErrorSummaryMerger
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: merged
+        toPort: requestor
+
+      - id: 17d7e700-3403-4be4-bc31-f40eabe10d1b
+        from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f  # ErrorSummaryMerger
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: unmerged
+        toPort: requestor
+
+      # Connect 01-01-common perFileOutput to CommonErrorMerger01
+      - id: 3c4d5e6f-7a8b-9c0d-1e2f-2a3b4c5d6e7f
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: perFileOutput
+        toPort: supplier
+
+      # CommonErrorMerger01 → CommonErrorMerger02
+      - id: 4d5e6f7a-8b9c-0d1e-2f3a-3b4c5d6e7f8a
+        from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c  # CommonErrorMerger01
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: merged
+        toPort: requestor
+
+      - id: 5e6f7a8b-9c0d-1e2f-3a4b-4c5d6e7f8a9b
+        from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c  # CommonErrorMerger01
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: unmerged
+        toPort: requestor
+
+      # Connect 01-02-common perFileOutput to CommonErrorMerger02
+      - id: 6f7a8b9c-0d1e-2f3a-4b5c-5d6e7f8a9b0c
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: perFileOutput
+        toPort: supplier
+
+      # CommonErrorMerger02 → SummaryAttributeMapper
+      - id: 7a8b9c0d-1e2f-3a4b-5c6d-6e7f8a9b0c1d
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d  # CommonErrorMerger02
         to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a    # SummaryAttributeMapper
         fromPort: merged
         toPort: default
 
-      - id: 17d7e700-3403-4be4-bc31-f40eabe10d1b
-        from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f  # ErrorSummaryMerger
+      - id: 8b9c0d1e-2f3a-4b5c-6d7e-7f8a9b0c1d2e
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d  # CommonErrorMerger02
         to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a    # SummaryAttributeMapper
         fromPort: unmerged
         toPort: default
@@ -854,6 +1038,20 @@ graphs:
         from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
         to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
         fromPort: fileOutput
+        toPort: default
+
+      # Connect CommonQualityCheck-01-01 default output to ZipFileWriter
+      - id: c0d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect CommonQualityCheck-01-02 default output to ZipFileWriter
+      - id: d1e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
         toPort: default
 
       # qc_result_ok generation flow
