@@ -6,5 +6,13 @@
   "schemas": "schemas",
   "expectResultOkFile": true,
   "epsg": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx"
+  "objectLists": "16211_city_2024_objectlist_op.xlsx",
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv"
+    }
+  }
 }

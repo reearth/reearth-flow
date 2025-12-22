@@ -6,11 +6,17 @@ with:
   cityGmlPath:
   schemas:
   codelists:
+  objectLists:
   outputPath:
   epsg:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
+  # Common quality check graphs
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   - id: 742b6f3e-2a63-490a-aec2-829b10fea5f2
     name: entry_point
     nodes:
@@ -25,6 +31,7 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                objectListPath: env.get("objectLists"),
                 schemas: env.get("schemas"),
                 codelists: env.get("codelists"),
               },
@@ -38,6 +45,17 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
+
+      # Common quality check subgraphs
+      - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+        name: CommonQualityCheck-01-01
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+        name: CommonQualityCheck-01-02
+        type: subGraph
+        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
 
       - id: 01c49595-446f-482f-94db-5027f390b6cd
         name: FeatureFilePathExtractor
@@ -583,6 +601,28 @@ graphs:
           supplierAttributeValue: |
             env.get("__value").Filename
 
+      # Also merge common error counts from 01-01-common (via perFileOutput)
+      - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
+        name: CommonErrorMerger01
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").Filename
+          supplierAttributeValue: |
+            env.get("__value").gmlFilename
+
+      # Merge common error counts from 01-02-common (via perFileOutput)
+      - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
+        name: CommonErrorMerger02
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").Filename
+          supplierAttributeValue: |
+            env.get("__value").filename
+
       # Phase 4: AttributeMapper for CSV formatting
       - id: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f
         name: SummaryAttributeMapper
@@ -596,6 +636,48 @@ graphs:
             - attribute: Filename
               expr: |
                 env.get("__value").Filename
+            # Common error columns from 01-01-common
+            - attribute: "L01エラー"
+              expr: |
+                env.get("__value").L01Errors ?? 0
+            - attribute: "L02エラー"
+              expr: |
+                env.get("__value").L02Errors ?? 0
+            - attribute: "L03エラー"
+              expr: |
+                env.get("__value").L03Errors ?? 0
+            - attribute: "L04エラー"
+              expr: |
+                env.get("__value").L04Errors ?? 0
+            - attribute: "L05エラー"
+              expr: |
+                env.get("__value").L05Errors ?? 0
+            - attribute: "L06エラー"
+              expr: |
+                env.get("__value").L06Errors ?? 0
+            - attribute: "T03エラー"
+              expr: |
+                env.get("__value").T03Errors ?? 0
+            - attribute: "xlinkエラー"
+              expr: |
+                env.get("__value").xlinkErrors ?? 0
+            - attribute: "gml:idエラー"
+              expr: |
+                env.get("__value").gmlIdErrors ?? 0
+            - attribute: "L-frn-01エラー"
+              expr: |
+                env.get("__value").LFrn01Errors ?? 0
+            # Common error columns from 01-02-common
+            - attribute: "C05エラー"
+              expr: |
+                env.get("__value")["C05エラー"] ?? 0
+            - attribute: "C07エラー"
+              expr: |
+                env.get("__value")["C07エラー"] ?? 0
+            - attribute: "C08エラー"
+              expr: |
+                env.get("__value")["C08エラー"] ?? 0
+            # Domain-specific error columns
             - attribute: "L-TRAN-03 xlink参照エラー"
               expr: |
                 env.get("__value")._num_unreferenced_surface ?? 0
@@ -626,6 +708,48 @@ graphs:
         action: StatisticsCalculator
         with:
           calculations:
+            # Common error columns from 01-01-common
+            - newAttribute: "L01エラー"
+              expr: |
+                env.get("__value")["L01エラー"] ?? 0
+            - newAttribute: "L02エラー"
+              expr: |
+                env.get("__value")["L02エラー"] ?? 0
+            - newAttribute: "L03エラー"
+              expr: |
+                env.get("__value")["L03エラー"] ?? 0
+            - newAttribute: "L04エラー"
+              expr: |
+                env.get("__value")["L04エラー"] ?? 0
+            - newAttribute: "L05エラー"
+              expr: |
+                env.get("__value")["L05エラー"] ?? 0
+            - newAttribute: "L06エラー"
+              expr: |
+                env.get("__value")["L06エラー"] ?? 0
+            - newAttribute: "T03エラー"
+              expr: |
+                env.get("__value")["T03エラー"] ?? 0
+            - newAttribute: "xlinkエラー"
+              expr: |
+                env.get("__value")["xlinkエラー"] ?? 0
+            - newAttribute: "gml:idエラー"
+              expr: |
+                env.get("__value")["gml:idエラー"] ?? 0
+            - newAttribute: "L-frn-01エラー"
+              expr: |
+                env.get("__value")["L-frn-01エラー"] ?? 0
+            # Common error columns from 01-02-common
+            - newAttribute: "C05エラー"
+              expr: |
+                env.get("__value")["C05エラー"] ?? 0
+            - newAttribute: "C07エラー"
+              expr: |
+                env.get("__value")["C07エラー"] ?? 0
+            - newAttribute: "C08エラー"
+              expr: |
+                env.get("__value")["C08エラー"] ?? 0
+            # Domain-specific error columns
             - newAttribute: "L-TRAN-03 xlink参照エラー"
               expr: |
                 env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
@@ -641,7 +765,10 @@ graphs:
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
-                let keys = ["L-TRAN-03 xlink参照エラー", "Z-TRAN-01 面の向き不正",
+                let keys = ["L01エラー", "L02エラー", "L03エラー", "L04エラー", "L05エラー", "L06エラー",
+                            "T03エラー", "xlinkエラー", "gml:idエラー", "L-frn-01エラー",
+                            "C05エラー", "C07エラー", "C08エラー",
+                            "L-TRAN-03 xlink参照エラー", "Z-TRAN-01 面の向き不正",
                             "L-TRAN-02 隣接面重複", "面のエラー"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
@@ -724,6 +851,20 @@ graphs:
         to: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
         fromPort: default
         toPort: default
+
+      # Connect FeatureCreator to common quality check subgraphs
+      - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        from: f9248705-3024-40b0-b729-66507ca6640d  # FeatureCreator
+        to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a    # CommonQualityCheck-01-01
+        fromPort: default
+        toPort: default
+
+      - id: c6d7e8f9-a0b1-2c3d-4e5f-6a7b8c9d0e1f
+        from: f9248705-3024-40b0-b729-66507ca6640d  # FeatureCreator
+        to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b    # CommonQualityCheck-01-02
+        fromPort: default
+        toPort: default
+
       - id: 110ccc6a-0412-41f0-9e71-0ad6ee2e53c0
         from: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
         to: 01c49595-446f-482f-94db-5027f390b6cd
@@ -1086,15 +1227,56 @@ graphs:
         fromPort: default
         toPort: supplier
 
-      # Phase 4: Merged and unmerged results to AttributeMapper
+      # Phase 4: Merged and unmerged results through CommonErrorMergers to SummaryAttributeMapper
+      # ErrorSummaryMerger → CommonErrorMerger01 (requestor)
       - id: 93acdb8c-7952-4533-89f8-c359ab5172aa
         from: 71fde7fe-d34a-4318-893a-4d648c09361d  # ErrorSummaryMerger
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: merged
+        toPort: requestor
+
+      - id: f8a414c1-bd6a-44bb-a87e-8bf12ae74055
+        from: 71fde7fe-d34a-4318-893a-4d648c09361d  # ErrorSummaryMerger
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: unmerged
+        toPort: requestor
+
+      # CommonQualityCheck-01-01 perFileOutput → CommonErrorMerger01 (supplier)
+      - id: d7e8f9a0-b1c2-3d4e-5f6a-7b8c9d0e1f2a
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: perFileOutput
+        toPort: supplier
+
+      # CommonErrorMerger01 → CommonErrorMerger02 (requestor)
+      - id: e8f9a0b1-c2d3-4e5f-6a7b-8c9d0e1f2a3b
+        from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c  # CommonErrorMerger01
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: merged
+        toPort: requestor
+
+      - id: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
+        from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c  # CommonErrorMerger01
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: unmerged
+        toPort: requestor
+
+      # CommonQualityCheck-01-02 perFileOutput → CommonErrorMerger02 (supplier)
+      - id: a0b1c2d3-e4f5-6a7b-8c9d-0e1f2a3b4c5d
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: perFileOutput
+        toPort: supplier
+
+      # CommonErrorMerger02 → SummaryAttributeMapper
+      - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d  # CommonErrorMerger02
         to: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f    # SummaryAttributeMapper
         fromPort: merged
         toPort: default
 
-      - id: f8a414c1-bd6a-44bb-a87e-8bf12ae74055
-        from: 71fde7fe-d34a-4318-893a-4d648c09361d  # ErrorSummaryMerger
+      - id: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d  # CommonErrorMerger02
         to: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f    # SummaryAttributeMapper
         fromPort: unmerged
         toPort: default
@@ -1178,6 +1360,20 @@ graphs:
       # Connect SurfaceValidationCsvWriter to ZipFileWriter
       - id: 0f6e2287-9318-422c-9b4c-494e873d996e
         from: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1  # SurfaceValidationCsvWriter
+        to: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect CommonQualityCheck-01-01 default output to ZipFileWriter
+      - id: c0d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
+        to: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect CommonQualityCheck-01-02 default output to ZipFileWriter
+      - id: d1e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
         to: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992    # ZipFileWriter
         fromPort: default
         toPort: default
