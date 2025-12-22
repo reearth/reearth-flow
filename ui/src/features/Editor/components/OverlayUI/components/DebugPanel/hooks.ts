@@ -94,14 +94,22 @@ export default () => {
       const newURL = intermediateDataURLs?.find(
         (url) => !prevIntermediateDataUrls.current?.includes(url),
       );
-      setSelectedDataURL(newURL);
+      // Check if previously selected URL is still valid
+      if (newURL) {
+        setSelectedDataURL(newURL);
+        setMinimized(false);
+      } else if (
+        selectedDataURL &&
+        !intermediateDataURLs?.includes(selectedDataURL)
+      ) {
+        setSelectedDataURL(
+          intermediateDataURLs?.length ? intermediateDataURLs[0] : undefined,
+        );
+      }
+
       prevIntermediateDataUrls.current = intermediateDataURLs;
-      setMinimized(false);
-    } else if (
-      (dataURLs?.length && !selectedDataURL) ||
-      (selectedDataURL && !dataURLs?.find((u) => u.key === selectedDataURL))
-    ) {
-      setSelectedDataURL(dataURLs?.[0].key);
+    } else if (dataURLs?.length && !selectedDataURL) {
+      setSelectedDataURL(dataURLs[0].key);
     }
   }, [dataURLs, selectedDataURL, intermediateDataURLs]);
 
