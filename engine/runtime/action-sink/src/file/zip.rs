@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::fs;
 use std::io::{BufWriter, Cursor};
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
@@ -72,6 +74,7 @@ impl SinkFactory for ZipFileWriterFactory {
 
         let sink = ZipFileWriter {
             output: params.output,
+            base_path: params.base_path,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -81,6 +84,7 @@ impl SinkFactory for ZipFileWriterFactory {
 #[derive(Debug, Clone)]
 struct ZipFileWriter {
     output: Expr,
+    base_path: Option<Expr>,
     buffer: Vec<Uri>,
 }
 
@@ -92,6 +96,10 @@ struct ZipFileWriter {
 struct ZipFileWriterParam {
     /// Output path
     output: Expr,
+    /// Base path for computing relative paths. When set, directory structure
+    /// relative to this base will be preserved in the zip file.
+    /// If not set, all files are placed at the root of the zip (flattened).
+    base_path: Option<Expr>,
 }
 
 impl Sink for ZipFileWriter {
@@ -114,14 +122,59 @@ impl Sink for ZipFileWriter {
         }
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.output.clone();
         let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+
+        let output_path = scope
+            .eval::<String>(self.output.as_ref())
+            .unwrap_or_else(|_| self.output.as_ref().to_string());
+        let output = Uri::from_str(output_path.as_str())?;
+
+        let base_path = self.base_path.as_ref().map(|bp| {
+            let evaluated = scope
+                .eval::<String>(bp.as_ref())
+                .unwrap_or_else(|_| bp.as_ref().to_string());
+            Uri::from_str(&evaluated).ok()
+        });
+        let base_path = base_path.flatten();
+
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
-        dir::move_files(&temp_dir_path, &self.buffer)?;
+
+        if let Some(base) = &base_path {
+            // Preserve directory structure relative to base_path
+            let base_path_str = base.path();
+            for file_uri in &self.buffer {
+                let file_path = file_uri.path();
+                let relative_path = file_path.strip_prefix(&base_path_str).unwrap_or_else(|_| {
+                    // If file is not under base_path, use just the filename
+                    file_path
+                        .file_name()
+                        .map(Path::new)
+                        .unwrap_or(file_path.as_path())
+                });
+                let dest_path = temp_dir_path.join(relative_path);
+                if let Some(parent) = dest_path.parent() {
+                    fs::create_dir_all(parent).map_err(|e| {
+                        SinkError::ZipFileWriter(format!(
+                            "Failed to create directory {}: {}",
+                            parent.display(),
+                            e
+                        ))
+                    })?;
+                }
+                fs::rename(file_uri.path(), &dest_path).map_err(|e| {
+                    SinkError::ZipFileWriter(format!(
+                        "Failed to move file {} to {}: {}",
+                        file_uri.path().display(),
+                        dest_path.display(),
+                        e
+                    ))
+                })?;
+            }
+        } else {
+            // Flatten all files to root (original behavior)
+            dir::move_files(&temp_dir_path, &self.buffer)?;
+        }
+
         let buffer = Vec::new();
         let mut cursor = Cursor::new(buffer);
         let writer = BufWriter::new(&mut cursor);
