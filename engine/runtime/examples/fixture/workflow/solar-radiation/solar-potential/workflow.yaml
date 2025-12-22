@@ -37,8 +37,10 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          joinAttributes:
-            - join_key
+          requestorAttribute:
+          - join_key
+          supplierAttribute:
+          - join_key
 
       - id: 3c4d5e6f-7890-1234-5678-901234567890
         name: SolarPotentialCalculator
