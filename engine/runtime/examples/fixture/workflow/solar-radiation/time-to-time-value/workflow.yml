@@ -119,7 +119,26 @@ graphs:
                 let output_time_days = exit_time_value / 86400.0;
                 let altitude_radians = math::to_radians(parse_float(altitude_value));
                 (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
-          
+
+      - id: c60a3004-ded4-11f0-9390-7c70db10a7e3
+        name: SolarEnergySum
+        type: action
+        action: StatisticsCalculator
+        with: 
+          calculations:
+            - newAttribute: 日射量[kWh/m2].sum 
+              expr: |
+                env.get("__value")["日射量[kWh/m2]"]
+
+      - id: 481cea32-ded5-11f0-b1da-7c70db10a7e3
+        name: AttributeCreator 
+        type: action 
+        action: AttributeManager 
+        with: 
+          operations:
+            - attribute: join_key
+              method: create
+              value: 'key'   
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: SolarEnergyResultCsvWriter
@@ -145,8 +164,20 @@ graphs:
         fromPort: default
         toPort: default
 
-      - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+      - id: 2192a9e2-ded5-11f0-8ade-7c70db10a7e3
         from: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
+        to: c60a3004-ded4-11f0-9390-7c70db10a7e3
+        fromPort: default
+        toPort: default
+        
+      - id: 833b46f4-ded5-11f0-ade2-7c70db10a7e3
+        from: c60a3004-ded4-11f0-9390-7c70db10a7e3
+        to: 481cea32-ded5-11f0-b1da-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        from: 481cea32-ded5-11f0-b1da-7c70db10a7e3
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default
