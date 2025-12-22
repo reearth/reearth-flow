@@ -4,13 +4,12 @@
   "cityGmlPath": "udx/fld/natl/1_1_kikuchigawa_kikuchigawa/test_unshared_edge_fld_6697_l1_op.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "objectLists": "43206_city_2024_objectlist_op.xlsx",
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_fld_natl_1_1_kikuchigawa_kikuchigawa.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "1_1_kikuchigawa_kikuchigawa.csv"
+      "expectedFile": "06_浸水想定区域_fld/natl/1_1_kikuchigawa_kikuchigawa.csv"
     }
   },
   "expectResultOkFile": true,
