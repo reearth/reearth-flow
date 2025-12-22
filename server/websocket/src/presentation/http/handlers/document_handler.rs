@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use std::sync::Arc;
-use tracing::{error, warn};
+use tracing::{error, instrument, warn};
 
 use crate::{
     presentation::http::dto::{
@@ -18,6 +18,7 @@ use crate::{
 pub struct DocumentHandler;
 
 impl DocumentHandler {
+    #[instrument(name = "create_snapshot", skip(state, request), fields(doc_id = %request.doc_id))]
     pub async fn create_snapshot(
         State(state): State<Arc<AppState>>,
         Json(request): Json<CreateSnapshotRequest>,
@@ -45,6 +46,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "get_history", skip(state), fields(doc_id = %doc_id))]
     pub async fn get_history(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
@@ -66,6 +68,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "rollback", skip(state, request), fields(doc_id = %doc_id))]
     pub async fn rollback(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
@@ -87,6 +90,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "get_history_metadata", skip(state), fields(doc_id = %doc_id))]
     pub async fn get_history_metadata(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
@@ -107,6 +111,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "get_history_by_version", skip(state), fields(doc_id = %doc_id, version = %version))]
     pub async fn get_history_by_version(
         Path((doc_id, version)): Path<(String, u64)>,
         State(state): State<Arc<AppState>>,
@@ -132,6 +137,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "flush_to_gcs", skip(state), fields(doc_id = %doc_id))]
     pub async fn flush_to_gcs(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
@@ -142,6 +148,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "copy_document", skip(state), fields(doc_id = %doc_id, source = %source))]
     pub async fn copy_document(
         Path((doc_id, source)): Path<(String, String)>,
         State(state): State<Arc<AppState>>,
@@ -154,6 +161,7 @@ impl DocumentHandler {
         }
     }
 
+    #[instrument(name = "import_document", skip(state, request), fields(doc_id = %doc_id))]
     pub async fn import_document(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,

@@ -1,10 +1,10 @@
 #[cfg(feature = "auth")]
 use crate::domain::value_objects::conf::DEFAULT_AUTH_URL;
 use crate::domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_ENABLE_CLOUD_TRACE, DEFAULT_GCS_BUCKET, DEFAULT_LOG_LEVEL,
-    DEFAULT_ORIGINS, DEFAULT_REDIS_STREAM_MAX_LENGTH, DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE,
-    DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL, DEFAULT_SERVICE_NAME,
-    DEFAULT_WS_PORT,
+    DEFAULT_APP_ENV, DEFAULT_ENABLE_CLOUD_TRACE, DEFAULT_ENABLE_OTLP, DEFAULT_GCS_BUCKET,
+    DEFAULT_LOG_LEVEL, DEFAULT_ORIGINS, DEFAULT_OTLP_ENDPOINT, DEFAULT_REDIS_STREAM_MAX_LENGTH,
+    DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE, DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL,
+    DEFAULT_REDIS_URL, DEFAULT_SERVICE_NAME, DEFAULT_WS_PORT,
 };
 use dotenv;
 use serde::Deserialize;
@@ -114,6 +114,13 @@ impl Config {
             let enabled = enable.to_lowercase() == "true" || enable == "1";
             builder = builder.enable_cloud_trace(enabled);
         }
+        if let Ok(enable) = env::var("REEARTH_FLOW_ENABLE_OTLP") {
+            let enabled = enable.to_lowercase() == "true" || enable == "1";
+            builder = builder.enable_otlp(enabled);
+        }
+        if let Ok(endpoint) = env::var("REEARTH_FLOW_OTLP_ENDPOINT") {
+            builder = builder.otlp_endpoint(endpoint);
+        }
         if let Ok(project_id) = env::var("REEARTH_FLOW_GCP_PROJECT_ID") {
             builder = builder.gcp_project_id(Some(project_id));
         }
@@ -158,6 +165,8 @@ pub struct ConfigBuilder {
     grpc_port: Option<String>,
     // Tracing configuration
     enable_cloud_trace: Option<bool>,
+    enable_otlp: Option<bool>,
+    otlp_endpoint: Option<String>,
     gcp_project_id: Option<String>,
     service_name: Option<String>,
     log_level: Option<String>,
@@ -236,6 +245,16 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn enable_otlp(mut self, enable: bool) -> Self {
+        self.enable_otlp = Some(enable);
+        self
+    }
+
+    pub fn otlp_endpoint(mut self, endpoint: String) -> Self {
+        self.otlp_endpoint = Some(endpoint);
+        self
+    }
+
     pub fn gcp_project_id(mut self, project_id: Option<String>) -> Self {
         self.gcp_project_id = project_id;
         self
@@ -291,6 +310,10 @@ impl ConfigBuilder {
                 enable_cloud_trace: self
                     .enable_cloud_trace
                     .unwrap_or(DEFAULT_ENABLE_CLOUD_TRACE),
+                enable_otlp: self.enable_otlp.unwrap_or(DEFAULT_ENABLE_OTLP),
+                otlp_endpoint: self
+                    .otlp_endpoint
+                    .unwrap_or_else(|| DEFAULT_OTLP_ENDPOINT.to_string()),
                 gcp_project_id: self.gcp_project_id,
                 service_name: self
                     .service_name

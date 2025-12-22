@@ -1,0 +1,33 @@
+# Docker Compose for local OpenTelemetry development
+# Usage: docker compose -f docker-compose.otel.yml up
+#
+# This will start:
+# - OpenTelemetry Collector (receives traces on port 4317/4318)
+# - Jaeger (UI available at http://localhost:16686)
+#
+# Then run your websocket server with:
+#   REEARTH_FLOW_ENABLE_OTLP=true cargo run --bin websocket
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: jaeger
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "14268:14268" # Jaeger HTTP Thrift receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+

@@ -18,5 +18,7 @@ pub const DEFAULT_WS_PORT: &str = "8000";
 
 // Tracing defaults
 pub const DEFAULT_ENABLE_CLOUD_TRACE: bool = false;
+pub const DEFAULT_ENABLE_OTLP: bool = false;
+pub const DEFAULT_OTLP_ENDPOINT: &str = "http://localhost:4317";
 pub const DEFAULT_SERVICE_NAME: &str = "reearth-flow-websocket";
 pub const DEFAULT_LOG_LEVEL: &str = "info";

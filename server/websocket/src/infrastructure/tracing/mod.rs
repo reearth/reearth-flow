@@ -1,11 +1,13 @@
-//! Tracing and OpenTelemetry configuration for Google Cloud Trace integration.
+//! Tracing and OpenTelemetry configuration for Google Cloud Trace and local OTLP integration.
 //!
 //! This module provides configurable tracing that supports:
 //! - Console logging (always enabled)
 //! - Google Cloud Trace integration (optional, enabled via environment variables)
+//! - Local OTLP export (optional, for local development with OpenTelemetry Collector)
 
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
+use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::TracerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_stackdriver::StackDriverExporter;
@@ -18,6 +20,10 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 pub struct TracingConfig {
     /// Whether to enable Google Cloud Trace.
     pub enable_cloud_trace: bool,
+    /// Whether to enable local OTLP export.
+    pub enable_otlp: bool,
+    /// OTLP endpoint (default: http://localhost:4317).
+    pub otlp_endpoint: String,
     /// Google Cloud Project ID (required if cloud trace is enabled).
     pub gcp_project_id: Option<String>,
     /// Service name for tracing.
@@ -30,6 +36,8 @@ impl Default for TracingConfig {
     fn default() -> Self {
         Self {
             enable_cloud_trace: false,
+            enable_otlp: false,
+            otlp_endpoint: "http://localhost:4317".to_string(),
             gcp_project_id: None,
             service_name: "reearth-flow-websocket".to_string(),
             log_level: "info".to_string(),
@@ -45,6 +53,7 @@ static TRACER_PROVIDER: std::sync::OnceLock<TracerProvider> = std::sync::OnceLoc
 /// This function sets up:
 /// - Console logging with configurable format
 /// - Optional Google Cloud Trace integration via OpenTelemetry
+/// - Optional local OTLP export for development
 ///
 /// # Arguments
 ///
@@ -120,6 +129,46 @@ pub async fn init_tracing(
             project_id = %project_id,
             service_name = %config.service_name,
             "Google Cloud Trace initialized"
+        );
+    } else if config.enable_otlp {
+        // Create OTLP exporter for local development
+        let exporter = opentelemetry_otlp::SpanExporter::builder()
+            .with_tonic()
+            .with_endpoint(&config.otlp_endpoint)
+            .build()
+            .map_err(|e| format!("Failed to create OTLP exporter: {}", e))?;
+
+        // Create tracer provider with resource attributes
+        let resource = Resource::new(vec![
+            KeyValue::new("service.name", config.service_name.clone()),
+            KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
+        ]);
+
+        let provider = TracerProvider::builder()
+            .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
+            .with_resource(resource)
+            .build();
+
+        // Store provider for later shutdown
+        let _ = TRACER_PROVIDER.set(provider.clone());
+
+        // Get tracer
+        let tracer = provider.tracer(config.service_name.clone());
+
+        // Create OpenTelemetry layer
+        let otel_layer = OpenTelemetryLayer::new(tracer);
+
+        // Initialize subscriber with both layers
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(fmt_layer)
+            .with(otel_layer)
+            .init();
+
+        tracing::info!(
+            endpoint = %config.otlp_endpoint,
+            service_name = %config.service_name,
+            "OTLP tracing initialized (local development mode)"
         );
     } else {
         // Initialize subscriber with only fmt layer
