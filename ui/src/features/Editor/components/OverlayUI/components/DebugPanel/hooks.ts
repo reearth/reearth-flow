@@ -33,7 +33,7 @@ export default () => {
 
   const [currentProject] = useCurrentProject();
 
-  const { value: debugRunState } = useIndexedDB("debugRun");
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
     () =>
@@ -108,8 +108,8 @@ export default () => {
       }
 
       prevIntermediateDataUrls.current = intermediateDataURLs;
-    } else if (dataURLs?.length && !selectedDataURL) {
-      setSelectedDataURL(dataURLs[0].key);
+    } else if (intermediateDataURLs?.length && !selectedDataURL) {
+      setSelectedDataURL(intermediateDataURLs[0]);
     }
   }, [dataURLs, selectedDataURL, intermediateDataURLs]);
 
@@ -482,6 +482,33 @@ export default () => {
     setDetailsFeature(null);
   }, []);
 
+  const handleRemoveDataURL = useCallback(
+    async (urlToRemove: string) => {
+      if (!debugRunState || !currentProject?.id) return;
+
+      const newDebugRunState = {
+        ...debugRunState,
+        jobs:
+          debugRunState.jobs?.map((job) => {
+            if (job.projectId !== currentProject.id) return job;
+
+            const currentData = job.selectedIntermediateData ?? [];
+            const filtered = currentData.filter(
+              (sid) => sid.url !== urlToRemove,
+            );
+
+            return {
+              ...job,
+              selectedIntermediateData: filtered,
+            };
+          }) ?? [],
+      };
+
+      await updateValue(newDebugRunState);
+    },
+    [debugRunState, currentProject?.id, updateValue],
+  );
+
   return {
     debugJobId,
     debugJobState,
@@ -509,6 +536,7 @@ export default () => {
     handleMinimize,
     handleTabChange,
     handleSelectedDataChange,
+    handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
