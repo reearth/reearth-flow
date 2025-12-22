@@ -173,8 +173,17 @@ export default ({
         const link = document.createElement("a");
         link.href = blobUrl;
 
-        const fileName = `${asset.name}.${asset.url.split("/").pop()?.split(".").pop()}`;
-
+        let fileName;
+        if (
+          ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").some((ext: string) =>
+            asset.name.endsWith(ext.trim()),
+          )
+        ) {
+          fileName = asset.name;
+        } else {
+          const extension = asset.url.split("/").pop()?.split(".").pop();
+          fileName = extension ? `${asset.name}.${extension}` : asset.name;
+        }
         link.download = fileName.replace(/"/g, "");
         document.body.appendChild(link);
         link.click();

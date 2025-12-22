@@ -1,6 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
@@ -163,8 +164,17 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
         const link = document.createElement("a");
         link.href = blobUrl;
-
-        const fileName = `${asset.name}.${asset.url.split("/").pop()?.split(".").pop()}`;
+        let fileName;
+        if (
+          ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").some((ext: string) =>
+            asset.name.endsWith(ext.trim()),
+          )
+        ) {
+          fileName = asset.name;
+        } else {
+          const extension = asset.url.split("/").pop()?.split(".").pop();
+          fileName = extension ? `${asset.name}.${extension}` : asset.name;
+        }
         link.download = fileName.replace(/"/g, " ");
         document.body.appendChild(link);
         link.click();
