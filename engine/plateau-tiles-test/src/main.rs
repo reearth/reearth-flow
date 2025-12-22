@@ -277,7 +277,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.mvt_points {
             run_test("mvt_points", &relative_path_display, || {
-                test_mvt_points::test_mvt_points(&fme_dir, &output_dir.join("flow"), cfg)
+                test_mvt_points::test_mvt_points(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
