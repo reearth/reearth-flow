@@ -1,179 +1,171 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
-name: "Solar Radiation plateau data to surface workflow"
-entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
-with:
-  cityGmlPath: null
-  targetFeatureType: "bldg:Building"
-graphs:
-  - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
-    name: entry_point
-    nodes:
-      - id: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
-        name: FeatureCreator
-        type: action
-        action: FeatureCreator
-        with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-              },
-            ]
+id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
+name: PlateauDataProcessor
+nodes:
+  - id: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
+    name: FeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("cityGmlPath"),
+          },
+        ]
 
-      - id: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
-        name: FeatureCityGmlReader
-        type: action
-        action: FeatureCityGmlReader
-        with:
-          format: citygml
-          dataset: |
-            env.get("__value")["cityGmlPath"]
+  - id: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+    name: FeatureCityGmlReader
+    type: action
+    action: FeatureCityGmlReader
+    with:
+      format: citygml
+      dataset: |
+        env.get("__value")["cityGmlPath"]
 
-      - id: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
-        name: FeatureFilterByRoofSurface
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__value").featureType == env.get("targetFeatureType")
-              outputPort: default
+  - id: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
+    name: FeatureFilterByRoofSurface
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").featureType == env.get("targetFeatureType")
+          outputPort: default
 
-      # Step 1: Deaggregator equivalent - using geometry part extractor to decompose aggregate features
-      - id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
-        name: GeometryPartExtractor
-        type: action
-        action: GeometryPartExtractor
+  # Step 1: Deaggregator equivalent - using geometry part extractor to decompose aggregate features
+  - id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+    name: GeometryPartExtractor
+    type: action
+    action: GeometryPartExtractor
 
-      # Step 2: CsmapReprojector equivalent - using horizontal reprojector for coordinate transformation
-      - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
-        name: HorizontalReprojector
-        type: action
-        action: HorizontalReprojector
-        with:
-          targetEpsgCode: "6677"
+  # Step 2: CsmapReprojector equivalent - using horizontal reprojector for coordinate transformation
+  - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: "6677"
 
-      # Step 3: GeometryExtractor - extracts geometry to attribute
-      - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
-        name: GeometryExtractor
-        type: action
-        action: GeometryExtractor
-        with:
-          outputAttribute: geometry
+  # Step 3: GeometryExtractor - extracts geometry to attribute
+  - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+    name: GeometryExtractor
+    type: action
+    action: GeometryExtractor
+    with:
+      outputAttribute: geometry
 
-      # Step 4: GeometryCoercer - convert geometry to polygon
-      - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
-        name: GeometryCoercer
-        type: action
-        action: GeometryCoercer
-        with:
-          targetType: polygon
+  # Step 4: GeometryCoercer - convert geometry to polygon
+  - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
+    name: GeometryCoercer
+    type: action
+    action: GeometryCoercer
+    with:
+      targetType: polygon
 
-      # Step 5: Calculates the planar or sloped area of polygon geometries and adds the results as attributes.
-      - id: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
-        name: AreaCalculator
-        type: action
-        action: AreaCalculator
-        with:
-          areaType: "slopedArea"
-          outputAttribute: "calculated_area"
-          multiplier: 1.0
+  # Step 5: Calculates the planar or sloped area of polygon geometries and adds the results as attributes.
+  - id: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
+    name: AreaCalculator
+    type: action
+    action: AreaCalculator
+    with:
+      areaType: "slopedArea"
+      outputAttribute: "calculated_area"
+      multiplier: 1.0
 
-      # Step 6: Compute Polygon normal
-      - id: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-        name: PolygonNormalExtractor
-        type: action
-        action: PolygonNormalExtractor
+  # Step 6: Compute Polygon normal
+  - id: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
+    name: PolygonNormalExtractor
+    type: action
+    action: PolygonNormalExtractor
 
-      # Step 7: Compute α_slope, β_slope and join_key
-      - id: a817e924-dbd7-11f0-935e-7c70db10a7e3
-        name: SlopeAnglesCalculator
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: alpha_slope
-              method: create
-              value: |
-                math::to_radians((env.get("__value")["Azimuth"]))
-            - attribute: theta_slope
-              method: create
-              value: |
-                math::to_radians((env.get("__value")["Slope"]))
-            - attribute: join_key
-              method: create
-              value: |
-                "key"
+  # Step 7: Compute α_slope, β_slope and join_key
+  - id: a817e924-dbd7-11f0-935e-7c70db10a7e3
+    name: SlopeAnglesCalculator
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: alpha_slope
+          method: create
+          value: |
+            math::to_radians((env.get("__value")["Azimuth"]))
+        - attribute: theta_slope
+          method: create
+          value: |
+            math::to_radians((env.get("__value")["Slope"]))
+        - attribute: join_key
+          method: create
+          value: |
+            "key"
 
-      - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
-        name: SolarEnergyResultWriter
-        type: action
-        action: NoopSink
+  - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
+    name: SolarEnergyResultWriter
+    type: action
+    action: NoopSink
 
-    edges:
-      - id: df024cb8-d597-11f0-bbbe-7c70db10a7e3
-        from: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
-        to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
-        fromPort: default
-        toPort: default
+edges:
+  - id: df024cb8-d597-11f0-bbbe-7c70db10a7e3
+    from: 4b29baf2-d598-11f0-9ae8-7c70db10a7e3
+    to: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+    fromPort: default
+    toPort: default
 
-      - id: 64b4690c-d635-11f0-ab47-6c02e0440ed6
-        from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
-        to: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
-        fromPort: default
-        toPort: default
+  - id: 64b4690c-d635-11f0-ab47-6c02e0440ed6
+    from: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
+    to: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
+    fromPort: default
+    toPort: default
 
-      - id: 7c860ca2-d635-11f0-8011-6c02e0440ed6
-        from: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
-        to: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
-        fromPort: default
-        toPort: default
+  - id: 7c860ca2-d635-11f0-8011-6c02e0440ed6
+    from: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
+    to: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+    fromPort: default
+    toPort: default
 
-      - id: 880aeb74-d635-11f0-9209-6c02e0440ed6
-        from: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
-        to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
-        fromPort: extracted
-        toPort: default
+  - id: 880aeb74-d635-11f0-9209-6c02e0440ed6
+    from: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+    to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+    fromPort: extracted
+    toPort: default
 
-      - id: 9fdfcbfc-d635-11f0-b6fe-6c02e0440ed6
-        from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
-        to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
-        fromPort: default
-        toPort: default
+  - id: 9fdfcbfc-d635-11f0-b6fe-6c02e0440ed6
+    from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+    to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+    fromPort: default
+    toPort: default
 
-      - id: 58e227b6-d72c-11f0-a7f6-6c02e0440ed6
-        from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
-        to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
-        fromPort: default
-        toPort: default
+  - id: 58e227b6-d72c-11f0-a7f6-6c02e0440ed6
+    from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+    to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
+    fromPort: default
+    toPort: default
 
-      - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
-        from: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
-        to: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
-        fromPort: default
-        toPort: default
+  - id: b3cd2c3e-d59c-11f0-8d68-7c70db10a7e3
+    from: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
+    to: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
+    fromPort: default
+    toPort: default
 
-      - id: af6c5a38-d971-11f0-9039-7c70db10a7e3
-        from: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
-        to: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-        fromPort: default
-        toPort: default
+  - id: af6c5a38-d971-11f0-9039-7c70db10a7e3
+    from: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
+    to: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
+    fromPort: default
+    toPort: default
 
-      # - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
-      #   from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-      #   to: f184fdfe-d597-11f0-945f-7c70db10a7e3
-      #   fromPort: default
-      #   toPort: default        
+  # - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
+  #   from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
+  #   to: f184fdfe-d597-11f0-945f-7c70db10a7e3
+  #   fromPort: default
+  #   toPort: default
 
-      - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
-        from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-        to: a817e924-dbd7-11f0-935e-7c70db10a7e3
-        fromPort: default
-        toPort: default
+  - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
+    from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
+    to: a817e924-dbd7-11f0-935e-7c70db10a7e3
+    fromPort: default
+    toPort: default
 
-      - id: deca3430-dbd8-11f0-979c-7c70db10a7e3
-        from: a817e924-dbd7-11f0-935e-7c70db10a7e3
-        to: f184fdfe-d597-11f0-945f-7c70db10a7e3
-        fromPort: default
-        toPort: default
+  - id: deca3430-dbd8-11f0-979c-7c70db10a7e3
+    from: a817e924-dbd7-11f0-935e-7c70db10a7e3
+    to: f184fdfe-d597-11f0-945f-7c70db10a7e3
+    fromPort: default
+    toPort: default

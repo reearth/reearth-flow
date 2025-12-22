@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 name: "Solar Radiation Combined Workflow"
-entryGraphId: 30204050-d1e2-4f3a-b4c5-d6e7f8a9b0c1
+entryGraphId: ef57d360-df12-11f0-a558-7c70db10a7e3
 with:
   cityGmlPath: null
   csvFile: |
@@ -12,8 +12,8 @@ with:
 graphs:
   - !include ../plateau-data-to-surface/workflow.yml
   - !include ../time-to-time-value/workflow.yml
-  - id: 25cd6e02-df07-11f0-adcc-7c70db10a7e3
-    name: entry_point
+  - id: ef57d360-df12-11f0-a558-7c70db10a7e3
+    name: SolarPotentialWorkflow
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
         name: InputRouter
@@ -22,17 +22,17 @@ graphs:
         with:
           routingPort: default
 
-      - id: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+      - id: 1a2b3c4d-5e6f-7890-1234-567890123456
         name: PlateauDataProcessor
         type: subGraph
-        subGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c  # From included workflow
+        subGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 
-      - id: 2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q
+      - id: 2b3c4d5e-6f78-9012-3456-789012345678
         name: TimeDataProcessor
         type: subGraph
-        subGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3  # From included workflow
+        subGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
 
-      - id: 5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t
+      - id: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
         name: FeatureMerger
         type: action
         action: FeatureMerger
@@ -40,7 +40,7 @@ graphs:
           joinAttributes:
             - join_key
 
-      - id: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
+      - id: 3c4d5e6f-7890-1234-5678-901234567890
         name: SolarPotentialCalculator
         type: action
         action: AttributeManager
@@ -53,7 +53,7 @@ graphs:
                 let solar_radiation = env.get("__value")["日射量[kWh/m2].sum"] ?? 0.0;
                 surface_area * solar_radiation
 
-      - id: 4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s
+      - id: 4d5e6f78-9012-3456-7890-123456789012
         name: OutputRouter
         type: action
         action: OutputRouter
@@ -61,38 +61,38 @@ graphs:
           routingPort: default
 
     edges:
-      - id: c0d1e2f3-g4h5-6i7j-8k9l-0m1n2o3p4q5r
+      - id: c0d1e2f3-4567-8901-2345-678901234567
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
-        to: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+        to: 1a2b3c4d-5e6f-7890-1234-567890123456
         fromPort: default
         toPort: default
 
-      - id: d1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s
+      - id: d1e2f345-6789-0123-4567-890123456789
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
-        to: 2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q
+        to: 2b3c4d5e-6f78-9012-3456-789012345678
         fromPort: default
         toPort: default
 
-      - id: e2f3g4h5-i6j7-8k9l-0m1n-2o3p4q5r6s7t
-        from: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
-        to: 5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t
+      - id: e2f34567-8901-2345-6789-012345678901
+        from: 1a2b3c4d-5e6f-7890-1234-567890123456
+        to: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
         fromPort: default
         toPort: supplier
 
-      - id: f3g4h5i6-j7k8-9l0m-1n2o-3p4q5r6s7t8u
-        from: 2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q
-        to: 5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t
+      - id: f3456789-0123-4567-8901-234567890123
+        from: 2b3c4d5e-6f78-9012-3456-789012345678
+        to: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
         fromPort: default
         toPort: requestor
 
-      - id: g4h5i6j7-k8l9-0m1n-2o3p-4q5r6s7t8u9v
-        from: 5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t
-        to: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
+      - id: 45678901-2345-6789-0123-456789012345
+        from: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
+        to: 3c4d5e6f-7890-1234-5678-901234567890
         fromPort: default
         toPort: default
 
-      - id: h5i6j7k8-l9m0-1n2o-3p4q-5r6s7t8u9v0w
-        from: 3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r
-        to: 4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s
+      - id: 56789012-3456-7890-1234-567890123456
+        from: 3c4d5e6f-7890-1234-5678-901234567890
+        to: 4d5e6f78-9012-3456-7890-123456789012
         fromPort: default
         toPort: default
