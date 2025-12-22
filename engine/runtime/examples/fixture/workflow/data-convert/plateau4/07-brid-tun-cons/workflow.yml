@@ -42,6 +42,7 @@ graphs:
         action: FeatureCityGmlReader
         with:
           codelistsPath: env.get("__value").codelists
+          flatten: true
           dataset: |
             env.get("__value")["path"]
 
@@ -94,12 +95,104 @@ graphs:
             - attribute: __package
               valueAttribute: package
 
+      # DmGeometricAttribute filter - must be before FeatureLodFilter
+      - id: e5f6a7b8-c9d0-1234-5678-90abcdef1234
+        name: FeatureFilterDmGeometricAttribute
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__feature_type") == "uro:DmGeometricAttribute"
+              outputPort: DmGeometricAttribute
+
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
         type: action
         action: FeatureLodFilter
         with:
           filterKey: city_code
+
+      # DmGeometricAttribute processing pipeline
+      - id: a1b2c3d4-e5f6-7890-abcd-ef1234567891
+        name: AttributeManagerByDmGeometricAttribute
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: b2c3d4e5-f6a7-8901-bcde-f12345678902
+        name: FeatureSorterDmGeometricAttribute
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - __package
+          order: ascending
+
+      - id: c3d4e5f6-a7b8-9012-cdef-123456789013
+        name: TwoDimensionForcerDmGeometricAttribute
+        type: action
+        action: TwoDimensionForcer
+
+      - id: d4e5f6a7-b8c9-0123-def1-234567890124
+        name: MVTWriterDmGeometricAttribute
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes")
+          skipUnexposedAttributes: true
+          colonToUnderscore: true
 
       # LOD1 processing pipeline
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
@@ -249,9 +342,37 @@ graphs:
         to: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         fromPort: default
         toPort: default
+      # AttributeMapper -> FeatureFilterDmGeometricAttribute
       - id: 64540b5c-066e-449f-ace1-4af29c0e3b3c
         from: 3e637368-48dc-48c2-aade-253d5b0cfeeb
+        to: e5f6a7b8-c9d0-1234-5678-90abcdef1234
+        fromPort: default
+        toPort: default
+      # FeatureFilterDmGeometricAttribute (DmGeometricAttribute) -> AttributeManagerByDmGeometricAttribute
+      - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+        from: e5f6a7b8-c9d0-1234-5678-90abcdef1234
+        to: a1b2c3d4-e5f6-7890-abcd-ef1234567891
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # FeatureFilterDmGeometricAttribute (unfiltered) -> FeatureLodFilter
+      - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
+        from: e5f6a7b8-c9d0-1234-5678-90abcdef1234
         to: c32a279d-97be-4584-b282-4d65627b1132
+        fromPort: unfiltered
+        toPort: default
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        from: a1b2c3d4-e5f6-7890-abcd-ef1234567891
+        to: b2c3d4e5-f6a7-8901-bcde-f12345678902
+        fromPort: default
+        toPort: default
+      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+        from: b2c3d4e5-f6a7-8901-bcde-f12345678902
+        to: c3d4e5f6-a7b8-9012-cdef-123456789013
+        fromPort: default
+        toPort: default
+      - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+        from: c3d4e5f6-a7b8-9012-cdef-123456789013
+        to: d4e5f6a7-b8c9-0123-def1-234567890124
         fromPort: default
         toPort: default
 

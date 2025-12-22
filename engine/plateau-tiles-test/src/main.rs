@@ -149,6 +149,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
     "data-convert/plateau4/07-brid-tun-cons/brid",
+    "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
     "data-convert/plateau4/07-brid-tun-cons/cons",
 ];
 
