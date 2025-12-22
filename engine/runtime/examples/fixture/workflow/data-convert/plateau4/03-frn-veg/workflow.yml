@@ -46,6 +46,69 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      # Dictionary writer branch for veg
+      - id: ea263dcf-70c9-42a2-8385-07eb1d76270f
+        name: VegPackageFilterDict
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["featureType"].starts_with("veg:")
+              outputPort: veg_only
+
+      - id: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
+        name: StripFeatureTypePrefixDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: feature_type_without_prefix
+            method: create
+            value: |
+              env.get("__value")["featureType"].split(":")[1]
+
+      - id: 69992005-2bdf-41f8-b298-59460b822bec
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - feature_type_without_prefix
+
+      - id: c9478193-89db-4c93-beb2-308721d226a6
+        name: AttributeConversionTableDict
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: |
+            name,description
+            PlantCover,植被
+            SolitaryVegetationObject,単独木
+          rules:
+          - featureFroms:
+            - feature_type_without_prefix
+            featureTo: feature_type_ja
+            conversionTableKeys:
+            - name
+            conversionTableTo: description
+
+      - id: 5dd02f87-52a8-4aa7-bcff-38c8d25bd0dd
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              veg: env.get("__features").map(|f| #{
+                name: f.feature_type_without_prefix,
+                description: f.feature_type_ja
+              })
+            }
+
       - id: 0f670054-828b-48d8-9672-dbc34247f2b3
         name: AttributeManager
         type: action
@@ -824,6 +887,37 @@ graphs:
       - id: ccb494b2-8908-4a01-ae38-918718315912
         from: d8182be7-aff0-4a13-b634-cbe03045befa
         to: 0f670054-828b-48d8-9672-dbc34247f2b3
+        fromPort: default
+        toPort: default
+      # Dictionary writer branch edges
+      # FeatureReaderByCityGml -> VegPackageFilterDict
+      - id: a501c060-4f06-486a-b455-a71893bfa8a3
+        from: d8182be7-aff0-4a13-b634-cbe03045befa
+        to: ea263dcf-70c9-42a2-8385-07eb1d76270f
+        fromPort: default
+        toPort: default
+      # VegPackageFilterDict -> StripFeatureTypePrefixDict
+      - id: 3d5e0539-0d5e-4cb6-ae79-157ab0179e2c
+        from: ea263dcf-70c9-42a2-8385-07eb1d76270f
+        to: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
+        fromPort: veg_only
+        toPort: default
+      # StripFeatureTypePrefixDict -> AttributeDuplicateFilterDict
+      - id: 7eaa0438-c1ad-4dca-838d-2ced9bb1c2c7
+        from: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
+        to: 69992005-2bdf-41f8-b298-59460b822bec
+        fromPort: default
+        toPort: default
+      # AttributeDuplicateFilterDict -> AttributeConversionTableDict
+      - id: e2b3272e-05bc-4b18-b404-65972deebf0f
+        from: 69992005-2bdf-41f8-b298-59460b822bec
+        to: c9478193-89db-4c93-beb2-308721d226a6
+        fromPort: default
+        toPort: default
+      # AttributeConversionTableDict -> JsonWriterDict
+      - id: ed24b99b-e44a-4b45-b171-fdefe325516b
+        from: c9478193-89db-4c93-beb2-308721d226a6
+        to: 5dd02f87-52a8-4aa7-bcff-38c8d25bd0dd
         fromPort: default
         toPort: default
       # AttributeManager -> Flattener
