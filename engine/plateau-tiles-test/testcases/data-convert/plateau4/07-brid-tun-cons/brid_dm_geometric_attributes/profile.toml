@@ -2,7 +2,7 @@
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_brid.zip"
 
 [expected_outputs]
-brid_dm_geometric_attributes = "08220_tsukuba-shi_city_2024_citygml_2_op_brid_dm_geometric_attributes.zip"
+brid_dm_geometric_attributes = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_dm_geometric_attributes.zip"
 
 [tests.mvt_lines]
 zoom = [12, 16]
