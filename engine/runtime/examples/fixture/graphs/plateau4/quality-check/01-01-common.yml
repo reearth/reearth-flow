@@ -668,6 +668,13 @@ nodes:
     with:
       routingPort: summaryOutput
 
+  - id: 7b8c9d0e-1f2a-4b3c-5d6e-7f8a9b0c1d2e
+    name: OutputRouterPerFile
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: perFileOutput
+
 edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
     from: 3a85e550-49e8-4b67-bc92-908430ef6eee
@@ -942,5 +949,11 @@ edges:
   - id: 5a8b9c0d-6e7f-5a8b-9c0d-1e2f3a4b5c6d
     from: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
     to: 6a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d
+    fromPort: default
+    toPort: default
+  # Per-file output for integration with domain workflows
+  - id: 6b9c0d1e-2f3a-4c5d-6e7f-8a9b0c1d2e3f
+    from: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
+    to: 7b8c9d0e-1f2a-4b3c-5d6e-7f8a9b0c1d2e
     fromPort: default
     toPort: default
