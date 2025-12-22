@@ -179,6 +179,10 @@ graphs:
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             let pkg = env.get("__value").__package;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
@@ -307,6 +311,10 @@ graphs:
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             let pkg = env.get("__value").__package;
             let lod = env.get("__value").__lod;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
             file::join_path(artifact, city_gml + "_" + pkg + "_mvt_lod" + lod + ".zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
@@ -395,6 +403,10 @@ graphs:
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             let pkg = env.get("__value").__package;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
             file::join_path(artifact, city_gml + "_" + pkg + "_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true

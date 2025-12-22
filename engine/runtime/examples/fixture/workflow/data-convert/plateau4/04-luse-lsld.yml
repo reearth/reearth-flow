@@ -240,10 +240,8 @@ graphs:
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_luse_lsld_mvt") {
-          city_gml = city_gml.sub_string(0, city_gml.len() - 14);
-        } else if city_gml.ends_with("_luse_mvt") {
-          city_gml = city_gml.sub_string(0, city_gml.len() - 9);
+        if city_gml.ends_with("_luse") {
+          city_gml = city_gml.sub_string(0, city_gml.len() - 5);
         }
         file::join_path(artifact, city_gml + "_luse_mvt.zip")
   - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -335,10 +333,8 @@ graphs:
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_luse_lsld_mvt") {
-          city_gml = city_gml.sub_string(0, city_gml.len() - 14);
-        } else if city_gml.ends_with("_lsld_mvt") {
-          city_gml = city_gml.sub_string(0, city_gml.len() - 9);
+        if city_gml.ends_with("_lsld") {
+          city_gml = city_gml.sub_string(0, city_gml.len() - 5);
         }
         file::join_path(artifact, city_gml + "_lsld_mvt.zip")
   - id: 6a7b8c9d-0001-2a3b-4c5d-6e7f8a9b0c1d
