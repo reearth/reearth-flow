@@ -58,12 +58,3 @@ Stages:
 
 - `r` - Run: Pack runtime zip (if not exists) and execute workflow
 - `e` - Evaluate: Compare flow output with FME reference
-
-## Notes about designing robust linestrings comparison algorithm
-
-While XOR area is a robust comparison for polygons, for line segments robust comparison is hard.
-
-- Hausdorff + segmentize: has problem if a single outlier is far away from other parts
-- Count outliers from the Hausdorff distribution: need to specify a hard threshold
-- Rasterization + RMS: has cumulative error with massive small drift
-- (Current implementation) Rasterization with threshold (>0.5) difference + tile extent undersampling (1024 vs >= 4096). It is robust as long as the pixelated lines generally match.
