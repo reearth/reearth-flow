@@ -1,5 +1,5 @@
 # test dm geometric attributes
-citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_trk.zip"
 
 [tests.mvt_lines]
 zoom = [12, 16]

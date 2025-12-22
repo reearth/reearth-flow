@@ -13,16 +13,16 @@ cargo run -p plateau-tiles-test
 - `artifacts/citymodel/{zip_stem}/` - Shared codelists and schemas extracted from source zips (tracked in git)
   - `codelists/` - Shared codelist files
   - `schemas/` - Shared schema files
-- `testcases/{workflow-path}/{desc}/` - Test-specific data (tracked in git)
+- `testcases/{workflow-path}/{category}/` - Test-specific data (tracked in git)
   - `{workflow-path}` is relative to `runtime/examples/fixture/workflow/` (e.g., `data-convert/plateau4/02-tran-rwy-trk-squr-wwy`)
-  - `{desc}` is the test description (e.g., `rwy`, `multipolygon`)
   - `profile.toml` - Test configuration (`workflow_path` is optional, auto-derived from directory structure)
-  - `fme.zip` - Reference FME output
   - `citymodel/udx/` - Test-specific GML files (filtered from source)
+  - `fme/` - Reference FME output directory with tile files
 - `results/{workflow-path}/{desc}/` - Runtime outputs (gitignored)
   - `{zip_name}` - Packed citymodel zip (generated from artifacts + testcase)
-  - `fme/` - Extracted FME outputs
-  - `flow/` - Flow outputs
+  - `flow/` - Flow tile outputs
+  - `fme_extracted/` - FME tile outputs extracted for comparison
+  - `flow_extracted/` - Flow tile outputs extracted for comparison
   - `runtime/` - Flow intermediate data
 
 ## Caveats
