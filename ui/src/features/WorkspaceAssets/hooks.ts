@@ -22,7 +22,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   } = useAsset();
 
   const availableExtensions = ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").map(
-    (ext) => ext.trim(),
+    (ext) => ext.trim().replace(/^\./, ""),
   );
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
@@ -171,7 +171,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         let fileName;
         if (
           availableExtensions.some((ext: string) =>
-            asset.name.endsWith(ext.trim()),
+            asset.name.endsWith(`.${ext}`),
           )
         ) {
           fileName = asset.name;
@@ -179,7 +179,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
           const extension = asset.url.split("/").pop()?.split(".").pop();
           fileName = extension ? `${asset.name}.${extension}` : asset.name;
         }
-        link.download = fileName.replace(/"/g, " ");
+        link.download = fileName.replace(/"/g, "");
         document.body.appendChild(link);
         link.click();
 
