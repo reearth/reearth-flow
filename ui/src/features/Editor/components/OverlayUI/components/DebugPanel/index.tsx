@@ -212,15 +212,11 @@ const DebugPanel: React.FC = () => {
                           <IconButton
                             icon={<XIcon weight="light" />}
                             variant={"default"}
-                            className="absolute top-1/2 right-2 z-100 h-4 w-4 -translate-y-1/2 bg-accent opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                            className="absolute top-1/2 right-2 z-50 h-4 w-4 -translate-y-1/2 bg-accent opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
                             onPointerDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               handleRemoveDataURL(key);
-                            }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
                             }}
                           />
                         </SelectItem>
