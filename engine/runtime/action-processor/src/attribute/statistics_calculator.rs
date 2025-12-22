@@ -15,6 +15,53 @@ use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
 
+#[derive(Debug, Clone, Copy)]
+enum NumericValue {
+    Integer(i64),
+    Float(f64),
+}
+
+impl Default for NumericValue {
+    fn default() -> Self {
+        NumericValue::Integer(0)
+    }
+}
+
+impl NumericValue {
+    fn add(self, other: NumericValue) -> NumericValue {
+        match (self, other) {
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => NumericValue::Integer(a + b),
+            (NumericValue::Float(a), NumericValue::Float(b)) => NumericValue::Float(a + b),
+            (NumericValue::Integer(a), NumericValue::Float(b)) => NumericValue::Float(a as f64 + b),
+            (NumericValue::Float(a), NumericValue::Integer(b)) => NumericValue::Float(a + b as f64),
+        }
+    }
+
+    fn to_attribute_value(self) -> AttributeValue {
+        match self {
+            NumericValue::Integer(i) => AttributeValue::Number(serde_json::Number::from(i)),
+            NumericValue::Float(f) => {
+                if f.fract() == 0.0 {
+                    // If it's a whole number, try to convert to integer
+                    if f >= i64::MIN as f64 && f <= i64::MAX as f64 && f == f as i64 as f64 {
+                        AttributeValue::Number(serde_json::Number::from(f as i64))
+                    } else {
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(f)
+                                .unwrap_or_else(|| serde_json::Number::from(0)),
+                        )
+                    }
+                } else {
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(f)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    )
+                }
+            }
+        }
+    }
+}
+
 pub static COMPLETE_PORT: Lazy<Port> = Lazy::new(|| Port::new("complete"));
 
 #[derive(Debug, Clone, Default)]
@@ -98,7 +145,7 @@ struct StatisticsCalculator {
     group_id: Option<Attribute>,
     group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
-    aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
+    aggregate_buffer: HashMap<Attribute, HashMap<String, NumericValue>>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 }
 
@@ -163,13 +210,39 @@ impl Processor for StatisticsCalculator {
                 .entry(calculation.new_attribute.clone())
                 .or_default();
             let content = aggregate_buffer.entry(aggregate_key.clone()).or_default();
-            let eval = scope.eval_ast::<i64>(&calculation.expr);
-            match eval {
+
+            // Try to evaluate as f64 first, then fall back to i64
+            let eval_result = scope.eval_ast::<f64>(&calculation.expr);
+            match eval_result {
                 Ok(eval) => {
-                    *content += eval;
+                    let numeric_value = NumericValue::Float(eval);
+                    *content = match *content {
+                        NumericValue::Integer(i) => numeric_value.add(NumericValue::Integer(i)),
+                        NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
+                    };
                 }
-                _ => {
-                    continue;
+                Err(_) => {
+                    // If f64 evaluation fails, try i64
+                    let eval_result = scope.eval_ast::<i64>(&calculation.expr);
+                    match eval_result {
+                        Ok(eval) => {
+                            let numeric_value = NumericValue::Integer(eval);
+                            *content = match *content {
+                                NumericValue::Integer(i) => {
+                                    numeric_value.add(NumericValue::Integer(i))
+                                }
+                                NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
+                            };
+                        }
+                        Err(e) => {
+                            return Err(Box::new(
+                                AttributeProcessorError::StatisticsCalculatorFactory(format!(
+                                    "Failed to evaluate expression for attribute '{}', error: {:?}",
+                                    calculation.new_attribute, e
+                                )),
+                            ));
+                        }
+                    }
                 }
             }
         }
@@ -178,7 +251,7 @@ impl Processor for StatisticsCalculator {
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let mut features = HashMap::<String, HashMap<Attribute, i64>>::new();
+        let mut features = HashMap::<String, HashMap<Attribute, NumericValue>>::new();
         for (new_attribute, value) in &self.aggregate_buffer {
             for (aggregate_key, count) in value {
                 let current = features
@@ -186,7 +259,7 @@ impl Processor for StatisticsCalculator {
                     .or_default()
                     .entry(new_attribute.clone())
                     .or_default();
-                *current += count;
+                *current = current.add(*count);
             }
         }
         for (aggregate_key, value) in features {
@@ -207,10 +280,7 @@ impl Processor for StatisticsCalculator {
 
             // Add calculated statistics
             for (new_attribute, count) in &value {
-                feature.insert(
-                    new_attribute.clone(),
-                    AttributeValue::Number(serde_json::Number::from(*count)),
-                );
+                feature.insert(new_attribute.clone(), count.to_attribute_value());
             }
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

@@ -133,12 +133,13 @@ graphs:
       - id: 481cea32-ded5-11f0-b1da-7c70db10a7e3
         name: AttributeCreator 
         type: action 
-        action: AttributeManager 
+        action: AttributeManager
         with: 
           operations:
             - attribute: join_key
               method: create
-              value: 'key'   
+              value: |
+                "key"
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: SolarEnergyResultCsvWriter
