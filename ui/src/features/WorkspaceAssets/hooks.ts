@@ -20,6 +20,10 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     deleteAsset,
     isCreatingAsset,
   } = useAsset();
+
+  const availableExtensions = ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").map(
+    (ext) => ext.trim(),
+  );
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
@@ -166,7 +170,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         link.href = blobUrl;
         let fileName;
         if (
-          ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").some((ext: string) =>
+          availableExtensions.some((ext: string) =>
             asset.name.endsWith(ext.trim()),
           )
         ) {
@@ -186,7 +190,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         window.location.href = asset.url;
       }
     },
-    [],
+    [availableExtensions],
   );
 
   const handleAssetDoubleClick = useCallback(
