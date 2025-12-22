@@ -1,4 +1,4 @@
-citygml_zip_name = "14212_atsugi-shi_city_2023_citygml_2_op.zip"
+citygml_zip_name = "14212_atsugi-shi_city_2023_citygml_2_op_squr.zip"
 
 [tests.mvt_polygons]
 threshold = 0.001

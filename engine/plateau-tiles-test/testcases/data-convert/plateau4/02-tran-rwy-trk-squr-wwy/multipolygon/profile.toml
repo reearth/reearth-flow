@@ -1,4 +1,4 @@
-citygml_zip_name = "13115_suginami-ku_city_2024_citygml_1_op.zip"
+citygml_zip_name = "13115_suginami-ku_city_2024_citygml_1_op_tran.zip"
 
 # This is for testing dissolver correctly merging polygons in a multipolygon of a feature.
 # The geometry is tiny so we use a smaller threshold. If implementation changes this could break.
