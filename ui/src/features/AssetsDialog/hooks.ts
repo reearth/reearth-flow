@@ -1,6 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
