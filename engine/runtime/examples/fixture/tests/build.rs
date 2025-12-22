@@ -57,7 +57,7 @@ struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     object_lists: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    epsg: Option<i64>,
+    prcs: Option<i64>,
     #[serde(default)]
     intermediate_assertions: Vec<IntermediateAssertion>,
     #[serde(skip_serializing_if = "Option::is_none")]
