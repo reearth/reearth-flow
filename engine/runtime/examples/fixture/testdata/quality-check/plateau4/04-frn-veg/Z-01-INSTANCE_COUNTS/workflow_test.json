@@ -9,5 +9,6 @@
   "schemas": "schemas",
   "expectResultOkFile": true,
   "skip": false,
-  "epsg": 6677
+  "prcs": 6677,
+  "objectLists": "08220_city_2023_objectlist_op.xlsx"
 }

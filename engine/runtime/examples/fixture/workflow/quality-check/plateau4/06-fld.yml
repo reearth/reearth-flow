@@ -6,7 +6,7 @@ with:
   codelists: null
   schemas: null
   outputPath: null
-  epsg: null
+  prcs: null
 graphs:
 - id: 0a2f610f-b92c-483b-a76a-e6143c3ab249
   name: EntryPoint
@@ -128,7 +128,7 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: env.get("epsg")
+      targetEpsgCode: env.get("prcs")
   - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: GeometryValidator
     type: action
