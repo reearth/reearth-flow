@@ -14,5 +14,5 @@
   },
   "expectResultOkFile": false,
   "skip": false,
-  "epsg": 6677
+  "prcs": 6677
 }

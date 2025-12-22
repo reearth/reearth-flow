@@ -6,7 +6,7 @@ with:
   schemas:
   codelists:
   outputPath:
-  epsg:
+  prcs:
   objectLists:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -118,7 +118,7 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("epsg")
+          targetEpsgCode: env.get("prcs")
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM

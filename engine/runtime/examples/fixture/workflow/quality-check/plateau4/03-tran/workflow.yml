@@ -8,7 +8,7 @@ with:
   codelists:
   objectLists:
   outputPath:
-  epsg:
+  prcs:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -110,7 +110,7 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("epsg")
+          targetEpsgCode: env.get("prcs")
 
       # Unreferenced XLink detection for L-TRAN-03
       - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a

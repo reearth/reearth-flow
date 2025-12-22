@@ -8,7 +8,7 @@ with:
   schemas:
   objectLists:
   outputPath:
-  epsg:
+  prcs:
 graphs:
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
@@ -170,7 +170,7 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("epsg")
+          targetEpsgCode: env.get("prcs")
 
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         name: FeatureFilterBuildingPart

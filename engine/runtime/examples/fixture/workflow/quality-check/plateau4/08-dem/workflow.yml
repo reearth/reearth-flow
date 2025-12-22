@@ -7,7 +7,7 @@ with:
   codelists:
   objectLists:
   outputPath:
-  epsg:
+  prcs:
 graphs:
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
@@ -100,7 +100,7 @@ graphs:
         with:
           errorAttribute: _validation_error
           epsgCode: |
-            env.get("epsg")
+            env.get("prcs")
 
       # Branch 1: Incorrect number of vertices
       - id: 21bb4a5e-5975-443b-8a38-6332789681dd

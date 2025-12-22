@@ -22,7 +22,7 @@
   "codelists": "codelists",
   "schemas": "schemas",
   "objectLists": "08220_city_2023_objectlist_op.xlsx",
-  "epsg": 6677,
+  "prcs": 6677,
   "expectResultOkFile": false,
   "skip": false
 }

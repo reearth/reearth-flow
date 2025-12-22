@@ -7,7 +7,7 @@ with:
   schemas: null
   objectLists: null
   outputPath: null
-  epsg: null
+  prcs: null
 graphs:
 - !include ../../../../graphs/lod_splitter_with_dm.yml
 - !include ../../../../graphs/surface_validator.yml
@@ -100,7 +100,7 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: env.get("epsg")
+      targetEpsgCode: env.get("prcs")
   - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
     name: AttributeManager
     type: action
