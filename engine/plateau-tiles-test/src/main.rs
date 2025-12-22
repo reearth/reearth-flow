@@ -241,13 +241,21 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
-                test_json_attributes::test_json_attributes(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                test_json_attributes::test_json_attributes(
+                    &fme_extracted_dir,
+                    &flow_extracted_dir,
+                    cfg,
+                )
             });
         }
 
         if let Some(cfg) = &tests.mvt_attributes {
             run_test("mvt_attributes", &relative_path_display, || {
-                test_mvt_attributes::test_mvt_attributes(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                test_mvt_attributes::test_mvt_attributes(
+                    &fme_extracted_dir,
+                    &flow_extracted_dir,
+                    cfg,
+                )
             });
         }
 
@@ -301,7 +309,9 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
         if path.extension().is_some_and(|e| e == "zip") {
             let stem = path.file_stem().unwrap().to_str().unwrap();
             let out = output_dir.join(stem);
-            if out.exists() { continue; }
+            if out.exists() {
+                continue;
+            }
             fs::create_dir_all(&out).unwrap();
             let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
             zip.extract(&out).unwrap();

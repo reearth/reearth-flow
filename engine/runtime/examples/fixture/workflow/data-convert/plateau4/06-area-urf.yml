@@ -196,7 +196,8 @@ graphs:
         method: rename
         value: city_name
       - attribute: lod
-        method: remove
+        method: rename
+        value: __lod
       - attribute: gmlId
         method: remove
       - attribute: gmlPropertyName
@@ -415,6 +416,13 @@ graphs:
       output: |
         let d = env.get("__value").__package + "_" + env.get("__value").feature_type.split(":")[1];
         file::join_path(env.get("workerArtifactPath"), d)
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        let pkg = env.get("__value").__package;
+        let feature_type = env.get("__value").feature_type.split(":")[1];
+        let lod = env.get("__value").__lod;
+        file::join_path(artifact, city_gml + "_" + pkg + "_" + feature_type + "_mvt_lod" + lod + ".zip")
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
