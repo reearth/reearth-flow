@@ -17,7 +17,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
-use crate::conf::Config;
+use crate::config::Config;
 use crate::presentation::ws;
 use crate::AppState;
 #[cfg(feature = "auth")]
