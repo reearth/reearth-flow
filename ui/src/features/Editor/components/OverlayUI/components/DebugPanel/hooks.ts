@@ -1,13 +1,6 @@
 import bbox from "@turf/bbox";
 import { Cartesian3, GeoJsonDataSource } from "cesium";
-import {
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
@@ -16,7 +9,6 @@ import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
 export default () => {
-  const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -53,11 +45,6 @@ export default () => {
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
 
-  const intermediateDataURLs = useMemo(
-    () => debugJobState?.selectedIntermediateData?.map((sid) => sid.url),
-    [debugJobState],
-  );
-
   // Separate intermediate data URLs (for dropdown) from output data URLs (for download)
   const dataURLs = useMemo(() => {
     const urls: { key: string; name: string }[] = [];
@@ -85,39 +72,27 @@ export default () => {
     }));
   }, [outputURLs]);
 
-  const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
-    undefined,
-  );
-
-  useEffect(() => {
-    if (intermediateDataURLs !== prevIntermediateDataUrls.current) {
-      const newURL = intermediateDataURLs?.find(
-        (url) => !prevIntermediateDataUrls.current?.includes(url),
-      );
-      // Check if previously selected URL is still valid
-      if (newURL) {
-        setSelectedDataURL(newURL);
-        setMinimized(false);
-      } else if (selectedDataURL) {
-        const idx = intermediateDataURLs?.findIndex(
-          (url) => url === selectedDataURL,
-        );
-        if (idx !== undefined && idx >= 0 && intermediateDataURLs) {
-          setSelectedDataURL(intermediateDataURLs[idx]);
-        } else {
-          setSelectedDataURL(undefined);
-        }
-      }
-
-      prevIntermediateDataUrls.current = intermediateDataURLs;
-    } else if (intermediateDataURLs?.length && !selectedDataURL) {
-      setSelectedDataURL(intermediateDataURLs[0]);
-    }
-  }, [dataURLs, selectedDataURL, intermediateDataURLs]);
+  const selectedDataURL = useMemo(() => {
+    if (!debugJobState?.focusedIntermediateData) return undefined;
+    return debugJobState.focusedIntermediateData;
+  }, [debugJobState?.focusedIntermediateData]);
 
   const handleSelectedDataChange = (url: string) => {
-    setSelectedDataURL(url);
-    setMinimized(false);
+    if (debugJobState?.focusedIntermediateData !== url) {
+      updateValue({
+        ...debugRunState,
+        jobs:
+          debugRunState?.jobs?.map((job) => {
+            if (job.projectId !== currentProject?.id) return job;
+
+            return {
+              ...job,
+              focusedIntermediateData: url,
+            };
+          }) ?? [],
+      });
+      setMinimized(false);
+    }
   };
 
   // First, get metadata to determine file size
@@ -507,8 +482,50 @@ export default () => {
       };
 
       await updateValue(newDebugRunState);
+
+      // check if the currently focused data URL was removed
+      if (debugJobState?.focusedIntermediateData === urlToRemove) {
+        await updateValue({
+          ...newDebugRunState,
+          jobs:
+            newDebugRunState.jobs?.map((job) => {
+              if (job.projectId !== currentProject.id) return job;
+
+              const removedIndex = job.selectedIntermediateData?.findIndex(
+                (sid) => sid.url === urlToRemove,
+              );
+
+              // Try to focus on the next URL, or previous if last was removed
+              let newFocusedURL: string | undefined = undefined;
+              if (
+                removedIndex !== undefined &&
+                removedIndex >= 0 &&
+                job.selectedIntermediateData &&
+                job.selectedIntermediateData.length > 0
+              ) {
+                if (removedIndex < job.selectedIntermediateData.length) {
+                  newFocusedURL =
+                    job.selectedIntermediateData[removedIndex].url;
+                } else if (removedIndex - 1 >= 0) {
+                  newFocusedURL =
+                    job.selectedIntermediateData[removedIndex - 1].url;
+                }
+              }
+
+              return {
+                ...job,
+                focusedIntermediateData: newFocusedURL,
+              };
+            }) ?? [],
+        });
+      }
     },
-    [debugRunState, currentProject?.id, updateValue],
+    [
+      debugRunState,
+      currentProject?.id,
+      debugJobState?.focusedIntermediateData,
+      updateValue,
+    ],
   );
 
   return {
