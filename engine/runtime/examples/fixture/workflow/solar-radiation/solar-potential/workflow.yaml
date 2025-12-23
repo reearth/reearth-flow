@@ -15,13 +15,6 @@ graphs:
   - id: ef57d360-df12-11f0-a558-7c70db10a7e3
     name: SolarPotentialWorkflow
     nodes:
-      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
-        name: InputRouter
-        type: action
-        action: InputRouter
-        with:
-          routingPort: default
-
       - id: 1a2b3c4d-5e6f-7890-1234-567890123456
         name: PlateauDataProcessor
         type: subGraph
@@ -63,18 +56,6 @@ graphs:
           routingPort: default
 
     edges:
-      - id: c0d1e2f3-4567-8901-2345-678901234567
-        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
-        to: 1a2b3c4d-5e6f-7890-1234-567890123456
-        fromPort: default
-        toPort: default
-
-      - id: d1e2f345-6789-0123-4567-890123456789
-        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
-        to: 2b3c4d5e-6f78-9012-3456-789012345678
-        fromPort: default
-        toPort: default
-
       - id: e2f34567-8901-2345-6789-012345678901
         from: 1a2b3c4d-5e6f-7890-1234-567890123456
         to: 2a5a577a-df14-11f0-84ed-7c70db10a7e3

@@ -29,7 +29,7 @@ nodes:
     with:
       conditions:
         - expr: |
-            env.get("__value").featureType == env.get("targetFeatureType")
+            env.get("__value").featureType == "bldg:Building"
           outputPort: default
 
   # Step 1: Deaggregator equivalent - using geometry part extractor to decompose aggregate features
@@ -151,12 +151,6 @@ edges:
     to: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
     fromPort: default
     toPort: default
-
-  # - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
-  #   from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
-  #   to: f184fdfe-d597-11f0-945f-7c70db10a7e3
-  #   fromPort: default
-  #   toPort: default
 
   - id: 7c9f57d2-dbd2-11f0-8b09-7c70db10a7e3
     from: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
