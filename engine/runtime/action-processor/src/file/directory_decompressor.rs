@@ -163,6 +163,8 @@ fn extract_archive(
     Ok(root_output_path)
 }
 
+/// Recursively unwraps single-folder nesting until the directory contains
+/// multiple items or files directly.
 fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> {
     let subfolders: Vec<PathBuf> = fs::read_dir(parent_dir.path())
         .map_err(|e| super::errors::FileProcessorError::DirectoryDecompressor(format!("{e:?}")))?
@@ -174,14 +176,16 @@ fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> 
         .collect();
 
     if subfolders.len() == 1 && subfolders[0].is_dir() {
-        Ok(Uri::from_str(subfolders[0].to_str().ok_or(
+        let subfolder_uri = Uri::from_str(subfolders[0].to_str().ok_or(
             super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
         )?)
         .map_err(|e| {
             super::errors::FileProcessorError::DirectoryDecompressor(format!(
                 "Failed to convert `subfolders[0]` to URI: {e}"
             ))
-        })?)
+        })?;
+        // Recurse to unwrap nested single-folder structures
+        get_single_subfolder_or_self(&subfolder_uri)
     } else {
         Ok(parent_dir.clone())
     }

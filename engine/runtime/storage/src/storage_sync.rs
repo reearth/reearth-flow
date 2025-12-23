@@ -74,7 +74,7 @@ impl Storage {
                 let url_for_error = url.clone();
                 let handle = std::thread::spawn(move || -> Result<Bytes> {
                     let client = reqwest::blocking::Client::builder()
-                        .timeout(Duration::from_secs(30))
+                        .timeout(Duration::from_secs(300))
                         .build()
                         .map_err(|err| object_store::Error::Generic {
                             store: "HttpError",

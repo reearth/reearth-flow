@@ -242,11 +242,10 @@ fn mapper(
     };
     let (dir_root, dir_codelists, dir_schemas) = if !rtdir.as_os_str().is_empty() {
         let (dir_root, dir_codelists, dir_schemas) = gen_codelists_and_schemas_path(
+            rtdir,
+            Arc::clone(&storage_resolver),
             codelists_path,
             schemas_path,
-            rtdir,
-            pkg.clone(),
-            Arc::clone(&storage_resolver),
         )?;
         (
             dir_root.to_string(),
@@ -270,11 +269,10 @@ fn mapper(
 }
 
 fn gen_codelists_and_schemas_path(
+    rtdir: PathBuf,
+    storage_resolver: Arc<StorageResolver>,
     codelists_path: &Option<String>,
     schemas_path: &Option<String>,
-    rtdir: PathBuf,
-    pkg: String,
-    storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<(Uri, Uri, Uri)> {
     let rtdir: Uri = rtdir
         .try_into()
@@ -283,46 +281,38 @@ fn gen_codelists_and_schemas_path(
         .resolve(&rtdir)
         .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
 
-    let dir_codelists = rtdir
+    let udx_codelists = rtdir
         .join("codelists")
         .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
-    let dir_schemas = rtdir
+    let udx_schemas = rtdir
         .join("schemas")
         .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
 
-    if PKG_FOLDERS.contains(&pkg.as_str()) {
-        if !storage
-            .exists_sync(dir_codelists.path().as_path())
+    // Use udx codelists folder if it exists, otherwise use the parameter path
+    let dir_codelists = if storage
+        .exists_sync(udx_codelists.path().as_path())
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
+    {
+        udx_codelists
+    } else if let Some(path) = codelists_path {
+        Uri::from_str(path)
             .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
-        {
-            let dir = Uri::for_test(&codelists_path.clone().ok_or(
-                PlateauProcessorError::UdxFolderExtractor("Invalid codelists path".to_string()),
-            )?);
-            if !storage
-                .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
-            {
-                storage
-                    .copy_sync(dir.path().as_path(), dir_codelists.path().as_path())
-                    .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
-            }
-        }
-        if !storage
-            .exists_sync(dir_schemas.path().as_path())
+    } else {
+        udx_codelists
+    };
+
+    // Use udx schemas folder if it exists, otherwise use the parameter path
+    let dir_schemas = if storage
+        .exists_sync(udx_schemas.path().as_path())
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
+    {
+        udx_schemas
+    } else if let Some(path) = schemas_path {
+        Uri::from_str(path)
             .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
-        {
-            let dir = Uri::for_test(&schemas_path.clone().ok_or(
-                PlateauProcessorError::UdxFolderExtractor("Invalid codelists path".to_string()),
-            )?);
-            if !storage
-                .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
-            {
-                storage
-                    .copy_sync(dir.path().as_path(), dir_codelists.path().as_path())
-                    .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
-            }
-        }
-    }
+    } else {
+        udx_schemas
+    };
+
     Ok((rtdir, dir_codelists, dir_schemas))
 }
