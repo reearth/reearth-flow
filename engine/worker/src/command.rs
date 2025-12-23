@@ -232,6 +232,7 @@ impl RunWorkerCommand {
             storage_resolver.clone(),
             ingress_state,
             feature_state,
+            None,
             vec![handler, node_failure_handler.clone()],
         )
         .await;
@@ -366,6 +367,22 @@ impl RunWorkerCommand {
         workflow: &mut Workflow,
     ) -> crate::errors::Result<(Arc<State>, Arc<State>, Arc<LoggerFactory>)> {
         let job_id = meta.job_id;
+
+        // TODO: Probably need to fix the path
+        let job_temp_uri =
+            setup_job_directory("workers", "temp", job_id).map_err(crate::errors::Error::init)?;
+        std::env::set_var("FLOW_RUNTIME_JOB_TEMP_DIR", job_temp_uri.path());
+
+        if let (Some(prev_job_str), Some(_start_node_str)) =
+            (&self.previous_job_id, &self.start_node_id)
+        {
+            let prev_job_id =
+                uuid::Uuid::parse_str(prev_job_str).map_err(crate::errors::Error::init)?;
+            let prev_temp_uri = setup_job_directory("workers", "temp", prev_job_id)
+                .map_err(crate::errors::Error::init)?;
+            std::env::set_var("FLOW_RUNTIME_PREVIOUS_JOB_TEMP_DIR", prev_temp_uri.path());
+        }
+
         let asset_path =
             setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
 

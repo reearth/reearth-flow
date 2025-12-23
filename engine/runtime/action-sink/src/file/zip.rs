@@ -120,12 +120,96 @@ impl Sink for ZipFileWriter {
             .eval::<String>(output.as_ref())
             .unwrap_or_else(|_| output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
-        let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
-        dir::move_files(&temp_dir_path, &self.buffer)?;
+
+        // - missing files are skipped with a warning
+        let total = self.buffer.len();
+        let mut missing = 0usize;
+        let mut existing: Vec<Uri> = Vec::with_capacity(total);
+
+        for u in &self.buffer {
+            let p = u.path();
+            let exists = p.exists();
+            tracing::info!(
+                "ZipFileWriter buffer file src={} exists={}",
+                p.display(),
+                exists
+            );
+            if !exists {
+                missing += 1;
+                tracing::warn!(
+                    "ZipFileWriter: missing input file. skipping. src={}",
+                    p.display()
+                );
+                continue;
+            }
+            existing.push(u.clone());
+        }
+
+        tracing::info!(
+            "ZipFileWriter: input summary total={} used={} missing={}",
+            total,
+            existing.len(),
+            missing
+        );
+
+        // If no files remain, do not create a zip and only issue a warning as per the specification.
+        if existing.is_empty() {
+            tracing::warn!("ZipFileWriter: no existing files to archive. skip creating zip.");
+            return Ok(());
+        }
+
+        // Gather files directly under artifacts (overwrite if the same name exists)
+        let artifact_root = dir::current_job_artifact_root()?;
+        std::fs::create_dir_all(&artifact_root).map_err(reearth_flow_common::Error::dir)?;
+
+        for u in &existing {
+            let src = u.path();
+            let Some(name) = u.file_name() else {
+                tracing::warn!(
+                    "ZipFileWriter: invalid input file path. skipping. src={}",
+                    src.display()
+                );
+                missing += 1;
+                continue;
+            };
+            let dest = artifact_root.join(name);
+
+            // If the same name already exists, overwrite it (copy after deleting)
+            if dest.exists() {
+                if let Err(e) = std::fs::remove_file(&dest) {
+                    // This failure may occur due to permissions or directory issues, so we raise an error (cannot overwrite).
+                    return Err(crate::errors::SinkError::ZipFileWriter(format!(
+                        "Failed to remove existing file before overwrite dest={} err={}",
+                        dest.display(),
+                        e
+                    ))
+                    .into());
+                }
+            }
+
+            std::fs::copy(&src, &dest).map_err(|e| {
+                crate::errors::SinkError::ZipFileWriter(format!(
+                    "Failed to copy file src={} dest={} err={}",
+                    src.display(),
+                    dest.display(),
+                    e
+                ))
+            })?;
+        }
+
+        tracing::info!(
+            "ZipFileWriter: artifacts copy done total={} used={} missing={}",
+            total,
+            existing.len(),
+            missing
+        );
+
         let buffer = Vec::new();
         let mut cursor = Cursor::new(buffer);
         let writer = BufWriter::new(&mut cursor);
-        zip::write(writer, temp_dir_path.as_path())
+
+        // Create a zip archive directly under artifacts (including the files just gathered)
+        zip::write(writer, artifact_root.as_path())
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let storage = storage_resolver.resolve(&output).map_err(|e| {
             crate::errors::SinkError::ZipFileWriter(format!(

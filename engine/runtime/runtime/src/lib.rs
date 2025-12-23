@@ -7,6 +7,7 @@ pub mod executor;
 pub mod executor_operation;
 pub mod feature_store;
 pub mod forwarder;
+pub mod incremental;
 pub mod kvs;
 pub mod node;
 pub mod shutdown;

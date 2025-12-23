@@ -78,6 +78,7 @@ pub fn run_workflow(workflow_path: &Path, citygml_path: &Path, output_dir: &Path
         storage_resolver,
         ingress_state,
         feature_state,
+        None,
     )
     .unwrap();
 }
