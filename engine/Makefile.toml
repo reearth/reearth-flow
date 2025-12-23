@@ -183,6 +183,7 @@ BASEPATH_CONV=./runtime/examples/fixture/workflow/data-convert/plateau4/
 WORKFLOW_CONV=(
   "01-bldg"
   "02-tran-rwy-trk-squr-wwy"
+  "03-frn-veg"
   "04-luse-lsld"
   "06-area-urf"
 )
