@@ -119,8 +119,9 @@ fn align_and_compare(
         let fme_highest_level = fme_detail_levels
             .last()
             .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?;
-        for level in flow_detail_levels.iter() {
-            compare_detail_level(gml_id, fme_highest_level, level)?;
+        for (idx, level) in flow_detail_levels.iter().enumerate() {
+            let result = compare_detail_level(gml_id, fme_highest_level, level)?;
+            tracing::debug!("{}: level {}, bbox:{:.6}, center:{:.6}", result.gml_id, idx, result.bounding_box_error, result.mass_center_error);
         }
     }
 
@@ -155,7 +156,7 @@ fn verify_monotonic_geometric_error(
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DetailLevelComparisonResult {
     gml_id: String,
     bounding_box_error: f64,

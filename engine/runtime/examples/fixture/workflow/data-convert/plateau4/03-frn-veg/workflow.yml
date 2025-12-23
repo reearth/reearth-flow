@@ -154,6 +154,20 @@ graphs:
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
+      - id: 35953fd4-5359-43cc-be03-a396259a4c8e
+        name: GeometryFilterForFrn
+        type: action
+        action: GeometryFilter
+        with:
+          filterType: geometryType
+
+      - id: e81abfdf-9180-4940-875b-1ae7475ee557
+        name: OffsetterFor3mmLift
+        type: action
+        action: Offsetter
+        with:
+          offsetZ: 0.003
+
       - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
         name: AttributeManagerByLod
         type: action
@@ -938,23 +952,41 @@ graphs:
         to: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
         fromPort: frn_CityFurniture
         toPort: default
-      # LodSplitterWithDM(lod1) -> AttributeManagerByLod
-      - id: f90a85bd-5a44-4b52-9644-79543d2c49fe
+      # LodSplitterWithDM(lod1) -> GeometryFilterForFrn
+      - id: 5bbab594-dc6d-4ecb-be5d-e6fd5006222f
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: 35953fd4-5359-43cc-be03-a396259a4c8e
         fromPort: lod1
         toPort: default
-      # LodSplitterWithDM(lod2) -> AttributeManagerByLod
-      - id: 6e210dbe-192e-4179-bf86-238eef74ff2d
+      # LodSplitterWithDM(lod2) -> GeometryFilterForFrn
+      - id: e4a9a38d-bbcb-4ef1-bbfb-cb4cc6322a34
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: 35953fd4-5359-43cc-be03-a396259a4c8e
         fromPort: lod2
         toPort: default
-      # LodSplitterWithDM(lod3) -> AttributeManagerByLod
-      - id: bf096793-860f-4fa4-892d-a422528f2583
+      # LodSplitterWithDM(lod3) -> GeometryFilterForFrn
+      - id: 520cdac3-22e4-487b-b326-a859bb5d38a7
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: 35953fd4-5359-43cc-be03-a396259a4c8e
         fromPort: lod3
+        toPort: default
+      # GeometryFilterForFrn(surface) -> OffsetterFor3mmLift
+      - id: e873f5a0-7015-4674-82a7-55baf0b997fa
+        from: 35953fd4-5359-43cc-be03-a396259a4c8e
+        to: e81abfdf-9180-4940-875b-1ae7475ee557
+        fromPort: surface
+        toPort: default
+      # OffsetterFor3mmLift -> AttributeManagerByLod
+      - id: 72b85733-022f-42b3-b588-7db3a2bc5516
+        from: e81abfdf-9180-4940-875b-1ae7475ee557
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: default
+        toPort: default
+      # GeometryFilterForFrn(solid) -> AttributeManagerByLod
+      - id: 523b2e23-ea06-4f8e-92c0-ed766b495ee6
+        from: 35953fd4-5359-43cc-be03-a396259a4c8e
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: solid
         toPort: default
       # AttributeManagerByLod -> Reprojector
       - id: bf8df312-1461-4431-8134-010dd518d4a4
