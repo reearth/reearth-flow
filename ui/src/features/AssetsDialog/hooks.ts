@@ -29,7 +29,7 @@ export default ({
     isCreatingAsset,
   } = useAsset();
   const availableExtensions = ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").map(
-    (ext) => ext.trim().replace(/^\./, ""),
+    (ext) => ext.trim(),
   );
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
@@ -179,7 +179,7 @@ export default ({
         let fileName;
         if (
           availableExtensions.some((ext: string) =>
-            asset.name.endsWith(`.${ext}`),
+            asset.name.endsWith(ext),
           )
         ) {
           fileName = asset.name;
