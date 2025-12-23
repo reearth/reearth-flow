@@ -1,5 +1,6 @@
 .PHONY: all build build-release run run-auth test test-all lint fmt check clean \
-        docker-build docker-run help gen-thrift clean-thrift
+        docker-build docker-run help gen-thrift clean-thrift \
+        upgrade upgrade-all outdated update
 
 # Default target
 all: check
@@ -178,6 +179,31 @@ doc-private:
 	cargo doc --no-deps --document-private-items --open
 
 # ============================================================================
+# Dependencies
+# ============================================================================
+
+## Upgrade all dependencies (requires cargo-edit)
+upgrade:
+	@echo "Upgrading dependencies..."
+	cargo upgrade
+
+## Upgrade dependencies and update Cargo.lock
+upgrade-all:
+	@echo "Upgrading all dependencies..."
+	cargo upgrade
+	cargo update
+
+## Check for outdated dependencies
+outdated:
+	@echo "Checking for outdated dependencies..."
+	cargo outdated
+
+## Update Cargo.lock without changing Cargo.toml
+update:
+	@echo "Updating Cargo.lock..."
+	cargo update
+
+# ============================================================================
 # Benchmarks
 # ============================================================================
 
@@ -233,6 +259,12 @@ help:
 	@echo "Documentation:"
 	@echo "  doc            - Generate documentation"
 	@echo "  doc-private    - Generate docs with private items"
+	@echo ""
+	@echo "Dependencies:"
+	@echo "  upgrade        - Upgrade all dependencies (requires cargo-edit)"
+	@echo "  upgrade-all    - Upgrade dependencies and update Cargo.lock"
+	@echo "  outdated       - Check for outdated dependencies"
+	@echo "  update         - Update Cargo.lock without changing Cargo.toml"
 	@echo ""
 	@echo "Other:"
 	@echo "  gen-thrift     - Generate Thrift code"
