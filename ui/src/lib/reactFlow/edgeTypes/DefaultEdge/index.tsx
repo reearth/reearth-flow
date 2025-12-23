@@ -60,7 +60,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
       <EdgeLabelRenderer>
         {jobStatus === "failed" && (
           <XIcon
-            className="nodrag nopan absolute z-50 size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
+            className="nodrag nopan absolute z-[9999] size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
             style={{
               pointerEvents: "all",
@@ -70,7 +70,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
         )}
         {hasIntermediateData && (
           <TableIcon
-            className={`nodrag nopan absolute z-50 size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
+            className={`nodrag nopan absolute z-[9999] size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
             style={{
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
