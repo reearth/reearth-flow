@@ -9,12 +9,9 @@ use opentelemetry::KeyValue;
 use opentelemetry_sdk::trace::TracerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_stackdriver::StackDriverExporter;
-use std::time::Duration;
 use tracing::Level;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
-const GCP_AUTHORIZER_TIMEOUT_SECS: u64 = 10;
 
 /// Configuration for tracing and telemetry.
 #[derive(Debug, Clone)]
@@ -71,48 +68,32 @@ pub async fn init_tracing(
         .with_level(true);
 
     if config.enable_cloud_trace {
-        let project_id = config.gcp_project_id.clone().unwrap_or_default();
+        let project_id = config
+            .gcp_project_id
+            .as_ref()
+            .ok_or("GCP project ID is required when cloud trace is enabled")?;
 
-        let authorizer_timeout = Duration::from_secs(GCP_AUTHORIZER_TIMEOUT_SECS);
-        let authorizer = tokio::time::timeout(
-            authorizer_timeout,
-            opentelemetry_stackdriver::GcpAuthorizer::new(),
-        )
-        .await
-        .map_err(|_| {
-            format!(
-                "GCP authorizer initialization timed out after {} seconds",
-                GCP_AUTHORIZER_TIMEOUT_SECS
-            )
-        })?
-        .map_err(|e| format!("Failed to create GCP authorizer: {}", e))?;
+        // Create GCP authorizer
+        let authorizer = opentelemetry_stackdriver::GcpAuthorizer::new()
+            .await
+            .map_err(|e| format!("Failed to create GCP authorizer: {}", e))?;
 
-        let (exporter, background_task) = tokio::time::timeout(
-            authorizer_timeout,
-            StackDriverExporter::builder().build(authorizer),
-        )
-        .await
-        .map_err(|_| {
-            format!(
-                "StackDriver exporter initialization timed out after {} seconds",
-                GCP_AUTHORIZER_TIMEOUT_SECS
-            )
-        })?
-        .map_err(|e| format!("Failed to create StackDriver exporter: {}", e))?;
+        // Create StackDriver exporter (returns tuple with background task)
+        let (exporter, background_task) = StackDriverExporter::builder()
+            .build(authorizer)
+            .await
+            .map_err(|e| format!("Failed to create StackDriver exporter: {}", e))?;
 
         // Spawn the background task for the exporter
         tokio::spawn(background_task);
 
         // Create tracer provider with resource attributes
-        let mut resource_attrs = vec![
+        let resource = Resource::new(vec![
             KeyValue::new("service.name", config.service_name.clone()),
             KeyValue::new("cloud.provider", "gcp"),
             KeyValue::new("cloud.platform", "gcp_cloud_run"),
-        ];
-        if !project_id.is_empty() {
-            resource_attrs.push(KeyValue::new("gcp.project_id", project_id.clone()));
-        }
-        let resource = Resource::new(resource_attrs);
+            KeyValue::new("gcp.project_id", project_id.clone()),
+        ]);
 
         let provider = TracerProvider::builder()
             .with_simple_exporter(exporter)
@@ -135,18 +116,11 @@ pub async fn init_tracing(
             .with(otel_layer)
             .init();
 
-        if project_id.is_empty() {
-            tracing::info!(
-                service_name = %config.service_name,
-                "Google Cloud Trace initialized (project_id not configured)"
-            );
-        } else {
-            tracing::info!(
-                project_id = %project_id,
-                service_name = %config.service_name,
-                "Google Cloud Trace initialized"
-            );
-        }
+        tracing::info!(
+            project_id = %project_id,
+            service_name = %config.service_name,
+            "Google Cloud Trace initialized"
+        );
     } else {
         // Initialize subscriber with only fmt layer
         tracing_subscriber::registry()
