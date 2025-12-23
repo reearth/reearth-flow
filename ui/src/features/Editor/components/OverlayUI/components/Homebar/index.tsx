@@ -1,16 +1,7 @@
-import {
-  ChalkboardTeacherIcon,
-  FileIcon,
-  DotsThreeIcon,
-} from "@phosphor-icons/react";
+import { FileIcon, ListPlusIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@flow/components";
+import { ButtonWithTooltip } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
 import { AwarenessUser } from "@flow/types";
@@ -91,34 +82,26 @@ const Homebar: React.FC<Props> = ({
         />
       </div>
       <div className="flex h-[30px] items-center gap-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            asChild
-            className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary">
-            <DotsThreeIcon weight="light" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="bottom"
-            align="start"
-            sideOffset={10}
-            alignOffset={-6}>
-            <DropdownMenuItem
-              onClick={() => handleDialogOpen("workflowVariables")}>
-              <ChalkboardTeacherIcon weight="thin" size={18} />
-              <p>{t("Workflow Variables")}</p>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDialogOpen("assets")}>
-              <FileIcon weight="thin" size={18} />
-              <p>{t("Workspace Assets")}</p>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
         <WorkflowsDropdown
           openWorkflows={openWorkflows}
           currentWorkflowId={currentWorkflowId}
           onWorkflowChange={onWorkflowChange}
           onWorkflowClose={onWorkflowClose}
         />
+        <ButtonWithTooltip
+          className="h-6"
+          variant="ghost"
+          tooltipText={t("Workflow Variables")}
+          onClick={() => handleDialogOpen("workflowVariables")}>
+          <ListPlusIcon weight="light" size={16} />
+        </ButtonWithTooltip>
+        <ButtonWithTooltip
+          className="h-6"
+          variant="ghost"
+          tooltipText={t("Workspace Assets")}
+          onClick={() => handleDialogOpen("assets")}>
+          <FileIcon weight="thin" size={16} />
+        </ButtonWithTooltip>
       </div>
       {showDialog === "workflowVariables" && (
         <WorkflowVariablesDialog
