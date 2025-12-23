@@ -33,24 +33,12 @@ import {
 
 type Props = {
   onDialogClose: () => void;
-  onAssetDoubleClick?: (asset: Asset) => void;
+  onAssetSelect?: (asset: Asset) => void;
 };
 
-const AssetsDialog: React.FC<Props> = ({
-  onDialogClose,
-  onAssetDoubleClick,
-}) => {
+const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-
-  const handleAssetDoubleClick = (asset: Asset) => {
-    if (onAssetDoubleClick) {
-      onAssetDoubleClick(asset);
-      onDialogClose();
-    } else {
-      setAssetToBeEdited(asset);
-    }
-  };
 
   const {
     assets,
@@ -80,8 +68,11 @@ const AssetsDialog: React.FC<Props> = ({
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
+    handleAssetDoubleClick,
   } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
+    onAssetSelect,
+    onDialogClose,
   });
 
   return (
