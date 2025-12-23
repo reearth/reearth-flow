@@ -441,9 +441,7 @@ pub(super) fn make_tile(
         // Priority: Polygons > LineStrings > Points
         let geometry_count = has_polygons as u8 + has_linestrings as u8 + has_points as u8;
         if geometry_count > 1 {
-            tracing::warn!(
-                "Feature has mixed geometry types, suppressing lower-priority geometries."
-            );
+            tracing::warn!("Feature has mixed geometry types, some geometries will be skipped.");
         }
 
         if has_polygons {

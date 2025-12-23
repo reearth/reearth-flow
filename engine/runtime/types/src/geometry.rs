@@ -319,7 +319,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
         let has_line_strings: u8 = if !line_strings.is_empty() { 1 } else { 0 };
         let has_points: u8 = if !points.is_empty() { 1 } else { 0 };
         if has_polygons + has_line_strings + has_points > 1 {
-            tracing::warn!("CityGML feature contains multiple geometry types. Only one geometry type is supported in FlowGeometry2D. Points will be dropped if polygons or line strings are present.");
+            tracing::warn!("CityGML feature contains multiple geometry types.");
         }
 
         // Return geometry based on what's available
@@ -330,7 +330,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
         } else if !points.is_empty() {
             Self::MultiPoint(MultiPoint2D::from(points))
         } else {
-            tracing::warn!("CityGML feature contains no geometries. Returning empty MultiPolygon.");
+            tracing::warn!("CityGML feature contains no supported geometries.");
             Self::MultiPolygon(MultiPolygon2D::from(Vec::new()))
         }
     }
