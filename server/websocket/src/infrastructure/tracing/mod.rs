@@ -35,10 +35,10 @@ pub struct TracingConfig {
 impl Default for TracingConfig {
     fn default() -> Self {
         Self {
-            enable_cloud_trace: false,
+            enable_cloud_trace: true,
             enable_otlp: false,
             otlp_endpoint: "http://localhost:4317".to_string(),
-            gcp_project_id: None,
+            gcp_project_id: Some("reearth-oss".to_string()),
             service_name: "reearth-flow-websocket".to_string(),
             log_level: "info".to_string(),
         }

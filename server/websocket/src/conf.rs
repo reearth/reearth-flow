@@ -1,10 +1,11 @@
 #[cfg(feature = "auth")]
 use crate::domain::value_objects::conf::DEFAULT_AUTH_URL;
 use crate::domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_ENABLE_CLOUD_TRACE, DEFAULT_ENABLE_OTLP, DEFAULT_GCS_BUCKET,
-    DEFAULT_LOG_LEVEL, DEFAULT_ORIGINS, DEFAULT_OTLP_ENDPOINT, DEFAULT_REDIS_STREAM_MAX_LENGTH,
-    DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE, DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL,
-    DEFAULT_REDIS_URL, DEFAULT_SERVICE_NAME, DEFAULT_WS_PORT,
+    DEFAULT_APP_ENV, DEFAULT_ENABLE_CLOUD_TRACE, DEFAULT_ENABLE_OTLP, DEFAULT_GCP_PROJECT_ID,
+    DEFAULT_GCS_BUCKET, DEFAULT_LOG_LEVEL, DEFAULT_ORIGINS, DEFAULT_OTLP_ENDPOINT,
+    DEFAULT_REDIS_STREAM_MAX_LENGTH, DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE,
+    DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL, DEFAULT_SERVICE_NAME,
+    DEFAULT_WS_PORT,
 };
 use dotenv;
 use serde::Deserialize;
@@ -314,7 +315,10 @@ impl ConfigBuilder {
                 otlp_endpoint: self
                     .otlp_endpoint
                     .unwrap_or_else(|| DEFAULT_OTLP_ENDPOINT.to_string()),
-                gcp_project_id: self.gcp_project_id,
+                gcp_project_id: Some(
+                    self.gcp_project_id
+                        .unwrap_or_else(|| DEFAULT_GCP_PROJECT_ID.to_string()),
+                ),
                 service_name: self
                     .service_name
                     .unwrap_or_else(|| DEFAULT_SERVICE_NAME.to_string()),
