@@ -1,4 +1,4 @@
-citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op.zip"
+citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op_area.zip"
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
