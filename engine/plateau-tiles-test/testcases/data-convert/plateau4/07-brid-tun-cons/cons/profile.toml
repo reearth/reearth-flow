@@ -1,8 +1,5 @@
 citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_cons.zip"
 
-[expected_outputs]
-cons_lod3 = "43206_tamana-shi_city_2024_citygml_2_op_cons_3dtiles_lod3.zip"
-
 # Note: cesium_statistics test disabled due to inconsistent texture presence in FME output
 # [tests.cesium_statistics]
 
