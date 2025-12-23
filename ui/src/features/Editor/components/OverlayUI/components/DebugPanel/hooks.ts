@@ -98,13 +98,15 @@ export default () => {
       if (newURL) {
         setSelectedDataURL(newURL);
         setMinimized(false);
-      } else if (
-        selectedDataURL &&
-        !intermediateDataURLs?.includes(selectedDataURL)
-      ) {
-        setSelectedDataURL(
-          intermediateDataURLs?.length ? intermediateDataURLs[0] : undefined,
+      } else if (selectedDataURL) {
+        const idx = intermediateDataURLs?.findIndex(
+          (url) => url === selectedDataURL,
         );
+        if (idx !== undefined && idx >= 0 && intermediateDataURLs) {
+          setSelectedDataURL(intermediateDataURLs[idx]);
+        } else {
+          setSelectedDataURL(undefined);
+        }
       }
 
       prevIntermediateDataUrls.current = intermediateDataURLs;
