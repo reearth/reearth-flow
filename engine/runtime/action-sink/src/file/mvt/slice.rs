@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use flatgeom::{LineString2, MultiLineString2, MultiPolygon2, Polygon2};
+use flatgeom::{LineString2, MultiLineString2, MultiPoint2, MultiPolygon2, Polygon2};
 use indexmap::IndexMap;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ pub(super) struct SlicedFeature<'a> {
     pub(super) typename: String,
     pub(super) multi_polygons: MultiPolygon2<'a>,
     pub(super) multi_line_strings: MultiLineString2<'a>,
+    pub(super) multi_points: MultiPoint2<'a>,
     pub(super) properties: IndexMap<Attribute, AttributeValue>,
 }
 
@@ -28,9 +29,11 @@ pub(super) fn slice_cityobj_geoms<'a>(
     buffer_pixels: u32,
     polygon_func: impl Fn(TileZXYName, MultiPolygon2<'a>) -> Result<(), crate::errors::SinkError>,
     line_string_func: impl Fn(TileZXYName, MultiLineString2<'a>) -> Result<(), crate::errors::SinkError>,
+    point_func: impl Fn(TileZXYName, MultiPoint2<'a>) -> Result<(), crate::errors::SinkError>,
 ) -> Result<TileContent, crate::errors::SinkError> {
     let mut tiled_mpolys = HashMap::new();
     let mut tiled_line_strings = HashMap::new();
+    let mut tiled_points = HashMap::new();
 
     let extent = 1 << max_detail;
     let buffer = extent * buffer_pixels / 256;
@@ -209,6 +212,40 @@ pub(super) fn slice_cityobj_geoms<'a>(
                         }
                     }
                 }
+                Geometry::Point(point) => {
+                    let lng = point.x();
+                    let lat = point.y();
+
+                    tile_content.min_lng = tile_content.min_lng.min(lng);
+                    tile_content.max_lng = tile_content.max_lng.max(lng);
+                    tile_content.min_lat = tile_content.min_lat.min(lat);
+                    tile_content.max_lat = tile_content.max_lat.max(lat);
+
+                    let (mx, my) = lnglat_to_web_mercator(lng, lat);
+
+                    for zoom in min_z..=max_z {
+                        slice_point(zoom, mx, my, layer_name, &mut tiled_points);
+                    }
+                }
+                Geometry::MultiPoint(multi_point) => {
+                    let points = multi_point.0.clone();
+
+                    for point in points {
+                        let lng = point.x();
+                        let lat = point.y();
+
+                        tile_content.min_lng = tile_content.min_lng.min(lng);
+                        tile_content.max_lng = tile_content.max_lng.max(lng);
+                        tile_content.min_lat = tile_content.min_lat.min(lat);
+                        tile_content.max_lat = tile_content.max_lat.max(lat);
+
+                        let (mx, my) = lnglat_to_web_mercator(lng, lat);
+
+                        for zoom in min_z..=max_z {
+                            slice_point(zoom, mx, my, layer_name, &mut tiled_points);
+                        }
+                    }
+                }
                 _ => {
                     // Other geometry types not supported for MVT
                 }
@@ -234,9 +271,15 @@ pub(super) fn slice_cityobj_geoms<'a>(
         }
         line_string_func((z, x, y, typename), mline_string)?;
     }
-    Ok(tile_content)
 
-    // TODO: linestring, point
+    for ((z, x, y, typename), mpoints) in tiled_points {
+        if mpoints.is_empty() {
+            continue;
+        }
+        point_func((z, x, y, typename), mpoints)?;
+    }
+
+    Ok(tile_content)
 }
 
 fn slice_polygon(
@@ -570,4 +613,32 @@ fn slice_line_string(
             mline_string.add_linestring(ring.iter());
         }
     }
+}
+
+fn slice_point(
+    zoom: u8,
+    mx: f64,
+    my: f64,
+    typename: &str,
+    out: &mut HashMap<(u8, u32, u32, String), MultiPoint2>,
+) {
+    let z_scale = (1 << zoom) as f64;
+
+    // Calculate tile coordinates for the point
+    let xi = (mx * z_scale).floor() as i32;
+    let yi = (my * z_scale).floor() as i32;
+
+    let key = (
+        zoom,
+        xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
+        yi as u32,
+        typename.to_string(),
+    );
+
+    // Normalize coordinates relative to tile
+    let tx = mx * z_scale - xi as f64;
+    let ty = my * z_scale - yi as f64;
+
+    let mpoint = out.entry(key).or_default();
+    mpoint.push([tx, ty]);
 }

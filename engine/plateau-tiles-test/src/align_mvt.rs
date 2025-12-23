@@ -1,5 +1,6 @@
 use prost::Message;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
+use reearth_flow_geometry::types::multi_point::MultiPoint2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use std::collections::HashMap;
 use std::fs;
@@ -11,18 +12,21 @@ use walkdir::WalkDir;
 
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::point::Point2D;
 use reearth_flow_geometry::types::polygon::Polygon2D;
 
 /// Geometry type enum for MVT features
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GeometryType {
+    Point = 1,
     LineString = 2,
     Polygon = 3,
 }
 
-/// Aligned geometry pair - can be polygon or linestring
+/// Aligned geometry pair - can be polygon, linestring, or point
 #[derive(Debug)]
 pub enum AlignedGeometry {
+    Point(Option<MultiPoint2D<f64>>, Option<MultiPoint2D<f64>>),
     Polygon(Option<MultiPolygon2D<f64>>, Option<MultiPolygon2D<f64>>),
     LineString(
         Option<MultiLineString2D<f64>>,
@@ -114,6 +118,25 @@ pub fn tinymvt_to_linestring(geom: Geometry, extent: u32) -> Option<MultiLineStr
             } else {
                 Some(MultiLineString2D::new(line_vec))
             }
+        }
+        _ => None,
+    }
+}
+
+/// Converts tinymvt Geometry to our internal multipoint type, normalizing by tile extent
+pub fn tinymvt_to_multipoint(geom: Geometry, extent: u32) -> Option<MultiPoint2D<f64>> {
+    let scale = 1.0 / extent as f64;
+
+    match geom {
+        Geometry::Points(points) => {
+            if points.is_empty() {
+                return None;
+            }
+            let point_vec: Vec<Point2D<f64>> = points
+                .iter()
+                .map(|p| Point2D::from((p[0] as f64 * scale, p[1] as f64 * scale)))
+                .collect();
+            Some(MultiPoint2D::from(point_vec))
         }
         _ => None,
     }
@@ -261,6 +284,11 @@ pub fn align_mvt_features(
 
         for gml_id in all_gml_ids {
             let aligned_geom = match geometry_type {
+                GeometryType::Point => {
+                    let geom1 = decode_point_from_features(&features1, &gml_id);
+                    let geom2 = decode_point_from_features(&features2, &gml_id);
+                    AlignedGeometry::Point(geom1, geom2)
+                }
                 GeometryType::Polygon => {
                     let geom1 = decode_polygon_from_features(&features1, &gml_id);
                     let geom2 = decode_polygon_from_features(&features2, &gml_id);
@@ -316,6 +344,25 @@ fn decode_linestring_from_features(
                     .decode_linestrings()
                     .ok()
                     .and_then(|lines| tinymvt_to_linestring(Geometry::LineStrings(lines), *extent))
+            } else {
+                None
+            }
+        })
+}
+
+fn decode_point_from_features(
+    features: &HashMap<String, (Vec<u32>, i32, u32)>,
+    gml_id: &str,
+) -> Option<MultiPoint2D<f64>> {
+    features
+        .get(gml_id)
+        .and_then(|(geom_buf, geom_type, extent)| {
+            if *geom_type == GeometryType::Point as i32 {
+                let mut decoder = GeometryDecoder::new(geom_buf);
+                decoder
+                    .decode_points()
+                    .ok()
+                    .and_then(|points| tinymvt_to_multipoint(Geometry::Points(points), *extent))
             } else {
                 None
             }
