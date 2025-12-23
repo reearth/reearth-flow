@@ -121,7 +121,13 @@ fn align_and_compare(
             .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?;
         for (idx, level) in flow_detail_levels.iter().enumerate() {
             let result = compare_detail_level(gml_id, fme_highest_level, level)?;
-            tracing::debug!("{}: level {}, bbox:{:.6}, center:{:.6}", result.gml_id, idx, result.bounding_box_error, result.mass_center_error);
+            tracing::debug!(
+                "{}: level {}, bbox:{:.6}, center:{:.6}",
+                result.gml_id,
+                idx,
+                result.bounding_box_error,
+                result.mass_center_error
+            );
         }
     }
 

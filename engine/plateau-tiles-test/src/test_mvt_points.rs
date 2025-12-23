@@ -22,10 +22,7 @@ enum ComparisonStatus {
 /// to the boundary distance (since its match may have been clipped)
 /// H(A, B) = max(h(A, B), h(B, A))
 /// where h(A, B) = max_{a in A} min(min_{b in B} d(a, b), boundary_dist(a))
-fn hausdorff_distance(
-    points1: &MultiPoint2D<f64>,
-    points2: &MultiPoint2D<f64>,
-) -> f64 {
+fn hausdorff_distance(points1: &MultiPoint2D<f64>, points2: &MultiPoint2D<f64>) -> f64 {
     if points1.0.is_empty() || points2.0.is_empty() {
         return 0.0;
     }
@@ -138,8 +135,7 @@ pub fn test_mvt_points(
     let zmax = if zmax == u32::MAX { None } else { Some(zmax) };
 
     // Fetch Point features
-    let point_features =
-        align_mvt_features(fme_path, flow_path, GeometryType::Point, zmin, zmax)?;
+    let point_features = align_mvt_features(fme_path, flow_path, GeometryType::Point, zmin, zmax)?;
 
     let mut results = Vec::new();
     let mut total = 0;
@@ -269,7 +265,8 @@ mod tests {
             Point2D::from((0.9, 0.9)),
         ]);
         // Points2: missing the middle point
-        let points2 = MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
+        let points2 =
+            MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
 
         let distance = hausdorff_distance(&points1, &points2);
         // The point (0.5, 0.5) in points1 is farthest from points2
@@ -289,7 +286,8 @@ mod tests {
     #[test]
     fn test_hausdorff_extra_point() {
         // Points1: two points
-        let points1 = MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
+        let points1 =
+            MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
         // Points2: has an extra point far away
         let points2 = MultiPoint2D::from(vec![
             Point2D::from((0.1, 0.1)),
@@ -339,8 +337,10 @@ mod tests {
 
     #[test]
     fn test_compare_points_compared() {
-        let points1 = MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
-        let points2 = MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
+        let points1 =
+            MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
+        let points2 =
+            MultiPoint2D::from(vec![Point2D::from((0.1, 0.1)), Point2D::from((0.9, 0.9))]);
         let (status, distance) = compare_points(Some(points1), Some(points2));
         assert!(matches!(status, ComparisonStatus::Compared));
         assert!(distance < 1e-10);
