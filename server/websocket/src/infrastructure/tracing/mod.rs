@@ -8,7 +8,7 @@
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider as TracerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_stackdriver::StackDriverExporter;
 use tracing::Level;
@@ -97,12 +97,14 @@ pub async fn init_tracing(
         tokio::spawn(background_task);
 
         // Create tracer provider with resource attributes
-        let resource = Resource::new(vec![
-            KeyValue::new("service.name", config.service_name.clone()),
-            KeyValue::new("cloud.provider", "gcp"),
-            KeyValue::new("cloud.platform", "gcp_cloud_run"),
-            KeyValue::new("gcp.project_id", project_id.clone()),
-        ]);
+        let resource = Resource::builder()
+            .with_attributes([
+                KeyValue::new("service.name", config.service_name.clone()),
+                KeyValue::new("cloud.provider", "gcp"),
+                KeyValue::new("cloud.platform", "gcp_cloud_run"),
+                KeyValue::new("gcp.project_id", project_id.clone()),
+            ])
+            .build();
 
         let provider = TracerProvider::builder()
             .with_simple_exporter(exporter)
@@ -139,13 +141,15 @@ pub async fn init_tracing(
             .map_err(|e| format!("Failed to create OTLP exporter: {}", e))?;
 
         // Create tracer provider with resource attributes
-        let resource = Resource::new(vec![
-            KeyValue::new("service.name", config.service_name.clone()),
-            KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
-        ]);
+        let resource = Resource::builder()
+            .with_attributes([
+                KeyValue::new("service.name", config.service_name.clone()),
+                KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
+            ])
+            .build();
 
         let provider = TracerProvider::builder()
-            .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
+            .with_batch_exporter(exporter)
             .with_resource(resource)
             .build();
 

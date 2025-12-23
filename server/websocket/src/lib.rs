@@ -57,8 +57,9 @@ pub use domain::entities::doc::HistoryItem;
 pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
 pub use application::usecases::websocket::WebsocketUseCaseError;
 pub use domain::value_objects::redis::{
-    RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
-    RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
+    RedisConfig, RedisConnectionManager, RedisField, RedisFields, RedisPool, RedisStreamMessage,
+    RedisStreamResult, RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS,
+    MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 pub use domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 pub use infrastructure::gcs::GcsStore;
