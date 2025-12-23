@@ -43,6 +43,15 @@ const AssetsDialog: React.FC<Props> = ({
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
+  const handleAssetDoubleClick = (asset: Asset) => {
+    if (onAssetDoubleClick) {
+      onAssetDoubleClick(asset);
+      onDialogClose();
+    } else {
+      setAssetToBeEdited(asset);
+    }
+  };
+
   const {
     assets,
     isFetching,
@@ -71,11 +80,8 @@ const AssetsDialog: React.FC<Props> = ({
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    handleAssetDoubleClick,
   } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
-    onDialogClose,
-    onAssetDoubleClick,
   });
 
   return (

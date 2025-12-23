@@ -9,15 +9,7 @@ import { Asset, AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
-export default ({
-  workspaceId,
-  onDialogClose,
-  onAssetDoubleClick,
-}: {
-  workspaceId: string;
-  onDialogClose?: () => void;
-  onAssetDoubleClick?: (asset: Asset) => void;
-}) => {
+export default ({ workspaceId }: { workspaceId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
@@ -203,14 +195,9 @@ export default ({
 
   const handleAssetDoubleClick = useCallback(
     (asset: Asset) => {
-      if (onAssetDoubleClick && onDialogClose) {
-        onAssetDoubleClick(asset);
-        onDialogClose();
-      } else {
-        setAssetToBeEdited(asset);
-      }
+      setAssetToBeEdited(asset);
     },
-    [onAssetDoubleClick, setAssetToBeEdited, onDialogClose],
+    [setAssetToBeEdited],
   );
 
   return {
