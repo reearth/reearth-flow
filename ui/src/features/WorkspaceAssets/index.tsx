@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
+import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -26,8 +27,6 @@ import {
   AssetsGridView,
   AssetsListView,
 } from "../AssetsDialog/components";
-
-import useHooks from "./hooks";
 
 const AssetsManager: React.FC = () => {
   const t = useT();
@@ -61,7 +60,7 @@ const AssetsManager: React.FC = () => {
     handleCopyUrlToClipBoard,
     handleAssetDownload,
     handleAssetDoubleClick,
-  } = useHooks({
+  } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
   });
 

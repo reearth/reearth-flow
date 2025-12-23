@@ -19,6 +19,7 @@ import {
   LoadingSkeleton,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
+import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Asset } from "@flow/types";
@@ -29,7 +30,6 @@ import {
   AssetsGridView,
   AssetsListView,
 } from "./components";
-import useHooks from "./hooks";
 
 type Props = {
   onDialogClose: () => void;
@@ -72,7 +72,7 @@ const AssetsDialog: React.FC<Props> = ({
     handleCopyUrlToClipBoard,
     handleAssetDownload,
     handleAssetDoubleClick,
-  } = useHooks({
+  } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
     onDialogClose,
     onAssetDoubleClick,
