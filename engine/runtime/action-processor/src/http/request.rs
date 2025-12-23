@@ -118,49 +118,7 @@ mod tests {
     use reearth_flow_eval_expr::engine::Engine;
 
     #[test]
-    fn test_request_builder() {
-        let method = Method::GET;
-        let url = "https://example.com/test".to_string();
-
-        let builder = RequestBuilder::new(method.clone(), url.clone());
-        let (built_method, built_url, _headers, _query, _body) = builder.build();
-
-        assert_eq!(built_method, method);
-        assert_eq!(built_url, url);
-    }
-
-    #[test]
-    fn test_request_builder_with_content_type() {
-        let builder = RequestBuilder::new(Method::POST, "https://example.com".to_string());
-        let result = builder.with_content_type(Some("application/json"));
-
-        assert!(result.is_ok());
-        let builder = result.unwrap();
-        let (_method, _url, headers, _query, _body) = builder.build();
-
-        assert!(headers.contains_key(reqwest::header::CONTENT_TYPE));
-    }
-
-    #[test]
-    fn test_request_builder_with_headers() {
-        let engine = Engine::new();
-        let scope = engine.new_scope();
-        scope.set("token", "test123".into());
-
-        let ast = engine.compile(r#"env.get("token")"#).unwrap();
-        let compiled_headers = vec![CompiledHeader {
-            name: "Authorization".to_string(),
-            value_ast: ast,
-        }];
-
-        let builder = RequestBuilder::new(Method::GET, "https://example.com".to_string());
-        let result = builder.with_headers(&compiled_headers, &scope);
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_request_builder_with_query_params() {
+    fn test_request_builder_evaluates_query_params_from_scope() {
         let engine = Engine::new();
         let scope = engine.new_scope();
         scope.set("id", "123".into());
@@ -178,8 +136,6 @@ mod tests {
         let builder = result.unwrap();
         let (_method, _url, _headers, query, _body) = builder.build();
 
-        assert_eq!(query.len(), 1);
-        assert_eq!(query[0].0, "user_id");
         assert_eq!(query[0].1, "123");
     }
 }

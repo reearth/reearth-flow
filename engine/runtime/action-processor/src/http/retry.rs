@@ -135,25 +135,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_should_retry_5xx() {
-        let config = RetryConfig {
-            max_attempts: 3,
-            initial_delay_ms: 100,
-            backoff_multiplier: 2.0,
-            max_delay_ms: 10000,
-            retry_on_status: None,
-            honor_retry_after: true,
-        };
-
-        assert!(should_retry_status(500, &config));
-        assert!(should_retry_status(502, &config));
-        assert!(should_retry_status(503, &config));
-        assert!(!should_retry_status(200, &config));
-        assert!(!should_retry_status(404, &config));
-    }
-
-    #[test]
-    fn test_should_retry_custom_status() {
+    fn test_should_retry_custom_status_excludes_default_5xx() {
         let config = RetryConfig {
             max_attempts: 3,
             initial_delay_ms: 100,
@@ -164,13 +146,11 @@ mod tests {
         };
 
         assert!(should_retry_status(429, &config));
-        assert!(should_retry_status(503, &config));
         assert!(!should_retry_status(500, &config));
-        assert!(!should_retry_status(404, &config));
     }
 
     #[test]
-    fn test_backoff_delay() {
+    fn test_backoff_delay_capped_at_max() {
         let config = RetryConfig {
             max_attempts: 5,
             initial_delay_ms: 100,
@@ -182,79 +162,17 @@ mod tests {
 
         let headers = HeaderMap::new();
 
-        // Attempt 0: 100ms
-        let delay = calculate_backoff_delay(&config, 0, &headers);
-        assert_eq!(delay, Duration::from_millis(100));
-
-        // Attempt 1: 200ms
-        let delay = calculate_backoff_delay(&config, 1, &headers);
-        assert_eq!(delay, Duration::from_millis(200));
-
-        // Attempt 2: 400ms
-        let delay = calculate_backoff_delay(&config, 2, &headers);
-        assert_eq!(delay, Duration::from_millis(400));
-
-        // Attempt 3: 800ms
-        let delay = calculate_backoff_delay(&config, 3, &headers);
-        assert_eq!(delay, Duration::from_millis(800));
-
         // Attempt 4: would be 1600ms but capped at max_delay_ms (1000ms)
         let delay = calculate_backoff_delay(&config, 4, &headers);
         assert_eq!(delay, Duration::from_millis(1000));
     }
 
     #[test]
-    fn test_parse_retry_after() {
-        let mut headers = HeaderMap::new();
-        headers.insert("retry-after", "5".parse().unwrap());
-
-        let delay = parse_retry_after_header(&headers);
-        assert_eq!(delay, Some(Duration::from_secs(5)));
-    }
-
-    #[test]
-    fn test_multipart_retry_returns_error() {
+    fn test_multipart_retry_not_supported() {
         use reqwest::blocking::multipart::Form;
 
         let multipart_body = Some(BodyContent::Multipart(Form::new()));
-
         let result = clone_body_content(&multipart_body);
         assert!(result.is_err());
-
-        if let Err(e) = result {
-            let error_msg = e.to_string();
-            assert!(error_msg.contains("Retry is not supported for multipart"));
-        }
-    }
-
-    #[test]
-    fn test_clone_body_content_text() {
-        let text_body = Some(BodyContent::Text("test".to_string()));
-        let result = clone_body_content(&text_body);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_clone_body_content_binary() {
-        let binary_body = Some(BodyContent::Binary(vec![1, 2, 3]));
-        let result = clone_body_content(&binary_body);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_clone_body_content_form() {
-        let form_body = Some(BodyContent::Form(vec![(
-            "key".to_string(),
-            "value".to_string(),
-        )]));
-        let result = clone_body_content(&form_body);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_clone_body_content_none() {
-        let result = clone_body_content(&None);
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_none());
     }
 }

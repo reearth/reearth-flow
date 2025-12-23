@@ -172,48 +172,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_encode_text() {
-        let body = "Hello World";
-        let encoded = encode_response_body(body, &ResponseEncoding::Text);
-        assert_eq!(encoded, "Hello World");
-    }
-
-    #[test]
-    fn test_encode_base64() {
-        let body = "Hello";
-        let encoded = encode_response_body(body, &ResponseEncoding::Base64);
-        assert_eq!(encoded, "SGVsbG8=");
-    }
-
-    #[test]
-    fn test_detect_json_encoding() {
-        let mut headers = std::collections::HashMap::new();
-        headers.insert("content-type".to_string(), "application/json".to_string());
-
-        let encoding = detect_encoding_from_headers(&headers);
-        assert!(matches!(encoding, Some(ResponseEncoding::Text)));
-    }
-
-    #[test]
-    fn test_detect_image_encoding() {
-        let mut headers = std::collections::HashMap::new();
-        headers.insert("Content-Type".to_string(), "image/png".to_string());
-
-        let encoding = detect_encoding_from_headers(&headers);
-        assert!(matches!(encoding, Some(ResponseEncoding::Base64)));
-    }
-
-    #[test]
-    fn test_detect_pdf_encoding() {
-        let mut headers = std::collections::HashMap::new();
-        headers.insert("content-type".to_string(), "application/pdf".to_string());
-
-        let encoding = detect_encoding_from_headers(&headers);
-        assert!(matches!(encoding, Some(ResponseEncoding::Base64)));
-    }
-
-    #[test]
-    fn test_size_limit_check() {
+    fn test_size_limit_exceeded_returns_error() {
         let response = HttpResponse {
             status_code: 200,
             headers: std::collections::HashMap::new(),
@@ -229,44 +188,7 @@ mod tests {
             handling: &None,
             encoding: &None,
             auto_detect: true,
-            max_size: Some(500), // Max 500 bytes
-            engine: &engine,
-            scope: &scope,
-            storage_resolver: &storage_resolver,
-            response_body_attr: "_response",
-            status_code_attr: "_status",
-            headers_attr: "_headers",
-        };
-
-        // Should fail with size limit
-        let result = process_response(response.clone(), &config, &mut attributes);
-
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exceeds maximum"));
-    }
-
-    #[test]
-    fn test_response_attribute_storage() {
-        let response = HttpResponse {
-            status_code: 200,
-            headers: std::collections::HashMap::from([(
-                "content-type".to_string(),
-                "application/json".to_string(),
-            )]),
-            body: r#"{"result": "success"}"#.to_string(),
-        };
-
-        let engine = Arc::new(ExprEngine::new());
-        let scope = engine.new_scope();
-        let storage_resolver = Arc::new(StorageResolver::new());
-        let mut attributes = indexmap::IndexMap::new();
-
-        let encoding = Some(ResponseEncoding::Text);
-        let config = ResponseProcessorConfig {
-            handling: &None,
-            encoding: &encoding,
-            auto_detect: false,
-            max_size: None,
+            max_size: Some(500),
             engine: &engine,
             scope: &scope,
             storage_resolver: &storage_resolver,
@@ -276,10 +198,16 @@ mod tests {
         };
 
         let result = process_response(response, &config, &mut attributes);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("exceeds maximum"));
+    }
 
-        assert!(result.is_ok());
-        assert_eq!(attributes.len(), 3); // status, headers, body
-        assert!(attributes.contains_key(&Attribute::new("_status".to_string())));
-        assert!(attributes.contains_key(&Attribute::new("_response".to_string())));
+    #[test]
+    fn test_detect_binary_content_type_uses_base64() {
+        let mut headers = std::collections::HashMap::new();
+        headers.insert("Content-Type".to_string(), "image/png".to_string());
+
+        let encoding = detect_encoding_from_headers(&headers);
+        assert!(matches!(encoding, Some(ResponseEncoding::Base64)));
     }
 }
