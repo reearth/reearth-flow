@@ -1,7 +1,5 @@
 use anyhow::Result;
 use bytes::Bytes;
-use deadpool::Runtime;
-use deadpool_redis::Config;
 use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -15,8 +13,8 @@ use macros::*;
 pub mod trimmer;
 
 use crate::{
-    RedisConfig, RedisPool, RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS,
-    MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
+    RedisConfig, RedisConnectionManager, RedisPool, RedisStreamResults, StreamMessages,
+    MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 
 #[derive(Debug, Clone)]
@@ -27,8 +25,8 @@ pub struct RedisStore {
 
 impl RedisStore {
     pub async fn new(config: RedisConfig) -> Result<Self> {
-        let cfg = Config::from_url(&config.url);
-        let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+        let manager = RedisConnectionManager::new(&config.url)?;
+        let pool = RedisPool::builder(manager).build()?;
         let pool = Arc::new(pool);
         Ok(Self { pool, config })
     }

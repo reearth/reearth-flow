@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub mod application;
-pub mod conf;
+pub mod config;
 pub mod domain;
 pub mod infrastructure;
 pub mod presentation;
@@ -51,20 +51,15 @@ pub struct AppState {
     pub instance_id: String,
 }
 
-pub use conf::Config;
+pub use config::Config;
 pub use domain::entities::doc::HistoryItem;
-pub use domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
-    DEFAULT_WS_PORT,
-};
 
 pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
 pub use application::usecases::websocket::WebsocketUseCaseError;
-#[cfg(feature = "auth")]
-pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
-    RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
-    RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
+    RedisConfig, RedisConnectionManager, RedisField, RedisFields, RedisPool, RedisStreamMessage,
+    RedisStreamResult, RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS,
+    MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 pub use domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 pub use infrastructure::gcs::GcsStore;

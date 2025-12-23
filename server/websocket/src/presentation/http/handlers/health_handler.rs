@@ -3,7 +3,7 @@ use crate::domain::entities::health::HealthStatus;
 use axum::{http::StatusCode, response::Json};
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 pub struct HealthHandler {
     health_usecase: Arc<HealthCheckUseCase>,
@@ -14,6 +14,7 @@ impl HealthHandler {
         Self { health_usecase }
     }
 
+    #[instrument(name = "health_check", skip(self))]
     pub async fn check_health(&self) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
         debug!("Health check endpoint called");
 
