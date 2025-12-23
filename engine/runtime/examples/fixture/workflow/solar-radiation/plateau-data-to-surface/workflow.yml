@@ -101,7 +101,9 @@ nodes:
   - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
     name: SolarEnergyResultWriter
     type: action
-    action: NoopSink
+    action: OutputRouter
+    with: 
+      routingPort: default
 
 edges:
   - id: df024cb8-d597-11f0-bbbe-7c70db10a7e3

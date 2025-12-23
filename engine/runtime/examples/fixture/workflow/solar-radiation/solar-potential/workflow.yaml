@@ -51,9 +51,7 @@ graphs:
       - id: 4d5e6f78-9012-3456-7890-123456789012
         name: OutputRouter
         type: action
-        action: OutputRouter
-        with:
-          routingPort: default
+        action: NoopSink
 
     edges:
       - id: e2f34567-8901-2345-6789-012345678901
