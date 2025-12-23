@@ -19,17 +19,26 @@ const DialogOverlay = forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & {
     overlayBgClass?: string;
   }
->(({ className, overlayBgClass = "bg-black/40", ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      overlayBgClass,
-      "fixed inset-0 z-50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+>(
+  (
+    {
       className,
-    )}
-    {...props}
-  />
-));
+      overlayBgClass = "bg-zinc-300/40 dark:bg-black/40 terminal:bg-black/40 midnight:bg-zinc-900/40 synthwave:bg-purple-900/40",
+      ...props
+    },
+    ref,
+  ) => (
+    <DialogPrimitive.Overlay
+      ref={ref}
+      className={cn(
+        overlayBgClass,
+        "fixed inset-0 z-50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = forwardRef<
@@ -61,7 +70,7 @@ const DialogContent = forwardRef<
         ref={ref}
         id="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-primary bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-accent bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg dark:border-primary dark:bg-card/50",
           size === "xs"
             ? "max-w-[300px]"
             : size === "sm"
@@ -146,7 +155,7 @@ const DialogTitle = forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "rounded-t-lg p-4 text-xl leading-none tracking-tight dark:font-thin",
+      "rounded-t-lg p-4 text-xl leading-none font-light tracking-tight dark:font-thin",
       className,
     )}
     {...props}

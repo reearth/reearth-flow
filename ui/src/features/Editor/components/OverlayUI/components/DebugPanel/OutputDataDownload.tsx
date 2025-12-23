@@ -94,7 +94,7 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild disabled={count === 0}>
           <Button
-            className="h-[25px] gap-1 px-2 text-xs font-thin hover:bg-primary"
+            className="h-[25px] gap-1 px-2 text-xs font-light hover:bg-primary dark:font-thin"
             variant="ghost"
             disabled={count === 0}>
             <FolderIcon size={14} />

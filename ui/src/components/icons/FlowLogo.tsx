@@ -20,7 +20,7 @@ const FlowLogo: React.FC<{
   ) : (
     <div id={id} className={wrapperClassName}>
       <svg
-        className={`text-[#00A341] transition-colors ${className}`}
+        className={`text-logo transition-colors ${className}`}
         style={style}
         width="105"
         height="106"
