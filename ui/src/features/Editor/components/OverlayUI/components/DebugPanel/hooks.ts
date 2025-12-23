@@ -488,10 +488,12 @@ export default () => {
         await updateValue({
           ...newDebugRunState,
           jobs:
-            newDebugRunState.jobs?.map((job) => {
+            newDebugRunState.jobs?.map((job, index) => {
               if (job.projectId !== currentProject.id) return job;
 
-              const removedIndex = job.selectedIntermediateData?.findIndex(
+              const removedIndex = debugRunState.jobs?.[
+                index
+              ].selectedIntermediateData?.findIndex(
                 (sid) => sid.url === urlToRemove,
               );
 
