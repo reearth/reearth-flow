@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-
 import { useAssets } from "@flow/hooks";
 import { Asset } from "@flow/types";
 
@@ -40,19 +38,8 @@ export default ({
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-  } = useAssets({ workspaceId });
-
-  const handleAssetDoubleClick = useCallback(
-    (asset: Asset) => {
-      if (onAssetDoubleClick) {
-        onAssetDoubleClick(asset);
-        onDialogClose();
-      } else {
-        setAssetToBeEdited(asset);
-      }
-    },
-    [onAssetDoubleClick, setAssetToBeEdited, onDialogClose],
-  );
+    handleAssetDoubleClick,
+  } = useAssets({ workspaceId, onDialogClose, onAssetDoubleClick });
 
   return {
     assets,
