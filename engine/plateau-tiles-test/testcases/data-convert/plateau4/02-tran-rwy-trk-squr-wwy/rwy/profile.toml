@@ -1,4 +1,4 @@
-citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op.zip"
+citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op_rwy.zip"
 
 [tests.mvt_lines]
 threshold = 0.01
