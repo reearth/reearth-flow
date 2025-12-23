@@ -84,11 +84,11 @@ export default ({
       label: t("Z To A"),
     },
     {
-      value: `${AssetOrderBy.Size}_${OrderDirection.Asc}`,
+      value: `${AssetOrderBy.Size}_${OrderDirection.Desc}`,
       label: t("Size Small to Large"),
     },
     {
-      value: `${AssetOrderBy.Size}_${OrderDirection.Desc}`,
+      value: `${AssetOrderBy.Size}_${OrderDirection.Asc}`,
       label: t("Size Large to Small"),
     },
   ];
