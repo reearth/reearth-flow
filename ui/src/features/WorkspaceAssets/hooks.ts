@@ -1,6 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
@@ -19,6 +20,10 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     deleteAsset,
     isCreatingAsset,
   } = useAsset();
+
+  const availableExtensions = ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").map(
+    (ext) => ext.trim(),
+  );
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
@@ -163,9 +168,16 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
         const link = document.createElement("a");
         link.href = blobUrl;
-
-        const fileName = `${asset.name}.${asset.url.split("/").pop()?.split(".").pop()}`;
-        link.download = fileName.replace(/"/g, " ");
+        let fileName;
+        if (
+          availableExtensions.some((ext: string) => asset.name.endsWith(ext))
+        ) {
+          fileName = asset.name;
+        } else {
+          const extension = asset.url.split("/").pop()?.split(".").pop();
+          fileName = extension ? `${asset.name}.${extension}` : asset.name;
+        }
+        link.download = fileName.replace(/"/g, "");
         document.body.appendChild(link);
         link.click();
 
@@ -176,7 +188,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         window.location.href = asset.url;
       }
     },
-    [],
+    [availableExtensions],
   );
 
   const handleAssetDoubleClick = useCallback(

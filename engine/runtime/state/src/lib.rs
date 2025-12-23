@@ -180,6 +180,7 @@ impl State {
         }
     }
 
+    /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (blocking, CLI-friendly).
     pub fn copy_jsonl_from_state(&self, src: &State, id: &str) -> Result<()> {
         let src_path = src.id_to_location(id, src.jsonl_ext());
         let dst_path = self.id_to_location(id, self.jsonl_ext());
@@ -191,6 +192,24 @@ impl State {
 
         self.storage
             .put_sync(dst_path.as_path(), bytes)
+            .map_err(Error::other)
+    }
+
+    /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (non-blocking, worker-friendly).
+    pub async fn copy_jsonl_from_state_async(&self, src: &State, id: &str) -> Result<()> {
+        let src_path = src.id_to_location(id, src.jsonl_ext());
+        let dst_path = self.id_to_location(id, self.jsonl_ext());
+
+        let obj = src
+            .storage
+            .get(src_path.as_path())
+            .await
+            .map_err(Error::other)?;
+        let bytes = obj.bytes().await.map_err(Error::other)?;
+
+        self.storage
+            .put(dst_path.as_path(), bytes)
+            .await
             .map_err(Error::other)
     }
 }

@@ -1667,10 +1667,10 @@ func (e ProjectSortField) MarshalJSON() ([]byte, error) {
 type Role string
 
 const (
-	RoleMaintainer Role = "MAINTAINER"
-	RoleOwner      Role = "OWNER"
-	RoleReader     Role = "READER"
-	RoleWriter     Role = "WRITER"
+	RoleMaintainer Role = "maintainer"
+	RoleOwner      Role = "owner"
+	RoleReader     Role = "reader"
+	RoleWriter     Role = "writer"
 )
 
 var AllRole = []Role{

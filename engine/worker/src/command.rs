@@ -424,9 +424,11 @@ impl RunWorkerCommand {
                 workflow,
                 job_id,
                 storage_resolver.as_ref(),
+                meta,
                 prev_job_id,
                 start_node_id,
-            )?;
+            )
+            .await?;
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
         } else {

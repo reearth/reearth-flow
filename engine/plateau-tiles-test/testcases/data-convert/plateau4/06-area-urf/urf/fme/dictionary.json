@@ -1,0 +1,24 @@
+﻿{
+	"urf" : [
+		{
+			"name" : "UrbanPlanningArea",
+			"description" : "都市計画区域"
+		},
+		{
+			"name" : "AreaClassification",
+			"description" : "区域区分"
+		},
+		{
+			"name" : "UseDistrict",
+			"description" : "用途地域"
+		},
+		{
+			"name" : "SpecialUseDistrict",
+			"description" : "特別用途地区"
+		},
+		{
+			"name" : "HeightControlDistrict",
+			"description" : "高度地区"
+		}
+	]
+}

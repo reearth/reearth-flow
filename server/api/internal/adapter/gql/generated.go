@@ -4433,13 +4433,13 @@ type WorkspaceMember {
 
 enum Role {
   # a role who can maintain a project
-  MAINTAINER
-  # a eole who can have full controll of project
-  OWNER
+  maintainer
+  # a role who can have full controll of project
+  owner
   # a role who can read project
-  READER
+  reader
   # a role who can read and write project
-  WRITER
+  writer
 }
 
 # InputType
