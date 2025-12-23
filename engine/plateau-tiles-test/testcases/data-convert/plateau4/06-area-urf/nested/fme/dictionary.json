@@ -1,0 +1,12 @@
+﻿{
+	"urf" : [
+		{
+			"name" : "DistrictPlan",
+			"description" : "地区計画"
+		},
+		{
+			"name" : "DistrictDevelopmentPlan",
+			"description" : "地区整備計画"
+		}
+	]
+}

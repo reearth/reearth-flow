@@ -5,10 +5,14 @@ use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
 
-pub fn prepare_incremental_feature_store(
+use crate::artifact::artifact_feature_store_root_uri;
+use crate::types::metadata::Metadata;
+
+pub async fn prepare_incremental_feature_store(
     workflow: &Workflow,
     job_id: uuid::Uuid,
     storage_resolver: &StorageResolver,
+    metadata: &Metadata,
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
 ) -> crate::errors::Result<()> {
@@ -18,8 +22,7 @@ pub fn prepare_incremental_feature_store(
         start_node_id
     );
 
-    let prev_feature_store_uri = setup_job_directory("workers", "feature-store", previous_job_id)
-        .map_err(crate::errors::Error::init)?;
+    let prev_feature_store_uri = artifact_feature_store_root_uri(metadata, previous_job_id)?;
     tracing::info!(
         "Incremental run: previous feature-store root = {}",
         prev_feature_store_uri.path().display()
@@ -49,7 +52,11 @@ pub fn prepare_incremental_feature_store(
 
     for edge_id in edge_ids {
         let edge_id_str = edge_id.to_string();
-        match reuse_state.copy_jsonl_from_state(&prev_feature_store_state, &edge_id_str) {
+
+        match reuse_state
+            .copy_jsonl_from_state_async(&prev_feature_store_state, &edge_id_str)
+            .await
+        {
             Ok(()) => {
                 tracing::info!(
                     "Incremental run: copied edge {} into {}",

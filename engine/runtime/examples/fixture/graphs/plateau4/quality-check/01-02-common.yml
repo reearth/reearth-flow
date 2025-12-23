@@ -248,6 +248,49 @@ nodes:
     with:
       routingPort: summaryOutput
 
+  # Per-file aggregation for C05 errors (required attributes)
+  - id: 1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    name: StatisticsCalculatorC05PerFile
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - filename
+      calculations:
+        - newAttribute: C05エラー
+          expr: "1"
+
+  # Per-file aggregation for C07 errors (data quality attributes)
+  - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+    name: StatisticsCalculatorC07PerFile
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - filename
+      calculations:
+        - newAttribute: C07エラー
+          expr: "1"
+
+  # Per-file aggregation for C08 errors (public survey quality attributes)
+  - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    name: StatisticsCalculatorC08PerFile
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - filename
+      calculations:
+        - newAttribute: C08エラー
+          expr: "1"
+
+  - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+    name: OutputRouterPerFile
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: perFileOutput
+
 edges:
   - id: 668cbbf5-9da8-45db-baca-312d69d219c2
     from: 00f42e7e-080b-4927-933b-70fc8d8136b8
@@ -367,5 +410,37 @@ edges:
   - id: 8d9e0f1a-9b0c-4d1e-2f3a-4b5c6d7e8f9a
     from: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     to: 7d8e9f0a-1b2c-4d3e-5f6a-7b8c9d0e1f2a
+    fromPort: default
+    toPort: default
+  # Per-file aggregation edges for C05, C07, C08 errors
+  - id: 9e0f1a2b-0c1d-4e2f-3a4b-5c6d7e8f9a0b
+    from: a4b8150a-6241-46ac-849d-39be21d39d1b
+    to: 1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    fromPort: default
+    toPort: default
+  - id: 0f1a2b3c-1d2e-4f3a-4b5c-6d7e8f9a0b1c
+    from: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
+    to: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+    fromPort: default
+    toPort: default
+  - id: 1a2b3c4d-2e3f-4a5b-5c6d-7e8f9a0b1c2d
+    from: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
+    to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    fromPort: default
+    toPort: default
+  # Connect per-file stats to OutputRouterPerFile
+  - id: 2b3c4d5e-3f4a-5b6c-6d7e-8f9a0b1c2d3e
+    from: 1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    to: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+    fromPort: default
+    toPort: default
+  - id: 3c4d5e6f-4a5b-6c7d-7e8f-9a0b1c2d3e4f
+    from: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+    to: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+    fromPort: default
+    toPort: default
+  - id: 4d5e6f7a-5b6c-7d8e-8f9a-0b1c2d3e4f5a
+    from: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    to: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     fromPort: default
     toPort: default
