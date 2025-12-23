@@ -37,10 +37,19 @@ export default ({
     useState<AnyWorkflowVariable[] | undefined>(undefined);
 
   useEffect(() => {
-    if (workflowVariables && customDebugRunWorkflowVariables === undefined) {
-      setCustomDebugRunWorkflowVariables(workflowVariables);
-    }
-  }, [workflowVariables, customDebugRunWorkflowVariables]);
+    if (!workflowVariables) return;
+    setCustomDebugRunWorkflowVariables((prev) => {
+      if (!prev) return workflowVariables;
+      return workflowVariables.map((workflowVariable) => {
+        const existingCustom = prev.find(
+          (customVariable) =>
+            customVariable.name === workflowVariable.name &&
+            customVariable.type === workflowVariable.type,
+        );
+        return existingCustom || workflowVariable;
+      });
+    });
+  }, [workflowVariables]);
 
   const { fitView } = useReactFlow();
 
