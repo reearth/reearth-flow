@@ -170,9 +170,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         link.href = blobUrl;
         let fileName;
         if (
-          availableExtensions.some((ext: string) =>
-            asset.name.endsWith(ext),
-          )
+          availableExtensions.some((ext: string) => asset.name.endsWith(ext))
         ) {
           fileName = asset.name;
         } else {
