@@ -176,7 +176,7 @@ const VariableEditDialog: React.FC<Props> = ({
       {showDialog === "assets" && (
         <AssetsDialog
           onDialogClose={handleDialogClose}
-          onAssetDoubleClick={handleAssetDoubleClick}
+          onAssetSelect={handleAssetDoubleClick}
         />
       )}
       {showDialog === "cms" && (
