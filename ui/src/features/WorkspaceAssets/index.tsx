@@ -20,6 +20,7 @@ import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
+import type { Asset } from "@flow/types";
 
 import {
   AssetDeletionDialog,
@@ -59,10 +60,13 @@ const AssetsManager: React.FC = () => {
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    handleAssetDoubleClick,
   } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
   });
+
+  const handleAssetDoubleClick = (asset: Asset) => {
+    setAssetToBeEdited(asset);
+  };
 
   return (
     <div className="flex h-full flex-1 flex-col pt-4 pr-3 pb-2 pl-2">

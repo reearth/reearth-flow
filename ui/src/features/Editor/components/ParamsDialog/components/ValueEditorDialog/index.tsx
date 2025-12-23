@@ -455,7 +455,7 @@ const ValueEditorDialog: React.FC<Props> = ({
       {showDialog === "assets" && fieldContext && (
         <AssetsDialog
           onDialogClose={handleDialogClose}
-          onAssetSelect={handleAssetDoubleClick}
+          onAssetDoubleClick={handleAssetDoubleClick}
         />
       )}
       {showDialog === "cms" && fieldContext && (
