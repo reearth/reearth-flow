@@ -122,11 +122,31 @@ export default ({
               | SelectedIntermediateData[]
               | undefined;
 
+            let newFocusedURL: string | undefined = undefined;
+
             if (isCurrentlySelected) {
               // Remove the item
               const filtered = currentData.filter((sid) => sid.edgeId !== id);
               // Keep as empty array (don't set to undefined) - user has interacted
               newSelectedIntermediateData = filtered;
+
+              const removedIndex = currentData.findIndex(
+                (sid) => sid.edgeId === id,
+              );
+
+              // Try to focus on the next URL, or previous if last was removed
+              if (
+                removedIndex !== undefined &&
+                removedIndex >= 0 &&
+                filtered &&
+                filtered.length > 0
+              ) {
+                if (removedIndex < filtered.length) {
+                  newFocusedURL = filtered[removedIndex].url;
+                } else if (removedIndex - 1 >= 0) {
+                  newFocusedURL = filtered[removedIndex - 1].url;
+                }
+              }
             } else {
               const sourceCustomizations = sourceNode?.data.customizations as
                 | NodeCustomizations
@@ -157,8 +177,11 @@ export default ({
               ];
             }
 
+            newFocusedURL = newFocusedURL ?? intermediateDataUrl;
+
             return {
               ...job,
+              focusedIntermediateData: newFocusedURL,
               selectedIntermediateData: newSelectedIntermediateData,
             };
           }) ?? [],

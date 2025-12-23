@@ -6,6 +6,7 @@ import {
   CornersOutIcon,
   EyeIcon,
   MinusIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import { memo, useEffect, useRef, useState } from "react";
 
@@ -58,6 +59,7 @@ const DebugPanel: React.FC = () => {
     handleMinimize,
     handleTabChange,
     handleSelectedDataChange,
+    handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
@@ -202,8 +204,21 @@ const DebugPanel: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {dataURLs.map(({ key, name }) => (
-                        <SelectItem key={key} value={key}>
+                        <SelectItem
+                          key={key}
+                          value={key}
+                          className="group relative z-0 pr-8">
                           {name}
+                          <IconButton
+                            icon={<XIcon weight="light" />}
+                            variant={"default"}
+                            className="absolute top-1/2 right-2 z-50 h-4 w-4 -translate-y-1/2 bg-accent opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRemoveDataURL(key);
+                            }}
+                          />
                         </SelectItem>
                       ))}
                     </SelectContent>
