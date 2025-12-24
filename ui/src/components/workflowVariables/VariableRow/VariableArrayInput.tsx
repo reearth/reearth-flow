@@ -1,14 +1,14 @@
 import { Input, Switch } from "@flow/components";
 
-type TriggerVariableArrayInputProps = {
+type VariableArrayInputProps = {
   value: any[];
   onChange: (newValue: any[]) => void;
 };
 
-export default function TriggerVariableArrayInput({
+export default function VariableArrayInput({
   value,
   onChange,
-}: TriggerVariableArrayInputProps) {
+}: VariableArrayInputProps) {
   const handleUpdateItem = (index: number, newValue: any) => {
     const updatedArray = [...value];
     updatedArray[index] = newValue;
