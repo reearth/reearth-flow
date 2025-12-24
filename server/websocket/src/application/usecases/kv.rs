@@ -40,7 +40,7 @@ use crate::domain::value_objects::keys::{
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
 use crate::infrastructure::redis::RedisStore;
-use crate::shared::utils::{compress_brotli, decompress_brotli, first_zero_bit};
+use crate::shared::utils::first_zero_bit;
 use anyhow;
 use async_trait::async_trait;
 use hex;
@@ -413,8 +413,7 @@ where
                     doc_key
                 ));
             }
-            let decompressed_data = decompress_brotli(data.as_ref())?;
-            if let Ok(update) = Update::decode_v2(&decompressed_data) {
+            if let Ok(update) = Update::decode_v2(data.as_ref()) {
                 txn.apply_update(update)?;
             }
         }
@@ -431,9 +430,7 @@ where
 
         let state = txn.encode_state_as_update_v2(&StateVector::default());
 
-        let compressed_data = compress_brotli(&state, 4, 22)?;
-
-        self.upsert(doc_key_bytes, &compressed_data).await?;
+        self.upsert(doc_key_bytes, &state).await?;
         Ok(())
     }
 

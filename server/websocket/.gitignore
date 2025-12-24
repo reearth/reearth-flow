@@ -1,3 +1,4 @@
 /target/
 /output/
 .env
+docker-compose.otel.yml

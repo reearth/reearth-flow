@@ -553,9 +553,12 @@ mod tests {
 
         let (status, rms) = compare_lines(Some(line), None);
         assert!(matches!(status, ComparisonStatus::Only1));
+        // Diagonal line is ~869 pixels long, should produce significant RMS difference
+        println!("RMS with only first geometry: {}", rms);
         assert!(
-            rms > 0.0,
-            "RMS should be non-zero when only one geometry exists"
+            rms > 0.02,
+            "RMS should be significant when only one geometry exists, got {}",
+            rms
         );
     }
 
@@ -568,9 +571,12 @@ mod tests {
 
         let (status, rms) = compare_lines(None, Some(line));
         assert!(matches!(status, ComparisonStatus::Only2));
+        // Diagonal line is ~869 pixels long, should produce significant RMS difference
+        println!("RMS with only second geometry: {}", rms);
         assert!(
-            rms > 0.0,
-            "RMS should be non-zero when only one geometry exists"
+            rms > 0.02,
+            "RMS should be significant when only one geometry exists, got {}",
+            rms
         );
     }
 }
