@@ -1,9 +1,13 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-
 use reearth_flow_common::dir::setup_job_directory;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub fn prepare_incremental_feature_store(
     workflow: &Workflow,
@@ -11,7 +15,8 @@ pub fn prepare_incremental_feature_store(
     storage_resolver: &StorageResolver,
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
-) -> crate::Result<()> {
+    feature_state: &State,
+) -> crate::Result<Arc<State>> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
@@ -47,7 +52,7 @@ pub fn prepare_incremental_feature_store(
         edge_ids.len()
     );
 
-    for edge_id in edge_ids {
+    for edge_id in &edge_ids {
         let edge_id_str = edge_id.to_string();
         match reuse_state.copy_jsonl_from_state(&prev_feature_store_state, &edge_id_str) {
             Ok(()) => {
@@ -65,9 +70,21 @@ pub fn prepare_incremental_feature_store(
                 );
             }
         }
+
+        match feature_state.copy_jsonl_from_state(&reuse_state, &edge_id_str) {
+            Ok(()) => {
+                tracing::info!("Copied edge {} into feature-store", edge_id_str);
+            }
+            Err(e) => {
+                return Err(crate::errors::Error::init(format!(
+                    "Failed to copy edge {} into feature-store: {:?}",
+                    edge_id_str, e
+                )));
+            }
+        }
     }
 
-    Ok(())
+    Ok(Arc::new(reuse_state))
 }
 
 pub fn collect_reusable_edge_ids(
@@ -112,4 +129,39 @@ pub fn collect_reusable_edge_ids(
     }
 
     Ok(reusable_edges)
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    if !src.exists() {
+        return Ok(());
+    }
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_all(&from, &to)?;
+        } else if ty.is_file() {
+            // Copy the file, overwriting if it already exists
+            let _ = fs::copy(&from, &to)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn copy_previous_job_artifacts_local(
+    storage_key: &str,
+    prev_job_id: uuid::Uuid,
+    job_id: uuid::Uuid,
+) -> crate::Result<()> {
+    let prev_artifacts = setup_job_directory(storage_key, "artifacts", prev_job_id)
+        .map_err(crate::errors::Error::init)?;
+    let cur_artifacts = setup_job_directory(storage_key, "artifacts", job_id)
+        .map_err(crate::errors::Error::init)?;
+
+    copy_dir_all(&prev_artifacts.path(), &cur_artifacts.path())
+        .map_err(crate::errors::Error::init)?;
+    Ok(())
 }

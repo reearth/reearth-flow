@@ -2,6 +2,7 @@ use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_runner::runner::Runner;
+use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::debug;
@@ -11,7 +12,7 @@ use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
-use crate::incremental::prepare_incremental_feature_store;
+use crate::incremental::{copy_previous_job_artifacts_local, prepare_incremental_feature_store};
 
 pub fn build_run_command() -> Command {
     Command::new("run")
@@ -173,6 +174,31 @@ impl RunCliCommand {
             }
             None => uuid::Uuid::new_v4(),
         };
+
+        const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
+
+        let artifact_uri = setup_job_directory("engine", "artifacts", job_id)
+            .map_err(crate::errors::Error::init)?;
+
+        // "temp" is deprecated: the working root is placed directly under artifacts
+        let artifact_path = artifact_uri.path();
+        let artifact_root = artifact_path
+            .to_str()
+            .ok_or(crate::errors::Error::init("Invalid artifact dir path"))?;
+
+        std::env::set_var("FLOW_RUNTIME_JOB_ARTIFACT_DIR", artifact_root);
+
+        // Inject into workflow (same key as worker)
+        let mut global = HashMap::new();
+        global.insert(
+            WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+            artifact_uri.to_string(),
+        );
+
+        workflow
+            .extend_with(global)
+            .map_err(crate::errors::Error::init)?;
+
         let action_log_uri = match &self.action_log_uri {
             Some(uri) => Uri::from_str(uri).map_err(crate::errors::Error::init)?,
             None => setup_job_directory("engine", "action-log", job_id)
@@ -185,6 +211,8 @@ impl RunCliCommand {
                 .map_err(crate::errors::Error::init)?,
         );
         let ingress_state = Arc::clone(&feature_state);
+
+        let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
         if let Some(prev_job_id) = &self.previous_job_id {
             tracing::info!(
@@ -206,14 +234,19 @@ impl RunCliCommand {
                 uuid::Uuid::parse_str(prev_job_str).map_err(crate::errors::Error::init)?;
             let start_node_id =
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
-
-            prepare_incremental_feature_store(
+            copy_previous_job_artifacts_local("engine", prev_job_id, job_id)?;
+            let previous_feature_state = prepare_incremental_feature_store(
                 &workflow,
                 job_id,
                 storage_resolver.as_ref(),
                 prev_job_id,
                 start_node_id,
+                feature_state.as_ref(),
             )?;
+            incremental_run_config = Some(IncrementalRunConfig {
+                start_node_id,
+                previous_feature_state,
+            });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
         } else {
@@ -232,6 +265,7 @@ impl RunCliCommand {
             storage_resolver,
             ingress_state,
             feature_state,
+            incremental_run_config,
         )
         .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }

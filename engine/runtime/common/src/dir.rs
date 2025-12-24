@@ -12,11 +12,56 @@ use crate::{uri::Uri, Error};
 static WORKING_DIRECTORY: Lazy<Option<String>> =
     Lazy::new(|| env::var("FLOW_RUNTIME_WORKING_DIRECTORY").ok());
 
+static JOB_ARTIFACT_DIR: Lazy<Option<String>> =
+    Lazy::new(|| env::var("FLOW_RUNTIME_JOB_ARTIFACT_DIR").ok());
+
+static JOB_TEMP_DIR: Lazy<Option<String>> =
+    Lazy::new(|| env::var("FLOW_RUNTIME_JOB_TEMP_DIR").ok());
+
+static PREVIOUS_JOB_ARTIFACT_DIR: Lazy<Option<String>> =
+    Lazy::new(|| env::var("FLOW_RUNTIME_PREVIOUS_JOB_ARTIFACT_DIR").ok());
+
+static PREVIOUS_JOB_TEMP_DIR: Lazy<Option<String>> =
+    Lazy::new(|| env::var("FLOW_RUNTIME_PREVIOUS_JOB_TEMP_DIR").ok());
+
+pub fn job_artifact_dir(id: &str) -> crate::Result<PathBuf> {
+    let root = current_job_artifact_root()?;
+    fs::create_dir_all(&root).map_err(Error::dir)?;
+    Ok(root)
+}
+
+// Compatibility: old API name (the word "temp" is used, but the actual location is under artifacts)
+#[deprecated(note = "use job_artifact_dir(); temp directory is deprecated")]
 pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
-    let p = get_project_cache_dir_path("temp")?;
-    let dir_path = PathBuf::from(p).join("temp").join(id);
-    fs::create_dir_all(&dir_path).map_err(Error::dir)?;
-    Ok(dir_path)
+    job_artifact_dir(id)
+}
+
+pub fn current_job_artifact_root() -> crate::Result<PathBuf> {
+    // Check the recommended env first, then the compatibility env
+    let dir = JOB_ARTIFACT_DIR
+        .as_ref()
+        .or(JOB_TEMP_DIR.as_ref())
+        .ok_or(Error::dir(
+            "FLOW_RUNTIME_JOB_ARTIFACT_DIR / FLOW_RUNTIME_JOB_TEMP_DIR is not set",
+        ))?;
+    Ok(PathBuf::from(dir))
+}
+
+#[deprecated(note = "use current_job_artifact_root(); temp root is deprecated")]
+pub fn current_job_temp_root() -> crate::Result<PathBuf> {
+    current_job_artifact_root()
+}
+
+pub fn previous_job_artifact_root_opt() -> Option<PathBuf> {
+    PREVIOUS_JOB_ARTIFACT_DIR
+        .as_ref()
+        .or(PREVIOUS_JOB_TEMP_DIR.as_ref())
+        .map(PathBuf::from)
+}
+
+#[deprecated(note = "use previous_job_artifact_root_opt(); temp root is deprecated")]
+pub fn previous_job_temp_root_opt() -> Option<PathBuf> {
+    previous_job_artifact_root_opt()
 }
 
 pub fn get_project_cache_dir_path(key: &str) -> crate::Result<String> {

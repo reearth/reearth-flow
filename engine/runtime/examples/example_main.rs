@@ -121,6 +121,7 @@ pub(crate) fn execute(workflow: &str) {
         storage_resolver,
         ingress_state,
         feature_state,
+        None,
         handlers,
     )
     .expect("Failed to run workflow.");
