@@ -16,6 +16,7 @@ nodes:
       archiveAttributes:
         - codelists
         - schemas
+      findDeepestSingleFolder: true
 
   - id: c790e59a-4283-452f-bc24-9cc966c3ec79
     name: PLATEAU4.ObjectListExtractor

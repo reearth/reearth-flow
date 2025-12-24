@@ -269,7 +269,6 @@ fn process_feature(
             &codelists_path,
             &schemas_path,
             rtdir,
-            pkg.clone(),
             Arc::clone(&storage_resolver),
         )?;
         (
@@ -297,7 +296,6 @@ fn gen_codelists_and_schemas_path(
     codelists_path: &Option<String>,
     schemas_path: &Option<String>,
     rtdir: PathBuf,
-    pkg: String,
     storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<(Uri, Uri, Uri)> {
     let rtdir: Uri = rtdir
@@ -307,53 +305,43 @@ fn gen_codelists_and_schemas_path(
         .resolve(&rtdir)
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
 
-    let dir_codelists = rtdir
+    let mut dir_codelists = rtdir
         .join("codelists")
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-    let dir_schemas = rtdir
+    let mut dir_schemas = rtdir
         .join("schemas")
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
 
-    if PKG_FOLDERS.contains(&pkg.as_str()) {
-        if !storage
-            .exists_sync(dir_codelists.path().as_path())
+    if !storage
+        .exists_sync(dir_codelists.path().as_path())
+        .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+    {
+        let dir = Uri::for_test(&codelists_path.clone().ok_or(
+            PlateauProcessorError::UDXFolderExtractor(
+                "Codelists not found, and fallback path is not set".to_string(),
+            ),
+        )?);
+        if storage
+            .exists_sync(dir.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
         {
-            let dir = Uri::for_test(&codelists_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor(format!(
-                    "Invalid codelists path: {codelists_path:?}",
-                )),
-            )?);
-            if storage
-                .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
-            {
-                reearth_flow_common::fs::copy_sync_tree(
-                    dir.path().as_path(),
-                    dir_codelists.path().as_path(),
-                )
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-            }
+            dir_codelists = dir;
         }
-        if !storage
-            .exists_sync(dir_schemas.path().as_path())
+    }
+    if !storage
+        .exists_sync(dir_schemas.path().as_path())
+        .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+    {
+        let dir = Uri::for_test(&schemas_path.clone().ok_or(
+            PlateauProcessorError::UDXFolderExtractor(
+                "Schemas not found, and fallback path is not set".to_string(),
+            ),
+        )?);
+        if storage
+            .exists_sync(dir.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
         {
-            let dir = Uri::for_test(&schemas_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor(format!(
-                    "Invalid schemas path: {schemas_path:?}",
-                )),
-            )?);
-            if storage
-                .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
-            {
-                reearth_flow_common::fs::copy_sync_tree(
-                    dir.path().as_path(),
-                    dir_schemas.path().as_path(),
-                )
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-            }
+            dir_schemas = dir;
         }
     }
     Ok((rtdir, dir_codelists, dir_schemas))

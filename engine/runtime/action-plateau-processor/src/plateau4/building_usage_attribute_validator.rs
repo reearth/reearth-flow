@@ -1,8 +1,10 @@
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{collections::HashMap, path::Path};
 
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
+use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -10,7 +12,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -78,7 +81,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: BuildingUsageAttributeValidatorParam = if let Some(with) = with {
+        let param: BuildingUsageAttributeValidatorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -97,80 +100,21 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
                 .into(),
             );
         };
-        let mut city_code_to_name = HashMap::new();
-        let codelists = param.codelists.ok_or(
-            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(
-                "codelistsPath is required".to_string(),
-            ),
-        )?;
 
-        let dir = Uri::from_str(&codelists).map_err(|e| {
-            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                "Failed to parse codelists path: {e}"
-            ))
-        })?;
-        let code_list_name = dir
-            .join(Path::new("Common_localPublicAuthorities.xml"))
-            .map_err(|e| {
-                PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                    "Failed to join codelists path: {e}"
-                ))
-            })?;
-        let storage = ctx.storage_resolver.resolve(&code_list_name).map_err(|e| {
-            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                "Failed to resolve storage: {e}"
-            ))
-        })?;
-        let common_local_public =
-            storage
-                .get_sync(code_list_name.path().as_path())
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let codelists_path_expr =
+            expr_engine
+                .compile(param.codelists_path.as_ref())
                 .map_err(|e| {
                     PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                        "Failed to get storage: {e}"
+                        "Failed to compile codelists_path expression: {e}"
                     ))
                 })?;
-        let document = xml::parse(common_local_public).map_err(|e| {
-            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                "Failed to parse xml: {e}"
-            ))
-        })?;
-        let root_node = xml::get_root_readonly_node(&document).map_err(|e| {
-            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                "Failed to get root node: {e}"
-            ))
-        })?;
-        let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                "Failed to create context: {e}"
-            ))
-        })?;
-        let nodes =
-            xml::find_readonly_nodes_by_xpath(&xml_ctx, "//*[name()='gml:Definition']", &root_node)
-                .map_err(|e| {
-                    PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                        "Failed to find nodes: {e}"
-                    ))
-                })?;
-        for node in nodes {
-            let mut name = None;
-            let mut code = None;
-            for child in &node.get_child_nodes() {
-                match xml::get_readonly_node_tag(child).as_str() {
-                    "gml:description" => {
-                        name = Some(child.get_content());
-                    }
-                    "gml:name" => {
-                        code = Some(child.get_content());
-                    }
-                    _ => {}
-                }
-            }
-            if let (Some(name), Some(code)) = (name, code) {
-                city_code_to_name.insert(code, name);
-            }
-        }
+
         Ok(Box::new(BuildingUsageAttributeValidator {
-            city_code_to_name,
+            global_params: with,
+            codelists_path_expr,
+            city_code_to_name: None,
         }))
     }
 }
@@ -178,12 +122,14 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingUsageAttributeValidatorParam {
-    codelists: Option<String>,
+    codelists_path: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct BuildingUsageAttributeValidator {
-    city_code_to_name: HashMap<String, String>,
+    global_params: Option<HashMap<String, serde_json::Value>>,
+    codelists_path_expr: rhai::AST,
+    city_code_to_name: Option<HashMap<String, String>>,
 }
 
 impl Processor for BuildingUsageAttributeValidator {
@@ -193,6 +139,20 @@ impl Processor for BuildingUsageAttributeValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+
+        // Lazily initialize city_code_to_name on first process call
+        if self.city_code_to_name.is_none() {
+            let map = build_city_code_to_name(
+                feature,
+                &self.global_params,
+                &self.codelists_path_expr,
+                Arc::clone(&ctx.expr_engine),
+                Arc::clone(&ctx.storage_resolver),
+            )?;
+            self.city_code_to_name = Some(map);
+        }
+        let city_code_to_name = self.city_code_to_name.as_ref().unwrap();
+
         let attributes = &feature.attributes;
         let Some(AttributeValue::Map(gml_attributes)) =
             attributes.get(&Attribute::new("cityGmlAttributes"))
@@ -280,7 +240,7 @@ impl Processor for BuildingUsageAttributeValidator {
                     "uro:city must be a string, but it is not".to_string(),
                 ))?;
             };
-            if let Some(city_name) = self.city_code_to_name.get(city_code) {
+            if let Some(city_name) = city_code_to_name.get(city_code) {
                 if MAJOR_CITY_CODES.contains(&city_code.as_str()) {
                     Some(format!(
                         "{city_code} {city_name}:要修正（区のコードとする）"
@@ -339,4 +299,88 @@ impl Processor for BuildingUsageAttributeValidator {
     fn name(&self) -> &str {
         "BuildingUsageAttributeValidator"
     }
+}
+
+fn build_city_code_to_name(
+    feature: &Feature,
+    global_params: &Option<HashMap<String, serde_json::Value>>,
+    codelists_path_expr: &rhai::AST,
+    expr_engine: Arc<Engine>,
+    storage_resolver: Arc<StorageResolver>,
+) -> Result<HashMap<String, String>, BoxedError> {
+    // Evaluate the codelists_path expression
+    let codelists_path = {
+        let scope = feature.new_scope(expr_engine.clone(), global_params);
+        scope.eval_ast::<String>(codelists_path_expr).map_err(|e| {
+            PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+                "Failed to evaluate codelists_path expression: {e:?}"
+            ))
+        })?
+    };
+
+    let dir = Uri::from_str(&codelists_path).map_err(|e| {
+        PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+            "Failed to parse codelists path: {e}"
+        ))
+    })?;
+    let code_list_name = dir
+        .join(Path::new("Common_localPublicAuthorities.xml"))
+        .map_err(|e| {
+            PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+                "Failed to join codelists path: {e}"
+            ))
+        })?;
+    let storage = storage_resolver.resolve(&code_list_name).map_err(|e| {
+        PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+            "Failed to resolve storage: {e}"
+        ))
+    })?;
+    let common_local_public = storage
+        .get_sync(code_list_name.path().as_path())
+        .map_err(|e| {
+            PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+                "Failed to get storage: {e}"
+            ))
+        })?;
+    let document = xml::parse(common_local_public).map_err(|e| {
+        PlateauProcessorError::BuildingUsageAttributeValidator(format!("Failed to parse xml: {e}"))
+    })?;
+    let root_node = xml::get_root_readonly_node(&document).map_err(|e| {
+        PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+            "Failed to get root node: {e}"
+        ))
+    })?;
+    let xml_ctx = xml::create_context(&document).map_err(|e| {
+        PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+            "Failed to create context: {e}"
+        ))
+    })?;
+    let nodes =
+        xml::find_readonly_nodes_by_xpath(&xml_ctx, "//*[name()='gml:Definition']", &root_node)
+            .map_err(|e| {
+                PlateauProcessorError::BuildingUsageAttributeValidator(format!(
+                    "Failed to find nodes: {e}"
+                ))
+            })?;
+
+    let mut city_code_to_name = HashMap::new();
+    for node in nodes {
+        let mut name = None;
+        let mut code = None;
+        for child in &node.get_child_nodes() {
+            match xml::get_readonly_node_tag(child).as_str() {
+                "gml:description" => {
+                    name = Some(child.get_content());
+                }
+                "gml:name" => {
+                    code = Some(child.get_content());
+                }
+                _ => {}
+            }
+        }
+        if let (Some(name), Some(code)) = (name, code) {
+            city_code_to_name.insert(code, name);
+        }
+    }
+    Ok(city_code_to_name)
 }

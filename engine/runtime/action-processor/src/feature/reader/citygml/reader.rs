@@ -23,7 +23,7 @@ use reearth_flow_types::{
 };
 use url::Url;
 
-#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::uninlined_format_args, clippy::too_many_arguments)]
 pub(super) fn read_citygml(
     ctx: Context,
     fw: ProcessorChannelForwarder,
@@ -32,8 +32,13 @@ pub(super) fn read_citygml(
     original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
+    codelists_path: Option<Url>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
-    let code_resolver = nusamai_plateau::codelist::Resolver::new();
+    let code_resolver = if let Some(codelists_path) = codelists_path {
+        nusamai_plateau::codelist::Resolver::with_fallback(vec![codelists_path])
+    } else {
+        nusamai_plateau::codelist::Resolver::new()
+    };
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let scope = feature.new_scope(expr_engine.clone(), &global_params);
     let city_gml_path = scope

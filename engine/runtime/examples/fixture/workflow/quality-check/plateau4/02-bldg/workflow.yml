@@ -61,13 +61,13 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
+          findDeepestSingleFolder: true
 
       - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
         name: FeatureFilePathExtractor
         type: action
         action: FeatureFilePathExtractor
         with:
-          destPrefix: "udx"
           sourceDataset: |
             env.get("__value")["cityGmlPath"]
           extractArchive: true
@@ -130,6 +130,12 @@ graphs:
             - attribute: fileIndex
               expr: |
                 env.get("__value").fileIndex
+            - attribute: codelists
+              expr: |
+                env.get("__value").codelists
+            - attribute: schemas
+              expr: |
+                env.get("__value").schemas
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter

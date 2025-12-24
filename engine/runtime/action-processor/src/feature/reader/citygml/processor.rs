@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    str::FromStr,
     sync::{mpsc::Receiver, Arc},
 };
 
@@ -14,6 +15,7 @@ use reearth_flow_types::Expr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use url::Url;
 
 use crate::feature::errors;
 use crate::feature::errors::FeatureProcessorError;
@@ -71,12 +73,19 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             .into());
         };
         let expr_engine = Arc::clone(&ctx.expr_engine);
+        let codelists_path = params
+            .codelists_path
+            .as_ref()
+            .map(|p| expr_engine.compile(p.as_ref()))
+            .transpose()
+            .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?;
         let compiled_params = CompiledFeatureCityGmlReaderParam {
             dataset: expr_engine
                 .compile(params.dataset.as_ref())
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
             original_dataset: params.dataset.clone(),
             flatten: params.flatten,
+            codelists_path,
         };
         let threads_num = {
             let size = (num_cpus::get() as f32 / 4_f32).trunc() as usize;
@@ -122,6 +131,9 @@ pub struct FeatureCityGmlReaderParam {
     /// # Flatten
     /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
+    /// # Codelists Path
+    /// Optional path to the codelists directory for resolving codelist values
+    codelists_path: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +141,7 @@ struct CompiledFeatureCityGmlReaderParam {
     dataset: rhai::AST,
     original_dataset: Expr,
     flatten: Option<bool>,
+    codelists_path: Option<rhai::AST>,
 }
 
 impl Processor for FeatureCityGmlReader {
@@ -148,11 +161,20 @@ impl Processor for FeatureCityGmlReader {
         let dataset = self.params.dataset.clone();
         let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
+        let codelists_path = self.params.codelists_path.clone();
         let pool = self.thread_pool.lock();
         let (tx, rx) = std::sync::mpsc::channel();
         self.join_handles
             .push(Arc::new(parking_lot::Mutex::new(rx)));
         pool.spawn(move || {
+            let codelists_url = codelists_path.and_then(|ast| {
+                let expr_engine = Arc::clone(&ctx.expr_engine);
+                let scope = feature.new_scope(expr_engine.clone(), &global_params);
+                scope
+                    .eval_ast::<String>(&ast)
+                    .ok()
+                    .and_then(|s| Url::from_str(&s).ok())
+            });
             let result = super::reader::read_citygml(
                 ctx,
                 fw,
@@ -161,6 +183,7 @@ impl Processor for FeatureCityGmlReader {
                 original_dataset,
                 flatten,
                 global_params.clone(),
+                codelists_url,
             );
             tx.send(result).unwrap();
         });
