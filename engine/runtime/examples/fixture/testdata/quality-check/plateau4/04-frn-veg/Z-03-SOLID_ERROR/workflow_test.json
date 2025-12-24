@@ -10,16 +10,24 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_frn_veg.json",
-      "includeFields": ["立体のエラー", "非水密体" ]
+      "includeFields": [
+        "立体のエラー",
+        "非水密体"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
-      "includeColumns": ["立体のエラー", "非水密体"]
+      "includeColumns": [
+        "立体のエラー",
+        "非水密体"
+      ]
     }
   },
   "cityGmlPath": "udx/frn/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "prcs": 6677,
+  "objectLists": "08220_city_2023_objectlist_op.xlsx"
 }

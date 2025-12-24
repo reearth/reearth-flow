@@ -1,7 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use nusamai_projection::jprect::JPRZone;
-use reearth_flow_geometry::algorithm::transverse_mercator_proj::TransverseMercatorProjection;
 use reearth_flow_geometry::algorithm::{
     area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
 };
@@ -17,11 +15,14 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue};
+use rhai::AST;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use serde_json::Value;
+
+use crate::plateau4::errors::PlateauProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct DestinationMeshCodeExtractorFactory;
@@ -58,7 +59,7 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: DestinationMeshCodeExtractorParam = if let Some(with) = with {
+        let params: DestinationMeshCodeExtractorParam = if let Some(with) = with.as_ref() {
             let value: Value = serde_json::to_value(with)
                 .map_err(|e| format!("Failed to serialize parameters: {e}"))?;
             serde_json::from_value(value)
@@ -77,34 +78,17 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
             _ => return Err("Invalid mesh_type. Must be 1-6".into()),
         };
 
-        // Evaluate EPSG code expression at build time
+        // Compile EPSG code expression for runtime evaluation
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let epsg_code: u16 = expr_engine
-            .eval_scope::<rhai::Dynamic>(params.epsg_code.as_ref(), &scope)
-            .map_err(|e| format!("Failed to evaluate epsg_code expression: {e}"))?
-            .try_cast::<i64>()
-            .and_then(|code| {
-                if code >= 0 && code <= u16::MAX as i64 {
-                    Some(code as u16)
-                } else {
-                    None
-                }
-            })
-            .or_else(|| {
-                // Try parsing as string
-                expr_engine
-                    .eval_scope::<String>(params.epsg_code.as_ref(), &scope)
-                    .ok()?
-                    .parse::<u16>()
-                    .ok()
-            })
-            .ok_or_else(|| "EPSG code must be a valid u16 integer".to_string())?;
+        let epsg_code_ast = expr_engine
+            .compile(params.epsg_code.as_ref())
+            .map_err(|e| format!("Failed to compile epsg_code expression: {e}"))?;
 
         Ok(Box::new(DestinationMeshCodeExtractor {
+            global_params: with,
             mesh_type,
             meshcode_attr: params.meshcode_attr,
-            epsg_code,
+            epsg_code_ast,
         }))
     }
 }
@@ -154,9 +138,10 @@ fn default_epsg_code() -> Expr {
 
 #[derive(Debug, Clone)]
 pub struct DestinationMeshCodeExtractor {
+    global_params: Option<HashMap<String, Value>>,
     mesh_type: JPMeshType,
     meshcode_attr: String,
-    epsg_code: u16,
+    epsg_code_ast: AST,
 }
 
 impl Processor for DestinationMeshCodeExtractor {
@@ -167,6 +152,9 @@ impl Processor for DestinationMeshCodeExtractor {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
+
+        // Evaluate EPSG code expression at runtime with feature context
+        let epsg_code = self.evaluate_epsg_code(feature, &ctx)?;
 
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
@@ -179,7 +167,9 @@ impl Processor for DestinationMeshCodeExtractor {
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 // Calculate mesh code using PLATEAU specification compliant area-based method
-                let mesh_result = if let Some(result) = self.calculate_mesh_with_details(geometry) {
+                let mesh_result = if let Some(result) =
+                    self.calculate_mesh_with_details(geometry, &epsg_code)
+                {
                     result
                 } else {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -247,20 +237,48 @@ struct MeshCodeToArea {
 }
 
 impl DestinationMeshCodeExtractor {
+    /// Evaluate the EPSG code expression at runtime with feature context
+    fn evaluate_epsg_code(
+        &self,
+        feature: &Feature,
+        ctx: &ExecutorContext,
+    ) -> Result<String, BoxedError> {
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
+        let epsg_code = scope
+            .eval_ast::<rhai::Dynamic>(&self.epsg_code_ast)
+            .map_err(|e| {
+                PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                    "Failed to evaluate epsg_code expression: {e:?}"
+                ))
+            })?;
+
+        // Handle both string and integer EPSG codes
+        if let Some(s) = epsg_code.clone().try_cast::<String>() {
+            Ok(s)
+        } else if let Some(i) = epsg_code.clone().try_cast::<i64>() {
+            Ok(i.to_string())
+        } else {
+            Err(PlateauProcessorError::DestinationMeshCodeExtractor(
+                "epsg_code expression did not evaluate to a string or integer".to_string(),
+            )
+            .into())
+        }
+    }
+
     /// Calculate mesh code with detailed information for all required attributes
     /// Returns comprehensive mesh calculation result including count, areas, and mapping
     fn calculate_mesh_with_details(
         &self,
         geometry: &Geometry2D<f64>,
+        epsg_code: &str,
     ) -> Option<MeshCalculationResult> {
         // Convert geometry to polygon for area calculation
-        let polygon_wgs84 = self.geometry_to_polygon(geometry)?;
-
-        // Transform polygon to configured EPSG code for accurate area calculation
-        let polygon_jpr = self.transform_polygon_to_epsg(&polygon_wgs84)?;
+        let polygon = self.geometry_to_polygon(geometry)?;
 
         // Get bounding box of the feature (in WGS84 for mesh lookup)
         let bounds = geometry.bounding_rect()?;
+        let bounds = self.transform_bounds_to_epsg_inverse(&bounds, epsg_code)?;
 
         // Get all mesh codes that intersect with the feature bounds
         let candidate_meshes = JPMeshCode::from_inside_bounds(bounds, self.mesh_type);
@@ -273,17 +291,13 @@ impl DestinationMeshCodeExtractor {
 
         for mesh_code in candidate_meshes {
             // Get mesh boundary as polygon (in WGS84)
-            let mesh_bounds_wgs84 = mesh_code.bounds();
-            let mesh_polygon_wgs84 = self.rect_to_polygon(&mesh_bounds_wgs84);
+            let mesh_bounds = mesh_code.bounds();
+            let mesh_polygon = mesh_bounds.to_polygon();
 
-            // Transform mesh polygon to configured EPSG code
-            let mesh_polygon_jpr = match self.transform_polygon_to_epsg(&mesh_polygon_wgs84) {
-                Some(polygon) => polygon,
-                None => continue, // Skip this mesh if transformation fails
-            };
+            let mesh_polygon = self.transform_polygon_to_epsg(&mesh_polygon, epsg_code)?;
 
             // Calculate intersection area in meters
-            let intersection = polygon_jpr.intersection(&mesh_polygon_jpr);
+            let intersection = polygon.intersection(&mesh_polygon);
             let area = intersection.unsigned_area2d(); // Now in square meters
 
             // Round to 2 decimal places as per PLATEAU specification (now in square meters)
@@ -321,25 +335,42 @@ impl DestinationMeshCodeExtractor {
     /// Transform coordinates to Japanese Plane Rectangular Coordinate System
     /// Returns coordinates in meters suitable for accurate area calculation
     /// Uses Flow's TransverseMercatorProjection for accurate results
-    fn transform_to_epsg(&self, mut coord: Coordinate2D<f64>) -> Option<Coordinate2D<f64>> {
-        let projection = JPRZone::from_epsg(self.epsg_code)?.projection();
+    fn transform_to_epsg(
+        &self,
+        coord: Coordinate2D<f64>,
+        epsg_from: &str,
+        epsg_to: &str,
+    ) -> Option<Coordinate2D<f64>> {
+        let proj = proj::Proj::new_known_crs(
+            &format!("EPSG:{}", epsg_from),
+            &format!("EPSG:{}", epsg_to),
+            None,
+        )
+        .map_err(|e| {
+            PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                "Failed to create PROJ transformation from {epsg_from} to {epsg_to}: {e}"
+            ))
+        })
+        .ok()?;
 
-        // Use Flow's TransverseMercatorProjection trait
-        // This will treat input coordinates as geographic (lat/lon in degrees)
-        // and transform them to the configured projected coordinates (meters)
-        coord.project_forward(&projection, false).ok()?;
+        let coord = proj.convert((coord.x, coord.y)).ok()?;
+        let coord = Coordinate2D::new_(coord.0, coord.1);
 
         Some(coord)
     }
 
     /// Transform a polygon to the configured Japanese Plane Rectangular Coordinate System
     /// Uses the EPSG code specified in the parameters
-    fn transform_polygon_to_epsg(&self, polygon: &Polygon2D<f64>) -> Option<Polygon2D<f64>> {
+    fn transform_polygon_to_epsg(
+        &self,
+        polygon: &Polygon2D<f64>,
+        epsg_code: &str,
+    ) -> Option<Polygon2D<f64>> {
         let exterior_coords: Result<Vec<Coordinate2D<f64>>, ()> = polygon
             .exterior()
             .0
             .iter()
-            .map(|coord| self.transform_to_epsg(*coord).ok_or(()))
+            .map(|coord| self.transform_to_epsg(*coord, "6697", epsg_code).ok_or(()))
             .collect();
         let exterior_coords = exterior_coords.ok()?;
 
@@ -353,7 +384,7 @@ impl DestinationMeshCodeExtractor {
                 let interior_coords: Result<Vec<Coordinate2D<f64>>, ()> = interior
                     .0
                     .iter()
-                    .map(|coord| self.transform_to_epsg(*coord).ok_or(()))
+                    .map(|coord| self.transform_to_epsg(*coord, "6697", epsg_code).ok_or(()))
                     .collect();
                 interior_coords.map(|coords| coords.into())
             })
@@ -361,6 +392,16 @@ impl DestinationMeshCodeExtractor {
         let interior_rings = interior_rings.ok()?;
 
         Some(Polygon2D::new(exterior_coords.into(), interior_rings))
+    }
+
+    fn transform_bounds_to_epsg_inverse(
+        &self,
+        rect: &Rect2D<f64>,
+        epsg_code: &str,
+    ) -> Option<Rect2D<f64>> {
+        let min = self.transform_to_epsg(rect.min(), epsg_code, "6697")?;
+        let max = self.transform_to_epsg(rect.max(), epsg_code, "6697")?;
+        Some(Rect2D::new(min, max))
     }
 
     /// Convert Geometry2D to Polygon2D for area calculations
@@ -372,7 +413,7 @@ impl DestinationMeshCodeExtractor {
                 // This is a simplification - in practice, each polygon should be processed separately
                 mp.0.first().cloned()
             }
-            Geometry2D::Rect(r) => Some(self.rect_to_polygon(r)),
+            Geometry2D::Rect(r) => Some(r.to_polygon()),
             Geometry2D::Triangle(t) => {
                 let coords = t.to_array();
                 Some(Polygon2D::new(
@@ -411,29 +452,12 @@ impl DestinationMeshCodeExtractor {
             _ => false,
         }
     }
-
-    /// Convert Rect2D to Polygon2D
-    fn rect_to_polygon(&self, rect: &Rect2D<f64>) -> Polygon2D<f64> {
-        let min = rect.min();
-        let max = rect.max();
-
-        Polygon2D::new(
-            vec![
-                min,
-                Coordinate2D::new_(max.x, min.y),
-                max,
-                Coordinate2D::new_(min.x, max.y),
-                min,
-            ]
-            .into(),
-            vec![],
-        )
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_eval_expr::engine::Engine;
 
     #[test]
     fn test_real_gml_coordinates_area_calculation() {
@@ -457,15 +481,21 @@ mod tests {
             vec![],
         );
 
+        // Create a dummy AST for testing (the actual value doesn't matter for this test)
+        let engine = Engine::new();
+        let epsg_code_ast = engine.compile("\"6675\"").unwrap();
+
         let extractor = DestinationMeshCodeExtractor {
+            global_params: None,
             mesh_type: JPMeshType::Mesh1km,
             meshcode_attr: "_meshcode".to_string(),
-            epsg_code: 6675, // EPSG:6675 for test
+            epsg_code_ast,
         };
 
-        // Transform to EPSG:6675 (default)
+        // Transform to EPSG:6675 (passed directly as parameter)
+        let epsg_code = "6675";
         let polygon_jpr = extractor
-            .transform_polygon_to_epsg(&polygon_wgs84)
+            .transform_polygon_to_epsg(&polygon_wgs84, epsg_code)
             .expect("Polygon transformation failed");
         let area_jpr = polygon_jpr.unsigned_area2d();
         let rounded_area = (area_jpr * 100.0).round() / 100.0;

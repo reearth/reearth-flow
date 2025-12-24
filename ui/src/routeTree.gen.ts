@@ -12,6 +12,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
+import { Route as DevRouteImport } from './routes/dev'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces.$workspaceId'
 import { Route as WorkspacesWorkspaceIdTriggersRouteImport } from './routes/workspaces.$workspaceId.triggers'
@@ -34,6 +35,11 @@ const WorkspacesWorkspaceIdProjectsProjectIdLazyRouteImport = createFileRoute(
 const WorkspacesRoute = WorkspacesRouteImport.update({
   id: '/workspaces',
   path: '/workspaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevRoute = DevRouteImport.update({
+  id: '/dev',
+  path: '/dev',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -120,6 +126,7 @@ const WorkspacesWorkspaceIdDeploymentsDeploymentIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dev': typeof DevRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dev': typeof DevRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
@@ -153,6 +161,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dev': typeof DevRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dev'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dev'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/dev'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
@@ -220,6 +232,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DevRoute: typeof DevRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
   SharedSharedTokenLazyRoute: typeof SharedSharedTokenLazyRoute
 }
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       path: '/workspaces'
       fullPath: '/workspaces'
       preLoaderRoute: typeof WorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev': {
+      id: '/dev'
+      path: '/dev'
+      fullPath: '/dev'
+      preLoaderRoute: typeof DevRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -375,6 +395,7 @@ const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DevRoute: DevRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
   SharedSharedTokenLazyRoute: SharedSharedTokenLazyRoute,
 }

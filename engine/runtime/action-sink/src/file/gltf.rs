@@ -4,35 +4,33 @@ use std::io::BufWriter;
 use std::sync::Mutex;
 use std::{str::FromStr, sync::Arc};
 
-use ahash::RandomState;
-use atlas_packer::export::{AtlasExporter, JpegAtlasExporter};
+use atlas_packer::export::JpegAtlasExporter;
 use atlas_packer::pack::AtlasPacker;
-use atlas_packer::place::{GuillotineTexturePlacer, TexturePlacerConfig};
 use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
-use atlas_packer::texture::{DownsampleFactor, PolygonMappedTexture};
-use earcut::utils3d::project3d_to_2d;
-use earcut::Earcut;
-use flatgeom::{MultiPolygon, Polygon3};
+use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_gltf::{calculate_normal, BoundingVolume, MetadataEncoder, Primitives};
+use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::material::{self, Material};
-use reearth_flow_types::{AttributeValue, Expr, GeometryType};
+use reearth_flow_types::{Expr, GeometryType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 use tempfile::tempdir;
-use url::Url;
 
+use crate::atlas::GltfFeature as ClassFeature;
+use crate::atlas::{
+    encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export,
+};
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
@@ -103,26 +101,11 @@ impl SinkFactory for GltfWriterSinkFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ClassFeature {
-    // polygons [x, y, z, u, v]
-    pub polygons: MultiPolygon<'static, [f64; 5]>,
-    // material ids for each polygon
-    pub polygon_material_ids: Vec<u32>,
-    // materials
-    pub materials: IndexSet<Material>,
-    // attribute values
-    pub attributes: HashMap<String, AttributeValue>,
-    // feature_id
-    pub feature_id: Option<u32>,
-    // feature type
-    pub feature_type: String,
-}
-
 type ClassifiedFeatures = HashMap<String, ClassFeatures>;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 struct ClassFeatures {
+    feature_type: String,
     features: Vec<ClassFeature>,
     bounding_volume: BoundingVolume,
 }
@@ -141,7 +124,7 @@ impl TryFrom<&ClassFeatures> for nusamai_citygml::schema::Schema {
             return Err(SinkError::GltfWriter("No features".to_string()));
         };
         let mut schema = nusamai_citygml::schema::Schema::default();
-        let feature_type = first.feature_type.clone();
+        let feature_type = v.feature_type.clone();
         let mut attributes = nusamai_citygml::schema::Map::default();
         for (k, v) in first
             .attributes
@@ -211,48 +194,23 @@ impl Sink for GltfWriter {
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let ellipsoid = nusamai_projection::ellipsoid::wgs84();
-        // Bounding volume for the entire dataset
-        let global_bvol = {
-            let mut global_bvol = BoundingVolume::default();
-            for features in self.classified_features.values() {
-                global_bvol.update(&features.bounding_volume);
-            }
-            global_bvol
-        };
+
+        let global_bvol = self.compute_global_bounding_volume();
+        let transform_matrix = compute_transform_matrix(&global_bvol, &ellipsoid);
+        let _ = transform_matrix.inverse();
 
         let tileset_content_files = Mutex::new(Vec::new());
-
-        let transform_matrix = {
-            let bounds = &global_bvol;
-            let center_lng = (bounds.min_lng + bounds.max_lng) / 2.0;
-            let center_lat = (bounds.min_lat + bounds.max_lat) / 2.0;
-
-            let psi = ((1. - ellipsoid.e_sq()) * center_lat.to_radians().tan()).atan();
-
-            let (tx, ty, tz) = geodetic_to_geocentric(&ellipsoid, center_lng, center_lat, 0.);
-            let h = (tx * tx + ty * ty + tz * tz).sqrt();
-
-            DMat4::from_translation(DVec3::new(0., -h, 0.))
-                * DMat4::from_rotation_x(-(FRAC_PI_2 - psi))
-                * DMat4::from_rotation_y((-center_lng - 90.).to_radians())
-        };
-        let _ = transform_matrix.inverse();
 
         self.classified_features
             .par_iter()
             .try_for_each(|(typename, features)| {
                 let schema: nusamai_citygml::schema::Schema = features.try_into()?;
-                // The decoded image file is cached
-                let texture_cache = TextureCache::new(100_000_000);
-                // The image size is cached to avoid unnecessary decoding
-                let texture_size_cache = TextureSizeCache::new();
 
-                let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default(); // [x, y, z, nx, ny, nz, u, v, feature_id]
-                let mut primitives: Primitives = Default::default();
+                let texture_cache = TextureCache::new(100_000_000);
+                let texture_size_cache = TextureSizeCache::new();
 
                 let mut metadata_encoder = MetadataEncoder::new(&schema);
 
-                // Use a temporary directory for embedding in glb.
                 let binding = tempdir().unwrap();
                 let folder_path = binding.path();
                 let base_name = typename.replace(':', "_");
@@ -265,256 +223,41 @@ impl Sink for GltfWriter {
                     ))
                 })?;
 
-                // Check the size of all the textures and calculate the power of 2 of the largest size
-                let mut max_width = 0;
-                let mut max_height = 0;
-                for feature in features.features.iter() {
-                    for (_, orig_mat_id) in feature
-                        .polygons
-                        .iter()
-                        .zip_eq(feature.polygon_material_ids.iter())
-                    {
-                        let mat = feature.materials[*orig_mat_id as usize].clone();
-                        let t = mat.base_texture.clone();
-                        if let Some(base_texture) = t {
-                            let texture_uri = base_texture.uri.to_file_path().unwrap();
-                            let texture_size = texture_size_cache.get_or_insert(&texture_uri);
-                            max_width = max_width.max(texture_size.0);
-                            max_height = max_height.max(texture_size.1);
-                        }
-                    }
-                }
-                let max_width = max_width.next_power_of_two();
-                let max_height = max_height.next_power_of_two();
-
-                // initialize texture packer
-                // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 8192
-                let config = TexturePlacerConfig {
-                    width: max_width.max(8192),
-                    height: max_height.max(8192),
-                    padding: 0,
-                };
-
                 let packer = Mutex::new(AtlasPacker::default());
 
-                // Transform features
-                let features = {
-                    let mut features = features.features.clone();
-                    features.iter_mut().for_each(|feature| {
-                        feature
-                            .polygons
-                            .transform_inplace(|&[lng, lat, height, u, v]| {
-                                // geographic to geocentric
-                                let (x, y, z) =
-                                    geodetic_to_geocentric(&ellipsoid, lng, lat, height);
-                                // z-up to y-up
-                                let v_xyz = DVec4::new(x, z, -y, 1.0);
-                                // local ENU coordinate
-                                let v_enu = transform_matrix * v_xyz;
-
-                                [v_enu[0], v_enu[1], v_enu[2], u, v]
-                            });
-                    });
-                    features
-                };
-
-                // Encode metadata
-                let features = features
-                    .iter()
-                    .filter(|feature| {
-                        metadata_encoder
-                            .add_feature(typename, &feature.attributes)
-                            .is_ok()
-                    })
-                    .collect::<Vec<_>>();
-
-                // A unique ID used when planning the atlas layout
-                //  and when obtaining the UV coordinates after the layout has been completed
-                let generate_texture_id =
-                    |folder_name: &str, feature_id: usize, poly_count: usize| {
-                        format!("{folder_name}_{feature_id}_{poly_count}")
-                    };
-
-                // Load all textures into the Packer
-                for (feature_id, feature) in features.iter().enumerate() {
-                    for (poly_count, (mat, poly)) in feature
-                        .polygons
-                        .iter()
-                        .zip_eq(feature.polygon_material_ids.iter())
-                        .map(move |(poly, orig_mat_id)| {
-                            (feature.materials[*orig_mat_id as usize].clone(), poly)
-                        })
-                        .enumerate()
-                    {
-                        let t = mat.base_texture.clone();
-                        if let Some(base_texture) = t {
-                            // texture packing
-                            let original_vertices = poly
-                                .raw_coords()
-                                .iter()
-                                .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                                .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-                            let uv_coords = original_vertices
-                                .iter()
-                                .map(|(_, _, _, u, v)| (*u, *v))
-                                .collect::<Vec<(f64, f64)>>();
-
-                            let texture_uri = base_texture.uri.to_file_path().unwrap();
-                            let texture_size = texture_size_cache.get_or_insert(&texture_uri);
-
-                            let downsample_scale = 1.0;
-
-                            let downsample_factor = DownsampleFactor::new(&downsample_scale);
-
-                            let texture = PolygonMappedTexture::new(
-                                &texture_uri,
-                                texture_size,
-                                &uv_coords,
-                                downsample_factor,
-                            );
-
-                            // Unique id required for placement in atlas
-
-                            let texture_id =
-                                generate_texture_id(&base_name, feature_id, poly_count);
-
-                            packer.lock().unwrap().add_texture(texture_id, texture);
-                        }
-                    }
-                }
-
-                let placer = GuillotineTexturePlacer::new(config.clone());
-                let packer = packer.into_inner().unwrap();
-
-                // Packing the loaded textures into an atlas
-                let packed = packer.pack(placer);
-
-                let exporter = JpegAtlasExporter::default();
-                let ext = exporter.clone().get_extension().to_string();
-
-                // Obtain the UV coordinates placed in the atlas by specifying the ID
-                //  and apply them to the original polygon.
-                for (feature_id, feature) in features.iter().enumerate() {
-                    for (poly_count, (mut mat, mut poly)) in feature
-                        .polygons
-                        .iter()
-                        .zip_eq(feature.polygon_material_ids.iter())
-                        .map(move |(poly, orig_mat_id)| {
-                            (feature.materials[*orig_mat_id as usize].clone(), poly)
-                        })
-                        .enumerate()
-                    {
-                        let original_vertices = poly
-                            .raw_coords()
-                            .iter()
-                            .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                            .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-                        let texture_id = generate_texture_id(&base_name, feature_id, poly_count);
-
-                        if let Some(info) = packed.get_texture_info(&texture_id) {
-                            // Place the texture in the atlas
-                            let atlas_placed_uv_coords = info
-                                .placed_uv_coords
-                                .iter()
-                                .map(|(u, v)| ({ *u }, { *v }))
-                                .collect::<Vec<(f64, f64)>>();
-                            let updated_vertices = original_vertices
-                                .iter()
-                                .zip(atlas_placed_uv_coords.iter())
-                                .map(|((x, y, z, _, _), (u, v))| (*x, *y, *z, *u, *v))
-                                .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-                            // Apply the UV coordinates placed in the atlas to the original polygon
-                            poly.transform_inplace(|&[x, y, z, _, _]| {
-                                let (u, v) = updated_vertices
-                                    .iter()
-                                    .find(|(x_, y_, z_, _, _)| {
-                                        (*x_ - x).abs() < 1e-6
-                                            && (*y_ - y).abs() < 1e-6
-                                            && (*z_ - z).abs() < 1e-6
-                                    })
-                                    .map(|(_, _, _, u, v)| (*u, *v))
-                                    .unwrap();
-                                [x, y, z, u, v]
-                            });
-
-                            let atlas_file_name = info.atlas_id.to_string();
-
-                            let atlas_uri =
-                                atlas_dir.join(atlas_file_name).with_extension(ext.clone());
-
-                            // update material
-                            mat = material::Material {
-                                base_color: mat.base_color,
-                                base_texture: Some(material::Texture {
-                                    uri: Url::from_file_path(atlas_uri).unwrap(),
-                                }),
-                            };
-                        }
-
-                        let primitive = primitives.entry(mat).or_default();
-                        primitive.feature_ids.insert(feature_id as u32);
-
-                        if let Some((nx, ny, nz)) =
-                            calculate_normal(poly.exterior().iter().map(|v| [v[0], v[1], v[2]]))
-                        {
-                            let num_outer_points = match poly.hole_indices().first() {
-                                Some(&v) => v as usize,
-                                None => poly.raw_coords().len(),
-                            };
-                            let mut earcutter = Earcut::new();
-                            let mut buf3d: Vec<[f64; 3]> = Vec::new();
-                            let mut buf2d: Vec<[f64; 2]> = Vec::new();
-                            let mut index_buf: Vec<u32> = Vec::new();
-
-                            buf3d.clear();
-                            buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
-
-                            if project3d_to_2d(&buf3d, num_outer_points, &mut buf2d) {
-                                // earcut
-                                earcutter.earcut(
-                                    buf2d.iter().cloned(),
-                                    poly.hole_indices(),
-                                    &mut index_buf,
-                                );
-
-                                // collect triangles
-                                primitive.indices.extend(index_buf.iter().map(|&idx| {
-                                    let [x, y, z, u, v] = poly.raw_coords()[idx as usize];
-                                    let vbits = [
-                                        (x as f32).to_bits(),
-                                        (y as f32).to_bits(),
-                                        (z as f32).to_bits(),
-                                        (nx as f32).to_bits(),
-                                        (ny as f32).to_bits(),
-                                        (nz as f32).to_bits(),
-                                        (u as f32).to_bits(),
-                                        // flip the texture v-coordinate
-                                        ((1.0 - v) as f32).to_bits(),
-                                        (feature_id as f32).to_bits(), // UNSIGNED_INT can't be used for vertex attribute
-                                    ];
-                                    let (index, _) = vertices.insert_full(vbits);
-                                    index as u32
-                                }));
-                            }
-                        }
-                    }
-                }
-
-                packed.export(
-                    exporter,
-                    &atlas_dir,
-                    &texture_cache,
-                    config.width,
-                    config.height,
+                let transformed_features = transform_features_to_local_enu(
+                    features.features.clone(),
+                    &transform_matrix,
+                    &ellipsoid,
                 );
 
-                // Write glTF (.glb)
+                let filtered_features =
+                    encode_metadata(&transformed_features, typename, &mut metadata_encoder);
+
+                let (max_width, max_height) = load_textures_into_packer(
+                    &filtered_features,
+                    &packer,
+                    &texture_size_cache,
+                    &|feature_id, poly_count| {
+                        generate_texture_id(&base_name, feature_id, poly_count)
+                    },
+                    1.0,   // geom_error (dummy value for non-tiled output)
+                    false, // limit_texture_resolution (no downsampling for gltf)
+                )?;
+
+                // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 8192
+                let (primitives, vertices) = process_geometry_with_atlas_export(
+                    &filtered_features,
+                    packer,
+                    (max_width.max(8192), max_height.max(8192)),
+                    JpegAtlasExporter::default(),
+                    &atlas_dir,
+                    &texture_cache,
+                    |feature_id, poly_count| format!("{base_name}_{feature_id}_{poly_count}"),
+                )?;
+
                 let file_path = {
                     let filename = format!("{}.glb", typename.replace(':', "_"));
-                    // Save the filename to the content list of the tileset.json (3D Tiles)
                     tileset_content_files.lock().unwrap().push(filename.clone());
                     self.output.join(filename).map_err(|e| {
                         crate::errors::SinkError::GltfWriter(format!(
@@ -531,7 +274,7 @@ impl Sink for GltfWriter {
                     None,
                     vertices,
                     primitives,
-                    features.len(),
+                    filtered_features.len(),
                     metadata_encoder,
                     self.draco_compression,
                 )
@@ -540,6 +283,7 @@ impl Sink for GltfWriter {
                         "Failed to write_gltf_glb with : {e:?}"
                     ))
                 })?;
+
                 let storage = ctx
                     .storage_resolver
                     .resolve(&file_path)
@@ -547,6 +291,7 @@ impl Sink for GltfWriter {
                 storage
                     .put_sync(file_path.as_path().as_path(), bytes::Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::gltf_writer)?;
+
                 Ok::<(), crate::errors::SinkError>(())
             })?;
 
@@ -554,8 +299,70 @@ impl Sink for GltfWriter {
     }
 }
 
+fn generate_texture_id(folder_name: &str, feature_id: usize, poly_count: usize) -> String {
+    format!("{folder_name}_{feature_id}_{poly_count}")
+}
+
+fn compute_transform_matrix(
+    global_bvol: &BoundingVolume,
+    ellipsoid: &nusamai_projection::ellipsoid::Ellipsoid,
+) -> DMat4 {
+    let center_lng = (global_bvol.min_lng + global_bvol.max_lng) / 2.0;
+    let center_lat = (global_bvol.min_lat + global_bvol.max_lat) / 2.0;
+
+    let psi = ((1. - ellipsoid.e_sq()) * center_lat.to_radians().tan()).atan();
+
+    let (tx, ty, tz) = geodetic_to_geocentric(ellipsoid, center_lng, center_lat, 0.);
+    let h = (tx * tx + ty * ty + tz * tz).sqrt();
+
+    DMat4::from_translation(DVec3::new(0., -h, 0.))
+        * DMat4::from_rotation_x(-(FRAC_PI_2 - psi))
+        * DMat4::from_rotation_y((-center_lng - 90.).to_radians())
+}
+
+fn transform_features_to_local_enu(
+    features: Vec<ClassFeature>,
+    transform_matrix: &DMat4,
+    ellipsoid: &nusamai_projection::ellipsoid::Ellipsoid,
+) -> Vec<ClassFeature> {
+    let mut features = features;
+    features.iter_mut().for_each(|feature| {
+        feature
+            .polygons
+            .transform_inplace(|&[lng, lat, height, u, v]| {
+                // geographic to geocentric
+                let (x, y, z) = geodetic_to_geocentric(ellipsoid, lng, lat, height);
+                // z-up to y-up
+                let v_xyz = DVec4::new(x, z, -y, 1.0);
+                // local ENU coordinate
+                let v_enu = transform_matrix * v_xyz;
+
+                [v_enu[0], v_enu[1], v_enu[2], u, v]
+            });
+    });
+    features
+}
+
 // Helper methods for GltfWriter
 impl GltfWriter {
+    fn entry(&mut self, feature_type: &str) -> &mut ClassFeatures {
+        self.classified_features
+            .entry(feature_type.to_string())
+            .or_insert_with(|| ClassFeatures {
+                feature_type: feature_type.to_string(),
+                features: Vec::new(),
+                bounding_volume: BoundingVolume::default(),
+            })
+    }
+
+    fn compute_global_bounding_volume(&self) -> BoundingVolume {
+        let mut global_bvol = BoundingVolume::default();
+        for features in self.classified_features.values() {
+            global_bvol.update(&features.bounding_volume);
+        }
+        global_bvol
+    }
+
     fn process_citygml(
         &mut self,
         city_gml: &reearth_flow_types::geometry::CityGmlGeometry,
@@ -576,8 +383,6 @@ impl GltfWriter {
                 .collect(),
             polygon_material_ids: Default::default(),
             materials: Default::default(),
-            feature_id: None,
-            feature_type: feature_type.clone(),
         };
         for entry in city_gml.gml_geometries.iter() {
             match entry.ty {
@@ -589,7 +394,8 @@ impl GltfWriter {
                         .zip_eq(
                             city_gml
                                 .polygon_uvs
-                                .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize),
+                                .range(entry.pos as usize..(entry.pos + entry.len) as usize)
+                                .into_iter(),
                         )
                         .zip_eq(
                             city_gml.polygon_materials
@@ -603,6 +409,7 @@ impl GltfWriter {
                         )
                     {
                         let poly: Polygon3 = poly.clone().into();
+                        let poly_uv: Polygon2 = poly_uv.into();
                         let mat = if self.attach_texture {
                             let orig_mat = poly_mat
                                 .and_then(|idx| city_gml.materials.get(idx as usize))
@@ -659,7 +466,7 @@ impl GltfWriter {
         }
         class_feature.materials = materials;
         {
-            let feats = self.classified_features.entry(feature_type).or_default();
+            let feats = self.entry(&feature_type);
             feats.features.push(class_feature);
             feats.bounding_volume.update(&local_bvol);
         }
@@ -771,12 +578,10 @@ impl GltfWriter {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.clone()))
                 .collect(),
-            feature_id: None,
-            feature_type: feature_type.clone(),
         };
 
         // Add to classified features and update bounding volume
-        let feats = self.classified_features.entry(feature_type).or_default();
+        let feats = self.entry(&feature_type);
         feats.features.push(class_feature);
         feats.bounding_volume.update(&local_bvol);
 
@@ -859,12 +664,10 @@ impl GltfWriter {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.clone()))
                 .collect(),
-            feature_id: None,
-            feature_type: feature_type.clone(),
         };
 
         // Add to classified features and update bounding volume
-        let feats = self.classified_features.entry(feature_type).or_default();
+        let feats = self.entry(&feature_type);
         feats.features.push(class_feature);
         feats.bounding_volume.update(&local_bvol);
 

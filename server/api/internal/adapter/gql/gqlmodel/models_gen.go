@@ -196,8 +196,8 @@ type CreateTriggerInput struct {
 	Description     string           `json:"description"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
-	Enabled         *bool            `json:"enabled,omitempty"`
-	Variables       JSON             `json:"variables,omitempty"`
+	Enabled         bool             `json:"enabled"`
+	Variables       []*VariableInput `json:"variables,omitempty"`
 }
 
 type CreateWorkspaceInput struct {
@@ -248,6 +248,10 @@ type DeleteProjectInput struct {
 
 type DeleteProjectPayload struct {
 	ProjectID ID `json:"projectId"`
+}
+
+type DeleteWorkerConfigPayload struct {
+	ID ID `json:"id"`
 }
 
 type DeleteWorkspaceInput struct {
@@ -316,7 +320,7 @@ type Job struct {
 	Workspace         *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID       ID          `json:"workspaceId"`
 	Logs              []*Log      `json:"logs,omitempty"`
-	Variables         JSON        `json:"variables,omitempty"`
+	Variables         []*Variable `json:"variables"`
 }
 
 func (Job) IsNode()        {}
@@ -509,9 +513,11 @@ type RemoveParametersInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID   ID             `json:"projectId"`
-	WorkspaceID ID             `json:"workspaceId"`
-	File        graphql.Upload `json:"file"`
+	ProjectID     ID             `json:"projectId"`
+	WorkspaceID   ID             `json:"workspaceId"`
+	File          graphql.Upload `json:"file"`
+	PreviousJobID *ID            `json:"previousJobId,omitempty"`
+	StartNodeID   *ID            `json:"startNodeId,omitempty"`
 }
 
 type RunProjectPayload struct {
@@ -562,8 +568,8 @@ type Trigger struct {
 	Description   string          `json:"description"`
 	AuthToken     *string         `json:"authToken,omitempty"`
 	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
-	Enabled       *bool           `json:"enabled,omitempty"`
-	Variables     JSON            `json:"variables,omitempty"`
+	Enabled       bool            `json:"enabled"`
+	Variables     []*Variable     `json:"variables"`
 }
 
 func (Trigger) IsNode()        {}
@@ -651,7 +657,24 @@ type UpdateTriggerInput struct {
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         *bool            `json:"enabled,omitempty"`
-	Variables       JSON             `json:"variables,omitempty"`
+	Variables       []*VariableInput `json:"variables,omitempty"`
+}
+
+type UpdateWorkerConfigInput struct {
+	MachineType                     *string `json:"machineType,omitempty"`
+	ComputeCPUMilli                 *int    `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib                *int    `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb                  *int    `json:"bootDiskSizeGB,omitempty"`
+	TaskCount                       *int    `json:"taskCount,omitempty"`
+	MaxConcurrency                  *int    `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize                  *int    `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize               *int    `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold           *int    `json:"featureFlushThreshold,omitempty"`
+	NodeStatusPropagationDelayMilli *int    `json:"nodeStatusPropagationDelayMilli,omitempty"`
+}
+
+type UpdateWorkerConfigPayload struct {
+	Config *WorkerConfig `json:"config"`
 }
 
 type UpdateWorkspaceInput struct {
@@ -690,6 +713,34 @@ type UserMetadata struct {
 	PhotoURL    *string      `json:"photoURL,omitempty"`
 	Theme       Theme        `json:"theme"`
 	Lang        language.Tag `json:"lang"`
+}
+
+type Variable struct {
+	Key   string        `json:"key"`
+	Type  ParameterType `json:"type"`
+	Value any           `json:"value"`
+}
+
+type VariableInput struct {
+	Key   string        `json:"key"`
+	Type  ParameterType `json:"type"`
+	Value any           `json:"value"`
+}
+
+type WorkerConfig struct {
+	ID                              ID        `json:"id"`
+	MachineType                     *string   `json:"machineType,omitempty"`
+	ComputeCPUMilli                 *int      `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib                *int      `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb                  *int      `json:"bootDiskSizeGB,omitempty"`
+	TaskCount                       *int      `json:"taskCount,omitempty"`
+	MaxConcurrency                  *int      `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize                  *int      `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize               *int      `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold           *int      `json:"featureFlushThreshold,omitempty"`
+	NodeStatusPropagationDelayMilli *int      `json:"nodeStatusPropagationDelayMilli,omitempty"`
+	CreatedAt                       time.Time `json:"createdAt"`
+	UpdatedAt                       time.Time `json:"updatedAt"`
 }
 
 type Workspace struct {
@@ -1616,10 +1667,10 @@ func (e ProjectSortField) MarshalJSON() ([]byte, error) {
 type Role string
 
 const (
-	RoleMaintainer Role = "MAINTAINER"
-	RoleOwner      Role = "OWNER"
-	RoleReader     Role = "READER"
-	RoleWriter     Role = "WRITER"
+	RoleMaintainer Role = "maintainer"
+	RoleOwner      Role = "owner"
+	RoleReader     Role = "reader"
+	RoleWriter     Role = "writer"
 )
 
 var AllRole = []Role{

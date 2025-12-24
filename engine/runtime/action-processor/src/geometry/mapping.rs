@@ -4,6 +4,8 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
+    appearance_remover::AppearanceRemoverFactory,
+    area_calculator::AreaCalculatorFactory,
     area_on_area_overlayer::AreaOnAreaOverlayerFactory,
     boundary_extractor::BoundaryExtractorFactory,
     bounds_extractor::BoundsExtractorFactory,
@@ -20,6 +22,7 @@ use super::{
     extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory,
     filter::GeometryFilterFactory,
+    footprint_replacer::FootprintReplacerFactory,
     geometry_part_extractor::GeometryPartExtractorFactory,
     hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory,
@@ -29,12 +32,13 @@ use super::{
     offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory,
     planarity_filter::PlanarityFilterFactory,
+    polygon_normal_extractor::PolygonNormalExtractorFactory,
     refiner::RefinerFactory,
+    remover::GeometryRemoverFactory,
     replacer::GeometryReplacerFactory,
     solid_boundary_validator::SolidBoundaryValidatorFactory,
     spatial_filter::SpatialFilterFactory,
     splitter::GeometrySplitterFactory,
-    surface_footprint_replacer::SurfaceFootprintReplacerFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_forcer::ThreeDimensionForcerFactory,
     three_dimension_planarity_rotator::ThreeDimensionPlanarityRotatorFactory,
@@ -49,6 +53,7 @@ use super::{
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
+        Box::<AppearanceRemoverFactory>::default(),
         Box::<ExtruderFactory>::default(),
         Box::<BoundaryExtractorFactory>::default(),
         Box::<ThreeDimensionPlanarityRotatorFactory>::default(),
@@ -70,6 +75,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<LineOnLineOverlayerFactory>::default(),
         Box::<BuffererFactory>::default(),
         Box::<AreaOnAreaOverlayerFactory>::default(),
+        Box::<AreaCalculatorFactory>::default(),
         Box::<GeometryReplacerFactory>::default(),
         Box::<ClosedCurveFilterFactory>::default(),
         Box::<VertexRemoverFactory>::default(),
@@ -78,6 +84,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<BoundsExtractorFactory>::default(),
         Box::<ClipperFactory>::default(),
         Box::<RefinerFactory>::default(),
+        Box::<GeometryRemoverFactory>::default(),
         Box::<GeometryValueFilterFactory>::default(),
         Box::<ElevationExtractorFactory>::default(),
         Box::<DissolverFactory>::default(),
@@ -85,13 +92,14 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<OffsetterFactory>::default(),
         Box::<ConvexHullAccumulatorFactory>::default(),
         Box::<JPStandardGridAccumulatorFactory>::default(),
-        Box::<SurfaceFootprintReplacerFactory>::default(),
+        Box::<FootprintReplacerFactory>::default(),
         Box::<GeometryPartExtractorFactory>::default(),
         Box::<SolidBoundaryValidatorFactory>::default(),
         Box::<CSGBuilderFactory>::default(),
         Box::<CSGEvaluatorFactory>::default(),
         Box::<VertexCounterFactory>::default(),
         Box::<SpatialFilterFactory>::default(),
+        Box::<PolygonNormalExtractorFactory>::default(),
     ];
     factories
         .into_iter()

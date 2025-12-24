@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
@@ -18,13 +19,13 @@ const (
 )
 
 type JobInfo struct {
-	ID     id.JobID
 	Name   string
 	Status JobStatus
+	ID     id.JobID
 }
 
 type Batch interface {
-	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID id.WorkspaceID) (string, error)
+	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID id.WorkspaceID, previousJobID *id.JobID, startNodeID *uuid.UUID) (string, error)
 	GetJobStatus(ctx context.Context, jobName string) (JobStatus, error)
 	ListJobs(ctx context.Context, projectID id.ProjectID) ([]JobInfo, error)
 	CancelJob(ctx context.Context, jobName string) error

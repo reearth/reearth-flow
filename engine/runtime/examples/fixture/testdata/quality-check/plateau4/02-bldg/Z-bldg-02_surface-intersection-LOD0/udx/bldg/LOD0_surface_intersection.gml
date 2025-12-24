@@ -35,11 +35,11 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList srsDimension="3">
-                    0.0 0.0 0.0
-                    0.0 10.0 0.0
-                    10.0 10.0 0.0
-                    10.0 0.0 0.0
-                    0.0 0.0 0.0
+                    36.64710 137.05268 0.0
+                    36.64710 137.05269 0.0
+                    36.64711 137.05269 0.0
+                    36.64711 137.05268 0.0
+                    36.64710 137.05268 0.0
                   </gml:posList>
                 </gml:LinearRing>
               </gml:exterior>
@@ -67,11 +67,11 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList srsDimension="3">
-                    5.0 5.0 0.0
-                    5.0 15.0 0.0
-                    15.0 15.0 0.0
-                    15.0 5.0 0.0
-                    5.0 5.0 0.0
+                    36.647105 137.052685 0.0
+                    36.647105 137.052695 0.0
+                    36.647115 137.052695 0.0
+                    36.647115 137.052685 0.0
+                    36.647105 137.052685 0.0
                   </gml:posList>
                 </gml:LinearRing>
               </gml:exterior>
@@ -81,5 +81,4 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
       </bldg:lod0FootPrint>
     </bldg:Building>
   </core:cityObjectMember>
-
 </core:CityModel>

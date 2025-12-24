@@ -270,13 +270,7 @@ impl From<serde_json::Value> for AttributeValue {
             serde_json::Value::Null => AttributeValue::Null,
             serde_json::Value::Bool(v) => AttributeValue::Bool(v),
             serde_json::Value::Number(v) => AttributeValue::Number(v),
-            serde_json::Value::String(v) => {
-                if let Ok(v) = DateTime::try_from(v.as_str()) {
-                    AttributeValue::DateTime(DateTime(v.into()))
-                } else {
-                    AttributeValue::String(v)
-                }
-            }
+            serde_json::Value::String(v) => AttributeValue::String(v),
             serde_json::Value::Array(v) => {
                 AttributeValue::Array(v.into_iter().map(AttributeValue::from).collect::<Vec<_>>())
             }
@@ -393,6 +387,12 @@ impl TryFrom<rhai::Dynamic> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
+        // Skip UNIT (null) values - they should not create attributes
+        if value.is_unit() {
+            return Err(error::Error::internal_runtime(
+                "UNIT value cannot be converted to AttributeValue",
+            ));
+        }
         let value: serde_json::Value =
             from_dynamic(&value).map_err(error::Error::internal_runtime)?;
         let value: Self = value.into();

@@ -8,6 +8,7 @@ import {
   Button,
   IconButton,
   Input,
+  LoadingSkeleton,
   Pagination,
   Select,
   SelectContent,
@@ -16,8 +17,10 @@ import {
   SelectValue,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
+import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
+import type { Asset } from "@flow/types";
 
 import {
   AssetDeletionDialog,
@@ -25,8 +28,6 @@ import {
   AssetsGridView,
   AssetsListView,
 } from "../AssetsDialog/components";
-
-import useHooks from "./hooks";
 
 const AssetsManager: React.FC = () => {
   const t = useT();
@@ -45,6 +46,7 @@ const AssetsManager: React.FC = () => {
     sortOptions,
     searchTerm,
     layoutView,
+    isCreatingAsset,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,
@@ -58,10 +60,13 @@ const AssetsManager: React.FC = () => {
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    handleAssetDoubleClick,
-  } = useHooks({
+  } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
   });
+
+  const handleAssetDoubleClick = (asset: Asset) => {
+    setAssetToBeEdited(asset);
+  };
 
   return (
     <div className="flex h-full flex-1 flex-col pt-4 pr-3 pb-2 pl-2">
@@ -70,6 +75,7 @@ const AssetsManager: React.FC = () => {
         <Button
           className="flex gap-2"
           variant="default"
+          disabled={isCreatingAsset}
           onClick={handleAssetUploadClick}>
           <FileArrowUpIcon weight="thin" />
           <p className="text-xs dark:font-light">{t("Upload")}</p>
@@ -116,38 +122,43 @@ const AssetsManager: React.FC = () => {
             />
           </div>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col">
-          {layoutView === "list" ? (
-            <AssetsListView
-              assets={assets}
-              isFetching={isFetching}
-              isDebouncingSearch={isDebouncingSearch}
-              isDeleting={isDeleting}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setAssetToBeDeleted={setAssetToBeDeleted}
-              setAssetToBeEdited={setAssetToBeEdited}
-              setCurrentPage={setCurrentPage}
-              setSearchTerm={setSearchTerm}
-              onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
-              onAssetDownload={handleAssetDownload}
-              onAssetDoubleClick={handleAssetDoubleClick}
-            />
-          ) : (
-            <AssetsGridView
-              assets={assets}
-              isFetching={isFetching}
-              isDebouncingSearch={isDebouncingSearch}
-              isDeleting={isDeleting}
-              setAssetToBeDeleted={setAssetToBeDeleted}
-              setAssetToBeEdited={setAssetToBeEdited}
-              onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
-              onAssetDownload={handleAssetDownload}
-              onAssetDoubleClick={handleAssetDoubleClick}
-            />
-          )}
-        </div>
-
+        {!isCreatingAsset ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {layoutView === "list" ? (
+              <AssetsListView
+                assets={assets}
+                isFetching={isFetching}
+                isDebouncingSearch={isDebouncingSearch}
+                isDeleting={isDeleting}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setAssetToBeEdited={setAssetToBeEdited}
+                setCurrentPage={setCurrentPage}
+                setSearchTerm={setSearchTerm}
+                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                onAssetDownload={handleAssetDownload}
+                onAssetDoubleClick={handleAssetDoubleClick}
+              />
+            ) : (
+              <AssetsGridView
+                assets={assets}
+                isFetching={isFetching}
+                isDebouncingSearch={isDebouncingSearch}
+                isDeleting={isDeleting}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setAssetToBeEdited={setAssetToBeEdited}
+                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                onAssetDownload={handleAssetDownload}
+                onAssetDoubleClick={handleAssetDoubleClick}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="h-full">
+            <LoadingSkeleton title={t("Uploading Asset...")} />
+          </div>
+        )}
         {assets && assets.length > 0 && (
           <div className="mt-4 flex-shrink-0">
             <Pagination

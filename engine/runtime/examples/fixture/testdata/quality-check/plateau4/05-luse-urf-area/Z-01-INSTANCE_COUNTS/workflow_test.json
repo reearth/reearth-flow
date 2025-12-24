@@ -8,5 +8,7 @@
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": true,
-  "skip": false
+  "skip": false,
+  "prcs": 6677,
+  "objectLists": "08220_city_2023_objectlist_op.xlsx"
 }

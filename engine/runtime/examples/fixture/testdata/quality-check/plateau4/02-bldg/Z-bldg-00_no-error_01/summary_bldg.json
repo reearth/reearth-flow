@@ -1,0 +1,170 @@
+[
+  {
+    "name": "C-bldg-01 エラー",
+    "count": 0
+  },
+  {
+    "name": "不正な建物ID",
+    "count": 0
+  },
+  {
+    "name": "市区町村コードエラー",
+    "count": 0
+  },
+  {
+    "name": "L-bldg-02 エラー",
+    "count": 0
+  },
+  {
+    "name": "L-bldg-04,05 エラー",
+    "count": 0
+  },
+  {
+    "name": "L-bldg-06 エラー",
+    "count": 0
+  },
+  {
+    "name": "LOD0 面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD0 面の向きエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD0 面の交差",
+    "count": 0
+  },
+  {
+    "name": "LOD1 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD1 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD1 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD1 立体の交差",
+    "count": 0
+  },
+  {
+    "name": "LOD2 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD2 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD2 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD2 立体の交差",
+    "count": 0
+  },
+  {
+    "name": "LOD3 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD3 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD3 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD3 立体の交差",
+    "count": 0
+  },
+  {
+    "name": "LOD4 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD4 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD4 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD4 立体の交差",
+    "count": 0
+  },
+  {
+    "name": "T-bldg-02エラー",
+    "count": 0
+  },
+  {
+    "name": "LOD0-1のBuildingPart",
+    "count": 0
+  },
+  {
+    "name": "L01エラー",
+    "count": 0
+  },
+  {
+    "name": "L02エラー",
+    "count": 0
+  },
+  {
+    "name": "L03エラー",
+    "count": 0
+  },
+  {
+    "name": "L04エラー",
+    "count": 0
+  },
+  {
+    "name": "L05CRS識別子エラー",
+    "count": 0
+  },
+  {
+    "name": "L06エラー",
+    "count": 0
+  },
+  {
+    "name": "T03エラー",
+    "count": 0
+  },
+  {
+    "name": "xlink参照先なし",
+    "count": 0
+  },
+  {
+    "name": "gml:id重複",
+    "count": 0
+  },
+  {
+    "name": "gml:id書式不正",
+    "count": 0
+  },
+  {
+    "name": "L-frn-01エラー",
+    "count": 0
+  },
+  {
+    "name": "C05エラー",
+    "count": 0
+  },
+  {
+    "name": "C07エラー",
+    "count": 0
+  },
+  {
+    "name": "C08エラー",
+    "count": 0
+  },
+  {
+    "name": "totalErrorCount",
+    "count": 0
+  }
+]

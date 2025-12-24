@@ -2,32 +2,59 @@
 
 Testing framework for aligning flow outputs containing tile files, with FME outputs.
 
-## Install and run
+## Run
 
-1. install uv (python package manager)
-2. cd into this directory and run `sh setup.sh`
-3. run `uv run python3 -m plateau-tiles-test`
+```sh
+cargo run -p plateau-tiles-test
+```
 
 ## Directory structure
 
-- `testcases/<name>`: store testing profiles.
-- `results`: store evaluation results and intermediate data
-  - `results/<name>/fme`: extracted fme outputs
-  - `results/<name>/flow`: flow outputs
-  - `results/<name>/runtime`: flow intermediate data
-  - tests should be small so these files are kept persistently.
-- `<name>` naming pattern: `<city_code>_<city_name>_<workflow>_<extra_description>.toml`
+- `artifacts/citymodel/{zip_stem}/` - Shared codelists and schemas extracted from source zips (tracked in git)
+  - `codelists/` - Shared codelist files
+  - `schemas/` - Shared schema files
+- `testcases/{workflow-path}/{category}/` - Test-specific data (tracked in git)
+  - `{workflow-path}` is relative to `runtime/examples/fixture/workflow/` (e.g., `data-convert/plateau4/02-tran-rwy-trk-squr-wwy`)
+  - `profile.toml` - Test configuration (`workflow_path` is optional, auto-derived from directory structure)
+  - `citymodel/udx/` - Test-specific GML files (filtered from source)
+  - `fme/` - Reference FME output directory with tile files
+- `results/{workflow-path}/{desc}/` - Runtime outputs (gitignored)
+  - `{zip_name}` - Packed citymodel zip (generated from artifacts + testcase)
+  - `flow/` - Flow tile outputs
+  - `fme_extracted/` - FME tile outputs extracted for comparison
+  - `flow_extracted/` - Flow tile outputs extracted for comparison
+  - `runtime/` - Flow intermediate data
 
-## Steps to create a test
+## Caveats
 
-1. prepare the original CityGML zip under `$CITYGML_SRCDIR`
-2. create `testcases/<name>/profile.toml`, create a filter to minimize features to be tested.
-3. `uv run python3 -m plateau-tiles-test <name> g` which generates the filtered zip, update `profile.toml` to use that zip.
-4. run FME with the filtered zip
-  - FME's uses 3dtiles v1.0 + draco compression which cannot be handled currently. The workaround is to modify FME workflows to export JSON files (csmapreprojector + coordinateswapper needed to match cesium processing result).
-  - rename `.mvt` -> `.pbf` if necessary.
-  - zip FME output to `testcases/<name>/fme.zip`
+- draco decoding not supported (TODO), disable it in the workflow to test.
+- 3D tiles v1.0 `.b3dm` output by FME is not supported. Use [3d-tiles-tool](https://github.com/CesiumGS/3d-tiles-tools) to upgrade it.
+- FME's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
 
-## Todo
+### Ignored differences in attribute test
 
-- support draco decoding for 3dtiles v1.1
+- ignore empty string vs Null difference: limitation of `3d-tiles-tools` upgrading when constructing `fme.zip`
+- ignore string vs int type difference: FME has implicit type conversion from string to integer
+- ignore bool vs int difference: FME outputs integer but using native bool is possibly better
+
+## Tests
+
+- `json_attributes` - Compare JSON outputs.
+- `mvt_attributes` - Compare MVT tile attributes.
+- `mvt_polygons` - Compare MVT polygon geometries using symmetric difference area.
+- `mvt_lines` - Compare MVT tiles linestrings and polygon outliers.
+- `cesium_attributes` - Compare 3D Tiles feature attributes.
+- `cesium_statistics` - Compare 3D Tiles triangle meshes from statistical values.
+
+## Run single test
+
+Run single test with
+
+```
+cargo run -p plateau-tiles-test -- <toml_path> [stages]
+```
+
+Stages:
+
+- `r` - Run: Pack runtime zip (if not exists) and execute workflow
+- `e` - Evaluate: Compare flow output with FME reference

@@ -202,10 +202,10 @@ where
     T: CoordFloat + From<Z>,
     Z: CoordFloat + Mul<T, Output = Z> + Div<T, Output = Z>,
 {
-    pub fn intersection(&self, other: &Self, epsilon: Option<T>) -> Option<Coordinate<T, Z>> {
+    pub fn intersection(&self, other: &Self, tolerance: T) -> Option<Coordinate<T, Z>> {
         let (cp, cq) = self.closest_points(other);
         let d = (cp - cq).norm();
-        if d < epsilon.unwrap_or(<T as NumCast>::from(1e-5).unwrap_or_default()) {
+        if d < tolerance {
             Some((cp + cq) / <T as NumCast>::from(2.0).unwrap_or_default())
         } else {
             None
@@ -232,10 +232,23 @@ where
 }
 
 impl<T: CoordNum> Line3D<T> {
+    /// Computes the 3D shoelace formula contribution for polygon area calculation.
+    ///
+    /// This is the sum of three 2D cross products (determinants) computed by projecting
+    /// the line segment onto each coordinate plane (XY, YZ, ZX):
+    /// - XY plane: `start.x * end.y - start.y * end.x`
+    /// - YZ plane: `start.y * end.z - start.z * end.y`
+    /// - ZX plane: `start.z * end.x - start.x * end.z`
+    ///
+    /// When summed over all edges of a closed polygon and divided by 2, this gives the
+    /// signed 3D area. The sign depends on winding order: CCW is positive, CW is negative.
     pub fn determinant3d(&self) -> T {
-        self.start.x * (self.end.y * self.start.z - self.end.z * self.start.y)
-            - self.start.y * (self.end.x * self.start.z - self.end.z * self.start.x)
-            + self.start.z * (self.end.x * self.start.y - self.end.y * self.start.x)
+        // For 3D area calculation using shoelace formula
+        // This computes the cross product contribution: start × end
+        self.start.x * self.end.y - self.start.y * self.end.x + self.start.y * self.end.z
+            - self.start.z * self.end.y
+            + self.start.z * self.end.x
+            - self.start.x * self.end.z
     }
 }
 

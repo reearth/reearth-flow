@@ -10,7 +10,9 @@ import { Edge } from "@flow/types";
 
 import useHooks from "./hooks";
 
-export type CustomEdgeProps = EdgeProps<Edge>;
+export type CustomEdgeProps = EdgeProps<Edge> & {
+  currentWorkflowId?: string;
+};
 
 const DefaultEdge: React.FC<CustomEdgeProps> = ({
   id,
@@ -24,6 +26,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   targetY,
   targetPosition,
   selected,
+  currentWorkflowId,
   // markerEnd,
   // ...props
 }) => {
@@ -44,6 +47,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     handleDoubleClick,
   } = useHooks({
     id,
+    currentWorkflowId,
     source,
     sourceHandleId,
     target,
@@ -56,7 +60,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
       <EdgeLabelRenderer>
         {jobStatus === "failed" && (
           <XIcon
-            className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
+            className="nodrag nopan absolute z-[9999] size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
             style={{
               pointerEvents: "all",
@@ -66,7 +70,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
         )}
         {hasIntermediateData && (
           <TableIcon
-            className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
+            className={`nodrag nopan absolute z-[9999] size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
             style={{
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,

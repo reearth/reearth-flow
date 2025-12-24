@@ -1,17 +1,36 @@
 import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
+import type { Awareness } from "y-protocols/awareness";
 
-import { useProject, useProjectVariables } from "@flow/lib/gql";
+import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
+import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
 import type { Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
-export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
+import { toast } from "../NotificationSystem/useToast";
+
+export default ({
+  rawWorkflows,
+  yAwareness,
+}: {
+  rawWorkflows: Workflow[];
+  yAwareness: Awareness;
+}) => {
+  const t = useT();
   const [currentProject] = useCurrentProject();
-  const { useGetProjectVariables } = useProjectVariables();
-  const { projectVariables } = useGetProjectVariables(currentProject?.id ?? "");
+
+  const { activeUsersDebugRuns, broadcastDebugRun } = useDebugAwareness({
+    yAwareness,
+    projectId: currentProject?.id,
+  });
+  const { useGetWorkflowVariables } = useWorkflowVariables();
+  const { workflowVariables } = useGetWorkflowVariables(
+    currentProject?.id ?? "",
+  );
 
   const { fitView } = useReactFlow();
 
@@ -19,13 +38,12 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
-
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
 
     const engineReadyWorkflow = createEngineReadyWorkflow(
       currentProject.name,
-      projectVariables,
+      workflowVariables,
       rawWorkflows,
     );
 
@@ -66,13 +84,15 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
         });
       }
       await updateValue({ jobs });
+      broadcastDebugRun(data.job.id, data.job.status);
 
       fitView({ duration: 400, padding: 0.5 });
     }
   }, [
     currentProject,
-    projectVariables,
+    workflowVariables,
     rawWorkflows,
+    broadcastDebugRun,
     debugRunState?.jobs,
     fitView,
     updateValue,
@@ -91,11 +111,65 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
         debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
         [];
       await updateValue({ jobs });
+      broadcastDebugRun(null);
     }
-  }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
+  }, [
+    currentProject?.id,
+    debugRunState?.jobs,
+    updateValue,
+    useJobCancel,
+    broadcastDebugRun,
+  ]);
+
+  const loadExternalDebugJob = useCallback(
+    async (jobId: string, userName: string) => {
+      if (!currentProject || !debugRunState) return;
+
+      // Check if job already exists before updating
+      const existingJobs = debugRunState?.jobs || [];
+      if (existingJobs.some((j) => j.jobId === jobId)) {
+        return; // Already viewing this job, so no need to update
+      }
+
+      // Clear any existing debug run that the user has run
+      const filteredJobs = existingJobs.filter(
+        (job) => job.projectId !== currentProject.id,
+      );
+
+      const states = Array.from(yAwareness.getStates());
+      const debugJobStatus = states.find(([, state]) =>
+        state.debugRun ? state.debugRun.jobId === jobId : false,
+      )?.[1]?.debugRun?.status;
+
+      // Add the new external debug job
+      const newJobs = [
+        ...filteredJobs,
+        {
+          projectId: currentProject.id,
+          jobId,
+          status: debugJobStatus,
+        },
+      ];
+
+      await updateValue({ jobs: newJobs });
+
+      // Show toast after successful update
+      toast({
+        title: t("Now viewing {{userName}}'s debug run", {
+          userName,
+        }),
+        description: t("You're now viewing {{userName}}'s debug session", {
+          userName,
+        }),
+      });
+    },
+    [t, currentProject, debugRunState, updateValue, yAwareness],
+  );
 
   return {
+    activeUsersDebugRuns,
     handleDebugRunStart,
     handleDebugRunStop,
+    loadExternalDebugJob,
   };
 };

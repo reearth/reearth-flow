@@ -11,8 +11,9 @@ use reearth_flow_geometry::types::traits::Elevation;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
+use reearth_flow_geometry::types::multi_point::MultiPoint2D;
+use reearth_flow_geometry::types::point::{Point, Point2D};
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
@@ -20,8 +21,6 @@ use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 
 use crate::material::{Texture, X3DMaterial};
-
-static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -99,7 +98,7 @@ pub struct CityGmlGeometry {
     pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
-    pub polygon_uvs: flatgeom::MultiPolygon<'static, [f64; 2]>,
+    pub polygon_uvs: MultiPolygon2D<f64>,
 }
 
 impl CityGmlGeometry {
@@ -114,16 +113,50 @@ impl CityGmlGeometry {
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
-            polygon_uvs: flatgeom::MultiPolygon::default(),
+            polygon_uvs: MultiPolygon2D::default(),
         }
     }
 
     pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
         self.gml_geometries
             .iter()
-            .map(|feature| CityGmlGeometry {
-                gml_geometries: vec![feature.clone()],
-                ..self.clone()
+            .map(|feature| {
+                let pos = feature.pos as usize;
+                let len = feature.len as usize;
+
+                // Extract only the relevant slice of polygon_materials for this geometry
+                let polygon_materials = if pos + len <= self.polygon_materials.len() {
+                    self.polygon_materials[pos..pos + len].to_vec()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract only the relevant slice of polygon_textures for this geometry
+                let polygon_textures = if pos + len <= self.polygon_textures.len() {
+                    self.polygon_textures[pos..pos + len].to_vec()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract only the relevant slice of polygon_uvs for this geometry
+                let polygon_uvs = if pos + len <= self.polygon_uvs.0.len() {
+                    MultiPolygon2D::new(self.polygon_uvs.0[pos..pos + len].to_vec())
+                } else {
+                    MultiPolygon2D::default()
+                };
+
+                // Clone the feature and reset pos to 0 since it's now the only geometry
+                let mut cloned_feature = feature.clone();
+                cloned_feature.pos = 0;
+
+                CityGmlGeometry {
+                    gml_geometries: vec![cloned_feature],
+                    materials: self.materials.clone(),
+                    textures: self.textures.clone(),
+                    polygon_materials,
+                    polygon_textures,
+                    polygon_uvs,
+                }
             })
             .collect()
     }
@@ -147,14 +180,6 @@ impl CityGmlGeometry {
                     .sum::<usize>()
             })
             .sum()
-    }
-    pub fn are_points_coplanar(&self) -> bool {
-        self.gml_geometries.iter().all(|feature| {
-            feature.polygons.iter().all(|poly| {
-                let result = are_points_coplanar(poly.clone().into(), EPSILON);
-                result.is_some()
-            })
-        })
     }
 
     pub fn elevation(&self) -> f64 {
@@ -214,6 +239,19 @@ impl CityGmlGeometry {
             .for_each(|feature| feature.transform_offset(x, y, z));
     }
 
+    /// Transforms the X/Y coordinates of all geometries using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for gml_geometry in &mut self.gml_geometries {
+            gml_geometry.transform_horizontal(&transform_fn)?;
+        }
+        Ok(())
+    }
+
     pub fn get_vertices(&self) -> Vec<Coordinate3D<f64>> {
         let mut vertices = Vec::new();
         for gml_geometry in &self.gml_geometries {
@@ -261,6 +299,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
     fn from(geometry: CityGmlGeometry) -> Self {
         let mut polygons = Vec::<Polygon2D<f64>>::new();
         let mut line_strings = Vec::<LineString2D<f64>>::new();
+        let mut points = Vec::<Point2D<f64>>::new();
 
         for gml_geometry in geometry.gml_geometries {
             for polygon in gml_geometry.polygons {
@@ -269,17 +308,29 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
             for line_string in gml_geometry.line_strings {
                 line_strings.push(line_string.into());
             }
+            for point in gml_geometry.points {
+                // Convert Coordinate3D to Point2D: Coordinate3D -> Point3D -> Point2D
+                let point_3d: Point<f64, f64> = point.into();
+                points.push(point_3d.into());
+            }
+        }
+
+        let has_polygons: u8 = if !polygons.is_empty() { 1 } else { 0 };
+        let has_line_strings: u8 = if !line_strings.is_empty() { 1 } else { 0 };
+        let has_points: u8 = if !points.is_empty() { 1 } else { 0 };
+        if has_polygons + has_line_strings + has_points > 1 {
+            tracing::warn!("CityGML feature contains multiple geometry types.");
         }
 
         // Return geometry based on what's available
         if !polygons.is_empty() {
-            if !line_strings.is_empty() {
-                tracing::warn!("CityGML feature contains both polygons and line strings. Line strings will be dropped");
-            }
             Self::MultiPolygon(MultiPolygon2D::from(polygons))
         } else if !line_strings.is_empty() {
             Self::MultiLineString(MultiLineString2D::new(line_strings))
+        } else if !points.is_empty() {
+            Self::MultiPoint(MultiPoint2D::from(points))
         } else {
+            tracing::warn!("CityGML feature contains no supported geometries.");
             Self::MultiPolygon(MultiPolygon2D::from(Vec::new()))
         }
     }
@@ -296,6 +347,7 @@ pub struct GmlGeometry {
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
     pub line_strings: Vec<LineString3D<f64>>,
+    pub points: Vec<Coordinate3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
     pub composite_surfaces: Vec<GmlGeometry>,
@@ -313,6 +365,9 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_inplace(jgd2wgs));
+        self.points
+            .iter_mut()
+            .for_each(|point| point.transform_inplace(jgd2wgs));
     }
 
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
@@ -322,6 +377,28 @@ impl GmlGeometry {
         self.line_strings
             .iter_mut()
             .for_each(|line| line.transform_offset(x, y, z));
+        self.points
+            .iter_mut()
+            .for_each(|point| point.transform_offset(x, y, z));
+    }
+
+    /// Transforms the X/Y coordinates of all geometries using the provided function.
+    /// The Z coordinate is passed through unchanged.
+    /// Returns an error if any transformation fails.
+    pub fn transform_horizontal<F, E>(&mut self, transform_fn: &F) -> Result<(), E>
+    where
+        F: Fn(f64, f64) -> Result<(f64, f64), E>,
+    {
+        for poly in &mut self.polygons {
+            poly.transform_horizontal(transform_fn)?;
+        }
+        for line in &mut self.line_strings {
+            line.transform_horizontal(transform_fn)?;
+        }
+        for composite in &mut self.composite_surfaces {
+            composite.transform_horizontal(transform_fn)?;
+        }
+        Ok(())
     }
 }
 
@@ -423,6 +500,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             len: geometry.len,
             polygons: Vec::new(),
             line_strings: Vec::new(),
+            points: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
             composite_surfaces: Vec::new(),

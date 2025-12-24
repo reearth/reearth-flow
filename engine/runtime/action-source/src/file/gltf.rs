@@ -3,10 +3,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::types::{
-    coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, multi_polygon::MultiPolygon3D,
-    polygon::Polygon3D,
-};
+use reearth_flow_geometry::types::{geometry::Geometry3D, multi_polygon::MultiPolygon3D};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -14,6 +11,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -104,6 +102,13 @@ fn default_true() -> bool {
     true
 }
 
+struct MeshInfo<'a> {
+    primitives: Vec<gltf::Primitive<'a>>,
+    mesh_name: Option<String>,
+    node_name: Option<String>,
+    transform: reearth_flow_gltf::Transform,
+}
+
 #[async_trait::async_trait]
 impl Source for GltfReader {
     async fn initialize(&self, _ctx: NodeContext) {}
@@ -149,170 +154,201 @@ async fn read_gltf(
 
     let buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
 
-    if params.merge_meshes {
-        let mut all_primitives = Vec::new();
-        let mut mesh_names = Vec::new();
-        let mut node_names = Vec::new();
-
-        for scene in gltf.scenes() {
-            for node in scene.nodes() {
-                collect_primitives(
-                    &node,
-                    &gltf,
-                    &mut all_primitives,
-                    &mut mesh_names,
-                    &mut node_names,
-                );
-            }
-        }
-
-        if !all_primitives.is_empty() {
-            let geometry = create_geometry_from_primitives(&all_primitives, &buffer_data, params)?;
-            let mut attributes = IndexMap::new();
-
-            attributes.insert(
-                Attribute::new("source"),
-                AttributeValue::String("glTF".to_string()),
-            );
-
-            if !mesh_names.is_empty() {
-                attributes.insert(
-                    Attribute::new("meshes"),
-                    AttributeValue::Array(
-                        mesh_names
-                            .iter()
-                            .map(|m| AttributeValue::String(m.clone()))
-                            .collect(),
-                    ),
-                );
-            }
-
-            if params.include_nodes && !node_names.is_empty() {
-                attributes.insert(
-                    Attribute::new("nodes"),
-                    AttributeValue::Array(
-                        node_names
-                            .iter()
-                            .map(|n| AttributeValue::String(n.clone()))
-                            .collect(),
-                    ),
-                );
-            }
-
-            attributes.insert(
-                Attribute::new("primitiveCount"),
-                AttributeValue::Number(serde_json::Number::from(all_primitives.len())),
-            );
-
-            let feature = Feature {
-                geometry,
-                attributes,
-                ..Default::default()
-            };
-
-            sender
-                .send((
-                    DEFAULT_PORT.clone(),
-                    IngestionMessage::OperationEvent { feature },
-                ))
-                .await
-                .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
-        }
-    } else {
-        for scene in gltf.scenes() {
-            let mut node_queue: Vec<gltf::Node> = scene.nodes().collect();
-
-            while let Some(node) = node_queue.pop() {
+    // Collect lightweight mesh info with transforms (just traversal, no heavy geometry processing)
+    let mut mesh_infos = Vec::new();
+    for scene in gltf.scenes() {
+        reearth_flow_gltf::traverse_scene(
+            &scene,
+            |node, world_transform| -> Result<(), SourceError> {
                 if let Some(mesh) = node.mesh() {
                     let primitives: Vec<_> = mesh.primitives().collect();
-
                     if !primitives.is_empty() {
-                        let geometry =
-                            create_geometry_from_primitives(&primitives, &buffer_data, params)?;
-                        let mut attributes = IndexMap::new();
-
-                        attributes.insert(
-                            Attribute::new("source"),
-                            AttributeValue::String("glTF".to_string()),
-                        );
-
-                        if let Some(mesh_name) = mesh.name() {
-                            attributes.insert(
-                                Attribute::new("mesh"),
-                                AttributeValue::String(mesh_name.to_string()),
-                            );
-                        }
-
-                        if params.include_nodes {
-                            if let Some(node_name) = node.name() {
-                                attributes.insert(
-                                    Attribute::new("node"),
-                                    AttributeValue::String(node_name.to_string()),
-                                );
-                            }
-                        }
-
-                        attributes.insert(
-                            Attribute::new("primitiveCount"),
-                            AttributeValue::Number(serde_json::Number::from(primitives.len())),
-                        );
-
-                        let feature = Feature {
-                            geometry,
-                            attributes,
-                            ..Default::default()
-                        };
-
-                        sender
-                            .send((
-                                DEFAULT_PORT.clone(),
-                                IngestionMessage::OperationEvent { feature },
-                            ))
-                            .await
-                            .map_err(|e| {
-                                SourceError::GltfReader(format!("Failed to send feature: {e}"))
-                            })?;
+                        mesh_infos.push(MeshInfo {
+                            primitives,
+                            mesh_name: mesh.name().map(|s| s.to_string()),
+                            node_name: if params.include_nodes {
+                                node.name().map(|s| s.to_string())
+                            } else {
+                                None
+                            },
+                            transform: world_transform.clone(),
+                        });
                     }
                 }
+                Ok(())
+            },
+        )?;
+    }
 
-                node_queue.extend(node.children());
-            }
+    // Process and send features based on merge_meshes setting
+    if !params.merge_meshes {
+        // Process and send each geometry immediately without collecting
+        for mesh_info in mesh_infos {
+            let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+                &mesh_info.primitives,
+                &buffer_data,
+                Some(&mesh_info.transform),
+            )
+            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+
+            let mesh_names = mesh_info.mesh_name.map(|n| vec![n]).unwrap_or_default();
+            let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
+
+            send_feature(
+                &sender,
+                geometry,
+                &mesh_names,
+                &node_names,
+                mesh_info.primitives.len(),
+                params,
+            )
+            .await?;
         }
+    } else if !mesh_infos.is_empty() {
+        let mut geometries = Vec::new();
+        let mut all_mesh_names = std::collections::HashSet::new();
+        let mut all_node_names = std::collections::HashSet::new();
+        let mut total_primitives = 0;
+
+        for mesh_info in mesh_infos {
+            let geometry = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+                &mesh_info.primitives,
+                &buffer_data,
+                Some(&mesh_info.transform),
+            )
+            .map_err(|e| SourceError::GltfReader(format!("Failed to create geometry: {e}")))?;
+
+            geometries.push(geometry);
+            if let Some(name) = mesh_info.mesh_name {
+                all_mesh_names.insert(name);
+            }
+            if let Some(name) = mesh_info.node_name {
+                all_node_names.insert(name);
+            }
+            total_primitives += mesh_info.primitives.len();
+        }
+
+        let merged_geometry = merge_geometries(geometries.iter().collect());
+        let merged_mesh_names: Vec<String> = all_mesh_names.into_iter().collect();
+        let merged_node_names: Vec<String> = all_node_names.into_iter().collect();
+
+        send_feature(
+            &sender,
+            merged_geometry,
+            &merged_mesh_names,
+            &merged_node_names,
+            total_primitives,
+            params,
+        )
+        .await?;
     }
 
     Ok(())
 }
 
-fn collect_primitives<'a>(
-    node: &gltf::Node<'a>,
-    _gltf: &gltf::Gltf,
-    primitives: &mut Vec<gltf::Primitive<'a>>,
-    mesh_names: &mut Vec<String>,
-    node_names: &mut Vec<String>,
-) {
-    let mut node_stack = vec![node.clone()];
+fn merge_geometries(geometries: Vec<&Geometry3D<f64>>) -> Geometry3D<f64> {
+    let mut all_polygons = Vec::new();
 
-    while let Some(current_node) = node_stack.pop() {
-        if let Some(node_name) = current_node.name() {
-            if !node_names.contains(&node_name.to_string()) {
-                node_names.push(node_name.to_string());
+    for geometry in geometries {
+        match geometry {
+            Geometry3D::Polygon(polygon) => {
+                all_polygons.push(polygon.clone());
+            }
+            Geometry3D::MultiPolygon(multipolygon) => {
+                all_polygons.extend(multipolygon.0.iter().cloned());
+            }
+            _ => {
+                // currently reearth-flow-gltf only creates Polygon and MultiPolygon geometries
+                tracing::warn!("Unsupported geometry type for merging: {:?}", geometry);
             }
         }
-
-        if let Some(mesh) = current_node.mesh() {
-            if let Some(mesh_name) = mesh.name() {
-                if !mesh_names.contains(&mesh_name.to_string()) {
-                    mesh_names.push(mesh_name.to_string());
-                }
-            }
-
-            for primitive in mesh.primitives() {
-                primitives.push(primitive);
-            }
-        }
-
-        node_stack.extend(current_node.children());
     }
+
+    if all_polygons.len() == 1 {
+        Geometry3D::Polygon(all_polygons.into_iter().next().unwrap())
+    } else {
+        Geometry3D::MultiPolygon(MultiPolygon3D::new(all_polygons))
+    }
+}
+
+async fn send_feature(
+    sender: &Sender<(Port, IngestionMessage)>,
+    flow_geometry: Geometry3D<f64>,
+    mesh_names: &[String],
+    node_names: &[String],
+    primitive_count: usize,
+    params: &GltfReaderParam,
+) -> Result<(), SourceError> {
+    let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
+    let mut attributes = IndexMap::new();
+
+    attributes.insert(
+        Attribute::new("source"),
+        AttributeValue::String("glTF".to_string()),
+    );
+
+    if !mesh_names.is_empty() {
+        let key = if mesh_names.len() == 1 {
+            "mesh"
+        } else {
+            "meshes"
+        };
+        attributes.insert(
+            Attribute::new(key),
+            if mesh_names.len() == 1 {
+                AttributeValue::String(mesh_names[0].clone())
+            } else {
+                AttributeValue::Array(
+                    mesh_names
+                        .iter()
+                        .map(|m| AttributeValue::String(m.clone()))
+                        .collect(),
+                )
+            },
+        );
+    }
+
+    if params.include_nodes && !node_names.is_empty() {
+        let key = if node_names.len() == 1 {
+            "node"
+        } else {
+            "nodes"
+        };
+        attributes.insert(
+            Attribute::new(key),
+            if node_names.len() == 1 {
+                AttributeValue::String(node_names[0].clone())
+            } else {
+                AttributeValue::Array(
+                    node_names
+                        .iter()
+                        .map(|n| AttributeValue::String(n.clone()))
+                        .collect(),
+                )
+            },
+        );
+    }
+
+    attributes.insert(
+        Attribute::new("primitiveCount"),
+        AttributeValue::Number(serde_json::Number::from(primitive_count)),
+    );
+
+    let feature = Feature {
+        geometry,
+        attributes,
+        ..Default::default()
+    };
+
+    sender
+        .send((
+            DEFAULT_PORT.clone(),
+            IngestionMessage::OperationEvent { feature },
+        ))
+        .await
+        .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
+
+    Ok(())
 }
 
 async fn load_buffers(
@@ -405,232 +441,6 @@ async fn load_external_buffer(
         .map_err(|e| SourceError::GltfReader(format!("Failed to read buffer content: {e}")))?;
 
     Ok(content.to_vec())
-}
-
-fn create_geometry_from_primitives(
-    primitives: &[gltf::Primitive],
-    buffer_data: &[Vec<u8>],
-    _params: &GltfReaderParam,
-) -> Result<Geometry, SourceError> {
-    let mut polygons = Vec::new();
-
-    for primitive in primitives {
-        let position_accessor = primitive
-            .get(&gltf::Semantic::Positions)
-            .ok_or_else(|| SourceError::GltfReader("Primitive has no positions".to_string()))?;
-
-        let positions = read_positions(&position_accessor, buffer_data)?;
-
-        if let Some(indices_accessor) = primitive.indices() {
-            let indices = read_indices(&indices_accessor, buffer_data)?;
-
-            match primitive.mode() {
-                gltf::mesh::Mode::Triangles => {
-                    for chunk in indices.chunks(3) {
-                        if chunk.len() == 3 {
-                            let triangle = vec![
-                                positions[chunk[0]],
-                                positions[chunk[1]],
-                                positions[chunk[2]],
-                                positions[chunk[0]], // Close the ring
-                            ];
-                            polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                        }
-                    }
-                }
-                gltf::mesh::Mode::TriangleStrip => {
-                    for i in 0..indices.len().saturating_sub(2) {
-                        let triangle = if i % 2 == 0 {
-                            vec![
-                                positions[indices[i]],
-                                positions[indices[i + 1]],
-                                positions[indices[i + 2]],
-                                positions[indices[i]], // Close the ring
-                            ]
-                        } else {
-                            vec![
-                                positions[indices[i]],
-                                positions[indices[i + 2]],
-                                positions[indices[i + 1]],
-                                positions[indices[i]], // Close the ring
-                            ]
-                        };
-                        polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                    }
-                }
-                gltf::mesh::Mode::TriangleFan => {
-                    for i in 1..indices.len().saturating_sub(1) {
-                        let triangle = vec![
-                            positions[indices[0]],
-                            positions[indices[i]],
-                            positions[indices[i + 1]],
-                            positions[indices[0]], // Close the ring
-                        ];
-                        polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                    }
-                }
-                _ => {
-                    return Err(SourceError::GltfReader(format!(
-                        "Unsupported primitive mode: {:?}",
-                        primitive.mode()
-                    )))
-                }
-            }
-        } else {
-            // Non-indexed primitives
-            match primitive.mode() {
-                gltf::mesh::Mode::Triangles => {
-                    for chunk in positions.chunks(3) {
-                        if chunk.len() == 3 {
-                            let triangle = vec![chunk[0], chunk[1], chunk[2], chunk[0]];
-                            polygons.push(Polygon3D::new(triangle.into(), vec![]));
-                        }
-                    }
-                }
-                _ => {
-                    return Err(SourceError::GltfReader(format!(
-                        "Unsupported non-indexed primitive mode: {:?}",
-                        primitive.mode()
-                    )))
-                }
-            }
-        }
-    }
-
-    let flow_geometry = if polygons.len() == 1 {
-        FlowGeometry3D::Polygon(polygons.into_iter().next().unwrap())
-    } else {
-        FlowGeometry3D::MultiPolygon(MultiPolygon3D::new(polygons))
-    };
-
-    let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
-
-    Ok(geometry)
-}
-
-fn read_positions(
-    accessor: &gltf::Accessor,
-    buffer_data: &[Vec<u8>],
-) -> Result<Vec<Coordinate>, SourceError> {
-    let view = accessor.view().ok_or_else(|| {
-        SourceError::GltfReader("Position accessor has no buffer view".to_string())
-    })?;
-
-    let buffer = &buffer_data[view.buffer().index()];
-    let start = view.offset() + accessor.offset();
-    let stride = view.stride().unwrap_or(accessor.size());
-
-    let mut positions = Vec::new();
-
-    match accessor.data_type() {
-        gltf::accessor::DataType::F32 => {
-            if accessor.dimensions() != gltf::accessor::Dimensions::Vec3 {
-                return Err(SourceError::GltfReader(
-                    "Position accessor must be Vec3".to_string(),
-                ));
-            }
-
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let x = read_f32(buffer, offset)?;
-                let y = read_f32(buffer, offset + 4)?;
-                let z = read_f32(buffer, offset + 8)?;
-
-                positions.push(Coordinate {
-                    x: x as f64,
-                    y: y as f64,
-                    z: z as f64,
-                });
-            }
-        }
-        _ => {
-            return Err(SourceError::GltfReader(format!(
-                "Unsupported position data type: {:?}",
-                accessor.data_type()
-            )))
-        }
-    }
-
-    Ok(positions)
-}
-
-fn read_indices(
-    accessor: &gltf::Accessor,
-    buffer_data: &[Vec<u8>],
-) -> Result<Vec<usize>, SourceError> {
-    let view = accessor
-        .view()
-        .ok_or_else(|| SourceError::GltfReader("Index accessor has no buffer view".to_string()))?;
-
-    let buffer = &buffer_data[view.buffer().index()];
-    let start = view.offset() + accessor.offset();
-    let stride = view.stride().unwrap_or(accessor.size());
-
-    let mut indices = Vec::new();
-
-    match accessor.data_type() {
-        gltf::accessor::DataType::U16 => {
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let idx = read_u16(buffer, offset)?;
-                indices.push(idx as usize);
-            }
-        }
-        gltf::accessor::DataType::U32 => {
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let idx = read_u32(buffer, offset)?;
-                indices.push(idx as usize);
-            }
-        }
-        gltf::accessor::DataType::U8 => {
-            for i in 0..accessor.count() {
-                let offset = start + i * stride;
-                let idx = buffer
-                    .get(offset)
-                    .ok_or_else(|| SourceError::GltfReader("Index out of bounds".to_string()))?;
-                indices.push(*idx as usize);
-            }
-        }
-        _ => {
-            return Err(SourceError::GltfReader(format!(
-                "Unsupported index data type: {:?}",
-                accessor.data_type()
-            )))
-        }
-    }
-
-    Ok(indices)
-}
-
-fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, SourceError> {
-    let bytes = buffer
-        .get(offset..offset + 4)
-        .ok_or_else(|| SourceError::GltfReader("Buffer read out of bounds".to_string()))?;
-
-    let mut array = [0u8; 4];
-    array.copy_from_slice(bytes);
-    Ok(f32::from_le_bytes(array))
-}
-
-fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, SourceError> {
-    let bytes = buffer
-        .get(offset..offset + 2)
-        .ok_or_else(|| SourceError::GltfReader("Buffer read out of bounds".to_string()))?;
-
-    let mut array = [0u8; 2];
-    array.copy_from_slice(bytes);
-    Ok(u16::from_le_bytes(array))
-}
-
-fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, SourceError> {
-    let bytes = buffer
-        .get(offset..offset + 4)
-        .ok_or_else(|| SourceError::GltfReader("Buffer read out of bounds".to_string()))?;
-
-    let mut array = [0u8; 4];
-    array.copy_from_slice(bytes);
-    Ok(u32::from_le_bytes(array))
 }
 
 #[cfg(test)]

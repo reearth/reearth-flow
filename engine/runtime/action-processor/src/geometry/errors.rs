@@ -119,10 +119,10 @@ pub(super) enum GeometryProcessorError {
     JPStandardGridAccumulatorFactory(String),
     #[error("JPStandardGridAccumulator error: {0}")]
     JPStandardGridAccumulator(String),
-    #[error("SurfaceFootprintReplacer Factory error: {0}")]
-    SurfaceFootprintReplacerFactory(String),
-    #[error("SurfaceFootprintReplacer error: {0}")]
-    SurfaceFootprintReplacer(String),
+    #[error("FootprintReplacer Factory error: {0}")]
+    FootprintReplacerFactory(String),
+    #[error("FootprintReplacer error: {0}")]
+    FootprintReplacer(String),
     #[error("BoundsExtractor Factory error: {0}")]
     BoundsExtractorFactory(String),
     #[error("BoundsExtractor error: {0}")]
@@ -147,6 +147,18 @@ pub(super) enum GeometryProcessorError {
     VertexCounterFactory(String),
     #[error("VertexCounter error: {0}")]
     VertexCounter(String),
+    #[error("PolygonNormalExtractor Factory error: {0}")]
+    PolygonNormalExtractorFactory(String),
+    #[error("PolygonNormalExtractor error: {0}")]
+    PolygonNormalExtractor(String),
+    #[error("PlanarityFilter Factory error: {0}")]
+    PlanarityFilterFactory(String),
+    #[error("PlanarityFilter error: {0}")]
+    PlanarityFilter(String),
+    #[error("AreaCalculator Factory error: {0}")]
+    AreaCalculatorFactory(String),
+    #[error("AreaCalculator error: {0}")]
+    AreaCalculator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

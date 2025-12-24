@@ -2,6 +2,7 @@ import { useNodes } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
@@ -13,12 +14,14 @@ import { NodeCustomizations } from "@flow/types";
 
 export default ({
   id,
+  currentWorkflowId,
   source,
   sourceHandleId,
   target,
   selected,
 }: {
   id: string;
+  currentWorkflowId?: string;
   source: string;
   sourceHandleId?: string | null;
   target: string;
@@ -62,11 +65,14 @@ export default ({
   );
 
   const intermediateDataUrl = useMemo(() => {
-    if (api && debugJobState?.jobId) {
+    if (!api || !debugJobState?.jobId) {
+      return undefined;
+    }
+    if (!currentWorkflowId || currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
       return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
     }
-    return undefined;
-  }, [api, debugJobState?.jobId, id]);
+    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${currentWorkflowId}.${id}.jsonl.zst`;
+  }, [api, debugJobState?.jobId, id, currentWorkflowId]);
 
   useEffect(() => {
     if (intermediateDataUrl) {
@@ -116,11 +122,31 @@ export default ({
               | SelectedIntermediateData[]
               | undefined;
 
+            let newFocusedURL: string | undefined = undefined;
+
             if (isCurrentlySelected) {
               // Remove the item
               const filtered = currentData.filter((sid) => sid.edgeId !== id);
               // Keep as empty array (don't set to undefined) - user has interacted
               newSelectedIntermediateData = filtered;
+
+              const removedIndex = currentData.findIndex(
+                (sid) => sid.edgeId === id,
+              );
+
+              // Try to focus on the next URL, or previous if last was removed
+              if (
+                removedIndex !== undefined &&
+                removedIndex >= 0 &&
+                filtered &&
+                filtered.length > 0
+              ) {
+                if (removedIndex < filtered.length) {
+                  newFocusedURL = filtered[removedIndex].url;
+                } else if (removedIndex - 1 >= 0) {
+                  newFocusedURL = filtered[removedIndex - 1].url;
+                }
+              }
             } else {
               const sourceCustomizations = sourceNode?.data.customizations as
                 | NodeCustomizations
@@ -151,8 +177,11 @@ export default ({
               ];
             }
 
+            newFocusedURL = newFocusedURL ?? intermediateDataUrl;
+
             return {
               ...job,
+              focusedIntermediateData: newFocusedURL,
               selectedIntermediateData: newSelectedIntermediateData,
             };
           }) ?? [],

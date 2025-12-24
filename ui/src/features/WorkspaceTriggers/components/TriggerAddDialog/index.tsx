@@ -13,12 +13,13 @@ import {
   SelectContent,
   SelectItem,
   Input,
+  Switch,
 } from "@flow/components";
 import { DeploymentsDialog } from "@flow/features/WorkspaceDeployments/components/DeploymentsDialog";
 import { useT } from "@flow/lib/i18n";
 
 import { TriggerApiDrivenDetails } from "../TriggerApiDrivenDetail";
-import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
 
 import useHooks from "./hooks";
 
@@ -40,6 +41,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     deploymentId,
     isFetching,
     isDebouncingSearch,
+    isTriggerEnabled,
     totalPages,
     currentPage,
     currentSortValue,
@@ -55,18 +57,15 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     handleSelectEventSource,
     handleSelectTimeInterval,
     handleTriggerCreation,
+    handleTriggerEnable,
     setCurrentPage,
     handleSortChange,
     pendingWorkflowData,
-    openTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
-    setOpenTriggerProjectVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
-
-  // Currently hiding the workflow variables dialog until Phase 2 is ready
-  const showProjectVariablesDialog = false;
-
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
@@ -101,12 +100,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 )}
               </div>
             </DialogContentSection>
-            {pendingWorkflowData?.variables && showProjectVariablesDialog && (
+            {pendingWorkflowData?.variables && (
               <DialogContentSection className="flex flex-col">
                 <Label>{t("Workflow Variables")}</Label>
                 <div
                   className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                  onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
+                  onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
                   <span className="pr-2 whitespace-nowrap text-muted-foreground">
                     {t("Edit Variables")} (
                     {pendingWorkflowData.variables.length})
@@ -164,6 +163,18 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 </Select>
               </DialogContentSection>
             )}
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Enable Trigger?")}</Label>
+              <div className="mt-2 flex flex-row items-center gap-2">
+                <Switch
+                  checked={isTriggerEnabled}
+                  onCheckedChange={handleTriggerEnable}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {isTriggerEnabled ? t("Yes") : t("No")}
+                </span>
+              </div>
+            </DialogContentSection>
             <DialogContentSection>
               <p className="dark:font-light">
                 {t("Are you sure you want to proceed?")}
@@ -207,15 +218,15 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         />
       )}
 
-      {pendingWorkflowData?.variables && showProjectVariablesDialog && (
-        <TriggerProjectVariablesMappingDialog
-          isOpen={openTriggerProjectVariablesDialog}
-          onOpenChange={setOpenTriggerProjectVariablesDialog}
+      {pendingWorkflowData?.variables && (
+        <TriggerWorkflowVariablesMappingDialog
+          isOpen={openTriggerWorkflowVariablesDialog}
+          onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData?.variables || []}
           workflowName={pendingWorkflowData?.workflowName || ""}
           deploymentDefaults={deploymentDefaultVariables}
           onConfirm={handleVariablesConfirm}
-          onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
+          onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}
         />
       )}
     </Dialog>

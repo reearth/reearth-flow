@@ -142,3 +142,11 @@ func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, k
 func (r *queryResolver) Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error) {
 	return loaders(ctx).Parameter.FindByProject(ctx, projectID)
 }
+
+func (r *queryResolver) WorkerConfig(ctx context.Context) (*gqlmodel.WorkerConfig, error) {
+	cfg, err := usecases(ctx).WorkerConfig.Fetch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return gqlmodel.ToWorkerConfig(cfg), nil
+}

@@ -3,8 +3,9 @@ package gqlmodel
 import (
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
-	"github.com/samber/lo"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 func ToTrigger(t *trigger.Trigger) *Trigger {
@@ -29,7 +30,7 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		EventSource:   ToEventSourceType(t.EventSource()),
 		AuthToken:     t.AuthToken(),
 		TimeInterval:  timeInterval,
-		Enabled:       lo.ToPtr(t.Enabled()),
+		Enabled:       t.Enabled(),
 		Variables:     ToVariables(t.Variables()),
 	}
 }
@@ -90,30 +91,40 @@ func FromTimeInterval(t TimeInterval) trigger.TimeInterval {
 	}
 }
 
-func ToVariables(m map[string]string) JSON {
-	if m == nil {
-		return nil
+func ToVariables(vars []variable.Variable) []*Variable {
+	if len(vars) == 0 {
+		return []*Variable{}
 	}
-	vals := make(JSON, len(m))
-	for k, v := range m {
-		vals[k] = v
+	out := make([]*Variable, 0, len(vars))
+	for _, v := range vars {
+		vt := ParameterType(v.Type)
+		out = append(out, &Variable{
+			Key:   v.Key,
+			Type:  vt,
+			Value: v.Value,
+		})
 	}
-	return vals
+	return out
 }
 
-func FromVariables(j JSON) (map[string]string, error) {
-	if j == nil {
+func FromVariables(in []*VariableInput) ([]variable.Variable, error) {
+	if in == nil {
 		return nil, nil
 	}
-
-	raw := j
-	vals := make(map[string]string, len(raw))
-	for k, v := range raw {
-		s, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("variable %q must be string", k)
+	out := make([]variable.Variable, 0, len(in))
+	for _, v := range in {
+		if v == nil {
+			continue
 		}
-		vals[k] = s
+		t := parameter.Type(v.Type)
+		if t == "" {
+			return nil, fmt.Errorf("invalid variable type for key %s", v.Key)
+		}
+		out = append(out, variable.Variable{
+			Key:   v.Key,
+			Type:  t,
+			Value: v.Value,
+		})
 	}
-	return vals, nil
+	return out, nil
 }

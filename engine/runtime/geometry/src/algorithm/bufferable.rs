@@ -1,13 +1,14 @@
 use geo_buffer::buffer_multi_polygon as geo_buffer_multi_polygon;
 
-use crate::types::{
-    coordinate::{Coordinate, Coordinate2D},
-    line_string::LineString2D,
-    multi_polygon::MultiPolygon2D,
-    polygon::Polygon2D,
+use crate::{
+    algorithm::convex_hull::quick_hull_2d,
+    types::{
+        coordinate::{Coordinate, Coordinate2D},
+        line_string::LineString2D,
+        multi_polygon::MultiPolygon2D,
+        polygon::Polygon2D,
+    },
 };
-
-use super::convex_hull::ConvexHull;
 
 const DEFAULT_INTERPOLATION_ANGLE: f64 = 0.1;
 
@@ -43,8 +44,7 @@ impl Bufferable for LineString2D<f64> {
             let polygon = coord.to_polygon(distance, interpolation_angle);
             coords.extend(polygon.exterior().coords().copied());
         }
-        let polygon = Polygon2D::new(coords.into(), vec![]);
-        MultiPolygon2D::new(vec![polygon]).convex_hull()
+        Polygon2D::new(quick_hull_2d(&mut coords), vec![])
     }
 }
 
@@ -55,8 +55,7 @@ impl Bufferable for Polygon2D<f64> {
             let coord_polygon = coord.to_polygon(distance, interpolation_angle);
             coords.extend(coord_polygon.exterior().coords().copied());
         }
-        let polygon = Polygon2D::new(coords.into(), vec![]);
-        MultiPolygon2D::new(vec![polygon]).convex_hull()
+        Polygon2D::new(quick_hull_2d(&mut coords), vec![])
     }
 }
 

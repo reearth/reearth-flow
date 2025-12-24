@@ -8,13 +8,14 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo } from "react";
+import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
 import {
   isValidConnection,
   CustomConnectionLine,
-  edgeTypes,
+  createFullEdgeTypes,
+  simpleEdgeTypes,
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
@@ -114,6 +115,12 @@ const Canvas: React.FC<Props> = ({
     onNodesDisable,
   });
 
+  // Create edge types with currentWorkflowId injected
+  const fullEdgeTypes = useMemo(
+    () => createFullEdgeTypes(currentWorkflowId),
+    [currentWorkflowId],
+  );
+
   return (
     <ReactFlow
       ref={paneRef}
@@ -123,6 +130,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
+      minZoom={0.3}
       proOptions={{ hideAttribution: true }}
       nodeDragThreshold={2}
       snapToGrid
@@ -131,7 +139,7 @@ const Canvas: React.FC<Props> = ({
       nodes={nodes}
       nodeTypes={nodeTypes}
       edges={edges}
-      edgeTypes={edgeTypes}
+      edgeTypes={readonly ? simpleEdgeTypes : fullEdgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}

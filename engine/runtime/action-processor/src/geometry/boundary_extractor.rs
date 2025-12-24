@@ -157,6 +157,10 @@ impl Processor for BoundaryExtractor {
     fn name(&self) -> &str {
         "BoundaryExtractor"
     }
+
+    fn num_threads(&self) -> usize {
+        16
+    }
 }
 
 impl BoundaryExtractor {
@@ -369,10 +373,7 @@ impl BoundaryExtractor {
             }
 
             // Rectangle boundary is its perimeter
-            Geometry3D::Rect(rect) => {
-                let polygon = rect.to_polygon();
-                Some(Geometry3D::LineString(polygon.exterior().clone()))
-            }
+            Geometry3D::Rect(rect) => Some(Geometry3D::MultiPolygon(rect.to_multi_polygon())),
 
             // Triangle boundary is its perimeter
             Geometry3D::Triangle(triangle) => {
@@ -391,8 +392,8 @@ impl BoundaryExtractor {
             // Solid boundary is the triangular mesh representing its surface
             Geometry3D::Solid(solid) => {
                 // A solid's boundary is its surface mesh
-                // Try to convert to triangular mesh
-                match solid.clone().as_triangle_mesh() {
+                // Try to convert to triangular mesh with default tolerance
+                match solid.clone().as_triangle_mesh(None) {
                     Ok(mesh) => Some(Geometry3D::TriangularMesh(mesh)),
                     Err(_) => {
                         // If conversion fails, the solid might be represented as faces
@@ -481,56 +482,86 @@ impl BoundaryExtractor {
                 continue;
             }
 
-            let mut chain = Vec::new();
-            let mut prev_vertex = edges[start_idx].0;
-            let mut current_vertex = edges[start_idx].1;
+            used_edges[start_idx] = true;
 
-            // Start the chain
-            chain.push(mesh.get_vertices()[current_vertex]);
+            let start_v0 = edges[start_idx].0;
+            let start_v1 = edges[start_idx].1;
+
+            let mut chain = vec![mesh.get_vertices()[start_v0], mesh.get_vertices()[start_v1]];
+
+            // Traverse forward from start_v1
+            let mut prev_vertex = start_v0;
+            let mut current_vertex = start_v1;
 
             loop {
                 if adjacency[current_vertex].len() != 2 {
-                    // Reached an endpoint
                     break;
                 }
                 let next_vertex = *adjacency[current_vertex]
                     .iter()
                     .find(|&&v| v != prev_vertex)
-                    .unwrap(); // This is safe due to len() == 2
+                    .unwrap();
+
+                // Check if we've closed the loop
+                if next_vertex == start_v0 {
+                    chain.push(mesh.get_vertices()[next_vertex]);
+                    let idx = edge_idx
+                        .get(&(
+                            current_vertex.min(next_vertex),
+                            current_vertex.max(next_vertex),
+                        ))
+                        .unwrap();
+                    used_edges[*idx] = true;
+                    break;
+                }
+
+                let idx = edge_idx
+                    .get(&(
+                        current_vertex.min(next_vertex),
+                        current_vertex.max(next_vertex),
+                    ))
+                    .unwrap();
+                if used_edges[*idx] {
+                    // Already visited this edge
+                    break;
+                }
+                used_edges[*idx] = true;
+
                 chain.push(mesh.get_vertices()[next_vertex]);
                 prev_vertex = current_vertex;
                 current_vertex = next_vertex;
-                let edge_idx = edge_idx
-                    .get(&(
-                        prev_vertex.min(current_vertex),
-                        prev_vertex.max(current_vertex),
-                    ))
-                    .unwrap();
-                used_edges[*edge_idx] = true;
             }
 
-            // We need to loop in the opposite direction as well
-            prev_vertex = edges[start_idx].1;
-            current_vertex = edges[start_idx].0;
-            loop {
-                if adjacency[current_vertex].len() != 2 {
-                    // Reached an endpoint
-                    break;
+            // Traverse backward from start_v0 only if we didn't close a loop
+            if chain.first() != chain.last() {
+                prev_vertex = start_v1;
+                current_vertex = start_v0;
+
+                loop {
+                    if adjacency[current_vertex].len() != 2 {
+                        break;
+                    }
+                    let next_vertex = *adjacency[current_vertex]
+                        .iter()
+                        .find(|&&v| v != prev_vertex)
+                        .unwrap();
+
+                    let idx = edge_idx
+                        .get(&(
+                            current_vertex.min(next_vertex),
+                            current_vertex.max(next_vertex),
+                        ))
+                        .unwrap();
+                    if used_edges[*idx] {
+                        break;
+                    }
+                    used_edges[*idx] = true;
+
+                    // Prepend to chain
+                    chain.insert(0, mesh.get_vertices()[next_vertex]);
+                    prev_vertex = current_vertex;
+                    current_vertex = next_vertex;
                 }
-                let next_vertex = *adjacency[current_vertex]
-                    .iter()
-                    .find(|&&v| v != prev_vertex)
-                    .unwrap(); // This is safe due to len() == 2
-                chain.push(mesh.get_vertices()[next_vertex]);
-                prev_vertex = current_vertex;
-                current_vertex = next_vertex;
-                let edge_idx = edge_idx
-                    .get(&(
-                        prev_vertex.min(current_vertex),
-                        prev_vertex.max(current_vertex),
-                    ))
-                    .unwrap();
-                used_edges[*edge_idx] = true;
             }
 
             if chain.len() >= 2 {

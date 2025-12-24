@@ -18,6 +18,7 @@ export type JobState = {
   jobId: string;
   status: JobStatus;
   nodeExecutions?: NodeExecution[];
+  focusedIntermediateData?: string;
   selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
 };
 
@@ -45,7 +46,7 @@ const DEBUG_RUN_KEY = "debugRun";
 const PREFERENCES_KEY = "preferences";
 const KEYS = [GENERAL_KEY, DEBUG_RUN_KEY, PREFERENCES_KEY];
 
-const initialState = {
+const initialState: AppState = {
   [GENERAL_KEY]: {
     clipboard: undefined,
   },

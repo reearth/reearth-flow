@@ -8,7 +8,7 @@ PROJ_NAME = "reearth-flow"
 [tasks.format]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo fmt --all
+cargo fmt --all ${@:-}
 ''']
 
 [tasks.check]
@@ -32,15 +32,30 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux
-export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+cargo make test-rs ${@:-}
+cargo make test-qc ${@:-}
+cargo make test-conv ${@:-}
 ''']
 
-[tasks.test-wf]
+[tasks.test-rs]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
+''']
+
+[tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
 export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test -p workflow-tests ${@:-}
+''']
+
+[tasks.test-conv]
+script = ['''
+#!/usr/bin/env bash -eux
+export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
+export PLATEAU_TILES_TEST_CLEANUP=1
+cargo run -p plateau-tiles-test ${@:-}
 ''']
 
 [tasks.doc]
@@ -104,6 +119,20 @@ done
 cargo run --package reearth-flow-cli -- doc-action > ./docs/mdbook/src/action.md
 ''']
 
+[tasks.check-doc-action]
+script = ['''
+#!/usr/bin/env bash -eux
+
+cargo make doc-action
+git add -N .
+line=$(git diff | wc -l)
+if [ "$line" -gt 0 ]; then
+  echo "Please run 'cargo make doc-action' and commit the changes."
+  git --no-pager diff
+  exit 1
+fi
+''']
+
 [tasks.doc-workflow]
 script = ['''
 #!/usr/bin/env bash -eux
@@ -120,7 +149,10 @@ mdbook serve docs/mdbook
 [tasks.format-taplo]
 script = ['''
 #!/usr/bin/env bash -eux
-taplo fmt
+if ! command -v taplo &> /dev/null; then
+  cargo install taplo-cli
+fi
+taplo fmt ${@:-}
 ''']
 
 [tasks.generate-cms-workflow]
@@ -151,6 +183,9 @@ BASEPATH_CONV=./runtime/examples/fixture/workflow/data-convert/plateau4/
 WORKFLOW_CONV=(
   "01-bldg"
   "02-tran-rwy-trk-squr-wwy"
+  "03-frn-veg"
+  "04-luse-lsld"
+  "06-area-urf"
 )
 
 BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/
@@ -193,4 +228,30 @@ if [ "$line" -gt 0 ]; then
   git --no-pager diff
   exit 1
 fi
+''']
+
+[tasks.ci]
+script = ['''
+#!/usr/bin/env bash -eux
+
+# check
+cargo make check
+
+# rustfmt
+cargo make format --check
+
+# clippy
+cargo make clippy
+
+# taplo
+cargo make format-taplo --check
+
+# check generated schema
+cargo make check-doc-action
+
+# check generated cms workflows
+cargo make check-generate-examples-cms-workflow
+
+# run tests
+cargo make test
 ''']

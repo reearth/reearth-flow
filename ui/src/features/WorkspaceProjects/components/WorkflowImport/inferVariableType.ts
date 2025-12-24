@@ -1,6 +1,6 @@
 import { VarType } from "@flow/types";
 
-export function inferProjectVariableType(value: any, name: string): VarType {
+export function inferWorkflowVariableType(value: any, name: string): VarType {
   const normalizedName = name.toLowerCase();
 
   // Handle null values by inferring from name patterns

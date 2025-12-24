@@ -258,9 +258,9 @@ export type CreateTriggerInput = {
   apiDriverInput?: InputMaybe<ApiDriverInput>;
   deploymentId: Scalars['ID']['input'];
   description: Scalars['String']['input'];
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  enabled: Scalars['Boolean']['input'];
   timeDriverInput?: InputMaybe<TimeDriverInput>;
-  variables?: InputMaybe<Scalars['JSON']['input']>;
+  variables?: InputMaybe<Array<VariableInput>>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -317,6 +317,11 @@ export type DeleteProjectInput = {
 export type DeleteProjectPayload = {
   __typename?: 'DeleteProjectPayload';
   projectId: Scalars['ID']['output'];
+};
+
+export type DeleteWorkerConfigPayload = {
+  __typename?: 'DeleteWorkerConfigPayload';
+  id: Scalars['ID']['output'];
 };
 
 export type DeleteWorkspaceInput = {
@@ -395,7 +400,7 @@ export type Job = Node & {
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   userFacingLogsURL?: Maybe<Scalars['String']['output']>;
-  variables?: Maybe<Scalars['JSON']['output']>;
+  variables: Array<Variable>;
   workerLogsURL?: Maybe<Scalars['String']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
@@ -478,6 +483,7 @@ export type Mutation = {
   deleteMe?: Maybe<DeleteMePayload>;
   deleteProject?: Maybe<DeleteProjectPayload>;
   deleteTrigger: Scalars['Boolean']['output'];
+  deleteWorkerConfig?: Maybe<DeleteWorkerConfigPayload>;
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
   importProject: Scalars['Boolean']['output'];
@@ -501,6 +507,7 @@ export type Mutation = {
   updateParameters: Array<Parameter>;
   updateProject?: Maybe<ProjectPayload>;
   updateTrigger: Trigger;
+  updateWorkerConfig?: Maybe<UpdateWorkerConfigPayload>;
   updateWorkspace?: Maybe<UpdateWorkspacePayload>;
 };
 
@@ -700,6 +707,11 @@ export type MutationUpdateProjectArgs = {
 
 export type MutationUpdateTriggerArgs = {
   input: UpdateTriggerInput;
+};
+
+
+export type MutationUpdateWorkerConfigArgs = {
+  input: UpdateWorkerConfigInput;
 };
 
 
@@ -910,6 +922,7 @@ export type Query = {
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
   triggers: TriggerConnection;
+  workerConfig?: Maybe<WorkerConfig>;
 };
 
 
@@ -1102,15 +1115,17 @@ export type RemoveParametersInput = {
 };
 
 export enum Role {
-  Maintainer = 'MAINTAINER',
-  Owner = 'OWNER',
-  Reader = 'READER',
-  Writer = 'WRITER'
+  Maintainer = 'maintainer',
+  Owner = 'owner',
+  Reader = 'reader',
+  Writer = 'writer'
 }
 
 export type RunProjectInput = {
   file: Scalars['Upload']['input'];
+  previousJobId?: InputMaybe<Scalars['ID']['input']>;
   projectId: Scalars['ID']['input'];
+  startNodeId?: InputMaybe<Scalars['ID']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -1199,13 +1214,13 @@ export type Trigger = Node & {
   deployment: Deployment;
   deploymentId: Scalars['ID']['output'];
   description: Scalars['String']['output'];
-  enabled?: Maybe<Scalars['Boolean']['output']>;
+  enabled: Scalars['Boolean']['output'];
   eventSource: EventSourceType;
   id: Scalars['ID']['output'];
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
   timeInterval?: Maybe<TimeInterval>;
   updatedAt: Scalars['DateTime']['output'];
-  variables?: Maybe<Scalars['JSON']['output']>;
+  variables: Array<Variable>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
 };
@@ -1304,7 +1319,25 @@ export type UpdateTriggerInput = {
   enabled?: InputMaybe<Scalars['Boolean']['input']>;
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   triggerId: Scalars['ID']['input'];
-  variables?: InputMaybe<Scalars['JSON']['input']>;
+  variables?: InputMaybe<Array<VariableInput>>;
+};
+
+export type UpdateWorkerConfigInput = {
+  bootDiskSizeGB?: InputMaybe<Scalars['Int']['input']>;
+  channelBufferSize?: InputMaybe<Scalars['Int']['input']>;
+  computeCpuMilli?: InputMaybe<Scalars['Int']['input']>;
+  computeMemoryMib?: InputMaybe<Scalars['Int']['input']>;
+  featureFlushThreshold?: InputMaybe<Scalars['Int']['input']>;
+  machineType?: InputMaybe<Scalars['String']['input']>;
+  maxConcurrency?: InputMaybe<Scalars['Int']['input']>;
+  nodeStatusPropagationDelayMilli?: InputMaybe<Scalars['Int']['input']>;
+  taskCount?: InputMaybe<Scalars['Int']['input']>;
+  threadPoolSize?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type UpdateWorkerConfigPayload = {
+  __typename?: 'UpdateWorkerConfigPayload';
+  config: WorkerConfig;
 };
 
 export type UpdateWorkspaceInput = {
@@ -1350,6 +1383,36 @@ export type UserMetadata = {
   photoURL?: Maybe<Scalars['String']['output']>;
   theme: Theme;
   website?: Maybe<Scalars['String']['output']>;
+};
+
+export type Variable = {
+  __typename?: 'Variable';
+  key: Scalars['String']['output'];
+  type: ParameterType;
+  value: Scalars['Any']['output'];
+};
+
+export type VariableInput = {
+  key: Scalars['String']['input'];
+  type: ParameterType;
+  value: Scalars['Any']['input'];
+};
+
+export type WorkerConfig = {
+  __typename?: 'WorkerConfig';
+  bootDiskSizeGB?: Maybe<Scalars['Int']['output']>;
+  channelBufferSize?: Maybe<Scalars['Int']['output']>;
+  computeCpuMilli?: Maybe<Scalars['Int']['output']>;
+  computeMemoryMib?: Maybe<Scalars['Int']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  featureFlushThreshold?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['ID']['output'];
+  machineType?: Maybe<Scalars['String']['output']>;
+  maxConcurrency?: Maybe<Scalars['Int']['output']>;
+  nodeStatusPropagationDelayMilli?: Maybe<Scalars['Int']['output']>;
+  taskCount?: Maybe<Scalars['Int']['output']>;
+  threadPoolSize?: Maybe<Scalars['Int']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type Workspace = Node & {
@@ -1568,7 +1631,9 @@ export type ParameterFragment = { __typename?: 'Parameter', id: string, projectI
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
-export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
+export type VariableFragment = { __typename?: 'Variable', key: string, type: ParameterType, value: any };
+
+export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> };
 
 export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null };
 
@@ -1591,6 +1656,8 @@ export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId:
 export type CmsItemFragment = { __typename?: 'CMSItem', id: string, fields: any, createdAt: any, updatedAt: any };
 
 export type CmsAssetFragment = { __typename?: 'CMSAsset', id: string, uuid: string, projectId: string, filename: string, size: number, previewType?: string | null, url: string, archiveExtractionStatus?: string | null, public: boolean, createdAt: any };
+
+export type WorkerConfigFragment = { __typename?: 'WorkerConfig', id: string, machineType?: string | null, computeCpuMilli?: number | null, computeMemoryMib?: number | null, bootDiskSizeGB?: number | null, taskCount?: number | null, maxConcurrency?: number | null, threadPoolSize?: number | null, channelBufferSize?: number | null, featureFlushThreshold?: number | null, nodeStatusPropagationDelayMilli?: number | null, createdAt: any, updatedAt: any };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -1693,50 +1760,6 @@ export type ImportProjectMutationVariables = Exact<{
 
 export type ImportProjectMutation = { __typename?: 'Mutation', importProject: boolean };
 
-export type GetProjectParametersQueryVariables = Exact<{
-  projectId: Scalars['ID']['input'];
-}>;
-
-
-export type GetProjectParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
-
-export type CreateProjectVariableMutationVariables = Exact<{
-  projectId: Scalars['ID']['input'];
-  input: DeclareParameterInput;
-}>;
-
-
-export type CreateProjectVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
-
-export type UpdateProjectVariableMutationVariables = Exact<{
-  paramId: Scalars['ID']['input'];
-  input: UpdateParameterInput;
-}>;
-
-
-export type UpdateProjectVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
-
-export type UpdateProjectVariablesMutationVariables = Exact<{
-  input: ParameterBatchInput;
-}>;
-
-
-export type UpdateProjectVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
-
-export type DeleteProjectVariableMutationVariables = Exact<{
-  input: RemoveParameterInput;
-}>;
-
-
-export type DeleteProjectVariableMutation = { __typename?: 'Mutation', removeParameter: boolean };
-
-export type DeleteProjectVariablesMutationVariables = Exact<{
-  input: RemoveParametersInput;
-}>;
-
-
-export type DeleteProjectVariablesMutation = { __typename?: 'Mutation', removeParameters: boolean };
-
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
 }>;
@@ -1792,14 +1815,14 @@ export type CreateTriggerMutationVariables = Exact<{
 }>;
 
 
-export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
+export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } };
 
 export type UpdateTriggerMutationVariables = Exact<{
   input: UpdateTriggerInput;
 }>;
 
 
-export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
+export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } };
 
 export type DeleteTriggerMutationVariables = Exact<{
   triggerId: Scalars['ID']['input'];
@@ -1815,7 +1838,7 @@ export type GetTriggersQueryVariables = Exact<{
 }>;
 
 
-export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, enabled: boolean, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null }, variables: Array<{ __typename?: 'Variable', key: string, type: ParameterType, value: any }> } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1840,6 +1863,67 @@ export type UpdateMeMutationVariables = Exact<{
 
 
 export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
+
+export type GetWorkerConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetWorkerConfigQuery = { __typename?: 'Query', workerConfig?: { __typename?: 'WorkerConfig', id: string, machineType?: string | null, computeCpuMilli?: number | null, computeMemoryMib?: number | null, bootDiskSizeGB?: number | null, taskCount?: number | null, maxConcurrency?: number | null, threadPoolSize?: number | null, channelBufferSize?: number | null, featureFlushThreshold?: number | null, nodeStatusPropagationDelayMilli?: number | null, createdAt: any, updatedAt: any } | null };
+
+export type UpdateWorkerConfigMutationVariables = Exact<{
+  input: UpdateWorkerConfigInput;
+}>;
+
+
+export type UpdateWorkerConfigMutation = { __typename?: 'Mutation', updateWorkerConfig?: { __typename?: 'UpdateWorkerConfigPayload', config: { __typename?: 'WorkerConfig', id: string, machineType?: string | null, computeCpuMilli?: number | null, computeMemoryMib?: number | null, bootDiskSizeGB?: number | null, taskCount?: number | null, maxConcurrency?: number | null, threadPoolSize?: number | null, channelBufferSize?: number | null, featureFlushThreshold?: number | null, nodeStatusPropagationDelayMilli?: number | null, createdAt: any, updatedAt: any } } | null };
+
+export type DeleteWorkerConfigMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type DeleteWorkerConfigMutation = { __typename?: 'Mutation', deleteWorkerConfig?: { __typename?: 'DeleteWorkerConfigPayload', id: string } | null };
+
+export type GetWorkflowParametersQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetWorkflowParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
+
+export type CreateWorkflowVariableMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  input: DeclareParameterInput;
+}>;
+
+
+export type CreateWorkflowVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
+
+export type UpdateWorkflowVariableMutationVariables = Exact<{
+  paramId: Scalars['ID']['input'];
+  input: UpdateParameterInput;
+}>;
+
+
+export type UpdateWorkflowVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
+
+export type UpdateWorkflowVariablesMutationVariables = Exact<{
+  input: ParameterBatchInput;
+}>;
+
+
+export type UpdateWorkflowVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
+
+export type DeleteWorkflowVariableMutationVariables = Exact<{
+  input: RemoveParameterInput;
+}>;
+
+
+export type DeleteWorkflowVariableMutation = { __typename?: 'Mutation', removeParameter: boolean };
+
+export type DeleteWorkflowVariablesMutationVariables = Exact<{
+  input: RemoveParametersInput;
+}>;
+
+
+export type DeleteWorkflowVariablesMutation = { __typename?: 'Mutation', removeParameters: boolean };
 
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
@@ -1965,6 +2049,13 @@ export const ParameterFragmentDoc = gql`
   updatedAt
 }
     `;
+export const VariableFragmentDoc = gql`
+    fragment Variable on Variable {
+  key
+  type
+  value
+}
+    `;
 export const TriggerFragmentDoc = gql`
     fragment Trigger on Trigger {
   id
@@ -1980,9 +2071,13 @@ export const TriggerFragmentDoc = gql`
   authToken
   timeInterval
   description
-  variables
+  variables {
+    ...Variable
+  }
+  enabled
 }
-    ${DeploymentFragmentDoc}`;
+    ${DeploymentFragmentDoc}
+${VariableFragmentDoc}`;
 export const NodeExecutionFragmentDoc = gql`
     fragment NodeExecution on NodeExecution {
   id
@@ -2116,6 +2211,23 @@ export const CmsAssetFragmentDoc = gql`
   archiveExtractionStatus
   public
   createdAt
+}
+    `;
+export const WorkerConfigFragmentDoc = gql`
+    fragment WorkerConfig on WorkerConfig {
+  id
+  machineType
+  computeCpuMilli
+  computeMemoryMib
+  bootDiskSizeGB
+  taskCount
+  maxConcurrency
+  threadPoolSize
+  channelBufferSize
+  featureFlushThreshold
+  nodeStatusPropagationDelayMilli
+  createdAt
+  updatedAt
 }
     `;
 export const GetAssetsDocument = gql`
@@ -2449,44 +2561,6 @@ export const ImportProjectDocument = gql`
   importProject(projectId: $projectId, data: $data)
 }
     `;
-export const GetProjectParametersDocument = gql`
-    query GetProjectParameters($projectId: ID!) {
-  parameters(projectId: $projectId) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const CreateProjectVariableDocument = gql`
-    mutation CreateProjectVariable($projectId: ID!, $input: DeclareParameterInput!) {
-  declareParameter(projectId: $projectId, input: $input) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const UpdateProjectVariableDocument = gql`
-    mutation UpdateProjectVariable($paramId: ID!, $input: UpdateParameterInput!) {
-  updateParameter(paramId: $paramId, input: $input) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const UpdateProjectVariablesDocument = gql`
-    mutation UpdateProjectVariables($input: ParameterBatchInput!) {
-  updateParameters(input: $input) {
-    ...Parameter
-  }
-}
-    ${ParameterFragmentDoc}`;
-export const DeleteProjectVariableDocument = gql`
-    mutation DeleteProjectVariable($input: RemoveParameterInput!) {
-  removeParameter(input: $input)
-}
-    `;
-export const DeleteProjectVariablesDocument = gql`
-    mutation DeleteProjectVariables($input: RemoveParametersInput!) {
-  removeParameters(input: $input)
-}
-    `;
 export const GetSharedProjectDocument = gql`
     query GetSharedProject($token: String!) {
   sharedProject(token: $token) {
@@ -2619,6 +2693,67 @@ export const UpdateMeDocument = gql`
       lang
     }
   }
+}
+    `;
+export const GetWorkerConfigDocument = gql`
+    query GetWorkerConfig {
+  workerConfig {
+    ...WorkerConfig
+  }
+}
+    ${WorkerConfigFragmentDoc}`;
+export const UpdateWorkerConfigDocument = gql`
+    mutation UpdateWorkerConfig($input: UpdateWorkerConfigInput!) {
+  updateWorkerConfig(input: $input) {
+    config {
+      ...WorkerConfig
+    }
+  }
+}
+    ${WorkerConfigFragmentDoc}`;
+export const DeleteWorkerConfigDocument = gql`
+    mutation DeleteWorkerConfig {
+  deleteWorkerConfig {
+    id
+  }
+}
+    `;
+export const GetWorkflowParametersDocument = gql`
+    query GetWorkflowParameters($projectId: ID!) {
+  parameters(projectId: $projectId) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const CreateWorkflowVariableDocument = gql`
+    mutation CreateWorkflowVariable($projectId: ID!, $input: DeclareParameterInput!) {
+  declareParameter(projectId: $projectId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const UpdateWorkflowVariableDocument = gql`
+    mutation UpdateWorkflowVariable($paramId: ID!, $input: UpdateParameterInput!) {
+  updateParameter(paramId: $paramId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const UpdateWorkflowVariablesDocument = gql`
+    mutation UpdateWorkflowVariables($input: ParameterBatchInput!) {
+  updateParameters(input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const DeleteWorkflowVariableDocument = gql`
+    mutation DeleteWorkflowVariable($input: RemoveParameterInput!) {
+  removeParameter(input: $input)
+}
+    `;
+export const DeleteWorkflowVariablesDocument = gql`
+    mutation DeleteWorkflowVariables($input: RemoveParametersInput!) {
+  removeParameters(input: $input)
 }
     `;
 export const CreateWorkspaceDocument = gql`
@@ -2804,24 +2939,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     ImportProject(variables: ImportProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<ImportProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<ImportProjectMutation>({ document: ImportProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'ImportProject', 'mutation', variables);
     },
-    GetProjectParameters(variables: GetProjectParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectParametersQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectParametersQuery>({ document: GetProjectParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectParameters', 'query', variables);
-    },
-    CreateProjectVariable(variables: CreateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateProjectVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectVariableMutation>({ document: CreateProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateProjectVariable', 'mutation', variables);
-    },
-    UpdateProjectVariable(variables: UpdateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateProjectVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectVariableMutation>({ document: UpdateProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateProjectVariable', 'mutation', variables);
-    },
-    UpdateProjectVariables(variables: UpdateProjectVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateProjectVariablesMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectVariablesMutation>({ document: UpdateProjectVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateProjectVariables', 'mutation', variables);
-    },
-    DeleteProjectVariable(variables: DeleteProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariableMutation>({ document: DeleteProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProjectVariable', 'mutation', variables);
-    },
-    DeleteProjectVariables(variables: DeleteProjectVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectVariablesMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariablesMutation>({ document: DeleteProjectVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProjectVariables', 'mutation', variables);
-    },
     GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetSharedProjectQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>({ document: GetSharedProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetSharedProject', 'query', variables);
     },
@@ -2866,6 +2983,33 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UpdateMe(variables: UpdateMeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateMeMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateMeMutation>({ document: UpdateMeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateMe', 'mutation', variables);
+    },
+    GetWorkerConfig(variables?: GetWorkerConfigQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkerConfigQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkerConfigQuery>({ document: GetWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkerConfig', 'query', variables);
+    },
+    UpdateWorkerConfig(variables: UpdateWorkerConfigMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkerConfigMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkerConfigMutation>({ document: UpdateWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkerConfig', 'mutation', variables);
+    },
+    DeleteWorkerConfig(variables?: DeleteWorkerConfigMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkerConfigMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkerConfigMutation>({ document: DeleteWorkerConfigDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkerConfig', 'mutation', variables);
+    },
+    GetWorkflowParameters(variables: GetWorkflowParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkflowParametersQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkflowParametersQuery>({ document: GetWorkflowParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkflowParameters', 'query', variables);
+    },
+    CreateWorkflowVariable(variables: CreateWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkflowVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkflowVariableMutation>({ document: CreateWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkflowVariable', 'mutation', variables);
+    },
+    UpdateWorkflowVariable(variables: UpdateWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkflowVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkflowVariableMutation>({ document: UpdateWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkflowVariable', 'mutation', variables);
+    },
+    UpdateWorkflowVariables(variables: UpdateWorkflowVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkflowVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkflowVariablesMutation>({ document: UpdateWorkflowVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkflowVariables', 'mutation', variables);
+    },
+    DeleteWorkflowVariable(variables: DeleteWorkflowVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkflowVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkflowVariableMutation>({ document: DeleteWorkflowVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkflowVariable', 'mutation', variables);
+    },
+    DeleteWorkflowVariables(variables: DeleteWorkflowVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkflowVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkflowVariablesMutation>({ document: DeleteWorkflowVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkflowVariables', 'mutation', variables);
     },
     CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>({ document: CreateWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkspace', 'mutation', variables);

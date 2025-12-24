@@ -6,12 +6,29 @@ with:
   schemas:
   codelists:
   outputPath:
+  prcs:
+  objectLists:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   - id: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
     name: entry_point
     nodes:
+      # Common quality check subgraphs
+      - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+        name: CommonQualityCheck-01-01
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+        name: CommonQualityCheck-01-02
+        type: subGraph
+        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
+
       - id: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
         name: FeatureCreator
         type: action
@@ -25,6 +42,7 @@ graphs:
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 schemas: env.get("schemas"),
                 codelists: env.get("codelists"),
+                objectListPath: env.get("objectLists"),
               },
             ]
 
@@ -94,6 +112,13 @@ graphs:
             - expr: |
                 env.get("__value").featureType != "CityModel"
               outputPort: default
+
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: env.get("prcs")
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM
@@ -282,6 +307,28 @@ graphs:
           supplierAttributeValue: |
             env.get("__value").name
 
+      # Also merge common error counts from 01-01-common (via perFileOutput)
+      - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
+        name: CommonErrorMerger01
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").Filename
+          supplierAttributeValue: |
+            env.get("__value").gmlFilename
+
+      # Merge common error counts from 01-02-common (via perFileOutput)
+      - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
+        name: CommonErrorMerger02
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").Filename
+          supplierAttributeValue: |
+            env.get("__value").filename
+
       # AttributeMapper for CSV formatting
       - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
         name: SummaryAttributeMapper
@@ -301,6 +348,47 @@ graphs:
             - attribute: "面のエラー"
               expr: |
                 env.get("__value")._num_surface_issues ?? 0
+            # Common error columns from 01-01-common
+            - attribute: "L01 XML整合性エラー(データ読み込み不可)"
+              expr: |
+                env.get("__value").L01_XMLIntegrityError ?? 0
+            - attribute: "L02 XML Schemaエラー"
+              expr: |
+                env.get("__value").L02_XMLSchemaError ?? 0
+            - attribute: "L03 GML整合性エラー(データ読み込み不可)"
+              expr: |
+                env.get("__value").L03_GMLIntegrityError ?? 0
+            - attribute: "L04 GML妥当性エラー(データ読み込み不可)"
+              expr: |
+                env.get("__value").L04_GMLValidityError ?? 0
+            - attribute: "L05 i-URのファイル命名規則エラー"
+              expr: |
+                env.get("__value").L05_IURFileNamingError ?? 0
+            - attribute: "L06 その他データセットのファイル命名規則エラー"
+              expr: |
+                env.get("__value").L06_OtherDatasetFileNamingError ?? 0
+            - attribute: "T03 ファイル参照先エラー(xlink)"
+              expr: |
+                env.get("__value").T03_FileReferenceError ?? 0
+            - attribute: "xlink:hrefで参照するファイル"
+              expr: |
+                env.get("__value").ReferencedFile ?? ""
+            - attribute: "gml:idが重複している地物"
+              expr: |
+                env.get("__value").DuplicateGmlId ?? ""
+            # Common error columns from 01-02-common
+            - attribute: "L-frn-01 掲載されていない地物の有無(FRN)"
+              expr: |
+                env.get("__value")["L-frn-01"] ?? 0
+            - attribute: "C05 定義域(コードリストへの適合)エラー"
+              expr: |
+                env.get("__value").C05_CodelistDomainError ?? 0
+            - attribute: "C07 定義域(数値の範囲)エラー"
+              expr: |
+                env.get("__value").C07_NumericRangeError ?? 0
+            - attribute: "C08 定義域(列挙値)エラー"
+              expr: |
+                env.get("__value").C08_EnumerationError ?? 0
 
       # CSV output
       - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
@@ -325,10 +413,45 @@ graphs:
             - newAttribute: "面のエラー"
               expr: |
                 env.get("__value")["面のエラー"] ?? 0
+            # Common error columns from 01-01-common
+            - newAttribute: "L01 XML整合性エラー(データ読み込み不可)"
+              expr: |
+                env.get("__value")["L01 XML整合性エラー(データ読み込み不可)"] ?? 0
+            - newAttribute: "L02 XML Schemaエラー"
+              expr: |
+                env.get("__value")["L02 XML Schemaエラー"] ?? 0
+            - newAttribute: "L03 GML整合性エラー(データ読み込み不可)"
+              expr: |
+                env.get("__value")["L03 GML整合性エラー(データ読み込み不可)"] ?? 0
+            - newAttribute: "L04 GML妥当性エラー(データ読み込み不可)"
+              expr: |
+                env.get("__value")["L04 GML妥当性エラー(データ読み込み不可)"] ?? 0
+            - newAttribute: "L05 i-URのファイル命名規則エラー"
+              expr: |
+                env.get("__value")["L05 i-URのファイル命名規則エラー"] ?? 0
+            - newAttribute: "L06 その他データセットのファイル命名規則エラー"
+              expr: |
+                env.get("__value")["L06 その他データセットのファイル命名規則エラー"] ?? 0
+            - newAttribute: "T03 ファイル参照先エラー(xlink)"
+              expr: |
+                env.get("__value")["T03 ファイル参照先エラー(xlink)"] ?? 0
+            # Common error columns from 01-02-common
+            - newAttribute: "L-frn-01 掲載されていない地物の有無(FRN)"
+              expr: |
+                env.get("__value")["L-frn-01 掲載されていない地物の有無(FRN)"] ?? 0
+            - newAttribute: "C05 定義域(コードリストへの適合)エラー"
+              expr: |
+                env.get("__value")["C05 定義域(コードリストへの適合)エラー"] ?? 0
+            - newAttribute: "C07 定義域(数値の範囲)エラー"
+              expr: |
+                env.get("__value")["C07 定義域(数値の範囲)エラー"] ?? 0
+            - newAttribute: "C08 定義域(列挙値)エラー"
+              expr: |
+                env.get("__value")["C08 定義域(列挙値)エラー"] ?? 0
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
-                let keys = ["面の向き不正","面のエラー"];
+                let keys = ["面の向き不正","面のエラー","L01 XML整合性エラー(データ読み込み不可)","L02 XML Schemaエラー","L03 GML整合性エラー(データ読み込み不可)","L04 GML妥当性エラー(データ読み込み不可)","L05 i-URのファイル命名規則エラー","L06 その他データセットのファイル命名規則エラー","T03 ファイル参照先エラー(xlink)","L-frn-01 掲載されていない地物の有無(FRN)","C05 定義域(コードリストへの適合)エラー","C07 定義域(数値の範囲)エラー","C08 定義域(列挙値)エラー"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
                 }
@@ -404,6 +527,18 @@ graphs:
             file::join_path(dirname, filename)
 
     edges:
+      # FeatureCreator to common subgraphs
+      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+        from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873  # FeatureCreator
+        to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a    # CommonQualityCheck-01-01
+        fromPort: default
+        toPort: default
+      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+        from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873  # FeatureCreator
+        to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b    # CommonQualityCheck-01-02
+        fromPort: default
+        toPort: default
+
       # Data preparation flow
       - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
         from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
@@ -442,6 +577,11 @@ graphs:
         toPort: default
       - id: bc1dd787-c39b-4fec-8fbc-a7f9911088f3
         from: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        to: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        fromPort: default
+        toPort: default
+      - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
         to: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         fromPort: default
         toPort: default
@@ -531,14 +671,52 @@ graphs:
         fromPort: default
         toPort: supplier
 
+      # ErrorSummaryMerger → CommonErrorMerger01 (requestor)
       - id: cd72aac5-c44c-4195-a881-6dd12406b360
         from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: merged
+        toPort: requestor
+      - id: ca661de4-3521-4920-ba92-6154c822d64a
+        from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: unmerged
+        toPort: requestor
+
+      # CommonQualityCheck-01-01 (perFileOutput) → CommonErrorMerger01 (supplier)
+      - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
+        to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c    # CommonErrorMerger01
+        fromPort: perFileOutput
+        toPort: supplier
+
+      # CommonErrorMerger01 → CommonErrorMerger02 (requestor)
+      - id: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
+        from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c  # CommonErrorMerger01
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: merged
+        toPort: requestor
+      - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+        from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c  # CommonErrorMerger01
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: unmerged
+        toPort: requestor
+
+      # CommonQualityCheck-01-02 (perFileOutput) → CommonErrorMerger02 (supplier)
+      - id: e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d    # CommonErrorMerger02
+        fromPort: perFileOutput
+        toPort: supplier
+
+      # CommonErrorMerger02 → SummaryAttributeMapper
+      - id: f5a6b7c8-d9e0-1f2a-3b4c-5d6e7f8a9b0c
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d  # CommonErrorMerger02
         to: f58eeb2c-9187-4880-8c1f-7da2f9388069    # SummaryAttributeMapper
         fromPort: merged
         toPort: default
-
-      - id: ca661de4-3521-4920-ba92-6154c822d64a
-        from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
+      - id: a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d  # CommonErrorMerger02
         to: f58eeb2c-9187-4880-8c1f-7da2f9388069    # SummaryAttributeMapper
         fromPort: unmerged
         toPort: default
@@ -607,4 +785,16 @@ graphs:
         from: eb34119b-592f-4140-b9b9-f3712a805c47  # surface error CsvWriter
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
         fromPort: default
+        toPort: default
+
+      # Common subgraph outputs to ZipFileWriter
+      - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: output
+        toPort: default
+      - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: output
         toPort: default

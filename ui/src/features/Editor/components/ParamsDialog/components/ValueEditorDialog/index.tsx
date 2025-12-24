@@ -36,7 +36,7 @@ import {
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
-import { useProjectVariables } from "@flow/lib/gql";
+import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 import { Asset } from "@flow/types";
@@ -104,9 +104,9 @@ const ValueEditorDialog: React.FC<Props> = ({
 
   const [currentProject] = useCurrentProject();
 
-  const { useGetProjectVariables } = useProjectVariables();
+  const { useGetWorkflowVariables } = useWorkflowVariables();
 
-  const { projectVariables } = useGetProjectVariables(currentProject?.id);
+  const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
 
   const handleSubmit = useCallback(() => {
     if (!onValueSubmit) return;
@@ -148,7 +148,7 @@ const ValueEditorDialog: React.FC<Props> = ({
 
   const fieldType = getFieldTypeDisplay(fieldContext.schema);
 
-  const handleProjectVariableSet = useCallback((variable: any) => {
+  const handleWorkflowVariableSet = useCallback((variable: any) => {
     const v = `env.get("${variable.name}")`;
     setValue(v);
   }, []);
@@ -245,7 +245,7 @@ const ValueEditorDialog: React.FC<Props> = ({
                     <CmsLogo className="h-4 w-4 text-white" />
                     {t("CMS Integration")}
                   </Button>
-                  {projectVariables && projectVariables.length > 0 && (
+                  {workflowVariables && workflowVariables.length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
@@ -254,10 +254,10 @@ const ValueEditorDialog: React.FC<Props> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-64">
-                        {projectVariables.map((variable) => (
+                        {workflowVariables.map((variable) => (
                           <DropdownMenuItem
                             key={variable.id}
-                            onClick={() => handleProjectVariableSet(variable)}
+                            onClick={() => handleWorkflowVariableSet(variable)}
                             className="flex flex-col items-start">
                             <div className="font-mono text-sm">
                               {variable.name}
@@ -455,7 +455,7 @@ const ValueEditorDialog: React.FC<Props> = ({
       {showDialog === "assets" && fieldContext && (
         <AssetsDialog
           onDialogClose={handleDialogClose}
-          onAssetDoubleClick={handleAssetDoubleClick}
+          onAssetSelect={handleAssetDoubleClick}
         />
       )}
       {showDialog === "cms" && fieldContext && (

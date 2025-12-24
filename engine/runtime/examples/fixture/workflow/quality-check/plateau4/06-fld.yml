@@ -6,7 +6,7 @@ with:
   codelists: null
   schemas: null
   outputPath: null
-  epsgCode: null
+  prcs: null
 graphs:
 - id: 0a2f610f-b92c-483b-a76a-e6143c3ab249
   name: EntryPoint
@@ -23,7 +23,6 @@ graphs:
             codelists: env.get("codelists"),
             schemas: env.get("schemas"),
             outputPath: env.get("outputPath"),
-            epsgCode: env.get("epsgCode"),
           },
         ]
   - id: 0aeb935e-bc3e-4867-96f3-122d504fcde6
@@ -129,14 +128,14 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      epsgCode: 6670
+      targetEpsgCode: env.get("prcs")
   - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: GeometryValidator
     type: action
     action: GeometryValidator
     with:
       validationTypes:
-      - duplicateConsecutivePoints
+      - duplicateConsecutivePoints: 0.01
       - corruptGeometry
   - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
     name: TwoDimensionForcer

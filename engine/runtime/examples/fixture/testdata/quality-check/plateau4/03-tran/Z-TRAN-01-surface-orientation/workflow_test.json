@@ -7,15 +7,21 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_tran.json",
-      "includeFields": ["Z-TRAN-01 面の向き不正"]
+      "includeFields": [
+        "Z-TRAN-01 面の向き不正"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "03_交通_検査結果一覧.csv",
-      "includeColumns": ["Z-TRAN-01 面の向き不正"]
+      "includeColumns": [
+        "Z-TRAN-01 面の向き不正"
+      ]
     }
   },
   "cityGmlPath": "udx/tran/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "prcs": 6677,
+  "objectLists": "08220_city_2023_objectlist_op.xlsx"
 }

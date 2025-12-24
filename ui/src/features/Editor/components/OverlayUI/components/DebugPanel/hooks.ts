@@ -1,26 +1,23 @@
 import bbox from "@turf/bbox";
 import { Cartesian3, GeoJsonDataSource } from "cesium";
-import {
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 
+import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
 export default () => {
-  const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
+  const [detailsFeature, setDetailsFeature] = useState<any>(null);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
-  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
+    null,
+  );
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -28,7 +25,7 @@ export default () => {
 
   const [currentProject] = useCurrentProject();
 
-  const { value: debugRunState } = useIndexedDB("debugRun");
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
     () =>
@@ -47,11 +44,6 @@ export default () => {
   const { job: debugJob } = useGetJob(debugJobState?.jobId ?? "");
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
-
-  const intermediateDataURLs = useMemo(
-    () => debugJobState?.selectedIntermediateData?.map((sid) => sid.url),
-    [debugJobState],
-  );
 
   // Separate intermediate data URLs (for dropdown) from output data URLs (for download)
   const dataURLs = useMemo(() => {
@@ -80,29 +72,27 @@ export default () => {
     }));
   }, [outputURLs]);
 
-  const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
-    undefined,
-  );
-
-  useEffect(() => {
-    if (intermediateDataURLs !== prevIntermediateDataUrls.current) {
-      const newURL = intermediateDataURLs?.find(
-        (url) => !prevIntermediateDataUrls.current?.includes(url),
-      );
-      setSelectedDataURL(newURL);
-      prevIntermediateDataUrls.current = intermediateDataURLs;
-      setMinimized(false);
-    } else if (
-      (dataURLs?.length && !selectedDataURL) ||
-      (selectedDataURL && !dataURLs?.find((u) => u.key === selectedDataURL))
-    ) {
-      setSelectedDataURL(dataURLs?.[0].key);
-    }
-  }, [dataURLs, selectedDataURL, intermediateDataURLs]);
+  const selectedDataURL = useMemo(() => {
+    if (!debugJobState?.focusedIntermediateData) return undefined;
+    return debugJobState.focusedIntermediateData;
+  }, [debugJobState?.focusedIntermediateData]);
 
   const handleSelectedDataChange = (url: string) => {
-    setSelectedDataURL(url);
-    setMinimized(false);
+    if (debugJobState?.focusedIntermediateData !== url) {
+      updateValue({
+        ...debugRunState,
+        jobs:
+          debugRunState?.jobs?.map((job) => {
+            if (job.projectId !== currentProject?.id) return job;
+
+            return {
+              ...job,
+              focusedIntermediateData: url,
+            };
+          }) ?? [],
+      });
+      setMinimized(false);
+    }
   };
 
   // First, get metadata to determine file size
@@ -158,8 +148,7 @@ export default () => {
             return;
           }
 
-          const featureId =
-            selectedFeature.id || selectedFeature.properties?._originalId;
+          const featureId = selectedFeature.id;
           if (!featureId) {
             console.warn("No feature ID found for Cesium zoom");
             return;
@@ -212,7 +201,7 @@ export default () => {
                 const entityProps = entity.properties?.getValue();
                 if (entityProps) {
                   // Check if this entity has original GeoJSON feature data
-                  const originalId = entityProps._originalId || entityProps.id;
+                  const originalId = entityProps.id;
                   if (
                     originalId === featureId ||
                     JSON.stringify(originalId) === JSON.stringify(featureId)
@@ -403,21 +392,142 @@ export default () => {
     [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
+  const formattedData = useDataColumnizer({
+    parsedData: selectedOutputData,
+    type: fileType,
+  });
+
+  const featureIdMap = useMemo(() => {
+    if (!formattedData.tableData) return null;
+
+    const map = new Map<string | number, any>();
+    formattedData.tableData.forEach((row: any) => {
+      const id = row.id;
+      if (id !== null && id !== undefined) {
+        map.set(id, row);
+      }
+    });
+    return map;
+  }, [formattedData.tableData]);
+
+  // Derive selectedFeature from selectedFeatureId
+  const selectedFeature = useMemo(() => {
+    if (!selectedFeatureId || !featureIdMap) return null;
+    return featureIdMap.get(selectedFeatureId);
+  }, [selectedFeatureId, featureIdMap]);
+
+  const handleFeatureSelect = useCallback(
+    (featureId: string | null) => {
+      if (selectedFeatureId !== featureId) {
+        setSelectedFeatureId(featureId);
+        if (detailsOverlayOpen && featureId) {
+          const matchingRow = featureIdMap?.get(JSON.stringify(featureId));
+          setDetailsFeature(matchingRow);
+        }
+      }
+    },
+    [featureIdMap, selectedFeatureId, detailsOverlayOpen],
+  );
+
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      setSelectedFeature(value);
+      handleFeatureSelect(value?.id ?? null);
     },
-    [setSelectedFeature],
+    [handleFeatureSelect],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      setSelectedFeature(value);
+      handleFeatureSelect(value?.id ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
+      const matchingRow = featureIdMap?.get(value?.id);
+      setDetailsFeature(matchingRow);
+      setDetailsOverlayOpen(true);
     },
-    [convertedSelectedFeature, handleFlyToSelectedFeature, setSelectedFeature],
+    [
+      convertedSelectedFeature,
+      featureIdMap,
+      handleFlyToSelectedFeature,
+      handleFeatureSelect,
+    ],
+  );
+
+  const handleCloseFeatureDetails = useCallback(() => {
+    setDetailsOverlayOpen(false);
+    setDetailsFeature(null);
+  }, []);
+
+  const handleRemoveDataURL = useCallback(
+    async (urlToRemove: string) => {
+      if (!debugRunState || !currentProject?.id) return;
+
+      const newDebugRunState = {
+        ...debugRunState,
+        jobs:
+          debugRunState.jobs?.map((job) => {
+            if (job.projectId !== currentProject.id) return job;
+
+            const currentData = job.selectedIntermediateData ?? [];
+            const filtered = currentData.filter(
+              (sid) => sid.url !== urlToRemove,
+            );
+
+            return {
+              ...job,
+              selectedIntermediateData: filtered,
+            };
+          }) ?? [],
+      };
+
+      await updateValue(newDebugRunState);
+
+      // check if the currently focused data URL was removed
+      if (debugJobState?.focusedIntermediateData === urlToRemove) {
+        await updateValue({
+          ...newDebugRunState,
+          jobs:
+            newDebugRunState.jobs?.map((job, index) => {
+              if (job.projectId !== currentProject.id) return job;
+
+              const removedIndex = debugRunState.jobs?.[
+                index
+              ].selectedIntermediateData?.findIndex(
+                (sid) => sid.url === urlToRemove,
+              );
+
+              // Try to focus on the next URL, or previous if last was removed
+              let newFocusedURL: string | undefined = undefined;
+              if (
+                removedIndex !== undefined &&
+                removedIndex >= 0 &&
+                job.selectedIntermediateData &&
+                job.selectedIntermediateData.length > 0
+              ) {
+                if (removedIndex < job.selectedIntermediateData.length) {
+                  newFocusedURL =
+                    job.selectedIntermediateData[removedIndex].url;
+                } else if (removedIndex - 1 >= 0) {
+                  newFocusedURL =
+                    job.selectedIntermediateData[removedIndex - 1].url;
+                }
+              }
+
+              return {
+                ...job,
+                focusedIntermediateData: newFocusedURL,
+              };
+            }) ?? [],
+        });
+      }
+    },
+    [
+      debugRunState,
+      currentProject?.id,
+      debugJobState?.focusedIntermediateData,
+      updateValue,
+    ],
   );
 
   return {
@@ -435,7 +545,11 @@ export default () => {
     selectedOutputData,
     // enableClustering,
     selectedFeature,
-    setSelectedFeature,
+    selectedFeatureId,
+    detailsOverlayOpen,
+    detailsFeature,
+    formattedData,
+    handleFeatureSelect,
     setConvertedSelectedFeature,
     // setEnableClustering,
     handleFullscreenExpand,
@@ -443,9 +557,11 @@ export default () => {
     handleMinimize,
     handleTabChange,
     handleSelectedDataChange,
+    handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    handleCloseFeatureDetails,
 
     // Data loading features (always available now)
     streamingQuery: streamingQuery,
@@ -454,5 +570,6 @@ export default () => {
     visualizerType: streamingQuery.visualizerType,
     totalFeatures: streamingQuery.totalFeatures,
     isComplete: streamingQuery.isComplete,
+    isLoadingData: streamingQuery.isLoading || streamingQuery.isStreaming,
   };
 };

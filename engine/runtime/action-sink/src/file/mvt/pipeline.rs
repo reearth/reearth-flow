@@ -9,6 +9,8 @@ use flate2::{write::ZlibEncoder, Compression};
 use flatgeom::LineString2;
 use flatgeom::MultiLineString as NMultiLineString;
 use flatgeom::MultiLineString2;
+use flatgeom::MultiPoint as NMultiPoint;
+use flatgeom::MultiPoint2;
 use flatgeom::MultiPolygon as NMultiPolygon;
 use flatgeom::MultiPolygon2;
 use itertools::Itertools;
@@ -63,6 +65,7 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: mpoly,
                         multi_line_strings: MultiLineString2::new(),
+                        multi_points: MultiPoint2::new(),
                         properties: feature.attributes.clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
@@ -81,6 +84,26 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: line_strings,
+                        multi_points: MultiPoint2::new(),
+                        properties: feature.attributes.clone(),
+                    };
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {err:?}"
+                        ))
+                    })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                        return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                    };
+                    Ok(())
+                },
+                |(z, x, y, typename), points| {
+                    let feature = super::slice::SlicedFeature {
+                        typename,
+                        multi_polygons: MultiPolygon2::new(),
+                        multi_line_strings: MultiLineString2::new(),
+                        multi_points: points,
                         properties: feature.attributes.clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
@@ -210,11 +233,11 @@ pub(super) fn tile_writing_stage(
     output_path: &Uri,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
-    skip_underscore_prefix: bool,
+    skip_unexposed_attributes: bool,
     colon_to_underscore: bool,
+    default_extent: i32,
 ) -> crate::errors::Result<()> {
-    let default_detail = 12;
-    let min_detail = 9;
+    let min_extent: i32 = 512;
 
     let storage = ctx
         .storage_resolver
@@ -228,18 +251,16 @@ pub(super) fn tile_writing_stage(
             let (zoom, x, y) = tile_id_conv.id_to_zxy(tile_id);
 
             let path = output_path
-                .join(Path::new(&format!("{zoom}/{x}/{y}.pbf")))
+                .join(Path::new(&format!("{zoom}/{x}/{y}.mvt")))
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-            for detail in (min_detail..=default_detail).rev() {
-                // Make a MVT tile binary
+            let mut extent = default_extent;
+            while extent >= min_extent {
                 let bytes = make_tile(
-                    detail,
+                    extent,
                     &serialized_feats,
-                    skip_underscore_prefix,
+                    skip_unexposed_attributes,
                     colon_to_underscore,
                 )?;
-
-                // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
                     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
                     e.write_all(&bytes)
@@ -249,9 +270,12 @@ pub(super) fn tile_writing_stage(
                         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                     compressed_bytes.len()
                 };
-                if detail != min_detail && compressed_size > 500_000 {
-                    // If the tile is too large, try a lower detail level
-                    tracing::warn!("Large tile skipped, retry unimplemented");
+                if compressed_size > 500_000 && extent > min_extent {
+                    tracing::warn!(
+                        "Tile z:{} x:{} y:{} with extent {} is too large ({} bytes), retrying with smaller extent",
+                        zoom, x, y, extent, compressed_size
+                    );
+                    extent /= 2;
                     continue;
                 }
                 storage
@@ -265,15 +289,14 @@ pub(super) fn tile_writing_stage(
 }
 
 pub(super) fn make_tile(
-    default_detail: i32,
+    extent: i32,
     serialized_feats: &[Vec<u8>],
-    skip_underscore_prefix: bool,
+    skip_unexposed_attributes: bool,
     colon_to_underscore: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
     let mut int_ring_buf2 = Vec::new();
-    let extent = 1 << default_detail;
 
     for serialized_feat in serialized_feats {
         let feature: super::slice::SlicedFeature = serde_json::from_slice(serialized_feat)
@@ -284,14 +307,14 @@ pub(super) fn make_tile(
             })?;
 
         let mpoly = feature.multi_polygons;
-        let mut int_mpoly = NMultiPolygon::<[i16; 2]>::new();
+        let mut int_mpoly = NMultiPolygon::<[i32; 2]>::new();
 
         for poly in &mpoly {
             for (ri, ring) in poly.rings().enumerate() {
                 int_ring_buf.clear();
                 int_ring_buf.extend(ring.into_iter().map(|[x, y]| {
-                    let x = (x * extent as f64 + 0.5) as i16;
-                    let y = (y * extent as f64 + 0.5) as i16;
+                    let x = (x * extent as f64 + 0.5) as i32;
+                    let y = (y * extent as f64 + 0.5) as i32;
                     [x, y]
                 }));
 
@@ -309,15 +332,19 @@ pub(super) fn make_tile(
                             continue;
                         }
 
-                        // Reject collinear points
+                        // Skip collinear points (cast to i64 to avoid overflow)
                         let [curr_x, curr_y] = curr;
                         let [prev_x, prev_y] = prev;
                         let [next_x, next_y] = next;
-                        if curr != next
-                            && ((next_y - prev_y) as i32 * (curr_x - prev_x) as i32).abs()
-                                == ((curr_y - prev_y) as i32 * (next_x - prev_x) as i32).abs()
-                        {
-                            continue;
+                        if curr != next {
+                            let dx1 = (curr_x - prev_x) as i64;
+                            let dy1 = (curr_y - prev_y) as i64;
+                            let dx2 = (next_x - prev_x) as i64;
+                            let dy2 = (next_y - prev_y) as i64;
+                            let cross_product = dx1 * dy2 - dy1 * dx2;
+                            if cross_product == 0 {
+                                continue;
+                            }
                         }
 
                         int_ring_buf2.push(curr);
@@ -334,20 +361,30 @@ pub(super) fn make_tile(
             }
         }
 
-        let mut int_line_string = NMultiLineString::<[i16; 2]>::new();
+        let mut int_line_string = NMultiLineString::<[i32; 2]>::new();
         let mline_string = feature.multi_line_strings;
 
         let mut int_line_string_buf = Vec::new();
         for line_string in &mline_string {
             int_line_string_buf.clear();
             int_line_string_buf.extend(line_string.into_iter().map(|[x, y]| {
-                let x = (x * extent as f64 + 0.5) as i16;
-                let y = (y * extent as f64 + 0.5) as i16;
+                let x = (x * extent as f64 + 0.5) as i32;
+                let y = (y * extent as f64 + 0.5) as i32;
                 [x, y]
             }));
             int_line_string.add_linestring(&LineString2::from_raw(
                 int_line_string_buf.drain(..).collect(),
             ));
+        }
+
+        let mut int_multi_point = NMultiPoint::<[i32; 2]>::new();
+        let mpoints = feature.multi_points;
+
+        for point in &mpoints {
+            let [x, y] = point;
+            let x = (x * extent as f64 + 0.5) as i32;
+            let y = (y * extent as f64 + 0.5) as i32;
+            int_multi_point.push([x, y]);
         }
 
         // encode geometry
@@ -371,6 +408,11 @@ pub(super) fn make_tile(
                 geom_enc.add_linestring(&line_string);
             }
         }
+
+        let has_points = !int_multi_point.is_empty();
+        if has_points {
+            geom_enc.add_points(&int_multi_point);
+        }
         let geometry = geom_enc.into_vec();
         if geometry.is_empty() {
             continue;
@@ -381,8 +423,8 @@ pub(super) fn make_tile(
 
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                // skip keys starting with "_"
-                if skip_underscore_prefix && key.as_ref().starts_with("_") {
+                // skip keys starting with "__"
+                if skip_unexposed_attributes && key.as_ref().starts_with("__") {
                     continue;
                 }
                 let key_string = if colon_to_underscore {
@@ -395,12 +437,14 @@ pub(super) fn make_tile(
             layer
         };
 
-        // Currently tile::Feature only supports one geometry type per feature.
-        // When both polygon and linestring are present, mark as polygon and report a warning.
+        // MVT Feature only supports one geometry type per feature.
+        // Priority: Polygons > LineStrings > Points
+        let geometry_count = has_polygons as u8 + has_linestrings as u8 + has_points as u8;
+        if geometry_count > 1 {
+            tracing::warn!("Feature has mixed geometry types, some geometries will be skipped.");
+        }
+
         if has_polygons {
-            if has_linestrings {
-                tracing::warn!("Feature has mixed geometry types, defaulting to polygons.");
-            }
             layer.features.push(vector_tile::tile::Feature {
                 id: None,
                 tags: layer.tags_enc.take_tags(),
@@ -414,8 +458,15 @@ pub(super) fn make_tile(
                 r#type: Some(vector_tile::tile::GeomType::Linestring as i32),
                 geometry,
             });
+        } else if has_points {
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Point as i32),
+                geometry,
+            });
         } else {
-            tracing::warn!("Feature has unknown geometry type, skipping.");
+            tracing::warn!("Feature has no valid geometry, skipping.");
         }
     }
 
@@ -432,7 +483,7 @@ pub(super) fn make_tile(
                 features: layer_data.features,
                 keys,
                 values,
-                extent: Some(extent),
+                extent: Some(extent as u32),
             })
         })
         .collect();

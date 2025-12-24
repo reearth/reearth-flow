@@ -15,10 +15,13 @@ import {
   TextArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyProjectVariable, VarType } from "@flow/types";
+import { AnyWorkflowVariable, VarType } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-import { getDefaultValue, inferProjectVariableType } from "./inferVariableType";
+import {
+  getDefaultValue,
+  inferWorkflowVariableType,
+} from "./inferVariableType";
 import SimpleArrayInput from "./SimpleArrayInput";
 import VariableTypeSelector from "./VariableTypeSelector";
 
@@ -37,8 +40,8 @@ type WorkflowImportVariablesMappingDialogProps = {
   variables: WorkflowVariable[];
   workflowName: string;
   onConfirm: (
-    projectVariables: Omit<
-      AnyProjectVariable,
+    workflowVariables: Omit<
+      AnyWorkflowVariable,
       "id" | "createdAt" | "updatedAt" | "projectId"
     >[],
   ) => void;
@@ -59,7 +62,7 @@ export default function WorkflowImportVariablesMappingDialog({
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
     () =>
       variables.map((variable) => {
-        const inferredType = inferProjectVariableType(
+        const inferredType = inferWorkflowVariableType(
           variable.value,
           variable.name,
         );
@@ -113,7 +116,7 @@ export default function WorkflowImportVariablesMappingDialog({
   };
 
   const handleConfirm = () => {
-    const projectVariables = variableMappings.map((mapping) => ({
+    const workflowVariables = variableMappings.map((mapping) => ({
       name: mapping.name,
       type: mapping.type,
       defaultValue: mapping.defaultValue,
@@ -122,7 +125,7 @@ export default function WorkflowImportVariablesMappingDialog({
       config: undefined, // Basic implementation without specific config
     }));
 
-    onConfirm(projectVariables);
+    onConfirm(workflowVariables);
   };
 
   const handleCancel = () => {

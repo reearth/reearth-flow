@@ -1,5 +1,78 @@
 # Actions
 
+## AppearanceRemover
+### Type
+* processor
+### Description
+Removes appearance information (materials, textures) from CityGML geometry
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
+## AreaCalculator
+### Type
+* processor
+### Description
+Calculates the planar or sloped area of polygon geometries and adds the results as attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AreaCalculator Parameters",
+  "description": "Configuration for calculating areas of geometries.",
+  "type": "object",
+  "properties": {
+    "areaType": {
+      "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+      "default": "planeArea",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AreaType"
+        }
+      ]
+    },
+    "multiplier": {
+      "description": "Multiplier to scale the area values (default: 1.0)",
+      "default": 1.0,
+      "type": "number",
+      "format": "double"
+    },
+    "outputAttribute": {
+      "description": "Name of the attribute to store the calculated area (default: \"area\")",
+      "default": "area",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "AreaType": {
+      "type": "string",
+      "enum": [
+        "planeArea",
+        "slopedArea"
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## AreaOnAreaOverlayer
 ### Type
 * processor
@@ -1070,7 +1143,33 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
 ### Description
 Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CSG Evaluator Parameters",
+  "description": "Configure evaluation parameters for CSG operations",
+  "type": "object",
+  "required": [
+    "tolerance"
+  ],
+  "properties": {
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -1162,6 +1261,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
           "$ref": "#/definitions/Expr"
         }
       ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -1232,6 +1339,74 @@ Reads 3D city models from CityGML files.
 ### Input Ports
 ### Output Ports
 * default
+### Category
+* File
+
+## CityGmlWriter
+### Type
+* sink
+### Description
+Writes features to CityGML 2.0 files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "epsgCode": {
+      "description": "EPSG code for coordinate reference system",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "lodFilter": {
+      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    },
+    "output": {
+      "description": "Output file path expression",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "prettyPrint": {
+      "description": "Whether to format output with indentation (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
 ### Category
 * File
 
@@ -2867,6 +3042,21 @@ Extracts file system properties (type, size, timestamps) from files
 ### Category
 * File
 
+## FootprintReplacer
+### Type
+* processor
+### Description
+Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* footprint
+* rejected
+### Category
+* Geometry
+
 ## GeoJsonReader
 ### Type
 * source
@@ -3090,6 +3280,76 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 * File
 * Database
 
+## GeoPackageWriter
+### Type
+* sink
+### Description
+Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoPackageWriter Parameters",
+  "description": "Configuration for writing features to GeoPackage files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "createSpatialIndex": {
+      "description": "Create RTree spatial index (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "geometryColumn": {
+      "description": "Geometry column name (default: \"geom\")",
+      "default": "geom",
+      "type": "string"
+    },
+    "geometryType": {
+      "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
+      "default": "GEOMETRY",
+      "type": "string"
+    },
+    "output": {
+      "description": "Output path for the GeoPackage file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "overwrite": {
+      "description": "Overwrite existing file (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "srsId": {
+      "description": "Spatial Reference System ID (default: 4326 for WGS84)",
+      "default": 4326,
+      "type": "integer",
+      "format": "int32"
+    },
+    "tableName": {
+      "description": "Table name to create (default: \"features\")",
+      "default": "features",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+* Database
+
 ## GeometryCoercer
 ### Type
 * processor
@@ -3120,6 +3380,7 @@ Coerces and converts feature geometries to specified target geometry types
       "type": "string",
       "enum": [
         "lineString",
+        "polygon",
         "triangularMesh"
       ]
     }
@@ -3308,6 +3569,20 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 ### Category
 * Geometry
 
+## GeometryRemover
+### Type
+* processor
+### Description
+Removes geometry from a feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## GeometryReplacer
 ### Type
 * processor
@@ -3389,12 +3664,28 @@ Validate Feature Geometry Quality
   },
   "definitions": {
     "ValidationType": {
-      "type": "string",
-      "enum": [
-        "duplicatePoints",
-        "duplicateConsecutivePoints",
-        "corruptGeometry",
-        "selfIntersection"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "duplicatePoints",
+            "corruptGeometry",
+            "selfIntersection"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "duplicateConsecutivePoints"
+          ],
+          "properties": {
+            "duplicateConsecutivePoints": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }
@@ -3620,21 +3911,30 @@ Reproject Geometry to Different Coordinate System
   "properties": {
     "sourceEpsgCode": {
       "title": "Source EPSG Code",
-      "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+      "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
       "default": null,
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint16",
-      "minimum": 0.0
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "targetEpsgCode": {
       "title": "Target EPSG Code",
-      "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+      "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -4043,6 +4343,16 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
+    "extent": {
+      "title": "Extent",
+      "description": "MVT tile resolution. Default is 4096.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
     "layerName": {
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
@@ -4075,9 +4385,9 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
-    "skipUnderscorePrefix": {
-      "title": "Skip Underscore Prefix",
-      "description": "Skip attributes with underscore prefix",
+    "skipUnexposedAttributes": {
+      "title": "Skip Unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
       "type": [
         "boolean",
         "null"
@@ -4804,7 +5114,19 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
   "title": "CityGML Mesh Builder Parameters",
   "description": "Configure validation rules for CityGML mesh triangles",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
+    "epsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
     "errorAttribute": {
       "title": "Error Attribute Name",
       "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
@@ -4814,16 +5136,13 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
           "$ref": "#/definitions/Attribute"
         }
       ]
-    },
-    "rejectInvalid": {
-      "title": "Reject Invalid Features",
-      "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
-      "default": false,
-      "type": "boolean"
     }
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
       "type": "string"
     }
   }
@@ -5066,7 +5385,7 @@ Extract object list
 ### Type
 * processor
 ### Description
-Creates pairs of features that can possibly intersect based on bounding box overlap
+Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
 ### Parameters
 ```json
 {
@@ -5074,11 +5393,18 @@ Creates pairs of features that can possibly intersect based on bounding box over
   "title": "SolidIntersectionTestPairCreatorParam",
   "type": "object",
   "properties": {
-    "boundingBoxAttribute": {
-      "default": "bounding_box",
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+      "default": "list",
       "type": "string"
     },
     "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
       "default": "pair_id",
       "type": "string"
     }
@@ -5236,12 +5562,81 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Description
 Filter Features by Geometry Planarity
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Planarity Filter Parameters",
+  "description": "Configure how to filter features based on geometry planarity",
+  "type": "object",
+  "required": [
+    "threshold"
+  ],
+  "properties": {
+    "filterType": {
+      "title": "Filter Type",
+      "description": "The method to use for planarity detection",
+      "default": "covariance",
+      "allOf": [
+        {
+          "$ref": "#/definitions/PlanarityFilterType"
+        }
+      ]
+    },
+    "threshold": {
+      "title": "Threshold",
+      "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "PlanarityFilterType": {
+      "description": "Filter type for planarity check",
+      "oneOf": [
+        {
+          "description": "Uses covariance matrix eigenvalue analysis",
+          "type": "string",
+          "enum": [
+            "covariance"
+          ]
+        },
+        {
+          "description": "Uses minimum height of the 3D convex hull",
+          "type": "string",
+          "enum": [
+            "height"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
 * planarity
 * notplanarity
+### Category
+* Geometry
+
+## PolygonNormalExtractor
+### Type
+* processor
+### Description
+Extract normal vectors and other properties for polygon features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Geometry
 
@@ -5500,7 +5895,33 @@ Writes geographic features to ESRI Shapefile format with optional grouping
 ### Description
 Validates the Solid Boundary Geometry
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Solid Boundary Validator Parameters",
+  "description": "Configure validation parameters for solid boundary geometry",
+  "type": "object",
+  "required": [
+    "tolerance"
+  ],
+  "properties": {
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -5776,55 +6197,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
 * complete
 ### Category
 * Attribute
-
-## SurfaceFootprintReplacer
-### Type
-* processor
-### Description
-Replace the geometry with its footprint
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SurfaceFootprintReplacer Parameters",
-  "description": "Configuration for replacing geometry with its footprint projection.",
-  "type": "object",
-  "properties": {
-    "elevation": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "lightDirection": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "number",
-        "format": "double"
-      },
-      "maxItems": 3,
-      "minItems": 3
-    },
-    "shadowMode": {
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* footprint
-* rejected
-### Category
-* Geometry
 
 ## ThreeDimensionBoxReplacer
 ### Type

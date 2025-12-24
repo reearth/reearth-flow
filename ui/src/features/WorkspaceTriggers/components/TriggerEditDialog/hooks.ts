@@ -17,6 +17,7 @@ export default ({
   const [updatedDescription, setUpdatedDescription] = useState(
     selectedTrigger.description || "",
   );
+
   const [updatedEventSource, setUpdatedEventSource] = useState(
     selectedTrigger.eventSource,
   );
@@ -57,8 +58,8 @@ export default ({
   const {
     workflowVariablesObject,
     pendingWorkflowData,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
     getVariablesToSave,
     handleWorkflowFetch,
@@ -89,6 +90,7 @@ export default ({
 
     await useUpdateTrigger(
       selectedTrigger.id,
+      selectedTrigger.enabled,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
@@ -134,8 +136,8 @@ export default ({
     handleDescriptionChange,
     workflowVariablesObject,
     pendingWorkflowData,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
+    openTriggerWorkflowVariablesDialog,
+    setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
     hasVariables,
     variableCount,

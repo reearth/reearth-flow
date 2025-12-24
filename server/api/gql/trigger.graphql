@@ -11,8 +11,8 @@ type Trigger implements Node {
     description: String!
     authToken: String
     timeInterval: TimeInterval
-    enabled: Boolean
-    variables: JSON
+    enabled: Boolean!
+    variables: [Variable!]!
 }
 
 # Enums
@@ -52,8 +52,8 @@ input CreateTriggerInput {
     description: String!
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
-    enabled: Boolean
-    variables: JSON
+    enabled: Boolean!
+    variables: [VariableInput!]
 }
 
 input UpdateTriggerInput {
@@ -63,7 +63,7 @@ input UpdateTriggerInput {
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
     enabled: Boolean
-    variables: JSON
+    variables: [VariableInput!]
 }
 
 # Connection

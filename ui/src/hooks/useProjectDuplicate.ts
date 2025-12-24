@@ -1,13 +1,18 @@
 import { useCallback, useState } from "react";
 
-import { useProject } from "@flow/lib/gql";
+import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
 
-export default () => {
+export default (projectToDuplicate?: Project) => {
   const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const { createProject, copyProject } = useProject();
+  const { useGetWorkflowVariables, updateMultipleWorkflowVariables } =
+    useWorkflowVariables();
+  const { workflowVariables } = useGetWorkflowVariables(
+    projectToDuplicate?.id ?? "",
+  );
 
   const handleProjectDuplication = useCallback(
     async (project: Project) => {
@@ -24,6 +29,21 @@ export default () => {
           description: project.description,
         });
 
+        if (workflowVariables && workflowVariables.length > 0 && newProject) {
+          await updateMultipleWorkflowVariables({
+            projectId: newProject.id,
+            creates: workflowVariables.map((pv, index) => ({
+              name: pv.name,
+              defaultValue: pv.defaultValue,
+              type: pv.type,
+              required: pv.required,
+              publicValue: pv.public,
+              index,
+              config: pv.config,
+            })),
+          });
+        }
+
         if (!newProject) {
           throw new Error("Failed to create new project");
         }
@@ -35,7 +55,13 @@ export default () => {
         setIsDuplicating(false);
       }
     },
-    [currentWorkspace, createProject, copyProject],
+    [
+      currentWorkspace,
+      workflowVariables,
+      createProject,
+      copyProject,
+      updateMultipleWorkflowVariables,
+    ],
   );
 
   return {

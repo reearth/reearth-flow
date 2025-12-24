@@ -6,8 +6,7 @@ with:
   codelists:
   schemas:
   outputPath:
-  epsgCode:
-
+  prcs:
 graphs:
   - id: 0a2f610f-b92c-483b-a76a-e6143c3ab249
     name: EntryPoint
@@ -25,7 +24,6 @@ graphs:
                 codelists: env.get("codelists"),
                 schemas: env.get("schemas"),
                 outputPath: env.get("outputPath"),
-                epsgCode: env.get("epsgCode"),
               },
             ]
 
@@ -152,7 +150,7 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          epsgCode: 6670
+          targetEpsgCode: env.get("prcs")
 
       # GeometryValidator: Validate geometry for degenerate triangles and duplicate consecutive points
       - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
@@ -161,7 +159,7 @@ graphs:
         action: GeometryValidator
         with:
           validationTypes:
-            - duplicateConsecutivePoints
+            - duplicateConsecutivePoints: 0.01
             - corruptGeometry
 
       # TwoDimensionForcer: Convert 3D geometry to 2D before edge matching
