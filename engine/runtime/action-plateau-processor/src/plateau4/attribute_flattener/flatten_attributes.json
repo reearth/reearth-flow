@@ -12454,5 +12454,275 @@
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
+	],
+	"fld/wtr:WaterBody": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "wtr:class",
+			"data_type": "buffer",
+			"json_path": "wtr:class"
+		},
+		{
+			"attribute": "wtr:function",
+			"data_type": "buffer",
+			"json_path": "wtr:function"
+		},
+		{
+			"attribute": "uro:description",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:description"
+		},
+		{
+			"attribute": "uro:adminType",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:adminType"
+		},
+		{
+			"attribute": "uro:scale",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:scale"
+		},
+		{
+			"attribute": "uro:rank",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:rank"
+		},
+		{
+			"attribute": "uro:rank_code",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:rank_code"
+		},
+		{
+			"attribute": "uro:rankOrg",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:rankOrg"
+		},
+		{
+			"attribute": "uro:rankOrg_code",
+			"data_type": "buffer",
+			"json_path": "uro:RiverFloodingRiskAttribute uro:rankOrg_code"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		}
+	],
+	"tnm/wtr:WaterBody": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "wtr:class",
+			"data_type": "buffer",
+			"json_path": "wtr:class"
+		},
+		{
+			"attribute": "wtr:function",
+			"data_type": "buffer",
+			"json_path": "wtr:function"
+		},
+		{
+			"attribute": "uro:description",
+			"data_type": "buffer",
+			"json_path": "uro:TsunamiRiskAttribute uro:description"
+		},
+		{
+			"attribute": "uro:rank",
+			"data_type": "buffer",
+			"json_path": "uro:TsunamiRiskAttribute uro:rank"
+		},
+		{
+			"attribute": "uro:rank_code",
+			"data_type": "buffer",
+			"json_path": "uro:TsunamiRiskAttribute uro:rank_code"
+		},
+		{
+			"attribute": "uro:rankOrg",
+			"data_type": "buffer",
+			"json_path": "uro:TsunamiRiskAttribute uro:rankOrg"
+		},
+		{
+			"attribute": "uro:rankOrg_code",
+			"data_type": "buffer",
+			"json_path": "uro:TsunamiRiskAttribute uro:rankOrg_code"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		}
+	],
+	"htd/wtr:WaterBody": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "wtr:class",
+			"data_type": "buffer",
+			"json_path": "wtr:class"
+		},
+		{
+			"attribute": "wtr:function",
+			"data_type": "buffer",
+			"json_path": "wtr:function"
+		},
+		{
+			"attribute": "uro:description",
+			"data_type": "buffer",
+			"json_path": "uro:HighTideRiskAttribute uro:description"
+		},
+		{
+			"attribute": "uro:rank",
+			"data_type": "buffer",
+			"json_path": "uro:HighTideRiskAttribute uro:rank"
+		},
+		{
+			"attribute": "uro:rank_code",
+			"data_type": "buffer",
+			"json_path": "uro:HighTideRiskAttribute uro:rank_code"
+		},
+		{
+			"attribute": "uro:rankOrg",
+			"data_type": "buffer",
+			"json_path": "uro:HighTideRiskAttribute uro:rankOrg"
+		},
+		{
+			"attribute": "uro:rankOrg_code",
+			"data_type": "buffer",
+			"json_path": "uro:HighTideRiskAttribute uro:rankOrg_code"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		}
+	],
+	"ifld/wtr:WaterBody": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "wtr:class",
+			"data_type": "buffer",
+			"json_path": "wtr:class"
+		},
+		{
+			"attribute": "wtr:function",
+			"data_type": "buffer",
+			"json_path": "wtr:function"
+		},
+		{
+			"attribute": "uro:description",
+			"data_type": "buffer",
+			"json_path": "uro:InlandFloodingRiskAttribute uro:description"
+		},
+		{
+			"attribute": "uro:rank",
+			"data_type": "buffer",
+			"json_path": "uro:InlandFloodingRiskAttribute uro:rank"
+		},
+		{
+			"attribute": "uro:rank_code",
+			"data_type": "buffer",
+			"json_path": "uro:InlandFloodingRiskAttribute uro:rank_code"
+		},
+		{
+			"attribute": "uro:rankOrg",
+			"data_type": "buffer",
+			"json_path": "uro:InlandFloodingRiskAttribute uro:rankOrg"
+		},
+		{
+			"attribute": "uro:rankOrg_code",
+			"data_type": "buffer",
+			"json_path": "uro:InlandFloodingRiskAttribute uro:rankOrg_code"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		}
+	],
+	"rfld/wtr:WaterBody": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "wtr:class",
+			"data_type": "buffer",
+			"json_path": "wtr:class"
+		},
+		{
+			"attribute": "wtr:function",
+			"data_type": "buffer",
+			"json_path": "wtr:function"
+		},
+		{
+			"attribute": "uro:description",
+			"data_type": "buffer",
+			"json_path": "uro:ReservoirFloodingRiskAttribute uro:description"
+		},
+		{
+			"attribute": "uro:rank",
+			"data_type": "buffer",
+			"json_path": "uro:ReservoirFloodingRiskAttribute uro:rank"
+		},
+		{
+			"attribute": "uro:rank_code",
+			"data_type": "buffer",
+			"json_path": "uro:ReservoirFloodingRiskAttribute uro:rank_code"
+		},
+		{
+			"attribute": "uro:rankOrg",
+			"data_type": "buffer",
+			"json_path": "uro:ReservoirFloodingRiskAttribute uro:rankOrg"
+		},
+		{
+			"attribute": "uro:rankOrg_code",
+			"data_type": "buffer",
+			"json_path": "uro:ReservoirFloodingRiskAttribute uro:rankOrg_code"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		}
 	]
 }
