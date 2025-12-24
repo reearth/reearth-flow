@@ -1,152 +1,175 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
-name: "Solar Radiation time to TIMEVALUE workflow"
-entryGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
-with:
-  csvFile: |
-    年月日,出,方位[°],南中,高度[°],入り,方位[°]00
-    2023/1/1,7:06,118.3,11:57:59,30.7,16:50,241.7
-    2023/1/2,7:06,118.2,11:58:28,30.8,16:51,241.8
-    2023/1/3,7:06,118.1,11:58:55,30.9,16:52,241.9
-graphs:
-  - id: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
-    name: entry_point
-    nodes:
-      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: CsvReader
-        type: action
-        action: CsvReader
-        with:
-          format: csv
-          inline: |
-            env.get("csvFile")
+id: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
+name: TimeDataProcessor
+nodes:
+  - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+    name: CsvReader
+    type: action
+    action: CsvReader
+    with:
+      format: csv
+      inline: |
+        env.get("csvFile")
 
-      - id: d2b4977d-e218-4628-96f2-d26407aeea14
-        name: AttributeMapper
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-            - attribute: 年月日
-              valueAttribute: 年月日
-            - attribute: 方位_出
-              valueAttribute: 方位[°]
-            - attribute: 方位_入
-              valueAttribute: 方位[°]00
-            - attribute: 高度[°]
-              valueAttribute: 高度[°]
-            # Preserve original time values
-            - attribute: 出
-              valueAttribute: 出
-            - attribute: 入り
-              valueAttribute: 入り
-            - attribute: 南中
-              valueAttribute: 南中
-            # Add the extracted time parts directly in the AttributeMapper
-            - attribute: 出_H
-              expr: |
-                let time_parts = env.get("__value")["出"].split(":");
-                if time_parts.len() > 0 { time_parts[0] } else { "" }
-            - attribute: 出_M
-              expr: |
-                let time_parts = env.get("__value")["出"].split(":");
-                if time_parts.len() > 1 { time_parts[1] } else { "" }
-            - attribute: 入り_H
-              expr: |
-                let time_parts = env.get("__value")["入り"].split(":");
-                if time_parts.len() > 0 { time_parts[0] } else { "" }
-            - attribute: 入り_M
-              expr: |
-                let time_parts = env.get("__value")["入り"].split(":");
-                if time_parts.len() > 1 { time_parts[1] } else { "" }
+  - id: d2b4977d-e218-4628-96f2-d26407aeea14
+    name: AttributeMapper
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: 年月日
+          valueAttribute: 年月日
+        - attribute: 方位_出
+          valueAttribute: 方位[°]
+        - attribute: 方位_入
+          valueAttribute: 方位[°]00
+        - attribute: 高度[°]
+          valueAttribute: 高度[°]
+        # Preserve original time values
+        - attribute: 出
+          valueAttribute: 出
+        - attribute: 入り
+          valueAttribute: 入り
+        - attribute: 南中
+          valueAttribute: 南中
+        # Add the extracted time parts directly in the AttributeMapper
+        - attribute: 出_H
+          expr: |
+            let time_parts = env.get("__value")["出"].split(":");
+            if time_parts.len() > 0 { time_parts[0] } else { "" }
+        - attribute: 出_M
+          expr: |
+            let time_parts = env.get("__value")["出"].split(":");
+            if time_parts.len() > 1 { time_parts[1] } else { "" }
+        - attribute: 入り_H
+          expr: |
+            let time_parts = env.get("__value")["入り"].split(":");
+            if time_parts.len() > 0 { time_parts[0] } else { "" }
+        - attribute: 入り_M
+          expr: |
+            let time_parts = env.get("__value")["入り"].split(":");
+            if time_parts.len() > 1 { time_parts[1] } else { "" }
 
-      - id: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
-        name: ConvertToSeconds
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: 出
-              method: convert
-              value: |
-                let hour_str = env.get("__value")["出_H"];
-                let hour = parse_int(hour_str);
-                let min_str = env.get("__value")["出_M"];
-                let min = parse_int(min_str);
-                hour * 3600 + min * 60
-            - attribute: 入り
-              method: convert
-              value: |
-                let hour_str = env.get("__value")["入り_H"];
-                let hour = parse_int(hour_str);
-                let min_str = env.get("__value")["入り_M"];
-                let min = parse_int(min_str);
-                hour * 3600 + min * 60
-            - attribute: 南中
-              method: convert
-              value: |
-                let dt = env.get("__value")["南中"];
-                let hour_str = str::extract_single_by_regex("(\\d+):(\\d+):(\\d+)", dt);
-                let mins_str = str::extract_single_by_regex("\\d+:(\\d+):\\d+", dt);
-                let secs_str = str::extract_single_by_regex("\\d+:\\d+:(\\d+)", dt);
-                let hour = parse_int(hour_str);
-                let mins = parse_int(mins_str);
-                let seconds = parse_int(secs_str);
-                hour * 3600 + mins * 60 + seconds
-            - attribute: 出_H
-              method: remove
-            - attribute: 出_M
-              method: remove
-            - attribute: 入り_H
-              method: remove
-            - attribute: 入り_M
-              method: remove
+  - id: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
+    name: ConvertToSeconds
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: 出
+          method: convert
+          value: |
+            let hour_str = env.get("__value")["出_H"];
+            let hour = parse_int(hour_str);
+            let min_str = env.get("__value")["出_M"];
+            let min = parse_int(min_str);
+            hour * 3600 + min * 60
+        - attribute: 入り
+          method: convert
+          value: |
+            let hour_str = env.get("__value")["入り_H"];
+            let hour = parse_int(hour_str);
+            let min_str = env.get("__value")["入り_M"];
+            let min = parse_int(min_str);
+            hour * 3600 + min * 60
+        - attribute: 南中
+          method: convert
+          value: |
+            let dt = env.get("__value")["南中"];
+            let hour_str = str::extract_single_by_regex("(\\d+):(\\d+):(\\d+)", dt);
+            let mins_str = str::extract_single_by_regex("\\d+:(\\d+):\\d+", dt);
+            let secs_str = str::extract_single_by_regex("\\d+:\\d+:(\\d+)", dt);
+            let hour = parse_int(hour_str);
+            let mins = parse_int(mins_str);
+            let seconds = parse_int(secs_str);
+            hour * 3600 + mins * 60 + seconds
+        - attribute: 出_H
+          method: remove
+        - attribute: 出_M
+          method: remove
+        - attribute: 入り_H
+          method: remove
+        - attribute: 入り_M
+          method: remove
 
 
-      - id: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
-        name: SolarRadiationCalculator
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: "日射量[kWh/m2]"
-              method: create
-              value: |
-                let entry_time_value = env.get("__value")["入り"];
-                let exit_time_value = env.get("__value")["出"];
-                let altitude_value = env.get("__value")["高度[°]"];
-                let input_time_days = entry_time_value / 86400.0;
-                let output_time_days = exit_time_value / 86400.0;
-                let altitude_radians = math::to_radians(parse_float(altitude_value));
-                (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
-          
+  - id: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
+    name: SolarRadiationCalculator
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: "日射量[kWh/m2]"
+          method: create
+          value: |
+            let entry_time_value = env.get("__value")["入り"];
+            let exit_time_value = env.get("__value")["出"];
+            let altitude_value = env.get("__value")["高度[°]"];
+            let input_time_days = entry_time_value / 86400.0;
+            let output_time_days = exit_time_value / 86400.0;
+            let altitude_radians = math::to_radians(parse_float(altitude_value));
+            (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
 
-      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: SolarEnergyResultCsvWriter
-        type: action
-        action: NoopSink
+  - id: c60a3004-ded4-11f0-9390-7c70db10a7e3
+    name: SolarEnergySum
+    type: action
+    action: StatisticsCalculator
+    with:
+      calculations:
+        - newAttribute: 日射量[kWh/m2].sum
+          expr: |
+            env.get("__value")["日射量[kWh/m2]"]
 
-    edges:
-      - id: c064cf52-705f-443a-b2de-6795266c540d
-        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        to: d2b4977d-e218-4628-96f2-d26407aeea14
-        fromPort: default
-        toPort: default
+  - id: 481cea32-ded5-11f0-b1da-7c70db10a7e3
+    name: AttributeCreator
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: join_key
+          method: create
+          value: |
+            "key"
 
-      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
-        from: d2b4977d-e218-4628-96f2-d26407aeea14
-        to: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
-        fromPort: default
-        toPort: default
+  - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+    name: SolarEnergyResultCsvWriter
+    type: action
+    action: OutputRouter
+    with: 
+      routingPort: default
 
-      - id: e8f7a6b5-4c3d-2e1f-9a8b-7c6d5e4f3a2b
-        from: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
-        to: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
-        fromPort: default
-        toPort: default
+edges:
+  - id: c064cf52-705f-443a-b2de-6795266c540d
+    from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+    to: d2b4977d-e218-4628-96f2-d26407aeea14
+    fromPort: default
+    toPort: default
 
-      - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-        from: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
-        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        fromPort: default
-        toPort: default
+  - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+    from: d2b4977d-e218-4628-96f2-d26407aeea14
+    to: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
+    fromPort: default
+    toPort: default
+
+  - id: e8f7a6b5-4c3d-2e1f-9a8b-7c6d5e4f3a2b
+    from: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
+    to: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
+    fromPort: default
+    toPort: default
+
+  - id: 2192a9e2-ded5-11f0-8ade-7c70db10a7e3
+    from: 56cab506-d1a0-11f0-a36d-7c70db10a7e3
+    to: c60a3004-ded4-11f0-9390-7c70db10a7e3
+    fromPort: default
+    toPort: default
+
+  - id: 833b46f4-ded5-11f0-ade2-7c70db10a7e3
+    from: c60a3004-ded4-11f0-9390-7c70db10a7e3
+    to: 481cea32-ded5-11f0-b1da-7c70db10a7e3
+    fromPort: default
+    toPort: default
+
+  - id: e9c6b2a3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    from: 481cea32-ded5-11f0-b1da-7c70db10a7e3
+    to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+    fromPort: default
+    toPort: default
