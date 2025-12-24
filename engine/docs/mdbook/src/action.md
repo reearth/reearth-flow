@@ -1933,6 +1933,13 @@ Extracts and decompresses archive files from specified attributes
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "findDeepestSingleFolder": {
+      "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is.",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -2206,6 +2213,18 @@ Reads and processes features from CityGML files with optional flattening
     "dataset"
   ],
   "properties": {
+    "codelistsPath": {
+      "title": "Codelists Path",
+      "description": "Optional path to the codelists directory for resolving codelist values",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
@@ -5035,12 +5054,17 @@ This processor validates building usage attributes by checking for the presence 
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BuildingUsageAttributeValidatorParam",
   "type": "object",
+  "required": [
+    "codelistsPath"
+  ],
   "properties": {
-    "codelists": {
-      "type": [
-        "string",
-        "null"
-      ]
+    "codelistsPath": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -6729,6 +6753,17 @@ Writes features to a zip file
     "output"
   ],
   "properties": {
+    "basePath": {
+      "description": "Base path for computing relative paths. When set, directory structure relative to this base will be preserved in the zip file. If not set, all files are placed at the root of the zip (flattened).",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "output": {
       "description": "Output path",
       "allOf": [
