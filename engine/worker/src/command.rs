@@ -17,7 +17,7 @@ use crate::{
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
-    incremental::prepare_incremental_feature_store,
+    incremental::{prepare_incremental_artifacts, prepare_incremental_feature_store, DirCopySpec},
     logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
@@ -372,6 +372,18 @@ impl RunWorkerCommand {
         let artifact_path = setup_job_directory("workers", "artifacts", job_id)
             .map_err(crate::errors::Error::init)?;
 
+        let temp_artifact_path = setup_job_directory("workers", "temp-artifacts", job_id)
+            .map_err(crate::errors::Error::init)?;
+        let temp_artifact_root = temp_artifact_path
+            .path()
+            .to_str()
+            .ok_or_else(|| crate::errors::Error::init("Invalid temp-artifacts dir path"))?
+            .to_string();
+        std::env::set_var(
+            "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
+            temp_artifact_root,
+        );
+
         let mut global = HashMap::new();
         global.insert(
             WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE.to_string(),
@@ -421,12 +433,26 @@ impl RunWorkerCommand {
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
             prepare_incremental_feature_store(
+                "workers",
                 workflow,
                 job_id,
                 storage_resolver.as_ref(),
                 meta,
                 prev_job_id,
                 start_node_id,
+            )
+            .await?;
+
+            prepare_incremental_artifacts(
+                "workers",
+                storage_resolver.as_ref(),
+                meta,
+                prev_job_id,
+                job_id,
+                &[
+                    DirCopySpec::new("artifacts", "previous-artifacts"),
+                    DirCopySpec::new("temp-artifacts", "previous-temp-artifacts"),
+                ],
             )
             .await?;
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
