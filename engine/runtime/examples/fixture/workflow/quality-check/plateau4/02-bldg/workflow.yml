@@ -67,7 +67,6 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          destPrefix: "udx"
           sourceDataset: |
             env.get("__value")["cityGmlPath"]
           extractArchive: true

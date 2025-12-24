@@ -210,6 +210,9 @@ nodes:
     name: BuildingUsageAttributeValidator
     type: action
     action: PLATEAU4.BuildingUsageAttributeValidator
+    with:
+      codelistsPath: |
+        env.get("__value")["codelists"]
 
   - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: AttributeMapper-l-bldg-04-05-transform
