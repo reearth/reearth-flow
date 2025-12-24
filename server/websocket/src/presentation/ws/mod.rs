@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc;
-use tracing::{debug, error, instrument, warn};
+use tracing::{debug, error, warn};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
@@ -129,7 +129,6 @@ impl Stream for WarpStream {
     }
 }
 
-#[instrument(name = "websocket_connect", skip_all, fields(doc_id = %doc_id))]
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(doc_id): Path<String>,

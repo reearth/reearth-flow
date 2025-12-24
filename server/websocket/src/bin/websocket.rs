@@ -1,11 +1,11 @@
 use tracing::error;
-use websocket::config::Config;
+use websocket::conf::Config;
 use websocket::infrastructure::tracing::{init_tracing, init_tracing_simple, shutdown_tracing};
 use websocket::presentation::app;
 
 #[tokio::main]
 async fn main() {
-    // Try to load config using the layered configuration system
+    // Try to load config first (without tracing, since it's not initialized yet)
     let config = match Config::load() {
         Ok(config) => config,
         Err(err) => {
@@ -16,12 +16,8 @@ async fn main() {
         }
     };
 
-    // Convert to infrastructure tracing config
-    let tracing_config: websocket::infrastructure::tracing::TracingConfig =
-        config.tracing.clone().into();
-
     // Initialize tracing with config
-    if let Err(err) = init_tracing(&tracing_config).await {
+    if let Err(err) = init_tracing(&config.tracing).await {
         // Fall back to simple tracing if OpenTelemetry fails
         init_tracing_simple();
         error!("Failed to initialize tracing: {}", err);

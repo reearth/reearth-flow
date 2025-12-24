@@ -1,4 +1,3 @@
-#[cfg(feature = "auth")]
 pub mod auth;
 pub mod gcs;
 pub mod health;

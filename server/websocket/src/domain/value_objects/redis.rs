@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use deadpool::managed::{self, Metrics};
+use deadpool_redis::Pool;
 
 pub const OID_LOCK_KEY: &str = "lock:oid_generation";
 
@@ -27,43 +27,4 @@ pub struct RedisConfig {
     pub stream_max_length: u64,
 }
 
-pub struct RedisConnectionManager {
-    client: redis::Client,
-}
-
-impl std::fmt::Debug for RedisConnectionManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RedisConnectionManager").finish()
-    }
-}
-
-impl RedisConnectionManager {
-    pub fn new(url: &str) -> Result<Self, redis::RedisError> {
-        let client = redis::Client::open(url)?;
-        Ok(Self { client })
-    }
-}
-
-impl managed::Manager for RedisConnectionManager {
-    type Type = redis::aio::MultiplexedConnection;
-    type Error = redis::RedisError;
-
-    async fn create(&self) -> Result<Self::Type, Self::Error> {
-        self.client.get_multiplexed_async_connection().await
-    }
-
-    async fn recycle(
-        &self,
-        conn: &mut Self::Type,
-        _metrics: &Metrics,
-    ) -> managed::RecycleResult<Self::Error> {
-        // Check if the connection is still alive by sending a PING
-        redis::cmd("PING")
-            .query_async::<String>(conn)
-            .await
-            .map_err(managed::RecycleError::Backend)?;
-        Ok(())
-    }
-}
-
-pub type RedisPool = managed::Pool<RedisConnectionManager>;
+pub type RedisPool = Pool;
