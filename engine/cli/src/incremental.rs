@@ -210,7 +210,11 @@ fn copy_dir_all_overwrite(src: &Path, dst: &Path) -> std::io::Result<()> {
         if ty.is_dir() {
             copy_dir_all_overwrite(&from, &to)?;
         } else if ty.is_file() {
-            let _ = fs::copy(&from, &to)?;
+            fs::copy(&from, &to)?;
+        } else if ty.is_symlink() {
+            tracing::warn!("Skipping symlink during copy: {}", from.display());
+        } else {
+            tracing::warn!("Skipping non-file entry during copy: {}", from.display());
         }
     }
     Ok(())

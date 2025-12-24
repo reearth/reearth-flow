@@ -196,7 +196,7 @@ async fn copy_job_subdir_remote_to_local(
         .await
         .map_err(crate::errors::Error::init)?;
 
-    download_remote_tree_failfast(
+    download_remote_tree(
         storage_resolver,
         &remote_root,
         local_prev_root.path().as_path(),
@@ -237,8 +237,7 @@ fn remote_job_subdir_root_uri(
 }
 
 /// Download remote subtree rooted at `remote_root` into `local_dst_root`.
-/// Fail-fast if the remote prefix is empty (incremental reuse requires previous outputs).
-async fn download_remote_tree_failfast(
+async fn download_remote_tree(
     storage_resolver: &StorageResolver,
     remote_root: &reearth_flow_common::uri::Uri,
     local_dst_root: &Path,
@@ -350,7 +349,7 @@ fn copy_dir_all_overwrite(src: &Path, dst: &Path) -> std::io::Result<()> {
         if ty.is_dir() {
             copy_dir_all_overwrite(&from, &to)?;
         } else if ty.is_file() {
-            let _ = fs::copy(&from, &to)?;
+            fs::copy(&from, &to)?;
         }
     }
     Ok(())
