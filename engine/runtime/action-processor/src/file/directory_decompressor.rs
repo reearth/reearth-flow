@@ -49,7 +49,7 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: DirectoryDecompressorParam = if let Some(with) = with.clone() {
+        let param: DirectoryDecompressorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with.clone()).map_err(|e| {
                 super::errors::FileProcessorError::DirectoryDecompressorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"

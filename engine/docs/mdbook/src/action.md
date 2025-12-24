@@ -6753,17 +6753,6 @@ Writes features to a zip file
     "output"
   ],
   "properties": {
-    "basePath": {
-      "description": "Base path for computing relative paths. When set, directory structure relative to this base will be preserved in the zip file. If not set, all files are placed at the root of the zip (flattened).",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "output": {
       "description": "Output path",
       "allOf": [
