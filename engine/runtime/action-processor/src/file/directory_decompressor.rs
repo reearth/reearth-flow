@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -44,13 +44,13 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let param: DirectoryDecompressorParam = if let Some(with) = with.clone() {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
+            let value: Value = serde_json::to_value(with.clone()).map_err(|e| {
                 super::errors::FileProcessorError::DirectoryDecompressorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
                 ))
@@ -68,8 +68,20 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
                 .into(),
             );
         };
+        let find_deepest_single_folder = param
+            .find_deepest_single_folder
+            .map(|expr| {
+                ctx.expr_engine.compile(expr.as_ref()).map_err(|e| {
+                    super::errors::FileProcessorError::DirectoryDecompressorFactory(format!(
+                        "Failed to compile `findDeepestSingleFolder` expression: {e:?}"
+                    ))
+                })
+            })
+            .transpose()?;
         let process = DirectoryDecompressor {
             archive_attributes: param.archive_attributes,
+            find_deepest_single_folder,
+            global_params: with,
         };
         Ok(Box::new(process))
     }
@@ -83,11 +95,16 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 struct DirectoryDecompressorParam {
     /// Attributes containing archive file paths to be extracted and decompressed
     archive_attributes: Vec<Attribute>,
+    /// If true, recursively unwraps single-folder nesting until the directory contains
+    /// multiple items or files directly. If false (default), returns the root extraction folder as-is.
+    find_deepest_single_folder: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 struct DirectoryDecompressor {
     archive_attributes: Vec<Attribute>,
+    find_deepest_single_folder: Option<rhai::AST>,
+    global_params: Option<HashMap<String, Value>>,
 }
 
 impl Processor for DirectoryDecompressor {
@@ -96,6 +113,23 @@ impl Processor for DirectoryDecompressor {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        let find_deepest = self
+            .find_deepest_single_folder
+            .as_ref()
+            .map(|ast| {
+                let scope = ctx
+                    .feature
+                    .new_scope(Arc::clone(&ctx.expr_engine), &self.global_params);
+                scope.eval_ast::<bool>(ast)
+            })
+            .transpose()
+            .map_err(|e| {
+                super::errors::FileProcessorError::DirectoryDecompressor(format!(
+                    "Failed to evaluate `findDeepestSingleFolder` expression: {e:?}"
+                ))
+            })?
+            .unwrap_or(false);
+
         let mut feature = ctx.feature.clone();
         for attribute in &self.archive_attributes {
             let Some(AttributeValue::String(source_dataset)) = feature.get(attribute) else {
@@ -107,12 +141,13 @@ impl Processor for DirectoryDecompressor {
             if !crate::utils::decompressor::is_extractable_archive(&source_dataset) {
                 continue;
             }
-            let root_output_path = extract_archive(&source_dataset, ctx.storage_resolver.clone())
-                .map_err(|e| {
-                super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                    "Failed to extract archive: {e}"
-                ))
-            })?;
+            let root_output_path =
+                extract_archive(&source_dataset, ctx.storage_resolver.clone(), find_deepest)
+                    .map_err(|e| {
+                        super::errors::FileProcessorError::DirectoryDecompressor(format!(
+                            "Failed to extract archive: {e}"
+                        ))
+                    })?;
             feature.insert(
                 attribute.clone(),
                 AttributeValue::String(root_output_path.to_string()),
@@ -134,6 +169,7 @@ impl Processor for DirectoryDecompressor {
 fn extract_archive(
     source_dataset: &Uri,
     storage_resolver: Arc<StorageResolver>,
+    find_deepest_single_folder: bool,
 ) -> super::errors::Result<Uri> {
     let root_output_path =
         project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).map_err(|e| {
@@ -159,7 +195,11 @@ fn extract_archive(
             "Failed to extract archive: {e}"
         ))
     })?;
-    let root_output_path = get_single_subfolder_or_self(&root_output_path)?;
+    let root_output_path = if find_deepest_single_folder {
+        get_single_subfolder_or_self(&root_output_path)?
+    } else {
+        root_output_path
+    };
     Ok(root_output_path)
 }
 
