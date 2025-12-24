@@ -2634,6 +2634,9 @@ graphs:
     name: BuildingUsageAttributeValidator
     type: action
     action: PLATEAU4.BuildingUsageAttributeValidator
+    with:
+      codelistsPath: |
+        env.get("__value").codelists
   - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: AttributeMapper-l-bldg-04-05-transform
     type: action
@@ -4732,12 +4735,12 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
+      findDeepestSingleFolder: true
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
@@ -4794,6 +4797,12 @@ graphs:
       - attribute: fileIndex
         expr: |
           env.get("__value").fileIndex
+      - attribute: codelists
+        expr: |
+          env.get("__value").codelists
+      - attribute: schemas
+        expr: |
+          env.get("__value").schemas
   - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
     name: FeatureSorter
     type: action

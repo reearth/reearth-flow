@@ -2259,12 +2259,12 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
+      findDeepestSingleFolder: true
   - id: e275d299-2cd1-4e26-9d91-4d63921a29c7
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
