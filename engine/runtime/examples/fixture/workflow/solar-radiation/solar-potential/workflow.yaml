@@ -54,27 +54,28 @@ graphs:
         action: NoopSink
 
     edges:
-      # subgraph to feature merger (checked)
+      # subgraph to feature merger 
       - id: e2f34567-8901-2345-6789-012345678901
         from: 1a2b3c4d-5e6f-7890-1234-567890123456
         to: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
         fromPort: default
         toPort: supplier
 
-      # subgraph to feature merger (checked)
+      # subgraph to feature merger
       - id: f3456789-0123-4567-8901-234567890123
         from: 2b3c4d5e-6f78-9012-3456-789012345678
         to: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
         fromPort: default
         toPort: requestor
 
-      # feature merger to solar potential calculator
+      # feature merger to solar potential 
       - id: 45678901-2345-6789-0123-456789012345
         from: 2a5a577a-df14-11f0-84ed-7c70db10a7e3
         to: 3c4d5e6f-7890-1234-5678-901234567890
-        fromPort: default
+        fromPort: merged
         toPort: default
 
+      # solar potential calculated
       - id: 56789012-3456-7890-1234-567890123456
         from: 3c4d5e6f-7890-1234-5678-901234567890
         to: 4d5e6f78-9012-3456-7890-123456789012
