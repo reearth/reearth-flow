@@ -46,6 +46,69 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      # Dictionary writer branch for veg
+      - id: ea263dcf-70c9-42a2-8385-07eb1d76270f
+        name: VegPackageFilterDict
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["featureType"].starts_with("veg:")
+              outputPort: veg_only
+
+      - id: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
+        name: StripFeatureTypePrefixDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: feature_type_without_prefix
+            method: create
+            value: |
+              env.get("__value")["featureType"].split(":")[1]
+
+      - id: 69992005-2bdf-41f8-b298-59460b822bec
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - feature_type_without_prefix
+
+      - id: c9478193-89db-4c93-beb2-308721d226a6
+        name: AttributeConversionTableDict
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: |
+            name,description
+            PlantCover,植被
+            SolitaryVegetationObject,単独木
+          rules:
+          - featureFroms:
+            - feature_type_without_prefix
+            featureTo: feature_type_ja
+            conversionTableKeys:
+            - name
+            conversionTableTo: description
+
+      - id: 5dd02f87-52a8-4aa7-bcff-38c8d25bd0dd
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              veg: env.get("__features").map(|f| #{
+                name: f.feature_type_without_prefix,
+                description: f.feature_type_ja
+              })
+            }
+
       - id: 0f670054-828b-48d8-9672-dbc34247f2b3
         name: AttributeManager
         type: action
@@ -71,17 +134,39 @@ graphs:
         action: PLATEAU4.AttributeFlattener
 
       - id: f3c5c581-314d-450a-879c-a9c632b39349
-        name: FeatureTypeFilter
+        name: FeatureFilter
         type: action
-        action: FeatureTypeFilter
+        action: FeatureFilter
         with:
-          targetTypes:
-            - "frn:CityFurniture"
+          conditions:
+            - expr: |
+                env.get("__value").feature_type == "frn:CityFurniture"
+              outputPort: frn_CityFurniture
+            - expr: |
+                env.get("__value").feature_type == "veg:SolitaryVegetationObject"
+              outputPort: veg_SolitaryVegetationObject
+            - expr: |
+                env.get("__value").feature_type == "veg:PlantCover"
+              outputPort: veg_PlantCover
 
       - id: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
         name: LodSplitterWithDM
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 35953fd4-5359-43cc-be03-a396259a4c8e
+        name: GeometryFilterForFrn
+        type: action
+        action: GeometryFilter
+        with:
+          filterType: geometryType
+
+      - id: e81abfdf-9180-4940-875b-1ae7475ee557
+        name: OffsetterFor3mmLift
+        type: action
+        action: Offsetter
+        with:
+          offsetZ: 0.003
 
       - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
         name: AttributeManagerByLod
@@ -163,6 +248,641 @@ graphs:
           skipUnexposedAttributes: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").__lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let lod = env.get("__value").__lod;
+            let suffix = "_frn";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_frn_3dtiles_lod" + lod + ".zip")
+
+      - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
+        name: AttributeManagerByDmGeometricAttributeFrn
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+        name: FeatureSorterDmGeometricAttributeFrn
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - __package
+          order: ascending
+
+      - id: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        name: AttributeMapperDmGeometricAttributeFrn
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: dm_feature_type
+              valueAttribute: dm_feature_type
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+
+      - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+        name: TwoDimensionForcerDmGeometricAttributeFrn
+        type: action
+        action: TwoDimensionForcer
+
+      - id: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
+        name: MVTWriterDmGeometricAttributeFrn
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "frn_dm_geometric_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let suffix = "_frn";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_frn_geometric_attributes.zip")
+          colonToUnderscore: true
+
+      # veg_SolitaryVegetationObject nodes
+      - id: bd4ff879-8448-434d-9c47-ef85722b40cb
+        name: LodSplitterWithDMVeg1
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
+        name: AttributeManagerByLodVeg1
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: rename
+              value: __lod
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
+        name: ReprojectorVeg1
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: f8a3b2c1-5d6e-4f7a-9b8c-1d2e3f4a5b6c
+        name: AttributeManagerFloatConverterVeg1
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: veg:height
+              method: convert
+              value: |
+                env.get("__value")["veg:height"] * 1.0
+            - attribute: veg:trunkDiameter
+              method: convert
+              value: |
+                env.get("__value")["veg:trunkDiameter"] * 1.0
+            - attribute: veg:crownDiameter
+              method: convert
+              value: |
+                env.get("__value")["veg:crownDiameter"] * 1.0
+
+      - id: b5222fc2-f67b-4e89-8b8a-029181748511
+        name: Cesium3DTilesWriterVeg1
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          dracoCompression: false
+          skipUnexposedAttributes: true
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").__lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let lod = env.get("__value").__lod;
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
+
+      - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
+        name: AttributeManagerByDmGeometricAttributeVeg1
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: c6cde2b8-a1ae-47f1-a087-431f9aae3e54
+        name: FeatureSorterDmGeometricAttributeVeg1
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - __package
+          order: ascending
+
+      - id: 64db97d4-6fdd-46cc-8b08-8889f7f5bfd8
+        name: AttributeMapperDmGeometricAttributeVeg1
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: gml_name
+              valueAttribute: gml_name
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: veg:class
+              valueAttribute: veg:class
+            - attribute: veg:function
+              valueAttribute: veg:function
+            - attribute: veg:height
+              valueAttribute: veg:height
+            - attribute: veg:trunkDiameter
+              valueAttribute: veg:trunkDiameter
+            - attribute: veg:crownDiameter
+              valueAttribute: veg:crownDiameter
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: uro:lodType
+              valueAttribute: uro:lodType
+            - attribute: dm_feature_type
+              valueAttribute: dm_feature_type
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+
+      - id: 9e01874c-4171-449a-af5c-7e0663fbbf1f
+        name: TwoDimensionForcerDmGeometricAttributeVeg1
+        type: action
+        action: TwoDimensionForcer
+
+      - id: 751b9bca-ee1a-48ef-a2f8-bfc6ae879c37
+        name: MVTWriterDmGeometricAttributeVeg1
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_dm_geometric_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_geometric_attributes.zip")
+          colonToUnderscore: true
+
+      # veg_PlantCover nodes
+      - id: 2233fddd-fdc3-44a1-93e2-86805de13a3a
+        name: LodSplitterWithDMVeg2
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
+        name: AttributeManagerByLodVeg2
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: rename
+              value: __lod
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
+        name: ReprojectorVeg2
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: 53ab03e0-8b30-4eae-86a3-e17916e32d87
+        name: Cesium3DTilesWriterVeg2
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          dracoCompression: false
+          skipUnexposedAttributes: true
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").__lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let lod = env.get("__value").__lod;
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
+
+      - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
+        name: AttributeManagerByDmGeometricAttributeVeg2
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: 83a75aea-0a0b-45e7-af4e-71bfac79d5fc
+        name: FeatureSorterDmGeometricAttributeVeg2
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - __package
+          order: ascending
+
+      - id: dbfce87c-e366-40a2-abaa-fd9443ddc4b9
+        name: AttributeMapperDmGeometricAttributeVeg2
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: veg:class
+              valueAttribute: veg:class
+            - attribute: veg:averageHeight
+              valueAttribute: veg:averageHeight
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: uro:lodType
+              valueAttribute: uro:lodType
+            - attribute: dm_feature_type
+              valueAttribute: dm_feature_type
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+
+      - id: b69e66da-7b24-4a8c-8c08-5fa53b92c134
+        name: TwoDimensionForcerDmGeometricAttributeVeg2
+        type: action
+        action: TwoDimensionForcer
+
+      - id: 7da667d4-032f-49f6-b398-18944866a327
+        name: MVTWriterDmGeometricAttributeVeg2
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_dm_geometric_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_PlantCover_geometric_attributes.zip")
+          colonToUnderscore: true
 
     edges:
       # FeatureCreator -> FolderAndFilePathReader
@@ -183,6 +903,37 @@ graphs:
         to: 0f670054-828b-48d8-9672-dbc34247f2b3
         fromPort: default
         toPort: default
+      # Dictionary writer branch edges
+      # FeatureReaderByCityGml -> VegPackageFilterDict
+      - id: a501c060-4f06-486a-b455-a71893bfa8a3
+        from: d8182be7-aff0-4a13-b634-cbe03045befa
+        to: ea263dcf-70c9-42a2-8385-07eb1d76270f
+        fromPort: default
+        toPort: default
+      # VegPackageFilterDict -> StripFeatureTypePrefixDict
+      - id: 3d5e0539-0d5e-4cb6-ae79-157ab0179e2c
+        from: ea263dcf-70c9-42a2-8385-07eb1d76270f
+        to: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
+        fromPort: veg_only
+        toPort: default
+      # StripFeatureTypePrefixDict -> AttributeDuplicateFilterDict
+      - id: 7eaa0438-c1ad-4dca-838d-2ced9bb1c2c7
+        from: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
+        to: 69992005-2bdf-41f8-b298-59460b822bec
+        fromPort: default
+        toPort: default
+      # AttributeDuplicateFilterDict -> AttributeConversionTableDict
+      - id: e2b3272e-05bc-4b18-b404-65972deebf0f
+        from: 69992005-2bdf-41f8-b298-59460b822bec
+        to: c9478193-89db-4c93-beb2-308721d226a6
+        fromPort: default
+        toPort: default
+      # AttributeConversionTableDict -> JsonWriterDict
+      - id: ed24b99b-e44a-4b45-b171-fdefe325516b
+        from: c9478193-89db-4c93-beb2-308721d226a6
+        to: 5dd02f87-52a8-4aa7-bcff-38c8d25bd0dd
+        fromPort: default
+        toPort: default
       # AttributeManager -> Flattener
       - id: 19d12a4b-13d5-4a9f-ada5-24315b4d6392
         from: 0f670054-828b-48d8-9672-dbc34247f2b3
@@ -199,25 +950,43 @@ graphs:
       - id: 8268a8eb-6dfc-4ac9-801c-8cdd90c8aece
         from: f3c5c581-314d-450a-879c-a9c632b39349
         to: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        fromPort: default
+        fromPort: frn_CityFurniture
         toPort: default
-      # LodSplitterWithDM(lod1) -> AttributeManagerByLod
-      - id: f90a85bd-5a44-4b52-9644-79543d2c49fe
+      # LodSplitterWithDM(lod1) -> GeometryFilterForFrn
+      - id: 5bbab594-dc6d-4ecb-be5d-e6fd5006222f
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: 35953fd4-5359-43cc-be03-a396259a4c8e
         fromPort: lod1
         toPort: default
-      # LodSplitterWithDM(lod2) -> AttributeManagerByLod
-      - id: 6e210dbe-192e-4179-bf86-238eef74ff2d
+      # LodSplitterWithDM(lod2) -> GeometryFilterForFrn
+      - id: e4a9a38d-bbcb-4ef1-bbfb-cb4cc6322a34
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: 35953fd4-5359-43cc-be03-a396259a4c8e
         fromPort: lod2
         toPort: default
-      # LodSplitterWithDM(lod3) -> AttributeManagerByLod
-      - id: bf096793-860f-4fa4-892d-a422528f2583
+      # LodSplitterWithDM(lod3) -> GeometryFilterForFrn
+      - id: 520cdac3-22e4-487b-b326-a859bb5d38a7
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: 35953fd4-5359-43cc-be03-a396259a4c8e
         fromPort: lod3
+        toPort: default
+      # GeometryFilterForFrn(surface) -> OffsetterFor3mmLift
+      - id: e873f5a0-7015-4674-82a7-55baf0b997fa
+        from: 35953fd4-5359-43cc-be03-a396259a4c8e
+        to: e81abfdf-9180-4940-875b-1ae7475ee557
+        fromPort: surface
+        toPort: default
+      # OffsetterFor3mmLift -> AttributeManagerByLod
+      - id: 72b85733-022f-42b3-b588-7db3a2bc5516
+        from: e81abfdf-9180-4940-875b-1ae7475ee557
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: default
+        toPort: default
+      # GeometryFilterForFrn(solid) -> AttributeManagerByLod
+      - id: 523b2e23-ea06-4f8e-92c0-ed766b495ee6
+        from: 35953fd4-5359-43cc-be03-a396259a4c8e
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: solid
         toPort: default
       # AttributeManagerByLod -> Reprojector
       - id: bf8df312-1461-4431-8134-010dd518d4a4
@@ -229,5 +998,175 @@ graphs:
       - id: f251eb31-4ffd-4edf-a56c-f2dbd9eb0fc9
         from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+        fromPort: default
+        toPort: default
+      # DmGeometricAttribute flow: LodSplitterWithDM -> AttributeManagerByDmGeometricAttributeFrn
+      - id: 9bef0954-f6a8-4a02-8d41-8f1f24a72881
+        from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        to: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # AttributeManagerByDmGeometricAttributeFrn -> FeatureSorterDmGeometricAttributeFrn
+      - id: 3d12bbd8-de35-4f96-9835-37c4589ff6a1
+        from: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
+        to: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+        fromPort: default
+        toPort: default
+      # FeatureSorterDmGeometricAttributeFrn -> AttributeKeeperDmGeometricAttributeFrn
+      - id: dfa3779b-517c-47ce-86e5-74bc74a0d2b7
+        from: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+        to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        fromPort: default
+        toPort: default
+      # AttributeKeeperDmGeometricAttributeFrn -> TwoDimensionForcerDmGeometricAttributeFrn
+      - id: b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890
+        from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        to: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcerDmGeometricAttributeFrn -> MVTWriterDmGeometricAttributeFrn
+      - id: a9683146-31ad-4dca-9903-947088c6731b
+        from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+        to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
+        fromPort: default
+        toPort: default
+      # veg_SolitaryVegetationObject edges
+      # FeatureTypeFilter -> LodSplitterWithDMVeg1
+      - id: 27eee1ea-6df6-49ba-ab40-bd34d88ec68f
+        from: f3c5c581-314d-450a-879c-a9c632b39349
+        to: bd4ff879-8448-434d-9c47-ef85722b40cb
+        fromPort: veg_SolitaryVegetationObject
+        toPort: default
+      # LodSplitterWithDMVeg1(lod1) -> AttributeManagerByLodVeg1
+      - id: 953636c6-c834-4551-9fde-b91970f395cf
+        from: bd4ff879-8448-434d-9c47-ef85722b40cb
+        to: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
+        fromPort: lod1
+        toPort: default
+      # LodSplitterWithDMVeg1(lod2) -> AttributeManagerByLodVeg1
+      - id: 63f69ba9-214b-4369-98bb-dcde5ce4615d
+        from: bd4ff879-8448-434d-9c47-ef85722b40cb
+        to: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
+        fromPort: lod2
+        toPort: default
+      # LodSplitterWithDMVeg1(lod3) -> AttributeManagerByLodVeg1
+      - id: 2ef3fcd1-31b6-4373-903e-056f9ceefb3e
+        from: bd4ff879-8448-434d-9c47-ef85722b40cb
+        to: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
+        fromPort: lod3
+        toPort: default
+      # AttributeManagerByLodVeg1 -> ReprojectorVeg1
+      - id: 8a5b6c7d-e8f9-0123-a5b6-c7d8e9f01234
+        from: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
+        to: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
+        fromPort: default
+        toPort: default
+      # ReprojectorVeg1 -> AttributeManagerFloatConverterVeg1
+      - id: 71682420-af86-46f3-a168-211c1ee08c5e
+        from: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
+        to: f8a3b2c1-5d6e-4f7a-9b8c-1d2e3f4a5b6c
+        fromPort: default
+        toPort: default
+      # AttributeManagerFloatConverterVeg1 -> Cesium3DTilesWriterVeg1
+      - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+        from: f8a3b2c1-5d6e-4f7a-9b8c-1d2e3f4a5b6c
+        to: b5222fc2-f67b-4e89-8b8a-029181748511
+        fromPort: default
+        toPort: default
+      # DmGeometricAttribute flow: LodSplitterWithDMVeg1 -> AttributeManagerByDmGeometricAttributeVeg1
+      - id: 760fb777-b306-4512-a3ba-7be1d08fbd7e
+        from: bd4ff879-8448-434d-9c47-ef85722b40cb
+        to: 591050d4-8284-4708-a3e3-0bcb99bbd83c
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # AttributeManagerByDmGeometricAttributeVeg1 -> FeatureSorterDmGeometricAttributeVeg1
+      - id: 480bb64e-807c-4fbe-90ad-9d175337112e
+        from: 591050d4-8284-4708-a3e3-0bcb99bbd83c
+        to: c6cde2b8-a1ae-47f1-a087-431f9aae3e54
+        fromPort: default
+        toPort: default
+      # FeatureSorterDmGeometricAttributeVeg1 -> AttributeMapperDmGeometricAttributeVeg1
+      - id: 7969b14f-357f-4408-a11f-ca276414638c
+        from: c6cde2b8-a1ae-47f1-a087-431f9aae3e54
+        to: 64db97d4-6fdd-46cc-8b08-8889f7f5bfd8
+        fromPort: default
+        toPort: default
+      # AttributeMapperDmGeometricAttributeVeg1 -> TwoDimensionForcerDmGeometricAttributeVeg1
+      - id: df85edef-78f3-4ca2-8559-0887791d3725
+        from: 64db97d4-6fdd-46cc-8b08-8889f7f5bfd8
+        to: 9e01874c-4171-449a-af5c-7e0663fbbf1f
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcerDmGeometricAttributeVeg1 -> MVTWriterDmGeometricAttributeVeg1
+      - id: 9097dd87-8ee7-4fdd-b256-b46f1c1e39d2
+        from: 9e01874c-4171-449a-af5c-7e0663fbbf1f
+        to: 751b9bca-ee1a-48ef-a2f8-bfc6ae879c37
+        fromPort: default
+        toPort: default
+      # veg_PlantCover edges
+      # FeatureTypeFilter -> LodSplitterWithDMVeg2
+      - id: 828b5ea4-5634-49ce-89c5-9e6c8f4744a3
+        from: f3c5c581-314d-450a-879c-a9c632b39349
+        to: 2233fddd-fdc3-44a1-93e2-86805de13a3a
+        fromPort: veg_PlantCover
+        toPort: default
+      # LodSplitterWithDMVeg2(lod1) -> AttributeManagerByLodVeg2
+      - id: 7d5af06e-38f0-4353-b350-dceec403ad07
+        from: 2233fddd-fdc3-44a1-93e2-86805de13a3a
+        to: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
+        fromPort: lod1
+        toPort: default
+      # LodSplitterWithDMVeg2(lod2) -> AttributeManagerByLodVeg2
+      - id: 6a04e964-0fa3-4e4b-95ed-f8810f3f4718
+        from: 2233fddd-fdc3-44a1-93e2-86805de13a3a
+        to: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
+        fromPort: lod2
+        toPort: default
+      # LodSplitterWithDMVeg2(lod3) -> AttributeManagerByLodVeg2
+      - id: 60253b21-13df-4645-8d4c-2fd1fff87656
+        from: 2233fddd-fdc3-44a1-93e2-86805de13a3a
+        to: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
+        fromPort: lod3
+        toPort: default
+      # AttributeManagerByLodVeg2 -> ReprojectorVeg2
+      - id: 9b6c7d8e-f9a0-1234-b6c7-d8e9f0a12345
+        from: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
+        to: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
+        fromPort: default
+        toPort: default
+      # ReprojectorVeg2 -> Cesium3DTilesWriterVeg2
+      - id: 8bda4f4f-801f-4cb2-85fa-7e7c442b3d92
+        from: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
+        to: 53ab03e0-8b30-4eae-86a3-e17916e32d87
+        fromPort: default
+        toPort: default
+      # DmGeometricAttribute flow: LodSplitterWithDMVeg2 -> AttributeManagerByDmGeometricAttributeVeg2
+      - id: 26e22070-212d-4afa-875c-5b427f44d556
+        from: 2233fddd-fdc3-44a1-93e2-86805de13a3a
+        to: aa9b681b-0cc1-4445-bff6-be41bb9c764f
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # AttributeManagerByDmGeometricAttributeVeg2 -> FeatureSorterDmGeometricAttributeVeg2
+      - id: c0c8dd5e-9d59-4fd8-bc67-191e18ac559e
+        from: aa9b681b-0cc1-4445-bff6-be41bb9c764f
+        to: 83a75aea-0a0b-45e7-af4e-71bfac79d5fc
+        fromPort: default
+        toPort: default
+      # FeatureSorterDmGeometricAttributeVeg2 -> AttributeMapperDmGeometricAttributeVeg2
+      - id: b7bbbd28-502c-4e3a-b13d-53203071757d
+        from: 83a75aea-0a0b-45e7-af4e-71bfac79d5fc
+        to: dbfce87c-e366-40a2-abaa-fd9443ddc4b9
+        fromPort: default
+        toPort: default
+      # AttributeMapperDmGeometricAttributeVeg2 -> TwoDimensionForcerDmGeometricAttributeVeg2
+      - id: 4af13244-ef86-454f-b7a6-0b505339746a
+        from: dbfce87c-e366-40a2-abaa-fd9443ddc4b9
+        to: b69e66da-7b24-4a8c-8c08-5fa53b92c134
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcerDmGeometricAttributeVeg2 -> MVTWriterDmGeometricAttributeVeg2
+      - id: 7cf5ba37-6704-4644-8680-e86d6adfbb7b
+        from: b69e66da-7b24-4a8c-8c08-5fa53b92c134
+        to: 7da667d4-032f-49f6-b398-18944866a327
         fromPort: default
         toPort: default

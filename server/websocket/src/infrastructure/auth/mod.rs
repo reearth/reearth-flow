@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::conf::AuthConfig;
+use crate::config::AuthConfig;
 use crate::domain::repositories::auth::{AuthError, AuthService};
 use crate::domain::value_objects::auth::AuthToken;
 

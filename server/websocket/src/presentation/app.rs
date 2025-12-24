@@ -5,13 +5,14 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::application::usecases::document::DocumentUseCase;
+use crate::config::Config;
 use crate::domain::repositories::document::DocumentRepository;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 use crate::infrastructure::repository::document::DocumentRepositoryImpl;
 use crate::infrastructure::websocket::{BroadcastPool, CollaborativeStorage};
 use crate::presentation::http;
-use crate::{conf::Config, AppState, WebsocketUseCase};
+use crate::{AppState, WebsocketUseCase};
 
 #[cfg(feature = "auth")]
 use crate::application::usecases::auth::VerifyTokenUseCase;
@@ -27,13 +28,13 @@ pub async fn build() -> Result<ApplicationContext> {
 }
 
 pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
-    let gcs_store = GcsStore::new_with_config(config.gcs.clone())
+    let gcs_store = GcsStore::new_with_config((&config.gcs).into())
         .await
         .context("failed to create GCS store")?;
     info!("GCS store initialized");
     let gcs_store = Arc::new(gcs_store);
 
-    let redis_store = RedisStore::new(config.redis.clone())
+    let redis_store = RedisStore::new((&config.redis).into())
         .await
         .context("failed to initialize Redis store")?;
     info!("Redis store initialized");
@@ -93,7 +94,7 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
 pub async fn run() -> Result<()> {
     let ApplicationContext { state, config } = build().await?;
 
-    let result = http::server::start_server(state, &config.ws_port, &config).await;
+    let result = http::server::start_server(state, config.ws_port(), &config).await;
 
     if let Err(err) = &result {
         error!("Server error: {}", err);
@@ -104,5 +105,5 @@ pub async fn run() -> Result<()> {
 
 pub async fn run_with_config(config: Config) -> Result<()> {
     let ApplicationContext { state, config } = build_with_config(config).await?;
-    http::server::start_server(state, &config.ws_port, &config).await
+    http::server::start_server(state, config.ws_port(), &config).await
 }
