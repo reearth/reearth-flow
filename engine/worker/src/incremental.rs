@@ -360,5 +360,5 @@ fn copy_dir_all_overwrite(src: &Path, dst: &Path) -> std::io::Result<()> {
 }
 
 fn io_err(msg: String) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, msg)
+    std::io::Error::other(msg)
 }
