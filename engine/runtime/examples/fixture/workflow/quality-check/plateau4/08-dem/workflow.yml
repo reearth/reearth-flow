@@ -613,18 +613,6 @@ graphs:
             file::join_path(dirname, filename)
 
     edges:
-      # Connect FeatureCreator to common quality check subgraphs
-      - id: 1a2b3c4d-5e6f-7a8b-9c0d-0e1f2a3b4c5d
-        from: 6da8eb15-70c8-4f4a-bce6-b700d90d51e4  # FeatureCreator
-        to: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d    # CommonQualityCheck-01-01
-        fromPort: default
-        toPort: default
-      - id: 2b3c4d5e-6f7a-8b9c-0d1e-1f2a3b4c5d6e
-        from: 6da8eb15-70c8-4f4a-bce6-b700d90d51e4  # FeatureCreator
-        to: bb2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e    # CommonQualityCheck-01-02
-        fromPort: default
-        toPort: default
-
       - id: 99b6e8cc-1cba-489a-bc83-9966d3e5fabc
         from: 6da8eb15-70c8-4f4a-bce6-b700d90d51e4
         to: 624d1039-4317-4699-8e0e-0b749abeb033
@@ -633,6 +621,17 @@ graphs:
       - id: 2832dcf1-341e-4a00-9746-e7ba0ad01295
         from: 624d1039-4317-4699-8e0e-0b749abeb033
         to: 3c4dc9be-6fb0-48e5-8d32-0eda4fdd5069
+        fromPort: default
+        toPort: default
+      # Connect DirectoryDecompressor to common quality check subgraphs
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-0e1f2a3b4c5d
+        from: 624d1039-4317-4699-8e0e-0b749abeb033  # DirectoryDecompressor
+        to: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d    # CommonQualityCheck-01-01
+        fromPort: default
+        toPort: default
+      - id: 2b3c4d5e-6f7a-8b9c-0d1e-1f2a3b4c5d6e
+        from: 624d1039-4317-4699-8e0e-0b749abeb033  # DirectoryDecompressor
+        to: bb2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e    # CommonQualityCheck-01-02
         fromPort: default
         toPort: default
       - id: e575c558-69c3-4815-887a-db0fd4b776fb
