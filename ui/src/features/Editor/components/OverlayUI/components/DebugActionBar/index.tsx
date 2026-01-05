@@ -53,7 +53,7 @@ const DebugActionBar: React.FC<Props> = ({
     handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
-  } = useHooks({ onDebugRunStart });
+  } = useHooks({ onDebugRunStart, customDebugRunWorkflowVariables });
 
   return (
     <div className="flex items-center gap-2 align-middle">
@@ -64,7 +64,6 @@ const DebugActionBar: React.FC<Props> = ({
           handleShowDebugWorkflowVariablesDialog
         }
         showPopover={showOverlayElement}
-        customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
         onPopoverClose={handlePopoverClose}
         onDebugRunStart={handleDebugRunStart}
       />
@@ -94,7 +93,7 @@ const DebugActionBar: React.FC<Props> = ({
         onDebugRunJoin={onDebugRunJoin}
         onShowDebugRunsPopover={handleShowDebugActiveRunsPopover}
         onPopoverClose={handlePopoverClose}
-        onDebugRunStart={handleDebugRunStart}
+        onDebugRunStart={onDebugRunStart}
       />
       {showOverlayElement === "debugWorkflowVariables" && (
         <DebugWorkflowVariablesDialog
@@ -113,7 +112,6 @@ export default memo(DebugActionBar);
 const StartButton: React.FC<{
   debugRunStarted: boolean;
   showPopover: string | undefined;
-  customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onShowDebugStartPopover: () => void;
   onShowDebugWorkflowVariablesDialog: () => void;
   onDebugRunStart: () => Promise<void>;
@@ -121,10 +119,8 @@ const StartButton: React.FC<{
 }> = ({
   debugRunStarted,
   showPopover,
-  customDebugRunWorkflowVariables,
   onDebugRunStart,
   onShowDebugStartPopover,
-  onShowDebugWorkflowVariablesDialog,
   onPopoverClose,
 }) => {
   const t = useT();
@@ -198,11 +194,6 @@ const StartButton: React.FC<{
         {showPopover === "debugStart" && (
           <DebugStartPopover
             debugRunStarted={debugRunStarted}
-            onShowDebugWorkflowVariablesDialog={
-              onShowDebugWorkflowVariablesDialog
-            }
-            customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
-            onPopoverClose={onPopoverClose}
             onDebugRunStart={onDebugRunStart}
           />
         )}

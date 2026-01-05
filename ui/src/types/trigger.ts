@@ -25,7 +25,7 @@ export type Variable = {
   value: any;
 };
 
-export type TriggerVariableMapping = {
+export type TriggerVariableConfig = {
   name: string;
   type: VarType;
   defaultValue: any;

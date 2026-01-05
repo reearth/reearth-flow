@@ -4,11 +4,15 @@ import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
+import { AnyWorkflowVariable } from "@flow/types";
 
 export default ({
   onDebugRunStart,
+  customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
+
+  customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
 
@@ -71,8 +75,16 @@ export default ({
   }, [debugJob, jobStatus, debugRunStarted]);
 
   const handleDebugRunStart = async () => {
-    setDebugRunStarted(true);
-    await onDebugRunStart();
+    if (
+      customDebugRunWorkflowVariables &&
+      customDebugRunWorkflowVariables.length > 0
+    ) {
+      handleShowDebugWorkflowVariablesDialog();
+    } else {
+      setDebugRunStarted(true);
+      await onDebugRunStart();
+      handlePopoverClose();
+    }
   };
 
   const handleDebugRunReset = async () => {

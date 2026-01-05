@@ -9,12 +9,12 @@ import {
   TextArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, TriggerVariableMapping } from "@flow/types";
+import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
 import VariableArrayInput from "./VariableArrayInput";
 
 type Props = {
-  variable: TriggerVariableMapping | AnyWorkflowVariable;
+  variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
   onDefaultValueChange: (index: number, newValue: any) => void;
 };
