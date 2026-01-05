@@ -153,7 +153,11 @@ impl Class {
             let Some(value) = attributes.get(key) else {
                 continue;
             };
-            encode_value(value, prop);
+            if prop.is_array {
+                encode_array_value(value, prop);
+            } else {
+                encode_value(value, prop);
+            }
             prop.used = true;
         }
         // Fill in the default values for the properties that don't occur in the input
@@ -258,6 +262,14 @@ impl Class {
             );
 
             // values
+            // Align based on property type: 8-byte alignment for INT64/UINT64/FLOAT64
+            let alignment = match prop.type_ {
+                PropertyType::Int64 | PropertyType::Uint64 | PropertyType::Float64 => 8,
+                PropertyType::Enum => 4,   // Enum uses u32
+                PropertyType::String => 1, // String values are raw bytes
+            };
+            add_padding(buffer, alignment);
+
             let start = buffer.len();
             buffer.extend(prop.value_buffer);
             buffer_views.push(BufferView {
@@ -267,10 +279,10 @@ impl Class {
                 ..Default::default()
             });
             let values_view_idx = buffer_views.len() as u32 - 1;
-            add_padding(buffer, 4);
 
-            // arrayOffsets
+            // arrayOffsets (u32 values require 4-byte alignment)
             let array_offsets_idx = if prop.is_array {
+                add_padding(buffer, 4);
                 let start = buffer.len();
                 for offset in prop.array_offsets {
                     buffer.extend(offset.to_le_bytes());
@@ -286,8 +298,9 @@ impl Class {
                 None
             };
 
-            // stringOffsets
+            // stringOffsets (u32 values require 4-byte alignment)
             let string_offsets_idx = if prop.type_ == PropertyType::String {
+                add_padding(buffer, 4);
                 let start = buffer.len();
                 for offset in prop.string_offsets {
                     buffer.extend(offset.to_le_bytes());
@@ -331,34 +344,71 @@ impl Class {
 }
 
 fn encode_value(value: &AttributeValue, prop: &mut Property) {
-    match value {
-        AttributeValue::String(s) => {
+    // Encode based on the target property type, converting values as needed
+    match prop.type_ {
+        PropertyType::String => {
+            let s = match value {
+                AttributeValue::String(s) => s.clone(),
+                AttributeValue::DateTime(d) => d.to_string(),
+                AttributeValue::Number(n) => n.to_string(),
+                AttributeValue::Bool(b) => b.to_string(),
+                _ => return,
+            };
             prop.value_buffer.extend_from_slice(s.as_bytes());
             prop.string_offsets.push(prop.value_buffer.len() as u32);
             prop.count += 1;
         }
-        AttributeValue::DateTime(d) => {
-            prop.value_buffer
-                .extend_from_slice(d.to_string().as_bytes());
-            prop.string_offsets.push(prop.value_buffer.len() as u32);
+        PropertyType::Int64 => {
+            let val: i64 = match value {
+                AttributeValue::Number(n) => n.as_i64().unwrap_or(INT64_NO_DATA),
+                AttributeValue::String(s) => s.parse().unwrap_or(INT64_NO_DATA),
+                AttributeValue::Bool(b) => *b as i64,
+                _ => INT64_NO_DATA,
+            };
+            prop.value_buffer.extend(val.to_le_bytes());
             prop.count += 1;
         }
-        AttributeValue::Number(i) => {
-            if let Some(i) = i.as_i64() {
-                let b: [u8; 8] = i.to_le_bytes(); // ensure: 8 bytes
-                prop.value_buffer.extend(b);
-                prop.count += 1;
-            } else if let Some(i) = i.as_f64() {
-                let b: [u8; 8] = i.to_le_bytes(); // ensure: 8 bytes
-                prop.value_buffer.extend(b);
-                prop.count += 1;
-            }
-        }
-        AttributeValue::Bool(b) => {
-            let b: [u8; 8] = (*b as u64).to_le_bytes(); // ensure: 8 bytes
-            prop.value_buffer.extend(b);
+        PropertyType::Uint64 => {
+            let val: u64 = match value {
+                AttributeValue::Number(n) => n.as_u64().unwrap_or(UINT64_NO_DATA),
+                AttributeValue::String(s) => s.parse().unwrap_or(UINT64_NO_DATA),
+                AttributeValue::Bool(b) => *b as u64,
+                _ => UINT64_NO_DATA,
+            };
+            prop.value_buffer.extend(val.to_le_bytes());
             prop.count += 1;
         }
+        PropertyType::Float64 => {
+            let val: f64 = match value {
+                AttributeValue::Number(n) => n.as_f64().unwrap_or(FLOAT_NO_DATA),
+                AttributeValue::String(s) => s.parse().unwrap_or(FLOAT_NO_DATA),
+                AttributeValue::Bool(b) => {
+                    if *b {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                }
+                _ => FLOAT_NO_DATA,
+            };
+            prop.value_buffer.extend(val.to_le_bytes());
+            prop.count += 1;
+        }
+        PropertyType::Enum => {
+            // Enum values are stored as u32
+            let val: u32 = match value {
+                AttributeValue::Number(n) => n.as_u64().unwrap_or(ENUM_NO_DATA as u64) as u32,
+                AttributeValue::String(s) => s.parse().unwrap_or(ENUM_NO_DATA),
+                _ => ENUM_NO_DATA,
+            };
+            prop.value_buffer.extend(val.to_le_bytes());
+            prop.count += 1;
+        }
+    }
+}
+
+fn encode_array_value(value: &AttributeValue, prop: &mut Property) {
+    match value {
         AttributeValue::Array(arr) => {
             for v in arr {
                 encode_value(v, prop);
@@ -369,7 +419,6 @@ fn encode_value(value: &AttributeValue, prop: &mut Property) {
                     prop.array_offsets
                         .push(prop.string_offsets.len() as u32 - 1);
                 }
-                // PropertyType::Boolean => todo!(), // TODO
                 _ => {
                     prop.array_offsets.push(prop.count);
                 }
@@ -385,13 +434,24 @@ fn encode_value(value: &AttributeValue, prop: &mut Property) {
                     prop.array_offsets
                         .push(prop.string_offsets.len() as u32 - 1);
                 }
-                // PropertyType::Boolean => todo!(), // TODO
                 _ => {
                     prop.array_offsets.push(prop.count);
                 }
             }
         }
-        _ => {}
+        _ => {
+            // Single value in array context
+            encode_value(value, prop);
+            match prop.type_ {
+                PropertyType::String => {
+                    prop.array_offsets
+                        .push(prop.string_offsets.len() as u32 - 1);
+                }
+                _ => {
+                    prop.array_offsets.push(prop.count);
+                }
+            }
+        }
     }
 }
 
