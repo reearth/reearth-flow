@@ -9,15 +9,7 @@ import { Asset, AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
-export default ({
-  workspaceId,
-  onDialogClose,
-  onAssetDoubleClick,
-}: {
-  workspaceId: string;
-  onDialogClose: () => void;
-  onAssetDoubleClick?: (asset: Asset) => void;
-}) => {
+export default ({ workspaceId }: { workspaceId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
@@ -28,9 +20,11 @@ export default ({
     deleteAsset,
     isCreatingAsset,
   } = useAsset();
+
   const availableExtensions = ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").map(
     (ext) => ext.trim(),
   );
+
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
@@ -199,18 +193,6 @@ export default ({
     [availableExtensions],
   );
 
-  const handleAssetDoubleClick = useCallback(
-    (asset: Asset) => {
-      if (onAssetDoubleClick) {
-        onAssetDoubleClick(asset);
-        onDialogClose();
-      } else {
-        setAssetToBeEdited(asset);
-      }
-    },
-    [onAssetDoubleClick, setAssetToBeEdited, onDialogClose],
-  );
-
   return {
     assets,
     isFetching,
@@ -239,6 +221,5 @@ export default ({
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    handleAssetDoubleClick,
   };
 };

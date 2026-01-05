@@ -19,6 +19,7 @@ import {
   LoadingSkeleton,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
+import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Asset } from "@flow/types";
@@ -29,17 +30,13 @@ import {
   AssetsGridView,
   AssetsListView,
 } from "./components";
-import useHooks from "./hooks";
 
 type Props = {
   onDialogClose: () => void;
-  onAssetDoubleClick?: (asset: Asset) => void;
+  onAssetSelect?: (asset: Asset) => void;
 };
 
-const AssetsDialog: React.FC<Props> = ({
-  onDialogClose,
-  onAssetDoubleClick,
-}) => {
+const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
@@ -71,12 +68,18 @@ const AssetsDialog: React.FC<Props> = ({
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    handleAssetDoubleClick,
-  } = useHooks({
+  } = useAssets({
     workspaceId: currentWorkspace?.id ?? "",
-    onDialogClose,
-    onAssetDoubleClick,
   });
+
+  const handleAssetDoubleClick = (asset: Asset) => {
+    if (onAssetSelect) {
+      onAssetSelect(asset);
+      onDialogClose();
+    } else {
+      setAssetToBeEdited(asset);
+    }
+  };
 
   return (
     <Dialog open onOpenChange={onDialogClose}>
