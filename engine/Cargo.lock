@@ -1594,8 +1594,6 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 [[package]]
 name = "draco-nd-vector"
 version = "0.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b52e30399ca1a8564f752cdeb76182cebf86c1b3e1359e2cc001a0c6687669d5"
 dependencies = [
  "quote",
  "seq-macro",
@@ -1605,8 +1603,6 @@ dependencies = [
 [[package]]
 name = "draco-oxide"
 version = "0.1.0-alpha.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e76e36ab2d093753ff717abcc667734356fff7c37c0278502bdeaa886c93496b"
 dependencies = [
  "base64 0.21.7",
  "draco-nd-vector",
