@@ -9,6 +9,8 @@ use flate2::{write::ZlibEncoder, Compression};
 use flatgeom::LineString2;
 use flatgeom::MultiLineString as NMultiLineString;
 use flatgeom::MultiLineString2;
+use flatgeom::MultiPoint as NMultiPoint;
+use flatgeom::MultiPoint2;
 use flatgeom::MultiPolygon as NMultiPolygon;
 use flatgeom::MultiPolygon2;
 use itertools::Itertools;
@@ -63,6 +65,7 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: mpoly,
                         multi_line_strings: MultiLineString2::new(),
+                        multi_points: MultiPoint2::new(),
                         properties: feature.attributes.clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
@@ -81,6 +84,26 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: line_strings,
+                        multi_points: MultiPoint2::new(),
+                        properties: feature.attributes.clone(),
+                    };
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {err:?}"
+                        ))
+                    })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                        return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                    };
+                    Ok(())
+                },
+                |(z, x, y, typename), points| {
+                    let feature = super::slice::SlicedFeature {
+                        typename,
+                        multi_polygons: MultiPolygon2::new(),
+                        multi_line_strings: MultiLineString2::new(),
+                        multi_points: points,
                         properties: feature.attributes.clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
@@ -354,6 +377,16 @@ pub(super) fn make_tile(
             ));
         }
 
+        let mut int_multi_point = NMultiPoint::<[i32; 2]>::new();
+        let mpoints = feature.multi_points;
+
+        for point in &mpoints {
+            let [x, y] = point;
+            let x = (x * extent as f64 + 0.5) as i32;
+            let y = (y * extent as f64 + 0.5) as i32;
+            int_multi_point.push([x, y]);
+        }
+
         // encode geometry
         let mut geom_enc = GeometryEncoder::new();
         let has_polygons = !int_mpoly.is_empty();
@@ -374,6 +407,11 @@ pub(super) fn make_tile(
             if line_string.len() >= 2 {
                 geom_enc.add_linestring(&line_string);
             }
+        }
+
+        let has_points = !int_multi_point.is_empty();
+        if has_points {
+            geom_enc.add_points(&int_multi_point);
         }
         let geometry = geom_enc.into_vec();
         if geometry.is_empty() {
@@ -399,12 +437,14 @@ pub(super) fn make_tile(
             layer
         };
 
-        // Currently tile::Feature only supports one geometry type per feature.
-        // When both polygon and linestring are present, mark as polygon and report a warning.
+        // MVT Feature only supports one geometry type per feature.
+        // Priority: Polygons > LineStrings > Points
+        let geometry_count = has_polygons as u8 + has_linestrings as u8 + has_points as u8;
+        if geometry_count > 1 {
+            tracing::warn!("Feature has mixed geometry types, some geometries will be skipped.");
+        }
+
         if has_polygons {
-            if has_linestrings {
-                tracing::warn!("Feature has mixed geometry types, defaulting to polygons.");
-            }
             layer.features.push(vector_tile::tile::Feature {
                 id: None,
                 tags: layer.tags_enc.take_tags(),
@@ -418,8 +458,15 @@ pub(super) fn make_tile(
                 r#type: Some(vector_tile::tile::GeomType::Linestring as i32),
                 geometry,
             });
+        } else if has_points {
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Point as i32),
+                geometry,
+            });
         } else {
-            tracing::warn!("Feature has unknown geometry type, skipping.");
+            tracing::warn!("Feature has no valid geometry, skipping.");
         }
     }
 

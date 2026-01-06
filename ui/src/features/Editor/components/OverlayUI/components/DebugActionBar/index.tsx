@@ -11,12 +11,13 @@ import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import { AwarenessUser } from "@flow/types";
+import { AnyWorkflowVariable, AwarenessUser } from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
   DebugStartPopover,
   DebugStopPopover,
+  DebugWorkflowVariablesDialog,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -27,17 +28,21 @@ type Props = {
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
+  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
 };
 
 const DebugActionBar: React.FC<Props> = ({
   activeUsersDebugRuns,
+  customDebugRunWorkflowVariables,
   onDebugRunJoin,
   onDebugRunStart,
   onDebugRunStop,
+  onDebugRunVariableValueChange,
 }) => {
   const t = useT();
   const {
-    showPopover,
+    showOverlayElement,
     debugRunStarted,
     jobStatus,
     debugJob,
@@ -45,23 +50,27 @@ const DebugActionBar: React.FC<Props> = ({
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
     handleShowDebugActiveRunsPopover,
+    handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
-  } = useHooks({ onDebugRunStart });
+  } = useHooks({ onDebugRunStart, customDebugRunWorkflowVariables });
 
   return (
     <div className="flex items-center gap-2 align-middle">
       <StartButton
         debugRunStarted={debugRunStarted}
         onShowDebugStartPopover={handleShowDebugStartPopover}
-        showPopover={showPopover}
+        onShowDebugWorkflowVariablesDialog={
+          handleShowDebugWorkflowVariablesDialog
+        }
+        showPopover={showOverlayElement}
         onPopoverClose={handlePopoverClose}
         onDebugRunStart={handleDebugRunStart}
       />
       <StopButton
         jobStatus={jobStatus}
         onShowDebugStopPopover={handleShowDebugStopPopover}
-        showPopover={showPopover}
+        showPopover={showOverlayElement}
         onPopoverClose={handlePopoverClose}
         onDebugRunStop={onDebugRunStop}
       />
@@ -80,12 +89,20 @@ const DebugActionBar: React.FC<Props> = ({
       />
       <DebugActiveRunsPopover
         activeUsersDebugRuns={activeUsersDebugRuns}
-        showPopover={showPopover}
+        showPopover={showOverlayElement}
         onDebugRunJoin={onDebugRunJoin}
         onShowDebugRunsPopover={handleShowDebugActiveRunsPopover}
         onPopoverClose={handlePopoverClose}
-        onDebugRunStart={handleDebugRunStart}
+        onDebugRunStart={onDebugRunStart}
       />
+      {showOverlayElement === "debugWorkflowVariables" && (
+        <DebugWorkflowVariablesDialog
+          debugRunWorkflowVariables={customDebugRunWorkflowVariables}
+          onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+          onDebugRunStart={onDebugRunStart}
+          onDialogClose={handlePopoverClose}
+        />
+      )}
     </div>
   );
 };
@@ -96,6 +113,7 @@ const StartButton: React.FC<{
   debugRunStarted: boolean;
   showPopover: string | undefined;
   onShowDebugStartPopover: () => void;
+  onShowDebugWorkflowVariablesDialog: () => void;
   onDebugRunStart: () => Promise<void>;
   onPopoverClose: () => void;
 }> = ({
@@ -176,7 +194,6 @@ const StartButton: React.FC<{
         {showPopover === "debugStart" && (
           <DebugStartPopover
             debugRunStarted={debugRunStarted}
-            onPopoverClose={onPopoverClose}
             onDebugRunStart={onDebugRunStart}
           />
         )}

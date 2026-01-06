@@ -12,3 +12,4 @@ export { default as useJobSubscriptionsSetup } from "./useJobSubscriptionsSetup"
 export { default as useProjectSave } from "./useProjectSave";
 export { default as useDebouncedSearch } from "./useDebouncedSearch";
 export { default as useWorkflowVars } from "./useWorkflowVars";
+export { default as useAssets } from "./useAssets";

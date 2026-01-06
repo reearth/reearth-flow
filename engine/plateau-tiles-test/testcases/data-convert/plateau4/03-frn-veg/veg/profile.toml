@@ -1,0 +1,42 @@
+# test frn (city furniture)
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_veg.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.cesium_statistics]
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".veg"]
+comparator = "list_to_dict"
+key = ".name"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.mvt_lines]
+zoom = [12, 16]
+threshold = 0.01
+
+[tests.mvt_points]
+zoom = [12, 16]
+threshold = 0.001
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+# Warn: some other features in this dataset contains NaN and are excluded.
+# I added NaN check to force return errors in nusamai-citygml,
+# otherwise some nasty bugs occur (hard to debug, related to NaN != NaN)
+"udx/veg/54401008_veg_6697_op.gml" = [
+    # first three veg:PlantCover
+    "veg_9019893c-1850-42a0-a17e-e3541b3d6254",
+    "veg_23183a4d-8e87-42cd-a759-aaa4a470b676",
+    "veg_7a43e497-ed0e-4e04-a861-c5e85a620c04",
+    # first three veg:SolitaryVegetationObject
+    "veg_37a47d13-36b8-4163-b462-5ba4aeb583f3",
+    "veg_99045825-5873-4cc7-acea-91f19dfd874c",
+    "veg_d376789c-4eb7-4be5-9d91-719d809f63ee",
+]

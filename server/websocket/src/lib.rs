@@ -7,9 +7,7 @@ pub mod domain;
 pub mod infrastructure;
 pub mod presentation;
 pub mod shared;
-
 pub use infrastructure::redis::RedisStore;
-pub use infrastructure::tracing;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 

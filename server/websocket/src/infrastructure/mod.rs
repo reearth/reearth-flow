@@ -3,5 +3,4 @@ pub mod gcs;
 pub mod health;
 pub mod redis;
 pub mod repository;
-pub mod tracing;
 pub mod websocket;
