@@ -8,6 +8,7 @@ use once_cell::sync::Lazy;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::ExecutorOptions;
+use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_runtime::kvs::create_kv_store;
 use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_runtime::shutdown::ShutdownReceiver;
@@ -67,6 +68,7 @@ impl Orchestrator {
         storage_resolver: Arc<StorageResolver>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let executor = Executor {};
@@ -105,6 +107,7 @@ impl Orchestrator {
                 shutdown,
                 ingress_state,
                 feature_state,
+                incremental_run_config,
                 event_handlers,
             )
         });
@@ -127,6 +130,7 @@ impl Orchestrator {
         storage_resolver: Arc<StorageResolver>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
@@ -137,6 +141,7 @@ impl Orchestrator {
             storage_resolver,
             ingress_state,
             feature_state,
+            incremental_run_config,
             event_handlers,
         )
         .await
