@@ -696,7 +696,6 @@
   "Project ": "Projet ",
   "Workflow ": "Flux de travail ",
   "No Projects": "Aucun projet",
-  "Delete Workspace": "Supprimer l'espace de travail",
   "This action cannot be undone. This will permanently delete your workspace and remove your data from our servers.": "Cette action ne peut pas être annulée. Cela supprimera définitivement votre espace de travail et retirera vos données de nos serveurs.",
   "Workspace Name": "Nom de l'espace de travail",
   "Failed to delete Workspace": "Échec de la suppression de l'espace de travail",

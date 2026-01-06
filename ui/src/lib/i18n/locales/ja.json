@@ -694,7 +694,6 @@
   "Project ": "プロジェクト ",
   "Workflow ": "ワークフロー ",
   "No Projects": "プロジェクトなし",
-  "Delete Workspace": "ワークスペースを削除",
   "This action cannot be undone. This will permanently delete your workspace and remove your data from our servers.": "この操作は元に戻すことができません。この操作はワークスペースを完全に削除し、データをサーバーから削除します。",
   "Workspace Name": "ワークスペース名",
   "Failed to delete Workspace": "ワークスペースの削除に失敗しました",

@@ -694,7 +694,6 @@
   "Project ": "项目 ",
   "Workflow ": "工作流 ",
   "No Projects": "没有项目",
-  "Delete Workspace": "删除工作区",
   "This action cannot be undone. This will permanently delete your workspace and remove your data from our servers.": "此操作无法撤销。这将永久删除您的工作区并从我们的服务器中删除您的数据。",
   "Workspace Name": "工作区名称",
   "Failed to delete Workspace": "删除工作区失败",
