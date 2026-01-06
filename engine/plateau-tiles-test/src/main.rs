@@ -73,62 +73,19 @@ struct Tests {
     cesium_statistics: Option<CesiumStatisticsConfig>,
 }
 
-fn pack_citymodel_zip(
-    zip_stem: &str,
-    testcase_dir: &Path,
-    artifacts_base: &Path,
-    output_path: &Path,
-) {
-    // Strip feature type suffix after "_op" for artifact directory lookup
-    // e.g., "43206_tamana-shi_city_2024_citygml_2_op_brid" -> "43206_tamana-shi_city_2024_citygml_2_op"
-    // G空間データ uses "_op" suffix, but Re:Earth CMS adds feature type like "_op_brid"
-    let artifact_stem = if let Some(pos) = zip_stem.rfind("_op_") {
-        &zip_stem[..pos + 3] // Include "_op" but not the feature type suffix
-    } else {
-        zip_stem
-    };
-    let artifact_dir = artifacts_base.join(artifact_stem);
-    let testcase_citymodel = testcase_dir.join("citymodel");
-
-    if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent).unwrap();
-    }
-
-    let file = fs::File::create(output_path).unwrap();
+fn zip_dir(src_dir: &Path, zip_path: &Path) {
+    let file = fs::File::create(zip_path).unwrap();
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for dirname in ["codelists", "schemas"] {
-        let src = artifact_dir.join(dirname);
-        if src.exists() {
-            for entry in WalkDir::new(&src).into_iter().filter_map(|e| e.ok()) {
-                let path = entry.path();
-                if path.is_file() {
-                    let relative_path = path.strip_prefix(&src).unwrap();
-                    let zip_path = format!("{}/{}", dirname, relative_path.display());
-                    zip.start_file(zip_path, options).unwrap();
-                    let content = fs::read(path).unwrap();
-                    std::io::Write::write_all(&mut zip, &content).unwrap();
-                }
-            }
-        }
-    }
-
-    if testcase_citymodel.exists() {
-        for entry in WalkDir::new(&testcase_citymodel)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-            // Debug, locate huge files in citymodel folder
-            tracing::debug!("Packing citymodel file: {}", path.display());
-            if path.is_file() {
-                let relative_path = path.strip_prefix(&testcase_citymodel).unwrap();
-                let zip_path = relative_path.to_string_lossy().to_string();
-                zip.start_file(zip_path, options).unwrap();
-                let content = fs::read(path).unwrap();
-                std::io::Write::write_all(&mut zip, &content).unwrap();
-            }
+    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_file() {
+            let relative_path = path.strip_prefix(src_dir).unwrap();
+            let zip_path = relative_path.to_string_lossy().to_string();
+            zip.start_file(zip_path, options).unwrap();
+            let content = fs::read(path).unwrap();
+            std::io::Write::write_all(&mut zip, &content).unwrap();
         }
     }
 
@@ -198,10 +155,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             .join("workflow.yml")
     };
 
-    let citygml_path = output_dir.join(&profile.citygml_zip_name);
-
     if stages.contains('r') {
         let _ = fs::remove_dir_all(&output_dir);
+        fs::create_dir_all(&output_dir).unwrap();
+
         tracing::debug!("packing citymodel zip...");
         let zip_stem = profile
             .citygml_zip_name
@@ -210,7 +167,30 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("artifacts")
             .join("citymodel");
-        pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
+
+        // citymodel name without feature type suffix
+        let citymodel_name = if let Some((stem, _)) = zip_stem.rsplit_once("_op_") {
+            format!("{}_op", stem)
+        } else {
+            zip_stem.to_string()
+        };
+        let citymodel_dir = test_path.join("citymodel");
+        assert!(citymodel_dir.exists());
+        // Create citymodel zip using with feature type suffix
+        let citymodel_path = output_dir.join(zip_stem.to_string() + ".zip");
+        zip_dir(&citymodel_dir, &citymodel_path);
+        let codelist_dir = artifacts_base.join(&citymodel_name).join("codelists");
+        let codelist_path = codelist_dir.exists().then(|| {
+            let path = output_dir.join(format!("{}_codelists.zip", citymodel_name));
+            zip_dir(&codelist_dir, &path);
+            path
+        });
+        let schemas_dir = artifacts_base.join(&citymodel_name).join("schemas");
+        let schemas_path = schemas_dir.exists().then(|| {
+            let path = output_dir.join(format!("{}_schemas.zip", citymodel_name));
+            zip_dir(&schemas_dir, &path);
+            path
+        });
 
         info!(
             "Starting run: {} to {}",
@@ -219,9 +199,8 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
-        fs::create_dir_all(&output_dir).unwrap();
-
-        runner::run_workflow(&workflow_path, &citygml_path, &output_dir);
+        runner::run_workflow(&workflow_path, &citymodel_path, &output_dir, 
+            codelist_path.as_deref(), schemas_path.as_deref());
 
         let elapsed = start_time.elapsed();
         info!(

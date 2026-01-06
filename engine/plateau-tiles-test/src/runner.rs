@@ -13,7 +13,13 @@ use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 
-pub fn run_workflow(workflow_path: &Path, citygml_path: &Path, output_dir: &Path) {
+pub fn run_workflow(
+    workflow_path: &Path,
+    citygml_path: &Path,
+    output_dir: &Path,
+    codelists_path: Option<&Path>,
+    schemas_path: Option<&Path>,
+) {
     let yaml_transformer =
         yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
     let yaml_str = yaml_transformer.to_string();
@@ -40,6 +46,20 @@ pub fn run_workflow(workflow_path: &Path, citygml_path: &Path, output_dir: &Path
         "workerArtifactPath".to_string(),
         flow_dir.display().to_string(),
     );
+
+    if let Some(codelists_path) = codelists_path {
+        variables.insert(
+            "codelistsPath".to_string(),
+            format!("file://{}", codelists_path.display()),
+        );
+    }
+
+    if let Some(schemas_path) = schemas_path {
+        variables.insert(
+            "schemasPath".to_string(),
+            format!("file://{}", schemas_path.display()),
+        );
+    }
 
     workflow.extend_with(variables).unwrap();
 
