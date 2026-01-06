@@ -71,8 +71,15 @@ impl<'a> MetadataEncoder<'a> {
                 let mut values = vec![];
 
                 for (idx, name) in self.enum_set.into_iter().enumerate() {
+                    let Some(value) = i32::try_from(idx).ok() else {
+                        warn!(
+                            "Skipping enum value '{}': index {} exceeds i32::MAX",
+                            name, idx
+                        );
+                        continue;
+                    };
                     values.push(EnumValue {
-                        value: idx as i32,
+                        value,
                         name,
                         ..Default::default()
                     });
@@ -171,8 +178,19 @@ impl Class {
             if prop.is_array {
                 match prop.type_ {
                     PropertyType::String => {
-                        prop.array_offsets
-                            .push(prop.string_offsets.len() as u32 - 1);
+                        let len = prop.string_offsets.len();
+                        if len == 0 {
+                            warn!("Skipping default array offset for property '{}': string_offsets is unexpectedly empty", key);
+                            continue;
+                        }
+                        let Some(offset) = u32::try_from(len - 1).ok() else {
+                            warn!(
+                                "Skipping default array offset for property '{}': string_offsets length {} exceeds u32::MAX",
+                                key, len
+                            );
+                            continue;
+                        };
+                        prop.array_offsets.push(offset);
                     }
                     // PropertyType::Boolean => todo!(), // TODO
                     _ => {
@@ -185,7 +203,14 @@ impl Class {
                     PropertyType::Uint64 => prop.value_buffer.extend(UINT64_NO_DATA.to_le_bytes()),
                     PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
                     PropertyType::String => {
-                        prop.string_offsets.push(prop.value_buffer.len() as u32)
+                        let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {
+                            warn!(
+                                "Skipping default string offset for property '{}': value_buffer length {} exceeds u32::MAX",
+                                key, prop.value_buffer.len()
+                            );
+                            continue;
+                        };
+                        prop.string_offsets.push(offset);
                     }
                     PropertyType::Enum => prop.value_buffer.extend(ENUM_NO_DATA.to_le_bytes()),
                     // PropertyType::Boolean => todo!(),
@@ -274,13 +299,50 @@ impl Class {
 
             let start = buffer.len();
             buffer.extend(prop.value_buffer);
+
+            // Check for overflow when creating buffer view
+            let Some(byte_offset) = u32::try_from(start).ok() else {
+                warn!(
+                    "Skipping property '{}': buffer offset {} exceeds u32::MAX",
+                    name, start
+                );
+                class_properties.swap_remove(&name);
+                continue;
+            };
+            let Some(byte_length) = u32::try_from(buffer.len() - start).ok() else {
+                warn!(
+                    "Skipping property '{}': buffer length {} exceeds u32::MAX",
+                    name,
+                    buffer.len() - start
+                );
+                class_properties.swap_remove(&name);
+                continue;
+            };
             buffer_views.push(BufferView {
                 name: Some("prop_values".to_string()),
-                byte_offset: start as u32,
-                byte_length: (buffer.len() - start) as u32,
+                byte_offset,
+                byte_length,
                 ..Default::default()
             });
-            let values_view_idx = buffer_views.len() as u32 - 1;
+
+            // Check for overflow when getting buffer view index
+            if buffer_views.is_empty() {
+                warn!(
+                    "Skipping property '{}': buffer_views is unexpectedly empty",
+                    name
+                );
+                class_properties.swap_remove(&name);
+                continue;
+            }
+            let Some(values_view_idx) = u32::try_from(buffer_views.len() - 1).ok() else {
+                warn!(
+                    "Skipping property '{}': buffer_views index {} exceeds u32::MAX",
+                    name,
+                    buffer_views.len() - 1
+                );
+                class_properties.swap_remove(&name);
+                continue;
+            };
 
             // arrayOffsets (u32 values require 4-byte alignment)
             let array_offsets_idx = if prop.is_array {
@@ -289,13 +351,49 @@ impl Class {
                 for offset in prop.array_offsets {
                     buffer.extend(offset.to_le_bytes());
                 }
+
+                let Some(byte_offset) = u32::try_from(start).ok() else {
+                    warn!(
+                        "Skipping property '{}' array offsets: buffer offset {} exceeds u32::MAX",
+                        name, start
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                };
+                let Some(byte_length) = u32::try_from(buffer.len() - start).ok() else {
+                    warn!(
+                        "Skipping property '{}' array offsets: buffer length {} exceeds u32::MAX",
+                        name,
+                        buffer.len() - start
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                };
                 buffer_views.push(BufferView {
                     name: Some("prop_array_offsets".to_string()),
-                    byte_offset: start as u32,
-                    byte_length: (buffer.len() - start) as u32,
+                    byte_offset,
+                    byte_length,
                     ..Default::default()
                 });
-                Some(buffer_views.len() as u32 - 1)
+
+                if buffer_views.is_empty() {
+                    warn!(
+                        "Skipping property '{}': buffer_views is unexpectedly empty after array offsets",
+                        name
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                }
+                let Some(idx) = u32::try_from(buffer_views.len() - 1).ok() else {
+                    warn!(
+                        "Skipping property '{}': array offsets buffer_views index {} exceeds u32::MAX",
+                        name,
+                        buffer_views.len() - 1
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                };
+                Some(idx)
             } else {
                 None
             };
@@ -307,13 +405,49 @@ impl Class {
                 for offset in prop.string_offsets {
                     buffer.extend(offset.to_le_bytes());
                 }
+
+                let Some(byte_offset) = u32::try_from(start).ok() else {
+                    warn!(
+                        "Skipping property '{}' string offsets: buffer offset {} exceeds u32::MAX",
+                        name, start
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                };
+                let Some(byte_length) = u32::try_from(buffer.len() - start).ok() else {
+                    warn!(
+                        "Skipping property '{}' string offsets: buffer length {} exceeds u32::MAX",
+                        name,
+                        buffer.len() - start
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                };
                 buffer_views.push(BufferView {
                     name: Some("prop_string_offsets".to_string()),
-                    byte_offset: start as u32,
-                    byte_length: (buffer.len() - start) as u32,
+                    byte_offset,
+                    byte_length,
                     ..Default::default()
                 });
-                Some(buffer_views.len() as u32 - 1)
+
+                if buffer_views.is_empty() {
+                    warn!(
+                        "Skipping property '{}': buffer_views is unexpectedly empty after string offsets",
+                        name
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                }
+                let Some(idx) = u32::try_from(buffer_views.len() - 1).ok() else {
+                    warn!(
+                        "Skipping property '{}': string offsets buffer_views index {} exceeds u32::MAX",
+                        name,
+                        buffer_views.len() - 1
+                    );
+                    class_properties.swap_remove(&name);
+                    continue;
+                };
+                Some(idx)
             } else {
                 None
             };
@@ -329,9 +463,20 @@ impl Class {
             );
         }
 
+        let feature_count = match u32::try_from(self.feature_count) {
+            Ok(count) => count,
+            Err(_) => {
+                warn!(
+                    "Feature count {} exceeds u32::MAX, capping at u32::MAX",
+                    self.feature_count
+                );
+                u32::MAX
+            }
+        };
+
         let property_table = PropertyTable {
             class: class_name.to_string(),
-            count: self.feature_count as u32,
+            count: feature_count,
             properties: pt_properties,
             ..Default::default()
         };
@@ -357,8 +502,19 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
                 _ => return,
             };
             prop.value_buffer.extend_from_slice(s.as_bytes());
-            prop.string_offsets.push(prop.value_buffer.len() as u32);
-            prop.count += 1;
+            let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {
+                warn!(
+                    "Skipping string encoding: value_buffer length {} exceeds u32::MAX",
+                    prop.value_buffer.len()
+                );
+                return;
+            };
+            prop.string_offsets.push(offset);
+            let Some(new_count) = prop.count.checked_add(1) else {
+                warn!("Skipping string encoding: property count would overflow u32");
+                return;
+            };
+            prop.count = new_count;
         }
         PropertyType::Int64 => {
             let val: i64 = match value {
@@ -368,7 +524,11 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
                 _ => INT64_NO_DATA,
             };
             prop.value_buffer.extend(val.to_le_bytes());
-            prop.count += 1;
+            let Some(new_count) = prop.count.checked_add(1) else {
+                warn!("Skipping Int64 encoding: property count would overflow u32");
+                return;
+            };
+            prop.count = new_count;
         }
         PropertyType::Uint64 => {
             let val: u64 = match value {
@@ -378,7 +538,11 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
                 _ => UINT64_NO_DATA,
             };
             prop.value_buffer.extend(val.to_le_bytes());
-            prop.count += 1;
+            let Some(new_count) = prop.count.checked_add(1) else {
+                warn!("Skipping Uint64 encoding: property count would overflow u32");
+                return;
+            };
+            prop.count = new_count;
         }
         PropertyType::Float64 => {
             let val: f64 = match value {
@@ -394,7 +558,11 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
                 _ => FLOAT_NO_DATA,
             };
             prop.value_buffer.extend(val.to_le_bytes());
-            prop.count += 1;
+            let Some(new_count) = prop.count.checked_add(1) else {
+                warn!("Skipping Float64 encoding: property count would overflow u32");
+                return;
+            };
+            prop.count = new_count;
         }
         PropertyType::Enum => {
             // Enum values are stored as u32, looked up by name in enum_set
@@ -402,16 +570,34 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
                 AttributeValue::String(s) => {
                     // Insert the enum value if not present, get its index
                     let (index, _) = enum_set.insert_full(s.clone());
-                    index as u32
+                    let Some(idx) = u32::try_from(index).ok() else {
+                        warn!(
+                            "Skipping enum encoding: enum index {} exceeds u32::MAX",
+                            index
+                        );
+                        return;
+                    };
+                    idx
                 }
                 AttributeValue::Number(n) => {
-                    // If it's already a numeric index, use it directly
-                    n.as_u64().unwrap_or(ENUM_NO_DATA as u64) as u32
+                    let num = n.as_u64().unwrap_or(ENUM_NO_DATA as u64);
+                    let Some(idx) = u32::try_from(num).ok() else {
+                        warn!(
+                            "Skipping enum encoding: numeric value {} exceeds u32::MAX",
+                            num
+                        );
+                        return;
+                    };
+                    idx
                 }
                 _ => ENUM_NO_DATA,
             };
             prop.value_buffer.extend(val.to_le_bytes());
-            prop.count += 1;
+            let Some(new_count) = prop.count.checked_add(1) else {
+                warn!("Skipping enum encoding: property count would overflow u32");
+                return;
+            };
+            prop.count = new_count;
         }
     }
 }
@@ -427,14 +613,11 @@ fn encode_array_value(
                 encode_value(v, prop, enum_set);
             }
 
-            match prop.type_ {
-                PropertyType::String => {
-                    prop.array_offsets
-                        .push(prop.string_offsets.len() as u32 - 1);
-                }
-                _ => {
-                    prop.array_offsets.push(prop.count);
-                }
+            if !push_array_offset(prop) {
+                warn!(
+                    "Skipping array offset: string_offsets length {} exceeds u32::MAX",
+                    prop.string_offsets.len()
+                );
             }
         }
         AttributeValue::Map(map) => {
@@ -442,14 +625,11 @@ fn encode_array_value(
                 encode_value(v, prop, enum_set);
             }
 
-            match prop.type_ {
-                PropertyType::String => {
-                    prop.array_offsets
-                        .push(prop.string_offsets.len() as u32 - 1);
-                }
-                _ => {
-                    prop.array_offsets.push(prop.count);
-                }
+            if !push_array_offset(prop) {
+                warn!(
+                    "Skipping array offset: string_offsets length {} exceeds u32::MAX",
+                    prop.string_offsets.len()
+                );
             }
         }
         _ => {
@@ -459,17 +639,36 @@ fn encode_array_value(
                 prop.type_
             );
             encode_value(value, prop, enum_set);
-            match prop.type_ {
-                PropertyType::String => {
-                    prop.array_offsets
-                        .push(prop.string_offsets.len() as u32 - 1);
-                }
-                _ => {
-                    prop.array_offsets.push(prop.count);
-                }
+            if !push_array_offset(prop) {
+                warn!(
+                    "Skipping array offset: string_offsets length {} exceeds u32::MAX",
+                    prop.string_offsets.len()
+                );
             }
         }
     }
+}
+
+/// Helper function to push array offset, returns false if overflow would occur
+fn push_array_offset(prop: &mut Property) -> bool {
+    match prop.type_ {
+        PropertyType::String => {
+            // string_offsets.len() - 1: safe because string_offsets is initialized with [0]
+            let len = prop.string_offsets.len();
+            if len == 0 {
+                warn!("Skipping array offset: string_offsets is unexpectedly empty");
+                return false;
+            }
+            let Some(offset) = u32::try_from(len - 1).ok() else {
+                return false;
+            };
+            prop.array_offsets.push(offset);
+        }
+        _ => {
+            prop.array_offsets.push(prop.count);
+        }
+    }
+    true
 }
 
 #[derive(Debug)]

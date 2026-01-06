@@ -312,7 +312,7 @@ pub fn write_gltf_glb<W: Write>(
         let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::default();
         let (buff, warnings) = transcoder.transcode_to_glb(&tmp_buffer)?;
         for warning in warnings {
-            eprintln!("Draco warning: {}", warning);
+            tracing::warn!("Draco warning: {}", warning);
         }
         writer
             .write_all(&buff)
