@@ -50,14 +50,14 @@ pub fn run_workflow(
     if let Some(codelists_path) = codelists_path {
         variables.insert(
             "codelistsPath".to_string(),
-            format!("file://{}", codelists_path.display()),
+            format!("{}", codelists_path.display()),
         );
     }
 
     if let Some(schemas_path) = schemas_path {
         variables.insert(
             "schemasPath".to_string(),
-            format!("file://{}", schemas_path.display()),
+            format!("{}", schemas_path.display()),
         );
     }
 
