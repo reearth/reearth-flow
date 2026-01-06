@@ -29,6 +29,8 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode"),
+                codelists: env.get("codelistsPath"),
+                schemas: env.get("schemasPath"),
               },
             ]
 
@@ -42,6 +44,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
+          codelistsPath: env.get("__value").codelists
           dataset: |
             env.get("__value")["path"]
 

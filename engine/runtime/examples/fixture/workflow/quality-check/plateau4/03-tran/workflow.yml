@@ -100,7 +100,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          format: citygml
+          codelistsPath: env.get("__value").codelists
           flatten: true
           dataset: |
             env.get("__value")["path"]
