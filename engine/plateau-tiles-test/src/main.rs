@@ -227,6 +227,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let flow_extracted_dir = output_dir.join("flow_extracted");
         extract_toplevel_zips(&flow_source_dir, &flow_extracted_dir);
 
+        // Decompress draco-compressed glb in flow output
+        // fme.zip should be preprocessed to contain only decompressed glb files
+        decompress_glbs(&flow_extracted_dir);
+
         let tests = &profile.tests;
         let relative_path_display = relative_path.display();
 
@@ -312,6 +316,23 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
             fs::create_dir_all(&out).unwrap();
             let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
             zip.extract(&out).unwrap();
+        }
+    }
+}
+
+fn decompress_glbs(flow_extracted_dir: &Path) {
+    for entry in WalkDir::new(flow_extracted_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
+            tracing::debug!("Decompressing glb file: {}", path.display());
+            std::process::Command::new("npx")
+                .arg("glb-decompress")
+                .arg(path.as_os_str())
+                .status()
+                .expect("Failed to execute glb-decompress command");
         }
     }
 }
