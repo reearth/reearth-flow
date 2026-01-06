@@ -1,17 +1,25 @@
-import { Input, Switch, TextArea } from "@flow/components";
+import {
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+  TextArea,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
-import { VariableMapping } from "..";
-
-import TriggerVariableArrayInput from "./TriggerVariableArrayInput";
+import VariableArrayInput from "./VariableArrayInput";
 
 type Props = {
-  variable: VariableMapping;
+  variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
   onDefaultValueChange: (index: number, newValue: any) => void;
 };
 
-const TriggerVariableRow: React.FC<Props> = ({
+const VariableRow: React.FC<Props> = ({
   variable,
   index,
   onDefaultValueChange,
@@ -21,7 +29,7 @@ const TriggerVariableRow: React.FC<Props> = ({
   switch (variable.type) {
     case "array":
       return (
-        <TriggerVariableArrayInput
+        <VariableArrayInput
           value={
             Array.isArray(variable.defaultValue) ? variable.defaultValue : []
           }
@@ -48,6 +56,47 @@ const TriggerVariableRow: React.FC<Props> = ({
           value={variable.defaultValue}
           onChange={(e) => {
             onDefaultValueChange(index, parseFloat(e.target.value));
+          }}
+        />
+      );
+    case "choice":
+      if (
+        "config" in variable &&
+        variable.config &&
+        "choices" in variable.config
+      ) {
+        const rawChoices = variable.config.choices;
+        const choices = rawChoices.map((choice: any) => {
+          if (typeof choice === "string") {
+            return { value: choice, label: choice };
+          }
+          return choice;
+        });
+
+        return (
+          <Select
+            value={variable.defaultValue}
+            onValueChange={(newValue) => onDefaultValueChange(index, newValue)}>
+            <SelectTrigger className="h-9 w-[150px]">
+              <SelectValue placeholder={t("Select an option")} />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((option: { value: string; label: string }) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      }
+      return (
+        <Input
+          id={`default-${index}`}
+          type="text"
+          value={variable.defaultValue}
+          onChange={(e) => {
+            onDefaultValueChange(index, e.target.value);
           }}
         />
       );
@@ -106,7 +155,7 @@ const TriggerVariableRow: React.FC<Props> = ({
       }
     default:
       console.error(
-        `Unsupported variable type '${variable.type}' in TriggerVariableRow (index: ${index}).`,
+        `Unsupported variable type '${variable.type}' in Variable Row (index: ${index}).`,
       );
       return (
         <div className="text-sm font-semibold text-red-600">
@@ -117,4 +166,4 @@ const TriggerVariableRow: React.FC<Props> = ({
   }
 };
 
-export { TriggerVariableRow };
+export { VariableRow };
