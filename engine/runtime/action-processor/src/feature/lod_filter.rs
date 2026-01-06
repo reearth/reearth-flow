@@ -230,12 +230,9 @@ impl FeatureLodFilter {
         // Filter geometry to only include the calculated LOD level
         if let Some(target_lod) = actual_lod {
             if let Some(citygml_geometry) = filtered_feature.geometry.value.as_citygml_geometry() {
-                let mut filtered_citygml_geometry = citygml_geometry.clone();
-
-                // Filter GML geometries to only keep those with the target LOD
-                filtered_citygml_geometry
-                    .gml_geometries
-                    .retain(|gml_geom| gml_geom.lod == Some(target_lod));
+                // Extract only the geometry data for the target LOD with properly remapped indices
+                let filtered_citygml_geometry =
+                    citygml_geometry.filter_by_lod(|gml_geom| gml_geom.lod == Some(target_lod));
 
                 // Replace the geometry with the filtered version
                 filtered_feature.geometry.value =
