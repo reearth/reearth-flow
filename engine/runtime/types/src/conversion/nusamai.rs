@@ -154,21 +154,25 @@ impl TryFrom<Entity> for Geometry {
                 let mut poly_textures = Vec::with_capacity(total_polygons);
                 let mut poly_uvs = flatgeom::MultiPolygon::new();
 
-                for &(start, end) in &polygon_ranges {
-                    // Calculate ring index for this polygon range
-                    // ring_ids is indexed per-ring (each polygon can have multiple rings)
-                    let mut ring_idx: usize = (0..start as usize)
-                        .map(|i| geoms.multipolygon.get(i).rings().count())
-                        .sum();
+                // Build a lookup table: polygon_index -> starting_ring_index
+                // This pre-computes the cumulative ring count for efficient O(1) lookup
+                let mut polygon_to_ring_start: Vec<usize> =
+                    Vec::with_capacity(geoms.multipolygon.len());
+                let mut cumulative_rings = 0;
+                for poly_idx in 0..geoms.multipolygon.len() {
+                    polygon_to_ring_start.push(cumulative_rings);
+                    cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
+                }
 
+                for &(start, end) in &polygon_ranges {
                     for global_idx in start..end {
                         let poly = geoms.multipolygon.get(global_idx as usize);
+                        let global_ring_idx = polygon_to_ring_start[global_idx as usize];
 
                         for (i, ring) in poly.rings().enumerate() {
-                            let ring_id = geoms.ring_ids.get(ring_idx);
-                            ring_idx += 1;
+                            let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
                             let tex = ring_id
-                                .and_then(|id| id.clone())
+                                .clone()
                                 .and_then(|id| theme.ring_id_to_texture.get(&id));
 
                             let mut add_dummy_texture = || {
