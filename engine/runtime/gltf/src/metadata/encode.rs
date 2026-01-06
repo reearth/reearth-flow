@@ -12,6 +12,7 @@ use nusamai_gltf::nusamai_gltf_json::{
     BufferView,
 };
 use reearth_flow_types::AttributeValue;
+use tracing::warn;
 
 use super::{ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA, INT64_NO_DATA, UINT64_NO_DATA};
 
@@ -56,7 +57,7 @@ impl<'a> MetadataEncoder<'a> {
             .entry(typename)
             .or_insert_with(|| Class::from(feature_def));
 
-        class.add_feature(attributes)
+        class.add_feature(attributes, &mut self.enum_set)
     }
 
     pub fn into_metadata(
@@ -144,6 +145,7 @@ impl Class {
     fn add_feature(
         &mut self,
         attributes: &HashMap<String, AttributeValue>,
+        enum_set: &mut IndexSet<String>,
     ) -> crate::errors::Result<usize> {
         // Encode attributes
         for key in &self.properties.keys().cloned().collect::<Vec<_>>() {
@@ -154,9 +156,9 @@ impl Class {
                 continue;
             };
             if prop.is_array {
-                encode_array_value(value, prop);
+                encode_array_value(value, prop, enum_set);
             } else {
-                encode_value(value, prop);
+                encode_value(value, prop, enum_set);
             }
             prop.used = true;
         }
@@ -343,7 +345,7 @@ impl Class {
     }
 }
 
-fn encode_value(value: &AttributeValue, prop: &mut Property) {
+fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut IndexSet<String>) {
     // Encode based on the target property type, converting values as needed
     match prop.type_ {
         PropertyType::String => {
@@ -395,10 +397,17 @@ fn encode_value(value: &AttributeValue, prop: &mut Property) {
             prop.count += 1;
         }
         PropertyType::Enum => {
-            // Enum values are stored as u32
+            // Enum values are stored as u32, looked up by name in enum_set
             let val: u32 = match value {
-                AttributeValue::Number(n) => n.as_u64().unwrap_or(ENUM_NO_DATA as u64) as u32,
-                AttributeValue::String(s) => s.parse().unwrap_or(ENUM_NO_DATA),
+                AttributeValue::String(s) => {
+                    // Insert the enum value if not present, get its index
+                    let (index, _) = enum_set.insert_full(s.clone());
+                    index as u32
+                }
+                AttributeValue::Number(n) => {
+                    // If it's already a numeric index, use it directly
+                    n.as_u64().unwrap_or(ENUM_NO_DATA as u64) as u32
+                }
                 _ => ENUM_NO_DATA,
             };
             prop.value_buffer.extend(val.to_le_bytes());
@@ -407,11 +416,15 @@ fn encode_value(value: &AttributeValue, prop: &mut Property) {
     }
 }
 
-fn encode_array_value(value: &AttributeValue, prop: &mut Property) {
+fn encode_array_value(
+    value: &AttributeValue,
+    prop: &mut Property,
+    enum_set: &mut IndexSet<String>,
+) {
     match value {
         AttributeValue::Array(arr) => {
             for v in arr {
-                encode_value(v, prop);
+                encode_value(v, prop, enum_set);
             }
 
             match prop.type_ {
@@ -426,7 +439,7 @@ fn encode_array_value(value: &AttributeValue, prop: &mut Property) {
         }
         AttributeValue::Map(map) => {
             for v in map.values() {
-                encode_value(v, prop);
+                encode_value(v, prop, enum_set);
             }
 
             match prop.type_ {
@@ -440,8 +453,12 @@ fn encode_array_value(value: &AttributeValue, prop: &mut Property) {
             }
         }
         _ => {
-            // Single value in array context
-            encode_value(value, prop);
+            // Single value in array context - this may indicate a schema mismatch
+            warn!(
+                "Single value provided for array property (type: {:?}), wrapping as single-element array",
+                prop.type_
+            );
+            encode_value(value, prop, enum_set);
             match prop.type_ {
                 PropertyType::String => {
                     prop.array_offsets
