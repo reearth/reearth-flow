@@ -308,15 +308,6 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-      - codelists
-      - schemas
-      findDeepestSingleFolder: true
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
@@ -916,11 +907,6 @@ graphs:
   edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
     from: 3a85e550-49e8-4b67-bc92-908430ef6eee
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: b729c108-a200-4b6f-aa60-7c0c10866343
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     fromPort: default
     toPort: default
@@ -1203,15 +1189,6 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-      - codelists
-      - schemas
-      findDeepestSingleFolder: true
   - id: c790e59a-4283-452f-bc24-9cc966c3ec79
     name: PLATEAU4.ObjectListExtractor
     type: action
@@ -1463,11 +1440,6 @@ graphs:
   edges:
   - id: 668cbbf5-9da8-45db-baca-312d69d219c2
     from: 00f42e7e-080b-4927-933b-70fc8d8136b8
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: c790e59a-4283-452f-bc24-9cc966c3ec79
     fromPort: default
     toPort: default
@@ -1630,6 +1602,15 @@ graphs:
             schemas: env.get("schemas"),
           },
         ]
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+      findDeepestSingleFolder: true
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
     name: PLATEAU4.CommonQualityCheck-01-01-common
     type: subGraph
@@ -1678,11 +1659,16 @@ graphs:
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: b729c108-a200-4b6f-aa60-7c0c10866343
+    from: c7315341-26b3-4405-9d02-039d721cd225
     to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
     fromPort: default
     toPort: default
   - id: f47c77ad-c465-48cf-bdf5-36e385ffbd41
-    from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+    from: c7315341-26b3-4405-9d02-039d721cd225
     to: 9309842a-a3a7-4d1b-9216-ef523a6b4789
     fromPort: default
     toPort: default

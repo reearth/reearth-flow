@@ -1951,15 +1951,6 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-      - codelists
-      - schemas
-      findDeepestSingleFolder: true
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
@@ -2559,11 +2550,6 @@ graphs:
   edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
     from: 3a85e550-49e8-4b67-bc92-908430ef6eee
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: b729c108-a200-4b6f-aa60-7c0c10866343
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     fromPort: default
     toPort: default
@@ -2846,15 +2832,6 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-      - codelists
-      - schemas
-      findDeepestSingleFolder: true
   - id: c790e59a-4283-452f-bc24-9cc966c3ec79
     name: PLATEAU4.ObjectListExtractor
     type: action
@@ -3106,11 +3083,6 @@ graphs:
   edges:
   - id: 668cbbf5-9da8-45db-baca-312d69d219c2
     from: 00f42e7e-080b-4927-933b-70fc8d8136b8
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: c790e59a-4283-452f-bc24-9cc966c3ec79
     fromPort: default
     toPort: default
@@ -3850,16 +3822,6 @@ graphs:
         let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
         file::join_path(dirname, filename)
   edges:
-  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
-    from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
-    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    fromPort: default
-    toPort: default
-  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
-    from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
-    to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
-    fromPort: default
-    toPort: default
   - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
     from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
     to: c7315341-26b3-4405-9d02-039d721cd225
@@ -3868,6 +3830,16 @@ graphs:
   - id: f3a7b2e5-4c8d-4f9a-bce2-5f1a8d3b9c6e
     from: c7315341-26b3-4405-9d02-039d721cd225
     to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+    fromPort: default
+    toPort: default
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: default
+    toPort: default
+  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
     fromPort: default
     toPort: default
   - id: 2d6e9b4c-a5f8-4e2d-b7c3-8a1f4e7b2d5c
