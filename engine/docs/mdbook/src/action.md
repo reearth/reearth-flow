@@ -5245,7 +5245,32 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
 ### Description
 Validates domain of definition of CityGML features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainOfDefinitionValidator Parameters",
+  "description": "Configuration for validating domain of definition of CityGML features.",
+  "type": "object",
+  "properties": {
+    "codelistsPath": {
+      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
