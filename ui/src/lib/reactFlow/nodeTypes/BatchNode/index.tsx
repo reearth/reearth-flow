@@ -35,7 +35,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-orange-400/20 p-2 shadow-md shadow-secondary backdrop-blur-xs ${selected ? "border-orange-400/50" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-orange-400/40 p-2 shadow-md shadow-secondary backdrop-blur-xs dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(

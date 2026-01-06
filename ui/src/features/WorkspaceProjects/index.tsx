@@ -98,12 +98,14 @@ const ProjectsManager: React.FC = () => {
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll pt-4 pr-3 pb-2 pl-2">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
-          <p className="text-lg dark:font-extralight">{t("Projects")}</p>
+          <p className="text-lg font-light dark:font-extralight">
+            {t("Projects")}
+          </p>
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 rounded-md p-2 hover:bg-primary">
                 <ArrowSquareInIcon weight="thin" />
-                <p className="line-clamp-2 text-xs font-extralight">
+                <p className="line-clamp-2 text-xs dark:font-extralight">
                   {t("Import")}
                 </p>
                 <div className="shrink-0">

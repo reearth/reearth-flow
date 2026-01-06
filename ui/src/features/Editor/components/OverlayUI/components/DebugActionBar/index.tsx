@@ -151,7 +151,7 @@ const StartButton: React.FC<{
         <IconButton
           className={`min-w-[36px] transition-all ${
             debugRunStarted || jobStatus
-              ? `h-8 w-full rounded-lg bg-primary/50 px-4 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
+              ? `h-8 w-full rounded-lg px-4 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
               : "w-[36px]"
           }`}
           disabled={
