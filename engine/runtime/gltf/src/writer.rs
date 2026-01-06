@@ -314,7 +314,9 @@ pub fn write_gltf_glb<W: Write>(
         for warning in warnings {
             eprintln!("Draco warning: {}", warning);
         }
-        writer.write_all(&buff).map_err(crate::errors::Error::writer)?;
+        writer
+            .write_all(&buff)
+            .map_err(crate::errors::Error::writer)?;
         writer.flush()?;
     } else {
         nusamai_gltf::glb::Glb {
