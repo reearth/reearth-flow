@@ -416,8 +416,6 @@ impl Cesium3DTilesWriter {
                             ctx.event_hub.send(Event::SinkFinishFailed {
                                 name: "tile_writing_stage".to_string(),
                             });
-                            // Don't proceed to zip if tile writing failed - tileset.json won't exist
-                            return;
                         }
                         ctx.event_hub.info_log(
                             None,
