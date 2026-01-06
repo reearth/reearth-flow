@@ -12,6 +12,7 @@ with:
   workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
   - id: 3ee62cf6-3156-4b7f-aada-66fbe785b63a
     name: entry_point
     nodes:
@@ -60,6 +61,46 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
 
+      # DM Branch - New parallel branch for DmGeometricAttribute processing
+      - id: ded2e272-e05c-4918-86b3-aa9f763da6e7
+        name: FeatureReaderByCityGmlForDm
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          format: citygml
+          flatten: true
+          dataset: |
+            env.get("__value")["path"]
+
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6f
+        name: AttributeManagerPreFlattenerForDm
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: meshcode
+              method: create
+              value: |
+                let file = file::extract_filename(env.get("__value")["path"]);
+                file.split("_")[0]
+            - attribute: gml_id
+              method: create
+              value: |
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+            - attribute: feature_type
+              method: create
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+
+      - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
+        name: AttributeFlattenerForDm
+        type: action
+        action: PLATEAU4.AttributeFlattener
+
+      - id: c32a279d-97be-4584-b282-4d65627b1133
+        name: LodSplitterWithDmForDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
       - id: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         name: AttributeMapper
         type: action
@@ -95,17 +136,6 @@ graphs:
             - attribute: __package
               valueAttribute: package
 
-      # DmGeometricAttribute filter - must be before FeatureLodFilter
-      - id: e5f6a7b8-c9d0-1234-5678-90abcdef1234
-        name: FeatureFilterDmGeometricAttribute
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__feature_type") == "uro:DmGeometricAttribute"
-              outputPort: DmGeometricAttribute
-
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
         type: action
@@ -126,19 +156,9 @@ graphs:
             - attribute: cityName
               method: rename
               value: city_name
-            - attribute: feature_type
-              method: convert
-              value: |
-                let pkg = env.get("__value")["__package"];
-                if pkg == "brid" {
-                  "brid:Bridge"
-                } else if pkg == "tun" {
-                  "tun:Tunnel"
-                } else if pkg == "cons" {
-                  "cons:OtherConstruction"
-                } else {
-                  "unknown"
-                }
+            - attribute: package
+              method: rename
+              value: __package
             - attribute: baseCityCode
               method: remove
             - attribute: lod
@@ -374,24 +394,45 @@ graphs:
         to: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         fromPort: default
         toPort: default
-      # AttributeMapper -> FeatureFilterDmGeometricAttribute
+      # AttributeMapper -> FeatureLodFilter (direct connection for LOD branch)
       - id: 64540b5c-066e-449f-ace1-4af29c0e3b3c
         from: 3e637368-48dc-48c2-aade-253d5b0cfeeb
-        to: e5f6a7b8-c9d0-1234-5678-90abcdef1234
+        to: c32a279d-97be-4584-b282-4d65627b1132
         fromPort: default
         toPort: default
-      # FeatureFilterDmGeometricAttribute (DmGeometricAttribute) -> AttributeManagerByDmGeometricAttribute
-      - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
-        from: e5f6a7b8-c9d0-1234-5678-90abcdef1234
+
+      # DM Branch edges (parallel branch with flatten: true)
+      # FolderAndFilePathReader -> FeatureReaderByCityGmlForDm
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000001
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: ded2e272-e05c-4918-86b3-aa9f763da6e7
+        fromPort: default
+        toPort: default
+      # FeatureReaderByCityGmlForDm -> AttributeManagerPreFlattenerForDm
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000002
+        from: ded2e272-e05c-4918-86b3-aa9f763da6e7
+        to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6f
+        fromPort: default
+        toPort: default
+      # AttributeManagerPreFlattenerForDm -> AttributeFlattenerForDm
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000003
+        from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6f
+        to: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
+        fromPort: default
+        toPort: default
+      # AttributeFlattenerForDm -> LodSplitterWithDmForDm
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000004
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
+        to: c32a279d-97be-4584-b282-4d65627b1133
+        fromPort: default
+        toPort: default
+      # LodSplitterWithDmForDm (DmGeometricAttribute) -> AttributeManagerByDmGeometricAttribute
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000005
+        from: c32a279d-97be-4584-b282-4d65627b1133
         to: a1b2c3d4-e5f6-7890-abcd-ef1234567891
         fromPort: DmGeometricAttribute
         toPort: default
-      # FeatureFilterDmGeometricAttribute (unfiltered) -> FeatureLodFilter
-      - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-        from: e5f6a7b8-c9d0-1234-5678-90abcdef1234
-        to: c32a279d-97be-4584-b282-4d65627b1132
-        fromPort: unfiltered
-        toPort: default
+
       - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
         from: a1b2c3d4-e5f6-7890-abcd-ef1234567891
         to: b2c3d4e5-f6a7-8901-bcde-f12345678902

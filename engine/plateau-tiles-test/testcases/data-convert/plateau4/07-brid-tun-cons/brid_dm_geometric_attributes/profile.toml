@@ -13,11 +13,7 @@ threshold = 0.01
 ".attributes" = "json"
 ".dm_attributes" = "json"
 
-[tests.cesium_attributes.casts]
-".attributes" = "json"
-".dm_attributes" = "json"
-
-[tests.cesium_statistics]
+# Note: DM geometric attributes output MVT only, no 3D Tiles
 
 [filter.tree]
 "" = ["codelists/", "schemas/"]
