@@ -177,7 +177,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         };
         let citymodel_dir = test_path.join("citymodel");
         assert!(citymodel_dir.exists());
-        // Create citymodel zip using with feature type suffix
+        // Create citymodel zip with feature type suffix
         let citymodel_path = output_dir.join(zip_stem.to_string() + ".zip");
         zip_dir(&citymodel_dir, &citymodel_path);
         let codelist_dir = artifacts_base.join(&citymodel_name).join("codelists");
