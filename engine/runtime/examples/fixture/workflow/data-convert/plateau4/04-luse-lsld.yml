@@ -3,8 +3,8 @@ name: PLATEAU4-DataConvert-04-luse-lsld-workflow
 entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
 with:
   cityGmlPath: null
-  codelists: null
-  schemas: null
+  codelistsPath: null
+  schemasPath: null
   cityCode: null
   targetPackages:
   - luse
@@ -140,8 +140,8 @@ graphs:
           #{
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelists"),
-            schemas: env.get("schemas"),
+            codelists: env.get("codelistsPath"),
+            schemas: env.get("schemasPath"),
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860

@@ -3,8 +3,8 @@ name: PLATEAU4-DataConvert-07-brid-tun-cons-workflow
 entryGraphId: 3ee62cf6-3156-4b7f-aada-66fbe785b63a
 with:
   cityGmlPath: null
-  codelists: null
-  schemas: null
+  codelistsPath: null
+  schemasPath: null
   targetPackages:
   - brid
   - cons
@@ -295,8 +295,8 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelists"),
-            schemas: env.get("schemas"),
+            codelists: env.get("codelistsPath"),
+            schemas: env.get("schemasPath"),
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -329,6 +329,7 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
+      codelistsPath: env.get("__value").codelists
       format: citygml
       flatten: true
       dataset: |
@@ -453,6 +454,10 @@ graphs:
       - attribute: featureType
         method: remove
       - attribute: gmlName
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
         method: remove
   - id: b2c3d4e5-f6a7-8901-bcde-f12345678902
     name: FeatureSorterDmGeometricAttribute
