@@ -455,6 +455,10 @@ graphs:
         method: remove
       - attribute: gmlName
         method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: b2c3d4e5-f6a7-8901-bcde-f12345678902
     name: FeatureSorterDmGeometricAttribute
     type: action
