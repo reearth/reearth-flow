@@ -341,11 +341,14 @@ fn decompress_glbs(flow_extracted_dir: &Path) {
         let path = entry.path();
         if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
             tracing::debug!("Decompressing glb file: {}", path.display());
-            std::process::Command::new("npx")
+            let status = std::process::Command::new("npx")
                 .arg("glb-decompress")
                 .arg(path.as_os_str())
                 .status()
                 .expect("Failed to execute glb-decompress command");
+            if !status.success() {
+                panic!("glb-decompress failed");
+            }
         }
     }
 }
