@@ -329,6 +329,7 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
+      codelistsPath: env.get("__value").codelists
       format: citygml
       flatten: true
       dataset: |

@@ -37,7 +37,7 @@ pub fn run_workflow(
     let mut variables = HashMap::new();
     variables.insert(
         "cityGmlPath".to_string(),
-        format!("file://{}", citygml_path.display()),
+        format!("{}", citygml_path.display()),
     );
 
     let flow_dir = output_dir.join("flow");
