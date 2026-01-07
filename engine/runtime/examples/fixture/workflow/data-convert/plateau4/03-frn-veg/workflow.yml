@@ -28,8 +28,8 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                codelists: env.get("codelists"),
-                schemas: env.get("schemas"),
+                codelists: env.get("codelistsPath"),
+                schemas: env.get("schemasPath"),
               },
             ]
 
@@ -112,7 +112,7 @@ graphs:
             }
 
       - id: 0f670054-828b-48d8-9672-dbc34247f2b3
-        name: AttributeManager
+        name: AttributeManagerPreFlattener
         type: action
         action: AttributeManager
         with:
@@ -129,6 +129,10 @@ graphs:
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
 
       - id: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
         name: Flattener
