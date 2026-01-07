@@ -486,7 +486,7 @@ graphs:
       maxZoom: 18
       extent: 65536
       output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes")
+        file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let pkg = env.get("__value")["__package"];
