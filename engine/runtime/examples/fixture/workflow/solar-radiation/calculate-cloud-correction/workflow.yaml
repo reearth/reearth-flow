@@ -17,7 +17,79 @@ graphs:
           format: csv
           inline: |
             env.get("csvFile")
-    
+      
+      - id: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
+        name: PrepareAttribute
+        type: action 
+        action: AttributeManager 
+        with:
+          operations:
+          - attribute: year 
+            method: create 
+            value: 
+              env.get("__value")["年"];          
+          - attribute: 年
+            method: remove
+          
+          - attribute: month 
+            method: create 
+            value: 
+              env.get("__value")["月"];
+          - attribute: 月
+            method: remove 
+
+          - attribute: daylight_hours 
+            method: create 
+            value: 
+              env.get("__value")["日照時間(時間)"];
+          - attribute: 日照時間(時間)
+            method: remove      
+
+          - attribute: daylight_hours_num 
+            method: create 
+            value: 
+              env.get("__value")["日照時間(時間)00"];
+          - attribute: 日照時間(時間)00
+            method: remove         
+
+          - attribute: days_less_then_1h_daylight 
+            method: create 
+            value: 
+              env.get("__value")["日照時間0.1時間未満日数(日)"];
+          - attribute: 日照時間0.1時間未満日数(日)
+            method: remove      
+
+          - attribute: days_less_then_1h_daylight_num 
+            method: create 
+            value: 
+              env.get("__value")["日照時間0.1時間未満日数(日)00"];
+          - attribute: 日照時間0.1時間未満日数(日)00
+            method: remove   
+
+          - attribute: days_over_40%_daylight_late 
+            method: create 
+            value: 
+              env.get("__value")["日照率40%以上日数(日)"];
+          - attribute: 日照率40%以上日数(日)
+            method: remove      
+
+          - attribute: days_over_40%_daylight_late_num 
+            method: create 
+            value: 
+              env.get("__value")["日照率40%以上日数(日)00"];
+          - attribute: 日照率40%以上日数(日)00
+            method: remove   
+
+          - attribute: max_daylight_hours
+            method: create 
+            value: | 
+              310 
+
+          - attribute: transmissivity
+            method: create 
+            value: |
+              0.75                                        
+ 
       - id: cf028708-eba2-11f0-baa6-7c70db10a7e3
         name: DummyOutput
         type: action
@@ -26,7 +98,13 @@ graphs:
     edges:
       - id: bcdf7d4c-eba2-11f0-995a-7c70db10a7e3
         from: c4ea198e-eba2-11f0-b93c-7c70db10a7e3
-        to: cf028708-eba2-11f0-baa6-7c70db10a7e3
+        to: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
         fromPort: default
+        toPort: default
+
+      - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
+        from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
+        to: cf028708-eba2-11f0-baa6-7c70db10a7e3
+        fromPort: default 
         toPort: default
 
