@@ -1,22 +1,22 @@
 # workflow for calculate snow correction for solar energy
 
 id: 2d4e1c6a-eb70-11f0-9b6c-7c70db10a7e3
-name: CalculateCloudCorrectionFactor
+name: CalculateSnowCorrectionFactor
 entryGraphId: 2c8e0b08-eb72-11f0-b371-7c70db10a7e3
 with:
-  inputCloudFactorCsv: !include ./input.csv
+  inputSnowFactorCsv: !include ./input.csv
 graphs:
   - id: 2c8e0b08-eb72-11f0-b371-7c70db10a7e3
-    name: CalculateCloudCorrectionFactorWorkflow
+    name: CalculateSnowCorrectionFactorWorkflow
     nodes:
       - id: 454dfd76-eb70-11f0-8280-7c70db10a7e3
-        name: ReadCloudCorrectionFactorCSV
+        name: ReadSnowCorrectionFactorCSV
         type: action
         action: CsvReader
         with:
           format: csv
           inline: |
-            env.get("inputCloudFactorCsv")
+            env.get("inputSnowFactorCsv")
 
       - id: 630f7e44-eb74-11f0-81ac-7c70db10a7e3
         name: Tester_3
