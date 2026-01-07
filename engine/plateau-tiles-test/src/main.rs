@@ -200,8 +200,13 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
-        runner::run_workflow(&workflow_path, &citymodel_path, &output_dir, 
-            codelist_path.as_deref(), schemas_path.as_deref());
+        runner::run_workflow(
+            &workflow_path,
+            &citymodel_path,
+            &output_dir,
+            codelist_path.as_deref(),
+            schemas_path.as_deref(),
+        );
 
         let elapsed = start_time.elapsed();
         info!(
