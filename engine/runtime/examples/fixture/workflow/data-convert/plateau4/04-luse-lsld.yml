@@ -3,8 +3,8 @@ name: PLATEAU4-DataConvert-04-luse-lsld-workflow
 entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
 with:
   cityGmlPath: null
-  codelists: null
-  schemas: null
+  codelistsPath: null
+  schemasPath: null
   cityCode: null
   targetPackages:
   - luse
