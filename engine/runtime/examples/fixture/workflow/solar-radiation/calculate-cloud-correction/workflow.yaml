@@ -1,0 +1,86 @@
+# workflow for calculate snow correction for solar energy 
+
+id: 2d4e1c6a-eb70-11f0-9b6c-7c70db10a7e3
+name: CalculateCloudCorrectionFactor
+entryGraphId: 2c8e0b08-eb72-11f0-b371-7c70db10a7e3
+with:
+  inputCloudFactorCsv: !include ./input-calculate-cloud-correction.csv 
+graphs:
+  - id: 2c8e0b08-eb72-11f0-b371-7c70db10a7e3
+    name: CalculateCloudCorrectionFactorWorkflow 
+    nodes:
+      - id: 454dfd76-eb70-11f0-8280-7c70db10a7e3
+        name: ReadCloudCorrectionFactorCSV 
+        type: action 
+        action: CsvReader
+        with: 
+          format: csv 
+          inline: |
+            env.get("inputCloudFactorCsv")
+
+      - id: 630f7e44-eb74-11f0-81ac-7c70db10a7e3
+        name: Tester_3
+        type: action 
+        action: AttributeManager
+        with: 
+          operations:
+          - attribute: col0 
+            method: convert 
+            value: |
+              9
+
+      - id: 78b75e32-eb70-11f0-a1de-7c70db10a7e3
+        name: RenameAttributeAndConvertTheirValue 
+        type: action 
+        action: AttributeManager 
+        with:
+          operations:
+            - attribute: observatory
+              method: create 
+              value: |
+                env.get("__value")["col0"]
+
+            - attribute: month
+              method: create 
+              value: |
+                let v = env.get("__value")["col1"];
+                parse_int(v)
+
+            - attribute: day
+              method: create 
+              value: |
+                let v = env.get("__value")["col2"];
+                parse_int(v)          
+
+            - attribute: year
+              method: create 
+              value: |
+                let v = env.get("__value")["col3"];
+                parse_int(v)                  
+
+
+            
+
+      - id: 38658a84-eb75-11f0-b42e-7c70db10a7e3
+        name: DummyOutput
+        type: action
+        action: NoopSink 
+
+    edges:
+      - id: beec4146-eb71-11f0-a144-7c70db10a7e3
+        from: 454dfd76-eb70-11f0-8280-7c70db10a7e3
+        to: 630f7e44-eb74-11f0-81ac-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      - id: cb592162-eb74-11f0-8d92-7c70db10a7e3
+        from: 630f7e44-eb74-11f0-81ac-7c70db10a7e3
+        to: 78b75e32-eb70-11f0-a1de-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      - id: 61342df8-eb75-11f0-880e-7c70db10a7e3
+        from: 78b75e32-eb70-11f0-a1de-7c70db10a7e3
+        to: 38658a84-eb75-11f0-b42e-7c70db10a7e3
+        fromPort: default
+        toPort: default        
