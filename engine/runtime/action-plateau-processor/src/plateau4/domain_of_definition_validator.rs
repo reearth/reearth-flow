@@ -20,7 +20,8 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
 use super::errors::PlateauProcessorError;
@@ -276,6 +277,19 @@ struct Envelope {
     upper_z: f64,
 }
 
+/// # DomainOfDefinitionValidator Parameters
+///
+/// Configuration for validating domain of definition of CityGML features.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DomainOfDefinitionValidatorParam {
+    /// Fallback codelists directory path expression. When codelists files are not found
+    /// at the location relative to the GML file, this path will be used as the base
+    /// directory for resolving codeSpace references.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    codelists_path: Option<Expr>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct DomainOfDefinitionValidatorFactory;
 
@@ -289,7 +303,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(DomainOfDefinitionValidatorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -310,15 +324,44 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        _with: Option<HashMap<String, Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
+        let global_params = with.clone();
+        let params: DomainOfDefinitionValidatorParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidatorFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidatorFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            DomainOfDefinitionValidatorParam::default()
+        };
+
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let codelists_path_expr = if let Some(expr) = params.codelists_path {
+            Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidatorFactory(format!(
+                    "Failed to compile codelists_path expression: {e}"
+                ))
+            })?)
+        } else {
+            None
+        };
+
         let process = DomainOfDefinitionValidator {
             feature_buffer: vec![],
             codelists: None,
             filenames: HashSet::new(),
+            codelists_path_expr,
+            global_params,
         };
         Ok(Box::new(process))
     }
@@ -331,6 +374,8 @@ pub struct DomainOfDefinitionValidator {
     feature_buffer: FeatureBuffer,
     codelists: Option<HashMap<String, HashMap<String, String>>>,
     filenames: HashSet<String>,
+    codelists_path_expr: Option<rhai::AST>,
+    global_params: Option<HashMap<String, serde_json::Value>>,
 }
 
 impl Processor for DomainOfDefinitionValidator {
@@ -351,15 +396,40 @@ impl Processor for DomainOfDefinitionValidator {
             self.filenames.insert(name.clone());
         }
 
+        // Evaluate fallback codelists path expression if provided
+        let fallback_codelists_path = if let Some(expr) = &self.codelists_path_expr {
+            let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &self.global_params);
+            let path: String = scope.eval_ast(expr).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                    "Failed to evaluate codelists_path expression: {e:?}"
+                ))
+            })?;
+            Some(Uri::from_str(&path).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                    "Invalid codelists_path URI: {e:?}"
+                ))
+            })?)
+        } else {
+            None
+        };
+
         if self.codelists.is_none() {
-            let codelists =
-                create_codelist(Arc::clone(&ctx.storage_resolver), feature).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
+            let codelists = create_codelist(
+                Arc::clone(&ctx.storage_resolver),
+                feature,
+                fallback_codelists_path.as_ref(),
+            )
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
             self.codelists = Some(codelists);
         }
         let codelists = self.codelists.as_ref().unwrap();
-        let feature_results = process_feature(&ctx, fw, codelists, feature)?;
+        let feature_results = process_feature(
+            &ctx,
+            fw,
+            codelists,
+            feature,
+            fallback_codelists_path.as_ref(),
+        )?;
         self.feature_buffer.push(feature_results);
         Ok(())
     }
@@ -445,12 +515,13 @@ impl Processor for DomainOfDefinitionValidator {
     }
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn process_feature(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
     feature: &Feature,
+    fallback_codelists_path: Option<&Uri>,
 ) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
     let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
@@ -527,6 +598,7 @@ fn process_feature(
             &mut gml_ids,
             &gml_id_pattern,
             Arc::clone(&storage_resolver),
+            fallback_codelists_path,
         )?;
         result.extend(process_result);
     }
@@ -749,6 +821,7 @@ fn process_member_node(
     all_gml_ids: &mut HashMap<String, Vec<HashMap<String, String>>>,
     gml_id_pattern: &Regex,
     storage_resolver: Arc<StorageResolver>,
+    fallback_codelists_path: Option<&Uri>,
 ) -> super::errors::Result<Vec<Feature>> {
     let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
@@ -917,7 +990,25 @@ fn process_member_node(
         let code_space_path = base_dir
             .join(Path::new(code_space.as_str()))
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        let code = codelists.get(&code_space_path.to_string());
+
+        // Try primary lookup (relative to GML file)
+        let mut code = codelists.get(&code_space_path.to_string());
+
+        // If not found and fallback path is provided, try the fallback path
+        let fallback_code_space_path;
+        if code.is_none() {
+            if let Some(fallback_path) = fallback_codelists_path {
+                // Extract the filename from codeSpace (e.g., "../../codelists/Building_class.xml" -> "Building_class.xml")
+                if let Some(filename) = Path::new(code_space.as_str()).file_name() {
+                    fallback_code_space_path =
+                        fallback_path.join(Path::new(filename)).map_err(|e| {
+                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                        })?;
+                    code = codelists.get(&fallback_code_space_path.to_string());
+                }
+            }
+        }
+
         let code_value = code_space_member.get_content();
 
         if let Some(code) = code {
@@ -1368,15 +1459,43 @@ fn get_xpath(node: &XmlRoNode, top: Option<&XmlRoNode>, tags: Option<Vec<String>
 fn create_codelist(
     storage_resolver: Arc<StorageResolver>,
     first: &Feature,
+    fallback_codelists_path: Option<&Uri>,
 ) -> super::errors::Result<HashMap<String, HashMap<String, String>>> {
+    // Try to get dirCodelists from feature, fall back to provided path
     let dir = first
         .attributes
         .get(&Attribute::new("dirCodelists"))
-        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-            "dirCodelists key empty".to_string(),
-        ))?;
-    let dir = Uri::from_str(&dir.to_string())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .and_then(|v| Uri::from_str(&v.to_string()).ok());
+
+    let dir = match dir {
+        Some(d) => {
+            let storage = storage_resolver.resolve(&d).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+            })?;
+            let exist = storage.exists_sync(d.path().as_path()).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+            })?;
+            if exist {
+                d
+            } else if let Some(fallback) = fallback_codelists_path {
+                fallback.clone()
+            } else {
+                return Err(PlateauProcessorError::DomainOfDefinitionValidator(
+                    "dirCodelists not found and no fallback provided".to_string(),
+                ));
+            }
+        }
+        None => {
+            if let Some(fallback) = fallback_codelists_path {
+                fallback.clone()
+            } else {
+                return Err(PlateauProcessorError::DomainOfDefinitionValidator(
+                    "dirCodelists key empty and no fallback provided".to_string(),
+                ));
+            }
+        }
+    };
+
     let storage = storage_resolver
         .resolve(&dir)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
@@ -1385,7 +1504,7 @@ fn create_codelist(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     if !exist {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "dirCodelists not found".to_string(),
+            "codelists directory not found".to_string(),
         ));
     }
     let mut codelist = HashMap::new();

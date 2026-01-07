@@ -31,6 +31,8 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelistsPath"),
+                schemas: env.get("schemasPath"),
               },
             ]
 
@@ -44,7 +46,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          format: citygml
+          codelistsPath: env.get("__value").codelists
           flatten: true
           dataset: |
             env.get("__value")["path"]
