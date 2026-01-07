@@ -1,0 +1,14 @@
+citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_cons.zip"
+
+# Note: cesium_statistics test disabled due to inconsistent texture presence in FME output
+# [tests.cesium_statistics]
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/cons/" = ["49303414_cons_6697_op.gml", "49303414_cons_6697_appearance/"]

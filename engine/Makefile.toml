@@ -187,6 +187,7 @@ WORKFLOW_CONV=(
   "04-luse-lsld"
   "05-fld"
   "06-area-urf"
+  "07-brid-tun-cons"
 )
 
 BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/

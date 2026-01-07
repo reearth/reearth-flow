@@ -15,7 +15,26 @@ pub struct MvtAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
-/// Loads all MVT attributes from a directory, keyed by gml_id
+/// Creates a composite key for feature comparison.
+/// For DmGeometricAttribute features (which can have multiple children per parent),
+/// use gml_id + dm_geometryType_code to create a unique key.
+/// For other features, use gml_id alone.
+fn make_feature_key(gml_id: &str, props: &Value) -> String {
+    // Check if this is a DmGeometricAttribute feature
+    if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {
+        if dm_feature_type == "DmGeometricAttribute" {
+            // Use dm_geometryType_code as discriminator for DM features
+            if let Some(dm_geometry_type_code) =
+                props.get("dm_geometryType_code").and_then(|v| v.as_str())
+            {
+                return format!("{}__dm_{}", gml_id, dm_geometry_type_code);
+            }
+        }
+    }
+    gml_id.to_string()
+}
+
+/// Loads all MVT attributes from a directory, keyed by gml_id (or composite key for DM features)
 fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     let mut ret = HashMap::new();
     let mut rel = HashMap::new();
@@ -57,17 +76,20 @@ fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
                     .ok_or_else(|| "Missing gml_id in feature properties".to_string())?
                     .to_string();
 
-                if let Some(existing) = ret.get(&gml_id) {
+                // Create composite key for DM features to handle multiple DmGeometricAttribute per parent
+                let feature_key = make_feature_key(&gml_id, &props);
+
+                if let Some(existing) = ret.get(&feature_key) {
                     if existing != &props {
-                        let existing_path = rel.get(&gml_id).unwrap();
+                        let existing_path = rel.get(&feature_key).unwrap();
                         return Err(format!(
-                            "Conflicting gml_id {}: properties differ between {:?} and {:?}",
-                            gml_id, existing_path, path
+                            "Conflicting feature_key {}: properties differ between {:?} and {:?}",
+                            feature_key, existing_path, path
                         ));
                     }
                 } else {
-                    ret.insert(gml_id.clone(), props);
-                    rel.insert(gml_id, path.to_path_buf());
+                    ret.insert(feature_key.clone(), props);
+                    rel.insert(feature_key, path.to_path_buf());
                 }
             }
         }
