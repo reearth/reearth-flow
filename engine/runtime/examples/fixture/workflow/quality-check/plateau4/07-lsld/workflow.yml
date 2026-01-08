@@ -512,7 +512,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("workerArtifactPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
@@ -523,7 +523,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath") ?? env.get("workerArtifactPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:

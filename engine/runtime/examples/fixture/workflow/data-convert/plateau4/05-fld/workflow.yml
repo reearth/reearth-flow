@@ -15,7 +15,7 @@ with:
     - htd
     - ifld
     - rfld
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
@@ -104,7 +104,7 @@ graphs:
         with:
           format: tsv
           output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
+            file::join_path(env.get("workerArtifactPath"), "maxLod.tsv")
 
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeFlattener
@@ -150,7 +150,7 @@ graphs:
           output: |
             let udx_dirs = env.get("__value")["udxDirs"];
             udx_dirs.replace("/", "_");
-            file::join_path(env.get("outputPath"), udx_dirs + "_no_texture")
+            file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

@@ -14,7 +14,7 @@ with:
   - htd
   - ifld
   - rfld
-  outputPath: null
+  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -212,7 +212,7 @@ graphs:
     with:
       format: tsv
       output: |
-        file::join_path(env.get("outputPath"), "maxLod.tsv")
+        file::join_path(env.get("workerArtifactPath"), "maxLod.tsv")
   - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     name: AttributeFlattener
     type: action
@@ -253,7 +253,7 @@ graphs:
       output: |
         let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
-        file::join_path(env.get("outputPath"), udx_dirs + "_no_texture")
+        file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture")
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

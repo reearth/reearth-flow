@@ -2646,7 +2646,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("workerArtifactPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
     name: ZipFileWriter
@@ -2655,7 +2655,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("workerArtifactPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
   - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
