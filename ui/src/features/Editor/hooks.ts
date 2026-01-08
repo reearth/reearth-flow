@@ -321,7 +321,9 @@ export default ({
             handleYWorkflowAddFromSelection(nodes, edges);
           break;
         case "k":
-          if (hasModifier) setShowSearchPanel(true);
+          if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
+          if (hasModifier && showSearchPanel) setShowSearchPanel(false);
+
           break;
         case "z":
           if (hasModifier && hasShift) handleYWorkflowRedo?.();

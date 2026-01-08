@@ -59,7 +59,7 @@ const SearchActionBar: React.FC<Props> = ({
                 transform:
                   "translateY(calc(1.2 * var(--radix-popper-anchor-height)))",
               }}
-              className="flex h-[600px] w-[400px] flex-col bg-primary/50 p-0 backdrop-blur">
+              className="flex h-auto max-h-[80vh] w-full max-w-[400px] flex-col bg-primary/50 p-0 backdrop-blur">
               {showSearchPanel && (
                 <SearchPanel
                   rawWorkflows={rawWorkflows}

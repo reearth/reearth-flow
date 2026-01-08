@@ -219,14 +219,14 @@ function VirtualizedTable<TData, TValue>({
       <div
         ref={parentRef}
         className="min-h-0 flex-1 overflow-auto rounded-md bg-primary/40"
-        style={{ contain: "paint" }}>
+        style={{ contain: "paint", willChange: "transform" }}>
         <div
           className="relative w-full"
           style={{
             height: `${spacerHeight}px`,
           }}>
           <Table className="w-full text-xs">
-            <TableHeader className="top-0 z-10">
+            <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -271,7 +271,10 @@ function VirtualizedTable<TData, TValue>({
                         }px)`,
                       }}
                       data-state={isSelected ? "selected" : undefined}
-                      onClick={() => onRowClick?.(row.original)}
+                      onClick={() => {
+                        row.toggleSelected();
+                        onRowClick?.(row.original);
+                      }}
                       onDoubleClick={() => onRowDoubleClick?.(row.original)}>
                       {row.getVisibleCells().map((cell: any) => (
                         <TableCell
