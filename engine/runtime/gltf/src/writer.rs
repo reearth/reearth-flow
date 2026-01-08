@@ -309,9 +309,14 @@ pub fn write_gltf_glb<W: Write>(
         tmp_buffer.flush()?;
 
         // Now the glb data is in `tmp_buffer`. We compress it.
-        let mut transcoder =
-            draco_oxide::io::gltf::transcoder::DracoTranscoder::create(None).unwrap();
-        transcoder.transcode_buffer(&tmp_buffer, &mut writer)?;
+        let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::default();
+        let (buff, warnings) = transcoder.transcode_to_glb(&tmp_buffer)?;
+        for warning in warnings {
+            tracing::warn!("Draco warning: {}", warning);
+        }
+        writer
+            .write_all(&buff)
+            .map_err(crate::errors::Error::writer)?;
         writer.flush()?;
     } else {
         nusamai_gltf::glb::Glb {

@@ -50,6 +50,12 @@ jobs:
           tool: taplo-cli,cargo-make,cargo-edit
       - name: install yaml-include
         run: cargo install yaml-include
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install glb-decompress
+        run: npm install -g github:asrcpq/glb_decompress_draco
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |

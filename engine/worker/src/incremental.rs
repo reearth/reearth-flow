@@ -313,17 +313,19 @@ async fn download_remote_tree(
                 .map_err(crate::errors::Error::init)?;
         }
 
+        let canonical_uri = remote_root.join(&rel).map_err(crate::errors::Error::init)?;
+
         tracing::info!(
             "Incremental run: downloading previous {label} {} -> {}",
-            uri,
+            canonical_uri,
             local_path.display()
         );
 
         let s = storage_resolver
-            .resolve(&uri)
+            .resolve(&canonical_uri)
             .map_err(crate::errors::Error::init)?;
         let res = s
-            .get(uri.path().as_path())
+            .get(canonical_uri.path().as_path())
             .await
             .map_err(crate::errors::Error::init)?;
         let bytes = res.bytes().await.map_err(crate::errors::Error::init)?;
