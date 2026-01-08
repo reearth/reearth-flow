@@ -4,8 +4,8 @@ name: "PLATEAU4-quality-check-03-tran"
 entryGraphId: 742b6f3e-2a63-490a-aec2-829b10fea5f2
 with:
   cityGmlPath:
-  schemas:
-  codelists:
+  schemasPath:
+  codelistsPath:
   objectLists:
   outputPath:
   prcs:
@@ -32,8 +32,8 @@ graphs:
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 objectListPath: env.get("objectLists"),
-                schemas: env.get("schemas"),
-                codelists: env.get("codelists"),
+                schemas: env.get("schemasPath"),
+                codelists: env.get("codelistsPath"),
               },
             ]
 

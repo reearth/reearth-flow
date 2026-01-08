@@ -3,8 +3,8 @@ name: "PLATEAU4 Quality Check 06 Flood Zone"
 entryGraphId: 0a2f610f-b92c-483b-a76a-e6143c3ab249
 with:
   cityGmlPath:
-  codelists:
-  schemas:
+  codelistsPath:
+  schemasPath:
   outputPath:
   prcs:
 graphs:
@@ -21,8 +21,8 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                codelists: env.get("codelists"),
-                schemas: env.get("schemas"),
+                codelists: env.get("codelistsPath"),
+                schemas: env.get("schemasPath"),
                 outputPath: env.get("outputPath"),
               },
             ]

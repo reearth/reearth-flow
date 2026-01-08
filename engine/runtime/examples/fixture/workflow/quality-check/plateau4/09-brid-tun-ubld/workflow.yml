@@ -3,8 +3,8 @@ name: PLATEAU4-quality-check-09-brid-tun-ubld-workflow
 entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
   cityGmlPath: null
-  codelists: null
-  schemas: null
+  codelistsPath: null
+  schemasPath: null
   objectLists: null
   outputPath: null
   prcs: null
@@ -40,8 +40,8 @@ graphs:
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             objectListPath: env.get("objectLists"),
-            codelists: env.get("codelists"),
-            schemas: env.get("schemas"),
+            codelists: env.get("codelistsPath"),
+            schemas: env.get("schemasPath"),
           },
         ]
   - id: c7315341-26b3-4405-9d02-039d721cd225

@@ -3,8 +3,8 @@ name: "PLATEAU4-quality-check-07-lsld"
 entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
 with:
   cityGmlPath:
-  schemas:
-  codelists:
+  schemasPath:
+  codelistsPath:
   outputPath:
   prcs:
   objectLists:
@@ -40,8 +40,8 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemas"),
-                codelists: env.get("codelists"),
+                schemas: env.get("schemasPath"),
+                codelists: env.get("codelistsPath"),
                 objectListPath: env.get("objectLists"),
               },
             ]

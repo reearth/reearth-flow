@@ -3,8 +3,8 @@ name: "PLATEAU4-quality-check-08-dem"
 entryGraphId: 79dc8232-d5dd-4c60-be2c-85ca1409619c
 with:
   cityGmlPath:
-  schemas:
-  codelists:
+  schemasPath:
+  codelistsPath:
   objectLists:
   outputPath:
   prcs:
@@ -29,8 +29,8 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemas"),
-                codelists: env.get("codelists"),
+                schemas: env.get("schemasPath"),
+                codelists: env.get("codelistsPath"),
                 objectListPath: env.get("objectLists"),
               },
             ]
