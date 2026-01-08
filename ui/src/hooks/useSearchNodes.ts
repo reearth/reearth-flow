@@ -2,7 +2,6 @@ import { useReactFlow } from "@xyflow/react";
 import { useMemo, useCallback } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { Workflow } from "@flow/types";
 
 export type SearchNodeResult = {
@@ -19,17 +18,12 @@ export type SearchNodeResult = {
 export const useSearchNodes = ({
   rawWorkflows,
   currentWorkflowId,
-  setCurrentWorkflowId,
+  onWorkflowOpen,
 }: {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
-  setCurrentWorkflowId: (id: string) => void;
+  onWorkflowOpen: (id: string) => void;
 }) => {
-  const { handleWorkflowOpen } = useWorkflowTabs({
-    currentWorkflowId,
-    rawWorkflows,
-    setCurrentWorkflowId,
-  });
   const { setCenter, getNode } = useReactFlow();
 
   const allNodes: SearchNodeResult[] = useMemo(() => {
@@ -51,7 +45,7 @@ export const useSearchNodes = ({
   const handleNavigateToNode = useCallback(
     (node: SearchNodeResult) => {
       if (node.workflowId !== currentWorkflowId) {
-        handleWorkflowOpen(node.workflowId);
+        onWorkflowOpen(node.workflowId);
       }
       setTimeout(
         () => {
@@ -60,14 +54,14 @@ export const useSearchNodes = ({
             setCenter(
               reactFlowNode.position.x + (reactFlowNode.width ?? 0) / 2,
               reactFlowNode.position.y + (reactFlowNode.height ?? 0) / 2,
-              { zoom: 1.5, duration: 300 },
+              { zoom: 1.1, duration: 300 },
             );
           }
         },
         node.workflowId !== currentWorkflowId ? 100 : 0,
       );
     },
-    [currentWorkflowId, handleWorkflowOpen, getNode, setCenter],
+    [currentWorkflowId, onWorkflowOpen, getNode, setCenter],
   );
 
   return {

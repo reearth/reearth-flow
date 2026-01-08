@@ -11,21 +11,21 @@ import { Workflow } from "@flow/types";
 type SearchPanelProps = {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
-  onWorkflowChange: (id: string) => void;
+  onWorkflowOpen: (id: string) => void;
   onPopoverClose?: () => void;
 };
 
 export const SearchPanel = ({
   rawWorkflows,
   currentWorkflowId,
-  onWorkflowChange,
+  onWorkflowOpen,
   onPopoverClose,
 }: SearchPanelProps) => {
   const t = useT();
   const { allNodes, handleNavigateToNode } = useSearchNodes({
     rawWorkflows,
     currentWorkflowId,
-    setCurrentWorkflowId: onWorkflowChange,
+    onWorkflowOpen,
   });
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);

@@ -19,13 +19,13 @@ type PopoverOptions = "search" | undefined;
 type Props = {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
-  onWorkflowChange: (id: string) => void;
+  onWorkflowOpen: (id: string) => void;
 };
 
 const SearchActionBar: React.FC<Props> = ({
   rawWorkflows,
   currentWorkflowId,
-  onWorkflowChange,
+  onWorkflowOpen,
 }) => {
   const t = useT();
   const [showPopover, setShowPopover] = useState<PopoverOptions>(undefined);
@@ -61,7 +61,7 @@ const SearchActionBar: React.FC<Props> = ({
                 <SearchPanel
                   rawWorkflows={rawWorkflows}
                   currentWorkflowId={currentWorkflowId}
-                  onWorkflowChange={onWorkflowChange}
+                  onWorkflowOpen={onWorkflowOpen}
                   onPopoverClose={handlePopoverClose}
                 />
               )}

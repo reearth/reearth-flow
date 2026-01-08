@@ -59,6 +59,7 @@ type OverlayUIProps = {
   allowedToDeploy: boolean;
   isSaving: boolean;
   onWorkflowClose: (workflowId: string) => void;
+  onWorkflowOpen: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowDeployment: (
     description: string,
@@ -98,6 +99,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onWorkflowUndo,
   onWorkflowRedo,
   onWorkflowChange,
+  onWorkflowOpen,
   onWorkflowClose,
   onLayoutChange,
   onWorkflowDeployment,
@@ -196,7 +198,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           <SearchActionBar
             rawWorkflows={rawWorkflows}
             currentWorkflowId={currentWorkflowId}
-            onWorkflowChange={onWorkflowChange}
+            onWorkflowOpen={onWorkflowOpen}
           />
         </div>
         <div id="left-bottom" className="absolute bottom-2 left-2 z-1">

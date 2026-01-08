@@ -132,6 +132,7 @@ export default function Editor({
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
+            onWorkflowOpen={handleWorkflowOpen}
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
