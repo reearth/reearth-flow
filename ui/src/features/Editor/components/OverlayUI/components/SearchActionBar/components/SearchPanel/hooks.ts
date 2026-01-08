@@ -15,7 +15,7 @@ export type SearchNodeResult = {
   nodeType: string;
 };
 
-export const useSearchNodes = ({
+export default ({
   rawWorkflows,
   currentWorkflowId,
   onWorkflowOpen,

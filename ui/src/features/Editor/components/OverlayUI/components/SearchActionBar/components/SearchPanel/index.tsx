@@ -2,11 +2,11 @@ import { XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
-import { IconButton } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
-import { SearchNodeResult, useSearchNodes } from "@flow/hooks/useSearchNodes";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
+
+import useHooks, { SearchNodeResult } from "./hooks";
 
 type SearchPanelProps = {
   rawWorkflows: Workflow[];
@@ -15,14 +15,15 @@ type SearchPanelProps = {
   onShowSearchPanel: (boolean: boolean) => void;
 };
 
-export const SearchPanel = ({
+const SearchPanel = ({
   rawWorkflows,
   currentWorkflowId,
   onWorkflowOpen,
   onShowSearchPanel,
 }: SearchPanelProps) => {
   const t = useT();
-  const { allNodes, handleNavigateToNode } = useSearchNodes({
+
+  const { allNodes, handleNavigateToNode } = useHooks({
     rawWorkflows,
     currentWorkflowId,
     onWorkflowOpen,
@@ -73,12 +74,11 @@ export const SearchPanel = ({
 
   return (
     <div className="flex h-full flex-col gap-2 p-2">
-      <div className="flex items-center justify-between">
+      <div className="relative flex items-center justify-between">
         <span className="text-center">{t("Search Actions")}</span>
-        <IconButton
-          variant="ghost"
+        <XIcon
+          className="absolute top-1 right-1 cursor-pointer"
           onClick={() => onShowSearchPanel(false)}
-          icon={<XIcon size={16} />}
         />
       </div>
       <div className="flex h-full flex-col">
@@ -94,3 +94,5 @@ export const SearchPanel = ({
     </div>
   );
 };
+
+export default SearchPanel;

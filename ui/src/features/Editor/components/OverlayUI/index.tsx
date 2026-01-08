@@ -23,8 +23,8 @@ import {
   DebugPanel,
   Homebar,
   VersionDialog,
+  SearchActionBar,
 } from "./components";
-import SearchActionBar from "./components/SearchActionBar";
 import useHooks from "./hooks";
 
 type OverlayUIProps = {
