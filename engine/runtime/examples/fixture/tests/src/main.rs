@@ -101,7 +101,7 @@ pub struct WorkflowTestProfile {
     /// Path to schemas directory (relative to test folder, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub schemas_path: Option<String>,
-    
+
     /// Path to object lists file (relative to test folder, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub object_lists_path: Option<String>,
