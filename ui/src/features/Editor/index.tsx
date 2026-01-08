@@ -50,6 +50,7 @@ export default function Editor({
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
+    showSearchPanel,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowAdd,
@@ -86,6 +87,7 @@ export default function Editor({
     handleSpotlightUserDeselect,
     handleNodesDisable,
     handlePaneClick,
+    setShowSearchPanel,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -149,7 +151,9 @@ export default function Editor({
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
             onDebugRunJoin={loadExternalDebugJob}
-            activeUsersDebugRuns={activeUsersDebugRuns}>
+            activeUsersDebugRuns={activeUsersDebugRuns}
+            showSearchPanel={showSearchPanel}
+            onShowSearchPanel={setShowSearchPanel}>
             <Canvas
               nodes={nodes}
               edges={edges}

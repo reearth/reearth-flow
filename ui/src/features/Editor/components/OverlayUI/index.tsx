@@ -76,6 +76,8 @@ type OverlayUIProps = {
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
   children?: React.ReactNode;
+  showSearchPanel: boolean;
+  onShowSearchPanel: (boolean: boolean) => void;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -114,6 +116,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onSpotlightUserDeselect,
   children: canvas,
   activeUsersDebugRuns,
+  showSearchPanel,
+  onShowSearchPanel,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
@@ -199,6 +203,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             rawWorkflows={rawWorkflows}
             currentWorkflowId={currentWorkflowId}
             onWorkflowOpen={onWorkflowOpen}
+            showSearchPanel={showSearchPanel}
+            onShowSearchPanel={onShowSearchPanel}
           />
         </div>
         <div id="left-bottom" className="absolute bottom-2 left-2 z-1">

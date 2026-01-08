@@ -305,6 +305,7 @@ export default ({
   );
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
+  const [showSearchPanel, setShowSearchPanel] = useState<boolean>(false);
 
   useHotkeys(
     EDITOR_HOT_KEYS,
@@ -318,7 +319,9 @@ export default ({
             handleProjectSnapshotSave?.();
           if (hasModifier && hasShift)
             handleYWorkflowAddFromSelection(nodes, edges);
-
+          break;
+        case "k":
+          if (hasModifier) setShowSearchPanel(true);
           break;
         case "z":
           if (hasModifier && hasShift) handleYWorkflowRedo?.();
@@ -407,6 +410,7 @@ export default ({
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
+    showSearchPanel,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
@@ -443,5 +447,6 @@ export default ({
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
+    setShowSearchPanel,
   };
 };

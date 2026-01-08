@@ -1,5 +1,5 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { memo } from "react";
 
 import {
   IconButton,
@@ -14,33 +14,30 @@ import { SearchPanel } from "../SearchPanel";
 
 const tooltipOffset = 6;
 
-type PopoverOptions = "search" | undefined;
-
 type Props = {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
   onWorkflowOpen: (id: string) => void;
+  showSearchPanel: boolean;
+  onShowSearchPanel: (boolean: boolean) => void;
 };
 
 const SearchActionBar: React.FC<Props> = ({
   rawWorkflows,
   currentWorkflowId,
   onWorkflowOpen,
+  showSearchPanel,
+  onShowSearchPanel,
 }) => {
   const t = useT();
-  const [showPopover, setShowPopover] = useState<PopoverOptions>(undefined);
-
-  const handlePopoverOpen = (popover: PopoverOptions) =>
-    setShowPopover(popover);
-  const handlePopoverClose = () => setShowPopover(undefined);
   return (
     <div className="pointer-events-auto rounded-md p-1">
       <div className="flex rounded-md">
         <div className="flex flex-1 flex-col justify-end gap-1 align-middle">
           <Popover
-            open={showPopover === "search"}
+            open={showSearchPanel}
             onOpenChange={(open) => {
-              if (!open) handlePopoverClose();
+              if (!open) onShowSearchPanel(false);
             }}>
             <PopoverTrigger asChild>
               <IconButton
@@ -48,7 +45,7 @@ const SearchActionBar: React.FC<Props> = ({
                 tooltipText={t("Search Actions")}
                 tooltipOffset={tooltipOffset}
                 tooltipPosition="left"
-                onClick={() => handlePopoverOpen("search")}
+                onClick={() => onShowSearchPanel(true)}
                 icon={<MagnifyingGlassIcon size={18} weight="light" />}
               />
             </PopoverTrigger>
@@ -57,12 +54,12 @@ const SearchActionBar: React.FC<Props> = ({
               sideOffset={8}
               collisionPadding={5}
               className="h-[600px] w-100 bg-primary/50  backdrop-blur">
-              {showPopover === "search" && (
+              {showSearchPanel && (
                 <SearchPanel
                   rawWorkflows={rawWorkflows}
                   currentWorkflowId={currentWorkflowId}
                   onWorkflowOpen={onWorkflowOpen}
-                  onPopoverClose={handlePopoverClose}
+                  onShowSearchPanel={onShowSearchPanel}
                 />
               )}
             </PopoverContent>

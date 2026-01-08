@@ -12,14 +12,14 @@ type SearchPanelProps = {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
   onWorkflowOpen: (id: string) => void;
-  onPopoverClose?: () => void;
+  onShowSearchPanel: (boolean: boolean) => void;
 };
 
 export const SearchPanel = ({
   rawWorkflows,
   currentWorkflowId,
   onWorkflowOpen,
-  onPopoverClose,
+  onShowSearchPanel,
 }: SearchPanelProps) => {
   const t = useT();
   const { allNodes, handleNavigateToNode } = useSearchNodes({
@@ -43,14 +43,16 @@ export const SearchPanel = ({
       accessorKey: "displayName",
       header: "Action Name",
       cell: ({ row }) => (
-        <span className="font-medium">{row.original.displayName}</span>
+        <span className="block max-w-[100px] truncate font-medium">
+          {row.original.displayName}
+        </span>
       ),
     },
     {
       accessorKey: "workflowName",
       header: "Workflow",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
+        <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
           {row.original.workflowName}
         </span>
       ),
@@ -75,7 +77,7 @@ export const SearchPanel = ({
         <span className="text-center">{t("Search Actions")}</span>
         <IconButton
           variant="ghost"
-          onClick={onPopoverClose}
+          onClick={() => onShowSearchPanel(false)}
           icon={<XIcon size={16} />}
         />
       </div>
