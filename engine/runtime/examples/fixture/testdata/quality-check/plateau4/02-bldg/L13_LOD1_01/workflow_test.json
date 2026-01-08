@@ -19,9 +19,9 @@
     }
   },
   "cityGmlPath": "udx/bldg/l13_fail_interior_exterior_crossing.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "expectResultOkFile": false,
   "prcs": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx"
+  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
 }

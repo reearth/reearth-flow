@@ -37,7 +37,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD0-1のBuildingPart.csv")
+        file::join_path(env.get("workerArtifactPath"), "02_建築物_LOD0-1のBuildingPart.csv")
 
   # Counter for LOD0/LOD1 BuildingPart detection errors (Z-bldg-04)
   - id: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
@@ -132,7 +132,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_L-bldg-02エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "02_建築物_L-bldg-02エラー.csv")
 
   - id: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
     name: ErrorCount-Lbldg02

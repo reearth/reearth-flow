@@ -19,8 +19,8 @@
     }
   },
   "cityGmlPath": "udx/bldg/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "intermediateAssertions": [
     {
       "edgeId": "7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b.66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b",
@@ -32,5 +32,5 @@
   "expectResultOkFile": false,
   "skip": false,
   "prcs": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx"
+  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
 }

@@ -96,15 +96,15 @@ pub struct WorkflowTestProfile {
 
     /// Path to codelists directory (relative to test folder, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub codelists: Option<String>,
+    pub codelists_path: Option<String>,
 
     /// Path to schemas directory (relative to test folder, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schemas: Option<String>,
+    pub schemas_path: Option<String>,
 
     /// Path to object lists file (relative to test folder, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub object_lists: Option<String>,
+    pub object_lists_path: Option<String>,
 
     /// PRCS (Plane Rectangular Coordinate System) zone number for coordinate reference system (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -415,22 +415,22 @@ impl TestContext {
         let city_gml_url = format!("file://{}", city_gml_path.display());
         test_variables.insert("cityGmlPath".to_string(), city_gml_url);
 
-        if let Some(codelists) = &self.profile.codelists {
+        if let Some(codelists) = &self.profile.codelists_path {
             let codelists_path = self.test_dir.join(codelists);
             let codelists_url = format!("file://{}", codelists_path.display());
-            test_variables.insert("codelists".to_string(), codelists_url);
+            test_variables.insert("codelistsPath".to_string(), codelists_url);
         }
 
-        if let Some(schemas) = &self.profile.schemas {
+        if let Some(schemas) = &self.profile.schemas_path {
             let schemas_path = self.test_dir.join(schemas);
             let schemas_url = format!("file://{}", schemas_path.display());
-            test_variables.insert("schemas".to_string(), schemas_url);
+            test_variables.insert("schemasPath".to_string(), schemas_url);
         }
 
-        if let Some(object_lists) = &self.profile.object_lists {
+        if let Some(object_lists) = &self.profile.object_lists_path {
             let object_lists_path = self.test_dir.join(object_lists);
             let object_lists_url = format!("file://{}", object_lists_path.display());
-            test_variables.insert("objectLists".to_string(), object_lists_url);
+            test_variables.insert("objectListsPath".to_string(), object_lists_url);
         }
 
         if let Some(prcs) = &self.profile.prcs {
@@ -438,7 +438,7 @@ impl TestContext {
         }
 
         test_variables.insert(
-            "outputPath".to_string(),
+            "workerArtifactPath".to_string(),
             self.temp_dir.display().to_string(),
         );
         test_variables.insert(
@@ -1395,9 +1395,9 @@ mod tests {
             description: None,
             expected_output: None,
             city_gml_path: CityGmlPath::GmlFile("dummy".to_string()),
-            codelists: None,
-            schemas: None,
-            object_lists: None,
+            codelists_path: None,
+            schemas_path: None,
+            object_lists_path: None,
             prcs: None,
             intermediate_assertions: vec![],
             summary_output: None,
@@ -1464,9 +1464,9 @@ mod tests {
             description: None,
             expected_output: None,
             city_gml_path: CityGmlPath::GmlFile("dummy".to_string()),
-            codelists: None,
-            schemas: None,
-            object_lists: None,
+            codelists_path: None,
+            schemas_path: None,
+            object_lists_path: None,
             prcs: None,
             intermediate_assertions: vec![],
             summary_output: None,

@@ -4,10 +4,13 @@ name: "PLATEAU4-quality-check-02-bldg-workflow"
 entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
   cityGmlPath:
+  codelistsPath:
   codelists:
+  schemasPath:
   schemas:
+  objectListsPath:
   objectLists:
-  outputPath:
+  workerArtifactPath:
   prcs:
 graphs:
   # Common quality check graphs
@@ -36,9 +39,9 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListPath: env.get("objectLists"),
-                codelists: env.get("codelists"),
-                schemas: env.get("schemas"),
+                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
               },
             ]
 
@@ -407,7 +410,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "02_建築物_検査結果一覧.csv")
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -596,7 +599,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_bldg.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_bldg.json")
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -626,7 +629,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
@@ -637,7 +640,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:

@@ -3,10 +3,13 @@ name: "PLATEAU4-quality-check-05-luse-urf-area"
 entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
 with:
   cityGmlPath:
+  schemasPath:
   schemas:
+  codelistsPath:
   codelists:
-  outputPath:
+  workerArtifactPath:
   prcs:
+  objectListsPath:
   objectLists:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -40,9 +43,9 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemas"),
-                codelists: env.get("codelists"),
-                objectListPath: env.get("objectLists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
               },
             ]
 
@@ -177,7 +180,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "05_土地利用_都市決定情報_区域_地物インスタンス数.csv")
+            file::join_path(env.get("workerArtifactPath"), "05_土地利用_都市決定情報_区域_地物インスタンス数.csv")
 
       # Surface inspection flow
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
@@ -234,7 +237,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "05_土地利用_都市決定情報_区域_面の向き不正.csv")
+            file::join_path(env.get("workerArtifactPath"), "05_土地利用_都市決定情報_区域_面の向き不正.csv")
 
       - id: 26751290-4ac7-4884-908a-7c231b5f820a
         name: SurfaceOrientationErrorCounter
@@ -282,7 +285,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "05_土地利用_都市決定情報_区域_面のエラー.csv")
+            file::join_path(env.get("workerArtifactPath"), "05_土地利用_都市決定情報_区域_面のエラー.csv")
 
       - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
         name: SurfaceErrorCounter
@@ -398,7 +401,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "05_土地利用_都市決定情報_区域_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "05_土地利用_都市決定情報_区域_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -479,7 +482,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_luse_urf_area.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_luse_urf_area.json")
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -512,7 +515,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
@@ -523,7 +526,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:
