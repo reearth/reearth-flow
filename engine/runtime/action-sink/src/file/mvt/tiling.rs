@@ -1,18 +1,27 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+pub(crate) struct VectorLayer {
+    pub(crate) id: String,
+    pub(crate) fields: std::collections::HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct TileMetadata {
-    name: String,
-    description: String,
-    version: u8,
+    tilejson: String,
+    tiles: Vec<String>,
+    vector_layers: Vec<VectorLayer>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
     minzoom: u8,
     maxzoom: u8,
-    bounds: String,
-    center: String,
-    #[serde(rename = "type")]
-    r#type: String,
-    format: String,
+    bounds: [f64; 4],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    center: Option<[f64; 3]>,
 }
 
 impl TileMetadata {
@@ -21,6 +30,8 @@ impl TileMetadata {
         min_zoom: u8,
         max_zoom: u8,
         tile_content: &TileContent,
+        tiles: Vec<String>,
+        vector_layers: Vec<VectorLayer>,
     ) -> Self {
         let bounds = [
             tile_content.min_lng,
@@ -31,25 +42,19 @@ impl TileMetadata {
         let center = [
             (tile_content.min_lng + tile_content.max_lng) / 2.0,
             (tile_content.min_lat + tile_content.max_lat) / 2.0,
+            max_zoom as f64,
         ];
         TileMetadata {
-            name,
-            description: "".to_string(),
-            version: 2,
+            tilejson: "3.0.0".to_string(),
+            tiles,
+            vector_layers,
+            name: Some(name),
+            description: None,
+            version: None,
             minzoom: min_zoom,
             maxzoom: max_zoom,
-            bounds: bounds
-                .iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<String>>()
-                .join(","),
-            center: center
-                .iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<String>>()
-                .join(","),
-            r#type: "overlay".to_string(),
-            format: "pbf".to_string(),
+            bounds,
+            center: Some(center),
         }
     }
 }

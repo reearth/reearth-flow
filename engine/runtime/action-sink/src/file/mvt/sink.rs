@@ -34,7 +34,7 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping"
+        "Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -126,6 +126,7 @@ pub struct MVTWriter {
 /// # MVTWriter Parameters
 ///
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
+/// Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as the root (tileJSON requires absolute URLs).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {

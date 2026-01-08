@@ -29,6 +29,7 @@ use super::tags::convert_properties;
 use super::tileid::TileIdMethod;
 use super::tiling::TileContent;
 use super::tiling::TileMetadata;
+use super::tiling::VectorLayer;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
@@ -41,6 +42,7 @@ pub(super) fn geometry_slicing_stage(
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
+    let layer_names = Arc::new(Mutex::new(std::collections::HashSet::new()));
     let storage = ctx
         .storage_resolver
         .resolve(output_path)
@@ -53,6 +55,13 @@ pub(super) fn geometry_slicing_stage(
         .try_for_each(|(feature, layer_name)| {
             let max_detail = 12; // 4096
             let buffer_pixels = 5;
+
+            // Collect unique layer names
+            layer_names
+                .lock()
+                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
+                .insert(layer_name.clone());
+
             let tile_content = slice_cityobj_geoms(
                 feature,
                 layer_name,
@@ -137,21 +146,34 @@ pub(super) fn geometry_slicing_stage(
         tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
     }
 
-    // Using output path basename as tileset name. Fallback to "unnamed_tileset".
-    let mut basename = "unnamed_tileset";
-    if let Some(path) = output_path.file_name() {
-        if let Some(path_str) = path.to_str() {
-            basename = path_str;
-        } else {
-            tracing::warn!("Failed to parse output path basename {:?} as UTF-8.", path);
-        }
-    } else {
-        tracing::warn!(
-            "Failed to get tileset name from output path {:?}",
-            output_path
-        );
-    }
+    // Get tileset name from output path
+    let basename = output_path
+        .file_name()
+        .ok_or_else(|| {
+            crate::errors::SinkError::MvtWriter(format!(
+                "Failed to get tileset name from output path {:?}",
+                output_path
+            ))
+        })?
+        .to_str()
+        .ok_or_else(|| {
+            crate::errors::SinkError::MvtWriter(format!(
+                "Failed to parse output path basename as UTF-8: {:?}",
+                output_path
+            ))
+        })?;
 
+    // Construct absolute path for tiles (parent of tilejson.json is root)
+    let tiles = vec!["/{{z}}/{{x}}/{{y}}.mvt".to_string()];
+    let vector_layers: Vec<_> = layer_names
+        .lock()
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
+        .iter()
+        .map(|id| VectorLayer {
+            id: id.clone(),
+            fields: HashMap::new(),
+        })
+        .collect();
     let metadata = TileMetadata::from_tile_content(
         basename.to_string(),
         min_zoom,
@@ -162,6 +184,8 @@ pub(super) fn geometry_slicing_stage(
             min_lat: tile_content.min_lat,
             max_lat: tile_content.max_lat,
         },
+        tiles,
+        vector_layers,
     );
 
     serde_json::to_string_pretty(&metadata)
@@ -170,7 +194,7 @@ pub(super) fn geometry_slicing_stage(
             storage
                 .put_sync(
                     &output_path
-                        .join(Path::new("metadata.json"))
+                        .join(Path::new("tilejson.json"))
                         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?
                         .path(),
                     bytes::Bytes::from(metadata),
