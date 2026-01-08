@@ -17,105 +17,190 @@ graphs:
           format: csv
           inline: |
             env.get("csvFile")
-      
+
       - id: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
         name: PrepareAttribute
-        type: action 
-        action: AttributeManager 
+        type: action
+        action: AttributeManager
         with:
           operations:
-          - attribute: year 
-            method: create 
-            value: 
-              env.get("__value")["年"];          
+          - attribute: year
+            method: create
+            value:
+              env.get("__value")["年"];
           - attribute: 年
             method: remove
-          
-          - attribute: month 
-            method: create 
-            value: 
+
+          - attribute: month
+            method: create
+            value:
               env.get("__value")["月"];
           - attribute: 月
-            method: remove 
+            method: remove
 
-          - attribute: daylight_hours 
-            method: create 
-            value: 
+          - attribute: daylight_hours
+            method: create
+            value:
               env.get("__value")["日照時間(時間)"];
           - attribute: 日照時間(時間)
-            method: remove      
+            method: remove
 
-          - attribute: daylight_hours_num 
-            method: create 
-            value: 
+          - attribute: daylight_hours_num
+            method: create
+            value:
               env.get("__value")["日照時間(時間)00"];
           - attribute: 日照時間(時間)00
-            method: remove         
+            method: remove
 
-          - attribute: days_less_then_1h_daylight 
-            method: create 
-            value: 
+          - attribute: days_less_then_1h_daylight
+            method: create
+            value:
               env.get("__value")["日照時間0.1時間未満日数(日)"];
           - attribute: 日照時間0.1時間未満日数(日)
-            method: remove      
+            method: remove
 
-          - attribute: days_less_then_1h_daylight_num 
-            method: create 
-            value: 
+          - attribute: days_less_then_1h_daylight_num
+            method: create
+            value:
               env.get("__value")["日照時間0.1時間未満日数(日)00"];
           - attribute: 日照時間0.1時間未満日数(日)00
-            method: remove   
+            method: remove
 
-          - attribute: days_over_40%_daylight_late 
-            method: create 
-            value: 
+          - attribute: days_over_40%_daylight_late
+            method: create
+            value:
               env.get("__value")["日照率40%以上日数(日)"];
           - attribute: 日照率40%以上日数(日)
-            method: remove      
+            method: remove
 
-          - attribute: days_over_40%_daylight_late_num 
-            method: create 
-            value: 
+          - attribute: days_over_40%_daylight_late_num
+            method: create
+            value:
               env.get("__value")["日照率40%以上日数(日)00"];
           - attribute: 日照率40%以上日数(日)00
-            method: remove   
+            method: remove
 
           - attribute: max_daylight_hours
-            method: create 
-            value: | 
-              310 
+            method: create
+            value: |
+              310
 
           - attribute: transmissivity
-            method: create 
+            method: create
             value: |
-              0.75        
+              0.75
 
+      # 1) Group features by the month attribute
+      # 2) Calculate sums for all the required attributes: daylight_hours, daylight_hours_num, days_less_then_1h_daylight, etc.
+      # 3) Also calculates a count by using an expression that always evaluates to 1
       - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
-        name: AverageOnMonth
-        # daylight_hours daylight_hours_num days_less_then_1h_daylight days_less_then_1h_daylight_num days_over_40%_daylight_late days_over_40%_daylight_late_num max_daylight_hours transmissivity
-        type: action 
-        action: AttributeAggregator
-        with: 
-          aggregateAttributes:
-          - newAttribute: daylight_hours
-            attribute: daylight_hours
-          - newAttribute: daylight_hours_num
-            attribute: daylight_hours_num
-          - newAttribute: days_less_then_1h_daylight
-            attribute: days_less_then_1h_daylight
-          - newAttribute: days_less_then_1h_daylight_num
-            attribute: days_less_then_1h_daylight_num
-          - newAttribute: days_over_40%_daylight_late
-            attribute: days_over_40%_daylight_late
-          - newAttribute: days_over_40%_daylight_late_num
-            attribute: days_over_40%_daylight_late_num
-          - newAttribute: max_daylight_hours
-            attribute: max_daylight_hours
-          - newAttribute: transmissivity
-            attribute: transmissivity 
-          calculationAttribute: month 
-          method: average                            
- 
+        name: AggregateByMonth
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - month
+          calculations:
+            - newAttribute: count
+              expr: |
+                1
+
+            - newAttribute: sum_daylight_hours
+              expr: |
+                let v = env.get("__value")["daylight_hours"];
+                parse_float(v)
+
+            - newAttribute: sum_daylight_hours_num
+              expr: |
+                let v = env.get("__value")["daylight_hours_num"];
+                parse_float(v)
+
+            - newAttribute: sum_days_less_then_1h_daylight
+              expr: |
+                let v = env.get("__value")["days_less_then_1h_daylight"];
+                parse_float(v)
+            - newAttribute: sum_days_less_then_1h_daylight_num
+              expr: |
+                let v = env.get("__value")["days_less_then_1h_daylight_num"];
+                parse_float(v)
+            - newAttribute: sum_days_over_40%_daylight_late
+              expr: |
+                let v = env.get("__value")["days_over_40%_daylight_late"];
+                parse_float(v)
+            - newAttribute: sum_days_over_40%_daylight_late_num
+              expr: |
+                let v = env.get("__value")["days_over_40%_daylight_late_num"];
+                parse_float(v)
+            - newAttribute: sum_max_daylight_hours
+              expr: |
+                let v = env.get("__value")["max_daylight_hours"];
+                parse_float(v)
+            - newAttribute: sum_transmissivity
+              expr: |
+                let v = env.get("__value")["transmissivity"];
+                parse_float(v)
+
+
+      # 1) Divide each sum by the count to get the average value for each attribute
+      # 2) Create new attributes with the averaged values (prefixed with avg_)
+      # 3) Remove the temporary sum and count attributes to clean up
+      - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e4
+        name: CalculateAverages
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: avg_daylight_hours
+              method: create
+              value: |
+                env.get("sum_daylight_hours") / env.get("count")
+            - attribute: avg_daylight_hours_num
+              method: create
+              value: |
+                env.get("sum_daylight_hours_num") / env.get("count")
+            - attribute: avg_days_less_then_1h_daylight
+              method: create
+              value: |
+                env.get("sum_days_less_then_1h_daylight") / env.get("count")
+            - attribute: avg_days_less_then_1h_daylight_num
+              method: create
+              value: |
+                env.get("sum_days_less_then_1h_daylight_num") / env.get("count")
+            - attribute: avg_days_over_40%_daylight_late
+              method: create
+              value: |
+                env.get("sum_days_over_40%_daylight_late") / env.get("count")
+            - attribute: avg_days_over_40%_daylight_late_num
+              method: create
+              value: |
+                env.get("sum_days_over_40%_daylight_late_num") / env.get("count")
+            - attribute: avg_max_daylight_hours
+              method: create
+              value: |
+                env.get("sum_max_daylight_hours") / env.get("count")
+            - attribute: avg_transmissivity
+              method: create
+              value: |
+                env.get("sum_transmissivity") / env.get("count")
+            - attribute: sum_daylight_hours
+              method: remove
+            - attribute: sum_daylight_hours_num
+              method: remove
+            - attribute: sum_days_less_then_1h_daylight
+              method: remove
+            - attribute: sum_days_less_then_1h_daylight_num
+              method: remove
+            - attribute: sum_days_over_40%_daylight_late
+              method: remove
+            - attribute: sum_days_over_40%_daylight_late_num
+              method: remove
+            - attribute: sum_max_daylight_hours
+              method: remove
+            - attribute: sum_transmissivity
+              method: remove
+            - attribute: count
+              method: remove
+
       - id: cf028708-eba2-11f0-baa6-7c70db10a7e3
         name: DummyOutput
         type: action
@@ -131,12 +216,12 @@ graphs:
       - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
         from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
         to: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
-        fromPort: default 
+        fromPort: default
         toPort: default
 
       - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
         from: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
         to: cf028708-eba2-11f0-baa6-7c70db10a7e3
-        fromPort: default 
+        fromPort: default
         toPort: default
 
