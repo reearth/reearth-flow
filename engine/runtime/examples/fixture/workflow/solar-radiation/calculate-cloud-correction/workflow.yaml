@@ -186,26 +186,6 @@ graphs:
               expr: |
                 let v = env.get("__value")["avg_daylight_hours_num"];
                 parse_float(v)
-            # - newAttribute: sum_days_less_then_1h_daylight
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_less_then_1h_daylight"];
-            #     parse_float(v)
-            # - newAttribute: sum_days_less_then_1h_daylight_num
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_less_then_1h_daylight_num"];
-            #     parse_float(v)
-            # - newAttribute: sum_days_over_40%_daylight_late
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_over_40%_daylight_late"];
-            #     parse_float(v)
-            # - newAttribute: sum_days_over_40%_daylight_late_num
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_over_40%_daylight_late_num"];
-            #     parse_float(v)
-            # - newAttribute: sum_max_daylight_hours
-            #   expr: |
-            #     let v = env.get("__value")["avg_max_daylight_hours"];
-            #     parse_float(v)
             - newAttribute: sum_transmissivity
               expr: |
                 let v = env.get("__value")["avg_transmissivity"];
@@ -229,26 +209,6 @@ graphs:
               method: create
               value: |
                 env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
-            # - attribute: avg_days_less_then_1h_daylight
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_less_then_1h_daylight"] / env.get("__value")["count"]
-            # - attribute: avg_days_less_then_1h_daylight_num
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_less_then_1h_daylight_num"] / env.get("__value")["count"]
-            # - attribute: avg_days_over_40%_daylight_late
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_over_40%_daylight_late"] / env.get("__value")["count"]
-            # - attribute: avg_days_over_40%_daylight_late_num
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_over_40%_daylight_late_num"] / env.get("__value")["count"]
-            # - attribute: avg_max_daylight_hours
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_max_daylight_hours"] / env.get("__value")["count"]
             - attribute: avg_transmissivity
               method: create
               value: |
@@ -257,16 +217,6 @@ graphs:
               method: remove
             - attribute: sum_daylight_hours_num
               method: remove
-            # - attribute: sum_days_less_then_1h_daylight
-            #   method: remove
-            # - attribute: sum_days_less_then_1h_daylight_num
-            #   method: remove
-            # - attribute: sum_days_over_40%_daylight_late
-            #   method: remove
-            # - attribute: sum_days_over_40%_daylight_late_num
-            #   method: remove
-            # - attribute: sum_max_daylight_hours
-            #   method: remove
             - attribute: sum_transmissivity
               method: remove
             - attribute: count
@@ -287,26 +237,6 @@ graphs:
             - newAttribute: sum_daylight_hours_num
               expr: |
                 env.get("__value")["avg_daylight_hours_num"]
-            # - newAttribute: sum_days_less_then_1h_daylight
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_less_then_1h_daylight"];
-            #     parse_float(v)
-            # - newAttribute: sum_days_less_then_1h_daylight_num
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_less_then_1h_daylight_num"];
-            #     parse_float(v)
-            # - newAttribute: sum_days_over_40%_daylight_late
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_over_40%_daylight_late"];
-            #     parse_float(v)
-            # - newAttribute: sum_days_over_40%_daylight_late_num
-            #   expr: |
-            #     let v = env.get("__value")["avg_days_over_40%_daylight_late_num"];
-            #     parse_float(v)
-            # - newAttribute: sum_max_daylight_hours
-            #   expr: |
-            #     let v = env.get("__value")["avg_max_daylight_hours"];
-            #     parse_float(v)
             - newAttribute: sum_transmissivity
               expr: |
                 env.get("__value")["avg_transmissivity"]
@@ -329,26 +259,6 @@ graphs:
               method: create
               value: |
                 env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
-            # - attribute: avg_days_less_then_1h_daylight
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_less_then_1h_daylight"] / env.get("__value")["count"]
-            # - attribute: avg_days_less_then_1h_daylight_num
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_less_then_1h_daylight_num"] / env.get("__value")["count"]
-            # - attribute: avg_days_over_40%_daylight_late
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_over_40%_daylight_late"] / env.get("__value")["count"]
-            # - attribute: avg_days_over_40%_daylight_late_num
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_days_over_40%_daylight_late_num"] / env.get("__value")["count"]
-            # - attribute: avg_max_daylight_hours
-            #   method: create
-            #   value: |
-            #     env.get("__value")["sum_max_daylight_hours"] / env.get("__value")["count"]
             - attribute: avg_transmissivity
               method: create
               value: |
@@ -357,32 +267,77 @@ graphs:
               method: remove
             - attribute: sum_daylight_hours_num
               method: remove
-            # - attribute: sum_days_less_then_1h_daylight
-            #   method: remove
-            # - attribute: sum_days_less_then_1h_daylight_num
-            #   method: remove
-            # - attribute: sum_days_over_40%_daylight_late
-            #   method: remove
-            # - attribute: sum_days_over_40%_daylight_late_num
-            #   method: remove
-            # - attribute: sum_max_daylight_hours
-            #   method: remove
             - attribute: sum_transmissivity
               method: remove
             - attribute: count
               method: remove
 
-      # ExpressionEvaluator_6 equivalent - combines results
+      # ExpressionEvaluator_6 equivalent - calculates sunshine rate
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e8
         name: ExpressionEvaluator_6
         type: action
         action: AttributeManager
         with:
           operations:
-            - attribute: combined_result
+            - attribute: sunshine_rate
               method: create
               value: |
-                env.get("__value")["avg_daylight_hours"]
+                env.get("__value")["avg_daylight_hours"] / env.get("__value")["avg_max_daylight_hours"]
+
+      # ExpressionEvaluator_8 equivalent - calculates cloud rate
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e9
+        name: ExpressionEvaluator_8
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cloud_rate
+              method: create
+              value: |
+                1.0 - env.get("__value")["sunshine_rate"]
+
+      # ExpressionEvaluator_7 equivalent - creates is_not_9999 flag
+      - id: 00557d1e-ec71-11f0-8212-7c70db10a7e3
+        name: ExpressionEvaluator_7
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: is_not_9999
+              method: create
+              value: |
+                if env.get("__value")["year"] != 9999 then 1.0 else 0.0
+
+      # StatisticsCalculator_5 equivalent - performs statistics calculations
+      - id: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
+        name: StatisticsCalculator_5
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - year
+          calculations:
+            - newAttribute: sum_is_not_9999
+              expr: |
+                env.get("__value")["is_not_9999"]
+            - newAttribute: sum_sunshine_rate
+              expr: |
+                env.get("__value")["sunshine_rate"]
+            - newAttribute: sum_cloud_rate
+              expr: |
+                env.get("__value")["cloud_rate"]
+
+      # AttributeCreator_6 equivalent - creates join key
+      - id: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
+        name: AttributeCreator_6
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: join_key
+              method: create
+              value: |
+                "key"
 
       - id: cf028708-eba2-11f0-baa6-7c70db10a7e3
         name: DummyOutput
@@ -456,9 +411,37 @@ graphs:
         fromPort: default
         toPort: default
 
-      # Connect to final output
-      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e9
+      # Connect ExpressionEvaluator_6 to ExpressionEvaluator_8
+      - id: e76300b0-ec70-11f0-8c1a-7c70db10a7e3
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e8
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e9
+        fromPort: default
+        toPort: default
+
+      # Connect ExpressionEvaluator_8 to ExpressionEvaluator_7
+      - id: f05a8bfc-ec70-11f0-870f-7c70db10a7e3
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e9
+        to: 00557d1e-ec71-11f0-8212-7c70db10a7e3
+        fromPort: default
+        toPort: default
+      
+      # Connect ExpressionEvaluator_7 to StatisticsCalculator_5
+      - id: 2b2b8e02-ec71-11f0-8282-7c70db10a7e3
+        from: 00557d1e-ec71-11f0-8212-7c70db10a7e3
+        to: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      # Connect StatisticsCalculator_5 to AttributeCreator_6
+      - id: 4c8c746c-ec71-11f0-9a9a-7c70db10a7e3
+        from: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
+        to: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
+        fromPort: default 
+        toPort: default 
+
+      # Connect AttributeCreator_6 to final output
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e9
+        from: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
         to: cf028708-eba2-11f0-baa6-7c70db10a7e3
         fromPort: default
         toPort: default
