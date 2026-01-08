@@ -88,11 +88,12 @@ const SearchPanel = ({
         <VirtualizedTable
           columns={searchNodeColumns}
           data={allNodes}
-          showFiltering={true}
+          showFiltering
           selectedFeatureId={selectedNodeId}
           onRowClick={handleRowClick}
           onRowDoubleClick={handleRowDoubleClick}
-          condensed={true}
+          condensed
+          surpressAutoScroll
         />
       </div>
     </div>

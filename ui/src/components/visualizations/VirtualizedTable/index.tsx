@@ -37,6 +37,7 @@ type DataTableProps<TData, TValue> = {
   condensed?: boolean;
   searchTerm?: string;
   selectedFeatureId?: string | null;
+  surpressAutoScroll?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setSearchTerm?: (term: string) => void;
@@ -49,6 +50,7 @@ function VirtualizedTable<TData, TValue>({
   showFiltering = false,
   condensed,
   selectedFeatureId,
+  surpressAutoScroll,
   onRowClick,
   onRowDoubleClick,
   setSearchTerm,
@@ -150,8 +152,19 @@ function VirtualizedTable<TData, TValue>({
     );
   }, [selectedFeatureId, data]);
 
+  useEffect(() => {
+    if (selectedRowIndex !== -1 && !surpressAutoScroll) {
+      virtualizer.scrollToIndex(selectedRowIndex, {
+        align: "start",
+        behavior: "auto",
+      });
+    }
+  }, [selectedRowIndex, virtualizer, surpressAutoScroll]);
+
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
+
+  console.log("TEST", virtualizer.getVirtualItems().length);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
