@@ -6,7 +6,7 @@ with:
   schemasPath:
   codelistsPath:
   objectLists:
-  outputPath:
+  workerArtifactPath:
   prcs:
 graphs:
   # Common quality check graphs
@@ -463,7 +463,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "08_地形_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "08_地形_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
       - id: 9fad8d36-c64d-47c2-9221-43e86524c8e5
@@ -565,7 +565,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_dem.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_dem.json")
 
       # Calculate total errors for no-error check
       - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b

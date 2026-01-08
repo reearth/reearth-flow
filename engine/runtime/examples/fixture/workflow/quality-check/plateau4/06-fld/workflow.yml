@@ -5,7 +5,7 @@ with:
   cityGmlPath:
   codelistsPath:
   schemasPath:
-  outputPath:
+  workerArtifactPath:
   prcs:
 graphs:
   - id: 0a2f610f-b92c-483b-a76a-e6143c3ab249

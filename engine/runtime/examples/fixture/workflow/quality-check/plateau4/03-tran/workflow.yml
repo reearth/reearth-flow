@@ -7,7 +7,7 @@ with:
   schemasPath:
   codelistsPath:
   objectLists:
-  outputPath:
+  workerArtifactPath:
   prcs:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -699,7 +699,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "03_交通_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "03_交通_検査結果一覧.csv")
 
       # Phase 6: StatisticsCalculator for JSON aggregation
       - id: 9068494f-dee6-41ca-aef2-3e493441ece2
@@ -797,7 +797,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_tran.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_tran.json")
 
       # Phase 8: Calculate total errors for no-error check
       - id: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb

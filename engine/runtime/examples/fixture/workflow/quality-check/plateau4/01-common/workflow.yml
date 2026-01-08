@@ -7,7 +7,7 @@ with:
   codelistsPath:
   schemasPath:
   objectLists:
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml

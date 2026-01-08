@@ -5,7 +5,7 @@ with:
   cityGmlPath:
   schemasPath:
   codelistsPath:
-  outputPath:
+  workerArtifactPath:
   prcs:
   objectLists:
 graphs:
@@ -398,7 +398,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "05_土地利用_都市決定情報_区域_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "05_土地利用_都市決定情報_区域_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -479,7 +479,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_luse_urf_area.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_luse_urf_area.json")
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3

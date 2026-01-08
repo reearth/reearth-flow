@@ -7,7 +7,7 @@ with:
   codelistsPath:
   schemasPath:
   objectLists:
-  outputPath:
+  workerArtifactPath:
   prcs:
 graphs:
   # Common quality check graphs
@@ -407,7 +407,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "02_建築物_検査結果一覧.csv")
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -596,7 +596,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_bldg.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_bldg.json")
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
