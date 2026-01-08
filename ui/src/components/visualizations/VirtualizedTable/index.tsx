@@ -164,8 +164,6 @@ function VirtualizedTable<TData, TValue>({
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
 
-  console.log("TEST", virtualizer.getVirtualItems().length);
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       {(showFiltering || selectColumns) && (
