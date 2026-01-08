@@ -9,6 +9,7 @@ import type {
   Direction,
   Node,
   Project,
+  Workflow,
 } from "@flow/types";
 
 import {
@@ -22,6 +23,7 @@ import {
   Homebar,
   VersionDialog,
 } from "./components";
+import SearchActionBar from "./components/SearchActionBar";
 import useHooks from "./hooks";
 
 type OverlayUIProps = {
@@ -32,6 +34,7 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
+  rawWorkflows: Workflow[];
   project?: Project;
   yDoc: Doc | null;
   openWorkflows: {
@@ -76,6 +79,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
+  rawWorkflows,
   yDoc,
   project,
   allowedToDeploy,
@@ -177,6 +181,15 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDialogClose={handleDialogClose}
           />
         )}
+        <div
+          id="left-bottom"
+          className="pointer-events-none absolute bottom-2 left-2 flex flex-row-reverse items-end gap-4">
+          <SearchActionBar
+            rawWorkflows={rawWorkflows}
+            currentWorkflowId={currentWorkflowId}
+            onWorkflowChange={onWorkflowChange}
+          />
+        </div>
         <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
           <DebugPanel />
         </div>

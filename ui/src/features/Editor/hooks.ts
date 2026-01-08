@@ -403,6 +403,7 @@ export default ({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    rawWorkflows,
     loadExternalDebugJob,
     handleWorkflowDeployment,
     handleProjectShare,

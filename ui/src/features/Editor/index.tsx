@@ -48,6 +48,7 @@ export default function Editor({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    rawWorkflows,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -124,6 +125,7 @@ export default function Editor({
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
+            rawWorkflows={rawWorkflows}
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             onWorkflowChange={handleWorkflowChange}
