@@ -150,15 +150,6 @@ function VirtualizedTable<TData, TValue>({
     );
   }, [selectedFeatureId, data]);
 
-  useEffect(() => {
-    if (selectedRowIndex !== -1) {
-      virtualizer.scrollToIndex(selectedRowIndex, {
-        align: "start",
-        behavior: "auto",
-      });
-    }
-  }, [selectedRowIndex, virtualizer]);
-
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
 
