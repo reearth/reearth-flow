@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
     env,
@@ -211,6 +211,57 @@ impl State {
             .put(dst_path.as_path(), bytes)
             .await
             .map_err(Error::other)
+    }
+
+    fn looks_like_zstd(bytes: &[u8]) -> bool {
+        // ZSTD frame magic number: 0xFD2FB528 (little endian in bytes: 28 B5 2F FD)
+        bytes.len() >= 4
+            && bytes[0] == 0x28
+            && bytes[1] == 0xB5
+            && bytes[2] == 0x2F
+            && bytes[3] == 0xFD
+    }
+
+    fn decode_auto<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, [u8]>> {
+        if Self::looks_like_zstd(bytes) {
+            let v = zstd::stream::decode_all(bytes).map_err(Error::other)?;
+            Ok(Cow::Owned(v))
+        } else {
+            Ok(Cow::Borrowed(bytes))
+        }
+    }
+
+    pub fn read_jsonl_auto_sync<T>(&self, id: &str) -> Result<Vec<T>>
+    where
+        T: DeserializeOwned,
+    {
+        // try both extensions, regardless of env
+        let candidates = ["jsonl", "jsonl.zst"];
+        let mut last_err: Option<Error> = None;
+
+        for ext in candidates {
+            let p = self.id_to_location(id, ext);
+            match self.storage.get_sync(p.as_path()) {
+                Ok(bytes) => {
+                    let data = self.decode_auto(bytes.as_ref())?;
+                    let s = std::str::from_utf8(&data).map_err(Error::other)?;
+                    let mut out = Vec::new();
+                    for line in s.lines() {
+                        let line = line.trim();
+                        if line.is_empty() {
+                            continue;
+                        }
+                        let obj: T = self.string_to_object(line)?;
+                        out.push(obj);
+                    }
+                    return Ok(out);
+                }
+                Err(e) => {
+                    last_err = Some(Error::other(e));
+                }
+            }
+        }
+        Err(last_err.unwrap_or_else(|| Error::other("no candidate jsonl found")))
     }
 }
 

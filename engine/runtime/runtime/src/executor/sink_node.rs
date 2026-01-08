@@ -66,6 +66,7 @@ pub struct SinkNode<F> {
     source_intermediate_recorder: SourceIntermediateRecorder,
     /// State for writing source intermediate data
     feature_state: Arc<State>,
+    incremental_mode: bool,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -75,6 +76,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         node_index: NodeIndex,
         shutdown: F,
         runtime: Arc<Handle>,
+        incremental_mode: bool,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
         let Some(kind) = node.kind.take() else {
@@ -118,6 +120,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             kv_store: ctx.kv_store.clone(),
             source_intermediate_recorder,
             feature_state,
+            incremental_mode,
         }
     }
 
@@ -204,13 +207,15 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
-                    self.source_intermediate_recorder.record_if_from_source(
-                        &self.feature_state,
-                        index,
-                        &ctx,
-                        &self.node_name,
-                        self.node_handle.id.as_ref(),
-                    );
+                    if !self.incremental_mode {
+                        self.source_intermediate_recorder.record_if_from_source(
+                            &self.feature_state,
+                            index,
+                            &ctx,
+                            &self.node_name,
+                            self.node_handle.id.as_ref(),
+                        );
+                    }
 
                     let result = self.on_op(ctx.clone());
 
