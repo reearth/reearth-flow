@@ -53,7 +53,7 @@ const SearchActionBar: React.FC<Props> = ({
               onInteractOutside={(e) => e.preventDefault()}
               sideOffset={8}
               collisionPadding={5}
-              className="min-h-[600px] w-100 bg-primary/50  backdrop-blur">
+              className="min-h-[600px] w-100 bg-primary/50 backdrop-blur">
               {showSearchPanel && (
                 <SearchPanel
                   rawWorkflows={rawWorkflows}

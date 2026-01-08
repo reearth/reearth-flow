@@ -207,13 +207,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onShowSearchPanel={onShowSearchPanel}
           />
         </div>
-        <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
+        <div
+          id="left-bottom-debug-panel"
+          className="absolute bottom-2 left-2 z-1">
           <DebugPanel />
         </div>
-        <div
-          id="bottom-middle"
-          className="pointer-events-none absolute inset-x-0 bottom-2 flex shrink-0 justify-center *:pointer-events-auto"
-        />
         <div
           id="right-bottom"
           className="pointer-events-none absolute right-2 bottom-2 flex flex-row-reverse items-end gap-4">

@@ -42,7 +42,7 @@ const SearchPanel = ({
   const searchNodeColumns: ColumnDef<SearchNodeResult>[] = [
     {
       accessorKey: "displayName",
-      header: "Action Name",
+      header: t("Action Name"),
       cell: ({ row }) => (
         <span className="block max-w-[100px] truncate font-medium">
           {row.original.displayName}
@@ -51,7 +51,7 @@ const SearchPanel = ({
     },
     {
       accessorKey: "workflowName",
-      header: "Workflow",
+      header: t("Workflow"),
       cell: ({ row }) => (
         <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
           {row.original.workflowName}
@@ -60,7 +60,7 @@ const SearchPanel = ({
     },
     {
       accessorKey: "nodeType",
-      header: "Type",
+      header: t("Type"),
       cell: ({ row }) => (
         <div
           className={`self-center rounded border text-center ${row.original.nodeType === "transformer" ? "bg-node-transformer/35" : row.original.nodeType === "reader" ? "bg-node-reader/35" : row.original.nodeType === "writer" ? "bg-node-writer/35" : row.original.nodeType === "subworkflow" ? "bg-node-subworkflow/35" : "bg-popover"} p-1 align-middle`}>
