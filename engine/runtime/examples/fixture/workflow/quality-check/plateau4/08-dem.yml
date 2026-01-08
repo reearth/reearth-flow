@@ -5,7 +5,7 @@ with:
   cityGmlPath: null
   schemasPath: null
   codelistsPath: null
-  objectLists: null
+  objectListsPath: null
   workerArtifactPath: null
   prcs: null
 graphs:
@@ -1198,7 +1198,7 @@ graphs:
     type: action
     action: PLATEAU4.ObjectListExtractor
     with:
-      objectListPathAttribute: objectListPath
+      objectListPathAttribute: objectListsPath
   - id: c760d4d3-7b61-4451-878e-58783cfcbf30
     name: FeatureFilePathExtractor
     type: action
@@ -1603,7 +1603,7 @@ graphs:
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             schemas: env.get("schemasPath"),
             codelists: env.get("codelistsPath"),
-            objectListPath: env.get("objectLists"),
+            objectListsPath: env.get("objectListsPath"),
           },
         ]
   - id: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -1685,7 +1685,7 @@ graphs:
     action: ShapefileWriter
     with:
       output: |
-        file::join_path(env.get("outputPath"), "08_地形_不正な頂点の数.shp")
+        file::join_path(env.get("workerArtifactPath"), "08_地形_不正な頂点の数.shp")
   - id: 02c49104-bf18-40de-9ffe-4fbaef2165f9
     name: StatisticsCalculatorForIncorrectNumVertices
     type: action
@@ -1719,7 +1719,7 @@ graphs:
     action: ShapefileWriter
     with:
       output: |
-        file::join_path(env.get("outputPath"), "08_地形_閉じていない三角形.shp")
+        file::join_path(env.get("workerArtifactPath"), "08_地形_閉じていない三角形.shp")
   - id: 06bb5316-b980-497c-8ba1-d83953b6f6b8
     name: StatisticsCalculatorForNotClosedErrors
     type: action
@@ -1753,7 +1753,7 @@ graphs:
     action: ShapefileWriter
     with:
       output: |
-        file::join_path(env.get("outputPath"), "08_地形_三角形の向き不正.shp")
+        file::join_path(env.get("workerArtifactPath"), "08_地形_三角形の向き不正.shp")
   - id: 21bf6d61-9924-4f74-8eca-224ad4207c3c
     name: StatisticsCalculatorForWrongOrientation
     type: action
@@ -1794,7 +1794,7 @@ graphs:
     action: ShapefileWriter
     with:
       output: |
-        file::join_path(env.get("outputPath"), "08_地形_潰れた三角形.shp")
+        file::join_path(env.get("workerArtifactPath"), "08_地形_潰れた三角形.shp")
   - id: ab08b17d-d8a8-4185-a9f0-454432765edd
     name: StatisticsCalculatorForCorruptGeometry
     type: action
@@ -1866,7 +1866,7 @@ graphs:
     action: ShapefileWriter
     with:
       output: |
-        file::join_path(env.get("outputPath"), "08_地形_不正な穴.shp")
+        file::join_path(env.get("workerArtifactPath"), "08_地形_不正な穴.shp")
   - id: e0ebe5cc-8666-4a24-8516-91454d781892
     name: StatisticsCalculatorForInvalidBoundaries
     type: action
@@ -2108,7 +2108,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: b65d1e91-37a8-489a-87e3-fed91e5de294
     name: ZipFileWriter
@@ -2117,7 +2117,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
   - id: 99b6e8cc-1cba-489a-bc83-9966d3e5fabc

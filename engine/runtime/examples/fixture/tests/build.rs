@@ -51,11 +51,11 @@ struct WorkflowTestProfile {
     expected_output: Option<TestOutput>,
     city_gml_path: CityGmlPath,
     #[serde(skip_serializing_if = "Option::is_none")]
-    codelists: Option<String>,
+    codelists_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    schemas: Option<String>,
+    schemas_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    object_lists: Option<String>,
+    object_lists_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     prcs: Option<i64>,
     #[serde(default)]

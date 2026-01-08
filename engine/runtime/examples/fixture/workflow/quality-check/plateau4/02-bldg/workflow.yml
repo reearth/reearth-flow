@@ -6,7 +6,7 @@ with:
   cityGmlPath:
   codelistsPath:
   schemasPath:
-  objectLists:
+  objectListsPath:
   workerArtifactPath:
   prcs:
 graphs:
@@ -36,7 +36,7 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListPath: env.get("objectLists"),
+                objectListsPath: env.get("objectListsPath"),
                 codelists: env.get("codelistsPath"),
                 schemas: env.get("schemasPath"),
               },
@@ -626,7 +626,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
@@ -637,7 +637,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:

@@ -23,7 +23,7 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 codelists: env.get("codelistsPath"),
                 schemas: env.get("schemasPath"),
-                outputPath: env.get("outputPath"),
+                workerArtifactPath: env.get("workerArtifactPath"),
               },
             ]
 
@@ -309,7 +309,7 @@ graphs:
         with:
           format: csv
           output: |
-            let base_path = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let base_path = env.get("workerArtifactPath");
             let folder = env.get("__value").Folder;
             if folder == () || folder == "" {
               return file::join_path(base_path, "06_浸水想定区域_fld.csv");
@@ -359,7 +359,7 @@ graphs:
               ]
             }
           output: |
-            let base_path = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let base_path = env.get("workerArtifactPath");
             let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
             file::join_path(base_path, json_filename)
 
@@ -399,7 +399,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:

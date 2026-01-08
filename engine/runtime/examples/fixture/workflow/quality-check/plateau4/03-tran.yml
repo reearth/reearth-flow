@@ -5,7 +5,7 @@ with:
   cityGmlPath: null
   schemasPath: null
   codelistsPath: null
-  objectLists: null
+  objectListsPath: null
   workerArtifactPath: null
   prcs: null
 graphs:
@@ -1811,7 +1811,7 @@ graphs:
     type: action
     action: PLATEAU4.ObjectListExtractor
     with:
-      objectListPathAttribute: objectListPath
+      objectListPathAttribute: objectListsPath
   - id: c760d4d3-7b61-4451-878e-58783cfcbf30
     name: FeatureFilePathExtractor
     type: action
@@ -2214,7 +2214,7 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            objectListPath: env.get("objectLists"),
+            objectListsPath: env.get("objectListsPath"),
             schemas: env.get("schemasPath"),
             codelists: env.get("codelistsPath"),
           },
@@ -2325,7 +2325,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "03_交通_xlink参照エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "03_交通_xlink参照エラー.csv")
   - id: 51431704-ac14-41cd-988b-88141dc6e326
     name: PLATEAU3.LodSplitterWithDM
     type: subGraph
@@ -2427,7 +2427,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "03_交通_面の向き不正.csv")
+        file::join_path(env.get("workerArtifactPath"), "03_交通_面の向き不正.csv")
   - id: ce7f18e8-c2cb-42e9-9b2e-9dd72f5ad964
     name: FeatureFilterExcludeRwy
     type: action
@@ -2620,7 +2620,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "03_交通_隣接面重複.csv")
+        file::join_path(env.get("workerArtifactPath"), "03_交通_隣接面重複.csv")
   - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
     name: SurfaceValidationCsvWriter
     type: action
@@ -2628,7 +2628,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "03_交通_面のエラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "03_交通_面のエラー.csv")
   - id: eac6a0cc-0785-4a12-852c-50cdd6f94f13
     name: FileInfoExtractor
     type: action
@@ -2896,7 +2896,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992
     name: ZipFileWriter
@@ -2905,7 +2905,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
   - id: 7613b326-d3d7-4fdc-b7e1-9821e120ac49

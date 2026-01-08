@@ -19,9 +19,9 @@
     }
   },
   "cityGmlPath": "udx/dem/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "objectLists": "08220_city_2023_objectlist_op.xlsx",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
+  "objectListsPath": "08220_city_2023_objectlist_op.xlsx",
   "prcs": 6677,
   "expectResultOkFile": false,
   "skip": false

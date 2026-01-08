@@ -5,7 +5,7 @@ with:
   cityGmlPath: null
   codelistsPath: null
   schemasPath: null
-  objectLists: null
+  objectListsPath: null
   workerArtifactPath: null
 graphs:
 - id: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
@@ -1197,7 +1197,7 @@ graphs:
     type: action
     action: PLATEAU4.ObjectListExtractor
     with:
-      objectListPathAttribute: objectListPath
+      objectListPathAttribute: objectListsPath
   - id: c760d4d3-7b61-4451-878e-58783cfcbf30
     name: FeatureFilePathExtractor
     type: action
@@ -1600,7 +1600,7 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            objectListPath: env.get("objectLists"),
+            objectListsPath: env.get("objectListsPath"),
             codelists: env.get("codelistsPath"),
             schemas: env.get("schemasPath"),
           },
@@ -1629,7 +1629,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
@@ -1657,7 +1657,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

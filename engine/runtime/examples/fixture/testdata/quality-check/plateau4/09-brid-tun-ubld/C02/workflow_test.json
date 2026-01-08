@@ -5,10 +5,10 @@
     "expectedFile": "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv"
   },
   "cityGmlPath": "udx/brid/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "expectResultOkFile": true,
   "skip": false,
   "prcs": 6677,
-  "objectLists": "08220_city_2023_objectlist_op.xlsx"
+  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
 }

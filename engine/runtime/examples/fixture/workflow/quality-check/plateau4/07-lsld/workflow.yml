@@ -7,7 +7,7 @@ with:
   codelistsPath:
   workerArtifactPath:
   prcs:
-  objectLists:
+  objectListsPath:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -42,7 +42,7 @@ graphs:
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 schemas: env.get("schemasPath"),
                 codelists: env.get("codelistsPath"),
-                objectListPath: env.get("objectLists"),
+                objectListsPath: env.get("objectListsPath"),
               },
             ]
 
@@ -177,7 +177,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "07_土砂災害警戒区域_地物インスタンス数.csv")
+            file::join_path(env.get("workerArtifactPath"), "07_土砂災害警戒区域_地物インスタンス数.csv")
 
       # Surface inspection flow
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
@@ -234,7 +234,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "07_土砂災害警戒区域_面の向き不正.csv")
+            file::join_path(env.get("workerArtifactPath"), "07_土砂災害警戒区域_面の向き不正.csv")
 
       - id: 26751290-4ac7-4884-908a-7c231b5f820a
         name: SurfaceOrientationErrorCounter
@@ -282,7 +282,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "07_土砂災害警戒区域_面のエラー.csv")
+            file::join_path(env.get("workerArtifactPath"), "07_土砂災害警戒区域_面のエラー.csv")
 
       - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
         name: SurfaceErrorCounter
@@ -512,7 +512,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath") ?? env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
@@ -523,7 +523,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath") ?? env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:

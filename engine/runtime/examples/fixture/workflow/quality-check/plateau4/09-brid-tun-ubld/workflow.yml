@@ -5,7 +5,7 @@ with:
   cityGmlPath: null
   codelistsPath: null
   schemasPath: null
-  objectLists: null
+  objectListsPath: null
   workerArtifactPath: null
   prcs: null
 graphs:
@@ -39,7 +39,7 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            objectListPath: env.get("objectLists"),
+            objectListsPath: env.get("objectListsPath"),
             codelists: env.get("codelistsPath"),
             schemas: env.get("schemasPath"),
           },
@@ -607,7 +607,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
     name: ZipFileWriter
@@ -616,7 +616,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
   - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

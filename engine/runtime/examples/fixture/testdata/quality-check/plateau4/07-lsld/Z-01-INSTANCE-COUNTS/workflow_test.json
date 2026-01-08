@@ -5,10 +5,10 @@
     "expectedFile": "07_土砂災害警戒区域_地物インスタンス数.csv"
   },
   "cityGmlPath": "udx/lsld/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "expectResultOkFile": true,
   "skip": false,
   "prcs": 6677,
-  "objectLists": "08220_city_2023_objectlist_op.xlsx"
+  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
 }

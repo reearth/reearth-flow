@@ -2,11 +2,11 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Verify output files: no errors, empty CityGML (no features)",
   "cityGmlPath": "udx/bldg/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "expectResultOkFile": true,
   "prcs": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx",
+  "objectListsPath": "16211_city_2024_objectlist_op.xlsx",
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_bldg.json"
