@@ -60,14 +60,12 @@ const SearchActionBar: React.FC<Props> = ({
                   "translateY(calc(1.2 * var(--radix-popper-anchor-height)))",
               }}
               className="flex h-[600px] w-[400px] flex-col bg-primary/50 p-0 backdrop-blur">
-              {showSearchPanel && (
-                <SearchPanel
-                  rawWorkflows={rawWorkflows}
-                  currentWorkflowId={currentWorkflowId}
-                  onWorkflowOpen={onWorkflowOpen}
-                  onShowSearchPanel={onShowSearchPanel}
-                />
-              )}
+              <SearchPanel
+                rawWorkflows={rawWorkflows}
+                currentWorkflowId={currentWorkflowId}
+                onWorkflowOpen={onWorkflowOpen}
+                onShowSearchPanel={onShowSearchPanel}
+              />
             </PopoverContent>
           </Popover>
         </div>

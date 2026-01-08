@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { Workflow } from "@flow/types";
@@ -25,6 +25,7 @@ export default ({
   onWorkflowOpen: (id: string) => void;
 }) => {
   const { setCenter, getNode } = useReactFlow();
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const allNodes: SearchNodeResult[] = useMemo(() => {
     return rawWorkflows.flatMap((workflow) =>
@@ -64,8 +65,18 @@ export default ({
     [currentWorkflowId, onWorkflowOpen, getNode, setCenter],
   );
 
+  const handleRowClick = (node: SearchNodeResult) => {
+    setSelectedNodeId(node.id);
+  };
+
+  const handleRowDoubleClick = (node: SearchNodeResult) => {
+    handleNavigateToNode(node);
+  };
+
   return {
     allNodes,
-    handleNavigateToNode,
+    selectedNodeId,
+    handleRowClick,
+    handleRowDoubleClick,
   };
 };

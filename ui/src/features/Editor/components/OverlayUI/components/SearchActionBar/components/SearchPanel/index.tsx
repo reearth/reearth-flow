@@ -1,6 +1,5 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
 
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import { useT } from "@flow/lib/i18n";
@@ -23,21 +22,12 @@ const SearchPanel = ({
 }: SearchPanelProps) => {
   const t = useT();
 
-  const { allNodes, handleNavigateToNode } = useHooks({
-    rawWorkflows,
-    currentWorkflowId,
-    onWorkflowOpen,
-  });
-
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
-  const handleRowClick = (node: SearchNodeResult) => {
-    setSelectedNodeId(node.id);
-  };
-
-  const handleRowDoubleClick = (node: SearchNodeResult) => {
-    handleNavigateToNode(node);
-  };
+  const { allNodes, selectedNodeId, handleRowClick, handleRowDoubleClick } =
+    useHooks({
+      rawWorkflows,
+      currentWorkflowId,
+      onWorkflowOpen,
+    });
 
   const searchNodeColumns: ColumnDef<SearchNodeResult>[] = [
     {
