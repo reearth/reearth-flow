@@ -40,6 +40,11 @@ type DataTableProps<TData, TValue> = {
   surpressAutoScroll?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
+  customGlobalFilter?: (
+    row: any,
+    _columnId: string,
+    filterValue: string,
+  ) => boolean;
   setSearchTerm?: (term: string) => void;
 };
 
@@ -53,6 +58,7 @@ function VirtualizedTable<TData, TValue>({
   surpressAutoScroll,
   onRowClick,
   onRowDoubleClick,
+  customGlobalFilter,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -82,6 +88,7 @@ function VirtualizedTable<TData, TValue>({
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
+    globalFilterFn: customGlobalFilter ? customGlobalFilter : undefined,
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     state: {

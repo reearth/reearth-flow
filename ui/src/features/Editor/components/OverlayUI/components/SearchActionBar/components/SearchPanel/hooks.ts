@@ -73,9 +73,24 @@ export default ({
     handleNavigateToNode(node);
   };
 
+  const displayNameOnlyFilter = useCallback(
+    (row: any, _columnId: string, filterValue: string) => {
+      const search = String(filterValue ?? "")
+        .toLowerCase()
+        .trim();
+      if (!search) return true;
+
+      return String(row.original?.displayName ?? "")
+        .toLowerCase()
+        .includes(search);
+    },
+    [],
+  );
+
   return {
     allNodes,
     selectedNodeId,
+    displayNameOnlyFilter,
     handleRowClick,
     handleRowDoubleClick,
   };

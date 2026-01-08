@@ -22,12 +22,17 @@ const SearchPanel = ({
 }: SearchPanelProps) => {
   const t = useT();
 
-  const { allNodes, selectedNodeId, handleRowClick, handleRowDoubleClick } =
-    useHooks({
-      rawWorkflows,
-      currentWorkflowId,
-      onWorkflowOpen,
-    });
+  const {
+    allNodes,
+    selectedNodeId,
+    displayNameOnlyFilter,
+    handleRowClick,
+    handleRowDoubleClick,
+  } = useHooks({
+    rawWorkflows,
+    currentWorkflowId,
+    onWorkflowOpen,
+  });
 
   const searchNodeColumns: ColumnDef<SearchNodeResult>[] = [
     {
@@ -63,28 +68,31 @@ const SearchPanel = ({
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 p-2">
-      <div className="relative flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <MagnifyingGlassIcon size={18} weight="light" />
-          <span className="dark:font-thin">{t("Search Canvas")}</span>
+    <div className="z-50 flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur">
+      <div className="flex h-full min-h-0 flex-col gap-2 p-2">
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MagnifyingGlassIcon size={18} weight="light" />
+            <span className="dark:font-thin">{t("Search Canvas")}</span>
+          </div>
+          <XIcon
+            className="absolute top-1 right-1 cursor-pointer"
+            onClick={() => onShowSearchPanel(false)}
+          />
         </div>
-        <XIcon
-          className="absolute top-1 right-1 cursor-pointer"
-          onClick={() => onShowSearchPanel(false)}
-        />
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <VirtualizedTable
-          columns={searchNodeColumns}
-          data={allNodes}
-          showFiltering
-          selectedFeatureId={selectedNodeId}
-          onRowClick={handleRowClick}
-          onRowDoubleClick={handleRowDoubleClick}
-          condensed
-          surpressAutoScroll
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <VirtualizedTable
+            columns={searchNodeColumns}
+            data={allNodes}
+            showFiltering
+            selectedFeatureId={selectedNodeId}
+            onRowClick={handleRowClick}
+            onRowDoubleClick={handleRowDoubleClick}
+            customGlobalFilter={displayNameOnlyFilter}
+            condensed
+            surpressAutoScroll
+          />
+        </div>
       </div>
     </div>
   );
