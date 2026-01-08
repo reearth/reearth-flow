@@ -88,7 +88,33 @@ graphs:
           - attribute: transmissivity
             method: create 
             value: |
-              0.75                                        
+              0.75        
+
+      - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
+        name: AverageOnMonth
+        # daylight_hours daylight_hours_num days_less_then_1h_daylight days_less_then_1h_daylight_num days_over_40%_daylight_late days_over_40%_daylight_late_num max_daylight_hours transmissivity
+        type: action 
+        action: AttributeAggregator
+        with: 
+          aggregateAttributes:
+          - newAttribute: daylight_hours
+            attribute: daylight_hours
+          - newAttribute: daylight_hours_num
+            attribute: daylight_hours_num
+          - newAttribute: days_less_then_1h_daylight
+            attribute: days_less_then_1h_daylight
+          - newAttribute: days_less_then_1h_daylight_num
+            attribute: days_less_then_1h_daylight_num
+          - newAttribute: days_over_40%_daylight_late
+            attribute: days_over_40%_daylight_late
+          - newAttribute: days_over_40%_daylight_late_num
+            attribute: days_over_40%_daylight_late_num
+          - newAttribute: max_daylight_hours
+            attribute: max_daylight_hours
+          - newAttribute: transmissivity
+            attribute: transmissivity 
+          calculationAttribute: month 
+          method: average                            
  
       - id: cf028708-eba2-11f0-baa6-7c70db10a7e3
         name: DummyOutput
@@ -104,6 +130,12 @@ graphs:
 
       - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
         from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
+        to: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
+        fromPort: default 
+        toPort: default
+
+      - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
+        from: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
         to: cf028708-eba2-11f0-baa6-7c70db10a7e3
         fromPort: default 
         toPort: default
