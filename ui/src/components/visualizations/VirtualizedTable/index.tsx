@@ -119,7 +119,6 @@ function VirtualizedTable<TData, TValue>({
     count: rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => (condensed ? 24 : 34),
-    overscan: 20,
   });
 
   const [parentHeight, setParentHeight] = useState<number>(0);
