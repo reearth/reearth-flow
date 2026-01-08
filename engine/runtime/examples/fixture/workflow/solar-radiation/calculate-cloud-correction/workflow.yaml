@@ -1,5 +1,4 @@
 # workflow for calculate snow correction for solar energy
-
 id: 2d4e1c6a-eb70-11f0-9b6c-7c70db10a7e3
 name: CalculateCloudCorrectionFactor
 entryGraphId: a2df1dee-eba2-11f0-b126-7c70db10a7e3
@@ -101,50 +100,26 @@ graphs:
           groupBy:
             - month
           calculations:
-            - newAttribute: count
-              expr: |
-                1
 
             - newAttribute: sum_daylight_hours
               expr: |
                 let v = env.get("__value")["daylight_hours"];
                 parse_float(v)
-
             - newAttribute: sum_daylight_hours_num
               expr: |
                 let v = env.get("__value")["daylight_hours_num"];
                 parse_float(v)
-
-            - newAttribute: sum_days_less_then_1h_daylight
+            - newAttribute: count
               expr: |
-                let v = env.get("__value")["days_less_then_1h_daylight"];
-                parse_float(v)
-            - newAttribute: sum_days_less_then_1h_daylight_num
-              expr: |
-                let v = env.get("__value")["days_less_then_1h_daylight_num"];
-                parse_float(v)
-            - newAttribute: sum_days_over_40%_daylight_late
-              expr: |
-                let v = env.get("__value")["days_over_40%_daylight_late"];
-                parse_float(v)
-            - newAttribute: sum_days_over_40%_daylight_late_num
-              expr: |
-                let v = env.get("__value")["days_over_40%_daylight_late_num"];
-                parse_float(v)
-            - newAttribute: sum_max_daylight_hours
-              expr: |
-                let v = env.get("__value")["max_daylight_hours"];
-                parse_float(v)
+                1
             - newAttribute: sum_transmissivity
               expr: |
-                let v = env.get("__value")["transmissivity"];
-                parse_float(v)
-
+                env.get("__value")["transmissivity"]
 
       # 1) Divide each sum by the count to get the average value for each attribute
       # 2) Create new attributes with the averaged values (prefixed with avg_)
       # 3) Remove the temporary sum and count attributes to clean up
-      - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e4
+      - id: 4c0b32ba-ec5a-11f0-9a05-7c70db10a7e3
         name: CalculateAverages
         type: action
         action: AttributeManager
@@ -153,53 +128,261 @@ graphs:
             - attribute: avg_daylight_hours
               method: create
               value: |
-                env.get("sum_daylight_hours") / env.get("count")
+                env.get("__value")["sum_daylight_hours"] / env.get("__value")["count"]
             - attribute: avg_daylight_hours_num
               method: create
               value: |
-                env.get("sum_daylight_hours_num") / env.get("count")
-            - attribute: avg_days_less_then_1h_daylight
-              method: create
-              value: |
-                env.get("sum_days_less_then_1h_daylight") / env.get("count")
-            - attribute: avg_days_less_then_1h_daylight_num
-              method: create
-              value: |
-                env.get("sum_days_less_then_1h_daylight_num") / env.get("count")
-            - attribute: avg_days_over_40%_daylight_late
-              method: create
-              value: |
-                env.get("sum_days_over_40%_daylight_late") / env.get("count")
-            - attribute: avg_days_over_40%_daylight_late_num
-              method: create
-              value: |
-                env.get("sum_days_over_40%_daylight_late_num") / env.get("count")
-            - attribute: avg_max_daylight_hours
-              method: create
-              value: |
-                env.get("sum_max_daylight_hours") / env.get("count")
+                env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
             - attribute: avg_transmissivity
               method: create
               value: |
-                env.get("sum_transmissivity") / env.get("count")
+                env.get("__value")["sum_transmissivity"] / env.get("__value")["count"]
             - attribute: sum_daylight_hours
               method: remove
             - attribute: sum_daylight_hours_num
-              method: remove
-            - attribute: sum_days_less_then_1h_daylight
-              method: remove
-            - attribute: sum_days_less_then_1h_daylight_num
-              method: remove
-            - attribute: sum_days_over_40%_daylight_late
-              method: remove
-            - attribute: sum_days_over_40%_daylight_late_num
-              method: remove
-            - attribute: sum_max_daylight_hours
               method: remove
             - attribute: sum_transmissivity
               method: remove
             - attribute: count
               method: remove
+            - attribute: year
+              method: create
+              value: |
+                9999
+
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e3
+        name: TestFilter_2
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["period"] == "period_year"
+              outputPort: yearPort
+            - expr: |
+                env.get("__value")["period"] == "period_month"
+              outputPort: monthPort
+            - expr: |
+                env.get("__value")["period"] == "period_day"
+              outputPort: datePort
+            - expr: |
+                env.get("__value")["year"] == 9999
+              outputPort: year9999Port
+
+      # Aggregator for year, month, date features (corresponds to Aggregator_2 in FME)
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e4
+        name: Aggregator_2
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - year
+          calculations:
+            - newAttribute: sum_daylight_hours
+              expr: |
+                let v = env.get("__value")["avg_daylight_hours"];
+                parse_float(v)
+            - newAttribute: sum_daylight_hours_num
+              expr: |
+                let v = env.get("__value")["avg_daylight_hours_num"];
+                parse_float(v)
+            # - newAttribute: sum_days_less_then_1h_daylight
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_less_then_1h_daylight"];
+            #     parse_float(v)
+            # - newAttribute: sum_days_less_then_1h_daylight_num
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_less_then_1h_daylight_num"];
+            #     parse_float(v)
+            # - newAttribute: sum_days_over_40%_daylight_late
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_over_40%_daylight_late"];
+            #     parse_float(v)
+            # - newAttribute: sum_days_over_40%_daylight_late_num
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_over_40%_daylight_late_num"];
+            #     parse_float(v)
+            # - newAttribute: sum_max_daylight_hours
+            #   expr: |
+            #     let v = env.get("__value")["avg_max_daylight_hours"];
+            #     parse_float(v)
+            - newAttribute: sum_transmissivity
+              expr: |
+                let v = env.get("__value")["avg_transmissivity"];
+                parse_float(v)
+            - newAttribute: count
+              expr: |
+                1
+
+      # Calculate averages for Aggregator_2 results
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e6
+        name: CalculateAverages_Aggregator_2
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: avg_daylight_hours
+              method: create
+              value: |
+                env.get("__value")["sum_daylight_hours"] / env.get("__value")["count"]
+            - attribute: avg_daylight_hours_num
+              method: create
+              value: |
+                env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
+            # - attribute: avg_days_less_then_1h_daylight
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_less_then_1h_daylight"] / env.get("__value")["count"]
+            # - attribute: avg_days_less_then_1h_daylight_num
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_less_then_1h_daylight_num"] / env.get("__value")["count"]
+            # - attribute: avg_days_over_40%_daylight_late
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_over_40%_daylight_late"] / env.get("__value")["count"]
+            # - attribute: avg_days_over_40%_daylight_late_num
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_over_40%_daylight_late_num"] / env.get("__value")["count"]
+            # - attribute: avg_max_daylight_hours
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_max_daylight_hours"] / env.get("__value")["count"]
+            - attribute: avg_transmissivity
+              method: create
+              value: |
+                env.get("__value")["sum_transmissivity"] / env.get("__value")["count"]
+            - attribute: sum_daylight_hours
+              method: remove
+            - attribute: sum_daylight_hours_num
+              method: remove
+            # - attribute: sum_days_less_then_1h_daylight
+            #   method: remove
+            # - attribute: sum_days_less_then_1h_daylight_num
+            #   method: remove
+            # - attribute: sum_days_over_40%_daylight_late
+            #   method: remove
+            # - attribute: sum_days_over_40%_daylight_late_num
+            #   method: remove
+            # - attribute: sum_max_daylight_hours
+            #   method: remove
+            - attribute: sum_transmissivity
+              method: remove
+            - attribute: count
+              method: remove
+
+      # Aggregator for 9999-year features (corresponds to Aggregator_4 in FME)
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e5
+        name: Aggregator_4
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - year
+          calculations:
+            - newAttribute: sum_daylight_hours
+              expr: |
+                env.get("__value")["avg_daylight_hours"]
+            - newAttribute: sum_daylight_hours_num
+              expr: |
+                env.get("__value")["avg_daylight_hours_num"]
+            # - newAttribute: sum_days_less_then_1h_daylight
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_less_then_1h_daylight"];
+            #     parse_float(v)
+            # - newAttribute: sum_days_less_then_1h_daylight_num
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_less_then_1h_daylight_num"];
+            #     parse_float(v)
+            # - newAttribute: sum_days_over_40%_daylight_late
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_over_40%_daylight_late"];
+            #     parse_float(v)
+            # - newAttribute: sum_days_over_40%_daylight_late_num
+            #   expr: |
+            #     let v = env.get("__value")["avg_days_over_40%_daylight_late_num"];
+            #     parse_float(v)
+            # - newAttribute: sum_max_daylight_hours
+            #   expr: |
+            #     let v = env.get("__value")["avg_max_daylight_hours"];
+            #     parse_float(v)
+            - newAttribute: sum_transmissivity
+              expr: |
+                env.get("__value")["avg_transmissivity"]
+            - newAttribute: count
+              expr: |
+                1
+
+      # Calculate averages for Aggregator_4 results
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e7
+        name: CalculateAverages_Aggregator_4
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: avg_daylight_hours
+              method: create
+              value: |
+                env.get("__value")["sum_daylight_hours"] / env.get("__value")["count"]
+            - attribute: avg_daylight_hours_num
+              method: create
+              value: |
+                env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
+            # - attribute: avg_days_less_then_1h_daylight
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_less_then_1h_daylight"] / env.get("__value")["count"]
+            # - attribute: avg_days_less_then_1h_daylight_num
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_less_then_1h_daylight_num"] / env.get("__value")["count"]
+            # - attribute: avg_days_over_40%_daylight_late
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_over_40%_daylight_late"] / env.get("__value")["count"]
+            # - attribute: avg_days_over_40%_daylight_late_num
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_days_over_40%_daylight_late_num"] / env.get("__value")["count"]
+            # - attribute: avg_max_daylight_hours
+            #   method: create
+            #   value: |
+            #     env.get("__value")["sum_max_daylight_hours"] / env.get("__value")["count"]
+            - attribute: avg_transmissivity
+              method: create
+              value: |
+                env.get("__value")["sum_transmissivity"] / env.get("__value")["count"]
+            - attribute: sum_daylight_hours
+              method: remove
+            - attribute: sum_daylight_hours_num
+              method: remove
+            # - attribute: sum_days_less_then_1h_daylight
+            #   method: remove
+            # - attribute: sum_days_less_then_1h_daylight_num
+            #   method: remove
+            # - attribute: sum_days_over_40%_daylight_late
+            #   method: remove
+            # - attribute: sum_days_over_40%_daylight_late_num
+            #   method: remove
+            # - attribute: sum_max_daylight_hours
+            #   method: remove
+            - attribute: sum_transmissivity
+              method: remove
+            - attribute: count
+              method: remove
+
+      # ExpressionEvaluator_6 equivalent - combines results
+      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e8
+        name: ExpressionEvaluator_6
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: combined_result
+              method: create
+              value: |
+                env.get("__value")["avg_daylight_hours"]
 
       - id: cf028708-eba2-11f0-baa6-7c70db10a7e3
         name: DummyOutput
@@ -219,8 +402,63 @@ graphs:
         fromPort: default
         toPort: default
 
-      - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
+      - id: 4353493c-ec5a-11f0-8f0d-7c70db10a7e3
         from: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
+        to: 4c0b32ba-ec5a-11f0-9a05-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      # edge connect CalculateAverages to TestFilter_2
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e3
+        from: 4c0b32ba-ec5a-11f0-9a05-7c70db10a7e3
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      # edge connect PrepareAttribute to TestFilter_2
+      - id: 26b3234c-ec5f-11f0-9544-7c70db10a7e3
+        from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
+        fromPort: default
+        toPort: default
+
+      # Connect TestFilter_2 outputs to different aggregators
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e4
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e3
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e4
+        fromPort: yearPort
+        toPort: default
+
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e5
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e3
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e5
+        fromPort: year9999Port
+        toPort: default
+
+      # Connect Aggregator_2 to its average calculator
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e6
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e4
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e6
+        fromPort: default
+        toPort: default
+
+      # Connect Aggregator_4 to its average calculator
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e7
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e5
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e7
+        fromPort: default
+        toPort: default
+
+      # Connect average calculators to ExpressionEvaluator_6
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e8
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e6
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e8
+        fromPort: default
+        toPort: default
+
+      # Connect to final output
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e9
+        from: 4624d686-ec5e-11f0-a279-7c70db10a7e8
         to: cf028708-eba2-11f0-baa6-7c70db10a7e3
         fromPort: default
         toPort: default
