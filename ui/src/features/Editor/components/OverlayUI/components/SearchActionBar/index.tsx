@@ -19,7 +19,7 @@ type Props = {
   currentWorkflowId: string;
   onWorkflowOpen: (id: string) => void;
   showSearchPanel: boolean;
-  onShowSearchPanel: (boolean: boolean) => void;
+  onShowSearchPanel: (open: boolean) => void;
 };
 
 const SearchActionBar: React.FC<Props> = ({
@@ -40,20 +40,26 @@ const SearchActionBar: React.FC<Props> = ({
               if (!open) onShowSearchPanel(false);
             }}>
             <PopoverTrigger asChild>
-              <IconButton
-                className="rounded-[4px]"
-                tooltipText={t("Search Actions")}
-                tooltipOffset={tooltipOffset}
-                tooltipPosition="left"
-                onClick={() => onShowSearchPanel(true)}
-                icon={<MagnifyingGlassIcon size={18} weight="light" />}
-              />
+              <div className={showSearchPanel ? "invisible" : ""}>
+                <IconButton
+                  className="rounded-[4px]"
+                  tooltipText={t("Search Canvas")}
+                  tooltipOffset={tooltipOffset}
+                  tooltipPosition="left"
+                  onClick={() => onShowSearchPanel(true)}
+                  icon={<MagnifyingGlassIcon size={18} weight="light" />}
+                />
+              </div>
             </PopoverTrigger>
             <PopoverContent
               onInteractOutside={(e) => e.preventDefault()}
               sideOffset={8}
-              collisionPadding={5}
-              className="min-h-[600px] w-100 bg-primary/50 backdrop-blur">
+              collisionPadding={12}
+              style={{
+                transform:
+                  "translateY(calc(1.2 * var(--radix-popper-anchor-height)))",
+              }}
+              className="flex h-[600px] w-[400px] flex-col bg-primary/50 p-0 backdrop-blur">
               {showSearchPanel && (
                 <SearchPanel
                   rawWorkflows={rawWorkflows}

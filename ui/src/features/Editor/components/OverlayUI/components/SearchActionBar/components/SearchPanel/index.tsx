@@ -1,4 +1,4 @@
-import { XIcon } from "@phosphor-icons/react";
+import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -12,7 +12,7 @@ type SearchPanelProps = {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
   onWorkflowOpen: (id: string) => void;
-  onShowSearchPanel: (boolean: boolean) => void;
+  onShowSearchPanel: (open: boolean) => void;
 };
 
 const SearchPanel = ({
@@ -73,15 +73,18 @@ const SearchPanel = ({
   ];
 
   return (
-    <div className="flex h-full flex-col gap-2 p-2">
+    <div className="flex h-full min-h-0 flex-col gap-2 p-2">
       <div className="relative flex items-center justify-between">
-        <span className="text-center">{t("Search Actions")}</span>
+        <div className="flex items-center gap-2">
+          <MagnifyingGlassIcon size={18} weight="light" />
+          <span className="dark:font-thin">{t("Search Canvas")}</span>
+        </div>
         <XIcon
           className="absolute top-1 right-1 cursor-pointer"
           onClick={() => onShowSearchPanel(false)}
         />
       </div>
-      <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <VirtualizedTable
           columns={searchNodeColumns}
           data={allNodes}
@@ -89,6 +92,7 @@ const SearchPanel = ({
           selectedFeatureId={selectedNodeId}
           onRowClick={handleRowClick}
           onRowDoubleClick={handleRowDoubleClick}
+          condensed={true}
         />
       </div>
     </div>

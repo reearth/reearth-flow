@@ -77,7 +77,7 @@ type OverlayUIProps = {
   activeUsersDebugRuns?: AwarenessUser[];
   children?: React.ReactNode;
   showSearchPanel: boolean;
-  onShowSearchPanel: (boolean: boolean) => void;
+  onShowSearchPanel: (open: boolean) => void;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({

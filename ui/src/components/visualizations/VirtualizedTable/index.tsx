@@ -91,7 +91,6 @@ function VirtualizedTable<TData, TValue>({
     manualPagination: true,
   });
 
-  // Handle select all columns
   const handleSelectAllColumns = useCallback(() => {
     const visibilityUpdate: Record<string, boolean> = {};
     table
@@ -103,7 +102,6 @@ function VirtualizedTable<TData, TValue>({
     setColumnVisibility(visibilityUpdate);
   }, [table]);
 
-  // Handle deselect all columns
   const handleDeselectAllColumns = useCallback(() => {
     const visibilityUpdate: Record<string, boolean> = {};
     table
@@ -120,8 +118,25 @@ function VirtualizedTable<TData, TValue>({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
+    estimateSize: () => (condensed ? 24 : 34),
+    overscan: 20,
   });
+
+  const [parentHeight, setParentHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (!parentRef.current) return;
+    const el = parentRef.current;
+
+    const ro = new ResizeObserver(() => {
+      setParentHeight(el.clientHeight);
+    });
+
+    ro.observe(el);
+    setParentHeight(el.clientHeight);
+
+    return () => ro.disconnect();
+  }, []);
 
   const selectedRowIndex = useMemo(() => {
     if (!selectedFeatureId || !data) return -1;
@@ -145,8 +160,11 @@ function VirtualizedTable<TData, TValue>({
     }
   }, [selectedRowIndex, virtualizer]);
 
+  const totalSize = virtualizer.getTotalSize();
+  const spacerHeight = Math.max(totalSize, parentHeight);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {(showFiltering || selectColumns) && (
         <div
           className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
@@ -198,18 +216,17 @@ function VirtualizedTable<TData, TValue>({
           )}
         </div>
       )}
-
       <div
         ref={parentRef}
-        className="h-full overflow-auto rounded-md bg-primary/40"
-        style={{ contain: "paint", willChange: "transform" }}>
+        className="min-h-0 flex-1 overflow-auto rounded-md bg-primary/40"
+        style={{ contain: "paint" }}>
         <div
-          className="w-full caption-bottom overflow-auto text-xs"
+          className="relative w-full"
           style={{
-            height: `${virtualizer.getTotalSize() + 32}px`,
+            height: `${spacerHeight}px`,
           }}>
-          <Table>
-            <TableHeader>
+          <Table className="w-full text-xs">
+            <TableHeader className="top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -236,47 +253,43 @@ function VirtualizedTable<TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
+
             <TableBody>
               {rows.length ? (
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
                   const row = rows[virtualRow.index] as any;
                   const isSelected = selectedRowIndex === virtualRow.index;
+
                   return (
                     <TableRow
                       key={row.id}
-                      // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                       className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
                       style={{
                         height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                        transform: `translateY(${
+                          virtualRow.start - idx * virtualRow.size
+                        }px)`,
                       }}
                       data-state={isSelected ? "selected" : undefined}
-                      onClick={() => {
-                        row.toggleSelected();
-                        onRowClick?.(row.original);
-                      }}
-                      onDoubleClick={() => {
-                        onRowDoubleClick?.(row.original);
-                      }}>
-                      {row.getVisibleCells().map((cell: any) => {
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
-                            style={{
-                              width: Math.min(
-                                cell.column.getSize(),
-                                cell.column.columnDef.maxSize || 400,
-                              ),
-                              maxWidth: cell.column.columnDef.maxSize || 400,
-                            }}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        );
-                      })}
+                      onClick={() => onRowClick?.(row.original)}
+                      onDoubleClick={() => onRowDoubleClick?.(row.original)}>
+                      {row.getVisibleCells().map((cell: any) => (
+                        <TableCell
+                          key={cell.id}
+                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
+                          style={{
+                            width: Math.min(
+                              cell.column.getSize(),
+                              cell.column.columnDef.maxSize || 400,
+                            ),
+                            maxWidth: cell.column.columnDef.maxSize || 400,
+                          }}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   );
                 })
