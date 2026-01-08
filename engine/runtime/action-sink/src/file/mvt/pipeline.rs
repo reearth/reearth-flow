@@ -164,7 +164,7 @@ pub(super) fn geometry_slicing_stage(
         })?;
 
     // Construct absolute path for tiles (parent of tilejson.json is root)
-    let tiles = vec!["/{{z}}/{{x}}/{{y}}.mvt".to_string()];
+    let tiles = vec!["/{z}/{x}/{y}.mvt".to_string()];
     let vector_layers: Vec<_> = layer_names
         .lock()
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?

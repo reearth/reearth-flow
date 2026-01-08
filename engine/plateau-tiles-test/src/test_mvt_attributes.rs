@@ -144,7 +144,7 @@ fn align_mvt_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)
     Ok(result)
 }
 
-/// Find top-level MVT tile directories (directories containing metadata.json)
+/// Find top-level MVT tile directories (directories containing tilejson.json)
 fn find_mvt_tile_directories(base_path: &Path) -> Result<Vec<String>, String> {
     let mut dirs = HashSet::new();
 
@@ -152,7 +152,7 @@ fn find_mvt_tile_directories(base_path: &Path) -> Result<Vec<String>, String> {
         .max_depth(3)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file() && e.file_name() == "metadata.json")
+        .filter(|e| e.path().is_file() && e.file_name() == "tilejson.json")
     {
         if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path) {
             if let Some(first_component) = rel.iter().next() {
