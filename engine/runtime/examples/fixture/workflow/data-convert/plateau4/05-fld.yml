@@ -6,6 +6,8 @@ with:
   cityCode: null
   codelistsPath: null
   schemasPath: null
+  codelists: null
+  schemas: null
   targetPackages:
   - fld
   - tnm
@@ -143,8 +145,8 @@ graphs:
           #{
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode"),
-            codelists: env.get("codelistsPath"),
-            schemas: env.get("schemasPath"),
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
