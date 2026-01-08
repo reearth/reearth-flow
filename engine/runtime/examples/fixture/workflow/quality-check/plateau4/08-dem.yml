@@ -4,8 +4,11 @@ entryGraphId: 79dc8232-d5dd-4c60-be2c-85ca1409619c
 with:
   cityGmlPath: null
   schemasPath: null
+  schemas: null
   codelistsPath: null
+  codelists: null
   objectListsPath: null
+  objectLists: null
   workerArtifactPath: null
   prcs: null
 graphs:
@@ -1601,9 +1604,9 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            schemas: env.get("schemasPath"),
-            codelists: env.get("codelistsPath"),
-            objectListsPath: env.get("objectListsPath"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
           },
         ]
   - id: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d

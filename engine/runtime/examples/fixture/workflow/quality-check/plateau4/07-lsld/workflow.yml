@@ -4,10 +4,13 @@ entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
 with:
   cityGmlPath:
   schemasPath:
+  schemas:
   codelistsPath:
+  codelists:
   workerArtifactPath:
   prcs:
   objectListsPath:
+  objectLists:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -40,9 +43,9 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemasPath"),
-                codelists: env.get("codelistsPath"),
-                objectListsPath: env.get("objectListsPath"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
               },
             ]
 

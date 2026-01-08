@@ -4,7 +4,9 @@ entryGraphId: 0a2f610f-b92c-483b-a76a-e6143c3ab249
 with:
   cityGmlPath:
   codelistsPath:
+  codelists:
   schemasPath:
+  schemas:
   workerArtifactPath:
   prcs:
 graphs:
@@ -21,8 +23,8 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                codelists: env.get("codelistsPath"),
-                schemas: env.get("schemasPath"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
                 workerArtifactPath: env.get("workerArtifactPath"),
               },
             ]
