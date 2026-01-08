@@ -11,7 +11,11 @@ use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
-use crate::incremental::prepare_incremental_feature_store;
+use crate::incremental::{
+    prepare_incremental_artifacts, prepare_incremental_feature_store, DirCopySpec,
+};
+
+const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
 
 pub fn build_run_command() -> Command {
     Command::new("run")
@@ -173,6 +177,33 @@ impl RunCliCommand {
             }
             None => uuid::Uuid::new_v4(),
         };
+        let artifact_path = setup_job_directory("engine", "artifacts", job_id)
+            .map_err(crate::errors::Error::init)?;
+
+        let temp_artifact_path = setup_job_directory("engine", "temp-artifacts", job_id)
+            .map_err(crate::errors::Error::init)?;
+        let temp_artifact_root = temp_artifact_path
+            .path()
+            .to_str()
+            .ok_or_else(|| crate::errors::Error::init("Invalid temp-artifacts dir path"))?
+            .to_string();
+        std::env::set_var(
+            "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
+            temp_artifact_root,
+        );
+
+        let mut global = HashMap::new();
+        global.insert(
+            WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+            artifact_path.to_string(),
+        );
+        workflow
+            .extend_with(global)
+            .map_err(crate::errors::Error::init)?;
+        workflow
+            .merge_with(self.vars.clone())
+            .map_err(crate::errors::Error::init)?;
+
         let action_log_uri = match &self.action_log_uri {
             Some(uri) => Uri::from_str(uri).map_err(crate::errors::Error::init)?,
             None => setup_job_directory("engine", "action-log", job_id)
@@ -208,11 +239,22 @@ impl RunCliCommand {
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
             prepare_incremental_feature_store(
+                "engine",
                 &workflow,
                 job_id,
                 storage_resolver.as_ref(),
                 prev_job_id,
                 start_node_id,
+            )?;
+
+            prepare_incremental_artifacts(
+                "engine",
+                prev_job_id,
+                job_id,
+                &[
+                    DirCopySpec::new("artifacts", "previous-artifacts"),
+                    DirCopySpec::new("temp-artifacts", "previous-temp-artifacts"),
+                ],
             )?;
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");

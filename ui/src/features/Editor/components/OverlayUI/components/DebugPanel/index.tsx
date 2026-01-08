@@ -98,7 +98,7 @@ const DebugPanel: React.FC = () => {
     <div
       className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px] w-[96vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[96vw] rounded-xl"}`}
+        className={`pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[96vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[96vw] rounded-xl"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
@@ -108,23 +108,19 @@ const DebugPanel: React.FC = () => {
           <div className="flex w-fit items-center">
             <TabsList className="gap-2">
               <TabsTrigger
-                className="group h-8 gap-1 border border-transparent bg-card font-thin data-[state=active]:border-logo/40"
+                className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
                 value="debug-logs"
                 onClick={handleTabChange}>
                 <CodeIcon className="group-data-[state=active]:fill-logo" />
-                <p className="text-sm font-thin select-none">
-                  {t("Workflow Logs")}
-                </p>
+                <p className="text-sm select-none">{t("Workflow Logs")}</p>
               </TabsTrigger>
               <TabsTrigger
-                className="group h-8 gap-1 border border-transparent bg-card font-thin data-[state=active]:border-logo/40"
+                className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
                 value="debug-viewer"
                 disabled={!dataURLs?.length}
                 onClick={handleTabChange}>
                 <EyeIcon className="group-data-[state=active]:fill-logo" />
-                <p className="text-sm font-thin select-none">
-                  {t("Data Preview")}
-                </p>
+                <p className="text-sm select-none">{t("Data Preview")}</p>
               </TabsTrigger>
             </TabsList>
             <div className="ml-2 h-full w-1 border-l" />

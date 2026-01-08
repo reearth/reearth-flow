@@ -17,6 +17,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  VariableRow,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
 import {
@@ -24,17 +25,8 @@ import {
   inferWorkflowVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import { useT } from "@flow/lib/i18n";
-import { VarType } from "@flow/types";
+import { TriggerVariableConfig } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
-
-import { TriggerVariableRow } from "./components";
-
-export type VariableMapping = {
-  name: string;
-  type: VarType;
-  defaultValue: any;
-  deploymentDefault: any;
-};
 
 type TriggerWorkflowVariablesMappingDialogProps = {
   isOpen: boolean;
@@ -59,21 +51,22 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
 }) => {
   const t = useT();
 
-  const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
-    () =>
-      variables.map((variable) => {
-        const inferredType = inferWorkflowVariableType(
-          variable.value,
-          variable.name,
-        );
-        const deploymentDefault = deploymentDefaults?.[variable.name];
-        return {
-          name: variable.name,
-          type: inferredType,
-          defaultValue: getDefaultValue(variable.value, inferredType),
-          deploymentDefault: deploymentDefault,
-        };
-      }),
+  const [variableMappings, setVariableMappings] = useState<
+    TriggerVariableConfig[]
+  >(() =>
+    variables.map((variable) => {
+      const inferredType = inferWorkflowVariableType(
+        variable.value,
+        variable.name,
+      );
+      const deploymentDefault = deploymentDefaults?.[variable.name];
+      return {
+        name: variable.name,
+        type: inferredType,
+        defaultValue: getDefaultValue(variable.value, inferredType),
+        deploymentDefault: deploymentDefault,
+      };
+    }),
   );
 
   const handleDefaultValueChange = useCallback(
@@ -98,7 +91,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     );
   }, []);
 
-  const isAtDefault = useCallback((mapping: VariableMapping): boolean => {
+  const isAtDefault = useCallback((mapping: TriggerVariableConfig): boolean => {
     if (mapping.deploymentDefault === undefined) return true;
     return (
       JSON.stringify(mapping.defaultValue) ===
@@ -121,7 +114,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     onOpenChange(false);
   };
 
-  const columns: ColumnDef<VariableMapping>[] = useMemo(
+  const columns: ColumnDef<TriggerVariableConfig>[] = useMemo(
     () => [
       {
         accessorKey: "name",
@@ -136,7 +129,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
         header: t("Default Value"),
         cell: ({ row }) => {
           return (
-            <TriggerVariableRow
+            <VariableRow
               variable={row.original}
               index={row.index}
               onDefaultValueChange={handleDefaultValueChange}

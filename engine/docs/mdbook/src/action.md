@@ -1933,6 +1933,13 @@ Extracts and decompresses archive files from specified attributes
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "findDeepestSingleFolder": {
+      "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is.",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -2206,6 +2213,18 @@ Reads and processes features from CityGML files with optional flattening
     "dataset"
   ],
   "properties": {
+    "codelistsPath": {
+      "title": "Codelists Path",
+      "description": "Optional path to the codelists directory for resolving codelist values",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
@@ -5035,12 +5054,17 @@ This processor validates building usage attributes by checking for the presence 
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BuildingUsageAttributeValidatorParam",
   "type": "object",
+  "required": [
+    "codelistsPath"
+  ],
   "properties": {
-    "codelists": {
-      "type": [
-        "string",
-        "null"
-      ]
+    "codelistsPath": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -5221,7 +5245,32 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
 ### Description
 Validates domain of definition of CityGML features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainOfDefinitionValidator Parameters",
+  "description": "Configuration for validating domain of definition of CityGML features.",
+  "type": "object",
+  "properties": {
+    "codelistsPath": {
+      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports

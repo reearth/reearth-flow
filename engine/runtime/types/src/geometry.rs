@@ -270,6 +270,151 @@ impl CityGmlGeometry {
         }
         vertices
     }
+
+    /// Filters gml_geometries by a predicate and extracts corresponding polygon data
+    /// with properly remapped indices.
+    pub fn filter_by_lod<F>(&self, predicate: F) -> CityGmlGeometry
+    where
+        F: Fn(&GmlGeometry) -> bool,
+    {
+        let mut filtered_gml_geometries = Vec::new();
+        let mut filtered_polygon_materials = Vec::new();
+        let mut filtered_polygon_textures = Vec::new();
+        let mut filtered_polygon_uvs = Vec::new();
+        let mut new_pos: u32 = 0;
+
+        for gml_geom in &self.gml_geometries {
+            if !predicate(gml_geom) {
+                continue;
+            }
+
+            let pos = gml_geom.pos as usize;
+            let len = gml_geom.len as usize;
+
+            // Verify that polygon count matches len - this is critical for data consistency
+            // len represents the number of polygons in polygon_materials/textures/uvs arrays
+            // polygons.len() is the actual count of Polygon3D objects
+            if gml_geom.polygons.len() != len {
+                tracing::warn!(
+                    "Skipping geometry with mismatched counts: polygons.len()={} != len={}",
+                    gml_geom.polygons.len(),
+                    len
+                );
+                continue;
+            }
+
+            // Verify bounds before extraction - skip geometry if data is missing
+            let has_materials = pos + len <= self.polygon_materials.len();
+            let has_textures = pos + len <= self.polygon_textures.len();
+            let has_uvs = pos + len <= self.polygon_uvs.0.len();
+
+            // Extract polygon_materials for this geometry
+            if has_materials {
+                filtered_polygon_materials
+                    .extend_from_slice(&self.polygon_materials[pos..pos + len]);
+            } else if !self.polygon_materials.is_empty() {
+                // Fill with None if source has materials but this range is out of bounds
+                filtered_polygon_materials.extend(std::iter::repeat_n(None, len));
+            }
+
+            // Extract polygon_textures for this geometry
+            if has_textures {
+                filtered_polygon_textures.extend_from_slice(&self.polygon_textures[pos..pos + len]);
+            } else if !self.polygon_textures.is_empty() {
+                // Fill with None if source has textures but this range is out of bounds
+                filtered_polygon_textures.extend(std::iter::repeat_n(None, len));
+            }
+
+            // Extract polygon_uvs for this geometry, verifying vertex counts match
+            if has_uvs {
+                // Check if UVs are compatible with polygons (vertex counts must match)
+                let uvs_slice = &self.polygon_uvs.0[pos..pos + len];
+                let mut all_match = true;
+                for (poly, uv) in gml_geom.polygons.iter().zip(uvs_slice.iter()) {
+                    let poly_ext_len = poly.exterior().0.len();
+                    let uv_ext_len = uv.exterior().0.len();
+                    if poly_ext_len != uv_ext_len {
+                        all_match = false;
+                        break;
+                    }
+                    // Check interiors
+                    if poly.interiors().len() != uv.interiors().len() {
+                        all_match = false;
+                        break;
+                    }
+                    for (poly_int, uv_int) in poly.interiors().iter().zip(uv.interiors().iter()) {
+                        if poly_int.0.len() != uv_int.0.len() {
+                            all_match = false;
+                            break;
+                        }
+                    }
+                    if !all_match {
+                        break;
+                    }
+                }
+
+                if all_match {
+                    filtered_polygon_uvs.extend(uvs_slice.iter().cloned());
+                } else {
+                    // UV vertex counts don't match, create new UVs matching polygon structure
+                    tracing::debug!(
+                        "Creating new UVs for geometry with mismatched vertex counts (lod={:?}, pos={}, len={})",
+                        gml_geom.lod, pos, len
+                    );
+                    for poly in &gml_geom.polygons {
+                        let exterior_len = poly.exterior().0.len();
+                        let exterior_uv: Vec<_> =
+                            std::iter::repeat_n([0.0, 0.0].into(), exterior_len).collect();
+                        let interiors_uv: Vec<Vec<_>> = poly
+                            .interiors()
+                            .iter()
+                            .map(|interior| {
+                                std::iter::repeat_n([0.0, 0.0].into(), interior.0.len()).collect()
+                            })
+                            .collect();
+                        filtered_polygon_uvs.push(Polygon2D::new(
+                            LineString2D::new(exterior_uv),
+                            interiors_uv.into_iter().map(LineString2D::new).collect(),
+                        ));
+                    }
+                }
+            } else if !self.polygon_uvs.0.is_empty() {
+                // Create dummy UVs matching the polygon structure if source has UVs but range is out of bounds
+                for poly in &gml_geom.polygons {
+                    let exterior_len = poly.exterior().0.len();
+                    let exterior_uv: Vec<_> =
+                        std::iter::repeat_n([0.0, 0.0].into(), exterior_len).collect();
+                    let interiors_uv: Vec<Vec<_>> = poly
+                        .interiors()
+                        .iter()
+                        .map(|interior| {
+                            std::iter::repeat_n([0.0, 0.0].into(), interior.0.len()).collect()
+                        })
+                        .collect();
+                    filtered_polygon_uvs.push(Polygon2D::new(
+                        LineString2D::new(exterior_uv),
+                        interiors_uv.into_iter().map(LineString2D::new).collect(),
+                    ));
+                }
+            }
+
+            // Clone the geometry and update pos to the new position
+            let mut cloned_geom = gml_geom.clone();
+            cloned_geom.pos = new_pos;
+            new_pos += len as u32;
+
+            filtered_gml_geometries.push(cloned_geom);
+        }
+
+        CityGmlGeometry {
+            gml_geometries: filtered_gml_geometries,
+            materials: self.materials.clone(),
+            textures: self.textures.clone(),
+            polygon_materials: filtered_polygon_materials,
+            polygon_textures: filtered_polygon_textures,
+            polygon_uvs: MultiPolygon2D::new(filtered_polygon_uvs),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

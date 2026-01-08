@@ -3,8 +3,8 @@ name: PLATEAU4-DataConvert-04-luse-lsld-workflow
 entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
 with:
   cityGmlPath: null
-  codelists: null
-  schemas: null
+  codelistsPath: null
+  schemasPath: null
   cityCode: null
   targetPackages:
   - luse
@@ -28,12 +28,12 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
+      findDeepestSingleFolder: true
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value").cityGmlPath
       extractArchive: true
@@ -140,8 +140,8 @@ graphs:
           #{
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelists"),
-            schemas: env.get("schemas"),
+            codelists: env.get("codelistsPath"),
+            schemas: env.get("schemasPath"),
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -153,7 +153,7 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      format: citygml
+      codelistsPath: env.get("__value").codelists
       dataset: |
         env.get("__value")["path"]
   - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246

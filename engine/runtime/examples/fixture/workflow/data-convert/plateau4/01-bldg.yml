@@ -3,8 +3,8 @@ name: PLATEAU4-DataConvert-01-bldg-workflow
 entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
   cityGmlPath: null
-  codelists: null
-  schemas: null
+  codelistsPath: null
+  schemasPath: null
   targetPackages:
   - bldg
   workerArtifactPath: null
@@ -26,12 +26,12 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
+      findDeepestSingleFolder: true
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value").cityGmlPath
       extractArchive: true
@@ -139,8 +139,8 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelists"),
-            schemas: env.get("schemas"),
+            codelists: env.get("codelistsPath"),
+            schemas: env.get("schemasPath"),
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -152,7 +152,7 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      format: citygml
+      codelistsPath: env.get("__value").codelists
       dataset: |
         env.get("__value")["path"]
   - id: 33e32a91-5ade-4265-8665-b061f552839c

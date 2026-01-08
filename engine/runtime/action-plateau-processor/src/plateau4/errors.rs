@@ -25,6 +25,8 @@ pub(super) enum PlateauProcessorError {
     MissingAttributeDetectorFactory(String),
     #[error("MissingAttributeDetector error: {0}")]
     MissingAttributeDetector(String),
+    #[error("DomainOfDefinitionValidator Factory error: {0}")]
+    DomainOfDefinitionValidatorFactory(String),
     #[error("DomainOfDefinitionValidator error: {0}")]
     DomainOfDefinitionValidator(String),
     #[error("Unmatched Xlink Detector Factory error: {0}")]

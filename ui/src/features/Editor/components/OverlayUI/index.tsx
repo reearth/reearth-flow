@@ -5,6 +5,7 @@ import { Doc } from "yjs";
 import type {
   ActionNodeType,
   Algorithm,
+  AnyWorkflowVariable,
   AwarenessUser,
   Direction,
   Node,
@@ -42,6 +43,7 @@ type OverlayUIProps = {
     name: string;
   }[];
   currentWorkflowId: string;
+  customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
@@ -66,11 +68,12 @@ type OverlayUIProps = {
   onProjectShare: (share: boolean) => void;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
+  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
-  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   children?: React.ReactNode;
 };
 
@@ -89,6 +92,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   spotlightUserClientId,
   openWorkflows,
   currentWorkflowId,
+  customDebugRunWorkflowVariables,
   onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
@@ -101,12 +105,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onProjectShare,
   onDebugRunStart,
   onDebugRunStop,
+  onDebugRunVariableValueChange,
+  onDebugRunJoin,
   onProjectSnapshotSave,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
   activeUsersDebugRuns,
-  onDebugRunJoin,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
@@ -152,12 +157,16 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
           {isMainWorkflow && (
             <div
-              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
               <DebugActionBar
                 activeUsersDebugRuns={activeUsersDebugRuns}
                 onDebugRunJoin={onDebugRunJoin}
                 onDebugRunStart={onDebugRunStart}
                 onDebugRunStop={onDebugRunStop}
+                customDebugRunWorkflowVariables={
+                  customDebugRunWorkflowVariables
+                }
+                onDebugRunVariableValueChange={onDebugRunVariableValueChange}
               />
               <div className="h-4/5 border-r" />
               <ActionBar

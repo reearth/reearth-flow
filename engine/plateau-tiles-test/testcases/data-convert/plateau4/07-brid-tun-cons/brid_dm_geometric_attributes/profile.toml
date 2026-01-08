@@ -1,0 +1,20 @@
+# test brid dm geometric attributes
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_brid.zip"
+
+[tests.mvt_lines]
+zoom = [12, 16]
+threshold = 0.01
+
+[tests.mvt_polygons]
+zoom = [12, 16]
+threshold = 0.01
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+# Note: DM geometric attributes output MVT only, no 3D Tiles
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/brid/" = ["54400098_brid_6697_op.gml", "54400098_brid_6697_appearance"]

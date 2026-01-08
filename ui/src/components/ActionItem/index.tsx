@@ -60,10 +60,10 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
         onDragStart={(e) => onDragStart?.(e, action.name)}>
         <div className="flex w-full justify-between gap-1 pb-2">
           <div className="w-3/5 self-center text-sm break-words">
-            <p className="self-center text-zinc-200">{action.name}</p>
+            <p className="self-center dark:text-zinc-200">{action.name}</p>
           </div>
           <div
-            className={`self-center rounded border ${action.type === "transformer" ? "bg-node-transformer/30" : action.type === "reader" ? "bg-node-reader/30" : action.type === "writer" ? "bg-node-writer/30" : "bg-popover"} p-1 align-middle`}
+            className={`self-center rounded border ${action.type === "transformer" ? "bg-node-transformer/95 dark:bg-node-transformer/60" : action.type === "reader" ? "bg-node-reader/95 dark:bg-node-reader/60" : action.type === "writer" ? "bg-node-writer/85 dark:bg-node-writer/30" : "bg-popover"} p-1 align-middle`}
             onClick={handleTypeClick(action.type)}>
             <p className="self-center text-xs text-zinc-200 capitalize">
               {action.type}
@@ -80,7 +80,7 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
                 className="rounded border bg-popover p-[2px]"
                 key={c}
                 onClick={handleCategoryClick(c)}>
-                <p className="text-zinc-400">{c}</p>
+                <p className="text-black dark:text-zinc-400">{c}</p>
               </div>
             ))}
           </div>

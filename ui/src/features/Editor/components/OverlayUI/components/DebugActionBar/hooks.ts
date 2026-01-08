@@ -4,22 +4,33 @@ import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
+import { AnyWorkflowVariable } from "@flow/types";
 
 export default ({
   onDebugRunStart,
+  customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
+
+  customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
 
-  const [showPopover, setShowPopover] = useState<
-    "debugStart" | "debugStop" | "debugRuns" | undefined
+  const [showOverlayElement, setshowOverlayElement] = useState<
+    | "debugStart"
+    | "debugStop"
+    | "debugRuns"
+    | "debugWorkflowVariables"
+    | undefined
   >(undefined);
 
-  const handleShowDebugStartPopover = () => setShowPopover("debugStart");
-  const handleShowDebugStopPopover = () => setShowPopover("debugStop");
-  const handleShowDebugActiveRunsPopover = () => setShowPopover("debugRuns");
-  const handlePopoverClose = () => setShowPopover(undefined);
+  const handleShowDebugStartPopover = () => setshowOverlayElement("debugStart");
+  const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
+  const handleShowDebugActiveRunsPopover = () =>
+    setshowOverlayElement("debugRuns");
+  const handleShowDebugWorkflowVariablesDialog = () =>
+    setshowOverlayElement("debugWorkflowVariables");
+  const handlePopoverClose = () => setshowOverlayElement(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   const { useGetJob } = useJob();
@@ -64,8 +75,16 @@ export default ({
   }, [debugJob, jobStatus, debugRunStarted]);
 
   const handleDebugRunStart = async () => {
-    setDebugRunStarted(true);
-    await onDebugRunStart();
+    if (
+      customDebugRunWorkflowVariables &&
+      customDebugRunWorkflowVariables.length > 0
+    ) {
+      handleShowDebugWorkflowVariablesDialog();
+    } else {
+      setDebugRunStarted(true);
+      await onDebugRunStart();
+      handlePopoverClose();
+    }
   };
 
   const handleDebugRunReset = async () => {
@@ -77,7 +96,7 @@ export default ({
   };
 
   return {
-    showPopover,
+    showOverlayElement,
     debugRunStarted,
     jobStatus,
     debugJob,
@@ -85,6 +104,7 @@ export default ({
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
     handleShowDebugActiveRunsPopover,
+    handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
   };

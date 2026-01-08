@@ -83,7 +83,7 @@ const ProjectCard: React.FC<Props> = ({
 
   return (
     <Card
-      className="group relative cursor-pointer rounded-xl border bg-secondary shadow-md shadow-secondary backdrop-blur-xs"
+      className="group relative cursor-pointer rounded-xl border-border bg-secondary shadow-md shadow-secondary backdrop-blur-xs"
       key={id}
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
@@ -98,22 +98,21 @@ const ProjectCard: React.FC<Props> = ({
           </p>
         )}
         <FlowLogo
-          className={`size-[120px] translate-x-20 opacity-50 ${description ? "group:hover:opacity-90" : ""}`}
+          className={`size-[120px] translate-x-20 opacity-60 dark:opacity-40 ${description ? "group:hover:opacity-90" : ""}`}
         />
       </CardContent>
       <CardHeader className="px-2 py-1">
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
-        <p className="text-xs text-zinc-400 dark:font-thin">
+        <p className="text-xs font-light text-zinc-800 dark:font-thin dark:text-zinc-400 terminal:text-zinc-500 midnight:text-zinc-400 synthwave:text-purple-300">
           {t("Last modified:")} {updatedAt}
         </p>
       </CardFooter>
       <div
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
-        <div
-          className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-xs" : ""}`}>
-          <p className="line-clamp-4 overflow-hidden text-center text-sm break-words text-ellipsis whitespace-normal text-secondary dark:font-light dark:text-foreground">
+        <div className="flex h-[120px] items-center justify-center rounded-t-lg bg-black/10 p-4 backdrop-blur-xs dark:bg-black/30">
+          <p className="wrap-break-words line-clamp-4 overflow-hidden text-center text-sm text-ellipsis whitespace-normal dark:font-light dark:text-foreground">
             {description}
           </p>
         </div>
@@ -124,7 +123,7 @@ const ProjectCard: React.FC<Props> = ({
             <DropdownMenuTrigger
               className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-primary"
               onClick={(e) => e.stopPropagation()}>
-              <DotsThreeVerticalIcon className="size-[24px]" />
+              <DotsThreeVerticalIcon className="size-6" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"

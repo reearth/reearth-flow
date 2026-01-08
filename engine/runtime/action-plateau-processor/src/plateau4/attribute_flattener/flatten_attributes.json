@@ -348,6 +348,23 @@
 			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
 	],
+	"cons/uro:OtherConstruction": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
 	"rwy/tran:AuxiliaryTrafficArea": [
 		{
 			"attribute": "gml:name",
