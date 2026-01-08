@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
-use std::path::Path;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use uuid::Uuid;
 
 use reearth_flow_common::dir::setup_job_directory;
 use reearth_flow_state::State;
@@ -37,7 +40,8 @@ pub async fn prepare_incremental_feature_store(
     metadata: &Metadata,
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
-) -> crate::errors::Result<()> {
+    feature_state: &State,
+) -> crate::errors::Result<Arc<State>> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
@@ -96,9 +100,24 @@ pub async fn prepare_incremental_feature_store(
                 );
             }
         }
+
+        match feature_state
+            .copy_jsonl_from_state_async(&reuse_state, &edge_id_str)
+            .await
+        {
+            Ok(()) => {
+                tracing::info!("Copied edge {} into feature-store", edge_id_str);
+            }
+            Err(e) => {
+                return Err(crate::errors::Error::init(format!(
+                    "Failed to copy edge {} into feature-store: {:?}",
+                    edge_id_str, e
+                )));
+            }
+        }
     }
 
-    Ok(())
+    Ok(Arc::new(reuse_state))
 }
 
 pub fn collect_reusable_edge_ids(
@@ -363,4 +382,124 @@ fn copy_dir_all_overwrite(src: &Path, dst: &Path) -> std::io::Result<()> {
 
 fn io_err(msg: String) -> std::io::Error {
     std::io::Error::other(msg)
+}
+
+pub fn rewrite_feature_store_file_paths_in_dir(
+    dir: &Path,
+    previous_job_id: Uuid,
+    job_id: Uuid,
+) -> crate::errors::Result<()> {
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    let prev_jobs_seg = format!("/jobs/{}/", previous_job_id);
+    let cur_jobs_seg = format!("/jobs/{}/", job_id);
+
+    for entry in std::fs::read_dir(dir).map_err(crate::errors::Error::init)? {
+        let entry = entry.map_err(crate::errors::Error::init)?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
+            continue;
+        }
+        rewrite_jsonl_file(&path, &prev_jobs_seg, &cur_jobs_seg)?;
+    }
+
+    Ok(())
+}
+
+fn rewrite_jsonl_file(
+    path: &Path,
+    prev_jobs_seg: &str,
+    cur_jobs_seg: &str,
+) -> crate::errors::Result<()> {
+    let file = std::fs::File::open(path).map_err(crate::errors::Error::init)?;
+    let reader = BufReader::new(file);
+
+    let tmp_path = tmp_jsonl_path(path);
+    let tmp_file = std::fs::File::create(&tmp_path).map_err(crate::errors::Error::init)?;
+    let mut writer = BufWriter::new(tmp_file);
+
+    for line in reader.lines() {
+        let line = line.map_err(crate::errors::Error::init)?;
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        let mut v: serde_json::Value =
+            serde_json::from_str(&line).map_err(crate::errors::Error::init)?;
+
+        rewrite_file_path_value(&mut v, prev_jobs_seg, cur_jobs_seg);
+
+        serde_json::to_writer(&mut writer, &v).map_err(crate::errors::Error::init)?;
+        writer
+            .write_all(b"\n")
+            .map_err(crate::errors::Error::init)?;
+    }
+
+    writer.flush().map_err(crate::errors::Error::init)?;
+    std::fs::rename(&tmp_path, path).map_err(crate::errors::Error::init)?;
+    Ok(())
+}
+
+fn tmp_jsonl_path(path: &Path) -> PathBuf {
+    let mut p = path.to_path_buf();
+    let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("jsonl");
+    p.set_extension(format!("{ext}.tmp"));
+    p
+}
+
+fn rewrite_file_path_value(v: &mut serde_json::Value, prev_jobs_seg: &str, cur_jobs_seg: &str) {
+    match v {
+        serde_json::Value::Object(map) => {
+            for (k, val) in map.iter_mut() {
+                if k == "filePath" {
+                    if let serde_json::Value::String(s) = val {
+                        *s = rewrite_one_path(s, prev_jobs_seg, cur_jobs_seg);
+                    }
+                } else {
+                    rewrite_file_path_value(val, prev_jobs_seg, cur_jobs_seg);
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for val in arr.iter_mut() {
+                rewrite_file_path_value(val, prev_jobs_seg, cur_jobs_seg);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn rewrite_one_path(s: &str, prev_jobs_seg: &str, cur_jobs_seg: &str) -> String {
+    let out = if s.contains(prev_jobs_seg) {
+        s.replace(prev_jobs_seg, cur_jobs_seg)
+    } else {
+        s.to_string()
+    };
+
+    let (plain, prefix) = if let Some(rest) = out.strip_prefix("file://") {
+        (rest.to_string(), "file://")
+    } else {
+        (out.clone(), "")
+    };
+
+    if Path::new(&plain).exists() {
+        return out;
+    }
+
+    if plain.contains("/artifacts/") {
+        let alt = plain.replace("/artifacts/", "/temp-artifacts/");
+        if Path::new(&alt).exists() {
+            return format!("{prefix}{alt}");
+        }
+    }
+    if plain.contains("/temp-artifacts/") {
+        let alt = plain.replace("/temp-artifacts/", "/artifacts/");
+        if Path::new(&alt).exists() {
+            return format!("{prefix}{alt}");
+        }
+    }
+
+    out
 }

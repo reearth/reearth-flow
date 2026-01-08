@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env,
     fmt::Debug,
     future::Future,
@@ -27,7 +28,7 @@ use crate::{
     executor_operation::{ExecutorContext, ExecutorOperation, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
     kvs::KvStore,
-    node::{IngestionMessage, NodeStatus, Port, Source, SourceState},
+    node::{IngestionMessage, NodeId, NodeStatus, Port, Source, SourceState},
 };
 
 use super::execution_dag::ExecutionDag;
@@ -333,6 +334,7 @@ pub async fn create_source_node<F>(
     options: &ExecutorOptions,
     shutdown: F,
     runtime: Arc<Handle>,
+    execute_node_ids: Option<HashSet<NodeId>>,
 ) -> SourceNode<F> {
     let mut sources = vec![];
     let mut source_runners = vec![];
@@ -347,6 +349,16 @@ pub async fn create_source_node<F>(
         if !matches!(node, NodeKind::Source { .. }) {
             continue;
         }
+
+        // ★ incremental: run only selected sources
+        let node_id = dag.graph()[node_index].handle.id.clone();
+        if let Some(set) = execute_node_ids.as_ref() {
+            if !set.contains(&node_id) {
+                tracing::info!("Skipping source node {} for incremental run", node_id);
+                continue;
+            }
+        }
+
         let node = dag.node_weight_mut(node_index);
         let node_handle = node.handle.clone();
         let node_name = node.name.clone();

@@ -6,6 +6,7 @@ use reearth_flow_runtime::{
     event::EventHandler,
     executor::dag_executor::DagExecutor,
     executor_operation::ExecutorOptions,
+    incremental::IncrementalRunConfig,
     kvs::KvStore,
     node::{NodeKind, SYSTEM_ACTION_FACTORY_MAPPINGS},
     shutdown::ShutdownReceiver,
@@ -56,6 +57,7 @@ pub fn run_dag_executor(
     shutdown: ShutdownReceiver,
     ingress_state: Arc<State>,
     feature_state: Arc<State>,
+    incremental_run_config: Option<IncrementalRunConfig>,
     event_handlers: Vec<Arc<dyn EventHandler>>,
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
@@ -68,6 +70,7 @@ pub fn run_dag_executor(
         kv_store,
         ingress_state,
         feature_state,
+        incremental_run_config,
         event_handlers,
     ))?;
     let result = join_handle
