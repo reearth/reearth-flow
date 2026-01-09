@@ -42,15 +42,14 @@ const SearchActionBar: React.FC<Props> = ({
               icon={<MagnifyingGlassIcon size={18} weight="light" />}
             />
           </div>
-          {showSearchPanel && (
-            <SearchPanel
-              rawWorkflows={rawWorkflows}
-              currentWorkflowId={currentWorkflowId}
-              onNodesChange={onNodesChange}
-              onWorkflowOpen={onWorkflowOpen}
-              onShowSearchPanel={onShowSearchPanel}
-            />
-          )}
+          <SearchPanel
+            showSearchPanel={showSearchPanel}
+            rawWorkflows={rawWorkflows}
+            currentWorkflowId={currentWorkflowId}
+            onNodesChange={onNodesChange}
+            onWorkflowOpen={onWorkflowOpen}
+            onShowSearchPanel={onShowSearchPanel}
+          />
         </div>
       </div>
     </div>

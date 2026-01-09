@@ -9,6 +9,7 @@ import { Node, Workflow } from "@flow/types";
 import useHooks, { SearchNodeResult } from "./hooks";
 
 type SearchPanelProps = {
+  showSearchPanel: boolean;
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
@@ -18,6 +19,7 @@ type SearchPanelProps = {
 };
 
 const SearchPanel = ({
+  showSearchPanel,
   rawWorkflows,
   currentWorkflowId,
   onNodesChange,
@@ -73,7 +75,10 @@ const SearchPanel = ({
   ];
 
   return (
-    <div className="absolute flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur">
+    <div
+      className={`absolute flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
+      `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2">
