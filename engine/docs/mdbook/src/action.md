@@ -4327,13 +4327,13 @@ Copies attributes from a specific list element to become the main attributes of 
 ### Type
 * sink
 ### Description
-Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
+Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MVTWriter Parameters",
-  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format.",
+  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).",
   "type": "object",
   "required": [
     "layerName",
