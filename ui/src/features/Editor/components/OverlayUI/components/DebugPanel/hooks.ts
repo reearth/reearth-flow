@@ -1,6 +1,13 @@
 import bbox from "@turf/bbox";
 import { Cartesian3, GeoJsonDataSource } from "cesium";
-import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
@@ -14,6 +21,7 @@ export default () => {
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
   const [detailsFeature, setDetailsFeature] = useState<any>(null);
+  const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
@@ -92,6 +100,7 @@ export default () => {
           }) ?? [],
       });
       setMinimized(false);
+      prevSelectedDataURLRef.current = debugJobState?.focusedIntermediateData;
     }
   };
 
@@ -529,6 +538,22 @@ export default () => {
       updateValue,
     ],
   );
+  useEffect(() => {
+    if (
+      prevSelectedDataURLRef.current !== selectedDataURL &&
+      detailsFeature &&
+      detailsOverlayOpen
+    ) {
+      const matching = featureIdMap?.get(detailsFeature.id);
+      setDetailsFeature(matching);
+    }
+  }, [
+    selectedDataURL,
+    featureIdMap,
+    formattedData.tableData,
+    detailsFeature,
+    detailsOverlayOpen,
+  ]);
 
   return {
     debugJobId,
