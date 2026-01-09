@@ -194,7 +194,11 @@ impl DagExecutor {
             for g in &replay_groups {
                 tracing::info!("  group edges={}", g.edges.len());
                 for e in &g.edges {
-                    tracing::info!("    edge_id={}, port={}", e.edge_id, e.upstream_output_port);
+                    tracing::info!(
+                        "    edge_id={}, port={}",
+                        e.edge_id,
+                        e.downstream_input_port
+                    );
                 }
             }
 
@@ -352,7 +356,7 @@ fn collect_downstream_node_ids(
 #[derive(Clone)]
 struct ReplayEdge {
     edge_id: EdgeId,
-    upstream_output_port: Port,
+    downstream_input_port: Port,
 }
 
 #[derive(Clone)]
@@ -372,15 +376,15 @@ fn build_replay_groups(dag: &ExecutionDag, execute: &HashSet<NodeId>) -> Vec<Rep
         let dst = g[e.target()].handle.id.clone();
 
         if execute.contains(&dst) && !execute.contains(&src) {
-            let upstream_output_port = e.weight().input_port.clone();
+            let downstream_input_port = e.weight().input_port.clone();
 
             let replay_edge = ReplayEdge {
                 edge_id: e.weight().edge_id.clone(),
-                upstream_output_port: upstream_output_port.clone(),
+                downstream_input_port: downstream_input_port.clone(),
             };
 
             grouped
-                .entry((dst.clone(), upstream_output_port))
+                .entry((dst.clone(), downstream_input_port))
                 .and_modify(|(_, v)| v.push(replay_edge.clone()))
                 .or_insert((e.weight().sender.clone(), vec![replay_edge]));
         }
@@ -419,7 +423,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                     for feature in features {
                         let ctx = crate::executor_operation::ExecutorContext::new(
                             feature,
-                            e.upstream_output_port.clone(),
+                            e.downstream_input_port.clone(),
                             node_ctx.expr_engine.clone(),
                             node_ctx.storage_resolver.clone(),
                             node_ctx.kv_store.clone(),
