@@ -31,9 +31,7 @@ impl Default for NumericValue {
 impl NumericValue {
     fn max(self, other: NumericValue) -> NumericValue {
         match (self, other) {
-            (NumericValue::Integer(a), NumericValue::Integer(b)) => {
-                NumericValue::Integer(a.max(b))
-            }
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => NumericValue::Integer(a.max(b)),
             (NumericValue::Float(a), NumericValue::Float(b)) => NumericValue::Float(a.max(b)),
             (NumericValue::Integer(a), NumericValue::Float(b)) => {
                 NumericValue::Float((a as f64).max(b))
@@ -46,9 +44,7 @@ impl NumericValue {
 
     fn min(self, other: NumericValue) -> NumericValue {
         match (self, other) {
-            (NumericValue::Integer(a), NumericValue::Integer(b)) => {
-                NumericValue::Integer(a.min(b))
-            }
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => NumericValue::Integer(a.min(b)),
             (NumericValue::Float(a), NumericValue::Float(b)) => NumericValue::Float(a.min(b)),
             (NumericValue::Integer(a), NumericValue::Float(b)) => {
                 NumericValue::Float((a as f64).min(b))
@@ -207,7 +203,8 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             // Check if required fields for single calculation exist
             let calculation_attribute = params.calculation_attribute.ok_or_else(|| {
                 AttributeProcessorError::AggregatorFactory(
-                    "Missing required field `calculationAttribute` for single calculation format".to_string(),
+                    "Missing required field `calculationAttribute` for single calculation format"
+                        .to_string(),
                 )
             })?;
 
@@ -372,10 +369,18 @@ impl Processor for AttributeAggregator {
             let mut agg_values = Vec::new();
             for calculation in &self.calculations {
                 match &calculation.method {
-                    Method::Max => agg_values.push(AggregationValue::Single(NumericValue::Integer(i64::MIN))),
-                    Method::Min => agg_values.push(AggregationValue::Single(NumericValue::Integer(i64::MAX))),
-                    Method::Count => agg_values.push(AggregationValue::Single(NumericValue::Integer(0))),
-                    Method::Average => agg_values.push(AggregationValue::SumAndCount(NumericValue::Integer(0), 0)),
+                    Method::Max => {
+                        agg_values.push(AggregationValue::Single(NumericValue::Integer(i64::MIN)))
+                    }
+                    Method::Min => {
+                        agg_values.push(AggregationValue::Single(NumericValue::Integer(i64::MAX)))
+                    }
+                    Method::Count => {
+                        agg_values.push(AggregationValue::Single(NumericValue::Integer(0)))
+                    }
+                    Method::Average => {
+                        agg_values.push(AggregationValue::SumAndCount(NumericValue::Integer(0), 0))
+                    }
                 }
             }
             self.buffer.insert(key.clone(), agg_values);
@@ -406,9 +411,10 @@ impl Processor for AttributeAggregator {
                 };
                 numeric_value
             } else {
-                return Err(
-                    AttributeProcessorError::Aggregator("Calculation not found".to_string()).into(),
-                );
+                return Err(AttributeProcessorError::Aggregator(
+                    "Calculation not found".to_string(),
+                )
+                .into());
             };
 
             match &calculation.method {
@@ -428,7 +434,8 @@ impl Processor for AttributeAggregator {
                     }
                 }
                 Method::Average => {
-                    if let AggregationValue::SumAndCount(ref mut sum, ref mut count) = agg_values[i] {
+                    if let AggregationValue::SumAndCount(ref mut sum, ref mut count) = agg_values[i]
+                    {
                         *sum = sum.add(calc_value);
                         *count += 1;
                     }
@@ -491,10 +498,9 @@ impl AttributeAggregator {
                     }
                 };
 
-                feature.attributes.insert(
-                    calculation.calculation_attribute.clone(),
-                    final_value,
-                );
+                feature
+                    .attributes
+                    .insert(calculation.calculation_attribute.clone(), final_value);
             }
 
             fw.send(ExecutorContext::new_with_context_feature_and_port(
