@@ -1,4 +1,5 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use std::io::Write;
 use std::{
     borrow::Cow,
     env,
@@ -263,6 +264,173 @@ impl State {
         }
         Err(last_err.unwrap_or_else(|| Error::other("no candidate jsonl found")))
     }
+
+    /// Rewrite all *.jsonl / *.jsonl.zst under this State's root directory in-place.
+    /// It finds "filePath" keys recursively and replaces "/jobs/<prev>/" -> "/jobs/<cur>/".
+    pub fn rewrite_feature_store_file_paths_in_root_dir(
+        &self,
+        previous_job_id: uuid::Uuid,
+        job_id: uuid::Uuid,
+    ) -> std::io::Result<()> {
+        if !self.root.exists() {
+            return Ok(());
+        }
+
+        let prev_jobs_seg = format!("/jobs/{}/", previous_job_id);
+        let cur_jobs_seg = format!("/jobs/{}/", job_id);
+
+        for entry in std::fs::read_dir(&self.root)? {
+            let entry = entry?;
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+
+            let Some(file_name) = path.file_name().and_then(|s| s.to_str()) else {
+                continue;
+            };
+
+            if !(file_name.ends_with(".jsonl") || file_name.ends_with(".jsonl.zst")) {
+                continue;
+            }
+
+            self.rewrite_jsonl_file_in_place(&path, &prev_jobs_seg, &cur_jobs_seg)?;
+        }
+
+        Ok(())
+    }
+
+    fn rewrite_jsonl_file_in_place(
+        &self,
+        path: &std::path::Path,
+        prev_jobs_seg: &str,
+        cur_jobs_seg: &str,
+    ) -> std::io::Result<()> {
+        let tmp_path = tmp_sibling_path(path);
+
+        // Ensure tmp cleanup on any error (RAII)
+        struct TempGuard(std::path::PathBuf);
+        impl Drop for TempGuard {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+        let _guard = TempGuard(tmp_path.clone());
+
+        let raw = std::fs::read(path)?;
+        let is_zst_by_name = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(|n| n.ends_with(".zst"))
+            .unwrap_or(false);
+        let is_zst_by_magic = Self::looks_like_zstd(&raw);
+        let should_write_zst = is_zst_by_name || is_zst_by_magic;
+
+        let decoded = self.decode_auto(&raw)?;
+        let text = std::str::from_utf8(&decoded).map_err(std::io::Error::other)?;
+
+        let tmp_file = std::fs::File::create(&tmp_path)?;
+
+        if should_write_zst {
+            let writer = std::io::BufWriter::new(tmp_file);
+            let mut enc =
+                zstd::stream::Encoder::new(writer, ZSTD_LEVEL).map_err(std::io::Error::other)?;
+            rewrite_jsonl_text(text, &mut enc, prev_jobs_seg, cur_jobs_seg)?;
+            let mut w = enc.finish().map_err(std::io::Error::other)?;
+            w.flush()?;
+        } else {
+            let mut w = std::io::BufWriter::new(tmp_file);
+            rewrite_jsonl_text(text, &mut w, prev_jobs_seg, cur_jobs_seg)?;
+            w.flush()?;
+        }
+
+        std::fs::rename(&tmp_path, path)?;
+        Ok(())
+    }
+}
+
+fn tmp_sibling_path(path: &std::path::Path) -> std::path::PathBuf {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return path.with_extension("tmp");
+    };
+    path.with_file_name(format!("{name}.tmp"))
+}
+
+fn rewrite_jsonl_text<W: std::io::Write>(
+    text: &str,
+    writer: &mut W,
+    prev_jobs_seg: &str,
+    cur_jobs_seg: &str,
+) -> std::io::Result<()> {
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut v: serde_json::Value = serde_json::from_str(line).map_err(std::io::Error::other)?;
+        rewrite_file_path_value(&mut v, prev_jobs_seg, cur_jobs_seg);
+        serde_json::to_writer(&mut *writer, &v).map_err(std::io::Error::other)?;
+        writer.write_all(b"\n")?;
+    }
+    Ok(())
+}
+
+fn rewrite_file_path_value(v: &mut serde_json::Value, prev_jobs_seg: &str, cur_jobs_seg: &str) {
+    match v {
+        serde_json::Value::Object(map) => {
+            for (k, val) in map.iter_mut() {
+                if k == "filePath" {
+                    if let serde_json::Value::String(s) = val {
+                        *s = rewrite_one_path(s, prev_jobs_seg, cur_jobs_seg);
+                    }
+                } else {
+                    rewrite_file_path_value(val, prev_jobs_seg, cur_jobs_seg);
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for val in arr.iter_mut() {
+                rewrite_file_path_value(val, prev_jobs_seg, cur_jobs_seg);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn rewrite_one_path(s: &str, prev_jobs_seg: &str, cur_jobs_seg: &str) -> String {
+    // job id replacement
+    let out = if s.contains(prev_jobs_seg) {
+        s.replace(prev_jobs_seg, cur_jobs_seg)
+    } else {
+        s.to_string()
+    };
+
+    // local existence checks (file:// supported)
+    let (plain, prefix) = if let Some(rest) = out.strip_prefix("file://") {
+        (rest.to_string(), "file://")
+    } else {
+        (out.clone(), "")
+    };
+
+    if std::path::Path::new(&plain).exists() {
+        return out;
+    }
+
+    // artifacts <-> temp-artifacts fallback
+    if plain.contains("/artifacts/") {
+        let alt = plain.replace("/artifacts/", "/temp-artifacts/");
+        if std::path::Path::new(&alt).exists() {
+            return format!("{prefix}{alt}");
+        }
+    }
+    if plain.contains("/temp-artifacts/") {
+        let alt = plain.replace("/temp-artifacts/", "/artifacts/");
+        if std::path::Path::new(&alt).exists() {
+            return format!("{prefix}{alt}");
+        }
+    }
+
+    out
 }
 
 #[cfg(test)]
