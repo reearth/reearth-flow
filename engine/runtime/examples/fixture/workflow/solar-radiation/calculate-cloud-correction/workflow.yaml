@@ -106,18 +106,18 @@ graphs:
             - calculation: |
                 let v = env.get("__value")["daylight_hours"];
                 parse_float(v)
-              calculationAttribute: avg_daylight_hours
+              calculationAttribute: daylight_hours
               method: avg
 
             - calculation: |
                 let v = env.get("__value")["daylight_hours_num"];
                 parse_float(v)
-              calculationAttribute: avg_daylight_hours_num
+              calculationAttribute: daylight_hours_num
               method: avg
 
             - calculation: |
                 env.get("__value")["transmissivity"]
-              calculationAttribute: avg_transmissivity
+              calculationAttribute: transmissivity
               method: avg
 
             # Add the year attribute with value 9999
@@ -145,108 +145,66 @@ graphs:
                 env.get("__value")["year"] == 9999
               outputPort: year9999Port
 
-      # Aggregator for year, month, date features (corresponds to Aggregator_2 in FME)
+      # Aggregator for year, month, date features (using new AttributeAggregator to calculate averages)
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e4
         name: Aggregator_2
         type: action
-        action: StatisticsCalculator
+        action: AttributeAggregator
         with:
-          groupBy:
-            - year
+          # Define the grouping attributes (what to group by)
+          aggregateAttributes:
+            - newAttribute: year
+              attribute: year
+
+          # Define multiple calculations to perform on the same grouping
           calculations:
-            - newAttribute: sum_daylight_hours
-              expr: |
-                let v = env.get("__value")["avg_daylight_hours"];
+            # Calculate averages directly
+            - calculation: |
+                let v = env.get("__value")["daylight_hours"];
                 parse_float(v)
-            - newAttribute: sum_daylight_hours_num
-              expr: |
-                let v = env.get("__value")["avg_daylight_hours_num"];
-                parse_float(v)
-            - newAttribute: sum_transmissivity
-              expr: |
-                let v = env.get("__value")["avg_transmissivity"];
-                parse_float(v)
-            - newAttribute: count
-              expr: |
-                1
+              calculationAttribute: daylight_hours
+              method: avg
 
-      # Calculate averages for Aggregator_2 results
-      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e6
-        name: CalculateAverages_Aggregator_2
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: avg_daylight_hours
-              method: create
-              value: |
-                env.get("__value")["sum_daylight_hours"] / env.get("__value")["count"]
-            - attribute: avg_daylight_hours_num
-              method: create
-              value: |
-                env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
-            - attribute: avg_transmissivity
-              method: create
-              value: |
-                env.get("__value")["sum_transmissivity"] / env.get("__value")["count"]
-            - attribute: sum_daylight_hours
-              method: remove
-            - attribute: sum_daylight_hours_num
-              method: remove
-            - attribute: sum_transmissivity
-              method: remove
-            - attribute: count
-              method: remove
+            - calculation: |
+                let v = env.get("__value")["daylight_hours_num"];
+                parse_float(v)
+              calculationAttribute: daylight_hours_num
+              method: avg
 
-      # Aggregator for 9999-year features (corresponds to Aggregator_4 in FME)
+            - calculation: |
+                let v = env.get("__value")["transmissivity"];
+                parse_float(v)
+              calculationAttribute: transmissivity
+              method: avg
+
+      # Aggregator for 9999-year features (using new AttributeAggregator to calculate averages)
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e5
         name: Aggregator_4
         type: action
-        action: StatisticsCalculator
+        action: AttributeAggregator
         with:
-          groupBy:
-            - year
-          calculations:
-            - newAttribute: sum_daylight_hours
-              expr: |
-                env.get("__value")["avg_daylight_hours"]
-            - newAttribute: sum_daylight_hours_num
-              expr: |
-                env.get("__value")["avg_daylight_hours_num"]
-            - newAttribute: sum_transmissivity
-              expr: |
-                env.get("__value")["avg_transmissivity"]
-            - newAttribute: count
-              expr: |
-                1
+          # Define the grouping attributes (what to group by)
+          aggregateAttributes:
+            - newAttribute: year
+              attribute: year
 
-      # Calculate averages for Aggregator_4 results
-      - id: 4624d686-ec5e-11f0-a279-7c70db10a7e7
-        name: CalculateAverages_Aggregator_4
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: avg_daylight_hours
-              method: create
-              value: |
-                env.get("__value")["sum_daylight_hours"] / env.get("__value")["count"]
-            - attribute: avg_daylight_hours_num
-              method: create
-              value: |
-                env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
-            - attribute: avg_transmissivity
-              method: create
-              value: |
-                env.get("__value")["sum_transmissivity"] / env.get("__value")["count"]
-            - attribute: sum_daylight_hours
-              method: remove
-            - attribute: sum_daylight_hours_num
-              method: remove
-            - attribute: sum_transmissivity
-              method: remove
-            - attribute: count
-              method: remove
+          # Define multiple calculations to perform on the same grouping
+          calculations:
+            # Calculate averages directly
+            - calculation: |
+                env.get("__value")["daylight_hours"]
+              calculationAttribute: daylight_hours
+              method: avg
+
+            - calculation: |
+                env.get("__value")["daylight_hours_num"]
+              calculationAttribute: daylight_hours_num
+              method: avg
+
+            - calculation: |
+                env.get("__value")["transmissivity"]
+              calculationAttribute: transmissivity
+              method: avg
 
       # ExpressionEvaluator_6 equivalent - calculates sunshine rate
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e8
@@ -258,7 +216,13 @@ graphs:
             - attribute: sunshine_rate
               method: create
               value: |
-                env.get("__value")["avg_daylight_hours"] / env.get("__value")["avg_max_daylight_hours"]
+                let daylight_hours_value = env.get("__value")["daylight_hours"];
+                let max_daylight_hours_value = env.get("__value")["max_daylight_hours"];
+                if max_daylight_hours_value != 0 {
+                  daylight_hours_value / max_daylight_hours_value
+                } else {
+                  0.0
+                }
 
       # ExpressionEvaluator_8 equivalent - calculates cloud rate
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e9
@@ -365,23 +329,16 @@ graphs:
         fromPort: year9999Port
         toPort: default
 
-      # Connect Aggregator_2 to its average calculator
+      # Connect Aggregator_2 directly to ExpressionEvaluator_6 (since it now calculates averages directly)
       - id: 3794a212-ec5a-11f0-9030-7c70db10a7e6
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e4
-        to: 4624d686-ec5e-11f0-a279-7c70db10a7e6
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e8
         fromPort: default
         toPort: default
 
-      # Connect Aggregator_4 to its average calculator
+      # Connect Aggregator_4 directly to ExpressionEvaluator_6 (since it now calculates averages directly)
       - id: 3794a212-ec5a-11f0-9030-7c70db10a7e7
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e5
-        to: 4624d686-ec5e-11f0-a279-7c70db10a7e7
-        fromPort: default
-        toPort: default
-
-      # Connect average calculators to ExpressionEvaluator_6
-      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e8
-        from: 4624d686-ec5e-11f0-a279-7c70db10a7e6
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e8
         fromPort: default
         toPort: default
