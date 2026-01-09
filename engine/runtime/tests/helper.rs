@@ -88,6 +88,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         storage_resolver,
         ingress_state,
         feature_state,
+        None,
     )
     .unwrap();
     Ok(binding)

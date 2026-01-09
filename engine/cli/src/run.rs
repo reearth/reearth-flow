@@ -2,6 +2,7 @@ use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_runner::runner::Runner;
+use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::debug;
@@ -217,6 +218,8 @@ impl RunCliCommand {
         );
         let ingress_state = Arc::clone(&feature_state);
 
+        let mut incremental_run_config: Option<IncrementalRunConfig> = None;
+
         if let Some(prev_job_id) = &self.previous_job_id {
             tracing::info!(
                 "Incremental run parameter: previous_job_id = {}",
@@ -238,13 +241,14 @@ impl RunCliCommand {
             let start_node_id =
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
-            prepare_incremental_feature_store(
+            let previous_feature_state = prepare_incremental_feature_store(
                 "engine",
                 &workflow,
                 job_id,
                 storage_resolver.as_ref(),
                 prev_job_id,
                 start_node_id,
+                feature_state.as_ref(),
             )?;
 
             prepare_incremental_artifacts(
@@ -256,6 +260,18 @@ impl RunCliCommand {
                     DirCopySpec::new("temp-artifacts", "previous-temp-artifacts"),
                 ],
             )?;
+
+            previous_feature_state
+                .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
+                .map_err(crate::errors::Error::init)?;
+            feature_state
+                .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
+                .map_err(crate::errors::Error::init)?;
+
+            incremental_run_config = Some(IncrementalRunConfig {
+                start_node_id,
+                previous_feature_state,
+            });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
         } else {
@@ -274,6 +290,7 @@ impl RunCliCommand {
             storage_resolver,
             ingress_state,
             feature_state,
+            incremental_run_config,
         )
         .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }

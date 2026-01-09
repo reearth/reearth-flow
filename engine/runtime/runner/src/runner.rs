@@ -2,7 +2,9 @@ use std::{collections::HashMap, env, sync::Arc, time::Instant};
 
 use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_runtime::{event::EventHandler, node::NodeKind, shutdown};
+use reearth_flow_runtime::{
+    event::EventHandler, incremental::IncrementalRunConfig, node::NodeKind, shutdown,
+};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
@@ -25,6 +27,7 @@ static ASYNC_WORKER_NUM: Lazy<usize> = Lazy::new(|| {
 
 pub struct Runner;
 
+#[allow(clippy::too_many_arguments)]
 impl Runner {
     pub fn run(
         job_id: uuid::Uuid,
@@ -34,6 +37,7 @@ impl Runner {
         storage_resolver: Arc<StorageResolver>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
             job_id,
@@ -43,6 +47,7 @@ impl Runner {
             storage_resolver,
             ingress_state,
             feature_state,
+            incremental_run_config,
             vec![],
         )
     }
@@ -56,6 +61,7 @@ impl Runner {
         storage_resolver: Arc<StorageResolver>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -99,6 +105,7 @@ impl Runner {
                     storage_resolver,
                     ingress_state,
                     feature_state,
+                    incremental_run_config,
                     handlers,
                 )
                 .await
@@ -116,6 +123,7 @@ impl Runner {
 
 pub struct AsyncRunner;
 
+#[allow(clippy::too_many_arguments)]
 impl AsyncRunner {
     pub async fn run(
         job_id: uuid::Uuid,
@@ -125,6 +133,7 @@ impl AsyncRunner {
         storage_resolver: Arc<StorageResolver>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
             job_id,
@@ -134,6 +143,7 @@ impl AsyncRunner {
             storage_resolver,
             ingress_state,
             feature_state,
+            incremental_run_config,
             vec![],
         )
         .await
@@ -148,6 +158,7 @@ impl AsyncRunner {
         storage_resolver: Arc<StorageResolver>,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
@@ -180,6 +191,7 @@ impl AsyncRunner {
                 storage_resolver,
                 ingress_state,
                 feature_state,
+                incremental_run_config,
                 handlers,
             )
             .await;

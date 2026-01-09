@@ -494,6 +494,7 @@ impl TestContext {
             storage_resolver,
             ingress_state,
             feature_state,
+            None,
         )?;
 
         Ok(())

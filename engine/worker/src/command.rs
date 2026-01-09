@@ -7,6 +7,7 @@ use reearth_flow_common::{
     uri::{Protocol, Uri},
 };
 use reearth_flow_runner::runner::AsyncRunner;
+use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
 use reearth_flow_types::Workflow;
@@ -213,7 +214,7 @@ impl RunWorkerCommand {
             }
         };
 
-        let (ingress_state, feature_state, logger_factory) = self
+        let (ingress_state, feature_state, logger_factory, incremental_run_config) = self
             .prepare_workflow(&storage_resolver, &meta, &mut workflow)
             .await?;
 
@@ -232,6 +233,7 @@ impl RunWorkerCommand {
             storage_resolver.clone(),
             ingress_state,
             feature_state,
+            incremental_run_config,
             vec![handler, node_failure_handler.clone()],
         )
         .await;
@@ -364,7 +366,12 @@ impl RunWorkerCommand {
         storage_resolver: &Arc<StorageResolver>,
         meta: &Metadata,
         workflow: &mut Workflow,
-    ) -> crate::errors::Result<(Arc<State>, Arc<State>, Arc<LoggerFactory>)> {
+    ) -> crate::errors::Result<(
+        Arc<State>,
+        Arc<State>,
+        Arc<LoggerFactory>,
+        Option<IncrementalRunConfig>,
+    )> {
         let job_id = meta.job_id;
         let asset_path =
             setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
@@ -411,6 +418,8 @@ impl RunWorkerCommand {
         );
         let ingress_state = Arc::clone(&feature_state);
 
+        let mut incremental_run_config: Option<IncrementalRunConfig> = None;
+
         if let Some(prev_job_id) = &self.previous_job_id {
             tracing::info!(
                 "Incremental run parameter: previous_job_id = {}",
@@ -432,7 +441,7 @@ impl RunWorkerCommand {
             let start_node_id =
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
-            prepare_incremental_feature_store(
+            let previous_feature_state = prepare_incremental_feature_store(
                 "workers",
                 workflow,
                 job_id,
@@ -440,6 +449,7 @@ impl RunWorkerCommand {
                 meta,
                 prev_job_id,
                 start_node_id,
+                feature_state.as_ref(),
             )
             .await?;
 
@@ -455,6 +465,18 @@ impl RunWorkerCommand {
                 ],
             )
             .await?;
+
+            previous_feature_state
+                .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
+                .map_err(crate::errors::Error::init)?;
+            feature_state
+                .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
+                .map_err(crate::errors::Error::init)?;
+
+            incremental_run_config = Some(IncrementalRunConfig {
+                start_node_id,
+                previous_feature_state,
+            });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
         } else {
@@ -465,7 +487,12 @@ impl RunWorkerCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Ok((ingress_state, feature_state, logger_factory))
+        Ok((
+            ingress_state,
+            feature_state,
+            logger_factory,
+            incremental_run_config,
+        ))
     }
 
     async fn cleanup(
