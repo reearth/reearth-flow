@@ -1,15 +1,18 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
+import { NodeChange } from "@xyflow/react";
 
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import { useT } from "@flow/lib/i18n";
-import { Workflow } from "@flow/types";
+import { Node, Workflow } from "@flow/types";
 
 import useHooks, { SearchNodeResult } from "./hooks";
 
 type SearchPanelProps = {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
+
   onWorkflowOpen: (id: string) => void;
   onShowSearchPanel: (open: boolean) => void;
 };
@@ -17,6 +20,7 @@ type SearchPanelProps = {
 const SearchPanel = ({
   rawWorkflows,
   currentWorkflowId,
+  onNodesChange,
   onWorkflowOpen,
   onShowSearchPanel,
 }: SearchPanelProps) => {
@@ -31,6 +35,7 @@ const SearchPanel = ({
   } = useHooks({
     rawWorkflows,
     currentWorkflowId,
+    onNodesChange,
     onWorkflowOpen,
   });
 

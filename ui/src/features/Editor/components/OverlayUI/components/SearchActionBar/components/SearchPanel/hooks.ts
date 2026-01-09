@@ -1,8 +1,9 @@
-import { useReactFlow } from "@xyflow/react";
-import { useMemo, useCallback, useState } from "react";
+import { NodeChange, useReactFlow } from "@xyflow/react";
+import { useMemo, useCallback, useState, useRef } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { Workflow } from "@flow/types";
+import { useDoubleClick } from "@flow/hooks";
+import { Node, Workflow } from "@flow/types";
 
 export type SearchNodeResult = {
   id: string;
@@ -18,13 +19,16 @@ export type SearchNodeResult = {
 export default ({
   rawWorkflows,
   currentWorkflowId,
+  onNodesChange,
   onWorkflowOpen,
 }: {
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onWorkflowOpen: (id: string) => void;
 }) => {
   const { setCenter, getNode } = useReactFlow();
+  const prevSelectedNodeIdRef = useRef<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const allNodes: SearchNodeResult[] = useMemo(() => {
@@ -45,6 +49,9 @@ export default ({
 
   const handleNavigateToNode = useCallback(
     (node: SearchNodeResult) => {
+      // Update selected node state
+      setSelectedNodeId(node.id);
+
       if (node.workflowId !== currentWorkflowId) {
         onWorkflowOpen(node.workflowId);
       }
@@ -57,21 +64,75 @@ export default ({
               reactFlowNode.position.y + (reactFlowNode.height ?? 0) / 2,
               { zoom: 1.1, duration: 300 },
             );
+            if (
+              prevSelectedNodeIdRef.current &&
+              prevSelectedNodeIdRef.current !== node.id
+            ) {
+              onNodesChange?.([
+                {
+                  type: "select",
+                  id: prevSelectedNodeIdRef.current,
+                  selected: false,
+                },
+              ]);
+            }
+            onNodesChange?.([
+              {
+                type: "select",
+                id: reactFlowNode.id,
+                selected: true,
+              },
+            ]);
+            prevSelectedNodeIdRef.current = node.id;
           }
         },
         node.workflowId !== currentWorkflowId ? 100 : 0,
       );
     },
-    [currentWorkflowId, onWorkflowOpen, getNode, setCenter],
+    [currentWorkflowId, onWorkflowOpen, getNode, setCenter, onNodesChange],
   );
 
-  const handleRowClick = (node: SearchNodeResult) => {
-    setSelectedNodeId(node.id);
-  };
+  const handleSingleClick = useCallback(
+    (node?: SearchNodeResult) => {
+      if (!node) return;
+      setSelectedNodeId(node.id);
+      if (
+        prevSelectedNodeIdRef.current &&
+        prevSelectedNodeIdRef.current !== node.id
+      ) {
+        onNodesChange?.([
+          {
+            type: "select",
+            id: prevSelectedNodeIdRef.current,
+            selected: false,
+          },
+        ]);
+      }
+      onNodesChange?.([
+        {
+          type: "select",
+          id: node.id,
+          selected: true,
+        },
+      ]);
+      prevSelectedNodeIdRef.current = node.id;
+    },
+    [onNodesChange],
+  );
 
-  const handleRowDoubleClick = (node: SearchNodeResult) => {
-    handleNavigateToNode(node);
-  };
+  const handleDoubleClick = useCallback(
+    (node?: SearchNodeResult) => {
+      if (!node) return;
+      handleNavigateToNode(node);
+    },
+    [handleNavigateToNode],
+  );
+
+  const [handleRowClick, handleRowDoubleClick] = useDoubleClick(
+    handleSingleClick,
+    handleDoubleClick,
+    50,
+  );
 
   const displayNameOnlyFilter = useCallback(
     (row: any, _columnId: string, filterValue: string) => {

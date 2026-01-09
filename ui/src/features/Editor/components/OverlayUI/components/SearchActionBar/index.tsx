@@ -1,9 +1,10 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { NodeChange } from "@xyflow/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Workflow } from "@flow/types";
+import { Node, Workflow } from "@flow/types";
 
 import { SearchPanel } from "./components";
 
@@ -14,6 +15,7 @@ type Props = {
   currentWorkflowId: string;
   onWorkflowOpen: (id: string) => void;
   showSearchPanel: boolean;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onShowSearchPanel: (open: boolean) => void;
 };
 
@@ -22,6 +24,7 @@ const SearchActionBar: React.FC<Props> = ({
   currentWorkflowId,
   onWorkflowOpen,
   showSearchPanel,
+  onNodesChange,
   onShowSearchPanel,
 }) => {
   const t = useT();
@@ -43,6 +46,7 @@ const SearchActionBar: React.FC<Props> = ({
             <SearchPanel
               rawWorkflows={rawWorkflows}
               currentWorkflowId={currentWorkflowId}
+              onNodesChange={onNodesChange}
               onWorkflowOpen={onWorkflowOpen}
               onShowSearchPanel={onShowSearchPanel}
             />

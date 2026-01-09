@@ -137,6 +137,7 @@ export default function Editor({
             onWorkflowOpen={handleWorkflowOpen}
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
+            onNodesChange={handleNodesChange}
             onNodePickerClose={handleNodePickerClose}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}

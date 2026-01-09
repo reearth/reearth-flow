@@ -1,4 +1,4 @@
-import { type XYPosition } from "@xyflow/react";
+import { NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
@@ -45,6 +45,7 @@ type OverlayUIProps = {
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onNodesAdd: (nodes: Node[]) => void;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
@@ -97,6 +98,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   currentWorkflowId,
   customDebugRunWorkflowVariables,
   onNodesAdd,
+  onNodesChange,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
@@ -203,6 +205,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             rawWorkflows={rawWorkflows}
             currentWorkflowId={currentWorkflowId}
             onWorkflowOpen={onWorkflowOpen}
+            onNodesChange={onNodesChange}
             showSearchPanel={showSearchPanel}
             onShowSearchPanel={onShowSearchPanel}
           />
