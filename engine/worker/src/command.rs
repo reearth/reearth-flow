@@ -466,14 +466,9 @@ impl RunWorkerCommand {
             )
             .await?;
 
-            let prev_store_dir = setup_job_directory("workers", "previous-feature-store", job_id)
-                .map_err(crate::errors::Error::init)?;
-            let prev_store_state = State::new(&prev_store_dir, storage_resolver.as_ref())
-                .map_err(crate::errors::Error::init)?;
-            prev_store_state
+            previous_feature_state
                 .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
                 .map_err(crate::errors::Error::init)?;
-
             feature_state
                 .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
                 .map_err(crate::errors::Error::init)?;
