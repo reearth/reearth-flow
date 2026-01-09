@@ -98,7 +98,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_L-bldg-06エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "02_建築物_L-bldg-06エラー.csv")
 
   - id: 77a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lbldg06ErrorCounter
@@ -163,7 +163,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_T-bldg-02エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "02_建築物_T-bldg-02エラー.csv")
 
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02

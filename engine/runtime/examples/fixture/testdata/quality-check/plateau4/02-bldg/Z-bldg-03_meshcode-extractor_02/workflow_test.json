@@ -5,8 +5,8 @@
     "expectedFile": "02_建築物_図郭不正.csv"
   },
   "cityGmlPath": "udx/bldg/54377094_bldg_6697_op.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
@@ -17,5 +17,5 @@
   },
   "expectResultOkFile": false,
   "prcs": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx"
+  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
 }

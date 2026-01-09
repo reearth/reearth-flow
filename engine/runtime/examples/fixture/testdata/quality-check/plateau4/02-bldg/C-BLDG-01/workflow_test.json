@@ -19,10 +19,10 @@
     }
   },
   "cityGmlPath": "udx/bldg/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "codelistsPath": "codelists",
+  "schemasPath": "schemas",
   "prcs": 6675,
   "expectResultOkFile": false,
   "skip": false,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx"
+  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
 }

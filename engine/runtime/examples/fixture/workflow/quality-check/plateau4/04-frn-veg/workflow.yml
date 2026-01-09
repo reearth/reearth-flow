@@ -3,10 +3,13 @@ name: "PLATEAU4-quality-check-04-frn-veg"
 entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
 with:
   cityGmlPath:
+  schemasPath:
   schemas:
+  codelistsPath:
   codelists:
+  objectListsPath:
   objectLists:
-  outputPath:
+  workerArtifactPath:
   prcs:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -30,9 +33,9 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListPath: env.get("objectLists"),
-                schemas: env.get("schemas"),
-                codelists: env.get("codelists"),
+                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
               },
             ]
 
@@ -207,7 +210,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "04_都市設備_植生_地物インスタンス数.csv")
+            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_地物インスタンス数.csv")
 
       # Surface Validation
       - id: 950407af-eec5-49ee-902c-2b41f31150d3
@@ -253,7 +256,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "04_都市設備_植生_面のエラー.csv")
+            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_面のエラー.csv")
       
       - id: 46d6ed1c-cde5-43a5-837b-8544103aa36b
         name: SurfaceValidationErrorCounter
@@ -322,7 +325,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "04_都市設備_植生_非水密体.csv")
+            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_非水密体.csv")
 
       - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
         name: Lod1-4NotClosedSolidCounter
@@ -378,7 +381,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "04_都市設備_植生_立体のエラー.csv")
+            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_立体のエラー.csv")
 
       - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Lod1-4SolidIssuesCounter
@@ -428,7 +431,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "04_都市設備_植生_不正なジオメトリ型.csv")
+            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_不正なジオメトリ型.csv")
       
       
       - id: d7c87c17-485d-469e-b216-7797bd63d0e9
@@ -568,7 +571,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "04_都市設備_植生_検査結果一覧.csv")
+            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -665,7 +668,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_frn_veg.json")
+            file::join_path(env.get("workerArtifactPath"), "summary_frn_veg.json")
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -698,7 +701,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
@@ -709,7 +712,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
     edges:

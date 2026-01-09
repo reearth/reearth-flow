@@ -3,10 +3,13 @@ name: PLATEAU4-quality-check-09-brid-tun-ubld-workflow
 entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
   cityGmlPath: null
+  codelistsPath: null
   codelists: null
+  schemasPath: null
   schemas: null
+  objectListsPath: null
   objectLists: null
-  outputPath: null
+  workerArtifactPath: null
   prcs: null
 graphs:
 - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -39,9 +42,9 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            objectListPath: env.get("objectLists"),
-            codelists: env.get("codelists"),
-            schemas: env.get("schemas"),
+            objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
           },
         ]
   - id: c7315341-26b3-4405-9d02-039d721cd225
@@ -288,7 +291,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv")
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
@@ -296,7 +299,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_トンネル.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_トンネル.csv")
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
@@ -304,7 +307,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_地下街.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_地下街.csv")
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
@@ -455,7 +458,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_検査結果一覧.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_検査結果一覧.csv")
   - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: StatisticsCalculator
     type: action
@@ -580,7 +583,7 @@ graphs:
           result
         }
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_brid_tun_ubld.json")
+        file::join_path(env.get("workerArtifactPath"), "summary_brid_tun_ubld.json")
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -607,7 +610,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
     name: ZipFileWriter
@@ -616,7 +619,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
   - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

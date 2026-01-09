@@ -6,6 +6,8 @@ with:
   cityCode: null
   codelistsPath: null
   schemasPath: null
+  codelists: null
+  schemas: null
   targetPackages:
   - frn
   - veg
@@ -295,8 +297,8 @@ graphs:
           #{
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath"),
-            schemas: env.get("schemasPath"),
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
           },
         ]
   - id: e3a0b07a-6850-4942-9745-0a07d0da713d
