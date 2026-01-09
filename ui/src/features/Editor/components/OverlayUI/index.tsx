@@ -198,27 +198,26 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDialogClose={handleDialogClose}
           />
         )}
-        <div
-          id="left-bottom"
-          className="pointer-events-none absolute bottom-2 left-2 flex flex-row-reverse items-end gap-4">
-          <SearchActionBar
-            rawWorkflows={rawWorkflows}
-            currentWorkflowId={currentWorkflowId}
-            onWorkflowOpen={onWorkflowOpen}
-            onNodesChange={onNodesChange}
-            showSearchPanel={showSearchPanel}
-            onShowSearchPanel={onShowSearchPanel}
-          />
-        </div>
-        <div
-          id="left-bottom-debug-panel"
-          className="absolute bottom-2 left-2 z-1">
-          <DebugPanel />
-        </div>
-        <div
-          id="right-bottom"
-          className="pointer-events-none absolute right-2 bottom-2 flex flex-row-reverse items-end gap-4">
-          <CanvasActionBar />
+        <div className="flex justify-between gap-0.5 px-2 pb-2">
+          <div id="left-bottom-search-bar" className="z-1 self-end">
+            <SearchActionBar
+              rawWorkflows={rawWorkflows}
+              currentWorkflowId={currentWorkflowId}
+              onWorkflowOpen={onWorkflowOpen}
+              onNodesChange={onNodesChange}
+              showSearchPanel={showSearchPanel}
+              onShowSearchPanel={onShowSearchPanel}
+            />
+          </div>
+          <div
+            id="middle-bottom-debug-panel"
+            className="bottom-2 z-10 self-end">
+            <DebugPanel />
+          </div>
+
+          <div id="right-bottom-canvas-action-bar" className="z-1 self-end">
+            <CanvasActionBar />
+          </div>
         </div>
       </div>
       <LayoutOptionsDialog
