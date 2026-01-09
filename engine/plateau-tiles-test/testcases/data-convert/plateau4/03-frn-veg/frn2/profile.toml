@@ -2,6 +2,7 @@ citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_area.zip"
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".dm_attributes" = "json"
 
 [tests.mvt_polygons]
 threshold = 0.001

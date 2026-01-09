@@ -310,9 +310,7 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
         if path.extension().is_some_and(|e| e == "zip") {
             let stem = path.file_stem().unwrap().to_str().unwrap();
             let out = output_dir.join(stem);
-            if out.exists() {
-                continue;
-            }
+            let _ = fs::remove_dir_all(&out);
             fs::create_dir_all(&out).unwrap();
             let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
             zip.extract(&out).unwrap();
