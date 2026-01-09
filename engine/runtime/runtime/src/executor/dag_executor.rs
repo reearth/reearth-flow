@@ -212,14 +212,17 @@ impl DagExecutor {
             let kv_store2 = Arc::clone(&kv_store);
             let event_hub2 = execution_dag.event_hub().clone();
 
-            std::thread::Builder::new()
+            let injector_handle = std::thread::Builder::new()
                 .name("replay-injector".to_string())
                 .spawn(move || {
                     let node_ctx =
                         NodeContext::new(expr_engine2, storage_resolver2, kv_store2, event_hub2);
                     replay_inject(cfg, replay_groups, node_ctx);
+                    Ok::<(), ExecutionError>(())
                 })
                 .map_err(ExecutionError::CannotSpawnWorkerThread)?;
+
+            join_handles.push(injector_handle);
         }
 
         Ok(DagExecutorJoinHandle {
