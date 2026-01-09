@@ -217,8 +217,8 @@ graphs:
               method: create
               value: |
                 let daylight_hours_value = env.get("__value")["daylight_hours"];
-                let max_daylight_hours_value = env.get("__value")["max_daylight_hours"];
-                if max_daylight_hours_value != 0 {
+                let max_daylight_hours_value = env.get("__value")["max_daylight_hours"] ?? 0.0;
+                if max_daylight_hours_value != 0.0 {
                   daylight_hours_value / max_daylight_hours_value
                 } else {
                   0.0
@@ -248,9 +248,9 @@ graphs:
               value: |
                 let year_value = env.get("__value")["year"];
                 if year_value != 9999 {
-                  1.0
+                  1
                 } else {
-                  0.0
+                  0
                 }
 
       # StatisticsCalculator_5 equivalent - performs statistics calculations
@@ -264,13 +264,13 @@ graphs:
           calculations:
             - newAttribute: sum_is_not_9999
               expr: |
-                env.get("__value")["is_not_9999"]
+                env.get("__value")["is_not_9999"] ?? 0.0
             - newAttribute: sum_sunshine_rate
               expr: |
-                env.get("__value")["sunshine_rate"]
+                env.get("__value")["sunshine_rate"] ?? 0.0
             - newAttribute: sum_cloud_rate
               expr: |
-                env.get("__value")["cloud_rate"]
+                env.get("__value")["cloud_rate"] ?? 0.0
 
       # AttributeCreator_6 equivalent - creates join key
       - id: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3

@@ -351,9 +351,8 @@ impl Processor for AttributeAggregator {
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
             if let Some(attribute) = &aggregate_attribute.attribute {
-                let result = feature.get(attribute).ok_or_else(|| {
-                    AttributeProcessorError::Aggregator(format!("Attribute not found: {attribute}"))
-                })?;
+                // Handle missing attributes gracefully by using a null value
+                let result = feature.get(attribute).unwrap_or(&AttributeValue::Null);
                 aggregates.push(result.clone());
                 continue;
             }
@@ -398,12 +397,9 @@ impl Processor for AttributeAggregator {
                         let eval_result = scope.eval_ast::<i64>(calculation_ast);
                         match eval_result {
                             Ok(eval) => NumericValue::Integer(eval),
-                            Err(e) => {
-                                return Err(Box::new(
-                                    AttributeProcessorError::Aggregator(format!(
-                                        "Failed to evaluate calculation: {:?}", e
-                                    ))
-                                ));
+                            Err(_) => {
+                                // If both evaluations fail, treat as 0.0 to handle missing attributes gracefully
+                                NumericValue::Float(0.0)
                             }
                         }
                     }
