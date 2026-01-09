@@ -89,7 +89,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   return (
     <div className="absolute inset-y-0 -top-10 left-0 z-10 w-full rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-border p-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
           <IconButton
             className="h-7 w-7"
