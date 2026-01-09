@@ -221,7 +221,11 @@ const DebugPanel: React.FC = () => {
                   </Select>
                 </div>
                 <div
-                  className={`${detailsOverlayOpen ? "mt-[42px] " : "mt-0"} min-h-0 flex-1`}>
+                  className={
+                    detailsOverlayOpen
+                      ? "mt-[42px] min-h-0 flex-1"
+                      : "mt-0 min-h-0 flex-1"
+                  }>
                   <TableViewer
                     fileContent={selectedOutputData}
                     selectedFeatureId={selectedFeatureId}

@@ -21,7 +21,6 @@ export default () => {
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
   const [detailsFeature, setDetailsFeature] = useState<any>(null);
-  const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
@@ -100,7 +99,7 @@ export default () => {
           }) ?? [],
       });
       setMinimized(false);
-      prevSelectedDataURLRef.current = debugJobState?.focusedIntermediateData;
+      // Don't close overlay - the useEffect will update detailsFeature with data from new source
     }
   };
 
@@ -529,7 +528,6 @@ export default () => {
               };
             }) ?? [],
         });
-        prevSelectedDataURLRef.current = undefined;
       }
     },
     [
@@ -539,22 +537,15 @@ export default () => {
       updateValue,
     ],
   );
+
   useEffect(() => {
-    if (
-      prevSelectedDataURLRef.current !== selectedDataURL &&
-      detailsFeature &&
-      detailsOverlayOpen
-    ) {
-      const matching = featureIdMap?.get(detailsFeature.id);
-      setDetailsFeature(matching);
+    if (detailsOverlayOpen && selectedFeatureId && featureIdMap) {
+      const matching = featureIdMap.get(selectedFeatureId);
+      if (matching) {
+        setDetailsFeature(matching);
+      }
     }
-  }, [
-    selectedDataURL,
-    featureIdMap,
-    formattedData.tableData,
-    detailsFeature,
-    detailsOverlayOpen,
-  ]);
+  }, [featureIdMap, selectedFeatureId, detailsOverlayOpen]);
 
   return {
     debugJobId,
