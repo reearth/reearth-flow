@@ -126,7 +126,7 @@ pub struct MVTWriter {
 /// # MVTWriter Parameters
 ///
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
-/// Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as the root (tileJSON requires absolute URLs).
+/// Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {

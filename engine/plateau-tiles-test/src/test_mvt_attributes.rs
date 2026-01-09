@@ -166,6 +166,32 @@ fn find_mvt_tile_directories(base_path: &Path) -> Result<Vec<String>, String> {
     Ok(result)
 }
 
+/// Compares tilejson.json files between FME and Flow outputs
+/// Currently compare only names
+fn compare_tilejson(fme_dir: &Path, flow_dir: &Path) -> Result<(), String> {
+    let fme_tilejson_path = fme_dir.join("tilejson.json");
+    let flow_tilejson_path = flow_dir.join("tilejson.json");
+
+    // Read both tilejson.json
+    let fme_content = fs::read_to_string(&fme_tilejson_path).unwrap();
+    let flow_content = fs::read_to_string(&flow_tilejson_path).unwrap();
+    let fme_json: Value = serde_json::from_str(&fme_content).unwrap();
+    let flow_json: Value = serde_json::from_str(&flow_content).unwrap();
+
+    // Compare "name" field
+    let fme_name = fme_json.get("name");
+    let flow_name = flow_json.get("name");
+
+    if fme_name != flow_name {
+        return Err(format!(
+            "tilejson.json 'name' field mismatch: FME={:?}, Flow={:?}",
+            fme_name, flow_name
+        ));
+    }
+
+    Ok(())
+}
+
 /// Tests MVT attributes between FME and Flow outputs
 pub fn test_mvt_attributes(
     fme_path: &Path,
@@ -199,6 +225,10 @@ pub fn test_mvt_attributes(
 
         tracing::debug!("Comparing MVT attributes in directory: {}", dir_name);
 
+        // Compare tilejson.json files
+        compare_tilejson(&fme_dir, &flow_dir)?;
+
+        // Compare MVT attributes
         for (gml_id, attr1, attr2) in align_mvt_attr(&fme_dir, &flow_dir)? {
             analyze_attributes(&gml_id, &attr1, &attr2, casts.clone())?;
         }
