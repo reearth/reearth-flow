@@ -198,7 +198,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDialogClose={handleDialogClose}
           />
         )}
-        <div className="flex justify-between gap-0.5 px-2 pb-2">
+        <div className="absolute inset-x-0 bottom-2 flex justify-between gap-0.5 px-2">
           <div id="left-bottom-search-bar" className="z-1 self-end">
             <SearchActionBar
               rawWorkflows={rawWorkflows}
