@@ -151,7 +151,10 @@ pub(super) fn geometry_slicing_stage(
         .file_name()
         .map(|s| s.to_string_lossy().to_string());
     if basename.is_none() {
-        tracing::warn!("Basename extraction failed from output path: {}", output_path);
+        tracing::warn!(
+            "Basename extraction failed from output path: {}",
+            output_path
+        );
     }
 
     // Construct absolute path for tiles (parent of tilejson.json is root)
