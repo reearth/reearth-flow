@@ -17,6 +17,7 @@ flatgeom.workspace = true
 nusamai-projection.workspace = true
 
 approx.workspace = true
+bvh.workspace = true
 bytes.workspace = true
 clipper-sys.workspace = true
 float_next_after.workspace = true

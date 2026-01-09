@@ -6973,6 +6973,146 @@
       ]
     },
     {
+      "name": "RayIntersector",
+      "type": "processor",
+      "description": "Computes intersection points between rays and geometries",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "RayIntersectorParams",
+        "description": "RayIntersector Parameters",
+        "type": "object",
+        "required": [
+          "pairId",
+          "ray"
+        ],
+        "properties": {
+          "closestIntersectionOnly": {
+            "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pairId": {
+            "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "ray": {
+            "description": "Defines how to extract ray data from feature attributes",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RayDefinition"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "RayDefinition": {
+            "description": "Defines how ray data is extracted from feature attributes.",
+            "oneOf": [
+              {
+                "description": "2D ray defined by position (x, y) and direction (dx, dy)",
+                "type": "object",
+                "required": [
+                  "dir_x",
+                  "dir_y",
+                  "pos_x",
+                  "pos_y",
+                  "type"
+                ],
+                "properties": {
+                  "dir_x": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "dir_y": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "pos_x": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "pos_y": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "2d"
+                    ]
+                  }
+                }
+              },
+              {
+                "description": "3D ray defined by position (x, y, z) and direction (dx, dy, dz)",
+                "type": "object",
+                "required": [
+                  "dir_x",
+                  "dir_y",
+                  "dir_z",
+                  "pos_x",
+                  "pos_y",
+                  "pos_z",
+                  "type"
+                ],
+                "properties": {
+                  "dir_x": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "dir_y": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "dir_z": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "pos_x": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "pos_y": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "pos_z": {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "3d"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "ray",
+        "geom"
+      ],
+      "outputPorts": [
+        "intersection",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Refiner",
       "type": "processor",
       "description": "Refina la geometría",
