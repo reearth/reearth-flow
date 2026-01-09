@@ -209,9 +209,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onShowSearchPanel={onShowSearchPanel}
             />
           </div>
-          <div
-            id="middle-bottom-debug-panel"
-            className="bottom-2 z-10 self-end">
+          <div id="middle-bottom-debug-panel" className="bottom-2 self-end">
             <DebugPanel />
           </div>
 

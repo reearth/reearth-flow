@@ -73,7 +73,7 @@ const SearchPanel = ({
   ];
 
   return (
-    <div className="z-50 flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur">
+    <div className="absolute flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur">
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2">

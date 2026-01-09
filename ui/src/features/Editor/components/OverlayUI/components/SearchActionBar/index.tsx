@@ -29,7 +29,7 @@ const SearchActionBar: React.FC<Props> = ({
 }) => {
   const t = useT();
   return (
-    <div className="pointer-events-auto rounded-md p-1">
+    <div className="pointer-events-auto relative rounded-md p-1">
       <div className="flex rounded-md">
         <div className="flex flex-1 flex-col justify-end gap-1 align-middle">
           <div className={showSearchPanel ? "invisible" : ""}>
