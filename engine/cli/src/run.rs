@@ -13,8 +13,7 @@ use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
 use crate::incremental::{
-    prepare_incremental_artifacts, prepare_incremental_feature_store,
-    rewrite_feature_store_file_paths_in_dir, DirCopySpec,
+    prepare_incremental_artifacts, prepare_incremental_feature_store, DirCopySpec,
 };
 
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
@@ -264,19 +263,14 @@ impl RunCliCommand {
 
             let prev_store_dir = setup_job_directory("engine", "previous-feature-store", job_id)
                 .map_err(crate::errors::Error::init)?;
-            rewrite_feature_store_file_paths_in_dir(
-                prev_store_dir.path().as_path(),
-                prev_job_id,
-                job_id,
-            )?;
-
-            let feature_store_dir = setup_job_directory("engine", "feature-store", job_id)
+            let prev_store_state = State::new(&prev_store_dir, storage_resolver.as_ref())
                 .map_err(crate::errors::Error::init)?;
-            rewrite_feature_store_file_paths_in_dir(
-                feature_store_dir.path().as_path(),
-                prev_job_id,
-                job_id,
-            )?;
+            prev_store_state
+                .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
+                .map_err(crate::errors::Error::init)?;
+            feature_state
+                .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
+                .map_err(crate::errors::Error::init)?;
 
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
