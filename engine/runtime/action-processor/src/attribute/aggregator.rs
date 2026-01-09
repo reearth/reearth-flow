@@ -395,7 +395,7 @@ impl Processor for AttributeAggregator {
             } else if let Some(calculation_ast) = &calculation.calculation {
                 // Try to evaluate as f64 first, then fall back to i64
                 let eval_result = scope.eval_ast::<f64>(calculation_ast);
-                let numeric_value = match eval_result {
+                match eval_result {
                     Ok(eval) => NumericValue::Float(eval),
                     Err(_) => {
                         // If f64 evaluation fails, try i64
@@ -408,8 +408,7 @@ impl Processor for AttributeAggregator {
                             }
                         }
                     }
-                };
-                numeric_value
+                }
             } else {
                 return Err(AttributeProcessorError::Aggregator(
                     "Calculation not found".to_string(),
