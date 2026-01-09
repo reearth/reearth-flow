@@ -48,7 +48,9 @@ export default function Editor({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    rawWorkflows,
     customDebugRunWorkflowVariables,
+    showSearchPanel,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowAdd,
@@ -85,6 +87,7 @@ export default function Editor({
     handleSpotlightUserDeselect,
     handleNodesDisable,
     handlePaneClick,
+    setShowSearchPanel,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -126,12 +129,15 @@ export default function Editor({
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
+            rawWorkflows={rawWorkflows}
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
+            onWorkflowOpen={handleWorkflowOpen}
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
+            onNodesChange={handleNodesChange}
             onNodePickerClose={handleNodePickerClose}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}
@@ -146,7 +152,9 @@ export default function Editor({
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
             onDebugRunJoin={loadExternalDebugJob}
-            activeUsersDebugRuns={activeUsersDebugRuns}>
+            activeUsersDebugRuns={activeUsersDebugRuns}
+            showSearchPanel={showSearchPanel}
+            onShowSearchPanel={setShowSearchPanel}>
             <Canvas
               nodes={nodes}
               edges={edges}

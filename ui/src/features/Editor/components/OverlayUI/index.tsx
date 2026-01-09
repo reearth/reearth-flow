@@ -1,4 +1,4 @@
-import { type XYPosition } from "@xyflow/react";
+import { NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
@@ -10,6 +10,7 @@ import type {
   Direction,
   Node,
   Project,
+  Workflow,
 } from "@flow/types";
 
 import {
@@ -22,6 +23,7 @@ import {
   DebugPanel,
   Homebar,
   VersionDialog,
+  SearchActionBar,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -33,6 +35,7 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
+  rawWorkflows: Workflow[];
   project?: Project;
   yDoc: Doc | null;
   openWorkflows: {
@@ -42,6 +45,7 @@ type OverlayUIProps = {
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onNodesAdd: (nodes: Node[]) => void;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
@@ -56,6 +60,7 @@ type OverlayUIProps = {
   allowedToDeploy: boolean;
   isSaving: boolean;
   onWorkflowClose: (workflowId: string) => void;
+  onWorkflowOpen: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowDeployment: (
     description: string,
@@ -72,6 +77,8 @@ type OverlayUIProps = {
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
   children?: React.ReactNode;
+  showSearchPanel: boolean;
+  onShowSearchPanel: (open: boolean) => void;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -79,6 +86,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
+  rawWorkflows,
   yDoc,
   project,
   allowedToDeploy,
@@ -90,10 +98,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   currentWorkflowId,
   customDebugRunWorkflowVariables,
   onNodesAdd,
+  onNodesChange,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
   onWorkflowChange,
+  onWorkflowOpen,
   onWorkflowClose,
   onLayoutChange,
   onWorkflowDeployment,
@@ -108,6 +118,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onSpotlightUserDeselect,
   children: canvas,
   activeUsersDebugRuns,
+  showSearchPanel,
+  onShowSearchPanel,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
@@ -186,17 +198,24 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDialogClose={handleDialogClose}
           />
         )}
-        <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
-          <DebugPanel />
-        </div>
-        <div
-          id="bottom-middle"
-          className="pointer-events-none absolute inset-x-0 bottom-2 flex shrink-0 justify-center *:pointer-events-auto"
-        />
-        <div
-          id="right-bottom"
-          className="pointer-events-none absolute right-2 bottom-2 flex flex-row-reverse items-end gap-4">
-          <CanvasActionBar />
+        <div className="flex justify-between gap-0.5 px-2 pb-2">
+          <div id="left-bottom-search-bar" className="z-1 self-end">
+            <SearchActionBar
+              rawWorkflows={rawWorkflows}
+              currentWorkflowId={currentWorkflowId}
+              onWorkflowOpen={onWorkflowOpen}
+              onNodesChange={onNodesChange}
+              showSearchPanel={showSearchPanel}
+              onShowSearchPanel={onShowSearchPanel}
+            />
+          </div>
+          <div id="middle-bottom-debug-panel" className="bottom-2 self-end">
+            <DebugPanel />
+          </div>
+
+          <div id="right-bottom-canvas-action-bar" className="z-1 self-end">
+            <CanvasActionBar />
+          </div>
         </div>
       </div>
       <LayoutOptionsDialog
