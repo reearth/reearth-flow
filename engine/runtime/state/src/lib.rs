@@ -183,35 +183,63 @@ impl State {
 
     /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (blocking, CLI-friendly).
     pub fn copy_jsonl_from_state(&self, src: &State, id: &str) -> Result<()> {
-        let src_path = src.id_to_location(id, src.jsonl_ext());
-        let dst_path = self.id_to_location(id, self.jsonl_ext());
+        let candidates = if src.use_compression {
+            ["jsonl.zst", "jsonl"]
+        } else {
+            ["jsonl", "jsonl.zst"]
+        };
 
-        let bytes = src
-            .storage
-            .get_sync(src_path.as_path())
-            .map_err(Error::other)?;
+        let mut last_err: Option<Error> = None;
 
-        self.storage
-            .put_sync(dst_path.as_path(), bytes)
-            .map_err(Error::other)
+        for ext in candidates {
+            let src_path = src.id_to_location(id, ext);
+            match src.storage.get_sync(src_path.as_path()) {
+                Ok(bytes) => {
+                    let dst_path = self.id_to_location(id, ext);
+                    return self
+                        .storage
+                        .put_sync(dst_path.as_path(), bytes)
+                        .map_err(Error::other);
+                }
+                Err(e) => {
+                    last_err = Some(Error::other(e));
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| Error::other("no candidate jsonl found")))
     }
 
     /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (non-blocking, worker-friendly).
     pub async fn copy_jsonl_from_state_async(&self, src: &State, id: &str) -> Result<()> {
-        let src_path = src.id_to_location(id, src.jsonl_ext());
-        let dst_path = self.id_to_location(id, self.jsonl_ext());
+        let candidates = if src.use_compression {
+            ["jsonl.zst", "jsonl"]
+        } else {
+            ["jsonl", "jsonl.zst"]
+        };
 
-        let obj = src
-            .storage
-            .get(src_path.as_path())
-            .await
-            .map_err(Error::other)?;
-        let bytes = obj.bytes().await.map_err(Error::other)?;
+        let mut last_err: Option<Error> = None;
 
-        self.storage
-            .put(dst_path.as_path(), bytes)
-            .await
-            .map_err(Error::other)
+        for ext in candidates {
+            let src_path = src.id_to_location(id, ext);
+            match src.storage.get(src_path.as_path()).await {
+                Ok(obj) => {
+                    let bytes = obj.bytes().await.map_err(Error::other)?;
+                    // keep the same extension as the source we actually found
+                    let dst_path = self.id_to_location(id, ext);
+                    return self
+                        .storage
+                        .put(dst_path.as_path(), bytes)
+                        .await
+                        .map_err(Error::other);
+                }
+                Err(e) => {
+                    last_err = Some(Error::other(e));
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| Error::other("no candidate jsonl found")))
     }
 
     fn looks_like_zstd(bytes: &[u8]) -> bool {
@@ -237,7 +265,12 @@ impl State {
         T: DeserializeOwned,
     {
         // try both extensions, regardless of env
-        let candidates = ["jsonl", "jsonl.zst"];
+        let candidates = if self.use_compression {
+            ["jsonl.zst", "jsonl"]
+        } else {
+            ["jsonl", "jsonl.zst"]
+        };
+
         let mut last_err: Option<Error> = None;
 
         for ext in candidates {
