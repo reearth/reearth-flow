@@ -27,6 +27,7 @@ static ASYNC_WORKER_NUM: Lazy<usize> = Lazy::new(|| {
 
 pub struct Runner;
 
+#[allow(clippy::too_many_arguments)]
 impl Runner {
     pub fn run(
         job_id: uuid::Uuid,
@@ -122,6 +123,7 @@ impl Runner {
 
 pub struct AsyncRunner;
 
+#[allow(clippy::too_many_arguments)]
 impl AsyncRunner {
     pub async fn run(
         job_id: uuid::Uuid,

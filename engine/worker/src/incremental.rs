@@ -30,6 +30,7 @@ impl DirCopySpec {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn prepare_incremental_feature_store(
     storage_key: &str,
     workflow: &Workflow,
