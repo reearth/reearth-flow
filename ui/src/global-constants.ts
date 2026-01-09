@@ -39,6 +39,8 @@ export const EDITOR_HOT_KEYS = [
   "ctrl+s", // save win
   "shift+meta+s", // add subworkflow from selection mac
   "shift+ctrl+s", // add subworkflow from selection win
+  "meta+k", // open search mac
+  "ctrl+k", // open search win
 ];
 
 export const CURSOR_COLORS = [

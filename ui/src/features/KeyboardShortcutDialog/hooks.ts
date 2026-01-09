@@ -48,6 +48,10 @@ export default () => {
         description: t("Open the Transformer Dialog"),
       },
       {
+        keyBinding: EditorKeyBindings["openSearch"],
+        description: t("Open Canvas Search"),
+      },
+      {
         keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
         description: t("Group Selected Actions into a Sub-Workflow"),
       },

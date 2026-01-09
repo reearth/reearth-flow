@@ -1,0 +1,158 @@
+import { NodeChange, useReactFlow } from "@xyflow/react";
+import { useMemo, useCallback, useState, useRef } from "react";
+
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useDoubleClick } from "@flow/hooks";
+import { Node, Workflow } from "@flow/types";
+
+export type SearchNodeResult = {
+  id: string;
+  displayName: string; // customName || officialName
+  officialName: string;
+  customName?: string;
+  workflowId: string;
+  workflowName: string;
+  isMainWorkflow: boolean;
+  nodeType: string;
+};
+
+export default ({
+  rawWorkflows,
+  currentWorkflowId,
+  onNodesChange,
+  onWorkflowOpen,
+}: {
+  rawWorkflows: Workflow[];
+  currentWorkflowId: string;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onWorkflowOpen: (id: string) => void;
+}) => {
+  const { setCenter, getNode } = useReactFlow();
+  const prevSelectedNodeIdRef = useRef<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const allNodes: SearchNodeResult[] = useMemo(() => {
+    return rawWorkflows.flatMap((workflow) =>
+      (workflow.nodes || []).map((node) => ({
+        id: node.id,
+        displayName:
+          node.data.customizations?.customName || node.data.officialName,
+        officialName: node.data.officialName,
+        customName: node.data.customizations?.customName,
+        workflowId: workflow.id,
+        workflowName: workflow.name || "Unnamed Workflow",
+        isMainWorkflow: workflow.id === DEFAULT_ENTRY_GRAPH_ID,
+        nodeType: node.type || "default",
+      })),
+    );
+  }, [rawWorkflows]);
+
+  const handleNavigateToNode = useCallback(
+    (node: SearchNodeResult) => {
+      // Update selected node state
+      setSelectedNodeId(node.id);
+
+      if (node.workflowId !== currentWorkflowId) {
+        onWorkflowOpen(node.workflowId);
+      }
+      setTimeout(
+        () => {
+          const reactFlowNode = getNode(node.id);
+          if (reactFlowNode) {
+            setCenter(
+              reactFlowNode.position.x + (reactFlowNode.width ?? 0) / 2,
+              reactFlowNode.position.y + (reactFlowNode.height ?? 0) / 2,
+              { zoom: 1.1, duration: 300 },
+            );
+            if (
+              prevSelectedNodeIdRef.current &&
+              prevSelectedNodeIdRef.current !== node.id
+            ) {
+              onNodesChange?.([
+                {
+                  type: "select",
+                  id: prevSelectedNodeIdRef.current,
+                  selected: false,
+                },
+              ]);
+            }
+            onNodesChange?.([
+              {
+                type: "select",
+                id: reactFlowNode.id,
+                selected: true,
+              },
+            ]);
+            prevSelectedNodeIdRef.current = node.id;
+          }
+        },
+        node.workflowId !== currentWorkflowId ? 100 : 0,
+      );
+    },
+    [currentWorkflowId, onWorkflowOpen, getNode, setCenter, onNodesChange],
+  );
+
+  const handleSingleClick = useCallback(
+    (node?: SearchNodeResult) => {
+      if (!node) return;
+      setSelectedNodeId(node.id);
+      if (
+        prevSelectedNodeIdRef.current &&
+        prevSelectedNodeIdRef.current !== node.id
+      ) {
+        onNodesChange?.([
+          {
+            type: "select",
+            id: prevSelectedNodeIdRef.current,
+            selected: false,
+          },
+        ]);
+      }
+      onNodesChange?.([
+        {
+          type: "select",
+          id: node.id,
+          selected: true,
+        },
+      ]);
+      prevSelectedNodeIdRef.current = node.id;
+    },
+    [onNodesChange],
+  );
+
+  const handleDoubleClick = useCallback(
+    (node?: SearchNodeResult) => {
+      if (!node) return;
+      handleNavigateToNode(node);
+    },
+    [handleNavigateToNode],
+  );
+
+  const [handleRowClick, handleRowDoubleClick] = useDoubleClick(
+    handleSingleClick,
+    handleDoubleClick,
+    50,
+  );
+
+  const displayNameOnlyFilter = useCallback(
+    (row: any, _columnId: string, filterValue: string) => {
+      const search = String(filterValue ?? "")
+        .toLowerCase()
+        .trim();
+      if (!search) return true;
+
+      return String(row.original?.displayName ?? "")
+        .toLowerCase()
+        .includes(search);
+    },
+    [],
+  );
+
+  return {
+    allNodes,
+    selectedNodeId,
+    displayNameOnlyFilter,
+    handleRowClick,
+    handleRowDoubleClick,
+  };
+};

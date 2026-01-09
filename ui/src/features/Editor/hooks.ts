@@ -305,6 +305,7 @@ export default ({
   );
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
+  const [showSearchPanel, setShowSearchPanel] = useState<boolean>(false);
 
   useHotkeys(
     EDITOR_HOT_KEYS,
@@ -318,6 +319,10 @@ export default ({
             handleProjectSnapshotSave?.();
           if (hasModifier && hasShift)
             handleYWorkflowAddFromSelection(nodes, edges);
+          break;
+        case "k":
+          if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
+          if (hasModifier && showSearchPanel) setShowSearchPanel(false);
 
           break;
         case "z":
@@ -405,7 +410,9 @@ export default ({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    rawWorkflows,
     customDebugRunWorkflowVariables,
+    showSearchPanel,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
@@ -442,5 +449,6 @@ export default ({
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
+    setShowSearchPanel,
   };
 };
