@@ -21,6 +21,7 @@ export default () => {
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
   const [detailsFeature, setDetailsFeature] = useState<any>(null);
+  const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
@@ -99,7 +100,7 @@ export default () => {
           }) ?? [],
       });
       setMinimized(false);
-      // Don't close overlay - the useEffect will update detailsFeature with data from new source
+      prevSelectedDataURLRef.current = debugJobState?.focusedIntermediateData;
     }
   };
 
@@ -528,6 +529,7 @@ export default () => {
               };
             }) ?? [],
         });
+        prevSelectedDataURLRef.current = undefined;
       }
     },
     [
@@ -539,13 +541,15 @@ export default () => {
   );
 
   useEffect(() => {
-    if (detailsOverlayOpen && selectedFeatureId && featureIdMap) {
-      const matching = featureIdMap.get(selectedFeatureId);
-      if (matching) {
-        setDetailsFeature(matching);
-      }
+    if (
+      prevSelectedDataURLRef.current !== selectedDataURL &&
+      selectedFeatureId &&
+      detailsOverlayOpen
+    ) {
+      const matching = featureIdMap?.get(selectedFeatureId);
+      setDetailsFeature(matching);
     }
-  }, [featureIdMap, selectedFeatureId, detailsOverlayOpen]);
+  }, [selectedDataURL, featureIdMap, selectedFeatureId, detailsOverlayOpen]);
 
   return {
     debugJobId,
