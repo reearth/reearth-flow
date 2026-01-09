@@ -147,21 +147,12 @@ pub(super) fn geometry_slicing_stage(
     }
 
     // Get tileset name from output path
-    let basename = output_path
+    let basename: Option<String> = output_path
         .file_name()
-        .ok_or_else(|| {
-            crate::errors::SinkError::MvtWriter(format!(
-                "Failed to get tileset name from output path {:?}",
-                output_path
-            ))
-        })?
-        .to_str()
-        .ok_or_else(|| {
-            crate::errors::SinkError::MvtWriter(format!(
-                "Failed to parse output path basename as UTF-8: {:?}",
-                output_path
-            ))
-        })?;
+        .map(|s| s.to_string_lossy().to_string());
+    if basename.is_none() {
+        tracing::warn!("Basename extraction failed from output path: {}", output_path);
+    }
 
     // Construct absolute path for tiles (parent of tilejson.json is root)
     let tiles = vec!["/{z}/{x}/{y}.mvt".to_string()];
@@ -175,7 +166,7 @@ pub(super) fn geometry_slicing_stage(
         })
         .collect();
     let metadata = TileMetadata::from_tile_content(
-        basename.to_string(),
+        basename,
         min_zoom,
         max_zoom,
         &TileContent {

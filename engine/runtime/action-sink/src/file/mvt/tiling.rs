@@ -26,7 +26,7 @@ pub(crate) struct TileMetadata {
 
 impl TileMetadata {
     pub(crate) fn from_tile_content(
-        name: String,
+        name: Option<String>,
         min_zoom: u8,
         max_zoom: u8,
         tile_content: &TileContent,
@@ -48,7 +48,7 @@ impl TileMetadata {
             tilejson: "3.0.0".to_string(),
             tiles,
             vector_layers,
-            name: Some(name),
+            name,
             description: None,
             version: None,
             minzoom: min_zoom,
