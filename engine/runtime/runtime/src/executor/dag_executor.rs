@@ -87,7 +87,7 @@ impl DagExecutor {
             Arc::clone(&feature_state),
         )?;
         let execute_node_ids: HashSet<NodeId> = if let Some(cfg) = &incremental_run_config {
-            collect_downstream_node_ids(&execution_dag, cfg.start_node_id.clone())?
+            collect_downstream_node_ids(&execution_dag, cfg.start_node_id)?
         } else {
             execution_dag
                 .graph()
