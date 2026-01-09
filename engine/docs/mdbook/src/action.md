@@ -169,20 +169,18 @@ Group and Aggregate Features by Attributes
   "description": "Configure how features are grouped and aggregated based on attribute values",
   "type": "object",
   "required": [
-    "aggregateAttributes",
-    "calculationAttribute",
-    "method"
+    "aggregateAttributes"
   ],
   "properties": {
     "aggregateAttributes": {
-      "title": "List of attributes to aggregate",
+      "title": "List of attributes to aggregate (grouping attributes)",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AggregateAttribute"
       }
     },
     "calculation": {
-      "title": "Calculation to perform",
+      "title": "Calculations to perform (for backward compatibility)",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -193,26 +191,42 @@ Group and Aggregate Features by Attributes
       ]
     },
     "calculationAttribute": {
-      "title": "Attribute to store calculation result",
-      "allOf": [
+      "title": "Attribute to store calculation result (for backward compatibility)",
+      "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
         }
       ]
     },
     "calculationValue": {
-      "title": "Value to use for calculation",
+      "title": "Value to use for calculation (for backward compatibility)",
       "type": [
         "integer",
         "null"
       ],
       "format": "int64"
     },
+    "calculations": {
+      "title": "Multiple calculations to perform (new feature)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Calculation"
+      }
+    },
     "method": {
-      "title": "Method to use for aggregation",
-      "allOf": [
+      "title": "Method to use for aggregation (for backward compatibility)",
+      "anyOf": [
         {
           "$ref": "#/definitions/Method"
+        },
+        {
+          "type": "null"
         }
       ]
     }
@@ -259,6 +273,50 @@ Group and Aggregate Features by Attributes
     "Attribute": {
       "type": "string"
     },
+    "Calculation": {
+      "type": "object",
+      "required": [
+        "calculationAttribute",
+        "method"
+      ],
+      "properties": {
+        "calculation": {
+          "title": "Calculation to perform",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calculationAttribute": {
+          "title": "Attribute to store calculation result",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "calculationValue": {
+          "title": "Value to use for calculation",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "method": {
+          "title": "Method to use for aggregation",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Method"
+            }
+          ]
+        }
+      }
+    },
     "Expr": {
       "type": "string"
     },
@@ -286,6 +344,14 @@ Group and Aggregate Features by Attributes
           "type": "string",
           "enum": [
             "count"
+          ]
+        },
+        {
+          "title": "Average Value",
+          "description": "Calculate the average value in the group",
+          "type": "string",
+          "enum": [
+            "avg"
           ]
         }
       ]
