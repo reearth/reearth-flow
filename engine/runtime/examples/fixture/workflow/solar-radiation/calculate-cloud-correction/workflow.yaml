@@ -89,66 +89,42 @@ graphs:
             value: |
               0.75
 
-      # 1) Group features by the month attribute
-      # 2) Calculate sums for all the required attributes: daylight_hours, daylight_hours_num, days_less_then_1h_daylight, etc.
-      # 3) Also calculates a count by using an expression that always evaluates to 1
+      # Calculate averages grouped by month and add year attribute
       - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
         name: AggregateByMonth
         type: action
-        action: StatisticsCalculator
+        action: AttributeAggregator
         with:
-          groupBy:
-            - month
-          calculations:
+          # Define the grouping attributes (what to group by)
+          aggregateAttributes:
+            - newAttribute: month
+              attribute: month
 
-            - newAttribute: sum_daylight_hours
-              expr: |
+          # Define multiple calculations to perform on the same grouping
+          calculations:
+            # Calculate averages directly instead of sums then division
+            - calculation: |
                 let v = env.get("__value")["daylight_hours"];
                 parse_float(v)
-            - newAttribute: sum_daylight_hours_num
-              expr: |
+              calculationAttribute: avg_daylight_hours
+              method: avg
+
+            - calculation: |
                 let v = env.get("__value")["daylight_hours_num"];
                 parse_float(v)
-            - newAttribute: count
-              expr: |
-                1
-            - newAttribute: sum_transmissivity
-              expr: |
-                env.get("__value")["transmissivity"]
+              calculationAttribute: avg_daylight_hours_num
+              method: avg
 
-      # 1) Divide each sum by the count to get the average value for each attribute
-      # 2) Create new attributes with the averaged values (prefixed with avg_)
-      # 3) Remove the temporary sum and count attributes to clean up
-      - id: 4c0b32ba-ec5a-11f0-9a05-7c70db10a7e3
-        name: CalculateAverages
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: avg_daylight_hours
-              method: create
-              value: |
-                env.get("__value")["sum_daylight_hours"] / env.get("__value")["count"]
-            - attribute: avg_daylight_hours_num
-              method: create
-              value: |
-                env.get("__value")["sum_daylight_hours_num"] / env.get("__value")["count"]
-            - attribute: avg_transmissivity
-              method: create
-              value: |
-                env.get("__value")["sum_transmissivity"] / env.get("__value")["count"]
-            - attribute: sum_daylight_hours
-              method: remove
-            - attribute: sum_daylight_hours_num
-              method: remove
-            - attribute: sum_transmissivity
-              method: remove
-            - attribute: count
-              method: remove
-            - attribute: year
-              method: create
-              value: |
+            - calculation: |
+                env.get("__value")["transmissivity"]
+              calculationAttribute: avg_transmissivity
+              method: avg
+
+            # Add the year attribute with value 9999
+            - calculation: |
                 9999
+              calculationAttribute: year
+              method: max  # Any method works for a constant value
 
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e3
         name: TestFilter_2
@@ -362,20 +338,14 @@ graphs:
         fromPort: default
         toPort: default
 
+      # Connect the new AttributeAggregator directly to TestFilter_2
       - id: 4353493c-ec5a-11f0-8f0d-7c70db10a7e3
         from: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
-        to: 4c0b32ba-ec5a-11f0-9a05-7c70db10a7e3
-        fromPort: default
-        toPort: default
-
-      # edge connect CalculateAverages to TestFilter_2
-      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e3
-        from: 4c0b32ba-ec5a-11f0-9a05-7c70db10a7e3
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
         fromPort: default
         toPort: default
 
-      # edge connect PrepareAttribute to TestFilter_2
+      # edge connect PrepareAttribute to TestFilter_2 (backup connection)
       - id: 26b3234c-ec5f-11f0-9544-7c70db10a7e3
         from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
