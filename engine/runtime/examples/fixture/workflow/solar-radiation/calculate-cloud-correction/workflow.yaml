@@ -187,7 +187,7 @@ graphs:
             env.get("csvFile")
 
       - id: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
-        name: PrepareAttribute
+        name: RenameAttributes
         type: action
         action: AttributeManager
         with:
@@ -248,15 +248,78 @@ graphs:
           - attribute: 日照率40%以上日数(日)00
             method: remove
 
+
+
+      - id: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
+        name: PrepareExtraAttribute
+        type: action
+        action: AttributeManager
+        with:
+          operations:
           - attribute: max_daylight_hours
             method: create
             value: |
-              310
+              let month = env.get("__value")["month"];
+              if month == "1" {
+                310
+              } else if month == "2" {
+                308
+              } else if month == "3" {
+                372
+              } else if month == "4" {
+                390
+              } else if month == "5" {
+                434
+              } else if month == "6" {
+                450
+              } else if month == "7" {
+                465
+              } else if month == "8" {
+                434
+              } else if month == "9" {
+                390
+              } else if month == "10" {
+                372
+              } else if month == "11" {
+                330
+              } else if month == "12" {
+                310
+              } else {
+                372
+              }
 
           - attribute: transmissivity
             method: create
             value: |
-              0.75
+              let month = env.get("__value")["month"];
+              if month == "1" {
+                0.75
+              } else if month == "2" {
+                0.72
+              } else if month == "3" {
+                0.67
+              } else if month == "4" {
+                0.64
+              } else if month == "5" {
+                0.64
+              } else if month == "6" {
+                0.62
+              } else if month == "7" {
+                0.63
+              } else if month == "8" {
+                0.64
+              } else if month == "9" {
+                0.68
+              } else if month == "10" {
+                0.71
+              } else if month == "11" {
+                0.74
+              } else if month == "12" {
+                0.75
+              } else {
+                0.7
+              }
+
 
       # Calculate averages grouped by month and add year attribute
       - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
@@ -282,6 +345,11 @@ graphs:
                 let v = env.get("__value")["daylight_hours_num"];
                 parse_float(v)
               calculationAttribute: daylight_hours_num
+              method: avg
+
+            - calculation: |
+                env.get("__value")["max_daylight_hours"]
+              calculationAttribute: max_daylight_hours
               method: avg
 
             - calculation: |
@@ -467,6 +535,12 @@ graphs:
 
       - id: f113d102-eba3-11f0-ae93-7c70db10a7e3
         from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
+        to: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
+        fromPort: default
+        toPort: default
+
+      - id: 18d630d8-ef80-11f0-b0a2-6c02e0440ed6
+        from: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
         to: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
         fromPort: default
         toPort: default
