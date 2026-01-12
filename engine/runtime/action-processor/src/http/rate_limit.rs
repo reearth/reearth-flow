@@ -56,14 +56,20 @@ impl RateLimiter {
                 let expected_time = delay_per_request * state.requests_made;
                 let actual_time = state.interval_start.elapsed();
 
-                if actual_time < expected_time {
-                    let wait_time = expected_time - actual_time;
-                    drop(state);
-                    thread::sleep(wait_time);
-                    let mut state = self.state.lock().unwrap();
-                    state.requests_made += 1;
+                let wait_time = if actual_time < expected_time {
+                    expected_time - actual_time
                 } else {
-                    state.requests_made += 1;
+                    Duration::from_millis(0)
+                };
+
+                // Increment the request count while holding the lock to avoid races.
+                state.requests_made += 1;
+
+                // Release the lock before sleeping so other threads can proceed.
+                drop(state);
+
+                if wait_time > Duration::from_millis(0) {
+                    thread::sleep(wait_time);
                 }
             }
         }

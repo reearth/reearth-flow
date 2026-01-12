@@ -150,7 +150,9 @@ fn save_response_to_file(
     path: &str,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<()> {
-    let uri = reearth_flow_common::uri::Uri::for_test(path);
+    let uri: reearth_flow_common::uri::Uri = path.parse().map_err(|e| {
+        HttpProcessorError::Response(format!("Failed to parse storage URI '{path}': {e:?}"))
+    })?;
     let storage = storage_resolver.resolve(&uri).map_err(|e| {
         HttpProcessorError::Response(format!("Failed to resolve storage path '{path}': {e}"))
     })?;

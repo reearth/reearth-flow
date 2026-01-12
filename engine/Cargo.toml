@@ -3,6 +3,7 @@ exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
   "plateau-gis-quality-checker/src-tauri",
+  "plateau-tiles-test",
   "runtime/*",
   "runtime/examples/fixture/tests",
   "worker",
@@ -20,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.200"
+version = "0.0.239"
 
 [profile.dev]
 opt-level = 0

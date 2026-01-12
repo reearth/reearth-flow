@@ -1,4 +1,6 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::{collections::HashMap, sync::Arc};
+
+use once_cell::sync::OnceCell;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -18,7 +20,9 @@ use super::request::RequestBuilder;
 
 pub struct HttpCallerProcessor {
     global_params: Option<HashMap<String, Value>>,
-    client: Arc<Mutex<Option<Arc<dyn HttpClient>>>>,
+    /// Lazy-initialized HTTP client. All clones of this processor share the same client
+    /// for connection pooling efficiency.
+    client: Arc<OnceCell<Arc<dyn HttpClient>>>,
     client_config: ClientConfig,
     params: HttpCallerParam,
     url_ast: rhai::AST,
@@ -66,7 +70,7 @@ impl HttpCallerProcessor {
 
         Self {
             global_params,
-            client: Arc::new(Mutex::new(None)),
+            client: Arc::new(OnceCell::new()),
             client_config,
             params,
             url_ast,
@@ -77,15 +81,13 @@ impl HttpCallerProcessor {
     }
 
     fn get_or_create_client(&self) -> Result<Arc<dyn HttpClient>, BoxedError> {
-        let mut guard = self.client.lock().unwrap();
-        if let Some(client) = guard.as_ref() {
-            return Ok(client.clone());
-        }
-        // Create client in processor's blocking thread, not in async context
-        let client = ReqwestHttpClient::with_config(self.client_config.clone())?;
-        let client_arc: Arc<dyn HttpClient> = Arc::new(client);
-        *guard = Some(client_arc.clone());
-        Ok(client_arc)
+        self.client
+            .get_or_try_init(|| {
+                // Create client in processor's blocking thread, not in async context
+                let client = ReqwestHttpClient::with_config(self.client_config.clone())?;
+                Ok::<_, BoxedError>(Arc::new(client) as Arc<dyn HttpClient>)
+            })
+            .cloned()
     }
 
     #[cfg(test)]
@@ -94,9 +96,11 @@ impl HttpCallerProcessor {
         params: HttpCallerParam,
         url_ast: rhai::AST,
     ) -> Self {
+        let cell = Arc::new(OnceCell::new());
+        cell.set(client).ok();
         Self {
             global_params: None,
-            client: Arc::new(Mutex::new(Some(client))),
+            client: cell,
             client_config: ClientConfig::default(),
             params,
             url_ast,

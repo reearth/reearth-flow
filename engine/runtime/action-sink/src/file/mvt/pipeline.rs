@@ -411,11 +411,17 @@ pub(super) fn make_tile(
         for poly in &int_mpoly {
             let exterior = poly.exterior();
             if exterior.signed_ring_area() > 0.0 {
-                let exterior_i16: Vec<[i16; 2]> = exterior.into_iter().map(|[x, y]| [x as i16, y as i16]).collect();
+                let exterior_i16: Vec<[i16; 2]> = exterior
+                    .into_iter()
+                    .map(|[x, y]| [x as i16, y as i16])
+                    .collect();
                 geom_enc.add_ring(exterior_i16);
                 for interior in poly.interiors() {
                     if interior.is_cw() {
-                        let interior_i16: Vec<[i16; 2]> = interior.into_iter().map(|[x, y]| [x as i16, y as i16]).collect();
+                        let interior_i16: Vec<[i16; 2]> = interior
+                            .into_iter()
+                            .map(|[x, y]| [x as i16, y as i16])
+                            .collect();
                         geom_enc.add_ring(interior_i16);
                     }
                 }
@@ -425,14 +431,20 @@ pub(super) fn make_tile(
         let has_linestrings = !int_line_string.is_empty();
         for line_string in &int_line_string {
             if line_string.len() >= 2 {
-                let line_string_i16: Vec<[i16; 2]> = line_string.into_iter().map(|[x, y]| [x as i16, y as i16]).collect();
+                let line_string_i16: Vec<[i16; 2]> = line_string
+                    .into_iter()
+                    .map(|[x, y]| [x as i16, y as i16])
+                    .collect();
                 geom_enc.add_linestring(line_string_i16);
             }
         }
 
         let has_points = !int_multi_point.is_empty();
         if has_points {
-            let points_i16: Vec<[i16; 2]> = int_multi_point.into_iter().map(|[x, y]| [x as i16, y as i16]).collect();
+            let points_i16: Vec<[i16; 2]> = int_multi_point
+                .into_iter()
+                .map(|[x, y]| [x as i16, y as i16])
+                .collect();
             geom_enc.add_points(points_i16);
         }
         let geometry = geom_enc.into_vec();

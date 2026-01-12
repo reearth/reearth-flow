@@ -142,7 +142,11 @@ fn load_binary_source(
             })?;
 
             // Parse and resolve storage path
-            let uri = reearth_flow_common::uri::Uri::for_test(&file_path_str);
+            let uri: reearth_flow_common::uri::Uri = file_path_str.parse().map_err(|e| {
+                HttpProcessorError::Request(format!(
+                    "Failed to parse storage URI '{file_path_str}': {e:?}"
+                ))
+            })?;
             let storage = storage_resolver.resolve(&uri).map_err(|e| {
                 HttpProcessorError::Request(format!(
                     "Failed to resolve storage path '{file_path_str}': {e}"
