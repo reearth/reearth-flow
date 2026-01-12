@@ -21,10 +21,11 @@ graphs:
           url: |
             "https://jsonplaceholder.typicode.com/${env.get('__value').api_endpoint}"
           method: GET
+          authentication:
+            type: bearer
+            token: |
+              env.get('__value').auth_token
           customHeaders:
-            - name: "Authorization"
-              value: |
-                "Bearer ${env.get('__value').auth_token}"
             - name: "X-User-ID"
               value: |
                 env.get('__value').user_id
