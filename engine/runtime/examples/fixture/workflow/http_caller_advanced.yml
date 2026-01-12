@@ -1,0 +1,164 @@
+# HTTPCaller Advanced Example
+# This workflow demonstrates advanced HTTPCaller features:
+# - POST requests with JSON body
+# - Authentication (Bearer token)
+# - Custom headers
+# - Query parameters
+# - Retry logic with exponential backoff
+# - Rate limiting
+# - Response handling
+
+id: 550e8400-e29b-41d4-a716-446655440010
+name: "HTTPCaller Advanced Example"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440011
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440011
+    name: main
+    nodes:
+      # Create features with data to POST
+      - id: 550e8400-e29b-41d4-a716-446655440020
+        name: Generate-Post-Data
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                title: "Test Post 1",
+                body: "This is the content of post 1",
+                userId: 1
+              },
+              #{
+                title: "Test Post 2",
+                body: "This is the content of post 2",
+                userId: 2
+              }
+            ]
+
+      # Make HTTP POST requests with authentication and retry
+      - id: 550e8400-e29b-41d4-a716-446655440030
+        name: Create-Posts
+        type: action
+        action: HTTPCaller
+        with:
+          url: |
+            "https://jsonplaceholder.typicode.com/posts"
+
+          method: POST
+
+          # Custom headers
+          customHeaders:
+            - name: "Content-Type"
+              value: |
+                "application/json"
+            - name: "X-Custom-Header"
+              value: |
+                "reearth-flow"
+
+          # Query parameters
+          queryParameters:
+            - name: "format"
+              value: |
+                "json"
+
+          # Request body - send feature attributes as JSON
+          requestBody:
+            type: text
+            content: |
+              "{\"title\": \"" + env.get("__value").title +
+              "\", \"body\": \"" + env.get("__value").body +
+              "\", \"userId\": " + env.get("__value").userId + "}"
+            contentType: "application/json"
+
+          # Authentication - Bearer token
+          authentication:
+            type: bearer
+            token: |
+              "your-api-token-here"
+
+          # Response configuration
+          responseBodyAttribute: "_api_response"
+          statusCodeAttribute: "_status_code"
+          headersAttribute: "_response_headers"
+          errorAttribute: "_error_message"
+
+          # Connection settings
+          connectionTimeout: 30
+          transferTimeout: 120
+          userAgent: "reearth-flow-http-caller/1.0"
+          verifySsl: true
+          followRedirects: true
+          maxRedirects: 5
+
+          # Retry configuration with exponential backoff
+          retry:
+            maxAttempts: 3
+            initialDelayMs: 100
+            backoffMultiplier: 2.0
+            maxDelayMs: 5000
+            retryOnStatus: [429, 500, 502, 503, 504]
+            honorRetryAfter: true
+
+          # Rate limiting - max 10 requests per second
+          rateLimit:
+            requests: 10
+            intervalMs: 1000
+            timing: distributed
+
+          # Observability - track all metrics
+          observability:
+            trackDuration: true
+            durationAttribute: "_request_time_ms"
+            trackFinalUrl: true
+            finalUrlAttribute: "_final_url"
+            trackRetryCount: true
+            retryCountAttribute: "_retries"
+            trackBytes: true
+            bytesAttribute: "_response_bytes"
+
+      # Write successful responses to one file
+      - id: 550e8400-e29b-41d4-a716-446655440040
+        name: Save-Success
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            "{{ env.outputFilePath }}"
+
+      # Write failed requests to separate file for debugging
+      - id: 550e8400-e29b-41d4-a716-446655440050
+        name: Save-Errors
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            "{{ env.errorFilePath }}"
+
+    edges:
+      # Feature creator to HTTP caller
+      - id: 550e8400-e29b-41d4-a716-446655440060
+        from: 550e8400-e29b-41d4-a716-446655440020
+        to: 550e8400-e29b-41d4-a716-446655440030
+        fromPort: default
+        toPort: default
+
+      # Successful responses go to success output
+      - id: 550e8400-e29b-41d4-a716-446655440070
+        from: 550e8400-e29b-41d4-a716-446655440030
+        to: 550e8400-e29b-41d4-a716-446655440040
+        fromPort: default
+        toPort: default
+
+      # Failed requests go to error output
+      - id: 550e8400-e29b-41d4-a716-446655440080
+        from: 550e8400-e29b-41d4-a716-446655440030
+        to: 550e8400-e29b-41d4-a716-446655440050
+        fromPort: rejected
+        toPort: default
+
+# To run this workflow:
+# cargo run --package reearth-flow-cli -- run \
+#   --workflow runtime/examples/fixture/workflow/http_caller_advanced.yml \
+#   --var outputFilePath=/tmp/http_success.json \
+#   --var errorFilePath=/tmp/http_errors.json

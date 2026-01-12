@@ -1,0 +1,78 @@
+# HTTPCaller Basic Example
+# This workflow demonstrates basic HTTP GET requests using HTTPCaller
+# It fetches user data from a public API and stores the results
+
+id: 550e8400-e29b-41d4-a716-446655440000
+name: "HTTPCaller Basic Example"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440001
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440001
+    name: main
+    nodes:
+      # Create sample features with user IDs to fetch
+      - id: 550e8400-e29b-41d4-a716-446655440010
+        name: Generate-User-IDs
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ user_id: 1 },
+              #{ user_id: 2 },
+              #{ user_id: 3 }
+            ]
+
+      # Make HTTP GET requests to fetch user data
+      - id: 550e8400-e29b-41d4-a716-446655440020
+        name: Fetch-User-Data
+        type: action
+        action: HTTPCaller
+        with:
+          # Dynamic URL using feature attributes
+          url: |
+            "https://jsonplaceholder.typicode.com/users/" + env.get("__value").user_id
+
+          method: GET
+
+          # Response will be stored in these attributes
+          responseBodyAttribute: "_user_data"
+          statusCodeAttribute: "_http_status"
+          headersAttribute: "_http_headers"
+          errorAttribute: "_http_error"
+
+          # Timeout configuration
+          connectionTimeout: 30
+          transferTimeout: 60
+
+          # Track request metrics
+          observability:
+            trackDuration: true
+            durationAttribute: "_request_duration_ms"
+            trackRetryCount: true
+            retryCountAttribute: "_retry_count"
+
+      # Write results to JSON file
+      - id: 550e8400-e29b-41d4-a716-446655440030
+        name: Save-Results
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            "{{ env.outputFilePath }}"
+
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440100
+        from: 550e8400-e29b-41d4-a716-446655440010
+        to: 550e8400-e29b-41d4-a716-446655440020
+        fromPort: default
+        toPort: default
+
+      - id: 550e8400-e29b-41d4-a716-446655440101
+        from: 550e8400-e29b-41d4-a716-446655440020
+        to: 550e8400-e29b-41d4-a716-446655440030
+        fromPort: default
+        toPort: default
+
+# To run this workflow:
+# cargo run --package reearth-flow-cli -- run --workflow runtime/examples/fixture/workflow/http_caller_basic.yml --var outputFilePath=/tmp/http_output.json

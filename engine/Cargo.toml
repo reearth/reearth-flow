@@ -3,7 +3,6 @@ exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
   "plateau-gis-quality-checker/src-tauri",
-  "plateau-tiles-test",
   "runtime/*",
   "runtime/examples/fixture/tests",
   "worker",
@@ -21,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.239"
+version = "0.0.200"
 
 [profile.dev]
 opt-level = 0
@@ -68,17 +67,17 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.16", features = [
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.13", features = [
   "serde",
   "serde_json",
 ] }
-nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.16" }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.16" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.16", features = [
+nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.13" }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.13" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.13", features = [
   "serde",
 ] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.16" }
-nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.16" }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.13" }
+nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.13" }
 
 Inflector = "0.11.4"
 ahash = "0.8.12"
@@ -87,7 +86,7 @@ async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.89"
 async_zip = { version = "0.0.17", features = ["full"] }
-atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.3" }
+atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.2" }
 base64 = "0.22.1"
 bincode = { version = "2.0.1", default-features = false, features = [
   "serde",
@@ -109,7 +108,7 @@ crossbeam-channel = "0.5.15"
 crossbeam-utils = "0.8.21"
 csv = "1.4.0"
 directories = "6.0.0"
-draco-oxide = "0.1.0-alpha.4"
+draco-oxide = "0.1.0-alpha.2"
 earcut = "0.4.4"
 encoding_rs = "0.8"
 flate2 = "1.1.5"
@@ -122,12 +121,7 @@ geo-buffer = "0.2.0"
 geo-types = "0.7.17"
 geojson = "0.24.2"
 glam = "0.30.9"
-# gltf = { version = "1.4", features = ["extensions", "extras"] }
-gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238179ea5a6152c5cf22", features = [
-  "EXT_texture_webp",
-  "extensions",
-  "extras",
-] }
+gltf = "1.4"
 hashbrown = { version = "0.15.5", features = ["serde"] }
 hex = "0.4.3"
 home = "0.5.12"
@@ -188,6 +182,7 @@ rayon = "1.11.0"
 regex = "1.12.2"
 reqwest = { version = "0.12.24", default-features = false, features = [
   "blocking",
+  "multipart",
   "rustls-tls",
 ] }
 rhai = { version = "1.23.6", features = [
@@ -229,7 +224,7 @@ strum_macros = "0.27.2"
 tempfile = "3.23.0"
 thiserror = "2.0.17"
 time = { version = "0.3.44", features = ["formatting"] }
-tinymvt = { git = "https://github.com/reearth/tinymvt.git", tag = "v0.0.3" }
+tinymvt = { git = "https://github.com/reearth/tinymvt.git", tag = "v0.0.2" }
 tokio = { version = "1.48.0", features = ["full", "time"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = { version = "0.7.17", features = ["full"] }
