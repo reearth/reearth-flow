@@ -14,6 +14,65 @@ Removes appearance information (materials, textures) from CityGML geometry
 ### Category
 * Geometry
 
+## AreaCalculator
+### Type
+* processor
+### Description
+Calculates the planar or sloped area of polygon geometries and adds the results as attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AreaCalculator Parameters",
+  "description": "Configuration for calculating areas of geometries.",
+  "type": "object",
+  "properties": {
+    "areaType": {
+      "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+      "default": "planeArea",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AreaType"
+        }
+      ]
+    },
+    "multiplier": {
+      "description": "Multiplier to scale the area values (default: 1.0)",
+      "default": 1.0,
+      "type": "number",
+      "format": "double"
+    },
+    "outputAttribute": {
+      "description": "Name of the attribute to store the calculated area (default: \"area\")",
+      "default": "area",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "AreaType": {
+      "type": "string",
+      "enum": [
+        "planeArea",
+        "slopedArea"
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## AreaOnAreaOverlayer
 ### Type
 * processor
@@ -1084,7 +1143,33 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
 ### Description
 Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CSG Evaluator Parameters",
+  "description": "Configure evaluation parameters for CSG operations",
+  "type": "object",
+  "required": [
+    "tolerance"
+  ],
+  "properties": {
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -1176,6 +1261,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
           "$ref": "#/definitions/Expr"
         }
       ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -1246,6 +1339,74 @@ Reads 3D city models from CityGML files.
 ### Input Ports
 ### Output Ports
 * default
+### Category
+* File
+
+## CityGmlWriter
+### Type
+* sink
+### Description
+Writes features to CityGML 2.0 files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "epsgCode": {
+      "description": "EPSG code for coordinate reference system",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "lodFilter": {
+      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    },
+    "output": {
+      "description": "Output file path expression",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "prettyPrint": {
+      "description": "Whether to format output with indentation (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
 ### Category
 * File
 
@@ -1772,6 +1933,13 @@ Extracts and decompresses archive files from specified attributes
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "findDeepestSingleFolder": {
+      "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is.",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {
@@ -2045,6 +2213,18 @@ Reads and processes features from CityGML files with optional flattening
     "dataset"
   ],
   "properties": {
+    "codelistsPath": {
+      "title": "Codelists Path",
+      "description": "Optional path to the codelists directory for resolving codelist values",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
@@ -3219,6 +3399,7 @@ Coerces and converts feature geometries to specified target geometry types
       "type": "string",
       "enum": [
         "lineString",
+        "polygon",
         "triangularMesh"
       ]
     }
@@ -3502,12 +3683,28 @@ Validate Feature Geometry Quality
   },
   "definitions": {
     "ValidationType": {
-      "type": "string",
-      "enum": [
-        "duplicatePoints",
-        "duplicateConsecutivePoints",
-        "corruptGeometry",
-        "selfIntersection"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "duplicatePoints",
+            "corruptGeometry",
+            "selfIntersection"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "duplicateConsecutivePoints"
+          ],
+          "properties": {
+            "duplicateConsecutivePoints": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }
@@ -3668,16 +3865,13 @@ Make HTTP/HTTPS requests and enrich features with response data
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HTTP Caller Parameters",
-  "description": "Configure HTTP/HTTPS requests with dynamic values from feature attributes",
+  "title": "HttpCallerParam",
   "type": "object",
   "required": [
     "url"
   ],
   "properties": {
     "authentication": {
-      "title": "Authentication",
-      "description": "Authentication method to use for the request",
       "anyOf": [
         {
           "$ref": "#/definitions/Authentication"
@@ -3688,16 +3882,12 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "autoDetectEncoding": {
-      "title": "Auto Detect Encoding",
-      "description": "Automatically detect encoding from Content-Type header (default: true)",
       "type": [
         "boolean",
         "null"
       ]
     },
     "connectionTimeout": {
-      "title": "Connection Timeout (seconds)",
-      "description": "Maximum time to wait for connection establishment",
       "type": [
         "integer",
         "null"
@@ -3706,16 +3896,12 @@ Make HTTP/HTTPS requests and enrich features with response data
       "minimum": 0.0
     },
     "contentType": {
-      "title": "Content-Type Header",
-      "description": "The Content-Type header value for the request body",
       "type": [
         "string",
         "null"
       ]
     },
     "customHeaders": {
-      "title": "Custom Headers",
-      "description": "List of custom HTTP headers to include in the request. Values support expressions.",
       "type": [
         "array",
         "null"
@@ -3725,28 +3911,20 @@ Make HTTP/HTTPS requests and enrich features with response data
       }
     },
     "errorAttribute": {
-      "title": "Error Attribute Name",
-      "description": "Name of the attribute to store error messages in (for rejected features)",
       "default": "_http_error",
       "type": "string"
     },
     "followRedirects": {
-      "title": "Follow Redirects",
-      "description": "Whether to automatically follow HTTP redirects (default: true)",
       "type": [
         "boolean",
         "null"
       ]
     },
     "headersAttribute": {
-      "title": "Headers Attribute Name",
-      "description": "Name of the attribute to store response headers in (as JSON string)",
       "default": "_headers",
       "type": "string"
     },
     "maxRedirects": {
-      "title": "Maximum Redirects",
-      "description": "Maximum number of redirects to follow (default: 10)",
       "type": [
         "integer",
         "null"
@@ -3755,8 +3933,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       "minimum": 0.0
     },
     "maxResponseSize": {
-      "title": "Maximum Response Size (bytes)",
-      "description": "Maximum size of response body to accept (default: unlimited)",
       "type": [
         "integer",
         "null"
@@ -3765,8 +3941,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       "minimum": 0.0
     },
     "method": {
-      "title": "HTTP Method",
-      "description": "The HTTP method to use for the request",
       "default": "GET",
       "allOf": [
         {
@@ -3775,8 +3949,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "observability": {
-      "title": "Observability",
-      "description": "Collect and store request metrics",
       "anyOf": [
         {
           "$ref": "#/definitions/ObservabilityConfig"
@@ -3787,8 +3959,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "queryParameters": {
-      "title": "Query Parameters",
-      "description": "URL query parameters to append to the request. Values support expressions.",
       "type": [
         "array",
         "null"
@@ -3798,8 +3968,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       }
     },
     "rateLimit": {
-      "title": "Rate Limiting",
-      "description": "Limit request rate to avoid overwhelming servers",
       "anyOf": [
         {
           "$ref": "#/definitions/RateLimitConfig"
@@ -3810,8 +3978,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "requestBody": {
-      "title": "Request Body",
-      "description": "The request body configuration (text, binary, form, or multipart)",
       "anyOf": [
         {
           "$ref": "#/definitions/RequestBody"
@@ -3822,14 +3988,10 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "responseBodyAttribute": {
-      "title": "Response Body Attribute Name",
-      "description": "Name of the attribute to store the response body in",
       "default": "_response_body",
       "type": "string"
     },
     "responseEncoding": {
-      "title": "Response Encoding",
-      "description": "How to encode the response body",
       "anyOf": [
         {
           "$ref": "#/definitions/ResponseEncoding"
@@ -3840,8 +4002,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "responseHandling": {
-      "title": "Response Handling",
-      "description": "Configuration for how to handle the response",
       "anyOf": [
         {
           "$ref": "#/definitions/ResponseHandling"
@@ -3852,8 +4012,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "retry": {
-      "title": "Retry Configuration",
-      "description": "Retry failed requests with exponential backoff",
       "anyOf": [
         {
           "$ref": "#/definitions/RetryConfig"
@@ -3864,14 +4022,10 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "statusCodeAttribute": {
-      "title": "Status Code Attribute Name",
-      "description": "Name of the attribute to store the HTTP status code in",
       "default": "_http_status_code",
       "type": "string"
     },
     "transferTimeout": {
-      "title": "Transfer Timeout (seconds)",
-      "description": "Maximum time to wait for the entire request/response cycle",
       "type": [
         "integer",
         "null"
@@ -3880,25 +4034,15 @@ Make HTTP/HTTPS requests and enrich features with response data
       "minimum": 0.0
     },
     "url": {
-      "title": "Request URL",
-      "description": "The URL to send the request to. Supports expressions to reference feature attributes (e.g., \"https://api.example.com/data/${id}\")",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
+      "$ref": "#/definitions/Expr"
     },
     "userAgent": {
-      "title": "User-Agent",
-      "description": "Custom User-Agent header value (default: \"reearth-flow-http-caller/1.0\")",
       "type": [
         "string",
         "null"
       ]
     },
     "verifySsl": {
-      "title": "Verify SSL/TLS Certificates",
-      "description": "Whether to verify HTTPS certificates (default: true)",
       "type": [
         "boolean",
         "null"
@@ -3907,30 +4051,15 @@ Make HTTP/HTTPS requests and enrich features with response data
   },
   "definitions": {
     "ApiKeyLocation": {
-      "description": "Location for API key authentication",
-      "oneOf": [
-        {
-          "description": "Send API key as HTTP header",
-          "type": "string",
-          "enum": [
-            "header"
-          ]
-        },
-        {
-          "description": "Send API key as query parameter",
-          "type": "string",
-          "enum": [
-            "query"
-          ]
-        }
+      "type": "string",
+      "enum": [
+        "header",
+        "query"
       ]
     },
     "Authentication": {
-      "description": "Authentication methods supported by HTTPCaller",
       "oneOf": [
         {
-          "title": "Basic Authentication",
-          "description": "Username and password authentication",
           "type": "object",
           "required": [
             "password",
@@ -3939,13 +4068,7 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "password": {
-              "title": "Password",
-              "description": "Password for basic authentication. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "type": {
               "type": "string",
@@ -3954,19 +4077,11 @@ Make HTTP/HTTPS requests and enrich features with response data
               ]
             },
             "username": {
-              "title": "Username",
-              "description": "Username for basic authentication. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             }
           }
         },
         {
-          "title": "Bearer Token Authentication",
-          "description": "Token-based authentication (e.g., OAuth 2.0)",
           "type": "object",
           "required": [
             "token",
@@ -3974,13 +4089,7 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "token": {
-              "title": "Token",
-              "description": "Bearer token value. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "type": {
               "type": "string",
@@ -3991,8 +4100,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
-          "title": "API Key Authentication",
-          "description": "API key in header or query parameter",
           "type": "object",
           "required": [
             "keyName",
@@ -4001,22 +4108,12 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "keyName": {
-              "title": "Key Name",
-              "description": "Name of the header or query parameter",
               "type": "string"
             },
             "keyValue": {
-              "title": "Key Value",
-              "description": "API key value. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "location": {
-              "title": "Location",
-              "description": "Where to send the API key (header or query)",
               "default": "header",
               "allOf": [
                 {
@@ -4035,11 +4132,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "BinarySource": {
-      "description": "Binary data source",
       "oneOf": [
         {
-          "title": "Base64 Encoded String",
-          "description": "Binary data encoded as base64 string",
           "type": "object",
           "required": [
             "data",
@@ -4047,13 +4141,7 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "data": {
-              "title": "Data",
-              "description": "Base64-encoded binary data. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "type": {
               "type": "string",
@@ -4064,8 +4152,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
-          "title": "File Path",
-          "description": "Load binary data from a file",
           "type": "object",
           "required": [
             "path",
@@ -4073,13 +4159,7 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "path": {
-              "title": "Path",
-              "description": "File path (supports storage URLs like \"ram://\", \"s3://\"). Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "type": {
               "type": "string",
@@ -4095,7 +4175,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       "type": "string"
     },
     "FormField": {
-      "description": "Form field for URL-encoded forms",
       "type": "object",
       "required": [
         "name",
@@ -4103,23 +4182,14 @@ Make HTTP/HTTPS requests and enrich features with response data
       ],
       "properties": {
         "name": {
-          "title": "Field Name",
-          "description": "Name of the form field",
           "type": "string"
         },
         "value": {
-          "title": "Field Value",
-          "description": "Value of the form field. Supports expressions.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
+          "$ref": "#/definitions/Expr"
         }
       }
     },
     "HeaderParam": {
-      "description": "Custom HTTP header parameter",
       "type": "object",
       "required": [
         "name",
@@ -4127,23 +4197,14 @@ Make HTTP/HTTPS requests and enrich features with response data
       ],
       "properties": {
         "name": {
-          "title": "Header Name",
-          "description": "The name of the HTTP header",
           "type": "string"
         },
         "value": {
-          "title": "Header Value",
-          "description": "The value of the HTTP header. Supports expressions.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
+          "$ref": "#/definitions/Expr"
         }
       }
     },
     "HttpMethod": {
-      "description": "HTTP methods supported by the HTTPCaller",
       "type": "string",
       "enum": [
         "GET",
@@ -4163,11 +4224,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "MultipartPart": {
-      "description": "Multipart form part",
       "oneOf": [
         {
-          "title": "Text Part",
-          "description": "Text field in multipart form",
           "type": "object",
           "required": [
             "name",
@@ -4176,8 +4234,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "name": {
-              "title": "Field Name",
-              "description": "Name of the form field",
               "type": "string"
             },
             "type": {
@@ -4187,19 +4243,11 @@ Make HTTP/HTTPS requests and enrich features with response data
               ]
             },
             "value": {
-              "title": "Value",
-              "description": "Text value. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             }
           }
         },
         {
-          "title": "File Part",
-          "description": "File upload in multipart form",
           "type": "object",
           "required": [
             "name",
@@ -4208,34 +4256,22 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "contentType": {
-              "title": "Content-Type",
-              "description": "MIME type of the file (optional)",
               "type": [
                 "string",
                 "null"
               ]
             },
             "filename": {
-              "title": "File Name",
-              "description": "Name of the file to send (optional)",
               "type": [
                 "string",
                 "null"
               ]
             },
             "name": {
-              "title": "Field Name",
-              "description": "Name of the form field",
               "type": "string"
             },
             "source": {
-              "title": "File Source",
-              "description": "Source of the file data",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BinarySource"
-                }
-              ]
+              "$ref": "#/definitions/BinarySource"
             },
             "type": {
               "type": "string",
@@ -4248,69 +4284,51 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "ObservabilityConfig": {
-      "description": "Observability configuration",
       "type": "object",
       "properties": {
         "bytesAttribute": {
-          "title": "Bytes Attribute Name",
-          "description": "Name of attribute to store bytes transferred (default: \"_bytes_transferred\")",
           "type": [
             "string",
             "null"
           ]
         },
         "durationAttribute": {
-          "title": "Duration Attribute Name",
-          "description": "Name of attribute to store request duration (default: \"_request_duration_ms\")",
           "type": [
             "string",
             "null"
           ]
         },
         "finalUrlAttribute": {
-          "title": "Final URL Attribute Name",
-          "description": "Name of attribute to store final URL (default: \"_final_url\")",
           "type": [
             "string",
             "null"
           ]
         },
         "retryCountAttribute": {
-          "title": "Retry Count Attribute Name",
-          "description": "Name of attribute to store retry count (default: \"_retry_count\")",
           "type": [
             "string",
             "null"
           ]
         },
         "trackBytes": {
-          "title": "Track Bytes Transferred",
-          "description": "Store response body size in bytes (default: false)",
           "default": false,
           "type": "boolean"
         },
         "trackDuration": {
-          "title": "Track Request Duration",
-          "description": "Store request duration in milliseconds (default: true)",
           "default": true,
           "type": "boolean"
         },
         "trackFinalUrl": {
-          "title": "Track Final URL",
-          "description": "Store final URL after redirects (default: false)",
           "default": false,
           "type": "boolean"
         },
         "trackRetryCount": {
-          "title": "Track Retry Count",
-          "description": "Store number of retries performed (default: true when retry enabled)",
           "default": true,
           "type": "boolean"
         }
       }
     },
     "QueryParam": {
-      "description": "URL query parameter",
       "type": "object",
       "required": [
         "name",
@@ -4318,46 +4336,31 @@ Make HTTP/HTTPS requests and enrich features with response data
       ],
       "properties": {
         "name": {
-          "title": "Parameter Name",
-          "description": "The name of the query parameter",
           "type": "string"
         },
         "value": {
-          "title": "Parameter Value",
-          "description": "The value of the query parameter. Supports expressions.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
+          "$ref": "#/definitions/Expr"
         }
       }
     },
     "RateLimitConfig": {
-      "description": "Rate limiting configuration",
       "type": "object",
       "required": [
         "requests"
       ],
       "properties": {
         "intervalMs": {
-          "title": "Interval (milliseconds)",
-          "description": "Time window for rate limit (default: 1000ms = 1 second)",
           "default": 1000,
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "requests": {
-          "title": "Requests Per Interval",
-          "description": "Maximum number of requests allowed per interval",
           "type": "integer",
           "format": "uint32",
           "minimum": 0.0
         },
         "timing": {
-          "title": "Timing Strategy",
-          "description": "How to distribute requests within the interval",
           "default": "burst",
           "allOf": [
             {
@@ -4368,11 +4371,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       }
     },
     "RequestBody": {
-      "description": "Request body types",
       "oneOf": [
         {
-          "title": "Text Body",
-          "description": "Plain text or JSON body (supports expressions)",
           "type": "object",
           "required": [
             "content",
@@ -4380,17 +4380,9 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "content": {
-              "title": "Content",
-              "description": "Text content. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "contentType": {
-              "title": "Content-Type",
-              "description": "MIME type (e.g., \"application/json\", \"text/plain\")",
               "type": [
                 "string",
                 "null"
@@ -4405,8 +4397,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
-          "title": "Binary Body",
-          "description": "Binary data from base64-encoded string or file",
           "type": "object",
           "required": [
             "source",
@@ -4414,21 +4404,13 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "contentType": {
-              "title": "Content-Type",
-              "description": "MIME type (e.g., \"application/octet-stream\")",
               "type": [
                 "string",
                 "null"
               ]
             },
             "source": {
-              "title": "Source",
-              "description": "Binary data source",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BinarySource"
-                }
-              ]
+              "$ref": "#/definitions/BinarySource"
             },
             "type": {
               "type": "string",
@@ -4439,8 +4421,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
-          "title": "Form URL-Encoded",
-          "description": "application/x-www-form-urlencoded",
           "type": "object",
           "required": [
             "fields",
@@ -4448,8 +4428,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "fields": {
-              "title": "Fields",
-              "description": "Form fields (name/value pairs)",
               "type": "array",
               "items": {
                 "$ref": "#/definitions/FormField"
@@ -4464,8 +4442,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
-          "title": "Multipart Form Data",
-          "description": "multipart/form-data with mixed text and file parts",
           "type": "object",
           "required": [
             "parts",
@@ -4473,8 +4449,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "parts": {
-              "title": "Parts",
-              "description": "Multipart form parts",
               "type": "array",
               "items": {
                 "$ref": "#/definitions/MultipartPart"
@@ -4491,37 +4465,16 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "ResponseEncoding": {
-      "description": "Response encoding options",
-      "oneOf": [
-        {
-          "description": "Text encoding (UTF-8 string)",
-          "type": "string",
-          "enum": [
-            "text"
-          ]
-        },
-        {
-          "description": "Base64 encoding (for binary data)",
-          "type": "string",
-          "enum": [
-            "base64"
-          ]
-        },
-        {
-          "description": "Raw bytes (binary)",
-          "type": "string",
-          "enum": [
-            "binary"
-          ]
-        }
+      "type": "string",
+      "enum": [
+        "text",
+        "base64",
+        "binary"
       ]
     },
     "ResponseHandling": {
-      "description": "Response handling configuration",
       "oneOf": [
         {
-          "title": "Store in Attribute",
-          "description": "Store response in feature attribute (default behavior)",
           "type": "object",
           "required": [
             "type"
@@ -4536,8 +4489,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
-          "title": "Save to File",
-          "description": "Save response to a file in storage",
           "type": "object",
           "required": [
             "path",
@@ -4545,25 +4496,15 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "path": {
-              "title": "Output Path",
-              "description": "File path to save response to. Supports expressions.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
+              "$ref": "#/definitions/Expr"
             },
             "pathAttribute": {
-              "title": "Path Attribute Name",
-              "description": "Name of attribute to store file path (default: \"_response_file_path\")",
               "type": [
                 "string",
                 "null"
               ]
             },
             "storePathInAttribute": {
-              "title": "Store Path in Attribute",
-              "description": "Whether to store the file path in an attribute (default: true)",
               "type": [
                 "boolean",
                 "null"
@@ -4580,49 +4521,36 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "RetryConfig": {
-      "description": "Retry configuration",
       "type": "object",
       "properties": {
         "backoffMultiplier": {
-          "title": "Backoff Multiplier",
-          "description": "Multiplier for exponential backoff (default: 2.0)",
           "default": 2.0,
           "type": "number",
           "format": "double"
         },
         "honorRetryAfter": {
-          "title": "Honor Retry-After Header",
-          "description": "Respect Retry-After header from server (default: true)",
           "default": true,
           "type": "boolean"
         },
         "initialDelayMs": {
-          "title": "Initial Delay (milliseconds)",
-          "description": "Initial delay before first retry (default: 100ms)",
           "default": 100,
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "maxAttempts": {
-          "title": "Maximum Attempts",
-          "description": "Maximum number of retry attempts (default: 3)",
           "default": 3,
           "type": "integer",
           "format": "uint32",
           "minimum": 0.0
         },
         "maxDelayMs": {
-          "title": "Maximum Delay (milliseconds)",
-          "description": "Maximum delay between retries (default: 10000ms = 10s)",
           "default": 10000,
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "retryOnStatus": {
-          "title": "Retry On Status Codes",
-          "description": "HTTP status codes to retry (default: 5xx)",
           "type": [
             "array",
             "null"
@@ -4636,24 +4564,10 @@ Make HTTP/HTTPS requests and enrich features with response data
       }
     },
     "TimingStrategy": {
-      "description": "Request timing strategy",
-      "oneOf": [
-        {
-          "title": "Burst",
-          "description": "Send all requests as fast as possible until limit reached",
-          "type": "string",
-          "enum": [
-            "burst"
-          ]
-        },
-        {
-          "title": "Distributed",
-          "description": "Distribute requests evenly across the interval",
-          "type": "string",
-          "enum": [
-            "distributed"
-          ]
-        }
+      "type": "string",
+      "enum": [
+        "burst",
+        "distributed"
       ]
     }
   }
@@ -4741,21 +4655,30 @@ Reproject Geometry to Different Coordinate System
   "properties": {
     "sourceEpsgCode": {
       "title": "Source EPSG Code",
-      "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+      "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
       "default": null,
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint16",
-      "minimum": 0.0
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "targetEpsgCode": {
       "title": "Target EPSG Code",
-      "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+      "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -5129,13 +5052,13 @@ Copies attributes from a specific list element to become the main attributes of 
 ### Type
 * sink
 ### Description
-Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
+Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MVTWriter Parameters",
-  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format.",
+  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).",
   "type": "object",
   "required": [
     "layerName",
@@ -5163,6 +5086,16 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
           "type": "null"
         }
       ]
+    },
+    "extent": {
+      "title": "Extent",
+      "description": "MVT tile resolution. Default is 4096.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
     },
     "layerName": {
       "title": "Layer Name",
@@ -5196,9 +5129,9 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
-    "skipUnderscorePrefix": {
-      "title": "Skip Underscore Prefix",
-      "description": "Skip attributes with underscore prefix",
+    "skipUnexposedAttributes": {
+      "title": "Skip Unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
       "type": [
         "boolean",
         "null"
@@ -5846,12 +5779,17 @@ This processor validates building usage attributes by checking for the presence 
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BuildingUsageAttributeValidatorParam",
   "type": "object",
+  "required": [
+    "codelistsPath"
+  ],
   "properties": {
-    "codelists": {
-      "type": [
-        "string",
-        "null"
-      ]
+    "codelistsPath": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -5925,7 +5863,19 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
   "title": "CityGML Mesh Builder Parameters",
   "description": "Configure validation rules for CityGML mesh triangles",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
+    "epsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
     "errorAttribute": {
       "title": "Error Attribute Name",
       "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
@@ -5935,16 +5885,13 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
           "$ref": "#/definitions/Attribute"
         }
       ]
-    },
-    "rejectInvalid": {
-      "title": "Reject Invalid Features",
-      "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
-      "default": false,
-      "type": "boolean"
     }
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
       "type": "string"
     }
   }
@@ -6023,7 +5970,32 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
 ### Description
 Validates domain of definition of CityGML features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainOfDefinitionValidator Parameters",
+  "description": "Configuration for validating domain of definition of CityGML features.",
+  "type": "object",
+  "properties": {
+    "codelistsPath": {
+      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -6364,12 +6336,81 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Description
 Filter Features by Geometry Planarity
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Planarity Filter Parameters",
+  "description": "Configure how to filter features based on geometry planarity",
+  "type": "object",
+  "required": [
+    "threshold"
+  ],
+  "properties": {
+    "filterType": {
+      "title": "Filter Type",
+      "description": "The method to use for planarity detection",
+      "default": "covariance",
+      "allOf": [
+        {
+          "$ref": "#/definitions/PlanarityFilterType"
+        }
+      ]
+    },
+    "threshold": {
+      "title": "Threshold",
+      "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "PlanarityFilterType": {
+      "description": "Filter type for planarity check",
+      "oneOf": [
+        {
+          "description": "Uses covariance matrix eigenvalue analysis",
+          "type": "string",
+          "enum": [
+            "covariance"
+          ]
+        },
+        {
+          "description": "Uses minimum height of the 3D convex hull",
+          "type": "string",
+          "enum": [
+            "height"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
 * planarity
 * notplanarity
+### Category
+* Geometry
+
+## PolygonNormalExtractor
+### Type
+* processor
+### Description
+Extract normal vectors and other properties for polygon features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Geometry
 
@@ -6628,7 +6669,33 @@ Writes geographic features to ESRI Shapefile format with optional grouping
 ### Description
 Validates the Solid Boundary Geometry
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Solid Boundary Validator Parameters",
+  "description": "Configure validation parameters for solid boundary geometry",
+  "type": "object",
+  "required": [
+    "tolerance"
+  ],
+  "properties": {
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
