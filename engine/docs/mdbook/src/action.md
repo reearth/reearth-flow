@@ -3856,6 +3856,731 @@ Writes 3D features to GLTF format with optional texture attachment
 ### Category
 * File
 
+## HTTPCaller
+### Type
+* processor
+### Description
+Make HTTP/HTTPS requests and enrich features with response data
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HttpCallerParam",
+  "type": "object",
+  "required": [
+    "url"
+  ],
+  "properties": {
+    "authentication": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Authentication"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "autoDetectEncoding": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "connectionTimeout": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "contentType": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "customHeaders": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/HeaderParam"
+      }
+    },
+    "errorAttribute": {
+      "default": "_http_error",
+      "type": "string"
+    },
+    "followRedirects": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "headersAttribute": {
+      "default": "_headers",
+      "type": "string"
+    },
+    "maxRedirects": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "maxResponseSize": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "method": {
+      "default": "GET",
+      "allOf": [
+        {
+          "$ref": "#/definitions/HttpMethod"
+        }
+      ]
+    },
+    "observability": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ObservabilityConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "queryParameters": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/QueryParam"
+      }
+    },
+    "rateLimit": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/RateLimitConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requestBody": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/RequestBody"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "responseBodyAttribute": {
+      "default": "_response_body",
+      "type": "string"
+    },
+    "responseEncoding": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ResponseEncoding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "responseHandling": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ResponseHandling"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "retry": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/RetryConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "statusCodeAttribute": {
+      "default": "_http_status_code",
+      "type": "string"
+    },
+    "transferTimeout": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "url": {
+      "$ref": "#/definitions/Expr"
+    },
+    "userAgent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "verifySsl": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "ApiKeyLocation": {
+      "type": "string",
+      "enum": [
+        "header",
+        "query"
+      ]
+    },
+    "Authentication": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "password",
+            "type",
+            "username"
+          ],
+          "properties": {
+            "password": {
+              "$ref": "#/definitions/Expr"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "basic"
+              ]
+            },
+            "username": {
+              "$ref": "#/definitions/Expr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "token",
+            "type"
+          ],
+          "properties": {
+            "token": {
+              "$ref": "#/definitions/Expr"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "bearer"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "keyName",
+            "keyValue",
+            "type"
+          ],
+          "properties": {
+            "keyName": {
+              "type": "string"
+            },
+            "keyValue": {
+              "$ref": "#/definitions/Expr"
+            },
+            "location": {
+              "default": "header",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/ApiKeyLocation"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "apiKey"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "BinarySource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "data",
+            "type"
+          ],
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/Expr"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "base64"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "path",
+            "type"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/Expr"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "FormField": {
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    "HeaderParam": {
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    "HttpMethod": {
+      "type": "string",
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH",
+        "HEAD",
+        "OPTIONS",
+        "COPY",
+        "LOCK",
+        "MKCOL",
+        "MOVE",
+        "PROPFIND",
+        "PROPPATCH",
+        "UNLOCK"
+      ]
+    },
+    "MultipartPart": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "type",
+            "value"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Expr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "source",
+            "type"
+          ],
+          "properties": {
+            "contentType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "filename": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/definitions/BinarySource"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "ObservabilityConfig": {
+      "type": "object",
+      "properties": {
+        "bytesAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "durationAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finalUrlAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retryCountAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trackBytes": {
+          "default": false,
+          "type": "boolean"
+        },
+        "trackDuration": {
+          "default": true,
+          "type": "boolean"
+        },
+        "trackFinalUrl": {
+          "default": false,
+          "type": "boolean"
+        },
+        "trackRetryCount": {
+          "default": true,
+          "type": "boolean"
+        }
+      }
+    },
+    "QueryParam": {
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    "RateLimitConfig": {
+      "type": "object",
+      "required": [
+        "requests"
+      ],
+      "properties": {
+        "intervalMs": {
+          "default": 1000,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "requests": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "timing": {
+          "default": "burst",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TimingStrategy"
+            }
+          ]
+        }
+      }
+    },
+    "RequestBody": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "content",
+            "type"
+          ],
+          "properties": {
+            "content": {
+              "$ref": "#/definitions/Expr"
+            },
+            "contentType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "source",
+            "type"
+          ],
+          "properties": {
+            "contentType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source": {
+              "$ref": "#/definitions/BinarySource"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "binary"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "fields",
+            "type"
+          ],
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/FormField"
+              }
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "formUrlEncoded"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "parts",
+            "type"
+          ],
+          "properties": {
+            "parts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/MultipartPart"
+              }
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "multipart"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "ResponseEncoding": {
+      "type": "string",
+      "enum": [
+        "text",
+        "base64",
+        "binary"
+      ]
+    },
+    "ResponseHandling": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "attribute"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "path",
+            "type"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/Expr"
+            },
+            "pathAttribute": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "storePathInAttribute": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "RetryConfig": {
+      "type": "object",
+      "properties": {
+        "backoffMultiplier": {
+          "default": 2.0,
+          "type": "number",
+          "format": "double"
+        },
+        "honorRetryAfter": {
+          "default": true,
+          "type": "boolean"
+        },
+        "initialDelayMs": {
+          "default": 100,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "maxAttempts": {
+          "default": 3,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "maxDelayMs": {
+          "default": 10000,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "retryOnStatus": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        }
+      }
+    },
+    "TimingStrategy": {
+      "type": "string",
+      "enum": [
+        "burst",
+        "distributed"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Web
+
 ## HoleCounter
 ### Type
 * processor
