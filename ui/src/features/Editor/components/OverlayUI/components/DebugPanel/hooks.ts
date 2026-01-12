@@ -13,7 +13,7 @@ export default () => {
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
-  const [detailsFeature, setDetailsFeature] = useState<any>(null);
+  const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
@@ -92,6 +92,7 @@ export default () => {
           }) ?? [],
       });
       setMinimized(false);
+      prevSelectedDataURLRef.current = debugJobState?.focusedIntermediateData;
     }
   };
 
@@ -416,17 +417,18 @@ export default () => {
     return featureIdMap.get(selectedFeatureId);
   }, [selectedFeatureId, featureIdMap]);
 
+  const detailsFeature = useMemo(() => {
+    if (!detailsOverlayOpen || !selectedFeature) return null;
+    return selectedFeature;
+  }, [detailsOverlayOpen, selectedFeature]);
+
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {
       if (selectedFeatureId !== featureId) {
         setSelectedFeatureId(featureId);
-        if (detailsOverlayOpen && featureId) {
-          const matchingRow = featureIdMap?.get(JSON.stringify(featureId));
-          setDetailsFeature(matchingRow);
-        }
       }
     },
-    [featureIdMap, selectedFeatureId, detailsOverlayOpen],
+    [selectedFeatureId],
   );
 
   const handleRowSingleClick = useCallback(
@@ -442,21 +444,13 @@ export default () => {
       // setEnableClustering(false);
       handleFeatureSelect(value?.id ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
-      const matchingRow = featureIdMap?.get(value?.id);
-      setDetailsFeature(matchingRow);
       setDetailsOverlayOpen(true);
     },
-    [
-      convertedSelectedFeature,
-      featureIdMap,
-      handleFlyToSelectedFeature,
-      handleFeatureSelect,
-    ],
+    [convertedSelectedFeature, handleFlyToSelectedFeature, handleFeatureSelect],
   );
 
   const handleCloseFeatureDetails = useCallback(() => {
     setDetailsOverlayOpen(false);
-    setDetailsFeature(null);
   }, []);
 
   const handleRemoveDataURL = useCallback(
@@ -520,6 +514,7 @@ export default () => {
               };
             }) ?? [],
         });
+        prevSelectedDataURLRef.current = undefined;
       }
     },
     [
