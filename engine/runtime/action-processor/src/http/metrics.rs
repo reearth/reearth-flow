@@ -108,7 +108,7 @@ mod tests {
         let response = HttpResponse {
             status_code: 200,
             headers: HashMap::new(),
-            body: "test response".to_string(),
+            body: "test response".as_bytes().to_vec(),
         };
 
         let retry_ctx = RetryContext {
@@ -120,7 +120,7 @@ mod tests {
 
         assert_eq!(metrics.duration, Duration::from_millis(150));
         assert_eq!(metrics.retry_count, 2);
-        assert_eq!(metrics.bytes_transferred, "test response".len());
+        assert_eq!(metrics.bytes_transferred, "test response".as_bytes().len());
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod tests {
         let response = HttpResponse {
             status_code: 200,
             headers: HashMap::new(),
-            body: "test".to_string(),
+            body: "test".as_bytes().to_vec(),
         };
 
         let retry_ctx = RetryContext {
@@ -160,7 +160,7 @@ mod tests {
         let response = HttpResponse {
             status_code: 200,
             headers: HashMap::new(),
-            body: "x".repeat(1000),
+            body: vec![b'x'; 1000],
         };
 
         let retry_ctx = RetryContext {

@@ -22,7 +22,7 @@ pub(crate) trait HttpClient: Send + Sync {
 pub(crate) struct HttpResponse {
     pub status_code: u16,
     pub headers: std::collections::HashMap<String, String>,
-    pub body: String,
+    pub body: Vec<u8>,
 }
 
 #[derive(Clone)]
@@ -134,9 +134,12 @@ impl HttpClient for ReqwestHttpClient {
             .filter_map(|(k, v)| v.to_str().ok().map(|v| (k.to_string(), v.to_string())))
             .collect();
 
-        let body = response.text().map_err(|e| {
-            HttpProcessorError::Response(format!("Failed to read response body: {e}"))
-        })?;
+        let body = response
+            .bytes()
+            .map_err(|e| {
+                HttpProcessorError::Response(format!("Failed to read response body: {e}"))
+            })?
+            .to_vec();
 
         Ok(HttpResponse {
             status_code,
@@ -197,7 +200,7 @@ mod tests {
                 "content-type".to_string(),
                 "application/json".to_string(),
             )]),
-            body: r#"{"status": "ok"}"#.to_string(),
+            body: r#"{"status": "ok"}"#.as_bytes().to_vec(),
         };
 
         let mock =
@@ -214,7 +217,7 @@ mod tests {
         assert!(result.is_ok());
         let resp = result.unwrap();
         assert_eq!(resp.status_code, 200);
-        assert_eq!(resp.body, r#"{"status": "ok"}"#);
+        assert_eq!(resp.body, r#"{"status": "ok"}"#.as_bytes());
     }
 
     #[test]

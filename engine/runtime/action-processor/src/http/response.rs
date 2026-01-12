@@ -111,11 +111,15 @@ pub(crate) fn process_response(
     Ok(())
 }
 
-fn encode_response_body(body: &str, encoding: &ResponseEncoding) -> String {
+fn encode_response_body(body: &[u8], encoding: &ResponseEncoding) -> String {
     match encoding {
-        ResponseEncoding::Text => body.to_string(),
-        ResponseEncoding::Base64 => general_purpose::STANDARD.encode(body.as_bytes()),
-        ResponseEncoding::Binary => general_purpose::STANDARD.encode(body.as_bytes()),
+        ResponseEncoding::Text => {
+            // Try UTF-8 first, fall back to lossy conversion if invalid
+            String::from_utf8(body.to_vec())
+                .unwrap_or_else(|_| String::from_utf8_lossy(body).into_owned())
+        }
+        ResponseEncoding::Base64 => general_purpose::STANDARD.encode(body),
+        ResponseEncoding::Binary => general_purpose::STANDARD.encode(body),
     }
 }
 
@@ -146,7 +150,7 @@ fn detect_encoding_from_headers(
 }
 
 fn save_response_to_file(
-    body: &str,
+    body: &[u8],
     path: &str,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<()> {
@@ -160,7 +164,7 @@ fn save_response_to_file(
     let path_string = uri.path().as_path().display().to_string();
     let storage_path = std::path::Path::new(&path_string);
 
-    let bytes = Bytes::from(body.as_bytes().to_vec());
+    let bytes = Bytes::from(body.to_vec());
 
     storage.put_sync(storage_path, bytes).map_err(|e| {
         HttpProcessorError::Response(format!("Failed to save response to file '{path}': {e}"))
@@ -178,7 +182,7 @@ mod tests {
         let response = HttpResponse {
             status_code: 200,
             headers: std::collections::HashMap::new(),
-            body: "a".repeat(1000),
+            body: vec![b'a'; 1000],
         };
 
         let engine = Arc::new(ExprEngine::new());

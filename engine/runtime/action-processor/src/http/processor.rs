@@ -317,7 +317,7 @@ mod tests {
         let mock_response = HttpResponse {
             status_code: 200,
             headers: HashMap::new(),
-            body: r#"{"result": "success"}"#.to_string(),
+            body: r#"{"result": "success"}"#.as_bytes().to_vec(),
         };
 
         let mock_client =
