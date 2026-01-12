@@ -6141,6 +6141,7 @@ dependencies = [
  "Inflector",
  "approx",
  "async-trait",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "csv",
@@ -6152,6 +6153,7 @@ dependencies = [
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
+ "object_store",
  "once_cell",
  "parking_lot",
  "petgraph 0.6.5",
@@ -10399,7 +10401,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.124"
+version = "0.1.95"
 dependencies = [
  "anyhow",
  "csv",
