@@ -1,10 +1,11 @@
 {
   "workflowPath": "solar-radiation/calculate-cloud-correction/workflow.yaml",
   "description": "Test cloud correction workflow for solar energy project",
+  "cityGmlPath": "",
   "skip": false,
   "intermediateAssertions": [
     {
-      "edgeId": "3794a212-ec5a-11f0-9030-7c70db10a7e9",
+      "edgeId": "ed2159d2-ef6a-11f0-a8f5-6c02e0440ed6",
       "expectedFile": "cloud_correction_intermediate.jsonl",
       "jsonFilter": "{attributes}"
     }
