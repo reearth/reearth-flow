@@ -1,0 +1,167 @@
+# HTTPCaller File Upload Example
+# This workflow demonstrates file uploads and form data handling:
+# - Multipart form data
+# - File uploads from storage
+# - Base64 encoded data
+# - Form URL-encoded data
+# - Response file storage
+
+id: 550e8400-e29b-41d4-a716-446655440020
+name: "HTTPCaller File Upload Example"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440021
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440021
+    name: main
+    nodes:
+      # Create feature with file metadata
+      - id: 550e8400-e29b-41d4-a716-446655440030
+        name: Generate-Upload-Info
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            #{
+              file_name: "example.txt",
+              file_content_base64: "SGVsbG8sIFdvcmxkISBUaGlzIGlzIGEgdGVzdCBmaWxlLg==",
+              user_name: "test-user",
+              description: "Example file upload"
+            }
+
+      # Example 1: Multipart form data with base64 file
+      - id: 550e8400-e29b-41d4-a716-446655440040
+        name: Upload-Multipart-Base64
+        type: action
+        action: HTTPCaller
+        with:
+          url: |
+            "https://httpbin.org/post"
+
+          method: POST
+
+          requestBody:
+            type: multipart
+            parts:
+              # Text field
+              - type: text
+                name: "username"
+                value: |
+                  env.get("__value").user_name
+
+              # Another text field
+              - type: text
+                name: "description"
+                value: |
+                  env.get("__value").description
+
+              # File from base64 data
+              - type: file
+                name: "file"
+                source:
+                  type: base64
+                  data: |
+                    env.get("__value").file_content_base64
+                filename: "example.txt"
+                contentType: "text/plain"
+
+          responseBodyAttribute: "_upload_response"
+          statusCodeAttribute: "_status"
+          errorAttribute: "_error"
+
+          connectionTimeout: 30
+          transferTimeout: 120
+
+      # Example 2: Form URL-encoded data (traditional form submission)
+      - id: 550e8400-e29b-41d4-a716-446655440050
+        name: Submit-Form-Data
+        type: action
+        action: HTTPCaller
+        with:
+          url: |
+            "https://httpbin.org/post"
+
+          method: POST
+
+          requestBody:
+            type: formUrlEncoded
+            fields:
+              - name: "username"
+                value: |
+                  env.get("__value").user_name
+              - name: "description"
+                value: |
+                  env.get("__value").description
+
+          responseBodyAttribute: "_form_response"
+          statusCodeAttribute: "_form_status"
+
+      # Example 3: Download response as file instead of attribute
+      - id: 550e8400-e29b-41d4-a716-446655440060
+        name: Download-To-File
+        type: action
+        action: HTTPCaller
+        with:
+          url: |
+            "https://httpbin.org/json"
+
+          method: GET
+
+          # Save response to file instead of attribute
+          responseHandling:
+            type: file
+            path: |
+              "/tmp/downloaded_" + env.get("__value").file_name
+            storePathInAttribute: true
+            pathAttribute: "_file_path"
+
+          statusCodeAttribute: "_download_status"
+
+      # Write results
+      - id: 550e8400-e29b-41d4-a716-446655440070
+        name: Save-Results
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            "{{ env.outputFilePath }}"
+
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440080
+        from: 550e8400-e29b-41d4-a716-446655440030
+        to: 550e8400-e29b-41d4-a716-446655440040
+        fromPort: default
+        toPort: default
+
+      - id: 550e8400-e29b-41d4-a716-446655440090
+        from: 550e8400-e29b-41d4-a716-446655440040
+        to: 550e8400-e29b-41d4-a716-446655440050
+        fromPort: default
+        toPort: default
+
+      - id: 550e8400-e29b-41d4-a716-446655440100
+        from: 550e8400-e29b-41d4-a716-446655440050
+        to: 550e8400-e29b-41d4-a716-446655440060
+        fromPort: default
+        toPort: default
+
+      - id: 550e8400-e29b-41d4-a716-446655440110
+        from: 550e8400-e29b-41d4-a716-446655440060
+        to: 550e8400-e29b-41d4-a716-446655440070
+        fromPort: default
+        toPort: default
+
+# To run this workflow:
+# cargo run --package reearth-flow-cli -- run \
+#   --workflow runtime/examples/fixture/workflow/http_caller_file_upload.yml \
+#   --var outputFilePath=/tmp/upload_results.json
+
+# Note: For file uploads from actual files, use:
+# requestBody:
+#   type: multipart
+#   parts:
+#     - type: file
+#       name: "file"
+#       source:
+#         type: file
+#         path: |
+#           "file:///path/to/your/file.txt"
