@@ -1,7 +1,6 @@
 {
   "workflowPath": "solar-radiation/calculate-cloud-correction/workflow.yaml",
   "description": "Test cloud correction workflow for solar energy project",
-  "csvFile": "input.csv",
   "skip": false,
   "intermediateAssertions": [
     {

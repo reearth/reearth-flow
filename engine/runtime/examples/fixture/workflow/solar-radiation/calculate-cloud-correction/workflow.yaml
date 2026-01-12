@@ -1,9 +1,14 @@
-# workflow for calculate snow correction for solar energy
+# workflow for calculate cloud correction for solar energy
 id: 2d4e1c6a-eb70-11f0-9b6c-7c70db10a7e3
 name: CalculateCloudCorrectionFactor
 entryGraphId: a2df1dee-eba2-11f0-b126-7c70db10a7e3
 with:
-  csvFile: null
+  csvFile: |
+    年,月,日照時間(時間),日照時間(時間)00,日照時間0.1時間未満日数(日),日照時間0.1時間未満日数(日)00,日照率40%以上日数(日),日照率40%以上日数(日)00
+    2010,1,71,8,,,,,
+    2010,2,83.6,8,,,,,
+    2010,3,83.2,5,,,,,
+    2010,4,140.9,8,,,,,
 graphs:
   - id: a2df1dee-eba2-11f0-b126-7c70db10a7e3
     name: CloudFactorWorkflow
