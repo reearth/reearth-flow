@@ -275,7 +275,7 @@ where
     let (max_width, max_height) = dimensions;
 
     // Initialize texture packer config
-    let config = TexturePlacerConfig::new_padded(max_width, max_height, 0, 2);
+    let config = TexturePlacerConfig::new(max_width, max_height, 2);
 
     let placer = GuillotineTexturePlacer::new(config.clone());
     let packer = packer
