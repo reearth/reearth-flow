@@ -120,7 +120,7 @@ mod tests {
 
         assert_eq!(metrics.duration, Duration::from_millis(150));
         assert_eq!(metrics.retry_count, 2);
-        assert_eq!(metrics.bytes_transferred, "test response".as_bytes().len());
+        assert_eq!(metrics.bytes_transferred, "test response".len());
     }
 
     #[test]
