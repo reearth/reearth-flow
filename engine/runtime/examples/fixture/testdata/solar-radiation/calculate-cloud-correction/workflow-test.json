@@ -1,0 +1,13 @@
+{
+  "workflowPath": "solar-radiation/calculate-cloud-correction/workflow.yaml",
+  "description": "Test cloud correction workflow for solar energy project",
+  "csvFile": "input.csv",
+  "skip": false,
+  "intermediateAssertions": [
+    {
+      "edgeId": "3794a212-ec5a-11f0-9030-7c70db10a7e9",
+      "expectedFile": "cloud_correction_intermediate.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ]
+}

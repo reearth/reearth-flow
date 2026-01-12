@@ -3,7 +3,7 @@ id: 2d4e1c6a-eb70-11f0-9b6c-7c70db10a7e3
 name: CalculateCloudCorrectionFactor
 entryGraphId: a2df1dee-eba2-11f0-b126-7c70db10a7e3
 with:
-  csvFile: !include ./input.csv
+  csvFile: null
 graphs:
   - id: a2df1dee-eba2-11f0-b126-7c70db10a7e3
     name: CloudFactorWorkflow
