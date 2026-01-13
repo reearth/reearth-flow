@@ -53,7 +53,7 @@ const DateTimePicker: React.FC<Props> = ({ className }) => {
       icon={<CalendarIcon />}
       locale={currentLang}
       showPopperArrow={false}
-      onChange={(date) => date && setStartDate(date)}
+      onChange={(date: Date | null) => date && setStartDate(date)}
     />
   );
 };
