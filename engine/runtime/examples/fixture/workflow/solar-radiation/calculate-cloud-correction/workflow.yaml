@@ -186,8 +186,9 @@ graphs:
           inline: |
             env.get("csvFile")
 
+      # Rename attribute from csv file
       - id: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
-        name: RenameAttributes
+        name: PrepareExtraAttributes
         type: action
         action: AttributeManager
         with:
@@ -195,28 +196,32 @@ graphs:
           - attribute: year
             method: create
             value:
-              env.get("__value")["年"];
+              let v = env.get("__value")["年"];
+              parse_int(v)
           - attribute: 年
             method: remove
 
           - attribute: month
             method: create
             value:
-              env.get("__value")["月"];
+              let v = env.get("__value")["月"];
+              parse_int(v)
           - attribute: 月
             method: remove
 
           - attribute: daylight_hours
             method: create
             value:
-              env.get("__value")["日照時間(時間)"];
+              let v = env.get("__value")["日照時間(時間)"];
+              parse_float(v)
           - attribute: 日照時間(時間)
             method: remove
 
           - attribute: daylight_hours_num
             method: create
             value:
-              env.get("__value")["日照時間(時間)00"];
+              let v = env.get("__value")["日照時間(時間)00"];
+              parse_float(v)
           - attribute: 日照時間(時間)00
             method: remove
 
@@ -249,9 +254,9 @@ graphs:
             method: remove
 
 
-
+      # Add extra attributes max_daylight_hours and transmissivity based on different month value 
       - id: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
-        name: PrepareExtraAttribute
+        name: PrepareExtraAttributes
         type: action
         action: AttributeManager
         with:
@@ -260,29 +265,29 @@ graphs:
             method: create
             value: |
               let month = env.get("__value")["month"];
-              if month == "1" {
+              if month == 1 {
                 310
-              } else if month == "2" {
+              } else if month == 2 {
                 308
-              } else if month == "3" {
+              } else if month == 3 {
                 372
-              } else if month == "4" {
+              } else if month == 4 {
                 390
-              } else if month == "5" {
+              } else if month == 5 {
                 434
-              } else if month == "6" {
+              } else if month == 6 {
                 450
-              } else if month == "7" {
+              } else if month == 7 {
                 465
-              } else if month == "8" {
+              } else if month == 8 {
                 434
-              } else if month == "9" {
+              } else if month == 8 {
                 390
-              } else if month == "10" {
+              } else if month == 10 {
                 372
-              } else if month == "11" {
+              } else if month == 11 {
                 330
-              } else if month == "12" {
+              } else if month == 12 {
                 310
               } else {
                 372
@@ -292,36 +297,36 @@ graphs:
             method: create
             value: |
               let month = env.get("__value")["month"];
-              if month == "1" {
+              if month == 1 {
                 0.75
-              } else if month == "2" {
+              } else if month == 2 {
                 0.72
-              } else if month == "3" {
+              } else if month == 3 {
                 0.67
-              } else if month == "4" {
+              } else if month == 4 {
                 0.64
-              } else if month == "5" {
+              } else if month == 5 {
                 0.64
-              } else if month == "6" {
+              } else if month == 6 {
                 0.62
-              } else if month == "7" {
+              } else if month == 7 {
                 0.63
-              } else if month == "8" {
+              } else if month == 8 {
                 0.64
-              } else if month == "9" {
+              } else if month == 9 {
                 0.68
-              } else if month == "10" {
+              } else if month == 10 {
                 0.71
-              } else if month == "11" {
+              } else if month == 11 {
                 0.74
-              } else if month == "12" {
+              } else if month == 12 {
                 0.75
               } else {
                 0.7
               }
 
 
-      # Calculate averages grouped by month and add year attribute
+      # Calculate averages grouped by month and add year 9999 attribute
       - id: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
         name: AggregateByMonth
         type: action
@@ -336,14 +341,12 @@ graphs:
           calculations:
             # Calculate averages directly instead of sums then division
             - calculation: |
-                let v = env.get("__value")["daylight_hours"];
-                parse_float(v)
+                env.get("__value")["daylight_hours"]
               calculationAttribute: daylight_hours
               method: avg
 
             - calculation: |
-                let v = env.get("__value")["daylight_hours_num"];
-                parse_float(v)
+                env.get("__value")["daylight_hours_num"]
               calculationAttribute: daylight_hours_num
               method: avg
 
@@ -363,6 +366,13 @@ graphs:
               calculationAttribute: year
               method: max  # Any method works for a constant value
 
+      # This node controls which period we compute. For now we only consider the period is year.
+      # Its inputs are coming from two parts:
+      # One is from the previous aggregator which has attribute year == 9999
+      # Another is from the non aggregated data which has normal year.
+      # This node handle them in which 
+      # The year == 9999 goes to port year9999Port
+      # The year == n, say == 2018, goes to port year
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e3
         name: TestFilter_2
         type: action
@@ -370,17 +380,11 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("__value")["period"] == "period_year"
-              outputPort: yearPort
-            - expr: |
-                env.get("__value")["period"] == "period_month"
-              outputPort: monthPort
-            - expr: |
-                env.get("__value")["period"] == "period_day"
-              outputPort: datePort
-            - expr: |
-                env.get("__value")["year"] == 9999
+                env.get("__value").year == 9999
               outputPort: year9999Port
+            - expr: |
+                env.get("__value").year == 2018
+              outputPort: yearPort
 
       # Aggregator for year, month, date features (using new AttributeAggregator to calculate averages)
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e4
@@ -539,6 +543,15 @@ graphs:
         fromPort: default
         toPort: default
 
+
+      # Connect prepared attributes node to TestFilter_2
+      - id: 771ed80c-f025-11f0-8869-7c70db10a7e3
+        from: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
+        to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
+        fromPort: default 
+        toPort: default 
+
+      # Connect prepared attributes node to aggregator 
       - id: 18d630d8-ef80-11f0-b0a2-6c02e0440ed6
         from: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
         to: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
@@ -552,20 +565,14 @@ graphs:
         fromPort: default
         toPort: default
 
-      # edge connect PrepareAttribute to TestFilter_2 (backup connection)
-      - id: 26b3234c-ec5f-11f0-9544-7c70db10a7e3
-        from: 9444dbf6-eba3-11f0-bdcb-7c70db10a7e3
-        to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
-        fromPort: default
-        toPort: default
-
-      # Connect TestFilter_2 outputs to different aggregators
+      # Connect TestFilter_2 outputs to Aggregator_2: from yearPort to default
       - id: 3794a212-ec5a-11f0-9030-7c70db10a7e4
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e3
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e4
         fromPort: yearPort
         toPort: default
 
+       # Connect TestFilter_2 outputs to Aggregator_4: from year9999Port to default
       - id: 3794a212-ec5a-11f0-9030-7c70db10a7e5
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e3
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e5
@@ -573,14 +580,14 @@ graphs:
         toPort: default
 
       # Connect Aggregator_2 directly to ExpressionEvaluator_6 (since it now calculates averages directly)
-      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e6
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e8
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e4
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e8
         fromPort: default
         toPort: default
 
       # Connect Aggregator_4 directly to ExpressionEvaluator_6 (since it now calculates averages directly)
-      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e7
+      - id: 3794a212-ec5a-11f0-9030-7c70db10a7e9
         from: 4624d686-ec5e-11f0-a279-7c70db10a7e5
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e8
         fromPort: default
