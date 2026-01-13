@@ -185,7 +185,7 @@ const DebugPanel: React.FC = () => {
             forceMount={true}
             hidden={tabValue !== "debug-viewer"}
             className="h-[calc(100%-32px)] overflow-scroll">
-            <ResizablePanelGroup direction="horizontal">
+            <ResizablePanelGroup orientation="horizontal">
               <ResizablePanel
                 defaultSize={60}
                 minSize={20}
