@@ -7,7 +7,7 @@ pub enum Error {
     #[error("Gltf writer error: {0}")]
     Writer(String),
     #[error("Gltf compression error: {0}")]
-    Compression(String),
+    Compression(#[from] draco_oxide::io::gltf::transcoder::Error),
     #[error("std io error: {0}")]
     StdIo(#[from] std::io::Error),
 }
