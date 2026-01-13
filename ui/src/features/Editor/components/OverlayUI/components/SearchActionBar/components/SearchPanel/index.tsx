@@ -6,9 +6,13 @@ import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTab
 import { useT } from "@flow/lib/i18n";
 import { Node, Workflow } from "@flow/types";
 
+import SearchFilters from "../SearchFilters";
+
 import useHooks, { SearchNodeResult } from "./hooks";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 
 type SearchPanelProps = {
+  showSearchPanel: boolean;
   rawWorkflows: Workflow[];
   currentWorkflowId: string;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
@@ -18,6 +22,7 @@ type SearchPanelProps = {
 };
 
 const SearchPanel = ({
+  showSearchPanel,
   rawWorkflows,
   currentWorkflowId,
   onNodesChange,
@@ -27,9 +32,16 @@ const SearchPanel = ({
   const t = useT();
 
   const {
-    allNodes,
+    filteredNodes,
     selectedNodeId,
-    displayNameOnlyFilter,
+    searchTerm,
+    currentActionTypeFilter,
+    currentWorkflowFilter,
+    actionTypes,
+    workflows,
+    setSearchTerm,
+    setCurrentActionTypeFilter,
+    setCurrentWorkflowFilter,
     handleRowClick,
     handleRowDoubleClick,
   } = useHooks({
@@ -44,18 +56,36 @@ const SearchPanel = ({
       accessorKey: "displayName",
       header: t("Action Name"),
       cell: ({ row }) => (
-        <span className="block max-w-[100px] truncate font-medium">
-          {row.original.displayName}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block max-w-[100px] truncate font-medium">
+              {row.original.displayName}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={-100} className="bg-primary">
+            {row.original.displayName}
+          </TooltipContent>
+        </Tooltip>
       ),
     },
     {
       accessorKey: "workflowName",
       header: t("Workflow"),
       cell: ({ row }) => (
-        <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
-          {row.original.workflowName}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
+              {row.original.workflowName}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent
+            side="right"
+            sideOffset={-100}
+            align="center"
+            className="bg-primary">
+            {row.original.workflowName}
+          </TooltipContent>
+        </Tooltip>
       ),
     },
     {
@@ -73,7 +103,10 @@ const SearchPanel = ({
   ];
 
   return (
-    <div className="absolute flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur">
+    <div
+      className={`absolute flex h-[600px] z-50 w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
+      `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -85,15 +118,24 @@ const SearchPanel = ({
             onClick={() => onShowSearchPanel(false)}
           />
         </div>
+        <SearchFilters
+          searchTerm={searchTerm}
+          currentActionTypeFilter={currentActionTypeFilter}
+          currentWorkflowFilter={currentWorkflowFilter}
+          actionTypes={actionTypes}
+          workflows={workflows}
+          setSearchTerm={setSearchTerm}
+          setCurrentActionTypeFilter={setCurrentActionTypeFilter}
+          setCurrentWorkflowFilter={setCurrentWorkflowFilter}
+        />
         <div className="flex min-h-0 flex-1 flex-col">
           <VirtualizedTable
             columns={searchNodeColumns}
-            data={allNodes}
-            showFiltering
+            data={filteredNodes}
+            searchTerm={searchTerm}
             selectedFeatureId={selectedNodeId}
             onRowClick={handleRowClick}
             onRowDoubleClick={handleRowDoubleClick}
-            customGlobalFilter={displayNameOnlyFilter}
             condensed
             surpressAutoScroll
           />

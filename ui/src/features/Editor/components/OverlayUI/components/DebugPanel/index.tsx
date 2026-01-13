@@ -96,187 +96,194 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
-      <Tabs
-        className={`pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[92vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[92vw] rounded-xl" : "h-[45vh] w-[92vw] rounded-xl"}`}
-        value={tabValue}
-        defaultValue="debug-logs"
-        onValueChange={setTabValue}>
-        <div
-          className="relative flex justify-between"
-          onDoubleClick={handleExpand}>
-          <div className="flex w-fit items-center">
-            <TabsList className="gap-2">
-              <TabsTrigger
-                className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
-                value="debug-logs"
-                onClick={handleTabChange}>
-                <CodeIcon className="group-data-[state=active]:fill-logo" />
-                <p className="text-sm select-none">{t("Workflow Logs")}</p>
-              </TabsTrigger>
-              <TabsTrigger
-                className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
-                value="debug-viewer"
-                disabled={!dataURLs?.length}
-                onClick={handleTabChange}>
-                <EyeIcon className="group-data-[state=active]:fill-logo" />
-                <p className="text-sm select-none">{t("Data Preview")}</p>
-              </TabsTrigger>
-            </TabsList>
-            <div className="ml-2 h-full w-1 border-l" />
-            <OutputDataDownload outputData={outputDataForDownload} />
-          </div>
-          {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
+      className={`z-30 absolute bottom-2 ${fullscreenDebug ? "" : "left-1/2 -translate-x-1/2"}`}>
+      <div
+        className={`${fullscreenDebug ? "fixed inset-0" : ""} flex items-end`}>
+        <Tabs
+          className={`z-30 pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[92vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[92vw] rounded-xl"}`}
+          value={tabValue}
+          defaultValue="debug-logs"
+          onValueChange={setTabValue}>
+          <div
+            className="relative flex justify-between"
+            onDoubleClick={handleExpand}>
+            <div className="flex w-fit items-center">
+              <TabsList className="gap-2">
+                <TabsTrigger
+                  className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
+                  value="debug-logs"
+                  onClick={handleTabChange}>
+                  <CodeIcon className="group-data-[state=active]:fill-logo" />
+                  <p className="text-sm select-none">{t("Workflow Logs")}</p>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
+                  value="debug-viewer"
+                  disabled={!dataURLs?.length}
+                  onClick={handleTabChange}>
+                  <EyeIcon className="group-data-[state=active]:fill-logo" />
+                  <p className="text-sm select-none">{t("Data Preview")}</p>
+                </TabsTrigger>
+              </TabsList>
+              <div className="ml-2 h-full w-1 border-l" />
+              <OutputDataDownload outputData={outputDataForDownload} />
+            </div>
+            {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
             <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
           </div> */}
-          <div className="flex items-center">
-            {!fullscreenDebug && (
-              <IconButton
-                className="h-8 cursor-pointer rounded hover:bg-primary"
-                icon={
-                  minimized ? (
-                    <CaretUpIcon weight="light" />
-                  ) : (
-                    <MinusIcon weight="light" />
-                  )
-                }
-                onClick={handleMinimize}
-              />
-            )}
-            {!minimized && !fullscreenDebug && (
-              <IconButton
-                className="h-8 cursor-pointer rounded hover:bg-primary"
-                icon={
-                  expanded ? (
-                    <CaretDownIcon weight="light" />
-                  ) : (
-                    <CaretUpIcon weight="light" />
-                  )
-                }
-                onClick={handleExpand}
-              />
-            )}
-            {!minimized && (
-              <IconButton
-                className="h-8 cursor-pointer rounded hover:bg-primary"
-                icon={
-                  fullscreenDebug ? (
-                    <CornersInIcon weight="light" />
-                  ) : (
-                    <CornersOutIcon weight="light" />
-                  )
-                }
-                onClick={handleFullscreenExpand}
-              />
-            )}
-          </div>
-        </div>
-        <TabsContent
-          value="debug-logs"
-          className="h-[calc(100%-30px)] overflow-scroll"
-          forceMount={debugJobIdRef.current !== debugJobId ? undefined : true}
-          hidden={tabValue !== "debug-logs"}>
-          <DebugLogs debugJobId={debugJobId} />
-        </TabsContent>
-        {dataURLs && (
-          <TabsContent
-            value="debug-viewer"
-            forceMount={true}
-            hidden={tabValue !== "debug-viewer"}
-            className="h-[calc(100%-32px)] overflow-scroll">
-            <ResizablePanelGroup orientation="horizontal">
-              <ResizablePanel
-                defaultSize={60}
-                minSize={20}
-                className="flex flex-col">
-                <div className="flex gap-2 py-2">
-                  <Select
-                    defaultValue={dataURLs[0].key}
-                    value={selectedDataURL}
-                    onValueChange={handleSelectedDataChange}>
-                    <SelectTrigger className="h-[26px] w-auto max-w-[300px] text-xs font-bold">
-                      <SelectValue placeholder={t("Select Data to Preview")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dataURLs.map(({ key, name }) => (
-                        <SelectItem
-                          key={key}
-                          value={key}
-                          className="group relative z-0 pr-8">
-                          {name}
-                          <IconButton
-                            icon={<XIcon weight="light" />}
-                            variant={"default"}
-                            className="absolute top-1/2 right-2 z-50 h-4 w-4 -translate-y-1/2 bg-accent opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleRemoveDataURL(key);
-                            }}
-                          />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div
-                  className={
-                    detailsOverlayOpen
-                      ? "mt-[42px] min-h-0 flex-1"
-                      : "mt-0 min-h-0 flex-1"
-                  }>
-                  <TableViewer
-                    fileContent={selectedOutputData}
-                    selectedFeatureId={selectedFeatureId}
-                    onSingleClick={handleRowSingleClick}
-                    onDoubleClick={handleRowDoubleClick}
-                    detectedGeometryType={detectedGeometryType || undefined}
-                    totalFeatures={totalFeatures || undefined}
-                    detailsOverlayOpen={detailsOverlayOpen}
-                    detailsFeature={detailsFeature}
-                    formattedData={formattedData}
-                    onCloseFeatureDetails={handleCloseFeatureDetails}
-                  />
-                </div>
-              </ResizablePanel>
-              {visualizerType && (
-                <>
-                  {!minimized && (
-                    <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
-                  )}
-                  <ResizablePanel defaultSize={40} minSize={20}>
-                    {isLoadingData ? (
-                      <div className="flex h-full items-center justify-center">
-                        <div className="text-center text-muted-foreground">
-                          <LoadingSkeleton className="mb-4" />
-                          <p className="text-sm">{t("Loading data...")}</p>
-                        </div>
-                      </div>
+            <div className="flex items-center">
+              {!fullscreenDebug && (
+                <IconButton
+                  className="h-8 cursor-pointer rounded hover:bg-primary"
+                  icon={
+                    minimized ? (
+                      <CaretUpIcon weight="light" />
                     ) : (
-                      <DebugPreview
-                        debugJobState={debugJobState}
-                        dataURLs={dataURLs}
-                        fileType={fileType}
-                        selectedOutputData={selectedOutputData}
-                        selectedFeatureId={selectedFeatureId}
-                        mapRef={mapRef}
-                        cesiumViewerRef={cesiumViewerRef}
-                        onConvertedSelectedFeature={setConvertedSelectedFeature}
-                        onSelectedFeature={handleFeatureSelect}
-                        onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                        // Data detection props
-                        detectedGeometryType={detectedGeometryType}
-                        visualizerType={visualizerType}
-                      />
-                    )}
-                  </ResizablePanel>
-                </>
+                      <MinusIcon weight="light" />
+                    )
+                  }
+                  onClick={handleMinimize}
+                />
               )}
-            </ResizablePanelGroup>
+              {!minimized && !fullscreenDebug && (
+                <IconButton
+                  className="h-8 cursor-pointer rounded hover:bg-primary"
+                  icon={
+                    expanded ? (
+                      <CaretDownIcon weight="light" />
+                    ) : (
+                      <CaretUpIcon weight="light" />
+                    )
+                  }
+                  onClick={handleExpand}
+                />
+              )}
+              {!minimized && (
+                <IconButton
+                  className="h-8 cursor-pointer rounded hover:bg-primary"
+                  icon={
+                    fullscreenDebug ? (
+                      <CornersInIcon weight="light" />
+                    ) : (
+                      <CornersOutIcon weight="light" />
+                    )
+                  }
+                  onClick={handleFullscreenExpand}
+                />
+              )}
+            </div>
+          </div>
+          <TabsContent
+            value="debug-logs"
+            className="h-[calc(100%-30px)] overflow-scroll"
+            forceMount={debugJobIdRef.current !== debugJobId ? undefined : true}
+            hidden={tabValue !== "debug-logs"}>
+            <DebugLogs debugJobId={debugJobId} />
           </TabsContent>
-        )}
-      </Tabs>
+          {dataURLs && (
+            <TabsContent
+              value="debug-viewer"
+              forceMount={true}
+              hidden={tabValue !== "debug-viewer"}
+              className="h-[calc(100%-32px)] overflow-scroll">
+              <ResizablePanelGroup orientation="horizontal">
+                <ResizablePanel
+                  defaultSize={60}
+                  minSize={20}
+                  className="flex flex-col">
+                  <div className="flex gap-2 py-2">
+                    <Select
+                      defaultValue={dataURLs[0].key}
+                      value={selectedDataURL}
+                      onValueChange={handleSelectedDataChange}>
+                      <SelectTrigger className="h-[26px] w-auto max-w-[300px] text-xs font-bold">
+                        <SelectValue
+                          placeholder={t("Select Data to Preview")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dataURLs.map(({ key, name }) => (
+                          <SelectItem
+                            key={key}
+                            value={key}
+                            className="group relative z-0 pr-8">
+                            {name}
+                            <IconButton
+                              icon={<XIcon weight="light" />}
+                              variant={"default"}
+                              className="absolute top-1/2 right-2 z-50 h-4 w-4 -translate-y-1/2 bg-accent opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleRemoveDataURL(key);
+                              }}
+                            />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div
+                    className={
+                      detailsOverlayOpen
+                        ? "mt-[42px] min-h-0 flex-1"
+                        : "mt-0 min-h-0 flex-1"
+                    }>
+                    <TableViewer
+                      fileContent={selectedOutputData}
+                      selectedFeatureId={selectedFeatureId}
+                      onSingleClick={handleRowSingleClick}
+                      onDoubleClick={handleRowDoubleClick}
+                      detectedGeometryType={detectedGeometryType || undefined}
+                      totalFeatures={totalFeatures || undefined}
+                      detailsOverlayOpen={detailsOverlayOpen}
+                      detailsFeature={detailsFeature}
+                      formattedData={formattedData}
+                      onCloseFeatureDetails={handleCloseFeatureDetails}
+                    />
+                  </div>
+                </ResizablePanel>
+                {visualizerType && (
+                  <>
+                    {!minimized && (
+                      <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
+                    )}
+                    <ResizablePanel defaultSize={40} minSize={20}>
+                      {isLoadingData ? (
+                        <div className="flex h-full items-center justify-center">
+                          <div className="text-center text-muted-foreground">
+                            <LoadingSkeleton className="mb-4" />
+                            <p className="text-sm">{t("Loading data...")}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <DebugPreview
+                          debugJobState={debugJobState}
+                          dataURLs={dataURLs}
+                          fileType={fileType}
+                          selectedOutputData={selectedOutputData}
+                          selectedFeatureId={selectedFeatureId}
+                          mapRef={mapRef}
+                          cesiumViewerRef={cesiumViewerRef}
+                          onConvertedSelectedFeature={
+                            setConvertedSelectedFeature
+                          }
+                          onSelectedFeature={handleFeatureSelect}
+                          onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                          // Data detection props
+                          detectedGeometryType={detectedGeometryType}
+                          visualizerType={visualizerType}
+                        />
+                      )}
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizablePanelGroup>
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
     </div>
   ) : null;
 };
