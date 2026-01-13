@@ -511,44 +511,10 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          groupBy:
-            - year
           calculations:
-            # Calculate SUM of is_not_9999 to count valid records per year
-            - newAttribute: is_not_9999
-              expr: |
-                env.get("__value")["is_not_9999"] 
-
             - newAttribute: is_not_9999_sum
               expr: |
-                env.get("__value")["is_not_9999"]
-              method: sum
-
-            # Preserve other important attributes
-            - newAttribute: transmissivity
-              expr: |
-                env.get("__value")["transmissivity"]
-              
-            - newAttribute: max_daylight_hours
-              expr: |
-                env.get("__value")["max_daylight_hours"]
-             
-            - newAttribute: daylight_hours
-              expr: |
-                env.get("__value")["daylight_hours"]
-             
-            - newAttribute: daylight_hours_num
-              expr: |
-                env.get("__value")["daylight_hours_num"]
-
-            - newAttribute: sunshine_rate
-              expr: |
-                env.get("__value")["sunshine_rate"]     
-
-            - newAttribute: cloud_rate
-              expr: |
-                env.get("__value")["cloud_rate"]      
-
+                env.get("__value")["is_not_9999"]    
 
       - id: fc057e72-f03e-11f0-8d89-7c70db10a7e3
         name: TestFilter_4 
@@ -665,12 +631,19 @@ graphs:
         fromPort: default
         toPort: default
 
-      # Connect StatisticsCalculator_5 to TestFilter_4 
+      # Connect StatisticsCalculator_5 to TestFilter_4 via complete port 
       - id: 4c8c746c-ec71-11f0-9a9a-7c70db10a7e3
         from: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
         to: fc057e72-f03e-11f0-8d89-7c70db10a7e3
-        fromPort: default
+        fromPort: complete
         toPort: default
+
+      # Connect StatisticsCalculator_5 to TestFilter_4 via default port
+      - id: 6c35bd78-f04a-11f0-a479-7c70db10a7e3
+        from: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
+        to: fc057e72-f03e-11f0-8d89-7c70db10a7e3
+        fromPort: default
+        toPort: default        
 
       # Connect TestFilter_4 to AttributeCreator_6 via port portNotYear9999
       - id: c29ca07e-f03f-11f0-af26-7c70db10a7e3
@@ -678,7 +651,7 @@ graphs:
         to: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
         fromPort: portNotYear9999
         toPort: default
-        
+
       # Connect TestFilter_4 to AttributeCreator_6 via port port9999
       - id: c29ca07e-f03f-11f0-af26-7c70db10a7e3
         from: fc057e72-f03e-11f0-8d89-7c70db10a7e3
