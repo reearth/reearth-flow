@@ -333,7 +333,7 @@ dependencies = [
 [[package]]
 name = "atlas-packer"
 version = "0.0.0"
-source = "git+https://github.com/reearth/atlas-packer?tag=v0.0.2#91c9449caab3e16d77d2bbb312386386bbf68c9f"
+source = "git+https://github.com/reearth/atlas-packer?tag=v0.0.3#4f99fa237780004a4b0e57a095d088d7cdabb529"
 dependencies = [
  "clap",
  "hashbrown 0.15.5",
@@ -1604,15 +1604,15 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e76e36ab2d093753ff717abcc667734356fff7c37c0278502bdeaa886c93496b"
+checksum = "acbad1ec71b929aa0766554fdea06b3862ca8658ad8482aa0f803182760c2ae5"
 dependencies = [
  "base64 0.21.7",
  "draco-nd-vector",
  "enum_dispatch",
  "faer",
- "gltf",
+ "gltf 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.25.9",
  "indexmap 2.12.1",
  "lazy_static",
@@ -2696,9 +2696,22 @@ checksum = "e3ce1918195723ce6ac74e80542c5a96a40c2b26162c1957a5cd70799b8cacf7"
 dependencies = [
  "base64 0.13.1",
  "byteorder",
- "gltf-json",
+ "gltf-json 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.25.9",
  "lazy_static",
+ "serde_json",
+ "urlencoding",
+]
+
+[[package]]
+name = "gltf"
+version = "1.4.1"
+source = "git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22#3def30c9caf96f2dbc85238179ea5a6152c5cf22"
+dependencies = [
+ "base64 0.13.1",
+ "byteorder",
+ "gltf-json 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
+ "image 0.25.9",
  "serde_json",
  "urlencoding",
 ]
@@ -2716,12 +2729,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "gltf-derive"
+version = "1.4.1"
+source = "git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22#3def30c9caf96f2dbc85238179ea5a6152c5cf22"
+dependencies = [
+ "inflections",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "gltf-json"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6176f9d60a7eab0a877e8e96548605dedbde9190a7ae1e80bbcc1c9af03ab14"
 dependencies = [
- "gltf-derive",
+ "gltf-derive 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
+name = "gltf-json"
+version = "1.4.1"
+source = "git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22#3def30c9caf96f2dbc85238179ea5a6152c5cf22"
+dependencies = [
+ "gltf-derive 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "serde",
  "serde_derive",
  "serde_json",
@@ -4050,7 +4085,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4572,7 +4607,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "ahash 0.8.12",
  "chrono",
@@ -4593,7 +4628,7 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4604,7 +4639,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4614,7 +4649,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -4625,7 +4660,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4643,7 +4678,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.17",
@@ -4652,7 +4687,7 @@ dependencies = [
 [[package]]
 name = "nusamai-shapefile"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.13#a1463cf10734247dcf42fa24a3aaad401c67c59d"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.16#063d55ca75c2c9f1fabd8c842511ebc661729086"
 dependencies = [
  "flatgeom",
  "shapefile 0.6.0",
@@ -5322,7 +5357,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.1.1"
+version = "0.0.221"
 dependencies = [
  "directories",
  "log",
@@ -5351,10 +5386,10 @@ dependencies = [
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.1"
+version = "0.1.29"
 dependencies = [
  "bytes",
- "gltf",
+ "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "prost",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
@@ -6106,7 +6141,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "futures",
  "once_cell",
@@ -6126,7 +6161,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "approx",
  "async-trait",
@@ -6170,7 +6205,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "Inflector",
  "approx",
@@ -6220,7 +6255,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "indexmap 2.12.1",
  "once_cell",
@@ -6241,7 +6276,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6308,7 +6343,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6320,7 +6355,7 @@ dependencies = [
  "futures",
  "geo-types",
  "geojson",
- "gltf",
+ "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "indexmap 2.12.1",
  "nusamai-citygml",
  "nusamai-czml",
@@ -6359,7 +6394,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "bytes",
  "clap",
@@ -6397,7 +6432,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6434,7 +6469,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "chrono",
  "futures",
@@ -6448,7 +6483,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6477,7 +6512,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "approx",
  "bytes",
@@ -6503,7 +6538,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -6511,7 +6546,7 @@ dependencies = [
  "bytes",
  "chrono",
  "draco-oxide",
- "gltf",
+ "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "indexmap 2.12.1",
  "itertools 0.14.0",
  "nalgebra",
@@ -6536,7 +6571,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6545,7 +6580,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6575,7 +6610,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6608,7 +6643,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -6625,7 +6660,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -6637,7 +6672,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -6652,7 +6687,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "bytes",
  "futures",
@@ -6670,7 +6705,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -6684,7 +6719,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "bytes",
  "directories",
@@ -6712,7 +6747,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -6749,7 +6784,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.1.1"
+version = "0.0.240"
 dependencies = [
  "async-trait",
  "backon",
@@ -8783,7 +8818,7 @@ dependencies = [
 [[package]]
 name = "tinymvt"
 version = "0.0.1"
-source = "git+https://github.com/reearth/tinymvt.git?tag=v0.0.2#874cba43dca3d0852eb08d140eedd8146b93bd58"
+source = "git+https://github.com/reearth/tinymvt.git?tag=v0.0.3#ca8dde1bdebd5106793203941b488b1b69119f01"
 dependencies = [
  "ahash 0.8.12",
  "indexmap 2.12.1",
@@ -10436,7 +10471,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.2.1"
+version = "0.1.124"
 dependencies = [
  "anyhow",
  "csv",
