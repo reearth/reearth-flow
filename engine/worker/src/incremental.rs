@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 use reearth_flow_common::dir::setup_job_directory;
 use reearth_flow_state::State;
@@ -29,6 +30,7 @@ impl DirCopySpec {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn prepare_incremental_feature_store(
     storage_key: &str,
     workflow: &Workflow,
@@ -37,7 +39,8 @@ pub async fn prepare_incremental_feature_store(
     metadata: &Metadata,
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
-) -> crate::errors::Result<()> {
+    feature_state: &State,
+) -> crate::errors::Result<Arc<State>> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
@@ -96,9 +99,24 @@ pub async fn prepare_incremental_feature_store(
                 );
             }
         }
+
+        match feature_state
+            .copy_jsonl_from_state_async(&reuse_state, &edge_id_str)
+            .await
+        {
+            Ok(()) => {
+                tracing::info!("Copied edge {} into feature-store", edge_id_str);
+            }
+            Err(e) => {
+                return Err(crate::errors::Error::init(format!(
+                    "Failed to copy edge {} into feature-store: {:?}",
+                    edge_id_str, e
+                )));
+            }
+        }
     }
 
-    Ok(())
+    Ok(Arc::new(reuse_state))
 }
 
 pub fn collect_reusable_edge_ids(
