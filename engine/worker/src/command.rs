@@ -109,15 +109,8 @@ fn start_node_id_arg() -> Arg {
         .required(false)
 }
 
-fn merge_flow_var_env(vars: &mut HashMap<String, String>) {
-    for (k, v) in std::env::vars() {
-        if let Some(name) = k.strip_prefix("FLOW_VAR_") {
-            if name.is_empty() {
-                continue;
-            }
-            vars.entry(name.to_string()).or_insert(v);
-        }
-    }
+fn flow_var(name: &str) -> Option<String> {
+    std::env::var(format!("FLOW_VAR_{name}")).ok()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -149,7 +142,7 @@ impl RunWorkerCommand {
             .remove_one::<String>("pubsub_backend")
             .unwrap_or_else(|| "google".to_string());
         let vars = matches.remove_many::<String>("var");
-        let mut vars = if let Some(vars) = vars {
+        let vars = if let Some(vars) = vars {
             vars.into_iter()
                 .flat_map(|v| {
                     let parts: Vec<&str> = v.splitn(2, '=').collect();
@@ -163,7 +156,6 @@ impl RunWorkerCommand {
         } else {
             HashMap::<String, String>::new()
         };
-        merge_flow_var_env(&mut vars);
         let previous_job_id = matches.remove_one::<String>("previous_job_id");
         let start_node_id = matches.remove_one::<String>("start_node_id");
         Ok(Self {
@@ -408,15 +400,17 @@ impl RunWorkerCommand {
             WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE.to_string(),
             asset_path.to_string(),
         );
-        if let Some(v) = self.vars.get(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE) {
+        let external = self
+            .vars
+            .get(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE)
+            .cloned()
+            .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE));
+        if let Some(v) = external {
             tracing::info!(
                 "workerArtifactPath is provided externally. Using caller value in globals: {}",
                 v
             );
-            global.insert(
-                WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
-                v.clone(),
-            );
+            global.insert(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(), v);
         } else {
             tracing::info!(
                 "workerArtifactPath is not provided. Injecting job-scoped default: {}",
