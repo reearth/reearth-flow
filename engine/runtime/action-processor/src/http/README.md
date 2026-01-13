@@ -259,7 +259,7 @@ Configure HTTP client behavior:
 
 ```yaml
 httpOptions:
-  verifySSL: true           # Verify SSL certificates (default: true)
+  verifySsl: true           # Verify SSL certificates (default: true)
                             # Set to false for self-signed certificates (not recommended for production)
   followRedirects: true     # Automatically follow redirects (default)
   maxRedirects: 10          # Maximum number of redirects to follow
@@ -500,8 +500,8 @@ response:
 
 ### SSL Certificate Errors
 
-- Ensure `httpOptions: { verifySSL: true }` (default)
-- For self-signed certificates (development only): `httpOptions: { verifySSL: false }`
+- Ensure `httpOptions: { verifySsl: true }` (default)
+- For self-signed certificates (development only): `httpOptions: { verifySsl: false }`
 - Check if certificates are valid and not expired
 
 ### Large Response Bodies
