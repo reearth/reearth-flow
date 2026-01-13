@@ -90,6 +90,16 @@ fn start_node_id_arg() -> Arg {
         .required(false)
 }
 
+fn merge_flow_var_env(vars: &mut HashMap<String, String>) {
+    for (k, v) in std::env::vars() {
+        if let Some(name) = k.strip_prefix("FLOW_VAR_") {
+            if name.is_empty() {
+                continue;
+            }
+            vars.entry(name.to_string()).or_insert(v);
+        }
+    }
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct RunCliCommand {
     workflow_path: String,
@@ -110,7 +120,7 @@ impl RunCliCommand {
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
         let action_log_uri = matches.remove_one::<String>("action_log");
         let vars = matches.remove_many::<String>("var");
-        let vars = if let Some(vars) = vars {
+        let mut vars = if let Some(vars) = vars {
             vars.into_iter()
                 .flat_map(|v| {
                     let parts: Vec<&str> = v.splitn(2, '=').collect();
@@ -124,6 +134,7 @@ impl RunCliCommand {
         } else {
             HashMap::<String, String>::new()
         };
+        merge_flow_var_env(&mut vars);
         let previous_job_id = matches.remove_one::<String>("previous_job_id");
         let start_node_id = matches.remove_one::<String>("start_node_id");
         Ok(RunCliCommand {
@@ -194,10 +205,25 @@ impl RunCliCommand {
         );
 
         let mut global = HashMap::new();
-        global.insert(
-            WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
-            artifact_path.to_string(),
-        );
+        if let Some(v) = self.vars.get(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE) {
+            tracing::info!(
+                "workerArtifactPath is provided externally. Using caller value in globals: {}",
+                v
+            );
+            global.insert(
+                WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+                v.clone(),
+            );
+        } else {
+            tracing::info!(
+                "workerArtifactPath is not provided. Injecting job-scoped default: {}",
+                artifact_path
+            );
+            global.insert(
+                WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+                artifact_path.to_string(),
+            );
+        }
         workflow
             .extend_with(global)
             .map_err(crate::errors::Error::init)?;
