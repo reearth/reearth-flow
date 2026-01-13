@@ -15,6 +15,7 @@ export type SearchNodeResult = {
   workflowName: string;
   isMainWorkflow: boolean;
   nodeType: string;
+  content?: string;
 };
 
 export default ({
@@ -55,6 +56,14 @@ export default ({
       value: "subworkflow",
       label: t("Subworkflows"),
     },
+    {
+      value: "note",
+      label: t("Notes"),
+    },
+    {
+      value: "batch",
+      label: t("Batches"),
+    },
   ];
 
   const [currentActionTypeFilter, setCurrentActionTypeFilter] = useState("all");
@@ -72,6 +81,7 @@ export default ({
         workflowName: workflow.name || "Unnamed Workflow",
         isMainWorkflow: workflow.id === DEFAULT_ENTRY_GRAPH_ID,
         nodeType: node.type || "default",
+        content: node.data.customizations?.content,
       })),
     );
   }, [rawWorkflows]);
@@ -92,9 +102,9 @@ export default ({
 
   const filteredNodes: SearchNodeResult[] = useMemo(() => {
     return allNodes.filter((node) => {
-      const matchesSearchTerm = node.displayName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const matchesSearchTerm =
+        node.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.content?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesActionType =
         currentActionTypeFilter === "all" ||
         node.nodeType === currentActionTypeFilter;
