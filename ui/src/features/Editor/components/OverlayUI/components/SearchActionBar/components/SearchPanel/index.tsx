@@ -100,7 +100,7 @@ const SearchPanel = ({
 
   return (
     <div
-      className={`absolute flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      className={`absolute flex h-[600px] z-50 w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
       ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
       `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">

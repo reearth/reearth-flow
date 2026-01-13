@@ -200,7 +200,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         )}
         <div
           id="left-bottom-search-bar"
-          className="pointer-events-none absolute bottom-2 left-2 z-10">
+          className="pointer-events-none absolute bottom-2 left-2">
           <div className="pointer-events-auto">
             <SearchActionBar
               rawWorkflows={rawWorkflows}

@@ -96,11 +96,11 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`absolute bottom-2 ${fullscreenDebug ? "" : "left-1/2 -translate-x-1/2"}`}>
+      className={`z-30 absolute bottom-2 ${fullscreenDebug ? "" : "left-1/2 -translate-x-1/2"}`}>
       <div
-        className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
+        className={`${fullscreenDebug ? "fixed inset-0" : ""} flex items-end`}>
         <Tabs
-          className={`pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[92vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[92vw] rounded-xl" : "h-[45vh] w-[92vw] rounded-xl"}`}
+          className={`z-30 pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[92vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[100vw] rounded-xl" : "h-[45vh] w-[92vw] rounded-xl"}`}
           value={tabValue}
           defaultValue="debug-logs"
           onValueChange={setTabValue}>
