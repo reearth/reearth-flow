@@ -64,6 +64,8 @@ struct WorkflowTestProfile {
     summary_output: Option<SummaryOutput>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     expect_result_ok_file: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    unexpected_output_validation: Option<UnexpectedOutputValidation>,
     #[serde(default)]
     skip: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -105,17 +107,27 @@ struct SummaryOutput {
     file_error_summary: Option<FileErrorSummaryValidation>,
 }
 
+/// Configuration for a single error count summary file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ErrorCountSummaryValidation {
+struct ErrorCountSummaryFileConfig {
     expected_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     include_fields: Option<Vec<String>>,
 }
 
+/// Error count summary validation - supports single or multiple files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum ErrorCountSummaryValidation {
+    Single(ErrorCountSummaryFileConfig),
+    Multiple(Vec<ErrorCountSummaryFileConfig>),
+}
+
+/// Configuration for a single file error summary file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct FileErrorSummaryValidation {
+struct FileErrorSummaryFileConfig {
     expected_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     include_columns: Option<Vec<String>>,
@@ -125,8 +137,32 @@ struct FileErrorSummaryValidation {
     key_columns: Vec<String>,
 }
 
+/// File error summary validation - supports single or multiple files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum FileErrorSummaryValidation {
+    Single(FileErrorSummaryFileConfig),
+    Multiple(Vec<FileErrorSummaryFileConfig>),
+}
+
 fn default_key_columns() -> Vec<String> {
     vec!["Filename".to_string()]
+}
+
+/// Unexpected output validation - supports both simple boolean and detailed config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum UnexpectedOutputValidation {
+    Simple(bool),
+    Detailed(UnexpectedOutputValidationConfig),
+}
+
+/// Detailed configuration for unexpected output validation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct UnexpectedOutputValidationConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    ignore_patterns: Vec<String>,
 }
 
 struct TestCase {
@@ -244,6 +280,7 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                 ctx.verify_intermediate_data()?;
 
                 ctx.verify_summary_output()?;
+                ctx.verify_no_unexpected_output_files()?;
                 ctx.verify_result_ok_file()?;
 
                 Ok(())
