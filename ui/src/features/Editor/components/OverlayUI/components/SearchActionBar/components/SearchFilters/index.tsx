@@ -1,4 +1,8 @@
-import { FunnelSimpleIcon } from "@phosphor-icons/react";
+import {
+  FunnelSimpleIcon,
+  ShareNetworkIcon,
+  StackIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -71,8 +75,11 @@ const SearchFilters = ({
         <Select
           value={currentWorkflowFilter}
           onValueChange={setCurrentWorkflowFilter}>
-          <SelectTrigger className="h-[36px] w-full">
-            <SelectValue />
+          <SelectTrigger className="h-[28px] w-full">
+            <div className="flex items-center gap-2">
+              <ShareNetworkIcon weight="light" size={14} />
+              <SelectValue />
+            </div>
           </SelectTrigger>
           <SelectContent>
             {workflows.map((option: { value: string; label: string }) => (
@@ -85,8 +92,11 @@ const SearchFilters = ({
         <Select
           value={currentActionTypeFilter}
           onValueChange={setCurrentActionTypeFilter}>
-          <SelectTrigger className="h-[36px] w-full">
-            <SelectValue />
+          <SelectTrigger className="h-[28px] w-full">
+            <div className="flex items-center gap-2">
+              <StackIcon weight="light" size={14} />
+              <SelectValue />
+            </div>
           </SelectTrigger>
           <SelectContent>
             {actionTypes.map((option: { value: string; label: string }) => (
