@@ -254,7 +254,7 @@ graphs:
             method: remove
 
 
-      # Add extra attributes max_daylight_hours and transmissivity based on different month value 
+      # Add extra attributes max_daylight_hours and transmissivity based on different month value
       - id: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
         name: PrepareExtraAttributes
         type: action
@@ -370,7 +370,7 @@ graphs:
       # Its inputs are coming from two parts:
       # One is from the previous aggregator which has attribute year == 9999
       # Another is from the non aggregated data which has normal year.
-      # This node handle them in which 
+      # This node handle them in which
       # The year == 9999 goes to port year9999Port
       # The year == n, say == 2018, goes to port year
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e3
@@ -418,7 +418,7 @@ graphs:
             - calculation: |
                 env.get("__value")["max_daylight_hours"]
               calculationAttribute: max_daylight_hours
-              method: avg              
+              method: avg
 
       # Aggregator for attributes from year9999Port
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e5
@@ -452,7 +452,7 @@ graphs:
             - calculation: |
                 env.get("__value")["max_daylight_hours"]
               calculationAttribute: max_daylight_hours
-              method: avg                  
+              method: avg
 
       # ExpressionEvaluator_6 equivalent - calculates sunshine rate
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e8
@@ -501,7 +501,11 @@ graphs:
                   0
                 }
 
-      # StatisticsCalculator_5 equivalent - performs statistics calculations
+      # StatisticsCalculator_5 equivalent - calculates statistical summaries
+      # Based on FME StatisticsCalculator_5 which:
+      # - Groups features by year
+      # - Calculates SUM of "is_not_9999" for each year group (counts valid non-9999 records per year)
+      # - Preserves other attributes in the output
       - id: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
         name: StatisticsCalculator_5
         type: action
@@ -510,15 +514,41 @@ graphs:
           groupBy:
             - year
           calculations:
-            - newAttribute: sum_is_not_9999
+            # Calculate SUM of is_not_9999 to count valid records per year
+            - newAttribute: is_not_9999
               expr: |
-                env.get("__value")["is_not_9999"] ?? 0.0
-            - newAttribute: sum_sunshine_rate
+                env.get("__value")["is_not_9999"] 
+
+            - newAttribute: is_not_9999_sum
               expr: |
-                env.get("__value")["sunshine_rate"] ?? 0.0
-            - newAttribute: sum_cloud_rate
+                env.get("__value")["is_not_9999"]
+              method: sum
+              
+            # Preserve other important attributes
+            - newAttribute: transmissivity
               expr: |
-                env.get("__value")["cloud_rate"] ?? 0.0
+                env.get("__value")["transmissivity"]
+              
+            - newAttribute: max_daylight_hours
+              expr: |
+                env.get("__value")["max_daylight_hours"]
+             
+            - newAttribute: daylight_hours
+              expr: |
+                env.get("__value")["daylight_hours"]
+             
+            - newAttribute: daylight_hours_num
+              expr: |
+                env.get("__value")["daylight_hours_num"]
+
+            - newAttribute: sunshine_rate
+              expr: |
+                env.get("__value")["sunshine_rate"]     
+
+            - newAttribute: cloud_rate
+              expr: |
+                env.get("__value")["cloud_rate"]      
+
 
       # AttributeCreator_6 equivalent - creates join key
       - id: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
@@ -555,10 +585,10 @@ graphs:
       - id: 771ed80c-f025-11f0-8869-7c70db10a7e3
         from: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
         to: 4624d686-ec5e-11f0-a279-7c70db10a7e3
-        fromPort: default 
-        toPort: default 
+        fromPort: default
+        toPort: default
 
-      # Connect prepared attributes node to aggregator 
+      # Connect prepared attributes node to aggregator
       - id: 18d630d8-ef80-11f0-b0a2-6c02e0440ed6
         from: fe5bafa8-ef7f-11f0-90ad-6c02e0440ed6
         to: b26d26ee-ec37-11f0-8e87-7c70db10a7e3
