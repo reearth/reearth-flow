@@ -198,8 +198,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDialogClose={handleDialogClose}
           />
         )}
-        <div className="absolute inset-x-0 bottom-2 flex justify-between gap-0.5 ">
-          <div id="left-bottom-search-bar" className="z-1 self-end pl-2">
+        <div
+          id="left-bottom-search-bar"
+          className="pointer-events-none absolute bottom-2 left-2 z-10">
+          <div className="pointer-events-auto">
             <SearchActionBar
               rawWorkflows={rawWorkflows}
               currentWorkflowId={currentWorkflowId}
@@ -209,13 +211,14 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onShowSearchPanel={onShowSearchPanel}
             />
           </div>
-          <div id="middle-bottom-debug-panel" className="self-end">
-            <DebugPanel />
-          </div>
-
-          <div
-            id="right-bottom-canvas-action-bar"
-            className="z-1 self-end pr-2">
+        </div>
+        <div id="middle-bottom-debug-panel">
+          <DebugPanel />
+        </div>
+        <div
+          id="right-bottom-canvas-action-bar"
+          className="pointer-events-none absolute bottom-2 right-2 z-10">
+          <div className="pointer-events-auto">
             <CanvasActionBar />
           </div>
         </div>

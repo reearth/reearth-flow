@@ -9,6 +9,7 @@ import { Node, Workflow } from "@flow/types";
 import SearchFilters from "../SearchFilters";
 
 import useHooks, { SearchNodeResult } from "./hooks";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 
 type SearchPanelProps = {
   showSearchPanel: boolean;
@@ -55,18 +56,32 @@ const SearchPanel = ({
       accessorKey: "displayName",
       header: t("Action Name"),
       cell: ({ row }) => (
-        <span className="block max-w-[100px] truncate font-medium">
-          {row.original.displayName}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block max-w-[100px] truncate font-medium">
+              {row.original.displayName}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="end" className="bg-primary">
+            {row.original.displayName}
+          </TooltipContent>
+        </Tooltip>
       ),
     },
     {
       accessorKey: "workflowName",
       header: t("Workflow"),
       cell: ({ row }) => (
-        <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
-          {row.original.workflowName}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
+              {row.original.workflowName}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="end" className="bg-primary">
+            {row.original.workflowName}
+          </TooltipContent>
+        </Tooltip>
       ),
     },
     {

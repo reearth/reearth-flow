@@ -75,7 +75,7 @@ const SearchFilters = ({
         <Select
           value={currentWorkflowFilter}
           onValueChange={setCurrentWorkflowFilter}>
-          <SelectTrigger className="h-[28px] w-full">
+          <SelectTrigger className="h-[28px] w-full truncate">
             <div className="flex items-center gap-2">
               <ShareNetworkIcon weight="light" size={14} />
               <SelectValue />
