@@ -56,6 +56,7 @@ function VirtualizedTable<TData, TValue>({
   condensed,
   selectedFeatureId,
   surpressAutoScroll,
+  searchTerm,
   onRowClick,
   onRowDoubleClick,
   customGlobalFilter,
@@ -95,7 +96,7 @@ function VirtualizedTable<TData, TValue>({
       sorting,
       columnVisibility,
       rowSelection,
-      globalFilter,
+      globalFilter: searchTerm || globalFilter,
     },
     manualPagination: true,
   });

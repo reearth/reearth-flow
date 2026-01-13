@@ -3,6 +3,7 @@ import { useMemo, useCallback, useState, useRef } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
+import { useT } from "@flow/lib/i18n";
 import { Node, Workflow } from "@flow/types";
 
 export type SearchNodeResult = {
@@ -27,9 +28,37 @@ export default ({
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onWorkflowOpen: (id: string) => void;
 }) => {
+  const t = useT();
   const { setCenter, getNode } = useReactFlow();
   const prevSelectedNodeIdRef = useRef<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const actionTypes = [
+    {
+      value: "all",
+      label: t("All Actions"),
+    },
+    {
+      value: "reader",
+      label: t("Readers"),
+    },
+    {
+      value: "transformer",
+      label: t("Transformers"),
+    },
+    {
+      value: "writer",
+      label: t("Writers"),
+    },
+    {
+      value: "subworkflow",
+      label: t("Subworkflows"),
+    },
+  ];
+
+  const [currentActionTypeFilter, setCurrentActionTypeFilter] = useState("all");
+  const [currentWorkflowFilter, setCurrentWorkflowFilter] = useState("all");
 
   const allNodes: SearchNodeResult[] = useMemo(() => {
     return rawWorkflows.flatMap((workflow) =>
@@ -46,6 +75,35 @@ export default ({
       })),
     );
   }, [rawWorkflows]);
+
+  const workflows = useMemo(
+    () => [
+      {
+        value: "all",
+        label: t("All Workflows"),
+      },
+      ...rawWorkflows.map((wf) => ({
+        value: wf.id,
+        label: wf.name || "Unnamed Workflow",
+      })),
+    ],
+    [rawWorkflows, t],
+  );
+
+  const filteredNodes: SearchNodeResult[] = useMemo(() => {
+    return allNodes.filter((node) => {
+      const matchesSearchTerm = node.displayName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesActionType =
+        currentActionTypeFilter === "all" ||
+        node.nodeType === currentActionTypeFilter;
+      const matchesWorkflow =
+        currentWorkflowFilter === "all" ||
+        node.workflowId === currentWorkflowFilter;
+      return matchesSearchTerm && matchesActionType && matchesWorkflow;
+    });
+  }, [allNodes, searchTerm, currentActionTypeFilter, currentWorkflowFilter]);
 
   const handleNavigateToNode = useCallback(
     (node: SearchNodeResult) => {
@@ -134,24 +192,31 @@ export default ({
     50,
   );
 
-  const displayNameOnlyFilter = useCallback(
-    (row: any, _columnId: string, filterValue: string) => {
-      const search = String(filterValue ?? "")
-        .toLowerCase()
-        .trim();
-      if (!search) return true;
+  // const displayNameOnlyFilter = useCallback(
+  //   (row: any, _columnId: string, filterValue: string) => {
+  //     const search = String(filterValue ?? "")
+  //       .toLowerCase()
+  //       .trim();
+  //     if (!search) return true;
 
-      return String(row.original?.displayName ?? "")
-        .toLowerCase()
-        .includes(search);
-    },
-    [],
-  );
+  //     return String(row.original?.displayName ?? "")
+  //       .toLowerCase()
+  //       .includes(search);
+  //   },
+  //   [],
+  // );
 
   return {
-    allNodes,
+    filteredNodes,
     selectedNodeId,
-    displayNameOnlyFilter,
+    searchTerm,
+    currentActionTypeFilter,
+    currentWorkflowFilter,
+    actionTypes,
+    workflows,
+    setSearchTerm,
+    setCurrentActionTypeFilter,
+    setCurrentWorkflowFilter,
     handleRowClick,
     handleRowDoubleClick,
   };

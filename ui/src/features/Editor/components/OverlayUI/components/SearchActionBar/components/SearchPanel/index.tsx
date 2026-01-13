@@ -6,6 +6,8 @@ import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTab
 import { useT } from "@flow/lib/i18n";
 import { Node, Workflow } from "@flow/types";
 
+import SearchFilters from "../SearchFilters";
+
 import useHooks, { SearchNodeResult } from "./hooks";
 
 type SearchPanelProps = {
@@ -29,9 +31,16 @@ const SearchPanel = ({
   const t = useT();
 
   const {
-    allNodes,
+    filteredNodes,
     selectedNodeId,
-    displayNameOnlyFilter,
+    searchTerm,
+    currentActionTypeFilter,
+    currentWorkflowFilter,
+    actionTypes,
+    workflows,
+    setSearchTerm,
+    setCurrentActionTypeFilter,
+    setCurrentWorkflowFilter,
     handleRowClick,
     handleRowDoubleClick,
   } = useHooks({
@@ -90,15 +99,24 @@ const SearchPanel = ({
             onClick={() => onShowSearchPanel(false)}
           />
         </div>
+        <SearchFilters
+          searchTerm={searchTerm}
+          currentActionTypeFilter={currentActionTypeFilter}
+          currentWorkflowFilter={currentWorkflowFilter}
+          actionTypes={actionTypes}
+          workflows={workflows}
+          setSearchTerm={setSearchTerm}
+          setCurrentActionTypeFilter={setCurrentActionTypeFilter}
+          setCurrentWorkflowFilter={setCurrentWorkflowFilter}
+        />
         <div className="flex min-h-0 flex-1 flex-col">
           <VirtualizedTable
             columns={searchNodeColumns}
-            data={allNodes}
-            showFiltering
+            data={filteredNodes}
+            searchTerm={searchTerm}
             selectedFeatureId={selectedNodeId}
             onRowClick={handleRowClick}
             onRowDoubleClick={handleRowDoubleClick}
-            customGlobalFilter={displayNameOnlyFilter}
             condensed
             surpressAutoScroll
           />
