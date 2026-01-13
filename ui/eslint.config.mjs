@@ -15,7 +15,7 @@ const tailwindConfig = {
     "better-tailwindcss": betterTailwind,
   },
   rules: {
-    "better-tailwindcss/sort-classes": "warn",
+    "better-tailwindcss/enforce-consistent-class-order": "warn",
   },
   settings: {
     "better-tailwindcss": {
