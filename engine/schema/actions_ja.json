@@ -6998,6 +6998,18 @@
               }
             ]
           },
+          "includeRayOrigin": {
+            "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pairId": {
             "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
             "allOf": [
@@ -7013,6 +7025,18 @@
                 "$ref": "#/definitions/RayDefinition"
               }
             ]
+          },
+          "tolerance": {
+            "description": "Tolerance for intersection calculations (evaluates to f64). Default: 1e-10",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
@@ -7024,78 +7048,65 @@
           },
           "RayDefinition": {
             "description": "Defines how ray data is extracted from feature attributes.",
-            "oneOf": [
-              {
-                "description": "2D ray defined by position (x, y) and direction (dx, dy)",
-                "type": "object",
-                "required": [
-                  "dir_x",
-                  "dir_y",
-                  "pos_x",
-                  "pos_y",
-                  "type"
-                ],
-                "properties": {
-                  "dir_x": {
+            "type": "object",
+            "required": [
+              "dirX",
+              "dirY",
+              "dirZ",
+              "posX",
+              "posY",
+              "posZ"
+            ],
+            "properties": {
+              "dirX": {
+                "description": "Attribute containing ray direction X component",
+                "allOf": [
+                  {
                     "$ref": "#/definitions/Attribute"
-                  },
-                  "dir_y": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "pos_x": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "pos_y": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "2d"
-                    ]
                   }
-                }
+                ]
               },
-              {
-                "description": "3D ray defined by position (x, y, z) and direction (dx, dy, dz)",
-                "type": "object",
-                "required": [
-                  "dir_x",
-                  "dir_y",
-                  "dir_z",
-                  "pos_x",
-                  "pos_y",
-                  "pos_z",
-                  "type"
-                ],
-                "properties": {
-                  "dir_x": {
+              "dirY": {
+                "description": "Attribute containing ray direction Y component",
+                "allOf": [
+                  {
                     "$ref": "#/definitions/Attribute"
-                  },
-                  "dir_y": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "dir_z": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "pos_x": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "pos_y": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "pos_z": {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "3d"
-                    ]
                   }
-                }
+                ]
+              },
+              "dirZ": {
+                "description": "Attribute containing ray direction Z component",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "posX": {
+                "description": "Attribute containing ray origin X coordinate",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "posY": {
+                "description": "Attribute containing ray origin Y coordinate",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "posZ": {
+                "description": "Attribute containing ray origin Z coordinate",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
               }
-            ]
+            }
           }
         }
       },

@@ -96,7 +96,7 @@ bincode = { version = "2.0.1", default-features = false, features = [
 bytemuck = { version = "1.24.0", features = ["derive"] }
 byteorder = "1.5.0"
 bytes = { version = "1.11.0", features = ["serde"] }
-bvh = "0.10.0"
+bvh = "0.12.0"
 calamine = "0.26.1"
 cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs", tag = "v0.0.1" }
 chrono = { version = "0.4.42", features = ["serde"] }
@@ -146,7 +146,7 @@ itertools = "0.14.0"
 json-subscriber = "0.2.6"
 jsonpath_lib = "0.3.0"
 libxml = "0.3.8"
-nalgebra = "0.33.2"
+nalgebra = "0.34.1"
 nalgebra-glm = "0.19.0"
 num-traits = "0.2.19"
 num_cpus = "1.17.0"
