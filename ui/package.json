@@ -99,7 +99,7 @@
     "react-hotkeys-hook": "5.2.1",
     "react-i18next": "16.5.2",
     "react-map-gl": "8.1.0",
-    "react-resizable-panels": "^4.4.0",
+    "react-resizable-panels": "4.4.0",
     "react-yjs": "2.0.1",
     "resium": "1.19.2",
     "three": "0.182.0",
