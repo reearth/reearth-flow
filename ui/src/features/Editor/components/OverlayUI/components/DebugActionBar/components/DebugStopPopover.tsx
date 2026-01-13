@@ -5,19 +5,10 @@ import { useT } from "@flow/lib/i18n";
 
 type Props = {
   onDebugRunStop: () => Promise<void>;
-  onPopoverClose: () => void;
 };
 
-const DebugStopPopover: React.FC<Props> = ({
-  onDebugRunStop,
-  onPopoverClose,
-}) => {
+const DebugStopPopover: React.FC<Props> = ({ onDebugRunStop }) => {
   const t = useT();
-
-  const handleDebugRunStop = async () => {
-    await onDebugRunStop();
-    onPopoverClose();
-  };
 
   return (
     <div className="flex flex-col gap-2 p-4">
@@ -32,7 +23,7 @@ const DebugStopPopover: React.FC<Props> = ({
           {t("Are you sure you want to stop the workflow's debug run?")}
         </p>
         <div className="flex items-center justify-end">
-          <Button variant="destructive" onClick={handleDebugRunStop}>
+          <Button variant="destructive" onClick={onDebugRunStop}>
             {t("Stop")}
           </Button>
         </div>

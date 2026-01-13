@@ -47,13 +47,18 @@ const DebugActionBar: React.FC<Props> = ({
     jobStatus,
     debugJob,
     handleDebugRunStart,
+    handleDebugRunStop,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
     handleShowDebugActiveRunsPopover,
     handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
-  } = useHooks({ onDebugRunStart, customDebugRunWorkflowVariables });
+  } = useHooks({
+    onDebugRunStart,
+    onDebugRunStop,
+    customDebugRunWorkflowVariables,
+  });
 
   return (
     <div className="flex items-center gap-2 align-middle">
@@ -72,7 +77,7 @@ const DebugActionBar: React.FC<Props> = ({
         onShowDebugStopPopover={handleShowDebugStopPopover}
         showPopover={showOverlayElement}
         onPopoverClose={handlePopoverClose}
-        onDebugRunStop={onDebugRunStop}
+        onDebugRunStop={handleDebugRunStop}
       />
       <IconButton
         className="shrink-0"
@@ -140,7 +145,6 @@ const StartButton: React.FC<{
     debugJobId,
     !debugJobId,
   );
-
   return (
     <Popover
       open={showPopover === "debugStart"}
@@ -240,10 +244,7 @@ const StopButton: React.FC<{
         collisionPadding={5}
         className="bg-primary/50 backdrop-blur">
         {showPopover === "debugStop" && (
-          <DebugStopPopover
-            onPopoverClose={onPopoverClose}
-            onDebugRunStop={onDebugRunStop}
-          />
+          <DebugStopPopover onDebugRunStop={onDebugRunStop} />
         )}
       </PopoverContent>
     </Popover>
