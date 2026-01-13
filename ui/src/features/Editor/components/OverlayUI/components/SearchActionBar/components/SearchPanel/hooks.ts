@@ -35,36 +35,38 @@ export default ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  const actionTypes = [
-    {
-      value: "all",
-      label: t("All Actions"),
-    },
-    {
-      value: "reader",
-      label: t("Readers"),
-    },
-    {
-      value: "transformer",
-      label: t("Transformers"),
-    },
-    {
-      value: "writer",
-      label: t("Writers"),
-    },
-    {
-      value: "subworkflow",
-      label: t("Subworkflows"),
-    },
-    {
-      value: "note",
-      label: t("Notes"),
-    },
-    {
-      value: "batch",
-      label: t("Batches"),
-    },
-  ];
+  const actionTypes = useMemo(() => {
+    return [
+      {
+        value: "all",
+        label: t("All Actions"),
+      },
+      {
+        value: "reader",
+        label: t("Readers"),
+      },
+      {
+        value: "transformer",
+        label: t("Transformers"),
+      },
+      {
+        value: "writer",
+        label: t("Writers"),
+      },
+      {
+        value: "subworkflow",
+        label: t("Subworkflows"),
+      },
+      {
+        value: "note",
+        label: t("Notes"),
+      },
+      {
+        value: "batch",
+        label: t("Batches"),
+      },
+    ];
+  }, [t]);
 
   const [currentActionTypeFilter, setCurrentActionTypeFilter] = useState("all");
   const [currentWorkflowFilter, setCurrentWorkflowFilter] = useState("all");
@@ -201,20 +203,6 @@ export default ({
     handleDoubleClick,
     50,
   );
-
-  // const displayNameOnlyFilter = useCallback(
-  //   (row: any, _columnId: string, filterValue: string) => {
-  //     const search = String(filterValue ?? "")
-  //       .toLowerCase()
-  //       .trim();
-  //     if (!search) return true;
-
-  //     return String(row.original?.displayName ?? "")
-  //       .toLowerCase()
-  //       .includes(search);
-  //   },
-  //   [],
-  // );
 
   return {
     filteredNodes,
