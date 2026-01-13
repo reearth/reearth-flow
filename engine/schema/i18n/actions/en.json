@@ -229,6 +229,10 @@
       "description": "Writes features to a Gltf"
     },
     {
+      "name": "HTTPCaller",
+      "description": "Make HTTP/HTTPS requests and enrich features with response data"
+    },
+    {
       "name": "HoleCounter",
       "description": "Counts the number of holes in a geometry and adds it as an attribute."
     },

@@ -3865,13 +3865,16 @@ Make HTTP/HTTPS requests and enrich features with response data
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HttpCallerParam",
+  "title": "HTTP Caller Parameters",
+  "description": "Configure HTTP/HTTPS requests to enrich features with response data",
   "type": "object",
   "required": [
     "url"
   ],
   "properties": {
     "authentication": {
+      "title": "Authentication",
+      "description": "Authentication method and credentials for the request",
       "anyOf": [
         {
           "$ref": "#/definitions/Authentication"
@@ -3881,27 +3884,17 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "autoDetectEncoding": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "connectionTimeout": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
     "contentType": {
+      "title": "Content Type",
+      "description": "Override the Content-Type header for the request",
       "type": [
         "string",
         "null"
       ]
     },
     "customHeaders": {
+      "title": "Custom Headers",
+      "description": "Additional HTTP headers to include in the request",
       "type": [
         "array",
         "null"
@@ -3910,37 +3903,21 @@ Make HTTP/HTTPS requests and enrich features with response data
         "$ref": "#/definitions/HeaderParam"
       }
     },
-    "errorAttribute": {
-      "default": "_http_error",
-      "type": "string"
-    },
-    "followRedirects": {
-      "type": [
-        "boolean",
-        "null"
+    "httpOptions": {
+      "title": "HTTP Options",
+      "description": "HTTP client behavior settings (SSL, redirects, user agent)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/HttpOptions"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
-    "headersAttribute": {
-      "default": "_headers",
-      "type": "string"
-    },
-    "maxRedirects": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "maxResponseSize": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
     "method": {
+      "title": "HTTP Method",
+      "description": "The HTTP method to use for the request",
       "default": "GET",
       "allOf": [
         {
@@ -3949,6 +3926,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "observability": {
+      "title": "Observability",
+      "description": "Track additional metrics and diagnostics",
       "anyOf": [
         {
           "$ref": "#/definitions/ObservabilityConfig"
@@ -3959,6 +3938,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "queryParameters": {
+      "title": "Query Parameters",
+      "description": "URL query parameters to append to the request",
       "type": [
         "array",
         "null"
@@ -3968,6 +3949,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       }
     },
     "rateLimit": {
+      "title": "Rate Limiting",
+      "description": "Rate limiting configuration to control request frequency",
       "anyOf": [
         {
           "$ref": "#/definitions/RateLimitConfig"
@@ -3978,6 +3961,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "requestBody": {
+      "title": "Request Body",
+      "description": "The body content to send with the request",
       "anyOf": [
         {
           "$ref": "#/definitions/RequestBody"
@@ -3987,24 +3972,12 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "responseBodyAttribute": {
-      "default": "_response_body",
-      "type": "string"
-    },
-    "responseEncoding": {
+    "response": {
+      "title": "Response Configuration",
+      "description": "Configure how response data is stored and processed",
       "anyOf": [
         {
-          "$ref": "#/definitions/ResponseEncoding"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "responseHandling": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ResponseHandling"
+          "$ref": "#/definitions/ResponseConfig"
         },
         {
           "type": "null"
@@ -4012,6 +3985,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "retry": {
+      "title": "Retry Configuration",
+      "description": "Settings for automatic retry on failures",
       "anyOf": [
         {
           "$ref": "#/definitions/RetryConfig"
@@ -4021,45 +3996,58 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "statusCodeAttribute": {
-      "default": "_http_status_code",
-      "type": "string"
-    },
-    "transferTimeout": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "url": {
-      "$ref": "#/definitions/Expr"
-    },
-    "userAgent": {
-      "type": [
-        "string",
-        "null"
+    "timeouts": {
+      "title": "Timeouts",
+      "description": "Connection and transfer timeout settings",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TimeoutConfig"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
-    "verifySsl": {
-      "type": [
-        "boolean",
-        "null"
+    "url": {
+      "title": "URL",
+      "description": "The target URL for the HTTP request (supports expressions)",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
       ]
     }
   },
   "definitions": {
     "ApiKeyLocation": {
-      "type": "string",
-      "enum": [
-        "header",
-        "query"
+      "title": "API Key Location",
+      "description": "Where to include the API key in the request",
+      "oneOf": [
+        {
+          "title": "Header",
+          "description": "Include API key in HTTP header",
+          "type": "string",
+          "enum": [
+            "header"
+          ]
+        },
+        {
+          "title": "Query Parameter",
+          "description": "Include API key in URL query string",
+          "type": "string",
+          "enum": [
+            "query"
+          ]
+        }
       ]
     },
     "Authentication": {
+      "title": "Authentication",
+      "description": "Authentication method and credentials for HTTP requests",
       "oneOf": [
         {
+          "title": "Basic Authentication",
+          "description": "HTTP Basic authentication with username and password",
           "type": "object",
           "required": [
             "password",
@@ -4068,7 +4056,13 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "password": {
-              "$ref": "#/definitions/Expr"
+              "title": "Password",
+              "description": "The password for basic authentication",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "type": {
               "type": "string",
@@ -4077,11 +4071,19 @@ Make HTTP/HTTPS requests and enrich features with response data
               ]
             },
             "username": {
-              "$ref": "#/definitions/Expr"
+              "title": "Username",
+              "description": "The username for basic authentication",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             }
           }
         },
         {
+          "title": "Bearer Token",
+          "description": "Bearer token authentication (OAuth 2.0)",
           "type": "object",
           "required": [
             "token",
@@ -4089,7 +4091,13 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "token": {
-              "$ref": "#/definitions/Expr"
+              "title": "Token",
+              "description": "The bearer token value",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "type": {
               "type": "string",
@@ -4100,6 +4108,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
+          "title": "API Key",
+          "description": "API key authentication in header or query parameter",
           "type": "object",
           "required": [
             "keyName",
@@ -4108,12 +4118,22 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "keyName": {
+              "title": "Key Name",
+              "description": "The name of the API key parameter",
               "type": "string"
             },
             "keyValue": {
-              "$ref": "#/definitions/Expr"
+              "title": "Key Value",
+              "description": "The API key value",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "location": {
+              "title": "Location",
+              "description": "Where to include the API key (header or query parameter)",
               "default": "header",
               "allOf": [
                 {
@@ -4132,8 +4152,12 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "BinarySource": {
+      "title": "Binary Source",
+      "description": "Source of binary data for request body",
       "oneOf": [
         {
+          "title": "Base64 Encoded",
+          "description": "Binary data encoded as base64 string",
           "type": "object",
           "required": [
             "data",
@@ -4141,7 +4165,13 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "data": {
-              "$ref": "#/definitions/Expr"
+              "title": "Data",
+              "description": "Base64-encoded binary data (supports expressions)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "type": {
               "type": "string",
@@ -4152,6 +4182,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
+          "title": "From File",
+          "description": "Read binary data from a file",
           "type": "object",
           "required": [
             "path",
@@ -4159,7 +4191,13 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "path": {
-              "$ref": "#/definitions/Expr"
+              "title": "File Path",
+              "description": "Path to the file to read (supports expressions)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "type": {
               "type": "string",
@@ -4175,6 +4213,8 @@ Make HTTP/HTTPS requests and enrich features with response data
       "type": "string"
     },
     "FormField": {
+      "title": "Form Field",
+      "description": "A name-value pair for URL-encoded form data",
       "type": "object",
       "required": [
         "name",
@@ -4182,14 +4222,24 @@ Make HTTP/HTTPS requests and enrich features with response data
       ],
       "properties": {
         "name": {
+          "title": "Field Name",
+          "description": "The name of the form field",
           "type": "string"
         },
         "value": {
-          "$ref": "#/definitions/Expr"
+          "title": "Field Value",
+          "description": "The value of the form field (supports expressions)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
     "HeaderParam": {
+      "title": "HTTP Header",
+      "description": "A custom HTTP header to include in the request",
       "type": "object",
       "required": [
         "name",
@@ -4197,35 +4247,187 @@ Make HTTP/HTTPS requests and enrich features with response data
       ],
       "properties": {
         "name": {
+          "title": "Header Name",
+          "description": "The name of the HTTP header",
           "type": "string"
         },
         "value": {
-          "$ref": "#/definitions/Expr"
+          "title": "Header Value",
+          "description": "The value of the header (supports expressions)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
     "HttpMethod": {
-      "type": "string",
-      "enum": [
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-        "PATCH",
-        "HEAD",
-        "OPTIONS",
-        "COPY",
-        "LOCK",
-        "MKCOL",
-        "MOVE",
-        "PROPFIND",
-        "PROPPATCH",
-        "UNLOCK"
-      ]
-    },
-    "MultipartPart": {
+      "title": "HTTP Method",
+      "description": "The HTTP request method to use",
       "oneOf": [
         {
+          "title": "GET",
+          "description": "Retrieve data from the server",
+          "type": "string",
+          "enum": [
+            "GET"
+          ]
+        },
+        {
+          "title": "POST",
+          "description": "Submit data to the server",
+          "type": "string",
+          "enum": [
+            "POST"
+          ]
+        },
+        {
+          "title": "PUT",
+          "description": "Update or create a resource",
+          "type": "string",
+          "enum": [
+            "PUT"
+          ]
+        },
+        {
+          "title": "DELETE",
+          "description": "Delete a resource",
+          "type": "string",
+          "enum": [
+            "DELETE"
+          ]
+        },
+        {
+          "title": "PATCH",
+          "description": "Partially update a resource",
+          "type": "string",
+          "enum": [
+            "PATCH"
+          ]
+        },
+        {
+          "title": "HEAD",
+          "description": "Retrieve headers only (no body)",
+          "type": "string",
+          "enum": [
+            "HEAD"
+          ]
+        },
+        {
+          "title": "OPTIONS",
+          "description": "Query supported methods",
+          "type": "string",
+          "enum": [
+            "OPTIONS"
+          ]
+        },
+        {
+          "title": "COPY",
+          "description": "WebDAV: Copy a resource",
+          "type": "string",
+          "enum": [
+            "COPY"
+          ]
+        },
+        {
+          "title": "LOCK",
+          "description": "WebDAV: Lock a resource",
+          "type": "string",
+          "enum": [
+            "LOCK"
+          ]
+        },
+        {
+          "title": "MKCOL",
+          "description": "WebDAV: Create a collection",
+          "type": "string",
+          "enum": [
+            "MKCOL"
+          ]
+        },
+        {
+          "title": "MOVE",
+          "description": "WebDAV: Move a resource",
+          "type": "string",
+          "enum": [
+            "MOVE"
+          ]
+        },
+        {
+          "title": "PROPFIND",
+          "description": "WebDAV: Retrieve properties",
+          "type": "string",
+          "enum": [
+            "PROPFIND"
+          ]
+        },
+        {
+          "title": "PROPPATCH",
+          "description": "WebDAV: Update properties",
+          "type": "string",
+          "enum": [
+            "PROPPATCH"
+          ]
+        },
+        {
+          "title": "UNLOCK",
+          "description": "WebDAV: Unlock a resource",
+          "type": "string",
+          "enum": [
+            "UNLOCK"
+          ]
+        }
+      ]
+    },
+    "HttpOptions": {
+      "title": "HTTP Options",
+      "description": "Configure HTTP client behavior",
+      "type": "object",
+      "properties": {
+        "followRedirects": {
+          "title": "Follow Redirects",
+          "description": "Whether to automatically follow HTTP redirects (default: true)",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "maxRedirects": {
+          "title": "Max Redirects",
+          "description": "Maximum number of redirects to follow (default: 10)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "minimum": 0.0
+        },
+        "userAgent": {
+          "title": "User Agent",
+          "description": "Custom User-Agent header value",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verifySsl": {
+          "title": "Verify SSL",
+          "description": "Whether to verify SSL/TLS certificates (default: true)",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "MultipartPart": {
+      "title": "Multipart Part",
+      "description": "A part in a multipart/form-data request",
+      "oneOf": [
+        {
+          "title": "Text Field",
+          "description": "A text field in the multipart form",
           "type": "object",
           "required": [
             "name",
@@ -4234,6 +4436,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "name": {
+              "title": "Field Name",
+              "description": "The name of the form field",
               "type": "string"
             },
             "type": {
@@ -4243,11 +4447,19 @@ Make HTTP/HTTPS requests and enrich features with response data
               ]
             },
             "value": {
-              "$ref": "#/definitions/Expr"
+              "title": "Field Value",
+              "description": "The value of the form field (supports expressions)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             }
           }
         },
         {
+          "title": "File Upload",
+          "description": "A file upload in the multipart form",
           "type": "object",
           "required": [
             "name",
@@ -4256,22 +4468,34 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "contentType": {
+              "title": "Content Type",
+              "description": "MIME type of the file",
               "type": [
                 "string",
                 "null"
               ]
             },
             "filename": {
+              "title": "Filename",
+              "description": "The filename to send in the Content-Disposition header",
               "type": [
                 "string",
                 "null"
               ]
             },
             "name": {
+              "title": "Field Name",
+              "description": "The name of the file upload field",
               "type": "string"
             },
             "source": {
-              "$ref": "#/definitions/BinarySource"
+              "title": "File Source",
+              "description": "Source of the file data (base64 or file path)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BinarySource"
+                }
+              ]
             },
             "type": {
               "type": "string",
@@ -4284,51 +4508,71 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "ObservabilityConfig": {
+      "title": "Observability Configuration",
+      "description": "Track additional metrics and diagnostics about HTTP requests",
       "type": "object",
       "properties": {
         "bytesAttribute": {
+          "title": "Bytes Attribute",
+          "description": "Feature attribute name to store the response body size",
           "type": [
             "string",
             "null"
           ]
         },
         "durationAttribute": {
+          "title": "Duration Attribute",
+          "description": "Feature attribute name to store request duration in milliseconds",
           "type": [
             "string",
             "null"
           ]
         },
         "finalUrlAttribute": {
+          "title": "Final URL Attribute",
+          "description": "Feature attribute name to store the final URL after redirects",
           "type": [
             "string",
             "null"
           ]
         },
         "retryCountAttribute": {
+          "title": "Retry Count Attribute",
+          "description": "Feature attribute name to store the number of retry attempts",
           "type": [
             "string",
             "null"
           ]
         },
         "trackBytes": {
+          "title": "Track Bytes",
+          "description": "Whether to track the response body size in bytes (default: false)",
           "default": false,
           "type": "boolean"
         },
         "trackDuration": {
+          "title": "Track Duration",
+          "description": "Whether to track the total request duration (default: true)",
           "default": true,
           "type": "boolean"
         },
         "trackFinalUrl": {
+          "title": "Track Final URL",
+          "description": "Whether to track the final URL after redirects (default: false)",
           "default": false,
           "type": "boolean"
         },
         "trackRetryCount": {
+          "title": "Track Retry Count",
+          "description": "Whether to track the number of retry attempts (default: true)",
           "default": true,
           "type": "boolean"
         }
       }
     },
     "QueryParam": {
+      "title": "Query Parameter",
+      "description": "A URL query parameter to append to the request",
       "type": "object",
       "required": [
         "name",
@@ -4336,31 +4580,47 @@ Make HTTP/HTTPS requests and enrich features with response data
       ],
       "properties": {
         "name": {
+          "title": "Parameter Name",
+          "description": "The name of the query parameter",
           "type": "string"
         },
         "value": {
-          "$ref": "#/definitions/Expr"
+          "title": "Parameter Value",
+          "description": "The value of the parameter (supports expressions)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
     "RateLimitConfig": {
+      "title": "Rate Limit Configuration",
+      "description": "Control the rate of HTTP requests to avoid overwhelming the server",
       "type": "object",
       "required": [
         "requests"
       ],
       "properties": {
         "intervalMs": {
+          "title": "Interval",
+          "description": "Time interval in milliseconds for the rate limit (default: 1000ms)",
           "default": 1000,
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "requests": {
+          "title": "Requests",
+          "description": "Maximum number of requests allowed within the interval",
           "type": "integer",
           "format": "uint32",
           "minimum": 0.0
         },
         "timing": {
+          "title": "Timing Strategy",
+          "description": "How to distribute requests within the interval (default: Burst)",
           "default": "burst",
           "allOf": [
             {
@@ -4371,8 +4631,12 @@ Make HTTP/HTTPS requests and enrich features with response data
       }
     },
     "RequestBody": {
+      "title": "Request Body",
+      "description": "The body content to send with the HTTP request",
       "oneOf": [
         {
+          "title": "Text Body",
+          "description": "Send text or JSON content",
           "type": "object",
           "required": [
             "content",
@@ -4380,9 +4644,17 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "content": {
-              "$ref": "#/definitions/Expr"
+              "title": "Content",
+              "description": "The text content to send (supports expressions)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "contentType": {
+              "title": "Content Type",
+              "description": "Override Content-Type header (e.g., application/json, text/plain)",
               "type": [
                 "string",
                 "null"
@@ -4397,6 +4669,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
+          "title": "Binary Body",
+          "description": "Send binary data from base64 or file",
           "type": "object",
           "required": [
             "source",
@@ -4404,13 +4678,21 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "contentType": {
+              "title": "Content Type",
+              "description": "Content-Type header (e.g., application/octet-stream, image/png)",
               "type": [
                 "string",
                 "null"
               ]
             },
             "source": {
-              "$ref": "#/definitions/BinarySource"
+              "title": "Binary Source",
+              "description": "Source of the binary data (base64 string or file path)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BinarySource"
+                }
+              ]
             },
             "type": {
               "type": "string",
@@ -4421,6 +4703,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
+          "title": "Form URL Encoded",
+          "description": "Send application/x-www-form-urlencoded data",
           "type": "object",
           "required": [
             "fields",
@@ -4428,6 +4712,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "fields": {
+              "title": "Form Fields",
+              "description": "List of form field name-value pairs",
               "type": "array",
               "items": {
                 "$ref": "#/definitions/FormField"
@@ -4442,6 +4728,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
+          "title": "Multipart Form Data",
+          "description": "Send multipart/form-data (for file uploads)",
           "type": "object",
           "required": [
             "parts",
@@ -4449,6 +4737,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "parts": {
+              "title": "Parts",
+              "description": "List of multipart form parts (text fields or file uploads)",
               "type": "array",
               "items": {
                 "$ref": "#/definitions/MultipartPart"
@@ -4464,17 +4754,116 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
+    "ResponseConfig": {
+      "title": "Response Configuration",
+      "description": "Configure how HTTP response data is stored and processed",
+      "type": "object",
+      "properties": {
+        "autoDetectEncoding": {
+          "title": "Auto Detect Encoding",
+          "description": "Automatically detect character encoding from response headers",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "errorAttribute": {
+          "title": "Error Attribute",
+          "description": "Feature attribute name to store any error messages (default: \"_http_error\")",
+          "default": "_http_error",
+          "type": "string"
+        },
+        "headersAttribute": {
+          "title": "Headers Attribute",
+          "description": "Feature attribute name to store the response headers (default: \"_headers\")",
+          "default": "_headers",
+          "type": "string"
+        },
+        "maxResponseSize": {
+          "title": "Max Response Size",
+          "description": "Maximum response body size in bytes (unlimited if not set)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "responseBodyAttribute": {
+          "title": "Response Body Attribute",
+          "description": "Feature attribute name to store the response body (default: \"_response_body\")",
+          "default": "_response_body",
+          "type": "string"
+        },
+        "responseEncoding": {
+          "title": "Response Encoding",
+          "description": "How to encode the response body (text, base64, or binary)",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResponseEncoding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "responseHandling": {
+          "title": "Response Handling",
+          "description": "How to handle the response data (attribute or file)",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResponseHandling"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "statusCodeAttribute": {
+          "title": "Status Code Attribute",
+          "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")",
+          "default": "_http_status_code",
+          "type": "string"
+        }
+      }
+    },
     "ResponseEncoding": {
-      "type": "string",
-      "enum": [
-        "text",
-        "base64",
-        "binary"
+      "title": "Response Encoding",
+      "description": "How to encode the response body data",
+      "oneOf": [
+        {
+          "title": "Text",
+          "description": "Decode response as UTF-8 text",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        },
+        {
+          "title": "Base64",
+          "description": "Encode response as base64 string",
+          "type": "string",
+          "enum": [
+            "base64"
+          ]
+        },
+        {
+          "title": "Binary",
+          "description": "Store response as raw binary data",
+          "type": "string",
+          "enum": [
+            "binary"
+          ]
+        }
       ]
     },
     "ResponseHandling": {
+      "title": "Response Handling",
+      "description": "How to handle the HTTP response data",
       "oneOf": [
         {
+          "title": "Store in Attribute",
+          "description": "Store response body in a feature attribute",
           "type": "object",
           "required": [
             "type"
@@ -4489,6 +4878,8 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         },
         {
+          "title": "Save to File",
+          "description": "Save response body to a file",
           "type": "object",
           "required": [
             "path",
@@ -4496,15 +4887,25 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "properties": {
             "path": {
-              "$ref": "#/definitions/Expr"
+              "title": "File Path",
+              "description": "Path where the response should be saved",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
             },
             "pathAttribute": {
+              "title": "Path Attribute Name",
+              "description": "Attribute name for storing the file path",
               "type": [
                 "string",
                 "null"
               ]
             },
             "storePathInAttribute": {
+              "title": "Store Path in Attribute",
+              "description": "Whether to store the file path in a feature attribute",
               "type": [
                 "boolean",
                 "null"
@@ -4521,36 +4922,50 @@ Make HTTP/HTTPS requests and enrich features with response data
       ]
     },
     "RetryConfig": {
+      "title": "Retry Configuration",
+      "description": "Configure automatic retry behavior for failed requests",
       "type": "object",
       "properties": {
         "backoffMultiplier": {
+          "title": "Backoff Multiplier",
+          "description": "Multiplier for exponential backoff between retries (default: 2.0)",
           "default": 2.0,
           "type": "number",
           "format": "double"
         },
         "honorRetryAfter": {
+          "title": "Honor Retry-After Header",
+          "description": "Whether to respect the Retry-After header from server responses (default: true)",
           "default": true,
           "type": "boolean"
         },
         "initialDelayMs": {
+          "title": "Initial Delay",
+          "description": "Initial delay in milliseconds before first retry (default: 100ms)",
           "default": 100,
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "maxAttempts": {
+          "title": "Max Attempts",
+          "description": "Maximum number of retry attempts (default: 3)",
           "default": 3,
           "type": "integer",
           "format": "uint32",
           "minimum": 0.0
         },
         "maxDelayMs": {
+          "title": "Max Delay",
+          "description": "Maximum delay in milliseconds between retries (default: 10000ms)",
           "default": 10000,
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "retryOnStatus": {
+          "title": "Retry on Status Codes",
+          "description": "List of HTTP status codes that should trigger a retry (e.g., [429, 503])",
           "type": [
             "array",
             "null"
@@ -4563,11 +4978,53 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       }
     },
+    "TimeoutConfig": {
+      "title": "Timeout Configuration",
+      "description": "Configure connection and transfer timeouts for HTTP requests",
+      "type": "object",
+      "properties": {
+        "connectionTimeout": {
+          "title": "Connection Timeout",
+          "description": "Maximum time in seconds to establish a connection (default: 60)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "transferTimeout": {
+          "title": "Transfer Timeout",
+          "description": "Maximum time in seconds to complete the entire request (default: 90)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
     "TimingStrategy": {
-      "type": "string",
-      "enum": [
-        "burst",
-        "distributed"
+      "title": "Timing Strategy",
+      "description": "How to distribute requests within the rate limit interval",
+      "oneOf": [
+        {
+          "title": "Burst",
+          "description": "Allow all requests immediately, then pause until next interval",
+          "type": "string",
+          "enum": [
+            "burst"
+          ]
+        },
+        {
+          "title": "Distributed",
+          "description": "Evenly distribute requests throughout the interval",
+          "type": "string",
+          "enum": [
+            "distributed"
+          ]
+        }
       ]
     }
   }

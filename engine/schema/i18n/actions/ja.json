@@ -229,6 +229,10 @@
       "description": "地物をGltfファイルに書き出す"
     },
     {
+      "name": "HTTPCaller",
+      "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する"
+    },
+    {
       "name": "HoleCounter",
       "description": "ジオメトリ内の穴の数をカウントし、属性として追加する"
     },

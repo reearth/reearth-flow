@@ -229,6 +229,10 @@
       "description": "Writes 3D features to GLTF format with optional texture attachment"
     },
     {
+      "name": "HTTPCaller",
+      "description": "Effectuer des requêtes HTTP/HTTPS et enrichir les entités avec les données de réponse"
+    },
+    {
       "name": "HoleCounter",
       "description": "Count Polygon Holes to Attribute"
     },

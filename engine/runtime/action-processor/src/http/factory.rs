@@ -57,12 +57,35 @@ impl ProcessorFactory for HttpCallerFactory {
 
         // Prepare HTTP client configuration (don't create client yet)
         let client_config = ClientConfig {
-            connection_timeout: params.connection_timeout.unwrap_or(60),
-            transfer_timeout: params.transfer_timeout.unwrap_or(90),
-            user_agent: params.user_agent.clone(),
-            verify_ssl: params.verify_ssl.unwrap_or(true),
-            follow_redirects: params.follow_redirects.unwrap_or(true),
-            max_redirects: params.max_redirects.unwrap_or(10),
+            connection_timeout: params
+                .timeouts
+                .as_ref()
+                .and_then(|t| t.connection_timeout)
+                .unwrap_or(60),
+            transfer_timeout: params
+                .timeouts
+                .as_ref()
+                .and_then(|t| t.transfer_timeout)
+                .unwrap_or(90),
+            user_agent: params
+                .http_options
+                .as_ref()
+                .and_then(|o| o.user_agent.clone()),
+            verify_ssl: params
+                .http_options
+                .as_ref()
+                .and_then(|o| o.verify_ssl)
+                .unwrap_or(true),
+            follow_redirects: params
+                .http_options
+                .as_ref()
+                .and_then(|o| o.follow_redirects)
+                .unwrap_or(true),
+            max_redirects: params
+                .http_options
+                .as_ref()
+                .and_then(|o| o.max_redirects)
+                .unwrap_or(10),
         };
 
         // Compile expressions
@@ -171,25 +194,14 @@ mod tests {
         let params = HttpCallerParam {
             url: Expr::new(""),
             method: super::super::params::HttpMethod::Get,
+            authentication: None,
             custom_headers: None,
             query_parameters: None,
             request_body: None,
             content_type: None,
-            response_body_attribute: "_response_body".to_string(),
-            status_code_attribute: "_http_status_code".to_string(),
-            headers_attribute: "_headers".to_string(),
-            error_attribute: "_http_error".to_string(),
-            connection_timeout: None,
-            transfer_timeout: None,
-            authentication: None,
-            user_agent: None,
-            verify_ssl: None,
-            follow_redirects: None,
-            max_redirects: None,
-            response_handling: None,
-            max_response_size: None,
-            response_encoding: None,
-            auto_detect_encoding: None,
+            timeouts: None,
+            http_options: None,
+            response: None,
             retry: None,
             rate_limit: None,
             observability: None,
@@ -207,25 +219,14 @@ mod tests {
         let params = HttpCallerParam {
             url: Expr::new("https://example.com"),
             method: super::super::params::HttpMethod::Get,
+            authentication: None,
             custom_headers: None,
             query_parameters: None,
             request_body: None,
             content_type: None,
-            response_body_attribute: "_response_body".to_string(),
-            status_code_attribute: "_http_status_code".to_string(),
-            headers_attribute: "_headers".to_string(),
-            error_attribute: "_http_error".to_string(),
-            connection_timeout: None,
-            transfer_timeout: None,
-            authentication: None,
-            user_agent: None,
-            verify_ssl: None,
-            follow_redirects: None,
-            max_redirects: None,
-            response_handling: None,
-            max_response_size: None,
-            response_encoding: None,
-            auto_detect_encoding: None,
+            timeouts: None,
+            http_options: None,
+            response: None,
             retry: None,
             rate_limit: Some(RateLimitConfig {
                 requests: 0, // This should fail validation

@@ -236,17 +236,28 @@ impl HttpCallerProcessor {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = new_feature.new_scope(expr_engine.clone(), &self.global_params);
 
+        let response_config = self.params.response.as_ref();
+        let handling = response_config.and_then(|r| r.response_handling.clone());
+        let encoding = response_config.and_then(|r| r.response_encoding.clone());
         let config = super::response::ResponseProcessorConfig {
-            handling: &self.params.response_handling,
-            encoding: &self.params.response_encoding,
-            auto_detect: self.params.auto_detect_encoding.unwrap_or(true),
-            max_size: self.params.max_response_size,
+            handling: &handling,
+            encoding: &encoding,
+            auto_detect: response_config
+                .and_then(|r| r.auto_detect_encoding)
+                .unwrap_or(true),
+            max_size: response_config.and_then(|r| r.max_response_size),
             engine: &expr_engine,
             scope: &scope,
             storage_resolver: &ctx.storage_resolver,
-            response_body_attr: &self.params.response_body_attribute,
-            status_code_attr: &self.params.status_code_attribute,
-            headers_attr: &self.params.headers_attribute,
+            response_body_attr: response_config
+                .map(|r| r.response_body_attribute.as_str())
+                .unwrap_or("_response_body"),
+            status_code_attr: response_config
+                .map(|r| r.status_code_attribute.as_str())
+                .unwrap_or("_http_status_code"),
+            headers_attr: response_config
+                .map(|r| r.headers_attribute.as_str())
+                .unwrap_or("_headers"),
         };
 
         let result =
@@ -277,8 +288,14 @@ impl HttpCallerProcessor {
             .error_log(Some(ctx.error_span()), error_msg.to_string());
 
         let mut rejected_feature = ctx.feature.clone();
+        let error_attr = self
+            .params
+            .response
+            .as_ref()
+            .map(|r| r.error_attribute.as_str())
+            .unwrap_or("_http_error");
         rejected_feature.attributes.insert(
-            Attribute::new(self.params.error_attribute.clone()),
+            Attribute::new(error_attr.to_string()),
             AttributeValue::String(error_msg.to_string()),
         );
 
@@ -326,25 +343,17 @@ mod tests {
         let params = HttpCallerParam {
             url: Expr::new("https://example.com/test"),
             method: HttpMethod::Get,
+            authentication: None,
             custom_headers: None,
             query_parameters: None,
             request_body: None,
             content_type: None,
-            response_body_attribute: "_response_body".to_string(),
-            status_code_attribute: "_http_status_code".to_string(),
-            headers_attribute: "_headers".to_string(),
-            error_attribute: "_http_error".to_string(),
-            connection_timeout: Some(60),
-            transfer_timeout: Some(90),
-            authentication: None,
-            user_agent: None,
-            verify_ssl: None,
-            follow_redirects: None,
-            max_redirects: None,
-            response_handling: None,
-            max_response_size: None,
-            response_encoding: None,
-            auto_detect_encoding: None,
+            timeouts: Some(crate::http::params::TimeoutConfig {
+                connection_timeout: Some(60),
+                transfer_timeout: Some(90),
+            }),
+            http_options: None,
+            response: None,
             retry: None,
             rate_limit: None,
             observability: None,
@@ -364,25 +373,14 @@ mod tests {
         let params = HttpCallerParam {
             url: Expr::new("https://example.com"),
             method: HttpMethod::Get,
+            authentication: None,
             custom_headers: None,
             query_parameters: None,
             request_body: None,
             content_type: None,
-            response_body_attribute: "_response_body".to_string(),
-            status_code_attribute: "_http_status_code".to_string(),
-            headers_attribute: "_headers".to_string(),
-            error_attribute: "_http_error".to_string(),
-            connection_timeout: None,
-            transfer_timeout: None,
-            authentication: None,
-            user_agent: None,
-            verify_ssl: None,
-            follow_redirects: None,
-            max_redirects: None,
-            response_handling: None,
-            max_response_size: None,
-            response_encoding: None,
-            auto_detect_encoding: None,
+            timeouts: None,
+            http_options: None,
+            response: None,
             retry: None,
             rate_limit: None,
             observability: None,

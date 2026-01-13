@@ -33,12 +33,14 @@ graphs:
             - name: "format"
               value: |
                 "json"
-          responseBodyAttribute: "_response"
-          statusCodeAttribute: "_status"
-          headersAttribute: "_response_headers"
-          errorAttribute: "_error"
-          connectionTimeout: 30
-          transferTimeout: 60
+          response:
+            responseBodyAttribute: "_response"
+            statusCodeAttribute: "_status"
+            headersAttribute: "_response_headers"
+            errorAttribute: "_error"
+          timeouts:
+            connectionTimeout: 30
+            transferTimeout: 60
 
       - id: b1a91180-ab88-4c1a-aab5-48c242a218dc
         name: Sink-Json-Writer-01

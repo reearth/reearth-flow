@@ -229,6 +229,10 @@
       "description": "Escribe entidades en un archivo Gltf"
     },
     {
+      "name": "HTTPCaller",
+      "description": "Realizar solicitudes HTTP/HTTPS y enriquecer entidades con datos de respuesta"
+    },
+    {
       "name": "HoleCounter",
       "description": "Cuenta el número de huecos en una geometría y lo agrega como atributo."
     },
