@@ -386,7 +386,7 @@ graphs:
                 env.get("__value").year == 2018
               outputPort: yearPort
 
-      # Aggregator for year, month, date features (using new AttributeAggregator to calculate averages)
+      # Aggregator for attributes from yearPort
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e4
         name: Aggregator_2
         type: action
@@ -401,24 +401,26 @@ graphs:
           calculations:
             # Calculate averages directly
             - calculation: |
-                let v = env.get("__value")["daylight_hours"];
-                parse_float(v)
+                env.get("__value")["daylight_hours"]
               calculationAttribute: daylight_hours
               method: avg
 
             - calculation: |
-                let v = env.get("__value")["daylight_hours_num"];
-                parse_float(v)
+                env.get("__value")["daylight_hours_num"]
               calculationAttribute: daylight_hours_num
               method: avg
 
             - calculation: |
-                let v = env.get("__value")["transmissivity"];
-                parse_float(v)
+                env.get("__value")["transmissivity"]
               calculationAttribute: transmissivity
               method: avg
 
-      # Aggregator for 9999-year features (using new AttributeAggregator to calculate averages)
+            - calculation: |
+                env.get("__value")["max_daylight_hours"]
+              calculationAttribute: max_daylight_hours
+              method: avg              
+
+      # Aggregator for attributes from year9999Port
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e5
         name: Aggregator_4
         type: action
@@ -446,6 +448,11 @@ graphs:
                 env.get("__value")["transmissivity"]
               calculationAttribute: transmissivity
               method: avg
+
+            - calculation: |
+                env.get("__value")["max_daylight_hours"]
+              calculationAttribute: max_daylight_hours
+              method: avg                  
 
       # ExpressionEvaluator_6 equivalent - calculates sunshine rate
       - id: 4624d686-ec5e-11f0-a279-7c70db10a7e8
