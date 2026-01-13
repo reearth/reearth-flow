@@ -80,8 +80,7 @@ export default ({
         !hasIntermediateData &&
         debugJobState?.jobId &&
         (debugJobState.status === "completed" ||
-          debugJobState?.status === "cancelled" ||
-          debugJobState?.status === "failed")
+          debugJobState?.status === "cancelled")
       ) {
         (async () => {
           const response = await fetch(intermediateDataUrl, { method: "HEAD" });
