@@ -14,19 +14,19 @@ cargo fmt --all ${@:-}
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude plateau-tiles-test
+cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude plateau-tiles-test -- -D warnings
+cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
 ''']
 
 [tasks.clippy-fix]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude plateau-tiles-test --fix ${@:-}
+cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@:-}
 ''']
 
 [tasks.test]
@@ -34,13 +34,13 @@ script = ['''
 #!/usr/bin/env bash -eux
 cargo make test-rs ${@:-}
 cargo make test-qc ${@:-}
-# cargo make test-conv ${@:-}  # Disabled due to tinymvt API changes in plateau-tiles-test
+cargo make test-conv ${@:-}
 ''']
 
 [tasks.test-rs]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude plateau-tiles-test --exclude workflow-tests ${@:-}
+cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
 ''']
 
 [tasks.test-qc]

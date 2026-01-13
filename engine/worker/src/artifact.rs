@@ -29,6 +29,15 @@ pub(crate) async fn upload_artifact(
                 && !e
                     .path()
                     .starts_with(local_artifact_root_path.join("assets"))
+                && !e
+                    .path()
+                    .starts_with(local_artifact_root_path.join("previous-artifacts"))
+                && !e
+                    .path()
+                    .starts_with(local_artifact_root_path.join("previous-temp-artifacts"))
+                && !e
+                    .path()
+                    .starts_with(local_artifact_root_path.join("previous-feature-store"))
         })
         .filter_map(|entry| entry.path().as_os_str().to_str().map(String::from))
         .map(|entry| Uri::from_str(entry.as_str()))
