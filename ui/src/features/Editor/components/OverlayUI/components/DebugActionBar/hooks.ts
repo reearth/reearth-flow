@@ -8,10 +8,11 @@ import { AnyWorkflowVariable } from "@flow/types";
 
 export default ({
   onDebugRunStart,
+  onDebugRunStop,
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
-
+  onDebugRunStop: () => Promise<void>;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
@@ -87,6 +88,12 @@ export default ({
     }
   };
 
+  const handleDebugRunStop = async () => {
+    await onDebugRunStop();
+    setDebugRunStarted(false);
+    handlePopoverClose();
+  };
+
   const handleDebugRunReset = async () => {
     const jobState = debugRunState?.jobs?.filter(
       (job) => job.projectId !== currentProject?.id,
@@ -101,6 +108,7 @@ export default ({
     jobStatus,
     debugJob,
     handleDebugRunStart,
+    handleDebugRunStop,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
     handleShowDebugActiveRunsPopover,
