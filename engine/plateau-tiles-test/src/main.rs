@@ -99,6 +99,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
+    "data-convert/plateau4/03-frn-veg/curvemembers",
     "data-convert/plateau4/03-frn-veg/frn",
     "data-convert/plateau4/03-frn-veg/veg",
     "data-convert/plateau4/04-luse-lsld/luse",
@@ -165,30 +166,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             .citygml_zip_name
             .strip_suffix(".zip")
             .unwrap_or(&profile.citygml_zip_name);
-        let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("artifacts")
-            .join("citymodel");
 
-        // citymodel name without feature type suffix
-        let citymodel_name = if let Some((stem, _)) = zip_stem.rsplit_once("_op_") {
-            format!("{}_op", stem)
-        } else {
-            zip_stem.to_string()
-        };
+        // Create citymodel zip
         let citymodel_dir = test_path.join("citymodel");
         assert!(citymodel_dir.exists());
-        // Create citymodel zip with feature type suffix
         let citymodel_path = output_dir.join(zip_stem.to_string() + ".zip");
         zip_dir(&citymodel_dir, &citymodel_path);
-        let codelist_dir = artifacts_base.join(&citymodel_name).join("codelists");
+
+        // Create codelists zip if directory exists (symlinked from artifacts)
+        let codelist_dir = test_path.join("codelists");
         let codelist_path = codelist_dir.exists().then(|| {
-            let path = output_dir.join(format!("{}_codelists.zip", citymodel_name));
+            let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
             zip_dir(&codelist_dir, &path);
             path
         });
-        let schemas_dir = artifacts_base.join(&citymodel_name).join("schemas");
+
+        // Create schemas zip if directory exists (symlinked from artifacts)
+        let schemas_dir = test_path.join("schemas");
         let schemas_path = schemas_dir.exists().then(|| {
-            let path = output_dir.join(format!("{}_schemas.zip", citymodel_name));
+            let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
             zip_dir(&schemas_dir, &path);
             path
         });
@@ -310,9 +306,7 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
         if path.extension().is_some_and(|e| e == "zip") {
             let stem = path.file_stem().unwrap().to_str().unwrap();
             let out = output_dir.join(stem);
-            if out.exists() {
-                continue;
-            }
+            let _ = fs::remove_dir_all(&out);
             fs::create_dir_all(&out).unwrap();
             let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
             zip.extract(&out).unwrap();
