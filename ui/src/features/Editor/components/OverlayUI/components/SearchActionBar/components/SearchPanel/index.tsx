@@ -62,7 +62,10 @@ const SearchPanel = ({
               {row.original.displayName}
             </span>
           </TooltipTrigger>
-          <TooltipContent side="top" align="end" className="bg-primary">
+          <TooltipContent
+            align="center"
+            sideOffset={-22}
+            className="bg-primary">
             {row.original.displayName}
           </TooltipContent>
         </Tooltip>
@@ -78,7 +81,11 @@ const SearchPanel = ({
               {row.original.workflowName}
             </span>
           </TooltipTrigger>
-          <TooltipContent side="top" align="end" className="bg-primary">
+          <TooltipContent
+            side="top"
+            sideOffset={-22}
+            align="center"
+            className="bg-primary">
             {row.original.workflowName}
           </TooltipContent>
         </Tooltip>
