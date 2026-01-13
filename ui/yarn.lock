@@ -6175,7 +6175,7 @@ __metadata:
     react-hotkeys-hook: "npm:5.2.1"
     react-i18next: "npm:16.5.2"
     react-map-gl: "npm:8.1.0"
-    react-resizable-panels: "npm:^4.4.0"
+    react-resizable-panels: "npm:4.4.0"
     react-yjs: "npm:2.0.1"
     read-env: "npm:2.0.0"
     resium: "npm:1.19.2"
@@ -15338,7 +15338,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-resizable-panels@npm:^4.4.0":
+"react-resizable-panels@npm:4.4.0":
   version: 4.4.0
   resolution: "react-resizable-panels@npm:4.4.0"
   peerDependencies:
