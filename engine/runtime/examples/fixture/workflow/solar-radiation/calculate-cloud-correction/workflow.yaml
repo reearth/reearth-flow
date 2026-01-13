@@ -523,7 +523,7 @@ graphs:
               expr: |
                 env.get("__value")["is_not_9999"]
               method: sum
-              
+
             # Preserve other important attributes
             - newAttribute: transmissivity
               expr: |
@@ -548,6 +548,20 @@ graphs:
             - newAttribute: cloud_rate
               expr: |
                 env.get("__value")["cloud_rate"]      
+
+
+      - id: fc057e72-f03e-11f0-8d89-7c70db10a7e3
+        name: TestFilter_4 
+        type: action
+        action: FeatureFilter
+        with: 
+          conditions:
+            - expr: | 
+                env.get("__value").year != 9999
+              outputPort: portNotYear9999
+            - expr: |
+                env.get("__value").year == 9999 && env.get("__value")["is_not_9999_sum"] == 0
+              outputPort: port9999
 
 
       # AttributeCreator_6 equivalent - creates join key
@@ -651,12 +665,26 @@ graphs:
         fromPort: default
         toPort: default
 
-      # Connect StatisticsCalculator_5 to AttributeCreator_6
+      # Connect StatisticsCalculator_5 to TestFilter_4 
       - id: 4c8c746c-ec71-11f0-9a9a-7c70db10a7e3
         from: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
-        to: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
+        to: fc057e72-f03e-11f0-8d89-7c70db10a7e3
         fromPort: default
         toPort: default
+
+      # Connect TestFilter_4 to AttributeCreator_6 via port portNotYear9999
+      - id: c29ca07e-f03f-11f0-af26-7c70db10a7e3
+        from: fc057e72-f03e-11f0-8d89-7c70db10a7e3
+        to: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
+        fromPort: portNotYear9999
+        toPort: default
+        
+      # Connect TestFilter_4 to AttributeCreator_6 via port port9999
+      - id: c29ca07e-f03f-11f0-af26-7c70db10a7e3
+        from: fc057e72-f03e-11f0-8d89-7c70db10a7e3
+        to: 78dd336c-ec71-11f0-a5ee-7c70db10a7e3
+        fromPort: port9999
+        toPort: default    
 
       # Connect AttributeCreator_6 to final output
       - id: ed2159d2-ef6a-11f0-a8f5-6c02e0440ed6
