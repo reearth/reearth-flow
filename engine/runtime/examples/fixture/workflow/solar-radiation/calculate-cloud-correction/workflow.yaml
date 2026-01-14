@@ -511,7 +511,7 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          accumulation_mode: true 
+          accumulationMode: true 
           calculations:
             - newAttribute: is_not_9999_sum
               expr: |
@@ -638,15 +638,7 @@ graphs:
         from: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
         to: fc057e72-f03e-11f0-8d89-7c70db10a7e3
         fromPort: default
-        toPort: default
-
-      # # Connect StatisticsCalculator_5 to TestFilter_4 via default port
-      # # it contians the computed static attribute
-      # - id: 6c35bd78-f04a-11f0-a479-7c70db10a7e3
-      #   from: 35a4b566-ec71-11f0-bc8b-7c70db10a7e3
-      #   to: fc057e72-f03e-11f0-8d89-7c70db10a7e3
-      #   fromPort: default
-      #   toPort: default        
+        toPort: default   
 
       # Connect TestFilter_4 to AttributeCreator_6 via port portNotYear9999
       - id: c29ca07e-f03f-11f0-af26-7c70db10a7e3

@@ -279,54 +279,15 @@ impl Processor for StatisticsCalculator {
             }
         }
 
-        if self.accumulation_mode {
-            // In accumulation mode, send each stored feature with the statistical summaries attached
-            for feature in &self.accumulated_features {
-                // Create a new feature based on the original but with statistical summaries
-                let mut feature_with_stats = feature.clone();
+        // In non-accumulation mode, send the aggregated results as separate features
+        for (aggregate_key, value) in aggregated_results {
+            let features = if self.accumulation_mode {
+                self.accumulated_features.clone()
+            } else {
+                vec![Feature::new()]
+            };
 
-                // Calculate the correct aggregate key for this feature (same as in process method)
-                let aggregate_key = self
-                    .group_by
-                    .as_ref()
-                    .unwrap_or(&Vec::new())
-                    .iter()
-                    .map(|attr| {
-                        let Some(value) = feature.attributes.get(attr) else {
-                            return "".to_string();
-                        };
-                        value.to_string()
-                    })
-                    .collect::<Vec<_>>()
-                    .join("|");
-
-                // Add group_by attributes to the output feature if they exist
-                if let Some(group_by_attrs) = self.group_by.as_ref() {
-                    let group_values: Vec<&str> = aggregate_key.split('|').collect();
-                    for (attr, attr_value) in group_by_attrs.iter().zip(group_values.iter()) {
-                        feature_with_stats.insert(attr.clone(), AttributeValue::String(attr_value.to_string()));
-                    }
-                }
-
-                // Add the calculated statistics for this group
-                if let Some(stats) = aggregated_results.get(&aggregate_key) {
-                    for (new_attribute, count) in stats {
-                        feature_with_stats
-                            .insert(new_attribute.clone(), count.to_attribute_value());
-                    }
-                }
-
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature_with_stats,
-                    DEFAULT_PORT.clone(),
-                ));
-            }
-        } else {
-            // In non-accumulation mode, send the aggregated results as separate features
-            for (aggregate_key, value) in aggregated_results {
-                let mut feature = Feature::new();
-
+            for mut feature in features {
                 // Add group_by attributes to the output feature
                 if let Some(group_by_attrs) = self.group_by.as_ref() {
                     let group_values: Vec<&str> = aggregate_key.split('|').collect();
