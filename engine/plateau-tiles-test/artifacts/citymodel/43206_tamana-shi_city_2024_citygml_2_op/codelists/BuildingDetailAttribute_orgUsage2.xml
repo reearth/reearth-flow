@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_3fbe14ed-9652-4509-be73-a933c6821ddd">
+<gml:name>BuildingDetailAttribute_orgUsage2</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_1">
+<gml:description>事務所　等</gml:description>
+<gml:name>4011</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_2">
+<gml:description>百貨店　等</gml:description>
+<gml:name>4021</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_3">
+<gml:description>食堂　等</gml:description>
+<gml:name>4022</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_4">
+<gml:description>理容店　等</gml:description>
+<gml:name>4023</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_5">
+<gml:description>料理店　等</gml:description>
+<gml:name>4024</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_6">
+<gml:description>ボーリング場　等</gml:description>
+<gml:name>4026</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_7">
+<gml:description>マージャン屋　等</gml:description>
+<gml:name>4027</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_8">
+<gml:description>ホテル　等</gml:description>
+<gml:name>4031</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_9">
+<gml:description>専用住宅（物置、車庫を含む）</gml:description>
+<gml:name>4111</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_10">
+<gml:description>アパート、マンション　等</gml:description>
+<gml:name>4121</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_11">
+<gml:description>住宅と商業施設等の併用</gml:description>
+<gml:name>4131</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_12">
+<gml:description>住宅（共同住宅）と商業施設等の併用</gml:description>
+<gml:name>4141</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_13">
+<gml:description>住宅と工業系用途の併用</gml:description>
+<gml:name>4151</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_14">
+<gml:description>国県市町村庁舎　等</gml:description>
+<gml:name>4211</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_15">
+<gml:description>大学　等</gml:description>
+<gml:name>4221</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_16">
+<gml:description>小・中・高等学校　等</gml:description>
+<gml:name>4222</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_17">
+<gml:description>図書館　等</gml:description>
+<gml:name>4223</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_18">
+<gml:description>体育館　等</gml:description>
+<gml:name>4224</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_19">
+<gml:description>病院</gml:description>
+<gml:name>4225</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_20">
+<gml:description>診療所、老人ホーム　等</gml:description>
+<gml:name>4226</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_21">
+<gml:description>神社　等</gml:description>
+<gml:name>4227</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_22">
+<gml:description>駅舎　等</gml:description>
+<gml:name>4311</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_23">
+<gml:description>卸売市場　等</gml:description>
+<gml:name>4312</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_24">
+<gml:description>立体駐車場　等</gml:description>
+<gml:name>4313</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_25">
+<gml:description>危険物の製造　等</gml:description>
+<gml:name>4411</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_26">
+<gml:description>原動機を使用する150m2を超える工場　等</gml:description>
+<gml:name>4412</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_27">
+<gml:description>原動機を使用する50m2を超える工場　等</gml:description>
+<gml:name>4413</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_28">
+<gml:description>50m2以内のパン屋　等</gml:description>
+<gml:name>4414</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_29">
+<gml:description>自動車修理工場</gml:description>
+<gml:name>4415</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_30">
+<gml:description>農業用納屋　等</gml:description>
+<gml:name>4511</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_31">
+<gml:description>処理場　等</gml:description>
+<gml:name>4521</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_32">
+<gml:description>仮設建築物　等</gml:description>
+<gml:name>4541</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="BuildingDetailAttribute_orgUsage2_33">
+<gml:description>不明</gml:description>
+<gml:name>9999</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

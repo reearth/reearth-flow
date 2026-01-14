@@ -20,7 +20,6 @@ zoom = [12, 16]
 threshold = 0.001
 
 [filter.tree]
-"" = ["codelists/", "schemas/"]
 # Warn: some other features in this dataset contains NaN and are excluded.
 # I added NaN check to force return errors in nusamai-citygml,
 # otherwise some nasty bugs occur (hard to debug, related to NaN != NaN)

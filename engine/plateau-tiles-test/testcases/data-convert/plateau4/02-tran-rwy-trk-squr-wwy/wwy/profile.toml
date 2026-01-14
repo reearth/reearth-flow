@@ -10,7 +10,6 @@ threshold = 0.01
 ".attributes" = "json"
 
 [filter.tree]
-"" = ["codelists/", "schemas/"]
 "udx/wwy/" = [
   "52383661_wwy_6697_op.gml",
   "52384698_wwy_6697_op.gml",

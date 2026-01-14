@@ -14,5 +14,4 @@ threshold = 0.01
 path = "dictionary.json"
 
 [filter.tree]
-"" = ["codelists/", "schemas/"]
 "udx/area/" = ["523856_area_6697_op.gml"]

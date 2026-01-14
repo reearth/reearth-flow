@@ -20,5 +20,4 @@ threshold = 0.01
 [tests.cesium_statistics]
 
 [filter.tree]
-"" = ["codelists/", "schemas/"]
 "udx/trk/54401008_trk_6697_op.gml" = ["trk_c2138494-83e0-41b4-bfc1-609ca229aba2"]

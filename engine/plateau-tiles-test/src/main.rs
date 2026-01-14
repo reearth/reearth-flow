@@ -167,14 +167,14 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             .strip_suffix(".zip")
             .unwrap_or(&profile.citygml_zip_name);
 
-        // Create citymodel zip
-        let citymodel_dir = test_path.join("citymodel");
-        assert!(citymodel_dir.exists());
+        // Create citymodel zip (zip only the udx subdirectory)
+        let citymodel_udx_dir = test_path.join("citymodel/udx");
+        assert!(citymodel_udx_dir.exists());
         let citymodel_path = output_dir.join(zip_stem.to_string() + ".zip");
-        zip_dir(&citymodel_dir, &citymodel_path);
+        zip_dir(&citymodel_udx_dir, &citymodel_path);
 
         // Create codelists zip if directory exists (symlinked from artifacts)
-        let codelist_dir = test_path.join("codelists");
+        let codelist_dir = test_path.join("citymodel/codelists");
         let codelist_path = codelist_dir.exists().then(|| {
             let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
             zip_dir(&codelist_dir, &path);
@@ -182,7 +182,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         });
 
         // Create schemas zip if directory exists (symlinked from artifacts)
-        let schemas_dir = test_path.join("schemas");
+        let schemas_dir = test_path.join("citymodel/schemas");
         let schemas_path = schemas_dir.exists().then(|| {
             let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
             zip_dir(&schemas_dir, &path);
