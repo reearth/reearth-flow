@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -78,6 +78,10 @@ impl ProcessorFactory for ListExploderFactory {
 struct ListExploder {
     /// Attribute containing the array to explode (each element becomes a separate feature)
     source_attribute: Attribute,
+    /// Aatch all attribute by name
+    match_all: Option<bool>,
+    /// Show element index from where the attribute is exploded.
+    show_attribute_index: Option<bool>,
 }
 
 impl Processor for ListExploder {
@@ -86,30 +90,89 @@ impl Processor for ListExploder {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        println!("==> feature.attributes: {:?}", feature.attributes);
-        println!("==> self.source_attribute: {:?}", self.source_attribute);
+        let orignal_feature = &ctx.feature;
 
-        let Some(AttributeValue::Array(value)) = feature.attributes.get(&self.source_attribute)
-        else {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            return Ok(());
-        };
-        if value.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            return Ok(());
-        }
-        for v in value {
-            let AttributeValue::Map(attributes) = v else {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        if self.match_all.unwrap_or(false) {
+            let source_attribute_name = self.source_attribute.to_string();
+            let (
+                attributes_key_contain_source_attribute,
+                attributes_key_not_contain_source_attribute,
+            ): (Vec<String>, Vec<String>) = orignal_feature
+                .all_attribute_keys()
+                .into_iter()
+                .partition(|name| name.contains(&source_attribute_name));
+
+            // begin list exploder
+            let keys = orignal_feature.all_attribute_keys();
+
+            for each_attribute_key_contains_source_attribute in
+                attributes_key_contain_source_attribute
+            {
+                let mut new_feature = Feature::new();
+
+                // 1. perseve all other attributes
+                for each_attribute_key_need_perserved in
+                    &attributes_key_not_contain_source_attribute
+                {
+                    let key = each_attribute_key_need_perserved.clone();
+                    let value = orignal_feature.get(&key).unwrap().clone();
+
+                    new_feature.insert(key, value);
+                }
+
+                // 2. new attribute to show where is index of the exploded attribute comes from in orginal attribute
+                if self.show_attribute_index.unwrap_or(true) {
+                    let index = keys
+                        .iter()
+                        .position(|k| *k == each_attribute_key_contains_source_attribute)
+                        .unwrap();
+                    new_feature
+                        .insert("_element_index", AttributeValue::String(format!("{index}")));
+                }
+
+                // 3. insert one matched attribute
+                let value = orignal_feature
+                    .get(&each_attribute_key_contains_source_attribute)
+                    .unwrap()
+                    .clone();
+
+                new_feature.insert(each_attribute_key_contains_source_attribute, value.clone());
+
+                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            }
+        } else {
+            let Some(AttributeValue::Array(value)) =
+                orignal_feature.attributes.get(&self.source_attribute)
+            else {
+                fw.send(
+                    ctx.new_with_feature_and_port(orignal_feature.clone(), DEFAULT_PORT.clone()),
+                );
                 return Ok(());
             };
-            let mut feature = feature.clone();
-            feature.refresh_id();
-            feature.remove(&self.source_attribute);
-            feature.extend_attributes(attributes.clone());
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            if value.is_empty() {
+                fw.send(
+                    ctx.new_with_feature_and_port(orignal_feature.clone(), DEFAULT_PORT.clone()),
+                );
+                return Ok(());
+            }
+            for v in value {
+                let AttributeValue::Map(attributes) = v else {
+                    fw.send(
+                        ctx.new_with_feature_and_port(
+                            orignal_feature.clone(),
+                            DEFAULT_PORT.clone(),
+                        ),
+                    );
+                    return Ok(());
+                };
+                let mut feature = orignal_feature.clone();
+                feature.refresh_id();
+                feature.remove(&self.source_attribute);
+                feature.extend_attributes(attributes.clone());
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
         }
+
         Ok(())
     }
 

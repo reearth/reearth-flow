@@ -303,7 +303,9 @@ graphs:
         type: action 
         action: ListExploder
         with:
-          sourceAttribute: snow_depth{}
+          sourceAttribute: snow_depth
+          matchAll: true 
+          showAttributeIndex: true
 
       - id: 38658a84-eb75-11f0-b42e-7c70db10a7e3
         name: DummyOutput
