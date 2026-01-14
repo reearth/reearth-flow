@@ -35,7 +35,7 @@ impl BvhGeometryRef {
 
         // Expand flat AABBs slightly to ensure ray intersection works.
         // This handles cases like planar triangles where min.z == max.z.
-        const EPSILON: f64 = 1e-6;
+        const EPSILON: f64 = 1e-10;
         let min_pt = Point3::new(min.x - EPSILON, min.y - EPSILON, min.z - EPSILON);
         let max_pt = Point3::new(max.x + EPSILON, max.y + EPSILON, max.z + EPSILON);
 
@@ -95,9 +95,10 @@ impl<'a> AcceleratedGeometrySet<'a> {
 
     /// Convert internal Ray3D to bvh crate's Ray type.
     fn to_bvh_ray(ray: &Ray3D) -> BvhRay<f64, 3> {
+        let (origin, direction) = ray.origin_and_direction();
         BvhRay::new(
-            Point3::new(ray.origin.x, ray.origin.y, ray.origin.z),
-            Vector3::new(ray.direction.x, ray.direction.y, ray.direction.z),
+            Point3::new(origin.x, origin.y, origin.z),
+            Vector3::new(direction.x, direction.y, direction.z),
         )
     }
 

@@ -6999,7 +6999,7 @@ Computes intersection points between rays and geometries
       ]
     },
     "tolerance": {
-      "description": "Tolerance for intersection calculations (evaluates to f64). Default: 1e-10",
+      "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used.",
       "default": null,
       "anyOf": [
         {

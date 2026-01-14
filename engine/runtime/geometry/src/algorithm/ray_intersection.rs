@@ -22,9 +22,9 @@ pub enum IncludeOrigin {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ray3D {
     /// Origin point of the ray
-    pub origin: Coordinate3D<f64>,
-    /// Direction vector (should be normalized for consistent distance calculations)
-    pub direction: Coordinate3D<f64>,
+    origin: Coordinate3D<f64>,
+    /// Direction vector. Should be normalized for consistent distance calculations.
+    direction: Coordinate3D<f64>,
 }
 
 /// Result of a ray intersection test
@@ -37,16 +37,9 @@ pub struct RayHit {
 }
 
 impl Ray3D {
-    /// Create a new ray from origin and direction.
-    /// The direction should ideally be normalized for consistent t values.
-    #[inline]
-    pub fn new(origin: Coordinate3D<f64>, direction: Coordinate3D<f64>) -> Self {
-        Self { origin, direction }
-    }
-
     /// Create a ray with normalized direction vector.
     #[inline]
-    pub fn normalized(origin: Coordinate3D<f64>, direction: Coordinate3D<f64>) -> Self {
+    pub fn new(origin: Coordinate3D<f64>, direction: Coordinate3D<f64>) -> Self {
         Self {
             origin,
             direction: direction.normalize(),
@@ -58,6 +51,12 @@ impl Ray3D {
     #[inline]
     pub fn point_at(&self, t: f64) -> Coordinate3D<f64> {
         self.origin + self.direction * t
+    }
+
+    /// returns the origin and the direction of the ray
+    #[inline]
+    pub fn origin_and_direction(&self) -> (Coordinate3D<f64>, Coordinate3D<f64>) {
+        (self.origin, self.direction)
     }
 }
 
@@ -76,13 +75,11 @@ pub trait RayIntersection3D {
     }
 }
 
-// =============================================================================
-// Triangle3D Implementation (Möller-Trumbore algorithm)
-// =============================================================================
-
 impl RayIntersection3D for Triangle3D<f64> {
     fn ray_intersections(&self, ray: &Ray3D, tolerance: f64) -> Vec<RayHit> {
-        // Möller-Trumbore ray-triangle intersection algorithm
+        // TODO: this function overlaps with segment-triangle intersection logic, but
+        // needs to be separate due to different t parameter semantics and different handling
+        // of origin (or endpoints) inclusion. Consider creating a generic function with flags.
         let v0 = self.0;
         let v1 = self.1;
         let v2 = self.2;
@@ -129,10 +126,6 @@ impl RayIntersection3D for Triangle3D<f64> {
     }
 }
 
-// =============================================================================
-// TriangularMesh Implementation
-// =============================================================================
-
 impl RayIntersection3D for TriangularMesh<f64, f64> {
     fn ray_intersections(&self, ray: &Ray3D, tolerance: f64) -> Vec<RayHit> {
         let vertices = self.get_vertices();
@@ -151,80 +144,39 @@ impl RayIntersection3D for TriangularMesh<f64, f64> {
     }
 }
 
-// =============================================================================
-// Polygon3D Implementation (triangulate on-demand)
-// =============================================================================
-
 impl RayIntersection3D for Polygon3D<f64> {
     fn ray_intersections(&self, ray: &Ray3D, tolerance: f64) -> Vec<RayHit> {
-        // Fan triangulation from first vertex (works for convex polygons)
-        let exterior = self.exterior();
-        let coords = &exterior.0;
-
-        if coords.len() < 3 {
-            return vec![];
+        if let Ok(mesh) =
+            TriangularMesh::<f64, f64>::try_from_polygons(vec![self.clone()], Some(tolerance))
+        {
+            mesh.ray_intersections(ray, tolerance)
+        } else {
+            vec![]
         }
-
-        let mut results = Vec::new();
-        let v0 = coords[0];
-        for i in 1..coords.len().saturating_sub(1) {
-            let v1 = coords[i];
-            let v2 = coords[i + 1];
-            let triangle = Triangle3D::new(v0, v1, v2);
-            results.extend(triangle.ray_intersections(ray, tolerance));
-        }
-
-        results
     }
 }
-
-// =============================================================================
-// MultiPolygon3D Implementation
-// =============================================================================
 
 impl RayIntersection3D for MultiPolygon3D<f64> {
     fn ray_intersections(&self, ray: &Ray3D, tolerance: f64) -> Vec<RayHit> {
-        self.0
-            .iter()
-            .flat_map(|polygon| polygon.ray_intersections(ray, tolerance))
-            .collect()
+        if let Ok(mesh) =
+            TriangularMesh::<f64, f64>::try_from_polygons(self.0.clone(), Some(tolerance))
+        {
+            mesh.ray_intersections(ray, tolerance)
+        } else {
+            vec![]
+        }
     }
 }
-
-// =============================================================================
-// Solid Implementation
-// =============================================================================
 
 impl RayIntersection3D for Solid<f64, f64> {
     fn ray_intersections(&self, ray: &Ray3D, tolerance: f64) -> Vec<RayHit> {
-        // Test against all boundary faces
-        let faces = self.all_faces();
-        let mut results = Vec::new();
-
-        for face in faces {
-            // Face is a LineString representing a polygon boundary
-            let coords = &face.0;
-            if coords.len() < 3 {
-                continue;
-            }
-
-            // Fan triangulation
-            let v0 = coords[0];
-            for i in 1..coords.len().saturating_sub(1) {
-                let v1 = coords[i];
-                let v2 = coords[i + 1];
-                let triangle = Triangle3D::new(v0, v1, v2);
-                results.extend(triangle.ray_intersections(ray, tolerance));
-            }
+        if let Ok(mesh) = self.clone().as_triangle_mesh(Some(tolerance)) {
+            mesh.ray_intersections(ray, tolerance)
+        } else {
+            vec![]
         }
-
-        results
     }
 }
-
-// =============================================================================
-// Geometry3D enum dispatch
-// =============================================================================
 
 impl RayIntersection3D for Geometry3D<f64> {
     fn ray_intersections(&self, ray: &Ray3D, tolerance: f64) -> Vec<RayHit> {
@@ -259,17 +211,6 @@ mod tests {
         assert!((p.x - 5.0).abs() < 1e-10);
         assert!((p.y - 0.0).abs() < 1e-10);
         assert!((p.z - 0.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_ray3d_normalized() {
-        let ray = Ray3D::normalized(
-            Coordinate3D::new__(0.0, 0.0, 0.0),
-            Coordinate3D::new__(3.0, 0.0, 0.0),
-        );
-        assert!((ray.direction.x - 1.0).abs() < 1e-10);
-        assert!((ray.direction.y - 0.0).abs() < 1e-10);
-        assert!((ray.direction.z - 0.0).abs() < 1e-10);
     }
 
     #[test]

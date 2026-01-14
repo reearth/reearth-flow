@@ -1,9 +1,3 @@
-//! RayIntersector Action Processor
-//!
-//! Computes intersection points between rays and geometries.
-//! Rays are defined via feature attributes, and intersection testing
-//! uses BVH acceleration for efficient processing of large geometry sets.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -33,6 +27,8 @@ use super::errors::GeometryProcessorError;
 static RAY_PORT: Lazy<Port> = Lazy::new(|| Port::new("ray"));
 static GEOM_PORT: Lazy<Port> = Lazy::new(|| Port::new("geom"));
 static INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("intersection"));
+
+const DEFAULT_TOLERANCE: f64 = 1e-10;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct RayIntersectorFactory;
@@ -89,14 +85,12 @@ impl ProcessorFactory for RayIntersectorFactory {
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
 
-        // Compile pairId expression
         let pair_id_ast = expr_engine.compile(params.pair_id.as_ref()).map_err(|e| {
             GeometryProcessorError::RayIntersectorFactory(format!(
                 "Failed to compile pairId expression: {e}"
             ))
         })?;
 
-        // Compile closestIntersectionOnly expression if provided
         let closest_only_ast = params
             .closest_intersection_only
             .map(|expr| {
@@ -108,7 +102,6 @@ impl ProcessorFactory for RayIntersectorFactory {
             })
             .transpose()?;
 
-        // Compile tolerance expression if provided
         let tolerance_ast = params
             .tolerance
             .map(|expr| {
@@ -120,7 +113,6 @@ impl ProcessorFactory for RayIntersectorFactory {
             })
             .transpose()?;
 
-        // Compile include_ray_origin expression if provided
         let include_ray_origin_ast = params
             .include_ray_origin
             .map(|expr| {
@@ -162,7 +154,7 @@ pub struct RayIntersectorParams {
     pub closest_intersection_only: Option<Expr>,
 
     /// Tolerance for intersection calculations (evaluates to f64).
-    /// Default: 1e-10
+    /// If not specified, a default tolerance is used.
     #[serde(default)]
     pub tolerance: Option<Expr>,
 
@@ -218,28 +210,21 @@ impl Processor for RayIntersector {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
 
-        // Evaluate pairId
         let pair_id = self.evaluate_pair_id(&expr_engine, feature)?;
 
         match &ctx.port {
-            port if port == &*RAY_PORT => {
-                // Extract ray from feature attributes
-                match self.extract_ray(feature) {
-                    Ok(ray) => {
-                        self.ray_buffer.entry(pair_id).or_default().push(RayData {
-                            feature: feature.clone(),
-                            ray,
-                        });
-                    }
-                    Err(_) => {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
-                        );
-                    }
+            port if port == &*RAY_PORT => match self.extract_ray(feature) {
+                Ok(ray) => {
+                    self.ray_buffer.entry(pair_id).or_default().push(RayData {
+                        feature: feature.clone(),
+                        ray,
+                    });
                 }
-            }
+                Err(_) => {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                }
+            },
             port if port == &*GEOM_PORT => {
-                // Clone geometry directly - no wrapper struct needed
                 if let GeometryValue::FlowGeometry3D(geo) = &feature.geometry.value {
                     self.geom_buffer
                         .entry(pair_id)
@@ -283,7 +268,7 @@ impl Processor for RayIntersector {
                         .unwrap_or(true);
                     let tolerance = self
                         .evaluate_tolerance(&expr_engine, &ray_data.feature)
-                        .unwrap_or(1e-10);
+                        .unwrap_or(DEFAULT_TOLERANCE);
                     let include_ray_origin = self
                         .evaluate_include_ray_origin(&expr_engine, &ray_data.feature)
                         .unwrap_or(true);
@@ -315,7 +300,6 @@ impl Processor for RayIntersector {
                 })
                 .collect();
 
-            // Emit results (sequential to maintain ordering guarantees)
             for (ray_feature, hits) in results {
                 for hit in hits {
                     self.emit_intersection(&ray_feature, hit, &ctx, fw);
@@ -382,7 +366,7 @@ impl RayIntersector {
                     .into()
                 })
             }
-            None => Ok(1e-10), // Default tolerance
+            None => Ok(DEFAULT_TOLERANCE),
         }
     }
 
@@ -413,7 +397,7 @@ impl RayIntersector {
         let dy = self.get_f64_attribute(feature, &self.ray_definition.dir_y)?;
         let dz = self.get_f64_attribute(feature, &self.ray_definition.dir_z)?;
 
-        Ok(Ray3D::normalized(
+        Ok(Ray3D::new(
             Coordinate3D::new__(px, py, pz),
             Coordinate3D::new__(dx, dy, dz),
         ))
