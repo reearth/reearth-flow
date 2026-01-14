@@ -109,6 +109,10 @@ fn start_node_id_arg() -> Arg {
         .required(false)
 }
 
+fn flow_var(name: &str) -> Option<String> {
+    std::env::var(format!("FLOW_VAR_{name}")).ok()
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RunWorkerCommand {
     workflow: String,
@@ -396,10 +400,27 @@ impl RunWorkerCommand {
             WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE.to_string(),
             asset_path.to_string(),
         );
-        global.insert(
-            WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
-            artifact_path.to_string(),
-        );
+        let external = self
+            .vars
+            .get(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE)
+            .cloned()
+            .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE));
+        if let Some(v) = external {
+            tracing::info!(
+                "workerArtifactPath is provided externally. Using caller value in globals: {}",
+                v
+            );
+            global.insert(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(), v);
+        } else {
+            tracing::info!(
+                "workerArtifactPath is not provided. Injecting job-scoped default: {}",
+                artifact_path
+            );
+            global.insert(
+                WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+                artifact_path.to_string(),
+            );
+        }
         workflow
             .extend_with(global)
             .map_err(crate::errors::Error::failed_to_create_workflow)?;
