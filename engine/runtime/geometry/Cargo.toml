@@ -17,6 +17,7 @@ flatgeom.workspace = true
 nusamai-projection.workspace = true
 
 approx.workspace = true
+bvh.workspace = true
 bytes.workspace = true
 clipper-sys.workspace = true
 float_next_after.workspace = true
@@ -27,6 +28,7 @@ i_overlay.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
 parking_lot.workspace = true
+rayon.workspace = true
 robust.workspace = true
 rstar.workspace = true
 serde.workspace = true

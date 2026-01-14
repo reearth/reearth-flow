@@ -159,6 +159,10 @@ pub(super) enum GeometryProcessorError {
     AreaCalculatorFactory(String),
     #[error("AreaCalculator error: {0}")]
     AreaCalculator(String),
+    #[error("RayIntersector Factory error: {0}")]
+    RayIntersectorFactory(String),
+    #[error("RayIntersector error: {0}")]
+    RayIntersector(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
