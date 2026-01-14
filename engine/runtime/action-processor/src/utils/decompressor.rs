@@ -194,7 +194,8 @@ mod tests {
         let mut buf = Vec::new();
         {
             let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
-            zip.start_file("folder\\file.txt", FileOptions::<()>::default()).unwrap();
+            zip.start_file("folder\\file.txt", FileOptions::<()>::default())
+                .unwrap();
             zip.write_all(b"test").unwrap();
             zip.finish().unwrap();
         }
@@ -210,6 +211,9 @@ mod tests {
 
         // Verify file extracted to folder/file.txt, not "folder\file.txt"
         let extracted_path = temp_dir.path().join("folder").join("file.txt");
-        assert!(extracted_path.exists(), "File should be in folder/file.txt structure");
+        assert!(
+            extracted_path.exists(),
+            "File should be in folder/file.txt structure"
+        );
     }
 }
