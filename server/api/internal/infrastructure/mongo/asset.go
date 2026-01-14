@@ -199,7 +199,7 @@ func (r *Asset) writeFilter(filter any) any {
 }
 
 func mapAssetOrderByToField(orderBy string) string {
-	switch strings.ToLower(orderBy) {
+	switch orderBy {
 	case "createdAt":
 		return "createdat"
 	case "name":
