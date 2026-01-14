@@ -87,6 +87,9 @@ impl Processor for ListExploder {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+        println!("==> feature.attributes: {:?}", feature.attributes);
+        println!("==> self.source_attribute: {:?}", self.source_attribute);
+
         let Some(AttributeValue::Array(value)) = feature.attributes.get(&self.source_attribute)
         else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
