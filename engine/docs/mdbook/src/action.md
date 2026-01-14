@@ -7571,6 +7571,13 @@ Calculates statistical aggregations on feature attributes with customizable expr
     "calculations"
   ],
   "properties": {
+    "accumulationMode": {
+      "description": "Accumulate all incoming feature and merge static computed with them",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "calculations": {
       "title": "Calculations",
       "description": "List of statistical calculations to perform on grouped features",
