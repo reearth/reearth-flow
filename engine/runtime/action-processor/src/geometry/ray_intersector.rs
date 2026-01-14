@@ -233,7 +233,7 @@ impl Processor for RayIntersector {
                 } else {
                     // TODO (After geometry type refactor):
                     // Currently only FlowGeometry3D is supported.
-                    // This is because the current geomtry type makes it difficult to integrate
+                    // This is because the current geometry type makes it difficult to integrate
                     // the ray intersection logic for 2D and 3D geometries.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                 }
