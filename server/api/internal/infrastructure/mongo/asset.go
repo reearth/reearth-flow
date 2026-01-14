@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -131,6 +132,19 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 		opts := options.Find()
 		if sort != nil {
 			opts.SetSort(bson.D{{Key: sort.Key, Value: 1}})
+		} else {
+			if pagination.Page.OrderBy != nil && *pagination.Page.OrderBy != "" {
+				key := mapAssetOrderByToField(*pagination.Page.OrderBy)
+
+				dir := int32(1)
+				if pagination.Page.OrderDir != nil && strings.ToUpper(*pagination.Page.OrderDir) == "DESC" {
+					dir = -1
+				}
+
+				if key != "" {
+					opts.SetSort(bson.D{{Key: key, Value: dir}})
+				}
+			}
 		}
 
 		opts.SetSkip(int64(skip)).SetLimit(int64(limit))
@@ -182,4 +196,17 @@ func filterAssets(ids []id.AssetID, rows []*asset.Asset) []*asset.Asset {
 
 func (r *Asset) writeFilter(filter any) any {
 	return applyWorkspaceFilter(filter, r.f.Writable)
+}
+
+func mapAssetOrderByToField(orderBy string) string {
+	switch strings.ToLower(orderBy) {
+	case "createdat":
+		return "createdat"
+	case "name":
+		return "name"
+	case "size":
+		return "size"
+	default:
+		return ""
+	}
 }
