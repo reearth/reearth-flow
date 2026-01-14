@@ -1,0 +1,9 @@
+citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_wtr.zip"
+
+[tests.cesium_statistics]
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+
+[filter.tree]
+"udx/wtr/" = ["493034_wtr_6697_op.gml"]
