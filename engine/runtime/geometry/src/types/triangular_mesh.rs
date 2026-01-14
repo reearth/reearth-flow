@@ -818,7 +818,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 }
 
 impl TriangularMesh<f64> {
-    fn try_from_polygons(
+    pub fn try_from_polygons(
         faces: Vec<Polygon3D<f64>>,
         tolerance: Option<f64>,
     ) -> Result<Self, String> {
