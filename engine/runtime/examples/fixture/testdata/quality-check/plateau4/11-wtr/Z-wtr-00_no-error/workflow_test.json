@@ -17,6 +17,9 @@
     "errorCountSummary": [
       {
         "expectedFile": "summary_common.json"
+      },
+      {
+        "expectedFile": "summary_common2-wtr.json"
       }
     ],
     "fileErrorSummary": [
