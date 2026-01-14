@@ -136,9 +136,9 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 			if pagination.Page.OrderBy != nil && *pagination.Page.OrderBy != "" {
 				key := mapAssetOrderByToField(*pagination.Page.OrderBy)
 
-				dir := int32(1)
-				if pagination.Page.OrderDir != nil && strings.ToUpper(*pagination.Page.OrderDir) == "DESC" {
-					dir = -1
+				dir := -1
+				if pagination.Page.OrderDir != nil && strings.ToUpper(*pagination.Page.OrderDir) == "ASC" {
+					dir = 1
 				}
 
 				if key != "" {
@@ -200,7 +200,7 @@ func (r *Asset) writeFilter(filter any) any {
 
 func mapAssetOrderByToField(orderBy string) string {
 	switch strings.ToLower(orderBy) {
-	case "createdat":
+	case "createdAt":
 		return "createdat"
 	case "name":
 		return "name"
