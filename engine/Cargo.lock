@@ -5476,7 +5476,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.224"
+version = "0.0.225"
 dependencies = [
  "directories",
  "log",
@@ -5505,7 +5505,7 @@ dependencies = [
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.1.32"
+version = "0.1.33"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
@@ -10593,7 +10593,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.127"
+version = "0.1.128"
 dependencies = [
  "anyhow",
  "csv",
