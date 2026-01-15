@@ -131,7 +131,7 @@ impl CollaborativeStorage {
         let mut gcs_txn = gcs_doc.transact_mut();
 
         info!(
-            "Loaded document {} from GCS, now applying Redis stream updates",
+            "save_snapshot: document loaded from GCS, starting Redis stream updates for doc_id: {}",
             doc_id
         );
 
@@ -147,7 +147,7 @@ impl CollaborativeStorage {
                     t.elapsed().as_millis(),
                     updates_count,
                     updates_total_bytes,
-                    last_id.as_deref().unwrap_or("None"),
+                    last_id.as_deref().unwrap_or("<none>"),
                 );
 
                 let t_apply = std::time::Instant::now();
