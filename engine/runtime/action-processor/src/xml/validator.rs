@@ -511,7 +511,18 @@ impl XmlValidator {
 
     fn resolve_schema_target(&self, location: &str, feature: &Feature) -> Option<String> {
         if !location.contains(PROTOCOL_SEPARATOR) && !location.starts_with('/') {
-            // location is relative, resolve it against the XML base URL
+            // location is relative
+
+            // Check if the location contains "schemas/" and we have dir_schemas attribute
+            // This handles PLATEAU CityGML files where schemas are in a separate directory
+            if let Some(schemas_relative) = Self::extract_schemas_relative_path(location) {
+                if let Some(dir_schemas) = Self::get_dir_schemas(feature) {
+                    let joined = dir_schemas.join(&schemas_relative).ok()?;
+                    return Some(joined.path().to_str()?.to_string());
+                }
+            }
+
+            // Fallback: resolve against the XML base URL
             let base_path = self.get_xml_base_url(feature)?;
             let joined = base_path.join(Path::new(location)).ok()?;
             Some(joined.path().to_str().unwrap().to_string())
@@ -519,6 +530,30 @@ impl XmlValidator {
             // location is absolute or has a protocol, use it as is
             Some(location.to_string())
         }
+    }
+
+    /// Extract the relative path after "schemas/" from a schema location
+    /// e.g., "../../schemas/iur/uro/3.1/urbanObject.xsd" -> "iur/uro/3.1/urbanObject.xsd"
+    fn extract_schemas_relative_path(location: &str) -> Option<String> {
+        const SCHEMAS_DIR: &str = "schemas/";
+        location
+            .find(SCHEMAS_DIR)
+            .map(|idx| location[idx + SCHEMAS_DIR.len()..].to_string())
+    }
+
+    /// Get the dirSchemas attribute from a feature if it exists
+    /// Note: UDXFolderExtractor uses camelCase for attribute names
+    fn get_dir_schemas(feature: &Feature) -> Option<Uri> {
+        feature
+            .attributes
+            .get(&Attribute::new("dirSchemas"))
+            .and_then(|v| {
+                if let AttributeValue::String(s) = v {
+                    Uri::from_str(s).ok()
+                } else {
+                    None
+                }
+            })
     }
 
     fn get_xml_base_url(&self, feature: &Feature) -> Option<Uri> {

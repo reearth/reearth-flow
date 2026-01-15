@@ -987,24 +987,73 @@ fn process_member_node(
             .get_attribute_node("codeSpace")
             .map(|n| n.get_content())
             .unwrap_or_default();
-        let code_space_path = base_dir
-            .join(Path::new(code_space.as_str()))
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
-        // Try primary lookup (relative to GML file)
-        let mut code = codelists.get(&code_space_path.to_string());
+        // First, try to resolve using dirCodelists if codeSpace contains "codelists/"
+        // This handles cases where GML files are extracted to a temp directory but codelists are elsewhere
+        let mut code = None;
+        let mut dynamically_loaded_codelist;
+        if let Some(codelists_relative) = extract_codelists_relative_path(&code_space) {
+            if let Some(dir_codelists) = get_dir_codelists(feature) {
+                // Build the expected path by finding matching entry in codelists dictionary
+                // We search for entries ending with the relative path since URI formats may vary
+                let suffix = format!("/{}", codelists_relative);
+                code = codelists
+                    .iter()
+                    .find(|(k, _)| k.ends_with(&suffix))
+                    .map(|(_, v)| v);
 
-        // If not found and fallback path is provided, try the fallback path
-        let fallback_code_space_path;
+                // If not found by suffix, try direct join
+                if code.is_none() {
+                    if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
+                        code = codelists.get(&resolved_path.to_string());
+                    }
+                }
+
+                // If still not found in pre-loaded dictionary, try to load the codelist file dynamically
+                // This handles cases where the codelists dictionary was loaded from a different directory
+                if code.is_none() {
+                    if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
+                        if let Ok(loaded) =
+                            try_load_codelist_file(Arc::clone(&storage_resolver), &resolved_path)
+                        {
+                            dynamically_loaded_codelist = loaded;
+                            code = Some(&dynamically_loaded_codelist);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: Try primary lookup (relative to GML file)
+        if code.is_none() {
+            let code_space_path = base_dir.join(Path::new(code_space.as_str())).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+            })?;
+            code = codelists.get(&code_space_path.to_string());
+        }
+
+        // If still not found and fallback path is provided, try the fallback path
         if code.is_none() {
             if let Some(fallback_path) = fallback_codelists_path {
                 // Extract the filename from codeSpace (e.g., "../../codelists/Building_class.xml" -> "Building_class.xml")
                 if let Some(filename) = Path::new(code_space.as_str()).file_name() {
-                    fallback_code_space_path =
+                    let fallback_code_space_path =
                         fallback_path.join(Path::new(filename)).map_err(|e| {
                             PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                         })?;
+                    // First try dictionary lookup
                     code = codelists.get(&fallback_code_space_path.to_string());
+
+                    // If not in dictionary, try dynamic loading
+                    if code.is_none() {
+                        if let Ok(loaded) = try_load_codelist_file(
+                            Arc::clone(&storage_resolver),
+                            &fallback_code_space_path,
+                        ) {
+                            dynamically_loaded_codelist = loaded;
+                            code = Some(&dynamically_loaded_codelist);
+                        }
+                    }
                 }
             }
         }
@@ -1454,6 +1503,48 @@ fn get_xpath(node: &XmlRoNode, top: Option<&XmlRoNode>, tags: Option<Vec<String>
         }
         get_xpath(&parent.unwrap(), top, Some(tags))
     }
+}
+
+/// Extract the relative path after "codelists/" from a codeSpace path
+/// e.g., "../../codelists/Building_class.xml" -> "Building_class.xml"
+fn extract_codelists_relative_path(code_space: &str) -> Option<String> {
+    const CODELISTS_DIR: &str = "codelists/";
+    code_space
+        .find(CODELISTS_DIR)
+        .map(|idx| code_space[idx + CODELISTS_DIR.len()..].to_string())
+}
+
+/// Get the dirCodelists attribute from a feature if it exists
+fn get_dir_codelists(feature: &Feature) -> Option<Uri> {
+    feature
+        .attributes
+        .get(&Attribute::new("dirCodelists"))
+        .and_then(|v| Uri::from_str(&v.to_string()).ok())
+}
+
+/// Try to load a single codelist file dynamically from storage
+/// Returns the codelist as a HashMap if successful, or an error if the file cannot be loaded
+fn try_load_codelist_file(
+    storage_resolver: Arc<StorageResolver>,
+    codelist_path: &Uri,
+) -> super::errors::Result<HashMap<String, String>> {
+    let storage = storage_resolver.resolve(codelist_path).map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to resolve codelist path: {e:?}"
+        ))
+    })?;
+
+    if !storage
+        .exists_sync(codelist_path.path().as_path())
+        .unwrap_or(false)
+    {
+        return Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Codelist file not found: {}",
+            codelist_path
+        )));
+    }
+
+    create_detail_codelist(storage, codelist_path)
 }
 
 fn create_codelist(
