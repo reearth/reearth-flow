@@ -15,6 +15,7 @@ require (
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/google/uuid v1.6.0
 	github.com/hasura/go-graphql-client v0.14.5
+	github.com/hellofresh/health-go/v5 v5.5.5
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.5.0
@@ -29,6 +30,8 @@ require (
 	github.com/spf13/afero v1.15.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
 	github.com/stretchr/testify v1.11.1
+	github.com/swaggo/echo-swagger v1.4.1
+	github.com/swaggo/swag v1.16.6
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/vektah/dataloaden v0.3.0
@@ -55,8 +58,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/PuerkitoBio/purell v1.2.1 // indirect
-	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20250501225837-2ac532fd4443 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
@@ -69,7 +70,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
 	github.com/go-openapi/jsonreference v0.21.4 // indirect
 	github.com/go-openapi/spec v0.22.2 // indirect
-	github.com/go-openapi/swag v0.25.4 // indirect
 	github.com/go-openapi/swag/conv v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonutils v0.25.4 // indirect
@@ -82,24 +82,18 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
-	github.com/josharian/intern v1.0.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20241121165744-79df5c4772f2 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
-	github.com/swaggo/echo-swagger v1.4.1 // indirect
 	github.com/swaggo/files/v2 v2.0.2 // indirect
-	github.com/swaggo/swag v1.16.6 // indirect
 	github.com/zitadel/oidc v1.13.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.38.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
 require (

@@ -107,6 +107,8 @@ github.com/googleapis/gax-go/v2 v2.15.0 h1:SyjDc1mGgZU5LncH8gimWo9lW1DtIfPibOG81
 github.com/googleapis/gax-go/v2 v2.15.0/go.mod h1:zVVkkxAQHa1RQpg9z2AUCMnKhi0Qld9rcmyfL1OZhoc=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 h1:8Tjv8EJ+pM1xP8mK6egEbD1OgnVTyacbefKhmbLhIhU=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2/go.mod h1:pkJQ2tZHJ0aFOVEEot6oZmaVEZcRme73eIFmhiVuRWs=
+github.com/hellofresh/health-go/v5 v5.5.5 h1:JZwZ8kZzAgjdGCvjgrIJTcu1sImvZoHbwAj7CK19fpw=
+github.com/hellofresh/health-go/v5 v5.5.5/go.mod h1:W+6uiWHS/m9jaB0aYBVlUBTeyE98yom6f+0ewLoBPYQ=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/k0kubun/pp/v3 v3.5.0 h1:iYNlYA5HJAJvkD4ibuf9c8y6SHM0QFhaBuCqm1zHp0w=
