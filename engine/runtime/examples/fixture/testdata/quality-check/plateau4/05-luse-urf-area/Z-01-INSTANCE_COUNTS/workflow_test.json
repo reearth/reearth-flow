@@ -27,5 +27,10 @@
       "name": "prcs",
       "value": 6677
     }
+  ],
+  "zippedBeforeTest": [
+    {
+      "path": "udx"
+    }
   ]
 }
