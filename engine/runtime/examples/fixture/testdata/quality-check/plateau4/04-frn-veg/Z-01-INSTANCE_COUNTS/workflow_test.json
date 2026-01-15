@@ -4,11 +4,28 @@
   "expectedOutput": {
     "expectedFile": "04_都市設備_植生_地物インスタンス数.csv"
   },
-  "cityGmlPath": "udx.zip",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
   "expectResultOkFile": true,
   "skip": false,
-  "prcs": 6677,
-  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ]
 }

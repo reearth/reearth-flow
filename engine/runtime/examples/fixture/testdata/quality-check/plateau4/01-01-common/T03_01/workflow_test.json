@@ -1,10 +1,6 @@
 {
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "description": "Test quality check for T03 #1",
-  "cityGmlPath": "udx/bldg/49303425_bldg_6697_op.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "objectListsPath": "43206_city_2024_objectlist_op.xlsx",
   "expectedOutput": {
     "expectedFile": "01_共通_T03エラー.csv"
   },
@@ -18,5 +14,23 @@
     }
   },
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/49303425_bldg_6697_op.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "43206_city_2024_objectlist_op.xlsx"
+    }
+  ]
 }

@@ -1,10 +1,6 @@
 {
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "description": "Test quality check for C05",
-  "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "objectListsPath": "16211_city_2024_objectlist_op.xlsx",
   "expectedOutput": {
     "expectedFile": "01-2_必須属性等_C05必須属性等の欠落_bldg.csv"
   },
@@ -14,5 +10,23 @@
     }
   },
   "expectResultOkFile": false,
-  "skip": false
+  "skip": false,
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/54377074_bldg_6697_op.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    }
+  ]
 }

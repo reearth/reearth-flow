@@ -112,21 +112,33 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                     profile,
                 )?;
 
-                // Load and run workflow
-                let workflow = ctx.load_workflow()?;
-                ctx.run_workflow(workflow)?;
+                // Run test and ensure cleanup happens even on failure
+                let result = (|| -> Result<()> {
+                    // Load and run workflow
+                    let workflow = ctx.load_workflow()?;
+                    ctx.run_workflow(workflow)?;
 
+                    // Verify output
+                    ctx.verify_output()?;
 
-                // Verify output
-                ctx.verify_output()?;
+                    // Verify intermediate data
+                    ctx.verify_intermediate_data()?;
 
-                // Verify intermediate data
-                ctx.verify_intermediate_data()?;
+                    ctx.verify_summary_output()?;
+                    ctx.verify_result_ok_file()?;
 
-                ctx.verify_summary_output()?;
-                ctx.verify_result_ok_file()?;
+                    Ok(())
+                })();
 
-                Ok(())
+                // Clean up generated ZIP files
+                let cleanup_result = ctx.cleanup_generated_zips();
+
+                // Return the test result (cleanup errors are logged but don't fail the test)
+                if let Err(e) = cleanup_result {
+                    tracing::warn!("Failed to cleanup generated zips: {}", e);
+                }
+
+                result
             }
         });
     }

@@ -120,7 +120,10 @@ impl TestContext {
                         .file_name()
                         .and_then(|n| n.to_str())
                         .ok_or_else(|| {
-                            anyhow::anyhow!("Cannot determine filename for: {}", source_path.display())
+                            anyhow::anyhow!(
+                                "Cannot determine filename for: {}",
+                                source_path.display()
+                            )
                         })?;
                     format!("{original_name}.zip")
                 }
@@ -143,7 +146,10 @@ impl TestContext {
         for zip_path in &self.generated_zip_files {
             if zip_path.exists() {
                 fs::remove_file(zip_path).with_context(|| {
-                    format!("Failed to remove generated ZIP file: {}", zip_path.display())
+                    format!(
+                        "Failed to remove generated ZIP file: {}",
+                        zip_path.display()
+                    )
                 })?;
             }
         }

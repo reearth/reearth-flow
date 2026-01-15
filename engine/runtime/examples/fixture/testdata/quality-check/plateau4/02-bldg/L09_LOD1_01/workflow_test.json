@@ -18,10 +18,27 @@
       ]
     }
   },
-  "cityGmlPath": "udx/bldg/L09_01.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
   "expectResultOkFile": false,
-  "prcs": 6675,
-  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/L09_01.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ]
 }
