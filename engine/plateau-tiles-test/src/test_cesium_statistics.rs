@@ -1,7 +1,6 @@
-use crate::align_cesium::{collect_geometries_by_gmlid, find_cesium_tile_directories, DetailLevel};
-use reearth_flow_geometry::algorithm::centroid::Centroid;
+use reearth_flow_geometry::types::coordinate::Coordinate;
+use crate::align_cesium::{collect_geometries_by_gmlid, find_cesium_tile_directories, DetailLevel, GeometryCollector};
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -86,11 +85,13 @@ fn test_texture_presence(
 }
 
 fn align_and_compare(
-    fme_geometries: &HashMap<String, Vec<DetailLevel>>,
-    flow_geometries: &HashMap<String, Vec<DetailLevel>>,
+    fme_geometries: &GeometryCollector,
+    flow_geometries: &GeometryCollector,
 ) -> Result<(), String> {
-    let fme_keys: std::collections::HashSet<_> = fme_geometries.keys().collect();
-    let flow_keys: std::collections::HashSet<_> = flow_geometries.keys().collect();
+    let fme_detail_levels = &fme_geometries.detail_levels;
+    let flow_detail_levels = &flow_geometries.detail_levels;
+    let fme_keys: std::collections::HashSet<_> = fme_detail_levels.keys().collect();
+    let flow_keys: std::collections::HashSet<_> = flow_detail_levels.keys().collect();
 
     if fme_keys != flow_keys {
         let missing_in_flow: Vec<_> = fme_keys.difference(&flow_keys).collect();
@@ -107,8 +108,8 @@ fn align_and_compare(
     }
 
     for gml_id in fme_keys {
-        let fme_detail_levels = &fme_geometries[gml_id];
-        let flow_detail_levels = &flow_geometries[gml_id];
+        let fme_detail_levels = &fme_detail_levels[gml_id];
+        let flow_detail_levels = &flow_detail_levels[gml_id];
         test_texture_presence(gml_id, fme_detail_levels, flow_detail_levels)?;
 
         // Assert geometric error decreases monotonically
@@ -120,13 +121,20 @@ fn align_and_compare(
             .last()
             .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?;
         for (idx, level) in flow_detail_levels.iter().enumerate() {
-            let result = compare_detail_level(gml_id, fme_highest_level, level)?;
+            let result = compare_detail_level(
+                gml_id,
+                fme_highest_level,
+                fme_geometries,
+                level,
+                flow_geometries,
+            )?;
             tracing::debug!(
-                "{}: level {}, bbox:{:.6}, center:{:.6}",
+                "{}: level {}, bbox:{:.6}, center:{:.6}, color:{:.6}",
                 result.gml_id,
                 idx,
                 result.bounding_box_error,
-                result.mass_center_error
+                result.mass_center_error,
+                result.average_color_error
             );
         }
     }
@@ -167,14 +175,15 @@ pub struct DetailLevelComparisonResult {
     gml_id: String,
     bounding_box_error: f64,
     mass_center_error: f64,
+    average_color_error: f32,
 }
 
 impl std::fmt::Display for DetailLevelComparisonResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} bounding_box:{:.6} mass_center:{:.6}",
-            self.gml_id, self.bounding_box_error, self.mass_center_error,
+            "{} bounding_box:{:.6} mass_center:{:.6} color:{:.6}",
+            self.gml_id, self.bounding_box_error, self.mass_center_error, self.average_color_error,
         )
     }
 }
@@ -191,44 +200,56 @@ impl DetailLevelComparisonResult {
 fn compare_detail_level(
     gml_id: &str,
     fme_level: &DetailLevel,
+    fme_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
+    flow_geometries: &GeometryCollector
 ) -> Result<DetailLevelComparisonResult, String> {
     let mut result = DetailLevelComparisonResult::new(gml_id.to_string());
     let fme_error = fme_level.geometric_error;
-    let fme_geometry = &fme_level.multipolygon;
     let flow_error = flow_level.geometric_error;
-    let flow_geometry = &flow_level.multipolygon;
 
-    // compare bounding boxes
-    let fme_bbox = fme_geometry
-        .bounding_box()
-        .expect("FME geometry has no bounding box");
-    let flow_bbox = flow_geometry
-        .bounding_box()
-        .expect("Flow geometry has no bounding box");
+    // Compute bounding boxes directly from vertex positions
+    let fme_bbox = compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+    let flow_bbox = compute_bbox(&flow_level.triangles, &flow_geometries.vertex_positions)?;
+
     // if vertices have max error r, the bounding boxes can differ by at most r in each direction
     // thus the bounding box error is at most sqrt(3) * r. We simply use 2 * r as a safe upper bound.
     let bbox_error = 2.0 * (fme_error + flow_error);
-    let error_min = (fme_bbox.min() - flow_bbox.min()).norm() / bbox_error;
-    let error_max = (fme_bbox.max() - flow_bbox.max()).norm() / bbox_error;
+    let error_min = ((fme_bbox.0.x - flow_bbox.0.x).powi(2)
+        + (fme_bbox.0.y - flow_bbox.0.y).powi(2)
+        + (fme_bbox.0.z - flow_bbox.0.z).powi(2))
+    .sqrt()
+        / bbox_error;
+    let error_max = ((fme_bbox.1.x - flow_bbox.1.x).powi(2)
+        + (fme_bbox.1.y - flow_bbox.1.y).powi(2)
+        + (fme_bbox.1.z - flow_bbox.1.z).powi(2))
+    .sqrt()
+        / bbox_error;
     result.bounding_box_error = error_min.max(error_max);
     if result.bounding_box_error > 1.0 {
         return Err(format!(
-            "gml_id '{}': bounding box mismatch exceeds error bound: {}",
-            gml_id, result.bounding_box_error
+            "gml_id '{}': bounding box mismatch exceeds max error: {}: min:({}, {}, {}), max:({}, {}, {})",
+            gml_id, bbox_error,
+            fme_bbox.0.x - flow_bbox.0.x,
+            fme_bbox.0.y - flow_bbox.0.y,
+            fme_bbox.0.z - flow_bbox.0.z,
+            fme_bbox.1.x - flow_bbox.1.x,
+            fme_bbox.1.y - flow_bbox.1.y,
+            fme_bbox.1.z - flow_bbox.1.z,
         ));
     }
 
-    // compare mass center
-    let fme_centroid = fme_geometry
-        .centroid()
-        .ok_or_else(|| format!("gml_id '{}': FME geometry has no centroid", gml_id))?;
-    let flow_centroid = flow_geometry
-        .centroid()
-        .ok_or_else(|| format!("gml_id '{}': Flow geometry has no centroid", gml_id))?;
+    // Compute centroids directly from vertex positions
+    let fme_centroid = compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+    let flow_centroid =
+        compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions)?;
+
     // if vertices have max error r, centroids can differ by at most r
     let centroid_error_bound = fme_error + flow_error;
-    let centroid_diff = (fme_centroid.0 - flow_centroid.0).norm();
+    let centroid_diff = ((fme_centroid.x - flow_centroid.x).powi(2)
+        + (fme_centroid.y - flow_centroid.y).powi(2)
+        + (fme_centroid.z - flow_centroid.z).powi(2))
+    .sqrt();
     result.mass_center_error = centroid_diff / centroid_error_bound;
     if result.mass_center_error > 1.0 {
         return Err(format!(
@@ -237,5 +258,259 @@ fn compare_detail_level(
         ));
     }
 
+    // Test face-weighted average color (material base color × vertex color)
+    result.average_color_error = test_face_weighted_average_color(
+        gml_id,
+        fme_level,
+        fme_geometries,
+        flow_level,
+        flow_geometries,
+    )?;
+
     Ok(result)
+}
+
+/// Compute axis-aligned bounding box from triangles and vertex positions
+fn compute_bbox(
+    triangles: &[[usize; 3]],
+    positions: &[Coordinate],
+) -> Result<(Coordinate, Coordinate), String> {
+    if triangles.is_empty() {
+        return Err("Cannot compute bbox: no triangles".to_string());
+    }
+
+    let mut min = Coordinate::new__(f64::INFINITY, f64::INFINITY, f64::INFINITY);
+    let mut max = Coordinate::new__(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+
+    for triangle in triangles {
+        for &idx in triangle {
+            let pos = positions
+                .get(idx)
+                .ok_or_else(|| format!("Invalid vertex index {}", idx))?;
+            min.x = min.x.min(pos.x);
+            min.y = min.y.min(pos.y);
+            min.z = min.z.min(pos.z);
+            max.x = max.x.max(pos.x);
+            max.y = max.y.max(pos.y);
+            max.z = max.z.max(pos.z);
+        }
+    }
+
+    Ok((min, max))
+}
+
+/// Compute area-weighted centroid from triangles and vertex positions
+fn compute_centroid(
+    triangles: &[[usize; 3]],
+    positions: &[Coordinate],
+) -> Result<Coordinate, String> {
+    if triangles.is_empty() {
+        return Err("Cannot compute centroid: no triangles".to_string());
+    }
+
+    let mut weighted_sum = Coordinate::new__(0.0, 0.0, 0.0);
+    let mut total_area = 0.0;
+
+    for triangle in triangles {
+        let p0 = positions[triangle[0]];
+        let p1 = positions[triangle[1]];
+        let p2 = positions[triangle[2]];
+
+        // Compute triangle centroid (average of three vertices)
+        let tri_centroid = Coordinate::new__(
+            (p0.x + p1.x + p2.x) / 3.0,
+            (p0.y + p1.y + p2.y) / 3.0,
+            (p0.z + p1.z + p2.z) / 3.0,
+        );
+
+        // Compute triangle area using cross product: ||(p1-p0) × (p2-p0)|| / 2
+        let v1 = p1 - p0;
+        let v2 = p2 - p0;
+        let cross = v1.cross(&v2);
+        let area = cross.norm() / 2.0;
+
+        // Accumulate area-weighted centroid
+        weighted_sum.x += tri_centroid.x * area;
+        weighted_sum.y += tri_centroid.y * area;
+        weighted_sum.z += tri_centroid.z * area;
+        total_area += area;
+    }
+
+    if total_area == 0.0 {
+        return Err("Cannot compute centroid: total area is zero".to_string());
+    }
+
+    Ok(Coordinate::new__(
+        weighted_sum.x / total_area,
+        weighted_sum.y / total_area,
+        weighted_sum.z / total_area,
+    ))
+}
+
+/// Test face-weighted average color by comparing material base color × vertex color
+/// Returns normalized color error (0.0 = perfect match, 1.0 = at tolerance threshold)
+fn test_face_weighted_average_color(
+    gml_id: &str,
+    fme_level: &DetailLevel,
+    fme_geometries: &GeometryCollector,
+    flow_level: &DetailLevel,
+    flow_geometries: &GeometryCollector,
+) -> Result<f32, String> {
+    // Compute face-weighted average color for FME
+    let fme_avg_color = compute_face_weighted_average_color(
+        &fme_level.triangles,
+        &fme_geometries.vertex_positions,
+        fme_geometries.vertex_colors.as_deref(),
+        fme_geometries.vertex_materials.as_deref(),
+        &fme_geometries.materials,
+    )?;
+
+    // Compute face-weighted average color for Flow
+    let flow_avg_color = compute_face_weighted_average_color(
+        &flow_level.triangles,
+        &flow_geometries.vertex_positions,
+        flow_geometries.vertex_colors.as_deref(),
+        flow_geometries.vertex_materials.as_deref(),
+        &flow_geometries.materials,
+    )?;
+
+    // Compare average colors with tolerance
+    let color_tolerance = 0.02; // Allow 2% difference per channel (0-1 range)
+    let color_diff = [
+        (fme_avg_color[0] - flow_avg_color[0]).abs(),
+        (fme_avg_color[1] - flow_avg_color[1]).abs(),
+        (fme_avg_color[2] - flow_avg_color[2]).abs(),
+        (fme_avg_color[3] - flow_avg_color[3]).abs(),
+    ];
+
+    let max_diff = color_diff.iter().copied().fold(0.0f32, f32::max);
+    let normalized_error = max_diff / color_tolerance;
+
+    if max_diff > color_tolerance {
+        return Err(format!(
+            "gml_id '{}': face-weighted average color differs by {:.4} (max allowed: {:.4})\n\
+             FME: [{:.4}, {:.4}, {:.4}, {:.4}]\n\
+             Flow: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            gml_id,
+            max_diff,
+            color_tolerance,
+            fme_avg_color[0],
+            fme_avg_color[1],
+            fme_avg_color[2],
+            fme_avg_color[3],
+            flow_avg_color[0],
+            flow_avg_color[1],
+            flow_avg_color[2],
+            flow_avg_color[3],
+        ));
+    }
+
+    Ok(normalized_error)
+}
+
+/// Compute area-weighted average color from triangles
+/// Each face color = material base color × vertex color (averaged across vertices)
+fn compute_face_weighted_average_color(
+    triangles: &[[usize; 3]],
+    positions: &[Coordinate],
+    vertex_colors: Option<&[[f32; 4]]>,
+    vertex_materials: Option<&[u32]>,
+    materials: &[reearth_flow_types::material::Material],
+) -> Result<[f32; 4], String> {
+    if triangles.is_empty() {
+        return Err("Cannot compute average color: no triangles".to_string());
+    }
+
+    let mut weighted_color = [0.0f32; 4];
+    let mut total_area = 0.0f32;
+
+    for triangle in triangles {
+        let p0 = positions[triangle[0]];
+        let p1 = positions[triangle[1]];
+        let p2 = positions[triangle[2]];
+
+        // Compute triangle area
+        let v1 = p1 - p0;
+        let v2 = p2 - p0;
+        let cross = v1.cross(&v2);
+        let area = (cross.norm() / 2.0) as f32;
+
+        if area == 0.0 {
+            continue; // Skip degenerate triangles
+        }
+
+        // Get face color by averaging vertex colors and multiplying by material base color
+        let face_color = compute_face_color(
+            triangle,
+            vertex_colors,
+            vertex_materials,
+            materials,
+        )?;
+
+        // Accumulate area-weighted color
+        weighted_color[0] += face_color[0] * area;
+        weighted_color[1] += face_color[1] * area;
+        weighted_color[2] += face_color[2] * area;
+        weighted_color[3] += face_color[3] * area;
+        total_area += area;
+    }
+
+    if total_area == 0.0 {
+        return Err("Cannot compute average color: total area is zero".to_string());
+    }
+
+    // Normalize by total area
+    Ok([
+        weighted_color[0] / total_area,
+        weighted_color[1] / total_area,
+        weighted_color[2] / total_area,
+        weighted_color[3] / total_area,
+    ])
+}
+
+/// Compute face color as material base color × average vertex color
+fn compute_face_color(
+    triangle: &[usize; 3],
+    vertex_colors: Option<&[[f32; 4]]>,
+    vertex_materials: Option<&[u32]>,
+    materials: &[reearth_flow_types::material::Material],
+) -> Result<[f32; 4], String> {
+    // Get material base color for this face
+    let base_color = if let Some(vertex_mats) = vertex_materials {
+        let mat_idx = vertex_mats[triangle[0]] as usize;
+        materials
+            .get(mat_idx)
+            .map(|m| m.base_color)
+            .ok_or_else(|| format!("Invalid material index {}", mat_idx))?
+    } else {
+        // Use first material or default white
+        materials
+            .first()
+            .map(|m| m.base_color)
+            .unwrap_or([1.0, 1.0, 1.0, 1.0])
+    };
+
+    // Get average vertex color for the triangle
+    let avg_vertex_color = if let Some(colors) = vertex_colors {
+        let c0 = colors[triangle[0]];
+        let c1 = colors[triangle[1]];
+        let c2 = colors[triangle[2]];
+        [
+            (c0[0] + c1[0] + c2[0]) / 3.0,
+            (c0[1] + c1[1] + c2[1]) / 3.0,
+            (c0[2] + c1[2] + c2[2]) / 3.0,
+            (c0[3] + c1[3] + c2[3]) / 3.0,
+        ]
+    } else {
+        // Default to white if no vertex colors
+        [1.0, 1.0, 1.0, 1.0]
+    };
+
+    // Multiply material base color × vertex color
+    Ok([
+        base_color[0] * avg_vertex_color[0],
+        base_color[1] * avg_vertex_color[1],
+        base_color[2] * avg_vertex_color[2],
+        base_color[3] * avg_vertex_color[3],
+    ])
 }

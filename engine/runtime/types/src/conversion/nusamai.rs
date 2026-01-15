@@ -138,12 +138,18 @@ impl TryFrom<Entity> for Geometry {
                 for &(start, end) in &polygon_ranges {
                     for global_idx in start..end {
                         // Find material for this polygon via surface_spans
-                        let mat = geoms
+                        let mut mat_iter = geoms
                             .surface_spans
                             .iter()
-                            .find(|surface| global_idx >= surface.start && global_idx < surface.end)
-                            .and_then(|surface| theme.surface_id_to_material.get(&surface.id))
-                            .copied();
+                            .filter(|surface| global_idx >= surface.start && global_idx < surface.end)
+                            .filter_map(|surface| theme.surface_id_to_material.get(&surface.id));
+                        let mat = mat_iter.next().copied();
+                        if mat_iter.next().is_some() {
+                            tracing::warn!(
+                                "Multiple materials found for polygon index {}",
+                                global_idx
+                            );
+                        }
                         poly_materials.push(mat);
                     }
                 }

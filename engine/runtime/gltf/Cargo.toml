@@ -30,6 +30,7 @@ draco-oxide.workspace = true
 gltf.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
+url.workspace = true
 nalgebra.workspace = true
 once_cell.workspace = true
 regex.workspace = true

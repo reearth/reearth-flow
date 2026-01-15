@@ -37,8 +37,8 @@ impl From<nusamai_plateau::appearance::Material> for X3DMaterial {
 impl Default for X3DMaterial {
     fn default() -> Self {
         Self {
-            diffuse_color: Color::new(0.7, 0.7, 0.7),
-            specular_color: Color::new(0.04, 0.04, 0.04),
+            diffuse_color: Color::new(1.0, 1.0, 1.0),
+            specular_color: Color::new(0.0, 0.0, 0.0),
             ambient_intensity: 0.9,
         }
     }
