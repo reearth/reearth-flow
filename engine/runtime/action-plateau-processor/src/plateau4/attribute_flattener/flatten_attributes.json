@@ -12741,5 +12741,22 @@
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
 		}
+	],
+	"wtr/wtr:WaterBody": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
 	]
 }

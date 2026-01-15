@@ -16,5 +16,4 @@ threshold = 0.01
 # Note: DM geometric attributes output MVT only, no 3D Tiles
 
 [filter.tree]
-"" = ["codelists/", "schemas/"]
 "udx/brid/" = ["54400098_brid_6697_op.gml", "54400098_brid_6697_appearance"]

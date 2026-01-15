@@ -16,7 +16,6 @@ comparator = "list_to_dict"
 key = ".name"
 
 [filter.tree]
-"" = ["codelists/", "schemas/"]
 "udx/urf/534071_urf_6697_07_op.gml" = ["urf_0e6c149e-4090-4a94-a5d8-129d30bc3422"]
 "udx/urf/534071_urf_6697_08_op.gml" = ["urf_a9a122af-57aa-4269-9267-50637e2473ba"]
 "udx/urf/544000_urf_6697_08_op.gml" = [

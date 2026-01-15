@@ -6941,6 +6941,157 @@ Execute Python Scripts with Geospatial Data Processing
 * Script
 * Python
 
+## RayIntersector
+### Type
+* processor
+### Description
+Computes intersection points between rays and geometries
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RayIntersectorParams",
+  "description": "RayIntersector Parameters",
+  "type": "object",
+  "required": [
+    "pairId",
+    "ray"
+  ],
+  "properties": {
+    "closestIntersectionOnly": {
+      "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "includeRayOrigin": {
+      "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pairId": {
+      "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "ray": {
+      "description": "Defines how to extract ray data from feature attributes",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RayDefinition"
+        }
+      ]
+    },
+    "tolerance": {
+      "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "RayDefinition": {
+      "description": "Defines how ray data is extracted from feature attributes.",
+      "type": "object",
+      "required": [
+        "dirX",
+        "dirY",
+        "dirZ",
+        "posX",
+        "posY",
+        "posZ"
+      ],
+      "properties": {
+        "dirX": {
+          "description": "Attribute containing ray direction X component",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "dirY": {
+          "description": "Attribute containing ray direction Y component",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "dirZ": {
+          "description": "Attribute containing ray direction Z component",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "posX": {
+          "description": "Attribute containing ray origin X coordinate",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "posY": {
+          "description": "Attribute containing ray origin Y coordinate",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "posZ": {
+          "description": "Attribute containing ray origin Z coordinate",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* ray
+* geom
+### Output Ports
+* intersection
+* rejected
+### Category
+* Geometry
+
 ## Refiner
 ### Type
 * processor
