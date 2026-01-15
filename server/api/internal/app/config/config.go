@@ -115,8 +115,8 @@ type (
 	}
 
 	HealthCheckConfig struct {
-		Username string `pp:",omitempty"`
-		Password string `pp:",omitempty"`
+		Username string `envconfig:"HEALTH_CHECK_USERNAME" pp:",omitempty"`
+		Password string `envconfig:"HEALTH_CHECK_PASSWORD" pp:",omitempty"`
 	}
 )
 

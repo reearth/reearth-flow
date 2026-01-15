@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/hellofresh/health-go/v5"
@@ -177,15 +178,10 @@ func createStorageCheck(fileRepo gateway.File) func(ctx context.Context) error {
 	}
 }
 
-// contains checks if the string s contains any of the substrings
 func contains(s string, substrings ...string) bool {
 	for _, sub := range substrings {
-		if len(sub) > 0 && len(s) >= len(sub) {
-			for i := 0; i <= len(s)-len(sub); i++ {
-				if s[i:i+len(sub)] == sub {
-					return true
-				}
-			}
+		if strings.Contains(s, sub) {
+			return true
 		}
 	}
 	return false

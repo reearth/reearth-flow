@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -28,7 +29,7 @@ func NewHealthChecker(
 ) *HealthChecker {
 	checks := []health.Config{}
 
-	if conf.RedisURL != "" {
+	if redisClient != nil && conf.RedisURL != "" {
 		checks = append(checks, health.Config{
 			Name:      "redis",
 			Timeout:   time.Second * 5,
@@ -37,7 +38,7 @@ func NewHealthChecker(
 		})
 	}
 
-	if conf.NodeSubscriptionID != "" && conf.DB != "" {
+	if mongoClient != nil && conf.DB != "" {
 		checks = append(checks, health.Config{
 			Name:      "db",
 			Timeout:   time.Second * 5,
@@ -107,7 +108,7 @@ func (e *HealthCheckError) Error() string {
 }
 
 func createPubSubCheck(client *pubsub.Client, conf *Config) func(ctx context.Context) error {
-	return func(_ context.Context) error {
+	return func(ctx context.Context) error {
 		subscriptions := []string{
 			conf.LogSubscriptionID,
 			conf.NodeSubscriptionID,
@@ -118,12 +119,13 @@ func createPubSubCheck(client *pubsub.Client, conf *Config) func(ctx context.Con
 		for _, subID := range subscriptions {
 			if subID != "" {
 				sub := client.Subscriber(subID)
-				if sub.ID() != "" {
-					return nil
+				if sub.ID() == "" {
+					return fmt.Errorf("invalid subscription: %s", subID)
 				}
+				return nil
 			}
 		}
 
-		return nil
+		return fmt.Errorf("no subscriptions configured")
 	}
 }

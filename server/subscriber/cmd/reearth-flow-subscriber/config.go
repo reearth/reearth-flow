@@ -34,7 +34,7 @@ type Config struct {
 	TelemetryEnabled bool   `envconfig:"OTEL_ENABLED" default:"false"`
 
 	HealthCheckUsername string `envconfig:"HEALTH_CHECK_USERNAME" pp:",omitempty"`
-	HealthCheckPassword string `envconfig:"HEALTH_CHECK_PASSWORD" pp:"-"`
+	HealthCheckPassword string `envconfig:"HEALTH_CHECK_PASSWORD" pp:",omitempty"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {
