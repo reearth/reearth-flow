@@ -134,6 +134,8 @@ export const useQueries = () => {
           projectId,
           workspaceId,
           file: file.get("file"),
+          previousJobId: "3d3736b2-61d4-4cc2-a7b5-75b8a3568618",
+          startNodeId: "d6522da2-5733-46c7-97c3-4fdd12e85f84",
         },
       });
       if (!data?.runProject?.job) return { workspaceId };
