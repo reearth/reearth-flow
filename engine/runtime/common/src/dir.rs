@@ -15,7 +15,7 @@ static WORKING_DIRECTORY: Lazy<Option<String>> =
 // If FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY is set, job-scoped temp dirs are used instead of project-level cache.
 pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
     if let Ok(root) = std::env::var("FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY") {
-        let dir_path = PathBuf::from(root);
+        let dir_path = PathBuf::from(root).join(id);
         fs::create_dir_all(&dir_path).map_err(Error::dir)?;
         return Ok(dir_path);
     }
