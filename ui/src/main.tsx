@@ -1,9 +1,9 @@
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { createRouter } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 
-import { LoadingSplashscreen } from "@flow/components";
+import { App } from "@flow/App";
 import loadConfig, { config } from "@flow/config";
-import { AuthProvider, useAuth } from "@flow/lib/auth";
+import { AuthProvider } from "@flow/lib/auth";
 import { enableMocking } from "@flow/mocks";
 import { routeTree } from "@flow/routeTree.gen.ts";
 
@@ -16,16 +16,6 @@ const router = createRouter({
   notFoundMode: "root",
   defaultNotFoundComponent: () => <NotFound />,
 });
-
-function App() {
-  const { isLoading } = useAuth();
-
-  if (isLoading) {
-    return <LoadingSplashscreen />;
-  }
-
-  return <RouterProvider router={router} />;
-}
 
 loadConfig().finally(async () => {
   // Enable mock server if configured
@@ -46,7 +36,7 @@ loadConfig().finally(async () => {
   const root = createRoot(element);
   root.render(
     <AuthProvider>
-      <App />
+      <App router={router} />
     </AuthProvider>,
   );
 });
