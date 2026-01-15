@@ -375,7 +375,45 @@ graphs:
               } else {                
                 1 - (snow_depth * 1.0) / 10.0
               }
+
+      # Begin Fan out to 3 aggregators 
+      - id: cdf6a3ac-f1d9-11f0-91bc-6c02e0440ed6
+        name: Aggregator_5
+        type: action 
+        action: AttributeAggregator
+        with:
+          method: max 
+          calculationAttribute:  year
+          aggregateAttributes:
+          - newAttribute: snow_correction_factor
+            attributeValue: |
+              env.get("__value").snow_correction_factor
        
+      - id: 5ea66d6a-f1da-11f0-8477-6c02e0440ed6
+        name: Aggregator_3
+        type: action 
+        action: AttributeAggregator
+        with:
+          method: max
+          calculationAttribute:  date_key 
+          aggregateAttributes:
+          - newAttribute: snow_correction_factor
+            attributeValue: |
+              env.get("__value").snow_correction_factor
+
+      - id: 6495f93e-f1da-11f0-a88b-6c02e0440ed6
+        name: Aggregator_6
+        type: action 
+        action: AttributeAggregator
+        with:
+          method: max
+          calculationAttribute:  date_key(YYYYMM) 
+          aggregateAttributes:
+          - newAttribute: snow_correction_factor
+            attributeValue: |
+              env.get("__value").snow_correction_factor              
+      # End Fan out to 3 aggregators 
+
 
       - id: 38658a84-eb75-11f0-b42e-7c70db10a7e3
         name: DummyOutput
@@ -430,3 +468,22 @@ graphs:
         to: 38658a84-eb75-11f0-b42e-7c70db10a7e3
         fromPort: default
         toPort: default
+
+      # Test 3 aggregators 
+      - id: 88686efa-f1da-11f0-b3a9-6c02e0440ed6
+        from: cdf6a3ac-f1d9-11f0-91bc-6c02e0440ed6
+        to: 38658a84-eb75-11f0-b42e-7c70db10a7e3
+        fromPort: default
+        toPort: default  
+
+      - id: 982b6a90-f1da-11f0-a079-6c02e0440ed6
+        from: 5ea66d6a-f1da-11f0-8477-6c02e0440ed6
+        to: 38658a84-eb75-11f0-b42e-7c70db10a7e3
+        fromPort: default
+        toPort: default    
+
+      - id: 6495f93e-f1da-11f0-a88b-6c02e0440ed6
+        from: 456f2bb8-f1bf-11f0-beff-6c02e0440ed6
+        to: 38658a84-eb75-11f0-b42e-7c70db10a7e3
+        fromPort: default
+        toPort: default                         
