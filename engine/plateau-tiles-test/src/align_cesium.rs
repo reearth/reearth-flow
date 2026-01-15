@@ -1,7 +1,7 @@
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
     extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, read_vertex_colors, read_vertex_material_indices,
+    read_positions_with_transform, read_vertex_colors,
     traverse_scene, Transform,
 };
 use reearth_flow_types::material::Material;
@@ -315,23 +315,12 @@ impl GeometryCollector {
             .transpose()
             .map_err(|e| format!("Failed to read vertex colors: {}", e))?;
 
-        // Read vertex material indices from custom attribute if present
-        let vertex_materials = primitive
-            .attributes()
-            .find(|(semantic, _)| {
-                if let ::gltf::Semantic::Extras(name) = semantic {
-                    name == "_MATERIAL_ID" || name == "MATERIAL_ID"
-                } else {
-                    false
-                }
-            })
-            .map(|(_, accessor)| read_vertex_material_indices(&accessor, buffer_data))
-            .transpose()
-            .map_err(|e| format!("Failed to read vertex material indices: {}", e))?;
-
         // Calculate vertex offset for appending to existing vertex arrays
         let vertex_offset = self.vertex_positions.len();
         let new_vertex_count = positions.len();
+
+        // Calculate material offset - the index where this primitive's material will be stored
+        let material_offset = self.materials.len() as u32;
 
         // Append new vertex data instead of replacing
         self.vertex_positions.extend(positions);
@@ -344,12 +333,16 @@ impl GeometryCollector {
             new_vertex_count,
             [1.0, 1.0, 1.0, 1.0], // Default white color
         );
+
+        // In glTF, materials are per-primitive, not per-vertex.
+        // All vertices in this primitive use the same material at material_offset.
+        let vertex_materials_for_primitive = vec![material_offset; new_vertex_count];
         Self::append_vertex_attribute(
             &mut self.vertex_materials,
-            vertex_materials,
+            Some(vertex_materials_for_primitive),
             vertex_offset,
             new_vertex_count,
-            0u32, // Default material index
+            material_offset, // Default to this primitive's material
         );
 
         // Extract and store material information

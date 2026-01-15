@@ -258,14 +258,20 @@ fn compare_detail_level(
         ));
     }
 
-    // Test face-weighted average color (material base color × vertex color)
-    result.average_color_error = test_face_weighted_average_color(
-        gml_id,
-        fme_level,
-        fme_geometries,
-        flow_level,
-        flow_geometries,
-    )?;
+    // Skip color comparison if textures are present
+    // NOTE: (probably) diffuseColor in X3D material is used as base color, overriden by texture if present.
+    // Thereofore, we ignore color comparison when textures exist.
+    let has_texture = fme_level.source_idx.is_some() || flow_level.source_idx.is_some();
+    if !has_texture {
+        // Test face-weighted average color (material base color × vertex color)
+        result.average_color_error = test_face_weighted_average_color(
+            gml_id,
+            fme_level,
+            fme_geometries,
+            flow_level,
+            flow_geometries,
+        )?;
+    }
 
     Ok(result)
 }
