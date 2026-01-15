@@ -261,7 +261,7 @@ fn compare_detail_level(
 
     // Skip color comparison if textures are present
     // NOTE: (probably) diffuseColor in X3D material is used as base color, overriden by texture if present.
-    // Thereofore, we ignore color comparison when textures exist.
+    // Therefore, we ignore color comparison when textures exist.
     let has_texture = fme_level.source_idx.is_some() || flow_level.source_idx.is_some();
     if !has_texture {
         // Test face-weighted average color (material base color × vertex color)
@@ -286,8 +286,8 @@ fn compute_bbox(
         return Err("Cannot compute bbox: no triangles".to_string());
     }
 
-    let mut min = Coordinate::new__(f64::INFINITY, f64::INFINITY, f64::INFINITY);
-    let mut max = Coordinate::new__(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+    let mut min = Coordinate::from((f64::INFINITY, f64::INFINITY, f64::INFINITY));
+    let mut max = Coordinate::from((f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY));
 
     for triangle in triangles {
         for &idx in triangle {
@@ -315,7 +315,7 @@ fn compute_centroid(
         return Err("Cannot compute centroid: no triangles".to_string());
     }
 
-    let mut weighted_sum = Coordinate::new__(0.0, 0.0, 0.0);
+    let mut weighted_sum = Coordinate::from((0.0, 0.0, 0.0));
     let mut total_area = 0.0;
 
     for triangle in triangles {
@@ -324,11 +324,11 @@ fn compute_centroid(
         let p2 = positions[triangle[2]];
 
         // Compute triangle centroid (average of three vertices)
-        let tri_centroid = Coordinate::new__(
+        let tri_centroid = Coordinate::from((
             (p0.x + p1.x + p2.x) / 3.0,
             (p0.y + p1.y + p2.y) / 3.0,
             (p0.z + p1.z + p2.z) / 3.0,
-        );
+        ));
 
         // Compute triangle area using cross product: ||(p1-p0) × (p2-p0)|| / 2
         let v1 = p1 - p0;
@@ -347,11 +347,11 @@ fn compute_centroid(
         return Err("Cannot compute centroid: total area is zero".to_string());
     }
 
-    Ok(Coordinate::new__(
+    Ok(Coordinate::from((
         weighted_sum.x / total_area,
         weighted_sum.y / total_area,
         weighted_sum.z / total_area,
-    ))
+    )))
 }
 
 /// Test face-weighted average color by comparing material base color × vertex color

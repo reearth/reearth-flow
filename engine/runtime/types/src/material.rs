@@ -17,7 +17,7 @@ pub struct X3DMaterial {
 impl From<nusamai_plateau::models::appearance::X3DMaterial> for X3DMaterial {
     fn from(src: nusamai_plateau::models::appearance::X3DMaterial) -> Self {
         Self {
-            diffuse_color: src.diffuse_color.unwrap_or(Color::new(0.7, 0.7, 0.7)),
+            diffuse_color: src.diffuse_color.unwrap_or(Color::new(1.0, 1.0, 1.0)),
             specular_color: src.specular_color.unwrap_or(Color::new(0.04, 0.04, 0.04)),
             ambient_intensity: src.ambient_intensity.unwrap_or(0.9),
         }
@@ -38,7 +38,7 @@ impl Default for X3DMaterial {
     fn default() -> Self {
         Self {
             diffuse_color: Color::new(1.0, 1.0, 1.0),
-            specular_color: Color::new(0.0, 0.0, 0.0),
+            specular_color: Color::new(0.04, 0.04, 0.04),
             ambient_intensity: 0.9,
         }
     }
