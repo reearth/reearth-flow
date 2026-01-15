@@ -57,9 +57,18 @@ export default ({
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+  console.log("RWS:", rawWorkflows);
+  console.log(
+    "DEBUG RUN IDS:",
+    debugRunState?.jobs?.map((j) => j.jobId),
+  );
+  const debugJob = debugRunState?.jobs?.find(
+    (job) => job.projectId === currentProject?.id,
+  );
+
+  console.log("CURRENT DEBUG JOB:", debugJob?.jobId);
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
-
     const engineReadyWorkflow = createEngineReadyWorkflow(
       currentProject.name,
       customDebugRunWorkflowVariables,
@@ -117,6 +126,70 @@ export default ({
     updateValue,
     runProject,
   ]);
+
+  // const handleFromSelectedNodeDebugRunStart = useCallback(async () => {
+  //   if (!currentProject) return;
+
+  //   const engineReadyWorkflow = createEngineReadyWorkflow(
+  //     currentProject.name,
+  //     customDebugRunWorkflowVariables,
+  //     rawWorkflows,
+  //   );
+
+  //   if (!engineReadyWorkflow) return;
+
+  //   const data = await runProject(
+  //     currentProject.id,
+  //     currentProject.workspaceId,
+  //     engineReadyWorkflow,
+  //     debugJob?.jobId,
+  //     "edc8e173-c1b3-4403-9cec-2a6afb4390eb",
+  //   );
+
+  //   if (data.job) {
+  //     let jobs: JobState[] = debugRunState?.jobs || [];
+
+  //     if (!data.job.id) {
+  //       jobs =
+  //         debugRunState?.jobs?.filter(
+  //           (job) => job.projectId !== currentProject.id,
+  //         ) || [];
+  //     } else if (
+  //       debugRunState?.jobs?.some((job) => job.projectId === currentProject.id)
+  //     ) {
+  //       jobs = debugRunState.jobs.map((job) => {
+  //         if (job.projectId === currentProject.id && data.job) {
+  //           return {
+  //             projectId: currentProject.id,
+  //             jobId: data.job.id,
+  //             status: data.job.status,
+  //           };
+  //         }
+  //         return job;
+  //       });
+  //     } else {
+  //       jobs.push({
+  //         projectId: currentProject.id,
+  //         jobId: data.job.id,
+  //         status: data.job.status,
+  //       });
+  //     }
+  //     await updateValue({ jobs });
+  //     broadcastDebugRun(data.job.id, data.job.status);
+
+  //     fitView({ duration: 400, padding: 0.5 });
+  //   }
+  // }, [
+  //   currentProject,
+  //   customDebugRunWorkflowVariables,
+  //   rawWorkflows,
+  //   broadcastDebugRun,
+  //   debugRunState?.jobs,
+  //   fitView,
+  //   updateValue,
+  //   debugJob,
+  //   runProject,
+  // ]);
 
   const handleDebugRunStop = useCallback(async () => {
     const debugJob = debugRunState?.jobs?.find(

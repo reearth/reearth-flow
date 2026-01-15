@@ -125,6 +125,8 @@ export const useProject = () => {
     projectId: string,
     workspaceId: string,
     engineReadyWorkflow: EngineReadyWorkflow,
+    previousJobId?: string,
+    startNodeId?: string,
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
@@ -137,6 +139,8 @@ export const useProject = () => {
         projectId,
         workspaceId,
         file: formData,
+        previousJobId,
+        startNodeId,
       });
       toast({
         title: t("Debug run started"),
