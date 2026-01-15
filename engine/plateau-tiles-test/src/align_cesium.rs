@@ -346,7 +346,8 @@ impl GeometryCollector {
 
         // Extract and store material information
         let gltf_material = primitive.material();
-        let flow_material = material_from_gltf(&gltf_material);
+        let flow_material = material_from_gltf(&gltf_material)
+            .map_err(|e| format!("Failed to extract material from {:?}: {}", glb_path, e))?;
         self.materials.push(flow_material);
 
         let texture_info = gltf_material

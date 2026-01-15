@@ -301,33 +301,39 @@ pub(crate) fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderEr
 /// Convert gltf::Material to reearth_flow_types::material::Material
 pub fn material_from_gltf(
     gltf_material: &gltf::Material,
-) -> reearth_flow_types::material::Material {
+) -> Result<reearth_flow_types::material::Material, GltfReaderError> {
     use reearth_flow_types::material::{Material, Texture};
 
     let pbr = gltf_material.pbr_metallic_roughness();
     let base_color = pbr.base_color_factor();
 
-    let base_texture = pbr.base_color_texture().and_then(|tex_info| {
-        let texture = tex_info.texture();
-        let source = texture.source();
+    let base_texture = match pbr.base_color_texture() {
+        Some(tex_info) => {
+            let texture = tex_info.texture();
+            let source = texture.source();
 
-        // Try to get URI from the image source
-        match source.source() {
-            gltf::image::Source::Uri { uri, .. } => url::Url::parse(uri)
-                .or_else(|_| url::Url::from_file_path(uri).map_err(|_| ()))
-                .ok()
-                .map(|uri| Texture { uri }),
-            gltf::image::Source::View { .. } => {
-                // Embedded texture - skip for now
-                None
+            match source.source() {
+                gltf::image::Source::Uri { uri, .. } => {
+                    let url = url::Url::parse(uri)
+                        .or_else(|_| url::Url::from_file_path(uri).map_err(|_| ()))
+                        .map_err(|_| {
+                            GltfReaderError::Parse(format!("Invalid texture URI: {uri}"))
+                        })?;
+                    Some(Texture { uri: url })
+                }
+                gltf::image::Source::View { .. } => {
+                    // Embedded texture - skip for now
+                    None
+                }
             }
         }
-    });
+        None => None,
+    };
 
-    Material {
+    Ok(Material {
         base_color,
         base_texture,
-    }
+    })
 }
 
 /// Parse GLTF from bytes
