@@ -109,6 +109,14 @@ type (
 		Worker_CompressIntermediateData bool          `envconfig:"WORKER_COMPRESS_INTERMEDIATE_DATA" default:"false" pp:",omitempty"`
 		Worker_FeatureWriterDisable     bool          `envconfig:"WORKER_FEATURE_WRITER_DISABLE" default:"false" pp:",omitempty"`
 		CMS_UseTLS                      bool          `envconfig:"REEARTH_FLOW_GRPC_USETLS" default:"true" pp:",omitempty"`
+
+		// health check
+		HealthCheck HealthCheckConfig `pp:",omitempty"`
+	}
+
+	HealthCheckConfig struct {
+		Username string `envconfig:"HEALTH_CHECK_USERNAME" pp:",omitempty"`
+		Password string `envconfig:"HEALTH_CHECK_PASSWORD" pp:",omitempty"`
 	}
 )
 
@@ -166,7 +174,7 @@ func (c *Config) Print() string {
 }
 
 func (c *Config) secrets() []string {
-	s := []string{c.DB, c.Auth0.ClientSecret}
+	s := []string{c.DB, c.Auth0.ClientSecret, c.HealthCheck.Password}
 	for _, ac := range c.DB_Users {
 		s = append(s, ac.URI)
 	}

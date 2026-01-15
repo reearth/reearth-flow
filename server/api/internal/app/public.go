@@ -11,7 +11,7 @@ import (
 
 // Ping godoc
 // @Summary      Ping endpoint
-// @Description  Health check endpoint that returns "pong"
+// @Description  Simple health check endpoint that returns "pong"
 // @Tags         health
 // @Produce      json
 // @Success      200  {string}  string  "pong"

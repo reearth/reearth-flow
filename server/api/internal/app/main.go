@@ -49,6 +49,9 @@ func Start(debug bool, version string) {
 
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
+	// Health checker
+	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
+
 	// PermissionChecker
 	if conf.AccountsApiHost == "" {
 		log.Error("accounts host configuration is required")
@@ -76,6 +79,7 @@ func Start(debug bool, version string) {
 		AccountGateways:   acGateways,
 		PermissionChecker: permissionChecker,
 		AccountGQLClient:  accountGQLClient,
+		HealthChecker:     healthChecker,
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
@@ -128,6 +132,7 @@ type ServerConfig struct {
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container // TODO: Remove this field once the migration is complete.
 	AccountGQLClient  *gql.Client
+	HealthChecker     *HealthChecker
 	Debug             bool
 }
 
