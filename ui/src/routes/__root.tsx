@@ -2,7 +2,6 @@ import { createRootRoute, Outlet } from "@tanstack/react-router";
 
 import { config } from "@flow/config";
 import NotFoundPage from "@flow/features/NotFound";
-import { AuthProvider } from "@flow/lib/auth";
 
 export const Route = createRootRoute({
   component: RootRoute,
@@ -26,7 +25,7 @@ export const Route = createRootRoute({
 function RootRoute() {
   const { devMode } = config();
   return (
-    <AuthProvider>
+    <>
       <Outlet />
       {devMode && (
         <>
@@ -34,6 +33,6 @@ function RootRoute() {
           {/* <TanStackRouterDevtools /> */}
         </>
       )}
-    </AuthProvider>
+    </>
   );
 }
