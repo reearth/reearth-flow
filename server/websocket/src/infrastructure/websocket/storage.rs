@@ -94,11 +94,21 @@ impl CollaborativeStorage {
     }
 
     pub async fn save_snapshot(&self, doc_id: &str) -> Result<()> {
+        let overall = std::time::Instant::now();
+        info!("save_snapshot: start for doc_id: {}", doc_id);
+
+        let t = std::time::Instant::now();
         let valid_recheck = self
             .redis_store
             .check_stream_exists(doc_id)
             .await
             .unwrap_or(false);
+        info!(
+            "save_snapshot: check_stream_exists done for doc_id: {}, ok: {}, elapsed_ms: {}",
+            doc_id,
+            valid_recheck,
+            t.elapsed().as_millis()
+        );
 
         if !valid_recheck {
             return Err(anyhow::anyhow!("doc_id does not exist or no updates"));
@@ -109,7 +119,15 @@ impl CollaborativeStorage {
 
         let gcs_doc = Doc::new();
         let mut gcs_txn = gcs_doc.transact_mut();
+
+        let t = std::time::Instant::now();
         self.store.load_doc_v2(doc_id, &mut gcs_txn).await?;
+        info!(
+            "save_snapshot: load_doc_v2 done for doc_id: {}, elapsed_ms: {}",
+            doc_id,
+            t.elapsed().as_millis()
+        );
+
         let mut gcs_txn = gcs_doc.transact_mut();
 
         info!(
@@ -117,36 +135,111 @@ impl CollaborativeStorage {
             doc_id
         );
 
+        let t = std::time::Instant::now();
         match self.redis_store.read_all_stream_data(doc_id).await {
-            Ok((updates, _last_id)) => {
+            Ok((updates, last_id)) => {
+                let updates_count = updates.len();
+                let updates_total_bytes: usize = updates.iter().map(|u| u.len()).sum();
+
+                info!(
+                    "save_snapshot: read_all_stream_data done for doc_id: {}, elapsed_ms: {}, updates_count: {}, updates_total_bytes: {}, last_stream_id: {}",
+                    doc_id,
+                    t.elapsed().as_millis(),
+                    updates_count,
+                    updates_total_bytes,
+                    last_id.as_deref().unwrap_or("None"),
+                );
+
+                let t_apply = std::time::Instant::now();
+                let mut applied = 0usize;
+                let mut decode_failed = 0usize;
+                let mut apply_failed = 0usize;
+
                 for update_data in &updates {
-                    if let Ok(update) = Update::decode_v1(update_data) {
-                        if let Err(e) = txn.apply_update(update) {
-                            warn!("Failed to apply Redis update: {}", e);
+                    match Update::decode_v1(update_data) {
+                        Ok(update) => match txn.apply_update(update) {
+                            Ok(_) => applied += 1,
+                            Err(e) => {
+                                apply_failed += 1;
+                                warn!(
+                                    "save_snapshot: failed to apply Redis update for doc_id: {}, err: {}",
+                                    doc_id,
+                                    e
+                                );
+                            }
+                        },
+                        Err(e) => {
+                            decode_failed += 1;
+                            warn!(
+                                "save_snapshot: failed to decode Redis update for doc_id: {}, err: {}",
+                                doc_id,
+                                e
+                            );
                         }
                     }
                 }
+
+                info!(
+                    "save_snapshot: apply updates done for doc_id: {}, elapsed_ms: {}, applied: {}, decode_failed: {}, apply_failed: {}",
+                    doc_id,
+                    t_apply.elapsed().as_millis(),
+                    applied,
+                    decode_failed,
+                    apply_failed
+                );
             }
             Err(e) => {
                 warn!(
-                    "Failed to read updates from Redis stream for document '{}': {}",
-                    doc_id, e
+                    "save_snapshot: Failed to read updates from Redis stream for doc_id: {}, elapsed_ms: {}, err: {}",
+                    doc_id,
+                    t.elapsed().as_millis(),
+                    e
                 );
             }
         }
 
+        let t = std::time::Instant::now();
         let update = txn.encode_diff_v1(&StateVector::default());
+        let update_len = update.len();
+        info!(
+            "save_snapshot: encode_diff_v1 done for doc_id: {}, elapsed_ms: {}, update_bytes: {}",
+            doc_id,
+            t.elapsed().as_millis(),
+            update_len
+        );
+
         drop(txn);
         let update_bytes = Bytes::from(update);
+
+        let t = std::time::Instant::now();
         self.store
             .push_update(doc_id, &update_bytes, &self.redis_store)
             .await?;
+        info!(
+            "save_snapshot: push_update done for doc_id: {}, elapsed_ms: {}, pushed_bytes: {}",
+            doc_id,
+            t.elapsed().as_millis(),
+            update_len
+        );
 
+        let t = std::time::Instant::now();
         let update = Update::decode_v1(&update_bytes)?;
         gcs_txn.apply_update(update)?;
         drop(gcs_txn);
         let gcs_txn = gcs_doc.transact();
         self.store.flush_doc_v2(doc_id, &gcs_txn).await?;
+        info!(
+            "save_snapshot: flush_doc_v2 done for doc_id: {}, elapsed_ms: {}",
+            doc_id,
+            t.elapsed().as_millis()
+        );
+
+        info!(
+            "save_snapshot: finished for doc_id: {}, elapsed_ms: {}",
+            doc_id,
+            overall.elapsed().as_millis()
+        );
+
         Ok(())
     }
 }
