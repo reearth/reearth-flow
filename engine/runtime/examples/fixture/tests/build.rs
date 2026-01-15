@@ -114,19 +114,12 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
 
                 // Run test and ensure cleanup happens even on failure
                 let result = (|| -> Result<()> {
-                    // Load and run workflow
                     let workflow = ctx.load_workflow()?;
                     ctx.run_workflow(workflow)?;
-
-                    // Verify output
                     ctx.verify_output()?;
-
-                    // Verify intermediate data
                     ctx.verify_intermediate_data()?;
-
                     ctx.verify_summary_output()?;
                     ctx.verify_result_ok_file()?;
-
                     Ok(())
                 })();
 
