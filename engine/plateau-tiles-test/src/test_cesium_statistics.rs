@@ -1,5 +1,7 @@
+use crate::align_cesium::{
+    collect_geometries_by_gmlid, find_cesium_tile_directories, DetailLevel, GeometryCollector,
+};
 use reearth_flow_geometry::types::coordinate::Coordinate;
-use crate::align_cesium::{collect_geometries_by_gmlid, find_cesium_tile_directories, DetailLevel, GeometryCollector};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -202,7 +204,7 @@ fn compare_detail_level(
     fme_level: &DetailLevel,
     fme_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
-    flow_geometries: &GeometryCollector
+    flow_geometries: &GeometryCollector,
 ) -> Result<DetailLevelComparisonResult, String> {
     let mut result = DetailLevelComparisonResult::new(gml_id.to_string());
     let fme_error = fme_level.geometric_error;
@@ -241,8 +243,7 @@ fn compare_detail_level(
 
     // Compute centroids directly from vertex positions
     let fme_centroid = compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)?;
-    let flow_centroid =
-        compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions)?;
+    let flow_centroid = compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions)?;
 
     // if vertices have max error r, centroids can differ by at most r
     let centroid_error_bound = fme_error + flow_error;
@@ -446,12 +447,7 @@ fn compute_face_weighted_average_color(
         }
 
         // Get face color by averaging vertex colors and multiplying by material base color
-        let face_color = compute_face_color(
-            triangle,
-            vertex_colors,
-            vertex_materials,
-            materials,
-        )?;
+        let face_color = compute_face_color(triangle, vertex_colors, vertex_materials, materials)?;
 
         // Accumulate area-weighted color
         weighted_color[0] += face_color[0] * area;

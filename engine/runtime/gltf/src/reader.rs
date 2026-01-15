@@ -299,7 +299,9 @@ pub(crate) fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderEr
 }
 
 /// Convert gltf::Material to reearth_flow_types::material::Material
-pub fn material_from_gltf(gltf_material: &gltf::Material) -> reearth_flow_types::material::Material {
+pub fn material_from_gltf(
+    gltf_material: &gltf::Material,
+) -> reearth_flow_types::material::Material {
     use reearth_flow_types::material::{Material, Texture};
 
     let pbr = gltf_material.pbr_metallic_roughness();
@@ -311,12 +313,10 @@ pub fn material_from_gltf(gltf_material: &gltf::Material) -> reearth_flow_types:
 
         // Try to get URI from the image source
         match source.source() {
-            gltf::image::Source::Uri { uri, .. } => {
-                url::Url::parse(uri)
-                    .or_else(|_| url::Url::from_file_path(uri).map_err(|_| ()))
-                    .ok()
-                    .map(|uri| Texture { uri })
-            }
+            gltf::image::Source::Uri { uri, .. } => url::Url::parse(uri)
+                .or_else(|_| url::Url::from_file_path(uri).map_err(|_| ()))
+                .ok()
+                .map(|uri| Texture { uri }),
             gltf::image::Source::View { .. } => {
                 // Embedded texture - skip for now
                 None

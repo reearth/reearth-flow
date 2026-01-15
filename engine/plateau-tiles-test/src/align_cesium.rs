@@ -1,8 +1,7 @@
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
     extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, read_vertex_colors,
-    traverse_scene, Transform,
+    read_positions_with_transform, read_vertex_colors, traverse_scene, Transform,
 };
 use reearth_flow_types::material::Material;
 use serde_json::Value;
@@ -389,14 +388,11 @@ impl GeometryCollector {
             );
 
             // Offset indices to account for previously appended vertices
-            feature_triangles
-                .entry(fid0)
-                .or_default()
-                .push([
-                    idx0 + vertex_offset,
-                    idx1 + vertex_offset,
-                    idx2 + vertex_offset,
-                ]);
+            feature_triangles.entry(fid0).or_default().push([
+                idx0 + vertex_offset,
+                idx1 + vertex_offset,
+                idx2 + vertex_offset,
+            ]);
         }
 
         for (feature_id, triangles) in feature_triangles {
@@ -412,7 +408,10 @@ impl GeometryCollector {
                 texture_name,
                 triangles,
             };
-            self.detail_levels.entry(gml_id).or_default().push(detail_level);
+            self.detail_levels
+                .entry(gml_id)
+                .or_default()
+                .push(detail_level);
         }
 
         Ok(())
@@ -435,9 +434,7 @@ impl GeometryCollector {
     }
 }
 
-pub fn collect_geometries_by_gmlid(
-    tileset_dir: &Path,
-) -> Result<GeometryCollector, String> {
+pub fn collect_geometries_by_gmlid(tileset_dir: &Path) -> Result<GeometryCollector, String> {
     let tileset_info = load_tileset(tileset_dir)?;
     let mut collector = GeometryCollector::new(tileset_dir.to_path_buf());
 

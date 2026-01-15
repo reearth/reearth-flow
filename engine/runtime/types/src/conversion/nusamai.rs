@@ -141,7 +141,9 @@ impl TryFrom<Entity> for Geometry {
                         let mut mat_iter = geoms
                             .surface_spans
                             .iter()
-                            .filter(|surface| global_idx >= surface.start && global_idx < surface.end)
+                            .filter(|surface| {
+                                global_idx >= surface.start && global_idx < surface.end
+                            })
                             .filter_map(|surface| theme.surface_id_to_material.get(&surface.id));
                         let mat = mat_iter.next().copied();
                         if mat_iter.next().is_some() {
