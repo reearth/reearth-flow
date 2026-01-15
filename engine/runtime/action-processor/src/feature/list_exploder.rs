@@ -136,7 +136,8 @@ impl Processor for ListExploder {
                     .unwrap()
                     .clone();
 
-                new_feature.insert(each_attribute_key_contains_source_attribute, value.clone());
+                // 4. instead of matched attribute, use source_attribute
+                new_feature.insert(self.source_attribute.clone(), value.clone());
 
                 fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
             }

@@ -307,6 +307,76 @@ graphs:
           matchAll: true 
           showAttributeIndex: true
 
+      - id: b86b4170-f1b4-11f0-bf60-6c02e0440ed6
+        name: AttributeCreator_7
+        type: action 
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: date_key
+              method: create
+              value: |
+                let year = env.get("__value")["year"];
+                let month = env.get("__value")["month"];
+                let day = env.get("__value")["day"];
+
+                let month_str = if month < 10 { "0" + month } else { month.to_string() };
+                let day_str = if day < 10 { "0" + day } else { day.to_string() };
+                year.to_string() + "/" + month_str + "/" + day_str
+
+            - attribute: date_key(MMDD)
+              method: create
+              value: |                
+                let month = env.get("__value")["month"];
+                let day = env.get("__value")["day"];
+
+                let month_str = if month < 10 { "0" + month } else { month.to_string() };
+                let day_str = if day < 10 { "0" + day } else { day.to_string() };
+                month_str + "/" + day_str      
+
+            - attribute: date_key(YYYYMM)
+              method: create
+              value: |                
+                let year = env.get("__value")["year"];
+                let month = env.get("__value")["month"];
+
+                let month_str = if month < 10 { "0" + month } else { month.to_string() };
+                year.to_string() + "/" + month_str                    
+
+      - id: 77b33a0c-f1be-11f0-866f-6c02e0440ed6
+        name: AttributeManager_3
+        type: action 
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: time
+              method: create
+              value: |
+                let v = env.get("__value")["_element_index"];
+                parse_int(v)
+            - attribute: _element_index
+              method: remove       
+
+      # @Value(snow_depth) >= 10 ? 0 : @Value(snow_depth) < 0 ? 1 : 1 - (@Value(snow_depth) / 10.0)
+      - id: 456f2bb8-f1bf-11f0-beff-6c02e0440ed6
+        name: ExpressionEvaluator_5
+        type: action 
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: snow_correction_factor
+            method: create 
+            value: |
+              let snow_depth = env.get("__value")["snow_depth"];   
+              if snow_depth >= 10 {
+                0.0
+              } else if snow_depth < 0 {
+                1.0
+              } else {                
+                1 - (snow_depth * 1.0) / 10.0
+              }
+       
+
       - id: 38658a84-eb75-11f0-b42e-7c70db10a7e3
         name: DummyOutput
         type: action
@@ -333,9 +403,30 @@ graphs:
         fromPort: default 
         toPort: default 
 
-      # Last edge connect with sink
-      - id: 61342df8-eb75-11f0-880e-7c70db10a7e3
+      # From ListExploder to AttributeCreator_7
+      - id: ac338fc4-f1b5-11f0-8d3a-6c02e0440ed6
         from: 2b4b16a6-f116-11f0-809d-7c70db10a7e3
+        to: b86b4170-f1b4-11f0-bf60-6c02e0440ed6
+        fromPort: default 
+        toPort: default 
+
+      # From AttributeCreator_7 to AttributeManager_3
+      - id: 61342df8-eb75-11f0-880e-7c70db10a7e3
+        from: b86b4170-f1b4-11f0-bf60-6c02e0440ed6
+        to: 77b33a0c-f1be-11f0-866f-6c02e0440ed6
+        fromPort: default
+        toPort: default
+
+      # Last edge connect with sink
+      - id: a366c30c-f1bf-11f0-934b-6c02e0440ed6
+        from: 77b33a0c-f1be-11f0-866f-6c02e0440ed6
+        to: 456f2bb8-f1bf-11f0-beff-6c02e0440ed6
+        fromPort: default
+        toPort: default        
+
+      # Last edge connect with sink
+      - id: 04630626-f1bf-11f0-96cc-6c02e0440ed6
+        from: 456f2bb8-f1bf-11f0-beff-6c02e0440ed6
         to: 38658a84-eb75-11f0-b42e-7c70db10a7e3
         fromPort: default
         toPort: default
