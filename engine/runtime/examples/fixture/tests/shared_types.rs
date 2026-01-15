@@ -17,37 +17,27 @@ impl ExpectedFiles {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum CityGmlPath {
-    /// Shorthand: single GML file path
-    GmlFile(String),
-
-    /// Object notation
-    Config(CityGmlPathConfig),
-}
-
+/// Configuration for creating a ZIP file before running the test
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub enum CityGmlPathConfig {
-    /// Single file
-    File(FileSource),
+pub struct Zipped {
+    /// Path to the file or directory to zip (relative to test folder)
+    pub path: String,
 
-    /// ZIP generation
-    Zip(ZipSource),
+    /// Name of the output ZIP file (optional)
+    /// If not provided, defaults to "{original_name}.zip"
+    pub name: Option<String>,
 }
 
+/// A single workflow variable with a name and value
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FileSource {
-    pub source: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ZipSource {
-    pub source: String,
+pub struct WorkflowVariable {
+    /// Variable name (e.g., "cityGmlPath", "prcs")
     pub name: String,
+
+    /// Variable value - can be any JSON value (string, number, boolean, object, array, null)
+    pub value: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,20 +52,17 @@ pub struct WorkflowTestProfile {
     /// Expected output configuration
     pub expected_output: Option<TestOutput>,
 
-    /// Path to the CityGML file (relative to test folder)
-    pub city_gml_path: CityGmlPath,
+    /// Workflow variables to inject (name-value pairs)
+    /// Values are relative paths for file-based variables, or raw values for others.
+    /// File-based variables (paths) will be converted to file:// URLs automatically.
+    #[serde(default)]
+    pub workflow_variables: Vec<WorkflowVariable>,
 
-    /// Path to codelists directory (relative to test folder, optional)
-    pub codelists_path: Option<String>,
-
-    /// Path to schemas directory (relative to test folder, optional)
-    pub schemas_path: Option<String>,
-
-    /// Path to object lists file (relative to test folder, optional)
-    pub object_lists_path: Option<String>,
-
-    /// PRCS (Plane Rectangular Coordinate System) zone number for coordinate reference system (optional)
-    pub prcs: Option<i64>,
+    /// Files or directories to zip before running the test
+    /// Useful for testing workflows that expect ZIP file inputs.
+    /// Generated ZIP files are automatically cleaned up after the test.
+    #[serde(default)]
+    pub zipped_before_test: Vec<Zipped>,
 
     /// Intermediate data assertions (edge_id -> expected file)
     #[serde(default)]
