@@ -1,16 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "description": "Test quality check for invalid vertex count (pref/river_a)",
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_fld_pref_river_a.json"
-    },
-    "fileErrorSummary": {
-      "expectedFile": "06_浸水想定区域_fld/pref/river_a.csv"
-    }
-  },
-  "expectResultOkFile": false,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -28,5 +18,14 @@
       "name": "prcs",
       "value": 6677
     }
-  ]
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_pref_river_a.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "06_浸水想定区域_fld/pref/river_a.csv"
+    }
+  },
+  "expectResultOkFile": false
 }

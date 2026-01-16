@@ -1,7 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "description": "Verify output files for quality check with no errors",
-  "expectResultOkFile": true,
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -19,5 +18,6 @@
       "name": "prcs",
       "value": 6677
     }
-  ]
+  ],
+  "expectResultOkFile": true
 }

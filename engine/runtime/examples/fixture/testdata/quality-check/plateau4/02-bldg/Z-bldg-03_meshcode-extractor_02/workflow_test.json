@@ -1,18 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4.DestinationMeshCodeExtractor",
-  "expectedOutput": {
-    "expectedFile": "02_建築物_図郭不正.csv"
-  },
-  "summaryOutput": {
-    "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": [
-        "図郭不正"
-      ]
-    }
-  },
-  "expectResultOkFile": false,
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -34,5 +22,17 @@
       "name": "prcs",
       "value": 6675
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_図郭不正.csv"
+  },
+  "summaryOutput": {
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "図郭不正"
+      ]
+    }
+  },
+  "expectResultOkFile": false
 }

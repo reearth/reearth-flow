@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
   "description": "Test for plateau4 solid errors.",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/frn/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
   "expectedOutput": {
     "expectedFile": [
       "04_都市設備_植生_立体のエラー.csv",
@@ -23,28 +45,5 @@
       ]
     }
   },
-  "expectResultOkFile": false,
-  "skip": false,
-  "workflowVariables": [
-    {
-      "name": "cityGmlPath",
-      "value": "udx/frn/input.gml"
-    },
-    {
-      "name": "codelistsPath",
-      "value": "codelists"
-    },
-    {
-      "name": "schemasPath",
-      "value": "schemas"
-    },
-    {
-      "name": "objectListsPath",
-      "value": "08220_city_2023_objectlist_op.xlsx"
-    },
-    {
-      "name": "prcs",
-      "value": 6677
-    }
-  ]
+  "expectResultOkFile": false
 }

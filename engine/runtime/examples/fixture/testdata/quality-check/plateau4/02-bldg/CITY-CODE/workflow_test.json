@@ -1,25 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 city code validation check",
-  "expectedOutput": {
-    "expectedFile": "02_建築物_市区町村コードエラー.csv"
-  },
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_bldg.json",
-      "includeFields": [
-        "市区町村コードエラー"
-      ]
-    },
-    "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": [
-        "市区町村コードエラー"
-      ]
-    }
-  },
-  "expectResultOkFile": false,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -41,5 +22,23 @@
       "name": "prcs",
       "value": 6675
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_市区町村コードエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": [
+        "市区町村コードエラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "市区町村コードエラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
 }

@@ -1,29 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "description": "Test for plateau4 08 degenerate triangles.",
-  "intermediateAssertions": [
-    {
-      "edgeId": "8306cf85-439b-4af1-8a2a-7f0cae0aba81",
-      "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
-      "jsonFilter": "{attributes}"
-    }
-  ],
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_dem.json",
-      "includeFields": [
-        "潰れた三角形"
-      ]
-    },
-    "fileErrorSummary": {
-      "expectedFile": "08_地形_検査結果一覧.csv",
-      "includeColumns": [
-        "潰れた三角形"
-      ]
-    }
-  },
-  "expectResultOkFile": false,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -45,5 +22,27 @@
       "name": "prcs",
       "value": 6677
     }
-  ]
+  ],
+  "intermediateAssertions": [
+    {
+      "edgeId": "8306cf85-439b-4af1-8a2a-7f0cae0aba81",
+      "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_dem.json",
+      "includeFields": [
+        "潰れた三角形"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "08_地形_検査結果一覧.csv",
+      "includeColumns": [
+        "潰れた三角形"
+      ]
+    }
+  },
+  "expectResultOkFile": false
 }

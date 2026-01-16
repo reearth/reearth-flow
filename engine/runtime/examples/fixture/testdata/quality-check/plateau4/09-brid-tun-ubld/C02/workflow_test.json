@@ -1,11 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/09-brid-tun-ubld/workflow.yml",
   "description": "Test C02 histogram creation.",
-  "expectedOutput": {
-    "expectedFile": "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv"
-  },
-  "expectResultOkFile": true,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/09-brid-tun-ubld/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -27,5 +22,9 @@
       "name": "prcs",
       "value": 6677
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv"
+  },
+  "expectResultOkFile": true
 }

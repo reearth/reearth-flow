@@ -3,6 +3,10 @@ name = "workflow-tests"
 version = "0.1.127"
 edition = "2021"
 
+[[bin]]
+name = "normalize-workflow-tests"
+path = "src/normalize.rs"
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

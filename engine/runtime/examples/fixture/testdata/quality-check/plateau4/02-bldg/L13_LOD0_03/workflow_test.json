@@ -1,24 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test quality check L13 for LOD0 #3",
-  "expectedOutput": {
-    "expectedFile": "02_建築物_LOD0面のエラー.csv"
-  },
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_bldg.json",
-      "includeFields": [
-        "LOD0 面のエラー"
-      ]
-    },
-    "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": [
-        "LOD0 面のエラー"
-      ]
-    }
-  },
-  "expectResultOkFile": false,
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -40,5 +22,23 @@
       "name": "prcs",
       "value": 6675
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD0面のエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": [
+        "LOD0 面のエラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "LOD0 面のエラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
 }

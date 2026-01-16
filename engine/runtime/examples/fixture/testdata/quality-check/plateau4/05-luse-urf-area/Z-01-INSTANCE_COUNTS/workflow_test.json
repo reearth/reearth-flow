@@ -1,14 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
   "description": "Test for plateau4 instance counts inspection.",
-  "expectedOutput": {
-    "expectedFile": "05_土地利用_都市決定情報_区域_地物インスタンス数.csv",
-    "except": [
-      "Index"
-    ]
-  },
-  "expectResultOkFile": true,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -31,9 +23,16 @@
       "value": 6677
     }
   ],
-  "zippedBeforeTest": [
+  "zipBeforeTest": [
     {
       "path": "udx"
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "05_土地利用_都市決定情報_区域_地物インスタンス数.csv",
+    "except": [
+      "Index"
+    ]
+  },
+  "expectResultOkFile": true
 }

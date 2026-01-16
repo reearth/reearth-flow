@@ -26,6 +26,7 @@ pub struct Zipped {
 
     /// Name of the output ZIP file (optional)
     /// If not provided, defaults to "{original_name}.zip"
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 
@@ -43,47 +44,55 @@ pub struct WorkflowVariable {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkflowTestProfile {
+    /// Description of what this test is testing
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    
+    /// Whether to skip this test
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub skip: bool,
+
+    /// Reason for skipping (required if skip is true)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skip_reason: Option<String>,
+
     /// Path to the workflow file (relative to fixture/workflow/)
     pub workflow_path: String,
-
-    /// Description of what this test is testing
-    pub description: Option<String>,
-
-    /// Expected output configuration
-    pub expected_output: Option<TestOutput>,
-
+    
     /// Workflow variables to inject (name-value pairs)
     /// Values are relative paths for file-based variables, or raw values for others.
     /// File-based variables (paths) will be converted to file:// URLs automatically.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub workflow_variables: Vec<WorkflowVariable>,
-
+    
     /// Files or directories to zip before running the test
     /// Useful for testing workflows that expect ZIP file inputs.
     /// Generated ZIP files are automatically cleaned up after the test.
-    #[serde(default)]
-    pub zipped_before_test: Vec<Zipped>,
-
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub zip_before_test: Vec<Zipped>,
+    
     /// Intermediate data assertions (edge_id -> expected file)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub intermediate_assertions: Vec<IntermediateAssertion>,
 
+    /// Expected output configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_output: Option<TestOutput>,
+
     /// Summary output validation
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub summary_output: Option<SummaryOutput>,
 
     /// Whether qc_result_ok file should exist (same level as zip)
     /// - Some(true): file must exist
     /// - Some(false): file must NOT exist
     /// - None: do not check (default)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_result_ok_file: Option<bool>,
+}
 
-    /// Whether to skip this test
-    #[serde(default)]
-    pub skip: bool,
-
-    /// Reason for skipping (required if skip is true)
-    pub skip_reason: Option<String>,
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,15 +100,19 @@ pub struct WorkflowTestProfile {
 pub struct TestOutput {
     /// Path(s) to expected output file(s) (relative to test folder) - treated as answer data for the file with same name in output
     /// Can be either a single file (String) or multiple files (Vec<String>)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_file: Option<ExpectedFiles>,
 
     /// Inline expected data for small outputs
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_inline: Option<serde_json::Value>,
 
     /// Column names to exclude from comparison (for TSV/CSV files)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub except: Option<ExceptColumns>,
 
     /// Node ID to capture output from
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source_node: Option<String>,
 }
 
@@ -145,14 +158,16 @@ pub struct IntermediateAssertion {
     pub expected_file: String,
 
     /// JSON fields to exclude from comparison
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub except: Option<ExceptFields>,
 
     /// JSON filter to apply to both actual and expected data before comparison
     /// Supports JSONPath syntax ($.field) and object construction ({field1, field2})
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub json_filter: Option<String>,
 
     /// Whether to check only a subset of features
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub partial_match: bool,
 }
 
@@ -160,9 +175,11 @@ pub struct IntermediateAssertion {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SummaryOutput {
     /// Global error count summary (e.g., summary_bldg.json)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error_count_summary: Option<ErrorCountSummaryValidation>,
 
     /// Per-file error detail summary (e.g., 02_建築物_検査結果一覧.csv)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub file_error_summary: Option<FileErrorSummaryValidation>,
 }
 
@@ -175,6 +192,7 @@ pub struct ErrorCountSummaryValidation {
 
     /// Fields to include in comparison (only these fields will be checked)
     /// If omitted, all fields are compared
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_fields: Option<Vec<String>>,
 }
 
@@ -187,18 +205,24 @@ pub struct FileErrorSummaryValidation {
 
     /// Columns to include in comparison (only these columns will be checked)
     /// If omitted, all columns are compared
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_columns: Option<Vec<String>>,
 
     /// Columns to exclude from comparison
     /// These columns will be ignored when comparing CSV files
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_columns: Option<Vec<String>>,
 
     /// Key columns used to identify rows (e.g., ["Filename", "Index"])
     /// Default: ["Filename"]
-    #[serde(default = "default_key_columns")]
+    #[serde(default = "default_key_columns", skip_serializing_if = "is_default_key_columns")]
     pub key_columns: Vec<String>,
 }
 
 fn default_key_columns() -> Vec<String> {
     vec!["Filename".to_string()]
+}
+
+fn is_default_key_columns(cols: &[String]) -> bool {
+    cols.len() == 1 && cols[0] == "Filename"
 }

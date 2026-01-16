@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_common::xml;
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -77,12 +77,21 @@ pub enum ValidationType {
     SyntaxAndSchema,
 }
 
+/// # XMLValidator Parameters
+///
+/// Configuration for validating XML documents against XSD schemas.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlValidatorParam {
+    /// Attribute name containing the XML content or file path
     pub attribute: Attribute,
+    /// How to interpret the attribute value
     pub input_type: XmlInputType,
+    /// Type of validation to perform
     pub validation_type: ValidationType,
+    /// Fallback directory path for schema files when not found at the location specified in the XML.
+    /// This expression is evaluated per-feature and can reference feature attributes.
+    pub schemas_path: Option<Expr>,
 }
 
 pub type SchemaStore = HashMap<Vec<(String, String)>, xml::XmlSchemaValidationContext>;

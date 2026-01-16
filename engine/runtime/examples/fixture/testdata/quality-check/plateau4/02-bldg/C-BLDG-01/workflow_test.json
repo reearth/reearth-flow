@@ -1,25 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 C-BLDG-01 quality check",
-  "expectedOutput": {
-    "expectedFile": "02_建築物_C-bldg-01エラー.csv"
-  },
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_bldg.json",
-      "includeFields": [
-        "C-bldg-01 エラー"
-      ]
-    },
-    "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": [
-        "C-bldg-01 エラー"
-      ]
-    }
-  },
-  "expectResultOkFile": false,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -41,5 +22,23 @@
       "name": "prcs",
       "value": 6675
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_C-bldg-01エラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": [
+        "C-bldg-01 エラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "C-bldg-01 エラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
 }

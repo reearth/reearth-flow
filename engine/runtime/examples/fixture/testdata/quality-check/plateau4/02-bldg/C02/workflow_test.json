@@ -1,12 +1,6 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 C02 quality check",
-  "expectedOutput": {
-    "expectedFile": "02_建築物_地物インスタンス数.csv",
-    "except": "GmlFilePath"
-  },
-  "expectResultOkFile": false,
-  "skip": false,
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -28,5 +22,10 @@
       "name": "prcs",
       "value": 6675
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_地物インスタンス数.csv",
+    "except": "GmlFilePath"
+  },
+  "expectResultOkFile": false
 }

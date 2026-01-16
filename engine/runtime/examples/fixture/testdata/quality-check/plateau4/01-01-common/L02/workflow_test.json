@@ -1,19 +1,7 @@
 {
-  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "description": "Test quality check for L02",
-  "expectedOutput": {
-    "expectedFile": "01_共通_L02エラー.csv"
-  },
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_common.json"
-    },
-    "fileErrorSummary": {
-      "expectedFile": "01_共通.csv"
-    }
-  },
-  "expectResultOkFile": false,
   "skip": true,
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
@@ -31,5 +19,17 @@
       "name": "objectListsPath",
       "value": "16211_city_2024_objectlist_op.xlsx"
     }
-  ]
+  ],
+  "expectedOutput": {
+    "expectedFile": "01_共通_L02エラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "01_共通.csv"
+    }
+  },
+  "expectResultOkFile": false
 }
