@@ -81,4 +81,26 @@
       </uro:wtrDataQualityAttribute>
     </wtr:WaterBody>
   </core:cityObjectMember>
+  <!-- 無効な空間属性の型: LOD1としてMultiCurveジオメトリを持つ（MultiSurfaceではない） -->
+  <core:cityObjectMember>
+    <wtr:WaterBody gml:id="wtr_curve_lod1_invalid">
+      <core:creationDate>2024-03-22</core:creationDate>
+      <wtr:class codeSpace="../../codelists/WaterBody_class.xml">1020</wtr:class>
+      <!-- lod1MultiCurveを使用（LOD1はMultiSurfaceであるべきだがMultiCurveも有効なプロパティ） -->
+      <wtr:lod1MultiCurve>
+        <gml:MultiCurve gml:id="wtr_curve_lod1_geom">
+          <gml:curveMember>
+            <gml:LineString>
+              <gml:posList>32.926 130.561 1.9 32.927 130.562 1.9</gml:posList>
+            </gml:LineString>
+          </gml:curveMember>
+        </gml:MultiCurve>
+      </wtr:lod1MultiCurve>
+      <uro:wtrDataQualityAttribute>
+        <uro:DataQualityAttribute>
+          <uro:lod>1</uro:lod>
+        </uro:DataQualityAttribute>
+      </uro:wtrDataQualityAttribute>
+    </wtr:WaterBody>
+  </core:cityObjectMember>
 </core:CityModel>
