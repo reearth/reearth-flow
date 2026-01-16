@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "description": "Test for plateau4 08 triangle orientation error.",
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/dem/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
   "intermediateAssertions": [
     {
       "edgeId": "94146a90-4765-4656-ad45-d81a2fc3fc4f",
@@ -11,18 +33,16 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_dem.json",
-      "includeFields": ["三角形の向き不正"]
+      "includeFields": [
+        "三角形の向き不正"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "08_地形_検査結果一覧.csv",
-      "includeColumns": ["三角形の向き不正"]
+      "includeColumns": [
+        "三角形の向き不正"
+      ]
     }
   },
-  "cityGmlPath": "udx/dem/input.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "objectListsPath": "08220_city_2023_objectlist_op.xlsx",
-  "prcs": 6677,
-  "expectResultOkFile": false,
-  "skip": false
+  "expectResultOkFile": false
 }

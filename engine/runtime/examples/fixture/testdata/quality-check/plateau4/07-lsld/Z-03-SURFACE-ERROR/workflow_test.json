@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
   "description": "Test for plateau4 07 surface error.",
+  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/lsld/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "07_土砂災害警戒区域_面のエラー.csv"
   },
@@ -18,11 +40,5 @@
       ]
     }
   },
-  "cityGmlPath": "udx/lsld/input.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "expectResultOkFile": false,
-  "skip": false,
-  "prcs": 6677,
-  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

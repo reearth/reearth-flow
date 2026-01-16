@@ -1,14 +1,38 @@
 {
-  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
   "description": "Test for plateau4 instance counts inspection.",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx"
+    }
+  ],
   "expectedOutput": {
-    "expectedFile": "04_都市設備_植生_地物インスタンス数.csv"
+    "expectedFile": "04_都市設備_植生_地物インスタンス数.csv",
+    "except": [
+      "Index"
+    ]
   },
-  "cityGmlPath": "udx.zip",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "expectResultOkFile": true,
-  "skip": false,
-  "prcs": 6677,
-  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": true
 }

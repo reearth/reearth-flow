@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test surface intersection for LOD0 surfaces",
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/LOD0_surface_intersection.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "02_建築物_LOD0面の交差.csv"
   },
@@ -18,10 +40,5 @@
       ]
     }
   },
-  "cityGmlPath": "udx/bldg/LOD0_surface_intersection.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "expectResultOkFile": false,
-  "prcs": 6675,
-  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

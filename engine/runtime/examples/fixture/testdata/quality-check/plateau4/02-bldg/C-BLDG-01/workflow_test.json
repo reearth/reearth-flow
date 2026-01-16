@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 C-BLDG-01 quality check",
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "02_建築物_C-bldg-01エラー.csv"
   },
@@ -18,11 +40,5 @@
       ]
     }
   },
-  "cityGmlPath": "udx/bldg/input.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "prcs": 6675,
-  "expectResultOkFile": false,
-  "skip": false,
-  "objectListsPath": "16211_city_2024_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

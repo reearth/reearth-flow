@@ -28,245 +28,14 @@ fn init_tracing() {
     });
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ExpectedFiles {
-    Single(String),
-    Multiple(Vec<String>),
-}
-
-impl ExpectedFiles {
-    fn as_vec(&self) -> Vec<String> {
-        match self {
-            ExpectedFiles::Single(file) => vec![file.clone()],
-            ExpectedFiles::Multiple(files) => files.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum CityGmlPath {
-    /// Shorthand: single GML file path
-    GmlFile(String),
-
-    /// Object notation
-    Config(CityGmlPathConfig),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub enum CityGmlPathConfig {
-    /// Single file
-    File(FileSource),
-
-    /// ZIP generation
-    Zip(ZipSource),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FileSource {
-    pub source: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ZipSource {
-    pub source: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct WorkflowTestProfile {
-    /// Path to the workflow file (relative to fixture/workflow/)
-    pub workflow_path: String,
-
-    /// Description of what this test is testing
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-
-    /// Expected output configuration
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expected_output: Option<TestOutput>,
-
-    /// Path to the CityGML file (relative to test folder)
-    pub city_gml_path: CityGmlPath,
-
-    /// Path to codelists directory (relative to test folder, optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub codelists_path: Option<String>,
-
-    /// Path to schemas directory (relative to test folder, optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub schemas_path: Option<String>,
-
-    /// Path to object lists file (relative to test folder, optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub object_lists_path: Option<String>,
-
-    /// PRCS (Plane Rectangular Coordinate System) zone number for coordinate reference system (optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub prcs: Option<i64>,
-
-    /// Intermediate data assertions (edge_id -> expected file)
-    #[serde(default)]
-    pub intermediate_assertions: Vec<IntermediateAssertion>,
-
-    /// Summary output validation
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub summary_output: Option<SummaryOutput>,
-
-    /// Whether qc_result_ok file should exist (same level as zip)
-    /// - Some(true): file must exist
-    /// - Some(false): file must NOT exist
-    /// - None: do not check (default)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expect_result_ok_file: Option<bool>,
-
-    /// Whether to skip this test
-    #[serde(default)]
-    pub skip: bool,
-
-    /// Reason for skipping (required if skip is true)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skip_reason: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct TestOutput {
-    /// Path(s) to expected output file(s) (relative to test folder) - treated as answer data for the file with same name in output
-    /// Can be either a single file (String) or multiple files (Vec<String>)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expected_file: Option<ExpectedFiles>,
-
-    /// Inline expected data for small outputs
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expected_inline: Option<serde_json::Value>,
-
-    /// Column names to exclude from comparison (for TSV/CSV files)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub except: Option<ExceptColumns>,
-
-    /// Node ID to capture output from
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub source_node: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ExceptColumns {
-    Single(String),
-    Multiple(Vec<String>),
-}
-
-impl ExceptColumns {
-    fn contains(&self, column: &str) -> bool {
-        match self {
-            ExceptColumns::Single(name) => name == column,
-            ExceptColumns::Multiple(names) => names.contains(&column.to_string()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ExceptFields {
-    Single(String),
-    Multiple(Vec<String>),
-}
-
-impl ExceptFields {
-    fn contains(&self, field: &str) -> bool {
-        match self {
-            ExceptFields::Single(name) => name == field,
-            ExceptFields::Multiple(names) => names.contains(&field.to_string()),
-        }
-    }
-}
+// Include shared type definitions
+include!("../shared_types.rs");
 
 #[derive(Debug)]
 enum FileComparisonMethod {
     Text,
     Json,
     Jsonl,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct IntermediateAssertion {
-    /// Edge ID to check
-    pub edge_id: String,
-
-    /// Path to expected data file (relative to test folder)
-    pub expected_file: String,
-
-    /// JSON fields to exclude from comparison
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub except: Option<ExceptFields>,
-
-    /// JSON filter to apply to both actual and expected data before comparison
-    /// Supports JSONPath syntax ($.field) and object construction ({field1, field2})
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub json_filter: Option<String>,
-
-    /// Whether to check only a subset of features
-    #[serde(default)]
-    pub partial_match: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct SummaryOutput {
-    /// Global error count summary (e.g., summary_bldg.json)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_count_summary: Option<ErrorCountSummaryValidation>,
-
-    /// Per-file error detail summary (e.g., 02_建築物_検査結果一覧.csv)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub file_error_summary: Option<FileErrorSummaryValidation>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ErrorCountSummaryValidation {
-    /// Expected output file name (relative to test directory)
-    /// The actual output file will have the same name in the temp output directory
-    pub expected_file: String,
-
-    /// Fields to include in comparison (only these fields will be checked)
-    /// If omitted, all fields are compared
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_fields: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FileErrorSummaryValidation {
-    /// Expected output file name (relative to test directory)
-    /// The actual output file will have the same name in the temp output directory
-    pub expected_file: String,
-
-    /// Columns to include in comparison (only these columns will be checked)
-    /// If omitted, all columns are compared
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_columns: Option<Vec<String>>,
-
-    /// Columns to exclude from comparison
-    /// These columns will be ignored when comparing CSV files
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exclude_columns: Option<Vec<String>>,
-
-    /// Key columns used to identify rows (e.g., ["Filename", "Index"])
-    /// Default: ["Filename"]
-    #[serde(default = "default_key_columns")]
-    pub key_columns: Vec<String>,
-}
-
-fn default_key_columns() -> Vec<String> {
-    vec!["Filename".to_string()]
 }
 
 pub struct TestContext {
@@ -277,6 +46,8 @@ pub struct TestContext {
     pub temp_dir: PathBuf,
     pub actual_output_dir: PathBuf,
     pub last_job_id: Option<uuid::Uuid>,
+    /// Paths of ZIP files generated by zip_before_test, to be cleaned up after test
+    generated_zip_files: Vec<PathBuf>,
     _temp_base: TempDir,
 }
 
@@ -309,6 +80,7 @@ impl TestContext {
             actual_output_dir: temp_dir.clone(),
             temp_dir,
             last_job_id: None,
+            generated_zip_files: Vec::new(),
             _temp_base: temp_base,
         })
     }
@@ -333,20 +105,88 @@ impl TestContext {
         Ok(workflow)
     }
 
-    fn resolve_city_gml_path(&self) -> Result<PathBuf> {
-        match &self.profile.city_gml_path {
-            CityGmlPath::GmlFile(path) => Ok(self.test_dir.join(path)),
-            CityGmlPath::Config(config) => self.resolve_config(config),
+    /// Prepare ZIP files defined in zip_before_test.
+    /// Returns a list of paths to the generated ZIP files for cleanup.
+    fn prepare_zipped_files(&mut self) -> Result<()> {
+        for zipped in &self.profile.zip_before_test {
+            let source_path = self.test_dir.join(&zipped.path);
+
+            // Determine the ZIP file name
+            let zip_name = match &zipped.name {
+                Some(name) => name.clone(),
+                None => {
+                    // Default: {original_name}.zip
+                    let original_name = source_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "Cannot determine filename for: {}",
+                                source_path.display()
+                            )
+                        })?;
+                    format!("{original_name}.zip")
+                }
+            };
+
+            let zip_path = if source_path.is_dir() {
+                self.create_zip_from_directory(&zip_name, &zipped.path)?
+            } else {
+                self.create_zip_from_file(&zip_name, &zipped.path)?
+            };
+
+            self.generated_zip_files.push(zip_path);
         }
+
+        Ok(())
     }
 
-    fn resolve_config(&self, config: &CityGmlPathConfig) -> Result<PathBuf> {
-        match config {
-            CityGmlPathConfig::File(file_src) => Ok(self.test_dir.join(&file_src.source)),
-            CityGmlPathConfig::Zip(zip_src) => {
-                self.create_zip_from_directory(&zip_src.name, &zip_src.source)
+    /// Clean up generated ZIP files
+    pub fn cleanup_generated_zips(&self) -> Result<()> {
+        for zip_path in &self.generated_zip_files {
+            if zip_path.exists() {
+                fs::remove_file(zip_path).with_context(|| {
+                    format!(
+                        "Failed to remove generated ZIP file: {}",
+                        zip_path.display()
+                    )
+                })?;
             }
         }
+        Ok(())
+    }
+
+    fn create_zip_from_file(&self, zip_file_name: &str, source_file_name: &str) -> Result<PathBuf> {
+        use std::fs::File;
+        use zip::write::SimpleFileOptions;
+        use zip::ZipWriter;
+
+        let source_file = self.test_dir.join(source_file_name);
+        if !source_file.exists() {
+            anyhow::bail!("Source file does not exist: {}", source_file.display());
+        }
+
+        let zip_path = self.test_dir.join(zip_file_name);
+
+        let file = File::create(&zip_path)
+            .with_context(|| format!("Failed to create ZIP file: {}", zip_path.display()))?;
+        let mut zip = ZipWriter::new(file);
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+        // Get just the filename for the archive entry
+        let file_name = source_file
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| anyhow::anyhow!("Cannot determine filename"))?;
+
+        zip.start_file(file_name, options)?;
+        let mut f = File::open(&source_file)?;
+        std::io::copy(&mut f, &mut zip)?;
+
+        zip.finish()?;
+
+        Ok(zip_path)
     }
 
     fn create_zip_from_directory(
@@ -398,6 +238,30 @@ impl TestContext {
         Ok(zip_path)
     }
 
+    /// Resolve a workflow variable value to a string.
+    /// - String values that are relative paths and exist on disk are converted to file:// URLs
+    /// - Other values are serialized to string representation
+    fn resolve_variable_value(&self, value: &serde_json::Value) -> Result<String> {
+        match value {
+            serde_json::Value::String(s) => {
+                // Check if this looks like a path and exists on disk
+                let potential_path = self.test_dir.join(s);
+                if potential_path.exists() {
+                    // Convert to file:// URL
+                    Ok(format!("file://{}", potential_path.display()))
+                } else {
+                    // Use the raw string value
+                    Ok(s.clone())
+                }
+            }
+            serde_json::Value::Number(n) => Ok(n.to_string()),
+            serde_json::Value::Bool(b) => Ok(b.to_string()),
+            serde_json::Value::Null => Ok("null".to_string()),
+            // For objects and arrays, serialize as JSON string
+            _ => Ok(serde_json::to_string(value)?),
+        }
+    }
+
     pub fn run_workflow(&mut self, mut workflow: Workflow) -> Result<()> {
         use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
         use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
@@ -407,36 +271,19 @@ impl TestContext {
         use reearth_flow_state::State;
         use reearth_flow_storage::resolve::StorageResolver;
 
-        // Inject test-specific variables directly into workflow instead of using environment variables
+        // Prepare ZIP files defined in zip_before_test
+        self.prepare_zipped_files()?;
+
+        // Inject test-specific variables directly into workflow
         let mut test_variables = HashMap::new();
 
-        // Resolve cityGmlPath (handles both single file and ZIP generation)
-        let city_gml_path = self.resolve_city_gml_path()?;
-        let city_gml_url = format!("file://{}", city_gml_path.display());
-        test_variables.insert("cityGmlPath".to_string(), city_gml_url);
-
-        if let Some(codelists) = &self.profile.codelists_path {
-            let codelists_path = self.test_dir.join(codelists);
-            let codelists_url = format!("file://{}", codelists_path.display());
-            test_variables.insert("codelistsPath".to_string(), codelists_url);
+        // Process workflow variables from profile
+        for var in &self.profile.workflow_variables {
+            let value_str = self.resolve_variable_value(&var.value)?;
+            test_variables.insert(var.name.clone(), value_str);
         }
 
-        if let Some(schemas) = &self.profile.schemas_path {
-            let schemas_path = self.test_dir.join(schemas);
-            let schemas_url = format!("file://{}", schemas_path.display());
-            test_variables.insert("schemasPath".to_string(), schemas_url);
-        }
-
-        if let Some(object_lists) = &self.profile.object_lists_path {
-            let object_lists_path = self.test_dir.join(object_lists);
-            let object_lists_url = format!("file://{}", object_lists_path.display());
-            test_variables.insert("objectListsPath".to_string(), object_lists_url);
-        }
-
-        if let Some(prcs) = &self.profile.prcs {
-            test_variables.insert("prcs".to_string(), prcs.to_string());
-        }
-
+        // Add standard test variables
         test_variables.insert(
             "workerArtifactPath".to_string(),
             self.temp_dir.display().to_string(),
@@ -1383,6 +1230,67 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use tempfile::TempDir;
+    use walkdir::WalkDir;
+
+    /// Validates that all workflow_test.json files are properly normalized
+    /// (key order matches the WorkflowTestProfile struct field order)
+    #[test]
+    fn test_workflow_test_json_files_are_normalized() -> Result<()> {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+        let testdata_dir = PathBuf::from(&manifest_dir)
+            .parent()
+            .unwrap()
+            .join("testdata");
+
+        let mut unnormalized_files = Vec::new();
+
+        for entry in WalkDir::new(&testdata_dir)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.file_name() == "workflow_test.json" {
+                let profile_str = fs::read_to_string(entry.path())?;
+                let profile: WorkflowTestProfile = serde_json::from_str(&profile_str)?;
+
+                // Check if file is properly normalized
+                let normalized = serde_json::to_string_pretty(&profile)?;
+                let normalized_with_newline = format!("{}\n", normalized);
+                if profile_str != normalized_with_newline {
+                    unnormalized_files.push(entry.path().to_path_buf());
+                }
+            }
+        }
+
+        if !unnormalized_files.is_empty() {
+            let file_list = unnormalized_files
+                .iter()
+                .map(|p| format!("  - {}", p.display()))
+                .collect::<Vec<_>>()
+                .join("\n");
+            anyhow::bail!(
+                "The following workflow_test.json files are not normalized:\n{}\n\nRun `cargo run --package workflow-tests --bin normalize-workflow-tests` to fix them.",
+                file_list
+            );
+        }
+
+        Ok(())
+    }
+
+    fn create_dummy_profile() -> WorkflowTestProfile {
+        WorkflowTestProfile {
+            description: None,
+            skip: false,
+            skip_reason: None,
+            workflow_path: "dummy".to_string(),
+            workflow_variables: vec![],
+            zip_before_test: vec![],
+            intermediate_assertions: vec![],
+            expected_output: None,
+            summary_output: None,
+            expect_result_ok_file: None,
+        }
+    }
 
     #[test]
     fn test_json_filter_functionality() -> Result<()> {
@@ -1391,21 +1299,7 @@ mod tests {
         let test_dir = temp_dir.path().to_path_buf();
         let fixture_dir = PathBuf::from("dummy");
 
-        let profile = WorkflowTestProfile {
-            workflow_path: "dummy".to_string(),
-            description: None,
-            expected_output: None,
-            city_gml_path: CityGmlPath::GmlFile("dummy".to_string()),
-            codelists_path: None,
-            schemas_path: None,
-            object_lists_path: None,
-            prcs: None,
-            intermediate_assertions: vec![],
-            summary_output: None,
-            expect_result_ok_file: None,
-            skip: false,
-            skip_reason: None,
-        };
+        let profile = create_dummy_profile();
 
         let ctx = TestContext::new(
             "test_json_filter".to_string(),
@@ -1460,21 +1354,7 @@ mod tests {
         let test_dir = temp_dir.path().to_path_buf();
         let fixture_dir = PathBuf::from("dummy");
 
-        let profile = WorkflowTestProfile {
-            workflow_path: "dummy".to_string(),
-            description: None,
-            expected_output: None,
-            city_gml_path: CityGmlPath::GmlFile("dummy".to_string()),
-            codelists_path: None,
-            schemas_path: None,
-            object_lists_path: None,
-            prcs: None,
-            intermediate_assertions: vec![],
-            summary_output: None,
-            expect_result_ok_file: None,
-            skip: false,
-            skip_reason: None,
-        };
+        let profile = create_dummy_profile();
 
         let ctx = TestContext::new(
             "test_csv_comparison".to_string(),

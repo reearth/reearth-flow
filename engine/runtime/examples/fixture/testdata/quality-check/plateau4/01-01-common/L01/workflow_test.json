@@ -1,13 +1,27 @@
 {
-  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "description": "Test quality check for L01. Intentionally malformed XML with unclosed tag causes null pointer errors and workflow failure.",
-  "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "objectListsPath": "16211_city_2024_objectlist_op.xlsx",
+  "skip": true,
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/54377074_bldg_6697_op.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "01_共通_L01エラー.csv"
   },
-  "expectResultOkFile": false,
-  "skip": true
+  "expectResultOkFile": false
 }

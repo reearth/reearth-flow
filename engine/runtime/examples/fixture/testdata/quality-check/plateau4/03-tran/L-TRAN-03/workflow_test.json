@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
   "description": "Test for plateau4 L-TRAN-03 inspection.",
+  "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/tran/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "03_交通_xlink参照エラー.csv"
   },
@@ -18,10 +40,5 @@
       ]
     }
   },
-  "cityGmlPath": "udx/tran/input.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "expectResultOkFile": false,
-  "prcs": 6677,
-  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

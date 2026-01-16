@@ -1,6 +1,28 @@
 {
-  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
   "description": "Test for plateau4 05 surface orientation error.",
+  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/luse/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "05_土地利用_都市決定情報_区域_面の向き不正.csv"
   },
@@ -18,11 +40,5 @@
       ]
     }
   },
-  "cityGmlPath": "udx/luse/input.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "expectResultOkFile": false,
-  "skip": false,
-  "prcs": 6677,
-  "objectListsPath": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }
