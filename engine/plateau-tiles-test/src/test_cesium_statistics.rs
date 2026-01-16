@@ -381,6 +381,16 @@ fn test_face_weighted_average_color(
         &flow_geometries.materials,
     )?;
 
+    // Check if colors should be treated as equivalent defaults
+    // Flow default: ~(0.7, 0.7, 0.7, 1.0), FME default: (1.0, 1.0, 1.0, 1.0)
+    let is_fme_default = is_near_default_color(&fme_avg_color, &[1.0, 1.0, 1.0, 1.0]);
+    let is_flow_default = is_near_default_color(&flow_avg_color, &[0.7, 0.7, 0.7, 1.0]);
+
+    if is_fme_default && is_flow_default {
+        // Both are default colors, treat as equivalent
+        return Ok(0.0);
+    }
+
     // Compare average colors with tolerance
     let color_tolerance = 0.02; // Allow 2% difference per channel (0-1 range)
     let color_diff = [
@@ -468,6 +478,15 @@ fn compute_face_weighted_average_color(
         weighted_color[2] / total_area,
         weighted_color[3] / total_area,
     ])
+}
+
+/// Check if a color is close to a default color (within 5% tolerance per channel)
+fn is_near_default_color(color: &[f32; 4], default: &[f32; 4]) -> bool {
+    const DEFAULT_TOLERANCE: f32 = 0.05;
+    (color[0] - default[0]).abs() <= DEFAULT_TOLERANCE
+        && (color[1] - default[1]).abs() <= DEFAULT_TOLERANCE
+        && (color[2] - default[2]).abs() <= DEFAULT_TOLERANCE
+        && (color[3] - default[3]).abs() <= DEFAULT_TOLERANCE
 }
 
 /// Compute face color as material base color × average vertex color
