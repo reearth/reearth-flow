@@ -1,8 +1,9 @@
-use reearth_flow_geometry::types::{multi_polygon::MultiPolygon3D, polygon::Polygon3D};
+use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
-    extract_feature_properties, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, traverse_scene, Transform,
+    extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
+    read_positions_with_transform, read_vertex_colors, traverse_scene, Transform,
 };
+use reearth_flow_types::material::Material;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -19,10 +20,10 @@ pub struct TilesetInfo {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct DetailLevel {
-    pub(crate) multipolygon: MultiPolygon3D<f64>,
     pub(crate) geometric_error: f64,
     pub(crate) source_idx: Option<u32>,
     pub(crate) texture_name: Option<String>,
+    pub(crate) triangles: Vec<[usize; 3]>,
 }
 
 /// Find top-level 3D Tiles directories (directories containing tileset.json)
@@ -133,16 +134,53 @@ pub fn collect_glb_paths_from_tileset(tileset_dir: &Path) -> Result<Vec<PathBuf>
     Ok(glb_paths)
 }
 
-struct GeometryCollector {
+pub(crate) struct GeometryCollector {
     tileset_dir: PathBuf,
-    result: HashMap<String, Vec<DetailLevel>>,
+    pub(crate) vertex_positions: Vec<Coordinate>,
+    pub(crate) vertex_colors: Option<Vec<[f32; 4]>>,
+    pub(crate) vertex_materials: Option<Vec<u32>>,
+    pub(crate) materials: Vec<Material>,
+    pub(crate) detail_levels: HashMap<String, Vec<DetailLevel>>,
 }
 
 impl GeometryCollector {
     fn new(tileset_dir: PathBuf) -> Self {
         Self {
             tileset_dir,
-            result: HashMap::new(),
+            vertex_positions: Vec::new(),
+            vertex_colors: None,
+            vertex_materials: None,
+            materials: Vec::new(),
+            detail_levels: HashMap::new(),
+        }
+    }
+
+    /// Helper to append vertex attribute data, handling backfill when attributes appear mid-collection
+    fn append_vertex_attribute<T: Clone>(
+        existing: &mut Option<Vec<T>>,
+        new_data: Option<Vec<T>>,
+        vertex_offset: usize,
+        new_vertex_count: usize,
+        default_value: T,
+    ) {
+        match (existing.as_mut(), new_data) {
+            (Some(existing_vec), Some(new_vec)) => {
+                // Both exist - just append
+                existing_vec.extend(new_vec);
+            }
+            (None, Some(new_vec)) => {
+                // First primitive with this attribute - backfill previous vertices with default
+                let mut vec = vec![default_value; vertex_offset];
+                vec.extend(new_vec);
+                *existing = Some(vec);
+            }
+            (Some(existing_vec), None) => {
+                // Current primitive lacks this attribute - extend with default
+                existing_vec.extend(vec![default_value; new_vertex_count]);
+            }
+            (None, None) => {
+                // No attribute in either - no action needed
+            }
         }
     }
 
@@ -270,9 +308,49 @@ impl GeometryCollector {
         let indices = read_indices(&indices, buffer_data)
             .map_err(|e| format!("Failed to read indices: {}", e))?;
 
-        // Extract texture information if present
-        let material = primitive.material();
-        let texture_info = material
+        let vertex_colors = primitive
+            .get(&::gltf::Semantic::Colors(0))
+            .map(|accessor| read_vertex_colors(&accessor, buffer_data))
+            .transpose()
+            .map_err(|e| format!("Failed to read vertex colors: {}", e))?;
+
+        // Calculate vertex offset for appending to existing vertex arrays
+        let vertex_offset = self.vertex_positions.len();
+        let new_vertex_count = positions.len();
+
+        // Calculate material offset - the index where this primitive's material will be stored
+        let material_offset = self.materials.len() as u32;
+
+        // Append new vertex data instead of replacing
+        self.vertex_positions.extend(positions);
+
+        // Use helper to append optional vertex attributes with proper backfilling
+        Self::append_vertex_attribute(
+            &mut self.vertex_colors,
+            vertex_colors,
+            vertex_offset,
+            new_vertex_count,
+            [1.0, 1.0, 1.0, 1.0], // Default white color
+        );
+
+        // In glTF, materials are per-primitive, not per-vertex.
+        // All vertices in this primitive use the same material at material_offset.
+        let vertex_materials_for_primitive = vec![material_offset; new_vertex_count];
+        Self::append_vertex_attribute(
+            &mut self.vertex_materials,
+            Some(vertex_materials_for_primitive),
+            vertex_offset,
+            new_vertex_count,
+            material_offset, // Default to this primitive's material
+        );
+
+        // Extract and store material information
+        let gltf_material = primitive.material();
+        let flow_material = material_from_gltf(&gltf_material)
+            .map_err(|e| format!("Failed to extract material from {:?}: {}", glb_path, e))?;
+        self.materials.push(flow_material);
+
+        let texture_info = gltf_material
             .pbr_metallic_roughness()
             .base_color_texture()
             .map(|tex_info| {
@@ -286,8 +364,8 @@ impl GeometryCollector {
                 (source_idx, texture_name)
             });
 
-        // Split triangles by feature ID
-        let mut feature_polygons: HashMap<u32, Vec<Polygon3D<f64>>> = HashMap::new();
+        // Group triangles by feature ID, offsetting indices by vertex_offset
+        let mut feature_triangles: HashMap<u32, Vec<[usize; 3]>> = HashMap::new();
 
         if !indices.len().is_multiple_of(3) {
             return Err(format!(
@@ -310,32 +388,31 @@ impl GeometryCollector {
                 glb_path
             );
 
-            let triangle = vec![
-                positions[idx0],
-                positions[idx1],
-                positions[idx2],
-                positions[idx0],
-            ];
-            feature_polygons
-                .entry(fid0)
-                .or_default()
-                .push(Polygon3D::new(triangle.into(), vec![]));
+            // Offset indices to account for previously appended vertices
+            feature_triangles.entry(fid0).or_default().push([
+                idx0 + vertex_offset,
+                idx1 + vertex_offset,
+                idx2 + vertex_offset,
+            ]);
         }
 
-        for (feature_id, polygons) in feature_polygons {
+        for (feature_id, triangles) in feature_triangles {
             let gml_id = Self::lookup_gml_id(feature_id, feature_list, glb_path)?;
             let (source_idx, texture_name) = match texture_info.clone() {
                 Some((idx, name)) => (Some(idx), name),
                 None => (None, None),
             };
 
-            // Just append - features are added in depth order as we traverse the tree
-            self.result.entry(gml_id).or_default().push(DetailLevel {
-                multipolygon: MultiPolygon3D::new(polygons),
+            let detail_level = DetailLevel {
                 geometric_error,
                 source_idx,
                 texture_name,
-            });
+                triangles,
+            };
+            self.detail_levels
+                .entry(gml_id)
+                .or_default()
+                .push(detail_level);
         }
 
         Ok(())
@@ -358,9 +435,7 @@ impl GeometryCollector {
     }
 }
 
-pub fn collect_geometries_by_gmlid(
-    tileset_dir: &Path,
-) -> Result<HashMap<String, Vec<DetailLevel>>, String> {
+pub fn collect_geometries_by_gmlid(tileset_dir: &Path) -> Result<GeometryCollector, String> {
     let tileset_info = load_tileset(tileset_dir)?;
     let mut collector = GeometryCollector::new(tileset_dir.to_path_buf());
 
@@ -368,5 +443,5 @@ pub fn collect_geometries_by_gmlid(
         collector.process_tile(root)?;
     }
 
-    Ok(collector.result)
+    Ok(collector)
 }

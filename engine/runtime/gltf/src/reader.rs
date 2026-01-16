@@ -169,6 +169,55 @@ pub fn read_positions(
     read_positions_with_transform(accessor, buffer_data, None)
 }
 
+/// Read vertex colors from COLOR_0 accessor (supports Vec3 and Vec4)
+pub fn read_vertex_colors(
+    accessor: &gltf::Accessor,
+    buffer_data: &[Vec<u8>],
+) -> Result<Vec<[f32; 4]>, GltfReaderError> {
+    let view = accessor.view().ok_or_else(|| {
+        GltfReaderError::Accessor("Color accessor has no buffer view".to_string())
+    })?;
+
+    let buffer = &buffer_data[view.buffer().index()];
+    let start = view.offset() + accessor.offset();
+    let stride = view.stride().unwrap_or(accessor.size());
+    let mut colors = Vec::new();
+
+    match (accessor.data_type(), accessor.dimensions()) {
+        (gltf::accessor::DataType::F32, gltf::accessor::Dimensions::Vec4) => {
+            for i in 0..accessor.count() {
+                let offset = start + i * stride;
+                colors.push([
+                    read_f32(buffer, offset)?,
+                    read_f32(buffer, offset + 4)?,
+                    read_f32(buffer, offset + 8)?,
+                    read_f32(buffer, offset + 12)?,
+                ]);
+            }
+        }
+        (gltf::accessor::DataType::F32, gltf::accessor::Dimensions::Vec3) => {
+            for i in 0..accessor.count() {
+                let offset = start + i * stride;
+                colors.push([
+                    read_f32(buffer, offset)?,
+                    read_f32(buffer, offset + 4)?,
+                    read_f32(buffer, offset + 8)?,
+                    1.0,
+                ]);
+            }
+        }
+        _ => {
+            return Err(GltfReaderError::Accessor(format!(
+                "Unsupported color format: {:?} {:?}",
+                accessor.data_type(),
+                accessor.dimensions()
+            )))
+        }
+    }
+
+    Ok(colors)
+}
+
 /// Read triangle indices from an accessor (supports U8, U16, U32)
 pub fn read_indices(
     accessor: &gltf::Accessor,
@@ -247,6 +296,44 @@ pub(crate) fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderEr
     let mut array = [0u8; 4];
     array.copy_from_slice(bytes);
     Ok(u32::from_le_bytes(array))
+}
+
+/// Convert gltf::Material to reearth_flow_types::material::Material
+pub fn material_from_gltf(
+    gltf_material: &gltf::Material,
+) -> Result<reearth_flow_types::material::Material, GltfReaderError> {
+    use reearth_flow_types::material::{Material, Texture};
+
+    let pbr = gltf_material.pbr_metallic_roughness();
+    let base_color = pbr.base_color_factor();
+
+    let base_texture = match pbr.base_color_texture() {
+        Some(tex_info) => {
+            let texture = tex_info.texture();
+            let source = texture.source();
+
+            match source.source() {
+                gltf::image::Source::Uri { uri, .. } => {
+                    let url = url::Url::parse(uri)
+                        .or_else(|_| url::Url::from_file_path(uri).map_err(|_| ()))
+                        .map_err(|_| {
+                            GltfReaderError::Parse(format!("Invalid texture URI: {uri}"))
+                        })?;
+                    Some(Texture { uri: url })
+                }
+                gltf::image::Source::View { .. } => {
+                    // Embedded texture - skip for now
+                    None
+                }
+            }
+        }
+        None => None,
+    };
+
+    Ok(Material {
+        base_color,
+        base_texture,
+    })
 }
 
 /// Parse GLTF from bytes
