@@ -32,6 +32,7 @@ type OverlayUIProps = {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
+  selectedNodeIds: string[];
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
@@ -69,6 +70,10 @@ type OverlayUIProps = {
   onProjectExport: () => void;
   onProjectShare: (share: boolean) => void;
   onDebugRunStart: () => Promise<void>;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
@@ -83,6 +88,7 @@ type OverlayUIProps = {
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
   nodePickerOpen,
+  selectedNodeIds,
   canUndo,
   canRedo,
   isMainWorkflow,
@@ -110,6 +116,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onProjectExport,
   onProjectShare,
   onDebugRunStart,
+  onDebugRunStartFromSelectedNode,
   onDebugRunStop,
   onDebugRunVariableValueChange,
   onDebugRunJoin,
@@ -163,33 +170,31 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           />
         </div>
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
-          {isMainWorkflow && (
-            <div
-              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
-              <DebugActionBar
-                activeUsersDebugRuns={activeUsersDebugRuns}
-                onDebugRunJoin={onDebugRunJoin}
-                onDebugRunStart={onDebugRunStart}
-                onDebugRunStop={onDebugRunStop}
-                customDebugRunWorkflowVariables={
-                  customDebugRunWorkflowVariables
-                }
-                onDebugRunVariableValueChange={onDebugRunVariableValueChange}
-              />
-              <div className="h-4/5 border-r" />
-              <ActionBar
-                allowedToDeploy={allowedToDeploy}
-                isSaving={isSaving}
-                showDialog={showDialog}
-                onDialogOpen={handleDialogOpen}
-                onDialogClose={handleDialogClose}
-                onProjectShare={onProjectShare}
-                onProjectExport={onProjectExport}
-                onWorkflowDeployment={onWorkflowDeployment}
-                onProjectSnapshotSave={onProjectSnapshotSave}
-              />
-            </div>
-          )}
+          <div
+            className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+            <DebugActionBar
+              activeUsersDebugRuns={activeUsersDebugRuns}
+              selectedNodeIds={selectedNodeIds}
+              onDebugRunJoin={onDebugRunJoin}
+              onDebugRunStart={onDebugRunStart}
+              onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+              onDebugRunStop={onDebugRunStop}
+              customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+              onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+            />
+            <div className="h-4/5 border-r" />
+            <ActionBar
+              allowedToDeploy={allowedToDeploy}
+              isSaving={isSaving}
+              showDialog={showDialog}
+              onDialogOpen={handleDialogOpen}
+              onDialogClose={handleDialogClose}
+              onProjectShare={onProjectShare}
+              onProjectExport={onProjectExport}
+              onWorkflowDeployment={onWorkflowDeployment}
+              onProjectSnapshotSave={onProjectSnapshotSave}
+            />
+          </div>
         </div>
         {showDialog === "version" && (
           <VersionDialog
@@ -217,7 +222,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         </div>
         <div
           id="right-bottom-canvas-action-bar"
-          className="pointer-events-none absolute bottom-2 right-2 z-10">
+          className="pointer-events-none absolute right-2 bottom-2 z-10">
           <div className="pointer-events-auto">
             <CanvasActionBar />
           </div>

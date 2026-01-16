@@ -76,6 +76,7 @@ export default function Editor({
     handleWorkflowRename,
     handleWorkflowAddFromSelection,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
     handleCopy,
@@ -88,6 +89,7 @@ export default function Editor({
     handleNodesDisable,
     handlePaneClick,
     setShowSearchPanel,
+    selectedNodeIds,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -119,6 +121,7 @@ export default function Editor({
           style={{ borderColor: spotlightUser?.color || "" }}>
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
+            selectedNodeIds={selectedNodeIds}
             project={currentProject}
             yDoc={yDoc}
             self={self}
@@ -145,6 +148,9 @@ export default function Editor({
             onProjectExport={handleCurrentProjectExport}
             onWorkflowDeployment={handleWorkflowDeployment}
             onDebugRunStart={handleDebugRunStart}
+            onDebugRunStartFromSelectedNode={
+              handleFromSelectedNodeDebugRunStart
+            }
             onDebugRunStop={handleDebugRunStop}
             onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
             onProjectSnapshotSave={handleProjectSnapshotSave}
@@ -178,6 +184,9 @@ export default function Editor({
               onPaneMouseMove={handlePaneMouseMove}
               onNodesDisable={handleNodesDisable}
               onPaneClick={handlePaneClick}
+              onDebugRunStartFromSelectedNode={
+                handleFromSelectedNodeDebugRunStart
+              }
             />
           </OverlayUI>
 
