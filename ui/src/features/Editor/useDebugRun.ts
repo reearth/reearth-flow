@@ -8,7 +8,7 @@ import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
-import type { AnyWorkflowVariable, Workflow } from "@flow/types";
+import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { toast } from "../NotificationSystem/useToast";
@@ -16,9 +16,11 @@ import { toast } from "../NotificationSystem/useToast";
 export default ({
   rawWorkflows,
   yAwareness,
+  selectedNodeIds,
 }: {
   rawWorkflows: Workflow[];
   yAwareness: Awareness;
+  selectedNodeIds: string[];
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
@@ -51,22 +53,17 @@ export default ({
     });
   }, [workflowVariables]);
 
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes } = useReactFlow();
 
   const { runProject } = useProject();
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
-  console.log("RWS:", rawWorkflows);
-  console.log(
-    "DEBUG RUN IDS:",
-    debugRunState?.jobs?.map((j) => j.jobId),
-  );
+
   const debugJob = debugRunState?.jobs?.find(
     (job) => job.projectId === currentProject?.id,
   );
 
-  console.log("CURRENT DEBUG JOB:", debugJob?.jobId);
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
     const engineReadyWorkflow = createEngineReadyWorkflow(
@@ -127,69 +124,86 @@ export default ({
     runProject,
   ]);
 
-  // const handleFromSelectedNodeDebugRunStart = useCallback(async () => {
-  //   if (!currentProject) return;
+  const handleFromSelectedNodeDebugRunStart = useCallback(
+    async (node?: Node, nodes?: Node[]) => {
+      if (!currentProject) return;
 
-  //   const engineReadyWorkflow = createEngineReadyWorkflow(
-  //     currentProject.name,
-  //     customDebugRunWorkflowVariables,
-  //     rawWorkflows,
-  //   );
+      const selectedNode = node
+        ? node
+        : nodes
+          ? nodes[0]
+          : getNodes().find((node) => node.id === selectedNodeIds[0]);
 
-  //   if (!engineReadyWorkflow) return;
+      if (!selectedNode) return;
 
-  //   const data = await runProject(
-  //     currentProject.id,
-  //     currentProject.workspaceId,
-  //     engineReadyWorkflow,
-  //     debugJob?.jobId,
-  //     "edc8e173-c1b3-4403-9cec-2a6afb4390eb",
-  //   );
+      if (!debugJob?.jobId) return;
 
-  //   if (data.job) {
-  //     let jobs: JobState[] = debugRunState?.jobs || [];
+      const engineReadyWorkflow = createEngineReadyWorkflow(
+        currentProject.name,
+        customDebugRunWorkflowVariables,
+        rawWorkflows,
+      );
 
-  //     if (!data.job.id) {
-  //       jobs =
-  //         debugRunState?.jobs?.filter(
-  //           (job) => job.projectId !== currentProject.id,
-  //         ) || [];
-  //     } else if (
-  //       debugRunState?.jobs?.some((job) => job.projectId === currentProject.id)
-  //     ) {
-  //       jobs = debugRunState.jobs.map((job) => {
-  //         if (job.projectId === currentProject.id && data.job) {
-  //           return {
-  //             projectId: currentProject.id,
-  //             jobId: data.job.id,
-  //             status: data.job.status,
-  //           };
-  //         }
-  //         return job;
-  //       });
-  //     } else {
-  //       jobs.push({
-  //         projectId: currentProject.id,
-  //         jobId: data.job.id,
-  //         status: data.job.status,
-  //       });
-  //     }
-  //     await updateValue({ jobs });
-  //     broadcastDebugRun(data.job.id, data.job.status);
+      if (!engineReadyWorkflow) return;
 
-  //     fitView({ duration: 400, padding: 0.5 });
-  //   }
-  // }, [
-  //   currentProject,
-  //   customDebugRunWorkflowVariables,
-  //   rawWorkflows,
-  //   broadcastDebugRun,
-  //   debugRunState?.jobs,
-  //   fitView,
-  //   updateValue,
-  //   debugJob,
-  //   runProject,
-  // ]);
+      const data = await runProject(
+        currentProject.id,
+        currentProject.workspaceId,
+        engineReadyWorkflow,
+        debugJob.jobId,
+        selectedNode.id,
+      );
+
+      if (data.job) {
+        let jobs: JobState[] = debugRunState?.jobs || [];
+
+        if (!data.job.id) {
+          jobs =
+            debugRunState?.jobs?.filter(
+              (job) => job.projectId !== currentProject.id,
+            ) || [];
+        } else if (
+          debugRunState?.jobs?.some(
+            (job) => job.projectId === currentProject.id,
+          )
+        ) {
+          jobs = debugRunState.jobs.map((job) => {
+            if (job.projectId === currentProject.id && data.job) {
+              return {
+                projectId: currentProject.id,
+                jobId: data.job.id,
+                status: data.job.status,
+              };
+            }
+            return job;
+          });
+        } else {
+          jobs.push({
+            projectId: currentProject.id,
+            jobId: data.job.id,
+            status: data.job.status,
+          });
+        }
+        await updateValue({ jobs });
+        broadcastDebugRun(data.job.id, data.job.status);
+
+        fitView({ duration: 400, padding: 0.5 });
+      }
+    },
+    [
+      currentProject,
+      customDebugRunWorkflowVariables,
+      rawWorkflows,
+      broadcastDebugRun,
+      debugRunState?.jobs,
+      fitView,
+      updateValue,
+      debugJob,
+      runProject,
+      getNodes,
+      selectedNodeIds,
+    ],
+  );
 
   const handleDebugRunStop = useCallback(async () => {
     const debugJob = debugRunState?.jobs?.find(
@@ -273,6 +287,7 @@ export default ({
     activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,

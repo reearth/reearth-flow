@@ -35,8 +35,10 @@ const tooltipOffset = 6;
 
 type Props = {
   activeUsersDebugRuns?: AwarenessUser[];
+  selectedNodeIds: string[];
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
+  onDebugRunStartFromSelectedNode: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
@@ -44,9 +46,11 @@ type Props = {
 
 const DebugActionBar: React.FC<Props> = ({
   activeUsersDebugRuns,
+  selectedNodeIds,
   customDebugRunWorkflowVariables,
   onDebugRunJoin,
   onDebugRunStart,
+  onDebugRunStartFromSelectedNode,
   onDebugRunStop,
   onDebugRunVariableValueChange,
 }) => {
@@ -69,11 +73,11 @@ const DebugActionBar: React.FC<Props> = ({
     onDebugRunStop,
     customDebugRunWorkflowVariables,
   });
-
   return (
     <div className="flex items-center gap-2 align-middle">
       <StartButton
         debugRunStarted={debugRunStarted}
+        selectedNodeIds={selectedNodeIds}
         onShowDebugStartPopover={handleShowDebugStartPopover}
         onShowDebugWorkflowVariablesDialog={
           handleShowDebugWorkflowVariablesDialog
@@ -81,6 +85,7 @@ const DebugActionBar: React.FC<Props> = ({
         showPopover={showOverlayElement}
         onPopoverClose={handlePopoverClose}
         onDebugRunStart={handleDebugRunStart}
+        onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
       />
       <StopButton
         jobStatus={jobStatus}
@@ -126,15 +131,19 @@ export default memo(DebugActionBar);
 
 const StartButton: React.FC<{
   debugRunStarted: boolean;
+  selectedNodeIds: string[];
   showPopover: string | undefined;
   onShowDebugStartPopover: () => void;
   onShowDebugWorkflowVariablesDialog: () => void;
   onDebugRunStart: () => Promise<void>;
+  onDebugRunStartFromSelectedNode: () => Promise<void>;
   onPopoverClose: () => void;
 }> = ({
   debugRunStarted,
+  selectedNodeIds,
   showPopover,
   onDebugRunStart,
+  onDebugRunStartFromSelectedNode,
   onShowDebugStartPopover,
   onPopoverClose,
 }) => {
@@ -253,9 +262,10 @@ const StartButton: React.FC<{
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center justify-between"
+            disabled={selectedNodeIds.length === 0 || !debugJobId}
             onClick={() => {
               setTimeout(() => {
-                onShowDebugStartPopover();
+                onDebugRunStartFromSelectedNode();
               }, 180);
             }}>
             <div className="flex items-center gap-1">

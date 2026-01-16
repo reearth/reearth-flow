@@ -253,6 +253,7 @@ export default ({
   const {
     customDebugRunWorkflowVariables,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
@@ -260,6 +261,7 @@ export default ({
   } = useDebugRun({
     rawWorkflows,
     yAwareness,
+    selectedNodeIds,
   });
 
   const handleBeforeDeleteNodes = useCallback(
@@ -440,6 +442,7 @@ export default ({
     handleLayoutChange,
     handleDeleteDialogClose,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleCopy,
     handleCut,
@@ -449,6 +452,7 @@ export default ({
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
+    selectedNodeIds,
     setShowSearchPanel,
   };
 };
