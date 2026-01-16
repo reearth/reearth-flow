@@ -1,19 +1,19 @@
 id: a8062ae8-f2a9-11f0-8ef7-7c70db10a7e3
-name: PLATEAU4-quality-check-10-other-structures-main
+name: PLATEAU4-quality-check-10-other-structures-workflow
 entryGraphId: b8062ae8-f2a9-11f0-8ef7-7c70db10a7e4
 with:
   cityGmlPath: null
-  codelistsPath: null
-  codelists: null
-  schemasPath: null
-  schemas: null
-  objectListsPath: null
-  objectLists: null
+  codelistPath: null
+  codelist: null
+  schemaPath: null
+  schema: null
+  objectListPath: null
+  objectList: null
   workerArtifactPath: null
   destCoordSys: null
 graphs:
 - id: b8062ae8-f2a9-11f0-8ef7-7c70db10a7e4
-  name: PLATEAU4.GenericCityObjectQualityCheckMain
+  name: PLATEAU4.GenericCityObjectQualityCheck
   nodes:
   - id: c8062ae8-f2a9-11f0-8ef7-7c70db10a7e5
     name: InputRouter
@@ -36,23 +36,23 @@ graphs:
     type: subGraph
     subGraphId: f8062ae8-f2a9-11f0-8ef7-7c70db10a7e8
   - id: g8062ae8-f2a9-11f0-8ef7-7c70db10a7e9
-    name: PLATEAU4.SurfaceValidator2D
+    name: SurfaceValidator2D
     type: subGraph
     subGraphId: h8062ae8-f2a9-11f0-8ef7-7c70db10a7ea
   - id: i8062ae8-f2a9-11f0-8ef7-7c70db10a7eb
-    name: PLATEAU4.SurfaceValidator3D
+    name: SurfaceValidator3D
     type: subGraph
     subGraphId: j8062ae8-f2a9-11f0-8ef7-7c70db10a7ec
   - id: k8062ae8-f2a9-11f0-8ef7-7c70db10a7ed
-    name: PLATEAU4.SolidBoundaryValidator
+    name: SolidBoundaryValidator
     type: subGraph
     subGraphId: l8062ae8-f2a9-11f0-8ef7-7c70db10a7ee
   - id: m8062ae8-f2a9-11f0-8ef7-7c70db10a7ef
-    name: PLATEAU4.GmlNameValidation
+    name: GmlNameValidation
     type: subGraph
     subGraphId: n8062ae8-f2a9-11f0-8ef7-7c70db10a7f0
   - id: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
-    name: PLATEAU4.ResultAggregation
+    name: ResultAggregation
     type: subGraph
     subGraphId: p8062ae8-f2a9-11f0-8ef7-7c70db10a7f2
   - id: q8062ae8-f2a9-11f0-8ef7-7c70db10a7f3
