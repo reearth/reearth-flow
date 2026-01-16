@@ -135,6 +135,8 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             calculations,
             aggregate_buffer: HashMap::new(),
             global_params: with,
+            accumulated_features: Vec::new(),
+            accumulation_mode: params.accumulation_mode.unwrap_or(false),
         };
         Ok(Box::new(process))
     }
@@ -147,6 +149,8 @@ struct StatisticsCalculator {
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, NumericValue>>,
     global_params: Option<HashMap<String, serde_json::Value>>,
+    accumulated_features: Vec<Feature>,
+    accumulation_mode: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -170,6 +174,9 @@ struct StatisticsCalculatorParam {
     /// # Calculations
     /// List of statistical calculations to perform on grouped features
     calculations: Vec<Calculation>,
+
+    /// Accumulate all incoming feature and merge static computed with them
+    accumulation_mode: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -246,15 +253,24 @@ impl Processor for StatisticsCalculator {
                 }
             }
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), COMPLETE_PORT.clone()));
+
+        // Store the feature if accumulation_mode is enabled
+        if self.accumulation_mode {
+            self.accumulated_features.push(feature.clone());
+        } else {
+            // If not in accumulation mode, send the original feature through COMPLETE_PORT
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), COMPLETE_PORT.clone()));
+        }
+
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let mut features = HashMap::<String, HashMap<Attribute, NumericValue>>::new();
+        // Compute the final aggregated statistics
+        let mut aggregated_results = HashMap::<String, HashMap<Attribute, NumericValue>>::new();
         for (new_attribute, value) in &self.aggregate_buffer {
             for (aggregate_key, count) in value {
-                let current = features
+                let current = aggregated_results
                     .entry(aggregate_key.to_string())
                     .or_default()
                     .entry(new_attribute.clone())
@@ -262,31 +278,43 @@ impl Processor for StatisticsCalculator {
                 *current = current.add(*count);
             }
         }
-        for (aggregate_key, value) in features {
-            let mut feature = Feature::new();
 
-            // Add group_by attributes to the output feature
-            if let Some(group_by_attrs) = self.group_by.as_ref() {
-                let group_values: Vec<&str> = aggregate_key.split('|').collect();
-                for (attr, attr_value) in group_by_attrs.iter().zip(group_values.iter()) {
-                    feature.insert(attr, AttributeValue::String(attr_value.to_string()));
+        // In non-accumulation mode, send the aggregated results as separate features
+        for (aggregate_key, value) in aggregated_results {
+            let features = if self.accumulation_mode {
+                self.accumulated_features.clone()
+            } else {
+                vec![Feature::new()]
+            };
+
+            for mut feature in features {
+                // Add group_by attributes to the output feature
+                if let Some(group_by_attrs) = self.group_by.as_ref() {
+                    let group_values: Vec<&str> = aggregate_key.split('|').collect();
+                    for (attr, attr_value) in group_by_attrs.iter().zip(group_values.iter()) {
+                        feature
+                            .insert(attr.clone(), AttributeValue::String(attr_value.to_string()));
+                    }
                 }
-            }
 
-            // Add group_id if specified
-            if let Some(group_id) = self.group_id.as_ref() {
-                feature.insert(group_id, AttributeValue::String(aggregate_key.clone()));
-            }
+                // Add group_id if specified
+                if let Some(group_id) = self.group_id.as_ref() {
+                    feature.insert(
+                        group_id.clone(),
+                        AttributeValue::String(aggregate_key.clone()),
+                    );
+                }
 
-            // Add calculated statistics
-            for (new_attribute, count) in &value {
-                feature.insert(new_attribute.clone(), count.to_attribute_value());
+                // Add calculated statistics
+                for (new_attribute, count) in &value {
+                    feature.insert(new_attribute.clone(), count.to_attribute_value());
+                }
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    feature,
+                    DEFAULT_PORT.clone(),
+                ));
             }
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
         }
         Ok(())
     }

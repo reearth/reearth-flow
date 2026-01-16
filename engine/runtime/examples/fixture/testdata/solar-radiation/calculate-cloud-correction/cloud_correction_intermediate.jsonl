@@ -1,0 +1,24 @@
+{
+  "id": "5819bbc6-2855-49c5-98cb-41af4032617e",
+  "attributes": {
+    "year": 2018,
+    "daylight_hours": 151.24999999999997,
+    "daylight_hours_num": 7.5,
+    "transmissivity": 0.6825,
+    "max_daylight_hours": 378.9166666666667,
+    "sunshine_rate": 0.39916428414339117,
+    "cloud_rate": 0.6008357158566089,
+    "is_not_9999": 1,
+    "is_not_9999_sum": 1,
+    "join_key": "key"
+  },
+  "geometry": {
+    "epsg": null,
+    "value": "none"
+  },
+  "metadata": {
+    "featureId": null,
+    "featureType": null,
+    "lod": null
+  }
+}

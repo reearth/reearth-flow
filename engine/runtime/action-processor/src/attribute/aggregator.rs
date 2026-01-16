@@ -16,6 +16,79 @@ use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
 
+#[derive(Debug, Clone, Copy)]
+enum NumericValue {
+    Integer(i64),
+    Float(f64),
+}
+
+impl Default for NumericValue {
+    fn default() -> Self {
+        NumericValue::Integer(0)
+    }
+}
+
+impl NumericValue {
+    fn max(self, other: NumericValue) -> NumericValue {
+        match (self, other) {
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => NumericValue::Integer(a.max(b)),
+            (NumericValue::Float(a), NumericValue::Float(b)) => NumericValue::Float(a.max(b)),
+            (NumericValue::Integer(a), NumericValue::Float(b)) => {
+                NumericValue::Float((a as f64).max(b))
+            }
+            (NumericValue::Float(a), NumericValue::Integer(b)) => {
+                NumericValue::Float(a.max(b as f64))
+            }
+        }
+    }
+
+    fn min(self, other: NumericValue) -> NumericValue {
+        match (self, other) {
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => NumericValue::Integer(a.min(b)),
+            (NumericValue::Float(a), NumericValue::Float(b)) => NumericValue::Float(a.min(b)),
+            (NumericValue::Integer(a), NumericValue::Float(b)) => {
+                NumericValue::Float((a as f64).min(b))
+            }
+            (NumericValue::Float(a), NumericValue::Integer(b)) => {
+                NumericValue::Float(a.min(b as f64))
+            }
+        }
+    }
+
+    fn add(self, other: NumericValue) -> NumericValue {
+        match (self, other) {
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => NumericValue::Integer(a + b),
+            (NumericValue::Float(a), NumericValue::Float(b)) => NumericValue::Float(a + b),
+            (NumericValue::Integer(a), NumericValue::Float(b)) => NumericValue::Float(a as f64 + b),
+            (NumericValue::Float(a), NumericValue::Integer(b)) => NumericValue::Float(a + b as f64),
+        }
+    }
+
+    fn to_attribute_value(self) -> AttributeValue {
+        match self {
+            NumericValue::Integer(i) => AttributeValue::Number(serde_json::Number::from(i)),
+            NumericValue::Float(f) => {
+                if f.fract() == 0.0 {
+                    // If it's a whole number, try to convert to integer
+                    if f >= i64::MIN as f64 && f <= i64::MAX as f64 && f == f as i64 as f64 {
+                        AttributeValue::Number(serde_json::Number::from(f as i64))
+                    } else {
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(f)
+                                .unwrap_or_else(|| serde_json::Number::from(0)),
+                        )
+                    }
+                } else {
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(f)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    )
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeAggregatorFactory;
 
@@ -90,24 +163,69 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             }
         }
 
-        let calculation = if let Some(expr) = params.calculation {
-            let ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
-                AttributeProcessorError::AggregatorFactory(format!(
-                    "Failed to compile calculation: {e}"
-                ))
-            })?;
-            Some(ast)
+        // Handle both old single-calculation format and new multiple-calculations format
+        let mut compiled_calculations = Vec::new();
+
+        // If the new multiple calculations format is provided, use it
+        if let Some(multiple_calculations) = &params.calculations {
+            for calculation_param in multiple_calculations {
+                let calculation_ast = if let Some(expr) = &calculation_param.calculation {
+                    let ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
+                        AttributeProcessorError::AggregatorFactory(format!(
+                            "Failed to compile calculation: {e}"
+                        ))
+                    })?;
+                    Some(ast)
+                } else {
+                    None
+                };
+
+                compiled_calculations.push(CompiledCalculation {
+                    calculation: calculation_ast,
+                    calculation_value: calculation_param.calculation_value,
+                    calculation_attribute: calculation_param.calculation_attribute.clone(),
+                    method: calculation_param.method.clone(),
+                });
+            }
         } else {
-            None
-        };
+            // Use the old single calculation format for backward compatibility
+            let calculation_ast = if let Some(expr) = &params.calculation {
+                let ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
+                    AttributeProcessorError::AggregatorFactory(format!(
+                        "Failed to compile calculation: {e}"
+                    ))
+                })?;
+                Some(ast)
+            } else {
+                None
+            };
+
+            // Check if required fields for single calculation exist
+            let calculation_attribute = params.calculation_attribute.ok_or_else(|| {
+                AttributeProcessorError::AggregatorFactory(
+                    "Missing required field `calculationAttribute` for single calculation format"
+                        .to_string(),
+                )
+            })?;
+
+            let method = params.method.ok_or_else(|| {
+                AttributeProcessorError::AggregatorFactory(
+                    "Missing required field `method` for single calculation format".to_string(),
+                )
+            })?;
+
+            compiled_calculations.push(CompiledCalculation {
+                calculation: calculation_ast,
+                calculation_value: params.calculation_value,
+                calculation_attribute,
+                method,
+            });
+        }
 
         let process = AttributeAggregator {
             global_params: with,
             aggregate_attributes,
-            calculation,
-            calculation_value: params.calculation_value,
-            calculation_attribute: params.calculation_attribute,
-            method: params.method,
+            calculations: compiled_calculations,
             buffer: HashMap::new(),
         };
         Ok(Box::new(process))
@@ -118,11 +236,21 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 struct AttributeAggregator {
     global_params: Option<HashMap<String, serde_json::Value>>,
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
-    calculation: Option<rhai::AST>,
-    calculation_value: Option<i64>,
-    calculation_attribute: Attribute,
-    method: Method,
-    buffer: HashMap<AttributeValue, i64>, // string is tab
+    calculations: Vec<CompiledCalculation>,
+    buffer: HashMap<AttributeValue, Vec<AggregationValue>>, // string is tab
+}
+
+/// Represents the aggregation value for each group
+#[derive(Debug, Clone)]
+enum AggregationValue {
+    Single(NumericValue),           // For max, min, count methods
+    SumAndCount(NumericValue, u64), // For average method (sum as NumericValue, count as u64)
+}
+
+impl Default for AggregationValue {
+    fn default() -> Self {
+        AggregationValue::Single(NumericValue::default())
+    }
 }
 
 /// # AttributeAggregator Parameters
@@ -130,16 +258,18 @@ struct AttributeAggregator {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeAggregatorParam {
-    /// # List of attributes to aggregate
+    /// # List of attributes to aggregate (grouping attributes)
     aggregate_attributes: Vec<AggregateAttribute>,
-    /// # Calculation to perform
+    /// # Calculations to perform (for backward compatibility)
     calculation: Option<Expr>,
-    /// # Value to use for calculation
+    /// # Value to use for calculation (for backward compatibility)
     calculation_value: Option<i64>,
-    /// # Attribute to store calculation result
-    calculation_attribute: Attribute,
-    /// # Method to use for aggregation
-    method: Method,
+    /// # Attribute to store calculation result (for backward compatibility)
+    calculation_attribute: Option<Attribute>,
+    /// # Method to use for aggregation (for backward compatibility)
+    method: Option<Method>,
+    /// # Multiple calculations to perform (new feature)
+    calculations: Option<Vec<Calculation>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -153,11 +283,32 @@ struct AggregateAttribute {
     attribute_value: Option<Expr>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct Calculation {
+    /// # Calculation to perform
+    calculation: Option<Expr>,
+    /// # Value to use for calculation
+    calculation_value: Option<i64>,
+    /// # Attribute to store calculation result
+    calculation_attribute: Attribute,
+    /// # Method to use for aggregation
+    method: Method,
+}
+
 #[derive(Debug, Clone)]
 struct CompliledAggregateAttribute {
     new_attribute: Attribute,
     attribute: Option<Attribute>,
     attribute_value: Option<rhai::AST>,
+}
+
+#[derive(Debug, Clone)]
+struct CompiledCalculation {
+    calculation: Option<rhai::AST>,
+    calculation_value: Option<i64>,
+    calculation_attribute: Attribute,
+    method: Method,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -174,6 +325,10 @@ enum Method {
     /// Count the number of features in the group
     #[serde(rename = "count")]
     Count,
+    /// # Average Value
+    /// Calculate the average value in the group
+    #[serde(rename = "avg")]
+    Average,
 }
 
 impl Processor for AttributeAggregator {
@@ -184,7 +339,7 @@ impl Processor for AttributeAggregator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -193,9 +348,8 @@ impl Processor for AttributeAggregator {
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
             if let Some(attribute) = &aggregate_attribute.attribute {
-                let result = feature.get(attribute).ok_or_else(|| {
-                    AttributeProcessorError::Aggregator(format!("Attribute not found: {attribute}"))
-                })?;
+                // Handle missing attributes gracefully by using a null value
+                let result = feature.get(attribute).unwrap_or(&AttributeValue::Null);
                 aggregates.push(result.clone());
                 continue;
             }
@@ -208,36 +362,86 @@ impl Processor for AttributeAggregator {
                 aggregates.push(dynamic_to_value(&result).into());
             }
         }
-        let calc = if let Some(value) = self.calculation_value {
-            value
-        } else if let Some(calculation) = &self.calculation {
-            scope.eval_ast::<i64>(calculation).map_err(|e| {
-                AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
-            })?
-        } else {
-            return Err(
-                AttributeProcessorError::Aggregator("Calculation not found".to_string()).into(),
-            );
-        };
         let key = AttributeValue::Array(aggregates);
+
+        // Initialize the aggregation vector if this key doesn't exist
         if !self.buffer.contains_key(&key) {
-            self.flush_buffer(ctx.as_context(), fw);
-            self.buffer.clear();
+            let mut agg_values = Vec::new();
+            for calculation in &self.calculations {
+                match &calculation.method {
+                    Method::Max => {
+                        agg_values.push(AggregationValue::Single(NumericValue::Integer(i64::MIN)))
+                    }
+                    Method::Min => {
+                        agg_values.push(AggregationValue::Single(NumericValue::Integer(i64::MAX)))
+                    }
+                    Method::Count => {
+                        agg_values.push(AggregationValue::Single(NumericValue::Integer(0)))
+                    }
+                    Method::Average => {
+                        agg_values.push(AggregationValue::SumAndCount(NumericValue::Integer(0), 0))
+                    }
+                }
+            }
+            self.buffer.insert(key.clone(), agg_values);
         }
-        match &self.method {
-            Method::Max => {
-                let value = self.buffer.entry(key).or_insert(0);
-                *value = std::cmp::max(*value, calc);
-            }
-            Method::Min => {
-                let value = self.buffer.entry(key).or_insert(i64::MAX);
-                *value = std::cmp::min(*value, calc);
-            }
-            Method::Count => {
-                let value = self.buffer.entry(key).or_insert(0);
-                *value += calc;
+
+        let agg_values = self.buffer.get_mut(&key).unwrap();
+
+        // Process each calculation
+        for (i, calculation) in self.calculations.iter().enumerate() {
+            let calc_value = if let Some(value) = calculation.calculation_value {
+                NumericValue::Integer(value)
+            } else if let Some(calculation_ast) = &calculation.calculation {
+                // Try to evaluate as f64 first, then fall back to i64
+                let eval_result = scope.eval_ast::<f64>(calculation_ast);
+                match eval_result {
+                    Ok(eval) => NumericValue::Float(eval),
+                    Err(_) => {
+                        // If f64 evaluation fails, try i64
+                        let eval_result = scope.eval_ast::<i64>(calculation_ast);
+                        match eval_result {
+                            Ok(eval) => NumericValue::Integer(eval),
+                            Err(_) => {
+                                // If both evaluations fail, treat as 0.0 to handle missing attributes gracefully
+                                NumericValue::Float(0.0)
+                            }
+                        }
+                    }
+                }
+            } else {
+                return Err(AttributeProcessorError::Aggregator(
+                    "Calculation not found".to_string(),
+                )
+                .into());
+            };
+
+            match &calculation.method {
+                Method::Max => {
+                    if let AggregationValue::Single(ref mut value) = agg_values[i] {
+                        *value = value.max(calc_value);
+                    }
+                }
+                Method::Min => {
+                    if let AggregationValue::Single(ref mut value) = agg_values[i] {
+                        *value = value.min(calc_value);
+                    }
+                }
+                Method::Count => {
+                    if let AggregationValue::Single(ref mut value) = agg_values[i] {
+                        *value = value.add(calc_value);
+                    }
+                }
+                Method::Average => {
+                    if let AggregationValue::SumAndCount(ref mut sum, ref mut count) = agg_values[i]
+                    {
+                        *sum = sum.add(calc_value);
+                        *count += 1;
+                    }
+                }
             }
         }
+
         Ok(())
     }
 
@@ -253,7 +457,7 @@ impl Processor for AttributeAggregator {
 
 impl AttributeAggregator {
     pub(crate) fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
-        self.buffer.par_iter().for_each(|(key, value)| {
+        self.buffer.par_iter().for_each(|(key, values)| {
             let mut feature = Feature::new();
             let AttributeValue::Array(aggregates) = key else {
                 return;
@@ -264,10 +468,40 @@ impl AttributeAggregator {
                     aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
                 );
             }
-            feature.attributes.insert(
-                self.calculation_attribute.clone(),
-                AttributeValue::Number(serde_json::Number::from(*value)),
-            );
+
+            // Add all calculated values to the feature
+            for (i, calculation) in self.calculations.iter().enumerate() {
+                let final_value = match &values[i] {
+                    AggregationValue::Single(v) => v.to_attribute_value(),
+                    AggregationValue::SumAndCount(sum, count) => {
+                        if *count > 0 {
+                            match sum {
+                                NumericValue::Integer(int_sum) => {
+                                    let avg = *int_sum as f64 / *count as f64;
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(avg)
+                                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                                    )
+                                }
+                                NumericValue::Float(float_sum) => {
+                                    let avg = *float_sum / *count as f64;
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(avg)
+                                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                                    )
+                                }
+                            }
+                        } else {
+                            AttributeValue::Number(serde_json::Number::from(0))
+                        }
+                    }
+                };
+
+                feature
+                    .attributes
+                    .insert(calculation.calculation_attribute.clone(), final_value);
+            }
+
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 feature,
