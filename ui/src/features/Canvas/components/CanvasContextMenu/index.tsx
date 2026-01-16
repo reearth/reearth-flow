@@ -41,7 +41,7 @@ type Props = {
   onPaste?: (menuPosition?: XYPosition) => void;
   onNodesDisable?: (nodes?: Node[]) => void;
   onClose: () => void;
-  onDebugRunStartFromSelectedNode: (
+  onDebugRunStartFromSelectedNode?: (
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
@@ -257,7 +257,7 @@ const CanvasContextMenu: React.FC<Props> = ({
                 label: t("Run From Selected"),
                 icon: <FlowArrowIcon weight="light" />,
                 onCallback: wrapWithClose(() =>
-                  onDebugRunStartFromSelectedNode(node),
+                  onDebugRunStartFromSelectedNode?.(node),
                 ),
                 disabled:
                   Boolean(

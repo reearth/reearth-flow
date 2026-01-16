@@ -58,7 +58,7 @@ type Props = {
   onPaste?: () => void;
   onPaneMouseMove?: (e: MouseEvent) => void;
   onPaneClick?: (e: MouseEvent) => void;
-  onDebugRunStartFromSelectedNode: (
+  onDebugRunStartFromSelectedNode?: (
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
