@@ -1,10 +1,24 @@
 {
-  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "description": "Test quality check for L-frn-01",
-  "cityGmlPath": "udx/bldg/49303415_bldg_6697_op.gml",
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "objectListsPath": "43206_city_2024_objectlist_op.xlsx",
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/bldg/49303415_bldg_6697_op.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "43206_city_2024_objectlist_op.xlsx"
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "01_共通_L-frn-01エラー.csv"
   },
@@ -14,9 +28,11 @@
     },
     "fileErrorSummary": {
       "expectedFile": "01_共通.csv",
-      "excludeColumns": ["XML検証結果", "L02エラー"]
+      "excludeColumns": [
+        "XML検証結果",
+        "L02エラー"
+      ]
     }
   },
-  "expectResultOkFile": false,
-  "skip": false
+  "expectResultOkFile": false
 }
