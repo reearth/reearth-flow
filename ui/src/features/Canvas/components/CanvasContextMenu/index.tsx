@@ -269,19 +269,9 @@ const CanvasContextMenu: React.FC<Props> = ({
                   onDebugRunStartFromSelectedNode?.(node, nodes),
                 ),
                 disabled:
-                  Boolean(
-                    nodes?.find(
-                      (n) =>
-                        n.type === "batch" ||
-                        n.type === "note" ||
-                        n.type === "subworkflow" ||
-                        !isMainWorkflow,
-                    ),
-                  ) ||
-                  node?.type === "batch" ||
-                  node?.type === "note" ||
-                  node?.type === "subworkflow" ||
-                  !isMainWorkflow ||
+                  (node ?? nodes?.[0])?.type === "batch" ||
+                  (node ?? nodes?.[0])?.type === "note" ||
+                  (node ?? nodes?.[0])?.type === "subworkflow" ||
                   !debugJobId,
               },
             },
@@ -332,7 +322,6 @@ const CanvasContextMenu: React.FC<Props> = ({
     clipboardHasReadersOrWriters,
     containsReadersOrWriters,
     debugJobId,
-    isMainWorkflow,
     onCopy,
     onCut,
     onPaste,

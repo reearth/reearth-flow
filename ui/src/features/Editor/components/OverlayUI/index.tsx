@@ -170,37 +170,31 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           />
         </div>
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
-          {isMainWorkflow && (
-            <div
-              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
-              <DebugActionBar
-                activeUsersDebugRuns={activeUsersDebugRuns}
-                selectedNodeIds={selectedNodeIds}
-                onDebugRunJoin={onDebugRunJoin}
-                onDebugRunStart={onDebugRunStart}
-                onDebugRunStartFromSelectedNode={
-                  onDebugRunStartFromSelectedNode
-                }
-                onDebugRunStop={onDebugRunStop}
-                customDebugRunWorkflowVariables={
-                  customDebugRunWorkflowVariables
-                }
-                onDebugRunVariableValueChange={onDebugRunVariableValueChange}
-              />
-              <div className="h-4/5 border-r" />
-              <ActionBar
-                allowedToDeploy={allowedToDeploy}
-                isSaving={isSaving}
-                showDialog={showDialog}
-                onDialogOpen={handleDialogOpen}
-                onDialogClose={handleDialogClose}
-                onProjectShare={onProjectShare}
-                onProjectExport={onProjectExport}
-                onWorkflowDeployment={onWorkflowDeployment}
-                onProjectSnapshotSave={onProjectSnapshotSave}
-              />
-            </div>
-          )}
+          <div
+            className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+            <DebugActionBar
+              activeUsersDebugRuns={activeUsersDebugRuns}
+              selectedNodeIds={selectedNodeIds}
+              onDebugRunJoin={onDebugRunJoin}
+              onDebugRunStart={onDebugRunStart}
+              onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+              onDebugRunStop={onDebugRunStop}
+              customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+              onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+            />
+            <div className="h-4/5 border-r" />
+            <ActionBar
+              allowedToDeploy={allowedToDeploy}
+              isSaving={isSaving}
+              showDialog={showDialog}
+              onDialogOpen={handleDialogOpen}
+              onDialogClose={handleDialogClose}
+              onProjectShare={onProjectShare}
+              onProjectExport={onProjectExport}
+              onWorkflowDeployment={onWorkflowDeployment}
+              onProjectSnapshotSave={onProjectSnapshotSave}
+            />
+          </div>
         </div>
         {showDialog === "version" && (
           <VersionDialog

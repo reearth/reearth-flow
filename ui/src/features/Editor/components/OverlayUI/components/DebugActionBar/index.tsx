@@ -313,12 +313,12 @@ const DebugRunDropDownMenu: React.FC<{
   const t = useT();
 
   const { getNodes } = useReactFlow();
-  let selectedNode: Node | undefined = undefined;
-  if (selectedNodeIds.length > 0) {
-    selectedNode = getNodes().find((node) => node.id === selectedNodeIds[0]) as
-      | Node
-      | undefined;
-  }
+  const selectedNode =
+    selectedNodeIds.length > 0
+      ? (getNodes().find((node) => node.id === selectedNodeIds[0]) as
+          | Node
+          | undefined)
+      : undefined;
 
   return (
     <DropdownMenu>
