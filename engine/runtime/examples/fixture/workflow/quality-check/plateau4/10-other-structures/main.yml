@@ -1,0 +1,159 @@
+id: a8062ae8-f2a9-11f0-8ef7-7c70db10a7e3
+name: PLATEAU4-quality-check-10-other-structures-main
+entryGraphId: b8062ae8-f2a9-11f0-8ef7-7c70db10a7e4
+with:
+  cityGmlPath: null
+  codelistsPath: null
+  codelists: null
+  schemasPath: null
+  schemas: null
+  objectListsPath: null
+  objectLists: null
+  workerArtifactPath: null
+  destCoordSys: null
+graphs:
+- id: b8062ae8-f2a9-11f0-8ef7-7c70db10a7e4
+  name: PLATEAU4.GenericCityObjectQualityCheckMain
+  nodes:
+  - id: c8062ae8-f2a9-11f0-8ef7-7c70db10a7e5
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+  - id: d8062ae8-f2a9-11f0-8ef7-7c70db10a7e6
+    name: FeatureReader
+    type: action
+    action: FeatureReader
+    with:
+      dataset: |
+        env.get("__value")["cityGmlPath"]
+      featureTypes:
+        - GenericCityObject
+      format: citygml
+  - id: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    name: PLATEAU4.LODSplitterWithDm
+    type: subGraph
+    subGraphId: f8062ae8-f2a9-11f0-8ef7-7c70db10a7e8
+  - id: g8062ae8-f2a9-11f0-8ef7-7c70db10a7e9
+    name: PLATEAU4.SurfaceValidator2D
+    type: subGraph
+    subGraphId: h8062ae8-f2a9-11f0-8ef7-7c70db10a7ea
+  - id: i8062ae8-f2a9-11f0-8ef7-7c70db10a7eb
+    name: PLATEAU4.SurfaceValidator3D
+    type: subGraph
+    subGraphId: j8062ae8-f2a9-11f0-8ef7-7c70db10a7ec
+  - id: k8062ae8-f2a9-11f0-8ef7-7c70db10a7ed
+    name: PLATEAU4.SolidBoundaryValidator
+    type: subGraph
+    subGraphId: l8062ae8-f2a9-11f0-8ef7-7c70db10a7ee
+  - id: m8062ae8-f2a9-11f0-8ef7-7c70db10a7ef
+    name: PLATEAU4.GmlNameValidation
+    type: subGraph
+    subGraphId: n8062ae8-f2a9-11f0-8ef7-7c70db10a7f0
+  - id: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    name: PLATEAU4.ResultAggregation
+    type: subGraph
+    subGraphId: p8062ae8-f2a9-11f0-8ef7-7c70db10a7f2
+  - id: q8062ae8-f2a9-11f0-8ef7-7c70db10a7f3
+    name: FeatureWriterExcel
+    type: action
+    action: FeatureWriter
+    with:
+      format: excel
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "10_そのた構造物.xlsx")
+      template: |
+        file::join_path(env.get("workerArtifactPath"), "template.xlsx")
+  - id: r8062ae8-f2a9-11f0-8ef7-7c70db10a7f4
+    name: FeatureWriterShapefile
+    type: action
+    action: FeatureWriter
+    with:
+      format: shapefile
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "10_そのた構造物.shp")
+  - id: s8062ae8-f2a9-11f0-8ef7-7c70db10a7f5
+    name: FeatureWriterCsv
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "10_そのた構造物.csv")
+  edges:
+  - id: t8062ae8-f2a9-11f0-8ef7-7c70db10a7f6
+    from: c8062ae8-f2a9-11f0-8ef7-7c70db10a7e5
+    to: d8062ae8-f2a9-11f0-8ef7-7c70db10a7e6
+    fromPort: default
+    toPort: default
+  - id: u8062ae8-f2a9-11f0-8ef7-7c70db10a7f7
+    from: d8062ae8-f2a9-11f0-8ef7-7c70db10a7e6
+    to: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    fromPort: default
+    toPort: default
+  - id: v8062ae8-f2a9-11f0-8ef7-7c70db10a7f8
+    from: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    to: g8062ae8-f2a9-11f0-8ef7-7c70db10a7e9
+    fromPort: lod0
+    toPort: default
+  - id: w8062ae8-f2a9-11f0-8ef7-7c70db10a7f9
+    from: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    to: i8062ae8-f2a9-11f0-8ef7-7c70db10a7eb
+    fromPort: lod2
+    toPort: default
+  - id: x8062ae8-f2a9-11f0-8ef7-7c70db10a7fa
+    from: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    to: i8062ae8-f2a9-11f0-8ef7-7c70db10a7eb
+    fromPort: lod3
+    toPort: default
+  - id: y8062ae8-f2a9-11f0-8ef7-7c70db10a7fb
+    from: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    to: k8062ae8-f2a9-11f0-8ef7-7c70db10a7ed
+    fromPort: lod2
+    toPort: default
+  - id: z8062ae8-f2a9-11f0-8ef7-7c70db10a7fc
+    from: e8062ae8-f2a9-11f0-8ef7-7c70db10a7e7
+    to: k8062ae8-f2a9-11f0-8ef7-7c70db10a7ed
+    fromPort: lod3
+    toPort: default
+  - id: a9062ae8-f2a9-11f0-8ef7-7c70db10a7fd
+    from: d8062ae8-f2a9-11f0-8ef7-7c70db10a7e6
+    to: m8062ae8-f2a9-11f0-8ef7-7c70db10a7ef
+    fromPort: default
+    toPort: default
+  - id: b9062ae8-f2a9-11f0-8ef7-7c70db10a7fe
+    from: g8062ae8-f2a9-11f0-8ef7-7c70db10a7e9
+    to: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    fromPort: default
+    toPort: surface_validation_results
+  - id: c9062ae8-f2a9-11f0-8ef7-7c70db10a7ff
+    from: i8062ae8-f2a9-11f0-8ef7-7c70db10a7eb
+    to: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    fromPort: default
+    toPort: surface_validation_results
+  - id: d9062ae8-f2a9-11f0-8ef7-7c70db10a800
+    from: k8062ae8-f2a9-11f0-8ef7-7c70db10a7ed
+    to: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    fromPort: default
+    toPort: solid_validation_results
+  - id: e9062ae8-f2a9-11f0-8ef7-7c70db10a801
+    from: m8062ae8-f2a9-11f0-8ef7-7c70db10a7ef
+    to: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    fromPort: default
+    toPort: gml_name_validation_results
+  - id: f9062ae8-f2a9-11f0-8ef7-7c70db10a802
+    from: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    to: q8062ae8-f2a9-11f0-8ef7-7c70db10a7f3
+    fromPort: default
+    toPort: default
+  - id: g9062ae8-f2a9-11f0-8ef7-7c70db10a803
+    from: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    to: r8062ae8-f2a9-11f0-8ef7-7c70db10a7f4
+    fromPort: default
+    toPort: default
+  - id: h9062ae8-f2a9-11f0-8ef7-7c70db10a804
+    from: o8062ae8-f2a9-11f0-8ef7-7c70db10a7f1
+    to: s8062ae8-f2a9-11f0-8ef7-7c70db10a7f5
+    fromPort: default
+    toPort: default
