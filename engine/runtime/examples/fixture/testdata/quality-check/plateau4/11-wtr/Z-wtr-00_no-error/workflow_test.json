@@ -20,11 +20,17 @@
       },
       {
         "expectedFile": "summary_common2-wtr.json"
+      },
+      {
+        "expectedFile": "summary_wtr.json"
       }
     ],
     "fileErrorSummary": [
       {
         "expectedFile": "01_共通.csv"
+      },
+      {
+        "expectedFile": "11_水部_検査結果一覧.csv"
       }
     ]
   },

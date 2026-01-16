@@ -1,6 +1,6 @@
 {
   "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
-  "description": "Test quality check for solid errors",
+  "description": "Test quality check for invalid geometry type errors",
 
   "cityGmlPath": {
     "zip": {
@@ -14,7 +14,7 @@
   "prcs": 6670,
 
   "expectedOutput": {
-    "expectedFile": "11_水部_LOD2-3立体のエラー.csv"
+    "expectedFile": "11_水部_無効な空間属性の型.csv"
   },
   "summaryOutput": {
     "errorCountSummary": {
@@ -24,6 +24,6 @@
       "expectedFile": "11_水部_検査結果一覧.csv"
     }
   },
-  "expectResultOkFile": true,
-  "skip": true
+  "expectResultOkFile": false,
+  "skip": false
 }
