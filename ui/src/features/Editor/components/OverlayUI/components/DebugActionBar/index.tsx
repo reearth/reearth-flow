@@ -1,10 +1,12 @@
 import {
+  ArrowRightIcon,
   BroomIcon,
   CaretDownIcon,
-  FlowArrowIcon,
+  CircleIcon,
   PlayIcon,
   StopIcon,
 } from "@phosphor-icons/react";
+import { useReactFlow } from "@xyflow/react";
 import { memo, useMemo } from "react";
 
 import {
@@ -21,7 +23,7 @@ import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable, AwarenessUser } from "@flow/types";
+import { AnyWorkflowVariable, AwarenessUser, Node } from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
@@ -38,7 +40,10 @@ type Props = {
   selectedNodeIds: string[];
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
-  onDebugRunStartFromSelectedNode: () => Promise<void>;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
@@ -136,7 +141,10 @@ const StartButton: React.FC<{
   onShowDebugStartPopover: () => void;
   onShowDebugWorkflowVariablesDialog: () => void;
   onDebugRunStart: () => Promise<void>;
-  onDebugRunStartFromSelectedNode: () => Promise<void>;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onPopoverClose: () => void;
 }> = ({
   debugRunStarted,
@@ -224,57 +232,15 @@ const StartButton: React.FC<{
           />
         </PopoverContent>
       </Popover>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            className={`absolute top-0 left-9 w-2.5 transition-all duration-300 ease-in-out
-          ${
-            debugRunStarted || jobStatus
-              ? `left-15 h-[32px] ${
-                  jobStatus === "running" || jobStatus === "queued"
-                    ? "cursor-pointer opacity-100"
-                    : "opacity-90"
-                }`
-              : "w-2.5 opacity-70"
-          }
-        `}
-            tooltipText={t("Additional Debug Actions")}
-            tooltipOffset={tooltipOffset}
-            icon={<CaretDownIcon size={18} />}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className="min-w-42.5 bg-primary/50 backdrop-blur select-none"
-          align="start"
-          sideOffset={8}
-          alignOffset={-42}>
-          <DropdownMenuItem
-            className="flex items-center justify-between"
-            onClick={() => {
-              setTimeout(() => {
-                onShowDebugStartPopover();
-              }, 180);
-            }}>
-            <div className="flex items-center gap-1">
-              <PlayIcon weight="light" />
-              <p>{t("Run Workflow")}</p>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="flex items-center justify-between"
-            disabled={selectedNodeIds.length === 0 || !debugJobId}
-            onClick={() => {
-              setTimeout(() => {
-                onDebugRunStartFromSelectedNode();
-              }, 180);
-            }}>
-            <div className="flex items-center gap-1">
-              <FlowArrowIcon weight="light" />
-              <p>{t("Run From Selected")}</p>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <DebugRunDropDownMenu
+        debugRunStarted={debugRunStarted}
+        selectedNodeIds={selectedNodeIds}
+        jobStatus={jobStatus}
+        debugJobId={debugJobId}
+        showPopover={showPopover}
+        onShowDebugStartPopover={onShowDebugStartPopover}
+        onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+      />
     </div>
   );
 };
@@ -321,5 +287,102 @@ const StopButton: React.FC<{
         )}
       </PopoverContent>
     </Popover>
+  );
+};
+
+const DebugRunDropDownMenu: React.FC<{
+  debugRunStarted: boolean;
+  selectedNodeIds: string[];
+  showPopover: string | undefined;
+  jobStatus: string | undefined;
+  debugJobId: string | undefined;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
+
+  onShowDebugStartPopover: () => void;
+}> = ({
+  debugRunStarted,
+  selectedNodeIds,
+  jobStatus,
+  debugJobId,
+  onDebugRunStartFromSelectedNode,
+  onShowDebugStartPopover,
+}) => {
+  const t = useT();
+
+  const { getNodes } = useReactFlow();
+  let selectedNode: Node | undefined = undefined;
+  if (selectedNodeIds.length > 0) {
+    selectedNode = getNodes().find((node) => node.id === selectedNodeIds[0]) as
+      | Node
+      | undefined;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton
+          className={`absolute top-0 left-9 w-2.5 transition-all duration-300 ease-in-out
+          ${
+            debugRunStarted || jobStatus
+              ? `left-15 h-[32px] ${
+                  jobStatus === "running" || jobStatus === "queued"
+                    ? "cursor-pointer opacity-100"
+                    : "opacity-90"
+                }`
+              : "w-2.5 opacity-70"
+          }
+        `}
+          tooltipText={t("Additional Debug Actions")}
+          tooltipOffset={tooltipOffset}
+          icon={<CaretDownIcon size={18} weight="light" />}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="min-w-42.5 bg-primary/50 backdrop-blur select-none"
+        align="start"
+        sideOffset={8}
+        alignOffset={-42}>
+        <DropdownMenuItem
+          className="flex items-center justify-between"
+          onClick={() => {
+            setTimeout(() => {
+              onShowDebugStartPopover();
+            }, 180);
+          }}>
+          <div className="flex items-center gap-1">
+            <PlayIcon weight="light" />
+            <p>{t("Run Workflow")}</p>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="flex items-center justify-between"
+          disabled={
+            !selectedNode ||
+            selectedNode.type === "batch" ||
+            selectedNode.type === "note" ||
+            selectedNode.type === "subworkflow" ||
+            !debugJobId
+          }
+          onClick={() => {
+            setTimeout(() => {
+              onDebugRunStartFromSelectedNode?.(selectedNode);
+            }, 180);
+          }}>
+          <div className="flex items-center gap-1">
+            <div className="relative flex items-center">
+              <CircleIcon weight="fill" className="scale-60 transform" />
+              <ArrowRightIcon
+                weight="bold"
+                className="absolute left-1.25 scale-80 transform"
+              />
+            </div>
+            <p>{t("Run From Selected")}</p>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

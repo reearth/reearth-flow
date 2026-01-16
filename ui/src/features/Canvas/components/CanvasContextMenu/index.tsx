@@ -1,9 +1,10 @@
 import {
+  ArrowRightIcon,
+  CircleIcon,
   ClipboardIcon,
   CopyIcon,
   EyeIcon,
   EyeSlashIcon,
-  FlowArrowIcon,
   GearFineIcon,
   GraphIcon,
   ScissorsIcon,
@@ -255,16 +256,32 @@ const CanvasContextMenu: React.FC<Props> = ({
               type: "action" as const,
               props: {
                 label: t("Run From Selected"),
-                icon: <FlowArrowIcon weight="light" />,
+                icon: (
+                  <div className="relative flex items-center">
+                    <CircleIcon weight="fill" className="scale-75 transform" />
+                    <ArrowRightIcon
+                      weight="bold"
+                      className="absolute left-1.25 scale-75 transform"
+                    />
+                  </div>
+                ),
                 onCallback: wrapWithClose(() =>
-                  onDebugRunStartFromSelectedNode?.(node),
+                  onDebugRunStartFromSelectedNode?.(node, nodes),
                 ),
                 disabled:
                   Boolean(
-                    nodes?.find((n) => n.type === "batch" || n.type === "note"),
+                    nodes?.find(
+                      (n) =>
+                        n.type === "batch" ||
+                        n.type === "note" ||
+                        n.type === "subworkflow" ||
+                        !isMainWorkflow,
+                    ),
                   ) ||
                   node?.type === "batch" ||
                   node?.type === "note" ||
+                  node?.type === "subworkflow" ||
+                  !isMainWorkflow ||
                   !debugJobId,
               },
             },
@@ -315,6 +332,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     clipboardHasReadersOrWriters,
     containsReadersOrWriters,
     debugJobId,
+    isMainWorkflow,
     onCopy,
     onCut,
     onPaste,

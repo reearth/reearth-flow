@@ -16,11 +16,9 @@ import { toast } from "../NotificationSystem/useToast";
 export default ({
   rawWorkflows,
   yAwareness,
-  selectedNodeIds,
 }: {
   rawWorkflows: Workflow[];
   yAwareness: Awareness;
-  selectedNodeIds: string[];
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
@@ -53,7 +51,7 @@ export default ({
     });
   }, [workflowVariables]);
 
-  const { fitView, getNodes } = useReactFlow();
+  const { fitView } = useReactFlow();
 
   const { runProject } = useProject();
   const { useJobCancel } = useJob();
@@ -127,15 +125,8 @@ export default ({
   const handleFromSelectedNodeDebugRunStart = useCallback(
     async (node?: Node, nodes?: Node[]) => {
       if (!currentProject) return;
-
-      const selectedNode = node
-        ? node
-        : nodes
-          ? nodes[0]
-          : getNodes().find((node) => node.id === selectedNodeIds[0]);
-
+      const selectedNode = node ? node : nodes ? nodes[0] : undefined;
       if (!selectedNode) return;
-
       if (!debugJob?.jobId) return;
 
       const engineReadyWorkflow = createEngineReadyWorkflow(
@@ -200,8 +191,6 @@ export default ({
       updateValue,
       debugJob,
       runProject,
-      getNodes,
-      selectedNodeIds,
     ],
   );
 

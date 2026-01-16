@@ -70,7 +70,10 @@ type OverlayUIProps = {
   onProjectExport: () => void;
   onProjectShare: (share: boolean) => void;
   onDebugRunStart: () => Promise<void>;
-  onDebugRunStartFromSelectedNode: () => Promise<void>;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;

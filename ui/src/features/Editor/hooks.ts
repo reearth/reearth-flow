@@ -261,7 +261,6 @@ export default ({
   } = useDebugRun({
     rawWorkflows,
     yAwareness,
-    selectedNodeIds,
   });
 
   const handleBeforeDeleteNodes = useCallback(
