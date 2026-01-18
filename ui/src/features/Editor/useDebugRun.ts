@@ -45,7 +45,8 @@ export default ({
           (customVariable) =>
             customVariable.name === workflowVariable.name &&
             customVariable.type === workflowVariable.type &&
-            customVariable.defaultValue === workflowVariable.defaultValue,
+            JSON.stringify(customVariable.defaultValue) ===
+              JSON.stringify(workflowVariable.defaultValue),
         );
         return existingCustom || workflowVariable;
       });
