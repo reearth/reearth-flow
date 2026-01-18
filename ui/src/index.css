@@ -57,7 +57,7 @@
     --node-writer: oklch(60% 0.07 85.875); /* light olive/brown */
     --node-subworkflow: oklch(60% 0.16 310); /* light purple */
     /* Selected Node colors - brighter & more saturated */
-    --node-reader-selected: oklch(70% 0.20 230);
+    --node-reader-selected: oklch(70% 0.2 230);
     --node-transformer-selected: oklch(67% 0.25 15);
     --node-writer-selected: oklch(72% 0.18 85.875);
     --node-subworkflow-selected: oklch(65% 0.2 320);
@@ -97,7 +97,7 @@
     --node-writer: oklch(55% 0.08 85.875); /* softer olive/brown */
     --node-subworkflow: oklch(55% 0.18 310); /* softer purple */
     /* Selected Node colors - brighter pastels */
-    --node-reader-selected: oklch(65% 0.20 230);
+    --node-reader-selected: oklch(65% 0.2 230);
     --node-transformer-selected: oklch(63% 0.25 15);
     --node-writer-selected: oklch(68% 0.16 85.875);
     --node-subworkflow-selected: oklch(60% 0.22 320);
@@ -135,7 +135,7 @@
     --node-transformer: oklch(48% 0.15 15);
     --node-writer: oklch(55% 0.08 85.875);
     --node-subworkflow: oklch(55% 0.18 310);
-    --node-reader-selected: oklch(65% 0.20 230);
+    --node-reader-selected: oklch(65% 0.2 230);
     --node-transformer-selected: oklch(63% 0.25 15);
     --node-writer-selected: oklch(68% 0.16 85.875);
     --node-subworkflow-selected: oklch(60% 0.22 320);
@@ -174,7 +174,7 @@
     --node-transformer: oklch(48% 0.15 15);
     --node-writer: oklch(55% 0.08 85.875);
     --node-subworkflow: oklch(55% 0.18 310);
-    --node-reader-selected: oklch(65% 0.20 230);
+    --node-reader-selected: oklch(65% 0.2 230);
     --node-transformer-selected: oklch(63% 0.25 15);
     --node-writer-selected: oklch(68% 0.16 85.875);
     --node-subworkflow-selected: oklch(60% 0.22 320);
@@ -216,7 +216,7 @@
     --node-writer: oklch(55% 0.08 85.875); /* softer olive/brown */
     --node-subworkflow: oklch(55% 0.18 310); /* softer purple */
     /* Selected Node colors - brighter pastels */
-    --node-reader-selected: oklch(65% 0.20 230);
+    --node-reader-selected: oklch(65% 0.2 230);
     --node-transformer-selected: oklch(63% 0.25 15);
     --node-writer-selected: oklch(68% 0.16 85.875);
     --node-subworkflow-selected: oklch(60% 0.22 320);
