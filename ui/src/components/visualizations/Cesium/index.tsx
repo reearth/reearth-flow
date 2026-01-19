@@ -1,5 +1,10 @@
 // import { Viewer as CesiumViewerType } from "cesium";
-import { SceneMode } from "cesium";
+import {
+  defined,
+  SceneMode,
+  ScreenSpaceEventHandler,
+  ScreenSpaceEventType,
+} from "cesium";
 import { useEffect, useState } from "react";
 import { Viewer, ViewerProps } from "resium";
 
@@ -27,19 +32,65 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
+  onSelectedFeature?: (featureId: any) => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   viewerRef,
+  onSelectedFeature,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [cesiumReady, setCesiumReady] = useState(false);
+
+  // Check if Cesium viewer is ready
+  useEffect(() => {
+    if (cesiumReady) return;
+
+    const checkInterval = setInterval(() => {
+      if (viewerRef?.current?.cesiumElement) {
+        setCesiumReady(true);
+        clearInterval(checkInterval);
+      }
+    }, 100);
+
+    return () => clearInterval(checkInterval);
+  }, [viewerRef, cesiumReady]);
 
   useEffect(() => {
     if (isLoaded) return;
     setIsLoaded(true);
   }, [isLoaded]);
+
+  useEffect(() => {
+    if (!onSelectedFeature || !cesiumReady) return;
+
+    const cesiumViewer = viewerRef?.current?.cesiumElement;
+    if (!cesiumViewer) return;
+
+    const handler = new ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
+
+    handler.setInputAction((movement: any) => {
+      const pickedObject = cesiumViewer.scene.pick(movement.position);
+      if (defined(pickedObject) && defined(pickedObject.id)) {
+        const entity = pickedObject.id;
+        if (entity._id) {
+          try {
+            onSelectedFeature(entity._id);
+          } catch (e) {
+            console.error("Cesium viewer error:", e);
+          }
+        }
+      } else {
+        onSelectedFeature(undefined);
+      }
+    }, ScreenSpaceEventType.LEFT_CLICK);
+
+    return () => {
+      handler.destroy();
+    };
+  }, [viewerRef, cesiumReady, onSelectedFeature]);
 
   // Separate features by geometry type
   const geoJsonFeatures =
