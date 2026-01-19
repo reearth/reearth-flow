@@ -324,7 +324,7 @@ const DebugRunDropDownMenu: React.FC<{
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <IconButton
-          className={`absolute top-0 left-9 w-2.5 transition-all duration-300 ease-in-out
+          className={`absolute top-0 left-9 w-3 transition-all duration-300 ease-in-out
           ${
             debugRunStarted || jobStatus
               ? `left-15 h-[32px] ${
