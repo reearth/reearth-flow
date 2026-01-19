@@ -181,46 +181,57 @@ const StartButton: React.FC<{
           if (!open) onPopoverClose();
         }}>
         <PopoverTrigger asChild>
-          <IconButton
-            className={`min-w-[36px] transition-all ${
-              debugRunStarted || jobStatus
-                ? `h-8 w-full rounded-lg px-4 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
-                : "w-[36px]"
-            }`}
-            disabled={
-              debugRunStarted ||
-              jobStatus === "running" ||
-              jobStatus === "queued"
-            }
-            tooltipText={jobStatus ?? t("Start debug run of workflow")}
-            tooltipOffset={tooltipOffset}
-            delayDuration={200}
-            icon={
-              debugRunStarted || jobStatus ? (
-                <div className="mr-1 flex items-center gap-2">
-                  <div
-                    className={`${
-                      jobStatus === "completed"
-                        ? "bg-success"
-                        : jobStatus === "running"
-                          ? "active-node-status"
-                          : jobStatus === "cancelled"
-                            ? "bg-warning"
-                            : jobStatus === "failed"
-                              ? "bg-destructive"
-                              : jobStatus === "queued"
-                                ? "queued-node-status"
-                                : "bg-secondary"
-                    } size-3 rounded-full`}
-                  />
+          <div className="relative gap-1 rounded-md pr-2 hover:bg-accent hover:text-accent-foreground">
+            <IconButton
+              className={`min-w-[36px] transition-all ${
+                debugRunStarted || jobStatus
+                  ? `h-8 w-full rounded-lg px-4 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
+                  : "w-[36px]"
+              }`}
+              disabled={
+                debugRunStarted ||
+                jobStatus === "running" ||
+                jobStatus === "queued"
+              }
+              tooltipText={jobStatus ?? t("Start debug run of workflow")}
+              tooltipOffset={tooltipOffset}
+              delayDuration={200}
+              icon={
+                debugRunStarted || jobStatus ? (
+                  <div className="mr-1 flex items-center gap-2">
+                    <div
+                      className={`${
+                        jobStatus === "completed"
+                          ? "bg-success"
+                          : jobStatus === "running"
+                            ? "active-node-status"
+                            : jobStatus === "cancelled"
+                              ? "bg-warning"
+                              : jobStatus === "failed"
+                                ? "bg-destructive"
+                                : jobStatus === "queued"
+                                  ? "queued-node-status"
+                                  : "bg-secondary"
+                      } size-3 rounded-full`}
+                    />
+                    <PlayIcon weight="thin" size={18} />
+                  </div>
+                ) : (
                   <PlayIcon weight="thin" size={18} />
-                </div>
-              ) : (
-                <PlayIcon weight="thin" size={18} />
-              )
-            }
-            onClick={onShowDebugStartPopover}
-          />
+                )
+              }
+              onClick={onShowDebugStartPopover}
+            />
+            <DebugRunDropDownMenu
+              debugRunStarted={debugRunStarted}
+              selectedNodeIds={selectedNodeIds}
+              jobStatus={jobStatus}
+              debugJobId={debugJobId}
+              showPopover={showPopover}
+              onShowDebugStartPopover={onShowDebugStartPopover}
+              onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+            />
+          </div>
         </PopoverTrigger>
         <PopoverContent
           sideOffset={8}
@@ -232,15 +243,6 @@ const StartButton: React.FC<{
           />
         </PopoverContent>
       </Popover>
-      <DebugRunDropDownMenu
-        debugRunStarted={debugRunStarted}
-        selectedNodeIds={selectedNodeIds}
-        jobStatus={jobStatus}
-        debugJobId={debugJobId}
-        showPopover={showPopover}
-        onShowDebugStartPopover={onShowDebugStartPopover}
-        onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
-      />
     </div>
   );
 };
@@ -324,7 +326,7 @@ const DebugRunDropDownMenu: React.FC<{
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <IconButton
-          className={`absolute top-0 left-9 w-3 transition-all duration-300 ease-in-out
+          className={`absolute top-0 left-8 w-3 transition-all duration-300 ease-in-out
           ${
             debugRunStarted || jobStatus
               ? `left-15 h-[32px] ${
@@ -364,6 +366,7 @@ const DebugRunDropDownMenu: React.FC<{
             selectedNode.type === "batch" ||
             selectedNode.type === "note" ||
             selectedNode.type === "subworkflow" ||
+            selectedNodeIds.length > 1 ||
             !debugJobId
           }
           onClick={() => {
@@ -379,7 +382,7 @@ const DebugRunDropDownMenu: React.FC<{
                 className="absolute left-1.25 scale-80 transform"
               />
             </span>
-            <p>{t("Run From Selected")}</p>
+            <p>{t("Run From Selected Action")}</p>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

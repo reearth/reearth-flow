@@ -154,7 +154,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: t("Run From Selected"),
+                label: t("Run From Selected Action"),
                 icon: (
                   <div className="relative flex items-center">
                     <CircleIcon weight="fill" className="scale-75 transform" />
@@ -171,6 +171,7 @@ const CanvasContextMenu: React.FC<Props> = ({
                   (node ?? nodes?.[0])?.type === "batch" ||
                   (node ?? nodes?.[0])?.type === "note" ||
                   (node ?? nodes?.[0])?.type === "subworkflow" ||
+                  (nodes?.length ?? 0) > 1 ||
                   !debugJobId,
               },
             },
