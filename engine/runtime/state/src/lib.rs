@@ -17,6 +17,10 @@ const CHUNK_SIZE: usize = 1000;
 
 const ZSTD_LEVEL: i32 = 1;
 
+const MAX_DIRECTORY_DEPTH: usize = 64;
+
+const MAX_HITS: usize = 2;
+
 #[derive(Debug, Clone)]
 pub struct State {
     storage: Arc<Storage>,
@@ -342,7 +346,7 @@ impl State {
         let tmp_path = tmp_sibling_path(path);
 
         // Ensure tmp cleanup on any error (RAII)
-        struct TempGuard(std::path::PathBuf);
+        struct TempGuard(PathBuf);
         impl Drop for TempGuard {
             fn drop(&mut self) {
                 let _ = std::fs::remove_file(&self.0);
@@ -382,7 +386,7 @@ impl State {
     }
 }
 
-fn tmp_sibling_path(path: &std::path::Path) -> std::path::PathBuf {
+fn tmp_sibling_path(path: &Path) -> PathBuf {
     let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
         return path.with_extension("tmp");
     };
@@ -463,7 +467,103 @@ fn rewrite_one_path(s: &str, prev_jobs_seg: &str, cur_jobs_seg: &str) -> String 
         }
     }
 
+    // This is mainly to handle temp-id subdirs (temp-artifacts/<temp-id>/...).
+    if let Some(resolved) = resolve_in_job_temp_artifacts_by_basename(&plain) {
+        return format!("{prefix}{resolved}");
+    }
+
     out
+}
+
+/// Try to locate `original` under the same job's `temp-artifacts/**` by basename.
+fn resolve_in_job_temp_artifacts_by_basename(original: &str) -> Option<String> {
+    let original_path = Path::new(original);
+    let basename = original_path.file_name()?.to_string_lossy().to_string();
+
+    let job_root = job_root_from_any_path(original_path)?;
+    let temp_artifacts_root = job_root.join("temp-artifacts");
+    if !temp_artifacts_root.exists() {
+        return None;
+    }
+
+    let mut hits = Vec::new();
+    collect_files_named(&temp_artifacts_root, &basename, &mut hits);
+
+    match hits.len() {
+        1 => Some(hits[0].to_string_lossy().to_string()),
+        n if n > 1 => {
+            tracing::warn!(
+                "Multiple files with the same basename found under temp-artifacts; cannot resolve uniquely. hits={}, target={}, root={}, original={}",
+                n,
+                basename,
+                temp_artifacts_root.display(),
+                original
+            );
+            None
+        }
+        _ => None,
+    }
+}
+
+/// Extract `.../jobs/<job_id>` from any path containing that segment.
+fn job_root_from_any_path(p: &std::path::Path) -> Option<PathBuf> {
+    let comps: Vec<String> = p
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .collect();
+
+    let jobs_idx = comps.iter().position(|s| s == "jobs")?;
+    let job_id_idx = jobs_idx + 1;
+    if job_id_idx >= comps.len() {
+        return None;
+    }
+
+    let mut out = PathBuf::new();
+    for (i, c) in p.components().enumerate() {
+        out.push(c.as_os_str());
+        if i == job_id_idx {
+            break;
+        }
+    }
+    Some(out)
+}
+
+/// Recursively collect files whose basename matches `target_name`.
+fn collect_files_named(dir: &Path, target_name: &str, out: &mut Vec<PathBuf>) {
+    fn inner(dir: &std::path::Path, target_name: &str, out: &mut Vec<PathBuf>, depth: usize) {
+        if depth > MAX_DIRECTORY_DEPTH || out.len() >= MAX_HITS {
+            return;
+        }
+
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            return;
+        };
+
+        for entry in rd.flatten() {
+            if out.len() >= MAX_HITS {
+                return;
+            }
+
+            let path = entry.path();
+            let Ok(ft) = entry.file_type() else { continue };
+
+            if ft.is_dir() {
+                inner(&path, target_name, out, depth + 1);
+                continue;
+            }
+
+            if ft.is_file()
+                && path
+                    .file_name()
+                    .map(|n| n.to_string_lossy() == target_name)
+                    .unwrap_or(false)
+            {
+                out.push(path);
+            }
+        }
+    }
+
+    inner(dir, target_name, out, 0);
 }
 
 #[cfg(test)]
@@ -483,6 +583,7 @@ impl State {
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
+    use tempfile::Builder;
 
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct Data {
@@ -511,5 +612,66 @@ mod tests {
         state.save(&data, "test").await.unwrap();
         let result: Data = state.get("test").await.unwrap();
         assert_eq!(result, data);
+    }
+
+    #[test]
+    fn test_job_root_from_any_path() {
+        let p = Path::new("/a/b/jobs/1234/temp-artifacts/x/y.csv");
+        let root = job_root_from_any_path(p).unwrap();
+        assert_eq!(root, PathBuf::from("/a/b/jobs/1234"));
+
+        let p2 = Path::new("/a/b/nope/1234/temp-artifacts/x/y.csv");
+        assert!(job_root_from_any_path(p2).is_none());
+    }
+
+    #[test]
+    fn test_resolve_in_job_temp_artifacts_by_basename_unique() {
+        let temp_dir = Builder::new()
+            .prefix("test_resolve_unique_")
+            .tempdir()
+            .unwrap();
+
+        let job_root = temp_dir.path().join("jobs").join("jobid");
+        let target = job_root
+            .join("temp-artifacts")
+            .join("tid")
+            .join("year-2024.csv");
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(&target, "ok").unwrap();
+
+        let original = job_root.join("artifacts").join("year-2024.csv");
+        std::fs::create_dir_all(original.parent().unwrap()).unwrap();
+
+        let resolved =
+            resolve_in_job_temp_artifacts_by_basename(original.to_str().unwrap()).unwrap();
+        assert_eq!(PathBuf::from(resolved), target);
+    }
+
+    #[test]
+    fn test_resolve_in_job_temp_artifacts_by_basename_multiple() {
+        let temp_dir = Builder::new()
+            .prefix("test_resolve_multiple_")
+            .tempdir()
+            .unwrap();
+
+        let job_root = temp_dir.path().join("jobs").join("jobid");
+        let a = job_root
+            .join("temp-artifacts")
+            .join("t1")
+            .join("year-2024.csv");
+        let b = job_root
+            .join("temp-artifacts")
+            .join("t2")
+            .join("year-2024.csv");
+
+        std::fs::create_dir_all(a.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(b.parent().unwrap()).unwrap();
+        std::fs::write(&a, "a").unwrap();
+        std::fs::write(&b, "b").unwrap();
+
+        let original = job_root.join("artifacts").join("year-2024.csv");
+        std::fs::create_dir_all(original.parent().unwrap()).unwrap();
+
+        assert!(resolve_in_job_temp_artifacts_by_basename(original.to_str().unwrap()).is_none());
     }
 }
