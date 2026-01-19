@@ -66,19 +66,9 @@
             "json_path": "uro:BuildingIDAttribute uro:prefecture"
         },
         {
-            "attribute": "uro:BuildingIDAttribute_uro:prefecture_code",
-            "data_type": "string",
-            "json_path": "uro:BuildingIDAttribute uro:prefecture_code"
-        },
-        {
             "attribute": "uro:BuildingIDAttribute_uro:city",
             "data_type": "string",
             "json_path": "uro:BuildingIDAttribute uro:city"
-        },
-        {
-            "attribute": "uro:BuildingIDAttribute_uro:city_code",
-            "data_type": "string",
-            "json_path": "uro:BuildingIDAttribute uro:city_code"
         },
         {
             "attribute": "uro:BuildingDetailAttribute_uro:serialNumberOfBuildingCertification",
