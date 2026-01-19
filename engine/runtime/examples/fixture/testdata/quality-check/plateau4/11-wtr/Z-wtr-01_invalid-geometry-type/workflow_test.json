@@ -2,7 +2,6 @@
   "description": "Test quality check for invalid geometry type errors",
   "skip": true,
   "skipReason": "Requires nusamai bug fix. On hold for higher priority tasks.",
-
   "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
   "workflowVariables": [
     {
@@ -32,7 +31,6 @@
       "name": "43206_tamana-shi_city_2024_citygml_1_op_wtr.zip"
     }
   ],
-
   "expectedOutput": {
     "expectedFile": "11_水部_無効な空間属性の型.csv"
   },
