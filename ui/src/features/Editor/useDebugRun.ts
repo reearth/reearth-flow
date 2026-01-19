@@ -44,7 +44,9 @@ export default ({
         const existingCustom = prev.find(
           (customVariable) =>
             customVariable.name === workflowVariable.name &&
-            customVariable.type === workflowVariable.type,
+            customVariable.type === workflowVariable.type &&
+            JSON.stringify(customVariable.defaultValue) ===
+              JSON.stringify(workflowVariable.defaultValue),
         );
         return existingCustom || workflowVariable;
       });
