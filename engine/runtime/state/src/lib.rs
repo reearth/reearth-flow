@@ -463,7 +463,87 @@ fn rewrite_one_path(s: &str, prev_jobs_seg: &str, cur_jobs_seg: &str) -> String 
         }
     }
 
+    // This is mainly to handle temp-id subdirs (temp-artifacts/<temp-id>/...).
+    if let Some(resolved) = resolve_in_job_temp_artifacts_by_basename(&plain) {
+        return format!("{prefix}{resolved}");
+    }
+
     out
+}
+
+/// Try to locate `original` under the same job's `temp-artifacts/**` by basename.
+fn resolve_in_job_temp_artifacts_by_basename(original: &str) -> Option<String> {
+    let original_path = Path::new(original);
+    let basename = original_path.file_name()?.to_string_lossy().to_string();
+
+    let job_root = job_root_from_any_path(original_path)?;
+    let temp_artifacts_root = job_root.join("temp-artifacts");
+    if !temp_artifacts_root.exists() {
+        return None;
+    }
+
+    let mut hits = Vec::new();
+    collect_files_named(&temp_artifacts_root, &basename, &mut hits);
+
+    match hits.len() {
+        1 => Some(hits[0].to_string_lossy().to_string()),
+        _ => None,
+    }
+}
+
+/// Extract `.../jobs/<job_id>` from any path containing that segment.
+fn job_root_from_any_path(p: &std::path::Path) -> Option<std::path::PathBuf> {
+    use std::path::PathBuf;
+
+    let comps: Vec<String> = p
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .collect();
+
+    let jobs_idx = comps.iter().position(|s| s == "jobs")?;
+    let job_id_idx = jobs_idx + 1;
+    if job_id_idx >= comps.len() {
+        return None;
+    }
+
+    let mut out = PathBuf::new();
+    for (i, c) in p.components().enumerate() {
+        out.push(c.as_os_str());
+        if i == job_id_idx {
+            break;
+        }
+    }
+    Some(out)
+}
+
+/// Recursively collect files whose basename matches `target_name`.
+fn collect_files_named(
+    dir: &std::path::Path,
+    target_name: &str,
+    out: &mut Vec<std::path::PathBuf>,
+) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+
+    for entry in rd.flatten() {
+        let path = entry.path();
+        let Ok(ft) = entry.file_type() else { continue };
+
+        if ft.is_dir() {
+            collect_files_named(&path, target_name, out);
+            continue;
+        }
+
+        if ft.is_file()
+            && path
+                .file_name()
+                .map(|n| n.to_string_lossy() == target_name)
+                .unwrap_or(false)
+        {
+            out.push(path);
+        }
+    }
 }
 
 #[cfg(test)]
