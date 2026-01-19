@@ -149,6 +149,41 @@ const CanvasContextMenu: React.FC<Props> = ({
     };
 
     const items: ContextMenuItemType[] = [
+      ...(node || nodes
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Run From Selected"),
+                icon: (
+                  <div className="relative flex items-center">
+                    <CircleIcon weight="fill" className="scale-75 transform" />
+                    <ArrowRightIcon
+                      weight="bold"
+                      className="absolute left-1.25 scale-75 transform"
+                    />
+                  </div>
+                ),
+                onCallback: wrapWithClose(() =>
+                  onDebugRunStartFromSelectedNode?.(node, nodes),
+                ),
+                disabled:
+                  (node ?? nodes?.[0])?.type === "batch" ||
+                  (node ?? nodes?.[0])?.type === "note" ||
+                  (node ?? nodes?.[0])?.type === "subworkflow" ||
+                  !debugJobId,
+              },
+            },
+          ]
+        : []),
+
+      ...(node || nodes
+        ? [
+            {
+              type: "separator" as const,
+            },
+          ]
+        : []),
       {
         type: "action",
         props: {
@@ -161,6 +196,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
+
       {
         type: "action",
         props: {
@@ -255,36 +291,12 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: t("Run From Selected"),
-                icon: (
-                  <div className="relative flex items-center">
-                    <CircleIcon weight="fill" className="scale-75 transform" />
-                    <ArrowRightIcon
-                      weight="bold"
-                      className="absolute left-1.25 scale-75 transform"
-                    />
-                  </div>
-                ),
-                onCallback: wrapWithClose(() =>
-                  onDebugRunStartFromSelectedNode?.(node, nodes),
-                ),
-                disabled:
-                  (node ?? nodes?.[0])?.type === "batch" ||
-                  (node ?? nodes?.[0])?.type === "note" ||
-                  (node ?? nodes?.[0])?.type === "subworkflow" ||
-                  !debugJobId,
-              },
-            },
-          ]
-        : []),
-      ...(node
-        ? [
-            {
-              type: "action" as const,
-              props: {
-                label: t("Action Settings"),
-                icon: <GearFineIcon weight="light" />,
-                onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
+                label: node ? t("Delete Action") : t("Delete Selection"),
+                icon: <TrashIcon weight="light" />,
+                destructive: true,
+                disabled: !onNodesChange || !onEdgesChange,
+
+                onCallback: wrapWithClose(() => handleNodeDelete(node, nodes)),
               },
             },
           ]
@@ -296,18 +308,14 @@ const CanvasContextMenu: React.FC<Props> = ({
             },
           ]
         : []),
-
-      ...(node || nodes
+      ...(node
         ? [
             {
               type: "action" as const,
               props: {
-                label: node ? t("Delete Action") : t("Delete Selection"),
-                icon: <TrashIcon weight="light" />,
-                destructive: true,
-                disabled: !onNodesChange || !onEdgesChange,
-
-                onCallback: wrapWithClose(() => handleNodeDelete(node, nodes)),
+                label: t("Action Settings"),
+                icon: <GearFineIcon weight="light" />,
+                onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
               },
             },
           ]

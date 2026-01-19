@@ -352,7 +352,7 @@ const DebugRunDropDownMenu: React.FC<{
               onShowDebugStartPopover();
             }, 180);
           }}>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <PlayIcon weight="light" />
             <p>{t("Run Workflow")}</p>
           </div>
@@ -371,14 +371,14 @@ const DebugRunDropDownMenu: React.FC<{
               onDebugRunStartFromSelectedNode?.(selectedNode);
             }, 180);
           }}>
-          <div className="flex items-center gap-1">
-            <div className="relative flex items-center">
+          <div className="flex items-center gap-2">
+            <span className="relative flex items-center">
               <CircleIcon weight="fill" className="scale-60 transform" />
               <ArrowRightIcon
                 weight="bold"
                 className="absolute left-1.25 scale-80 transform"
               />
-            </div>
+            </span>
             <p>{t("Run From Selected")}</p>
           </div>
         </DropdownMenuItem>

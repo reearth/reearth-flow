@@ -72,7 +72,7 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
           onCallback();
         }
       }}>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {icon}
         <p>{label}</p>
       </div>
