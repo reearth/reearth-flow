@@ -7,7 +7,7 @@ import {
   StopIcon,
 } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -181,12 +181,12 @@ const StartButton: React.FC<{
           if (!open) onPopoverClose();
         }}>
         <PopoverTrigger asChild>
-          <div className="flex rounded-md pr-2 hover:bg-accent hover:text-accent-foreground">
+          <div className="group flex gap-1 rounded-md transition-all duration-300 ease-in-out">
             <IconButton
-              className={`min-w-[36px] transition-all ${
+              className={`min-w-9 group-hover:bg-accent ${
                 debugRunStarted || jobStatus
-                  ? `h-8 w-full rounded-lg px-2 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
-                  : "w-[36px]"
+                  ? `h-8 w-full rounded-lg pr-1 pl-2 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
+                  : "w-9"
               }`}
               disabled={
                 debugRunStarted ||
@@ -313,7 +313,7 @@ const DebugRunDropDownMenu: React.FC<{
   onShowDebugStartPopover,
 }) => {
   const t = useT();
-
+  const [showDropDownMenu, setShowDropDownMenu] = useState<boolean>(false);
   const { getNodes } = useReactFlow();
   const selectedNode =
     selectedNodeIds.length > 0
@@ -323,18 +323,18 @@ const DebugRunDropDownMenu: React.FC<{
       : undefined;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={showDropDownMenu} onOpenChange={setShowDropDownMenu}>
       <DropdownMenuTrigger asChild>
         <IconButton
-          className={`w-3 transition-all duration-300 ease-in-out
+          className={`w-3 self-center rounded-sm group-hover:bg-accent ${showDropDownMenu ? "bg-accent" : ""}
           ${
             debugRunStarted || jobStatus
               ? `h-[32px] ${
                   jobStatus === "running" || jobStatus === "queued"
-                    ? "cursor-pointer opacity-100"
-                    : "opacity-90"
+                    ? "cursor-pointer dark:bg-primary/50"
+                    : ""
                 }`
-              : "w-3 opacity-70"
+              : "h-[36px] w-3"
           }
         `}
           tooltipText={t("Additional Debug Actions")}
