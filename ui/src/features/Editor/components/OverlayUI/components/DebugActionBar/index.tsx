@@ -174,18 +174,18 @@ const StartButton: React.FC<{
   );
 
   return (
-    <div className="relative">
+    <div>
       <Popover
         open={showPopover === "debugStart"}
         onOpenChange={(open) => {
           if (!open) onPopoverClose();
         }}>
         <PopoverTrigger asChild>
-          <div className="relative gap-1 rounded-md pr-2 hover:bg-accent hover:text-accent-foreground">
+          <div className="flex rounded-md pr-2 hover:bg-accent hover:text-accent-foreground">
             <IconButton
               className={`min-w-[36px] transition-all ${
                 debugRunStarted || jobStatus
-                  ? `h-8 w-full rounded-lg px-4 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
+                  ? `h-8 w-full rounded-lg px-2 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
                   : "w-[36px]"
               }`}
               disabled={
@@ -198,7 +198,7 @@ const StartButton: React.FC<{
               delayDuration={200}
               icon={
                 debugRunStarted || jobStatus ? (
-                  <div className="mr-1 flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <div
                       className={`${
                         jobStatus === "completed"
@@ -326,15 +326,15 @@ const DebugRunDropDownMenu: React.FC<{
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <IconButton
-          className={`absolute top-0 left-8 w-3 transition-all duration-300 ease-in-out
+          className={`w-3 transition-all duration-300 ease-in-out
           ${
             debugRunStarted || jobStatus
-              ? `left-15 h-[32px] ${
+              ? `h-[32px] ${
                   jobStatus === "running" || jobStatus === "queued"
                     ? "cursor-pointer opacity-100"
                     : "opacity-90"
                 }`
-              : "w-2.5 opacity-70"
+              : "w-3 opacity-70"
           }
         `}
           tooltipText={t("Additional Debug Actions")}
