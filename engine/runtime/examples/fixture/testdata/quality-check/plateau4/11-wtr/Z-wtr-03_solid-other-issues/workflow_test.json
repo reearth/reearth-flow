@@ -1,18 +1,34 @@
 {
-  "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
   "description": "Test quality check for solid-other-issues errors",
-
-  "cityGmlPath": {
-    "zip": {
-      "source": "udx",
+  "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "43206_tamana-shi_city_2024_citygml_1_op_wtr.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "43206_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6670
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx",
       "name": "43206_tamana-shi_city_2024_citygml_1_op_wtr.zip"
     }
-  },
-  "codelistsPath": "codelists",
-  "schemasPath": "schemas",
-  "objectListsPath": "43206_city_2024_objectlist_op.xlsx",
-  "prcs": 6670,
-
+  ],
   "expectedOutput": {
     "expectedFile": "11_水部_LOD2-3立体のエラー.csv"
   },
@@ -24,6 +40,5 @@
       "expectedFile": "11_水部_検査結果一覧.csv"
     }
   },
-  "expectResultOkFile": false,
-  "skip": false
+  "expectResultOkFile": false
 }
