@@ -119,6 +119,7 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                     ctx.verify_output()?;
                     ctx.verify_intermediate_data()?;
                     ctx.verify_summary_output()?;
+                    ctx.verify_no_unexpected_output_files()?;
                     ctx.verify_result_ok_file()?;
                     Ok(())
                 })();

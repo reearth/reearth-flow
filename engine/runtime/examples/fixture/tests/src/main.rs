@@ -567,7 +567,17 @@ impl TestContext {
         Ok(())
     }
 
-    fn verify_error_count_summary(&self, config: &ErrorCountSummaryValidation) -> Result<()> {
+    fn verify_error_count_summary(&self, validation: &ErrorCountSummaryValidation) -> Result<()> {
+        for config in validation.as_vec() {
+            self.verify_single_error_count_summary(config)?;
+        }
+        Ok(())
+    }
+
+    fn verify_single_error_count_summary(
+        &self,
+        config: &ErrorCountSummaryFileConfig,
+    ) -> Result<()> {
         // Load actual output
         let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
@@ -607,7 +617,8 @@ impl TestContext {
 
             if actual_value != expected_value {
                 anyhow::bail!(
-                    "Error count summary mismatch for '{field}': expected {expected_value:?}, got {actual_value:?}"
+                    "Error count summary mismatch for '{}' in file '{}': expected {expected_value:?}, got {actual_value:?}",
+                    field, config.expected_file
                 );
             }
         }
@@ -615,7 +626,14 @@ impl TestContext {
         Ok(())
     }
 
-    fn verify_file_error_summary(&self, config: &FileErrorSummaryValidation) -> Result<()> {
+    fn verify_file_error_summary(&self, validation: &FileErrorSummaryValidation) -> Result<()> {
+        for config in validation.as_vec() {
+            self.verify_single_file_error_summary(config)?;
+        }
+        Ok(())
+    }
+
+    fn verify_single_file_error_summary(&self, config: &FileErrorSummaryFileConfig) -> Result<()> {
         // Load actual CSV
         let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
@@ -664,10 +682,16 @@ impl TestContext {
         // Verify columns exist
         for col in &columns_to_check {
             if !actual_headers.iter().any(|h| h == col) {
-                anyhow::bail!("Column '{col}' not found in actual CSV");
+                anyhow::bail!(
+                    "Column '{col}' not found in actual CSV for file '{}'",
+                    config.expected_file
+                );
             }
             if !expected_headers.iter().any(|h| h == col) {
-                anyhow::bail!("Column '{col}' not found in expected CSV");
+                anyhow::bail!(
+                    "Column '{col}' not found in expected CSV for file '{}'",
+                    config.expected_file
+                );
             }
         }
 
@@ -685,9 +709,12 @@ impl TestContext {
 
         // Compare rows
         for (key, expected_row) in &expected_rows {
-            let actual_row = actual_rows
-                .get(key)
-                .ok_or_else(|| anyhow::anyhow!("Row with key {key:?} not found in actual CSV"))?;
+            let actual_row = actual_rows.get(key).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Row with key {key:?} not found in actual CSV for file '{}'",
+                    config.expected_file
+                )
+            })?;
 
             // Compare specified columns
             for col in &columns_to_check {
@@ -704,7 +731,8 @@ impl TestContext {
 
                 if actual_val != expected_val {
                     anyhow::bail!(
-                        "File error summary mismatch for row {key:?}, column '{col}': expected '{expected_val}', got '{actual_val}'"
+                        "File error summary mismatch for row {key:?}, column '{col}' in file '{}': expected '{expected_val}', got '{actual_val}'",
+                        config.expected_file
                     );
                 }
             }
@@ -1220,6 +1248,110 @@ impl TestContext {
 
         Ok(())
     }
+
+    /// Verify that no unexpected output files exist in the output directory
+    pub fn verify_no_unexpected_output_files(&mut self) -> Result<()> {
+        // Get validation config, return early if not configured or disabled
+        let config = match &self.profile.unexpected_output_validation {
+            Some(c) if c.is_enabled() => c,
+            _ => return Ok(()),
+        };
+
+        let ignore_patterns = config.ignore_patterns();
+
+        // Ensure zip is extracted if it exists
+        self.ensure_extracted()?;
+
+        // Collect expected files from configuration
+        let mut expected_files: HashSet<String> = HashSet::new();
+
+        // From expectedOutput
+        if let Some(output) = &self.profile.expected_output {
+            if let Some(files) = &output.expected_file {
+                for file in files.as_vec() {
+                    expected_files.insert(file);
+                }
+            }
+        }
+
+        // From summaryOutput
+        if let Some(summary) = &self.profile.summary_output {
+            if let Some(error_count) = &summary.error_count_summary {
+                for config in error_count.as_vec() {
+                    expected_files.insert(config.expected_file.clone());
+                }
+            }
+            if let Some(file_error) = &summary.file_error_summary {
+                for config in file_error.as_vec() {
+                    expected_files.insert(config.expected_file.clone());
+                }
+            }
+        }
+
+        // Enumerate actual files in output directory
+        let actual_files: Vec<String> = fs::read_dir(&self.actual_output_dir)?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+
+        // Find unexpected files (excluding those matching ignore patterns)
+        let unexpected: Vec<&String> = actual_files
+            .iter()
+            .filter(|f| !expected_files.contains(*f))
+            .filter(|f| !matches_any_pattern(f, &ignore_patterns))
+            .collect();
+
+        if !unexpected.is_empty() {
+            // Display all unexpected file names in the error message
+            let unexpected_list = unexpected
+                .iter()
+                .map(|f| format!("  - {}", f))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let expected_list = expected_files
+                .iter()
+                .map(|f| format!("  - {}", f))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let ignored_list = if ignore_patterns.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "\n\nIgnored patterns ({} patterns):\n{}",
+                    ignore_patterns.len(),
+                    ignore_patterns
+                        .iter()
+                        .map(|p| format!("  - {}", p))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                )
+            };
+            tracing::error!(
+                test_name = %self.test_name,
+                "Unexpected output files found"
+            );
+            anyhow::bail!(
+                "Unexpected output files found ({} files):\n{}\n\nExpected files ({} files):\n{}{}",
+                unexpected.len(),
+                unexpected_list,
+                expected_files.len(),
+                expected_list,
+                ignored_list
+            );
+        }
+
+        Ok(())
+    }
+}
+
+/// Check if a filename matches any of the given glob patterns
+fn matches_any_pattern(filename: &str, patterns: &[String]) -> bool {
+    patterns.iter().any(|p| {
+        glob::Pattern::new(p)
+            .map(|pat| pat.matches(filename))
+            .unwrap_or(false)
+    })
 }
 
 // Include the generated tests
@@ -1289,6 +1421,7 @@ mod tests {
             expected_output: None,
             summary_output: None,
             expect_result_ok_file: None,
+            unexpected_output_validation: None,
         }
     }
 

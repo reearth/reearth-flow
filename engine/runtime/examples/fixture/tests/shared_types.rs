@@ -89,6 +89,10 @@ pub struct WorkflowTestProfile {
     /// - None: do not check (default)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_result_ok_file: Option<bool>,
+
+    /// Validation settings for unexpected output files
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unexpected_output_validation: Option<UnexpectedOutputValidation>,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -183,9 +187,10 @@ pub struct SummaryOutput {
     pub file_error_summary: Option<FileErrorSummaryValidation>,
 }
 
+/// Configuration for a single error count summary file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ErrorCountSummaryValidation {
+pub struct ErrorCountSummaryFileConfig {
     /// Expected output file name (relative to test directory)
     /// The actual output file will have the same name in the temp output directory
     pub expected_file: String,
@@ -196,9 +201,29 @@ pub struct ErrorCountSummaryValidation {
     pub include_fields: Option<Vec<String>>,
 }
 
+/// Error count summary validation - supports single or multiple files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ErrorCountSummaryValidation {
+    /// Single file configuration (backward compatible)
+    Single(ErrorCountSummaryFileConfig),
+    /// Multiple file configurations
+    Multiple(Vec<ErrorCountSummaryFileConfig>),
+}
+
+impl ErrorCountSummaryValidation {
+    pub fn as_vec(&self) -> Vec<&ErrorCountSummaryFileConfig> {
+        match self {
+            ErrorCountSummaryValidation::Single(config) => vec![config],
+            ErrorCountSummaryValidation::Multiple(configs) => configs.iter().collect(),
+        }
+    }
+}
+
+/// Configuration for a single file error summary file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FileErrorSummaryValidation {
+pub struct FileErrorSummaryFileConfig {
     /// Expected output file name (relative to test directory)
     /// The actual output file will have the same name in the temp output directory
     pub expected_file: String,
@@ -219,10 +244,64 @@ pub struct FileErrorSummaryValidation {
     pub key_columns: Vec<String>,
 }
 
+/// File error summary validation - supports single or multiple files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum FileErrorSummaryValidation {
+    /// Single file configuration (backward compatible)
+    Single(FileErrorSummaryFileConfig),
+    /// Multiple file configurations
+    Multiple(Vec<FileErrorSummaryFileConfig>),
+}
+
+impl FileErrorSummaryValidation {
+    pub fn as_vec(&self) -> Vec<&FileErrorSummaryFileConfig> {
+        match self {
+            FileErrorSummaryValidation::Single(config) => vec![config],
+            FileErrorSummaryValidation::Multiple(configs) => configs.iter().collect(),
+        }
+    }
+}
+
 fn default_key_columns() -> Vec<String> {
     vec!["Filename".to_string()]
 }
 
 fn is_default_key_columns(cols: &[String]) -> bool {
     cols.len() == 1 && cols[0] == "Filename"
+}
+
+/// Unexpected output validation - supports both simple boolean and detailed config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum UnexpectedOutputValidation {
+    /// Simple boolean: true to enable validation with no ignore patterns
+    Simple(bool),
+    /// Detailed config with ignore patterns
+    Detailed(UnexpectedOutputValidationConfig),
+}
+
+impl UnexpectedOutputValidation {
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            UnexpectedOutputValidation::Simple(v) => *v,
+            UnexpectedOutputValidation::Detailed(_) => true,
+        }
+    }
+
+    pub fn ignore_patterns(&self) -> Vec<String> {
+        match self {
+            UnexpectedOutputValidation::Simple(_) => vec![],
+            UnexpectedOutputValidation::Detailed(c) => c.ignore_patterns.clone(),
+        }
+    }
+}
+
+/// Detailed configuration for unexpected output validation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UnexpectedOutputValidationConfig {
+    /// File patterns to ignore when checking for unexpected outputs (supports glob patterns)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ignore_patterns: Vec<String>,
 }
