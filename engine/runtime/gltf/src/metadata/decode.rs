@@ -365,6 +365,30 @@ pub fn extract_feature_properties(
 
         for i in 0..count {
             let value = match component_type {
+                "INT8" => {
+                    let v = data[i] as i8;
+                    Some(Value::Number((v as i64).into()))
+                }
+                "UINT8" => {
+                    let v = data[i];
+                    Some(Value::Number((v as u64).into()))
+                }
+                "INT16" => {
+                    let v = i16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
+                    Some(Value::Number((v as i64).into()))
+                }
+                "UINT16" => {
+                    let v = u16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
+                    Some(Value::Number((v as u64).into()))
+                }
+                "INT32" => {
+                    let v = i32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    Some(Value::Number((v as i64).into()))
+                }
+                "UINT32" => {
+                    let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    (v != ENUM_NO_DATA).then(|| Value::Number(v.into()))
+                }
                 "INT64" => {
                     let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
                     (v != INT64_NO_DATA).then(|| Value::Number(v.into()))
@@ -373,16 +397,16 @@ pub fn extract_feature_properties(
                     let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
                     (v != UINT64_NO_DATA).then(|| Value::Number(v.into()))
                 }
+                "FLOAT32" => {
+                    let v = f32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    serde_json::Number::from_f64(v as f64).map(Value::Number)
+                }
                 "FLOAT64" => {
                     let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
                     (v != FLOAT_NO_DATA)
                         .then(|| serde_json::Number::from_f64(v))
                         .flatten()
                         .map(Value::Number)
-                }
-                "UINT32" => {
-                    let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
-                    (v != ENUM_NO_DATA).then(|| Value::Number(v.into()))
                 }
                 _ => {
                     return Err(GltfReaderError::Parse(format!(

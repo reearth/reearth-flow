@@ -31,9 +31,11 @@ fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
             .map_err(|e| format!("Failed to extract features from {:?}: {}", path, e))?;
 
         for (gml_id, props) in features {
+            eprintln!("Debug: Loaded gml_id {} from {:?}", gml_id, path);
             if let Some(existing) = ret.get(&gml_id) {
                 if existing != &Value::Object(props.clone()) {
                     let existing_path = rel.get(&gml_id).unwrap();
+                    eprintln!("Debug: Conflict for gml_id {}: {:?} vs {:?}", gml_id, existing, Value::Object(props.clone()));
                     return Err(format!(
                         "Conflicting gml_id {}: properties differ between {:?} and {:?}",
                         gml_id, existing_path, path
