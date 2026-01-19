@@ -405,7 +405,7 @@ export default () => {
     formattedData.tableData.forEach((row: any) => {
       const id = row.id;
       if (id !== null && id !== undefined) {
-        let normalizedId = id;
+        let normalizedId: string;
 
         try {
           normalizedId = JSON.parse(id);
@@ -429,9 +429,6 @@ export default () => {
   }, [selectedFeatureId, featureIdMap]);
 
   const detailsFeature = useMemo(() => {
-    if (detailsOverlayOpen && !selectedFeature) {
-      return setDetailsOverlayOpen(false);
-    }
     if (!detailsOverlayOpen || !selectedFeature) return null;
     return selectedFeature;
   }, [detailsOverlayOpen, selectedFeature]);

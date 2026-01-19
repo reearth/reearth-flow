@@ -32,7 +32,7 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
-  onSelectedFeature?: (featureId: any) => void;
+  onSelectedFeature?: (featureId: string | null) => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
@@ -75,15 +75,15 @@ const CesiumViewer: React.FC<Props> = ({
       const pickedObject = cesiumViewer.scene.pick(movement.position);
       if (defined(pickedObject) && defined(pickedObject.id)) {
         const entity = pickedObject.id;
-        if (entity._id) {
+        if (entity.id) {
           try {
-            onSelectedFeature(entity._id);
+            onSelectedFeature(entity.id);
           } catch (e) {
             console.error("Cesium viewer error:", e);
           }
         }
       } else {
-        onSelectedFeature(undefined);
+        onSelectedFeature(null);
       }
     }, ScreenSpaceEventType.LEFT_CLICK);
 
