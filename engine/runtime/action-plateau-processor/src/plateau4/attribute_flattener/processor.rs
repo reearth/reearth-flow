@@ -730,7 +730,10 @@ mod tests {
         let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
         match survey_year {
             Some(AttributeValue::String(s)) => {
-                assert_eq!(s, "2022", "uro:surveyYear flattened attribute should be string \"2022\"");
+                assert_eq!(
+                    s, "2022",
+                    "uro:surveyYear flattened attribute should be string \"2022\""
+                );
             }
             _ => panic!(
                 "uro:BuildingDetailAttribute_uro:surveyYear should be String, got {:?}",
@@ -1033,7 +1036,10 @@ mod tests {
         let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
         match survey_year {
             Some(AttributeValue::String(s)) => {
-                assert_eq!(s, "2022", "surveyYear flattened attribute should be string \"2022\"");
+                assert_eq!(
+                    s, "2022",
+                    "surveyYear flattened attribute should be string \"2022\""
+                );
             }
             _ => panic!(
                 "uro:BuildingDetailAttribute_uro:surveyYear should be String, got {:?}",
