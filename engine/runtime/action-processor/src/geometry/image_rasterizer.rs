@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::collections::HashMap;
 
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -52,12 +53,14 @@ impl ProcessorFactory for ImageRasterizerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: ImageRasterizerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::BuffererFactory(format!( // Using an existing error variant
+                GeometryProcessorError::BuffererFactory(format!(
+                    // Using an existing error variant
                     "Failed to serialize 'with' parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::BuffererFactory(format!( // Using an existing error variant
+                GeometryProcessorError::BuffererFactory(format!(
+                    // Using an existing error variant
                     "Failed to deserialize 'with' parameter: {e}"
                 ))
             })?
@@ -71,26 +74,12 @@ impl ProcessorFactory for ImageRasterizerFactory {
         let process = ImageRasterizer {
             cell_size_x: params.cell_size_x,
             cell_size_y: params.cell_size_y,
-            rasterization_mode: params.rasterization_mode,
             color_interpretation: params.color_interpretation,
             background_color: params.background_color,
-            fill_color_attribute: params.fill_color_attribute,
-            anti_aliasing: params.anti_aliasing,
+            background_color_alpha: params.background_color_alpha,
         };
         Ok(Box::new(process))
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-enum RasterizationMode {
-    /// # Fill Mode
-    /// Fill the entire polygon area
-    #[serde(rename = "fill")]
-    Fill,
-    /// # Outline Mode
-    /// Draw only the outline of the geometry
-    #[serde(rename = "outline")]
-    Outline,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -120,11 +109,6 @@ struct ImageRasterizerParam {
     #[serde(default = "default_cell_size")]
     cell_size_y: f64,
 
-    /// # Rasterization Mode
-    /// How to render the geometry onto the raster
-    #[serde(default = "default_rasterization_mode")]
-    rasterization_mode: RasterizationMode,
-
     /// # Color Interpretation
     /// How to interpret and store color information
     #[serde(default = "default_color_interpretation")]
@@ -135,34 +119,21 @@ struct ImageRasterizerParam {
     #[serde(default = "default_background_color")]
     background_color: [u8; 3],
 
-    /// # Fill Color Attribute
-    /// Name of the attribute containing fill color information (RGB values 0-255)
-    #[serde(default = "default_fill_color_attribute")]
-    fill_color_attribute: String,
-
-    /// # Anti-Aliasing
-    /// Enable anti-aliasing for smoother edges
-    #[serde(default = "default_anti_aliasing")]
-    anti_aliasing: bool,
+    #[serde(default = "default_background_color_alpha")]
+    background_color_alpha: f64,
 }
 
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     cell_size_x: f64,
     cell_size_y: f64,
-    rasterization_mode: RasterizationMode,
     color_interpretation: ColorInterpretation,
     background_color: [u8; 3],
-    fill_color_attribute: String,
-    anti_aliasing: bool,
+    background_color_alpha: f64,
 }
 
 fn default_cell_size() -> f64 {
     1.0
-}
-
-fn default_rasterization_mode() -> RasterizationMode {
-    RasterizationMode::Fill
 }
 
 fn default_color_interpretation() -> ColorInterpretation {
@@ -173,8 +144,8 @@ fn default_background_color() -> [u8; 3] {
     [255, 255, 255] // White
 }
 
-fn default_fill_color_attribute() -> String {
-    "color".to_string()
+fn default_background_color_alpha() -> f64 {
+    1.0
 }
 
 fn default_anti_aliasing() -> bool {
@@ -186,11 +157,9 @@ impl Default for ImageRasterizerParam {
         Self {
             cell_size_x: default_cell_size(),
             cell_size_y: default_cell_size(),
-            rasterization_mode: default_rasterization_mode(),
             color_interpretation: default_color_interpretation(),
             background_color: default_background_color(),
-            fill_color_attribute: default_fill_color_attribute(),
-            anti_aliasing: default_anti_aliasing(),
+            background_color_alpha: default_background_color_alpha(),
         }
     }
 }
@@ -204,31 +173,6 @@ impl Processor for ImageRasterizer {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            return Ok(());
-        }
-
-        match &geometry.value {
-            GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            }
-            GeometryValue::FlowGeometry2D(geos) => {
-                // For now, we'll pass through the geometry as-is since actual rasterization
-                // would require more complex image processing libraries
-                self.handle_2d_geometry(geos, feature, geometry, &ctx, fw);
-            }
-            GeometryValue::FlowGeometry3D(geos) => {
-                // Convert 3D to 2D before rasterization
-                let geos_2d: Geometry2D = geos.clone().into();
-                self.handle_2d_geometry(&geos_2d, feature, geometry, &ctx, fw);
-            }
-            GeometryValue::CityGmlGeometry(gml) => {
-                // For now, convert to 2D geometry and process
-                let geos_2d: Geometry2D = gml.clone().into();
-                self.handle_2d_geometry(&geos_2d, feature, geometry, &ctx, fw);
-            }
-        }
         Ok(())
     }
 
@@ -238,55 +182,5 @@ impl Processor for ImageRasterizer {
 
     fn name(&self) -> &str {
         "ImageRasterizer"
-    }
-}
-
-impl ImageRasterizer {
-    fn handle_2d_geometry(
-        &self,
-        _geos: &Geometry2D,
-        feature: &Feature,
-        geometry: &Geometry,
-        ctx: &ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) {
-        // In a real implementation, this would perform actual rasterization based on the parameters:
-        // - cell_size_x and cell_size_y would define the resolution of the output raster
-        // - rasterization_mode would determine if we fill polygons or draw outlines
-        // - color_interpretation would define the output color format (RGBA32 vs RGB24)
-        // - background_color would set the default color for non-covered pixels
-        // - fill_color_attribute would specify which feature attribute determines fill color
-        // - anti_aliasing would enable smoothing of edges
-
-        // For now, we'll just pass through the geometry with a note that it has been processed
-        // using the specified parameters
-        let mut feature = feature.clone();
-        let geometry = geometry.clone();
-
-        // Add attributes indicating that this feature has been processed by the rasterizer
-        let mut new_attributes = feature.attributes.clone();
-        new_attributes.insert(Attribute::new("rasterized".to_string()), AttributeValue::Bool(true));
-        new_attributes.insert(Attribute::new("cell_size_x".to_string()), AttributeValue::Number(serde_json::Number::from_f64(self.cell_size_x).unwrap_or_else(|| serde_json::Number::from(0))));
-        new_attributes.insert(Attribute::new("cell_size_y".to_string()), AttributeValue::Number(serde_json::Number::from_f64(self.cell_size_y).unwrap_or_else(|| serde_json::Number::from(0))));
-        new_attributes.insert(Attribute::new("rasterization_mode".to_string()), AttributeValue::String(format!("{:?}", self.rasterization_mode)));
-        new_attributes.insert(Attribute::new("color_interpretation".to_string()), AttributeValue::String(format!("{:?}", self.color_interpretation)));
-        new_attributes.insert(Attribute::new("background_color".to_string()), AttributeValue::Array(vec![
-            AttributeValue::Number(self.background_color[0].into()),
-            AttributeValue::Number(self.background_color[1].into()),
-            AttributeValue::Number(self.background_color[2].into()),
-        ]));
-        new_attributes.insert(Attribute::new("fill_color_attribute".to_string()), AttributeValue::String(self.fill_color_attribute.clone()));
-        new_attributes.insert(Attribute::new("anti_aliasing".to_string()), AttributeValue::Bool(self.anti_aliasing));
-
-        // In a real implementation, we would convert the geometry to a raster representation
-        // based on the parameters provided. The geos parameter contains the actual geometry
-        // that would be converted to pixels in the output raster.
-
-        // For now, we'll keep the original geometry but mark it as processed
-        feature.geometry = geometry;
-
-        let updated_feature = feature.with_attributes(new_attributes);
-
-        fw.send(ctx.new_with_feature_and_port(updated_feature, DEFAULT_PORT.clone()));
     }
 }
