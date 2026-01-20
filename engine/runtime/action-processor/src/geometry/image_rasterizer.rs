@@ -250,8 +250,16 @@ impl ImageRasterizer {
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) {
-        // In a real implementation, this would perform actual rasterization
+        // In a real implementation, this would perform actual rasterization based on the parameters:
+        // - cell_size_x and cell_size_y would define the resolution of the output raster
+        // - rasterization_mode would determine if we fill polygons or draw outlines
+        // - color_interpretation would define the output color format (RGBA32 vs RGB24)
+        // - background_color would set the default color for non-covered pixels
+        // - fill_color_attribute would specify which feature attribute determines fill color
+        // - anti_aliasing would enable smoothing of edges
+
         // For now, we'll just pass through the geometry with a note that it has been processed
+        // using the specified parameters
         let mut feature = feature.clone();
         let geometry = geometry.clone();
 
@@ -271,6 +279,9 @@ impl ImageRasterizer {
         new_attributes.insert(Attribute::new("anti_aliasing".to_string()), AttributeValue::Bool(self.anti_aliasing));
 
         // In a real implementation, we would convert the geometry to a raster representation
+        // based on the parameters provided. The geos parameter contains the actual geometry
+        // that would be converted to pixels in the output raster.
+
         // For now, we'll keep the original geometry but mark it as processed
         feature.geometry = geometry;
 
