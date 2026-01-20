@@ -8,7 +8,7 @@ import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
-import type { AnyWorkflowVariable, Workflow } from "@flow/types";
+import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { toast } from "../NotificationSystem/useToast";
@@ -59,66 +59,90 @@ export default ({
   const { useJobCancel } = useJob();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
-  const handleDebugRunStart = useCallback(async () => {
-    if (!currentProject) return;
 
-    const engineReadyWorkflow = createEngineReadyWorkflow(
-      currentProject.name,
+  const debugJob = debugRunState?.jobs?.find(
+    (job) => job.projectId === currentProject?.id,
+  );
+
+  const runDebugWorkflow = useCallback(
+    async (jobId?: string, selectedNodeId?: string) => {
+      if (!currentProject) return;
+      const engineReadyWorkflow = createEngineReadyWorkflow(
+        currentProject.name,
+        customDebugRunWorkflowVariables,
+        rawWorkflows,
+      );
+
+      if (!engineReadyWorkflow) return;
+
+      const data = await runProject(
+        currentProject.id,
+        currentProject.workspaceId,
+        engineReadyWorkflow,
+        jobId,
+        selectedNodeId,
+      );
+
+      if (data.job) {
+        let jobs: JobState[] = debugRunState?.jobs || [];
+
+        if (!data.job.id) {
+          jobs =
+            debugRunState?.jobs?.filter(
+              (job) => job.projectId !== currentProject.id,
+            ) || [];
+        } else if (
+          debugRunState?.jobs?.some(
+            (job) => job.projectId === currentProject.id,
+          )
+        ) {
+          jobs = debugRunState.jobs.map((job) => {
+            if (job.projectId === currentProject.id && data.job) {
+              return {
+                projectId: currentProject.id,
+                jobId: data.job.id,
+                status: data.job.status,
+              };
+            }
+            return job;
+          });
+        } else {
+          jobs.push({
+            projectId: currentProject.id,
+            jobId: data.job.id,
+            status: data.job.status,
+          });
+        }
+        await updateValue({ jobs });
+        broadcastDebugRun(data.job.id, data.job.status);
+
+        fitView({ duration: 400, padding: 0.5 });
+      }
+    },
+    [
+      currentProject,
       customDebugRunWorkflowVariables,
       rawWorkflows,
-    );
+      broadcastDebugRun,
+      debugRunState?.jobs,
+      fitView,
+      updateValue,
+      runProject,
+    ],
+  );
 
-    if (!engineReadyWorkflow) return;
+  const handleDebugRunStart = useCallback(async () => {
+    await runDebugWorkflow();
+  }, [runDebugWorkflow]);
 
-    const data = await runProject(
-      currentProject.id,
-      currentProject.workspaceId,
-      engineReadyWorkflow,
-    );
-
-    if (data.job) {
-      let jobs: JobState[] = debugRunState?.jobs || [];
-
-      if (!data.job.id) {
-        jobs =
-          debugRunState?.jobs?.filter(
-            (job) => job.projectId !== currentProject.id,
-          ) || [];
-      } else if (
-        debugRunState?.jobs?.some((job) => job.projectId === currentProject.id)
-      ) {
-        jobs = debugRunState.jobs.map((job) => {
-          if (job.projectId === currentProject.id && data.job) {
-            return {
-              projectId: currentProject.id,
-              jobId: data.job.id,
-              status: data.job.status,
-            };
-          }
-          return job;
-        });
-      } else {
-        jobs.push({
-          projectId: currentProject.id,
-          jobId: data.job.id,
-          status: data.job.status,
-        });
-      }
-      await updateValue({ jobs });
-      broadcastDebugRun(data.job.id, data.job.status);
-
-      fitView({ duration: 400, padding: 0.5 });
-    }
-  }, [
-    currentProject,
-    customDebugRunWorkflowVariables,
-    rawWorkflows,
-    broadcastDebugRun,
-    debugRunState?.jobs,
-    fitView,
-    updateValue,
-    runProject,
-  ]);
+  const handleFromSelectedNodeDebugRunStart = useCallback(
+    async (node?: Node, nodes?: Node[]) => {
+      const selectedNode = node ?? nodes?.[0];
+      if (!selectedNode || !debugJob?.jobId) return;
+      await runDebugWorkflow(debugJob.jobId, selectedNode.id);
+    },
+    [runDebugWorkflow, debugJob?.jobId],
+  );
 
   const handleDebugRunStop = useCallback(async () => {
     const debugJob = debugRunState?.jobs?.find(
@@ -202,6 +226,7 @@ export default ({
     activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
