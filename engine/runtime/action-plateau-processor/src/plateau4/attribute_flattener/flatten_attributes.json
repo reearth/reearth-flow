@@ -167,7 +167,7 @@
 		},
 		{
 			"attribute": "uro:BuildingDetailAttribute_uro:surveyYear",
-			"data_type": "int16",
+			"data_type": "int",
 			"json_path": "uro:BuildingDetailAttribute uro:surveyYear"
 		},
 		{
@@ -227,7 +227,7 @@
 		},
 		{
 			"attribute": "uro:LargeCustomerFacilityAttribute_uro:surveyYear",
-			"data_type": "int16",
+			"data_type": "int",
 			"json_path": "uro:LargeCustomerFacilityAttribute uro:surveyYear"
 		},
 		{
@@ -424,7 +424,7 @@
 		},
 		{
 			"attribute": "uro:BuildingDetailAttribute_uro:surveyYear",
-			"data_type": "buffer",
+			"data_type": "int",
 			"json_path": "uro:BuildingDetailAttribute uro:surveyYear"
 		},
 		{
@@ -484,7 +484,7 @@
 		},
 		{
 			"attribute": "uro:LargeCustomerFacilityAttribute_uro:surveyYear",
-			"data_type": "int16",
+			"data_type": "int",
 			"json_path": "uro:LargeCustomerFacilityAttribute uro:surveyYear"
 		},
 		{
