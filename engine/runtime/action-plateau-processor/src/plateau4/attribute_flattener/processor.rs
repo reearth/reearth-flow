@@ -726,17 +726,15 @@ mod tests {
         let mut flattener = AttributeFlattener::default();
         let result = flattener.flatten_feature(feature).unwrap();
 
-        // Check flattened attribute - should be string
+        // Check flattened attribute
         let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
         match survey_year {
-            Some(AttributeValue::String(s)) => {
-                assert_eq!(
-                    s, "2022",
-                    "uro:surveyYear flattened attribute should be string \"2022\""
-                );
+            Some(AttributeValue::Number(n)) => {
+                assert!(n.is_i64(), "uro:surveyYear should be integer");
+                assert_eq!(n.as_i64().unwrap(), 2022);
             }
             _ => panic!(
-                "uro:BuildingDetailAttribute_uro:surveyYear should be String, got {:?}",
+                "uro:BuildingDetailAttribute_uro:surveyYear should be Number, got {:?}",
                 survey_year
             ),
         }
@@ -1032,17 +1030,15 @@ mod tests {
             Some(&AttributeValue::String("東京都新島村".to_string()))
         );
 
-        // Verify surveyYear flattened attribute is string
+        // Verify surveyYear is integer
         let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
         match survey_year {
-            Some(AttributeValue::String(s)) => {
-                assert_eq!(
-                    s, "2022",
-                    "surveyYear flattened attribute should be string \"2022\""
-                );
+            Some(AttributeValue::Number(n)) => {
+                assert!(n.is_i64(), "surveyYear should be integer");
+                assert_eq!(n.as_i64().unwrap(), 2022);
             }
             _ => panic!(
-                "uro:BuildingDetailAttribute_uro:surveyYear should be String, got {:?}",
+                "uro:BuildingDetailAttribute_uro:surveyYear should be Number, got {:?}",
                 survey_year
             ),
         }

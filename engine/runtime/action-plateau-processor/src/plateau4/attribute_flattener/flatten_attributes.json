@@ -167,7 +167,7 @@
 		},
 		{
 			"attribute": "uro:BuildingDetailAttribute_uro:surveyYear",
-			"data_type": "buffer",
+			"data_type": "int16",
 			"json_path": "uro:BuildingDetailAttribute uro:surveyYear"
 		},
 		{
