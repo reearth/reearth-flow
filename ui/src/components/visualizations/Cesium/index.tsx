@@ -1,12 +1,12 @@
 // import { Viewer as CesiumViewerType } from "cesium";
+import { defined, SceneMode, ScreenSpaceEventType } from "cesium";
+import { useCallback, useEffect, useState } from "react";
 import {
-  defined,
-  SceneMode,
+  ScreenSpaceEvent,
   ScreenSpaceEventHandler,
-  ScreenSpaceEventType,
-} from "cesium";
-import { useEffect, useState } from "react";
-import { Viewer, ViewerProps } from "resium";
+  Viewer,
+  ViewerProps,
+} from "resium";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
@@ -42,25 +42,19 @@ const CesiumViewer: React.FC<Props> = ({
   onSelectedFeature,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [cesiumReady, setCesiumReady] = useState(false);
-  const [entitiesLoaded, setEntitiesLoaded] = useState(false);
 
   useEffect(() => {
     if (isLoaded) return;
     setIsLoaded(true);
   }, [isLoaded]);
 
-  // Set up click handler when both Cesium viewer AND entities are ready
-  useEffect(() => {
-    if (!onSelectedFeature || !cesiumReady || !entitiesLoaded) return;
+  const handleSingleClick = useCallback(
+    (movement: any) => {
+      if (!onSelectedFeature || !viewerRef?.current?.cesiumElement) return;
 
-    const cesiumViewer = viewerRef?.current?.cesiumElement;
-    if (!cesiumViewer) return;
-
-    const handler = new ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
-
-    handler.setInputAction((movement: any) => {
+      const cesiumViewer = viewerRef.current.cesiumElement;
       const pickedObject = cesiumViewer.scene.pick(movement.position);
+
       if (defined(pickedObject) && defined(pickedObject.id)) {
         const entity = pickedObject.id;
         if (entity.id) {
@@ -73,12 +67,9 @@ const CesiumViewer: React.FC<Props> = ({
       } else {
         onSelectedFeature(null);
       }
-    }, ScreenSpaceEventType.LEFT_CLICK);
-
-    return () => {
-      handler.destroy();
-    };
-  }, [cesiumReady, entitiesLoaded, onSelectedFeature, viewerRef]);
+    },
+    [onSelectedFeature, viewerRef],
+  );
 
   // Separate features by geometry type
   const geoJsonFeatures =
@@ -92,16 +83,16 @@ const CesiumViewer: React.FC<Props> = ({
     ) || [];
 
   return (
-    <Viewer
-      ref={(viewer) => {
-        if (viewerRef && viewer) {
-          viewerRef.current = viewer;
-          // Viewer is ready when ref callback fires
-          setCesiumReady(true);
-        }
-      }}
-      full
-      {...defaultCesiumProps}>
+    <Viewer ref={viewerRef} full {...defaultCesiumProps}>
+      {onSelectedFeature && (
+        <ScreenSpaceEventHandler>
+          <ScreenSpaceEvent
+            action={handleSingleClick}
+            type={ScreenSpaceEventType.LEFT_CLICK}
+          />
+        </ScreenSpaceEventHandler>
+      )}
+
       {isLoaded && fileType === "geojson" && (
         <>
           {/* Standard GeoJSON features */}
@@ -111,7 +102,6 @@ const CesiumViewer: React.FC<Props> = ({
                 type: "FeatureCollection",
                 features: geoJsonFeatures,
               }}
-              onEntitiesLoaded={() => setEntitiesLoaded(true)}
             />
           )}
 
@@ -122,7 +112,6 @@ const CesiumViewer: React.FC<Props> = ({
                 type: "FeatureCollection",
                 features: cityGmlFeatures,
               }}
-              onEntitiesLoaded={() => setEntitiesLoaded(true)}
             />
           )}
         </>
