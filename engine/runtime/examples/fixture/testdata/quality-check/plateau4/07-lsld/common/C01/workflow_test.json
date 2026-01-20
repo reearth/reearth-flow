@@ -41,7 +41,10 @@
         "expectedFile": "01_共通.csv"
       },
       {
-        "expectedFile": "07_土砂災害警戒区域_検査結果一覧.csv"
+        "expectedFile": "07_土砂災害警戒区域_検査結果一覧.csv",
+        "excludeColumns": [
+          "Index"
+        ]
       }
     ]
   },

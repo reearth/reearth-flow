@@ -1,6 +1,6 @@
 {
-  "skip": true,
   "description": "Test C02 histogram creation.",
+  "skip": true,
   "workflowPath": "quality-check/plateau4/09-brid-tun-ubld/workflow.yml",
   "workflowVariables": [
     {

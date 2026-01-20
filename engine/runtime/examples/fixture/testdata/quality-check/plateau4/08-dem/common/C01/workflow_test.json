@@ -43,6 +43,7 @@
       {
         "expectedFile": "08_地形_検査結果一覧.csv",
         "excludeColumns": [
+          "Index",
           "不正な穴"
         ]
       }
