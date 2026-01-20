@@ -404,9 +404,8 @@ export default () => {
     const map = new Map<string | number, any>();
     formattedData.tableData.forEach((row: any) => {
       const id = row.id;
-      if (id !== null && id !== undefined) {
-        map.set(id, row);
-      }
+      const normalizedId = JSON.parse(id);
+      map.set(normalizedId, row);
     });
     return map;
   }, [formattedData.tableData]);
@@ -442,7 +441,8 @@ export default () => {
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleFeatureSelect(value?.id ?? null);
+      const normalizedId = JSON.parse(value?.id);
+      handleFeatureSelect(normalizedId ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
       setDetailsOverlayOpen(true);
     },

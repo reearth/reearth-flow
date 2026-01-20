@@ -1,7 +1,12 @@
 // import { Viewer as CesiumViewerType } from "cesium";
-import { SceneMode } from "cesium";
-import { useEffect, useState } from "react";
-import { Viewer, ViewerProps } from "resium";
+import { defined, SceneMode, ScreenSpaceEventType } from "cesium";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ScreenSpaceEvent,
+  ScreenSpaceEventHandler,
+  Viewer,
+  ViewerProps,
+} from "resium";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
@@ -27,12 +32,14 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
+  onSelectedFeature?: (featureId: string | null) => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   viewerRef,
+  onSelectedFeature,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -40,6 +47,29 @@ const CesiumViewer: React.FC<Props> = ({
     if (isLoaded) return;
     setIsLoaded(true);
   }, [isLoaded]);
+
+  const handleSingleClick = useCallback(
+    (movement: any) => {
+      if (!onSelectedFeature || !viewerRef?.current?.cesiumElement) return;
+
+      const cesiumViewer = viewerRef.current.cesiumElement;
+      const pickedObject = cesiumViewer.scene.pick(movement.position);
+
+      if (defined(pickedObject) && defined(pickedObject.id)) {
+        const entity = pickedObject.id;
+        if (entity.id) {
+          try {
+            onSelectedFeature(entity.id);
+          } catch (e) {
+            console.error("Cesium viewer error:", e);
+          }
+        }
+      } else {
+        onSelectedFeature(null);
+      }
+    },
+    [onSelectedFeature, viewerRef],
+  );
 
   // Separate features by geometry type
   const geoJsonFeatures =
@@ -54,6 +84,15 @@ const CesiumViewer: React.FC<Props> = ({
 
   return (
     <Viewer ref={viewerRef} full {...defaultCesiumProps}>
+      {onSelectedFeature && (
+        <ScreenSpaceEventHandler>
+          <ScreenSpaceEvent
+            action={handleSingleClick}
+            type={ScreenSpaceEventType.LEFT_CLICK}
+          />
+        </ScreenSpaceEventHandler>
+      )}
+
       {isLoaded && fileType === "geojson" && (
         <>
           {/* Standard GeoJSON features */}
