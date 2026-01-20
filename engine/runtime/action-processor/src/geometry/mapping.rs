@@ -23,6 +23,7 @@ use super::{
     extruder::ExtruderFactory,
     filter::GeometryFilterFactory,
     footprint_replacer::FootprintReplacerFactory,
+    image_rasterizer::ImageRasterizerFactory,
     geometry_part_extractor::GeometryPartExtractorFactory,
     hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory,
@@ -102,6 +103,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<SpatialFilterFactory>::default(),
         Box::<PolygonNormalExtractorFactory>::default(),
         Box::<RayIntersectorFactory>::default(),
+        Box::<ImageRasterizerFactory>::default(),
     ];
     factories
         .into_iter()
