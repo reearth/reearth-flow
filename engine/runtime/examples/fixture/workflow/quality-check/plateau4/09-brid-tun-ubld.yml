@@ -668,6 +668,10 @@ graphs:
             return value.issue;
           }
           "UnknownError"
+      - attribute: folder
+        method: create
+        value: |
+          env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
       - attribute: validationResult
         method: remove
       - attribute: surfaceId
@@ -731,7 +735,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_LOD0面の向きエラー.csv")
+        let pkg = env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_LOD0面の向きエラー.csv")
   - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lod0IncorrectOrientationCounter
     type: action
@@ -755,7 +761,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_LOD0面のエラー.csv")
+        let pkg = env.get("__value")["folder"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_LOD0面のエラー.csv")
   - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: Lod0InvalidSurfaceCounter
     type: action
@@ -802,6 +810,10 @@ graphs:
             return value.issue;
           }
           "UnknownError"
+      - attribute: folder
+        method: create
+        value: |
+          env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
       - attribute: validationResult
         method: remove
       - attribute: surfaceId
@@ -865,7 +877,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_LOD1境界面のエラー.csv")
+        let pkg = env.get("__value")["folder"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_LOD1境界面のエラー.csv")
   - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     name: Lod1InvalidSurfaceCounter
     type: action
@@ -933,6 +947,10 @@ graphs:
             return value.issue;
           }
           "UnknownError"
+      - attribute: folder
+        method: create
+        value: |
+          env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
       - attribute: validationResult
         method: remove
       - attribute: surfaceId
@@ -996,7 +1014,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_LOD2以上境界面のエラー.csv")
+        let pkg = env.get("__value")["folder"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_LOD2以上境界面のエラー.csv")
   - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: ErrorCount-Lod2InvalidSurface
     type: action
@@ -1111,6 +1131,10 @@ graphs:
         method: create
         value: |
           "Surface Not Closed"
+      - attribute: folder
+        method: create
+        value: |
+          env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
       - attribute: solid_boundary_issues
         method: remove
       - attribute: surfaceId
@@ -1162,7 +1186,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_非水密体.csv")
+        let pkg = env.get("__value")["folder"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_非水密体.csv")
   - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: Lod1-4NotClosedSolidCounter
     type: action
@@ -1208,6 +1234,10 @@ graphs:
         method: create
         value: |
           "InvalidSolidBoundaries"
+      - attribute: folder
+        method: create
+        value: |
+          env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
       - attribute: solid_boundary_issues
         method: remove
       - attribute: surfaceId
@@ -1259,7 +1289,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_立体のエラー.csv")
+        let pkg = env.get("__value")["folder"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_立体のエラー.csv")
   - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: Lod1-4SolidIssuesCounter
     type: action
@@ -3503,7 +3535,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_橋梁_地物インスタンス数.csv")
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
@@ -3511,7 +3543,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_トンネル.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_トンネル_地物インスタンス数.csv")
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
@@ -3519,7 +3551,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_地下街.csv")
+        file::join_path(env.get("workerArtifactPath"), "09_地下街_地物インスタンス数.csv")
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
@@ -3536,6 +3568,9 @@ graphs:
       - attribute: filename
         expr: |
           env.get("__value").gmlFilename
+      - attribute: folder
+        expr: |
+          env.get("__value")["package"]
   - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     name: ErrorSummaryMerger
     type: action
@@ -3551,6 +3586,9 @@ graphs:
     action: AttributeMapper
     with:
       mappers:
+      - attribute: Folder
+        expr: |
+          env.get("__value").folder
       - attribute: Index
         expr: |
           env.get("__value").index
@@ -3609,12 +3647,16 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_トンネル_地下街_検査結果一覧.csv")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
+        file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
   - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: StatisticsCalculator
     type: action
     action: StatisticsCalculator
     with:
+      groupBy:
+      - Folder
       calculations:
       - newAttribute: LOD0 面のエラー
         expr: |
@@ -3694,7 +3736,8 @@ graphs:
           result
         }
       output: |
-        file::join_path(env.get("workerArtifactPath"), "summary_brid_tun_ubld.json")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -3961,12 +4004,12 @@ graphs:
   - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
-    fromPort: output
+    fromPort: default
     toPort: default
   - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
     from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
     to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
-    fromPort: output
+    fromPort: default
     toPort: default
   - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1d
     from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a

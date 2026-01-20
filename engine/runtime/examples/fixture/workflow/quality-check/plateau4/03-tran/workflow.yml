@@ -654,7 +654,7 @@ graphs:
                 env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
             - newAttribute: "面の向き不正"
               expr: |
-                env.get("__value")["Z-TRAN-01 面の向き不正"] ?? 0
+                env.get("__value")["面の向き不正"] ?? 0
             - newAttribute: "L-TRAN-02 隣接面重複"
               expr: |
                 env.get("__value")["L-TRAN-02 隣接面重複"] ?? 0

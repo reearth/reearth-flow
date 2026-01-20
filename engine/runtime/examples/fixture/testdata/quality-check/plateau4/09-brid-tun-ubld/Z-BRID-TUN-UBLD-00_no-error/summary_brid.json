@@ -1,0 +1,62 @@
+[
+  {
+    "name": "LOD0 面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD0 面の向きエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD0 面の交差",
+    "count": 0
+  },
+  {
+    "name": "LOD1 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD1 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD1 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD2 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD2 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD2 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD3 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD3 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD3 立体のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD4 境界面のエラー",
+    "count": 0
+  },
+  {
+    "name": "LOD4 非水密立体",
+    "count": 0
+  },
+  {
+    "name": "LOD4 立体のエラー",
+    "count": 0
+  }
+]

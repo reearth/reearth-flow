@@ -25,17 +25,17 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "04_都市設備_植生_面のエラー.csv"
+    "expectedFile": "04_都市設備_面のエラー.csv"
   },
   "summaryOutput": {
     "errorCountSummary": {
-      "expectedFile": "summary_frn_veg.json",
+      "expectedFile": "summary_frn.json",
       "includeFields": [
         "面のエラー"
       ]
     },
     "fileErrorSummary": {
-      "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
+      "expectedFile": "04_都市設備_検査結果一覧.csv",
       "includeColumns": [
         "面のエラー"
       ]

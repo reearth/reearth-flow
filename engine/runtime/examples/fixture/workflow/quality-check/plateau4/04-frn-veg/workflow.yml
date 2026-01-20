@@ -210,7 +210,9 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_地物インスタンス数.csv")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
+            file::join_path(env.get("workerArtifactPath"), name + "_地物インスタンス数.csv")
 
       # Surface Validation
       - id: 950407af-eec5-49ee-902c-2b41f31150d3
@@ -256,7 +258,9 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_面のエラー.csv")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
+            file::join_path(env.get("workerArtifactPath"), name + "_面のエラー.csv")
       
       - id: 46d6ed1c-cde5-43a5-837b-8544103aa36b
         name: SurfaceValidationErrorCounter
@@ -325,7 +329,9 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_非水密体.csv")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
+            file::join_path(env.get("workerArtifactPath"), name + "_非水密体.csv")
 
       - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
         name: Lod1-4NotClosedSolidCounter
@@ -381,7 +387,9 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_立体のエラー.csv")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
+            file::join_path(env.get("workerArtifactPath"), name + "_立体のエラー.csv")
 
       - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Lod1-4SolidIssuesCounter
@@ -431,7 +439,9 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_不正なジオメトリ型.csv")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
+            file::join_path(env.get("workerArtifactPath"), name + "_不正なジオメトリ型.csv")
       
       
       - id: d7c87c17-485d-469e-b216-7797bd63d0e9
@@ -461,6 +471,9 @@ graphs:
             - attribute: Filename
               expr: |
                 env.get("__value").name
+            - attribute: Folder
+              expr: |
+                env.get("__value")["package"]
 
       # FeatureMerger for aggregating error counts
       - id: 92119eb6-9343-49b7-b6c2-e2142374c52c
@@ -480,6 +493,9 @@ graphs:
         action: AttributeMapper
         with:
           mappers:
+            - attribute: Folder
+              expr: |
+                env.get("__value").Folder
             - attribute: Index
               expr: |
                 env.get("__value").Index
@@ -508,7 +524,9 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "04_都市設備_植生_検査結果一覧.csv")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
+            file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -516,6 +534,8 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
+          groupBy:
+            - Folder
           calculations:
             # Domain-specific error columns
             - newAttribute: "面のエラー"
@@ -561,7 +581,8 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_frn_veg.json")
+            let pkg = env.get("__value")["Folder"] ?? "";
+            file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -956,10 +977,10 @@ graphs:
       - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
-        fromPort: output
+        fromPort: default
         toPort: default
       - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
-        fromPort: output
+        fromPort: default
         toPort: default

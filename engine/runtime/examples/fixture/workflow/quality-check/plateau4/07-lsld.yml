@@ -2779,10 +2779,10 @@ graphs:
   - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-    fromPort: output
+    fromPort: default
     toPort: default
   - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
     from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
     to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-    fromPort: output
+    fromPort: default
     toPort: default

@@ -1,5 +1,5 @@
 {
-  "description": "Verify output files: no errors, empty CityGML (no features)",
+  "description": "Verify output files: no errors, empty CityGML",
   "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
   "workflowVariables": [
     {
