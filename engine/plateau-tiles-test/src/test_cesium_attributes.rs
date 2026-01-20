@@ -34,7 +34,7 @@ fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
             if let Some(existing) = ret.get(&gml_id) {
                 if existing != &Value::Object(props.clone()) {
                     let existing_path = rel.get(&gml_id).unwrap();
-                    // eprintln!("Debug: Conflict for gml_id {}: {:?} vs {:?}", gml_id, existing, Value::Object(props.clone()));
+                    tracing::debug!("Conflict for gml_id {}: {:?} vs {:?}", gml_id, existing, props);
                     return Err(format!(
                         "Conflicting gml_id {}: properties differ between {:?} and {:?}",
                         gml_id, existing_path, path
