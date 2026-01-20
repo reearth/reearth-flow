@@ -28,7 +28,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ImageRasterizer))
+        Some(schemars::schema_for!(ImageRasterizerParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -50,7 +50,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let image_rasterizer: ImageRasterizer = if let Some(with) = with {
+        let params: ImageRasterizerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::BuffererFactory(format!( // Using an existing error variant
                     "Failed to serialize 'with' parameter: {e}"
@@ -62,9 +62,22 @@ impl ProcessorFactory for ImageRasterizerFactory {
                 ))
             })?
         } else {
-            ImageRasterizer::default()
+            return Err(GeometryProcessorError::BuffererFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
         };
-        Ok(Box::new(image_rasterizer))
+
+        let process = ImageRasterizer {
+            cell_size_x: params.cell_size_x,
+            cell_size_y: params.cell_size_y,
+            rasterization_mode: params.rasterization_mode,
+            color_interpretation: params.color_interpretation,
+            background_color: params.background_color,
+            fill_color_attribute: params.fill_color_attribute,
+            anti_aliasing: params.anti_aliasing,
+        };
+        Ok(Box::new(process))
     }
 }
 
@@ -96,7 +109,7 @@ enum ColorInterpretation {
 /// Configure how to convert vector geometries to raster images
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ImageRasterizer {
+struct ImageRasterizerParam {
     /// # Cell Size X
     /// The width of each pixel in coordinate units
     #[serde(default = "default_cell_size")]
@@ -133,6 +146,17 @@ pub struct ImageRasterizer {
     anti_aliasing: bool,
 }
 
+#[derive(Debug, Clone)]
+struct ImageRasterizer {
+    cell_size_x: f64,
+    cell_size_y: f64,
+    rasterization_mode: RasterizationMode,
+    color_interpretation: ColorInterpretation,
+    background_color: [u8; 3],
+    fill_color_attribute: String,
+    anti_aliasing: bool,
+}
+
 fn default_cell_size() -> f64 {
     1.0
 }
@@ -157,7 +181,7 @@ fn default_anti_aliasing() -> bool {
     true
 }
 
-impl Default for ImageRasterizer {
+impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
             cell_size_x: default_cell_size(),
@@ -238,6 +262,13 @@ impl ImageRasterizer {
         new_attributes.insert(Attribute::new("cell_size_y".to_string()), AttributeValue::Number(serde_json::Number::from_f64(self.cell_size_y).unwrap_or_else(|| serde_json::Number::from(0))));
         new_attributes.insert(Attribute::new("rasterization_mode".to_string()), AttributeValue::String(format!("{:?}", self.rasterization_mode)));
         new_attributes.insert(Attribute::new("color_interpretation".to_string()), AttributeValue::String(format!("{:?}", self.color_interpretation)));
+        new_attributes.insert(Attribute::new("background_color".to_string()), AttributeValue::Array(vec![
+            AttributeValue::Number(self.background_color[0].into()),
+            AttributeValue::Number(self.background_color[1].into()),
+            AttributeValue::Number(self.background_color[2].into()),
+        ]));
+        new_attributes.insert(Attribute::new("fill_color_attribute".to_string()), AttributeValue::String(self.fill_color_attribute.clone()));
+        new_attributes.insert(Attribute::new("anti_aliasing".to_string()), AttributeValue::Bool(self.anti_aliasing));
 
         // In a real implementation, we would convert the geometry to a raster representation
         // For now, we'll keep the original geometry but mark it as processed
