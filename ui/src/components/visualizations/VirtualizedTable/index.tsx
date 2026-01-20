@@ -131,6 +131,28 @@ function VirtualizedTable<TData, TValue>({
     estimateSize: () => (condensed ? 24 : 34),
   });
 
+  const isItemRenderedAndInView = useCallback(
+    (index: number) => {
+      const scrollElement = parentRef.current;
+      if (!scrollElement) return false;
+
+      const viewportTop = scrollElement.scrollTop;
+      const viewportBottom = viewportTop + scrollElement.clientHeight;
+
+      const virtualItem = virtualizer
+        .getVirtualItems()
+        .find((item) => item.index === index);
+
+      if (!virtualItem) return false;
+
+      const itemTop = virtualItem.start;
+      const itemBottom = virtualItem.start + virtualItem.size;
+
+      return itemTop >= viewportTop && itemBottom <= viewportBottom;
+    },
+    [virtualizer],
+  );
+
   const [parentHeight, setParentHeight] = useState<number>(0);
 
   useEffect(() => {
@@ -161,13 +183,20 @@ function VirtualizedTable<TData, TValue>({
   }, [selectedFeatureId, data]);
 
   useEffect(() => {
-    if (selectedRowIndex !== -1 && !surpressAutoScroll) {
+    if (selectedRowIndex === -1 || surpressAutoScroll) return;
+
+    if (!isItemRenderedAndInView(selectedRowIndex)) {
       virtualizer.scrollToIndex(selectedRowIndex, {
         align: "start",
         behavior: "auto",
       });
     }
-  }, [selectedRowIndex, virtualizer, surpressAutoScroll]);
+  }, [
+    selectedRowIndex,
+    surpressAutoScroll,
+    isItemRenderedAndInView,
+    virtualizer,
+  ]);
 
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
@@ -272,7 +301,7 @@ function VirtualizedTable<TData, TValue>({
                   return (
                     <TableRow
                       key={row.id}
-                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b"
                       style={{
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${
