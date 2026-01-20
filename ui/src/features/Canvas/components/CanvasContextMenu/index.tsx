@@ -168,11 +168,11 @@ const CanvasContextMenu: React.FC<Props> = ({
                   onDebugRunStartFromSelectedNode?.(node, nodes),
                 ),
                 disabled:
-                  (node ?? nodes?.[0])?.type === "batch" ||
-                  (node ?? nodes?.[0])?.type === "note" ||
-                  (node ?? nodes?.[0])?.type === "subworkflow" ||
+                  !debugJobId ||
                   (nodes?.length ?? 0) > 1 ||
-                  !debugJobId,
+                  node?.type === "batch" ||
+                  node?.type === "note" ||
+                  node?.type === "subworkflow",
               },
             },
           ]
