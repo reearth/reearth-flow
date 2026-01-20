@@ -128,12 +128,20 @@ export const useQueries = () => {
   });
 
   const runProjectMutation = useMutation({
-    mutationFn: async ({ projectId, workspaceId, file }: RunProjectInput) => {
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+      file,
+      previousJobId,
+      startNodeId,
+    }: RunProjectInput) => {
       const data = await graphQLContext?.RunProject({
         input: {
           projectId,
           workspaceId,
           file: file.get("file"),
+          previousJobId,
+          startNodeId,
         },
       });
       if (!data?.runProject?.job) return { workspaceId };

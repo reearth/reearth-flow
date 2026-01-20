@@ -253,6 +253,7 @@ export default ({
   const {
     customDebugRunWorkflowVariables,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
@@ -440,6 +441,7 @@ export default ({
     handleLayoutChange,
     handleDeleteDialogClose,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleCopy,
     handleCut,
@@ -449,6 +451,7 @@ export default ({
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
+    selectedNodeIds,
     setShowSearchPanel,
   };
 };

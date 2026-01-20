@@ -1,4 +1,6 @@
 import {
+  ArrowRightIcon,
+  CircleIcon,
   ClipboardIcon,
   CopyIcon,
   EyeIcon,
@@ -19,6 +21,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useCurrentProject } from "@flow/stores";
 import { Node, NodeChange } from "@flow/types";
 
 type Props = {
@@ -39,6 +42,10 @@ type Props = {
   onPaste?: (menuPosition?: XYPosition) => void;
   onNodesDisable?: (nodes?: Node[]) => void;
   onClose: () => void;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
 };
 
 const CanvasContextMenu: React.FC<Props> = ({
@@ -59,9 +66,20 @@ const CanvasContextMenu: React.FC<Props> = ({
   onPaste,
   onNodesDisable,
   onClose,
+  onDebugRunStartFromSelectedNode,
 }) => {
   const t = useT();
   const { value } = useIndexedDB("general");
+  const [currentProject] = useCurrentProject();
+
+  const { value: debugRunState } = useIndexedDB("debugRun");
+
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId,
+    [debugRunState, currentProject],
+  );
 
   const freshData = useMemo(() => {
     if (!data) return undefined;
@@ -131,6 +149,42 @@ const CanvasContextMenu: React.FC<Props> = ({
     };
 
     const items: ContextMenuItemType[] = [
+      ...(node || nodes
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Run From Selected Action"),
+                icon: (
+                  <div className="relative flex items-center">
+                    <CircleIcon weight="fill" className="scale-75 transform" />
+                    <ArrowRightIcon
+                      weight="bold"
+                      className="absolute left-1.25 scale-75 transform"
+                    />
+                  </div>
+                ),
+                onCallback: wrapWithClose(() =>
+                  onDebugRunStartFromSelectedNode?.(node, nodes),
+                ),
+                disabled:
+                  !debugJobId ||
+                  (nodes?.length ?? 0) > 1 ||
+                  node?.type === "batch" ||
+                  node?.type === "note" ||
+                  node?.type === "subworkflow",
+              },
+            },
+          ]
+        : []),
+
+      ...(node || nodes
+        ? [
+            {
+              type: "separator" as const,
+            },
+          ]
+        : []),
       {
         type: "action",
         props: {
@@ -143,6 +197,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
+
       {
         type: "action",
         props: {
@@ -232,26 +287,6 @@ const CanvasContextMenu: React.FC<Props> = ({
           ),
         },
       },
-      ...(node
-        ? [
-            {
-              type: "action" as const,
-              props: {
-                label: t("Action Settings"),
-                icon: <GearFineIcon weight="light" />,
-                onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
-              },
-            },
-          ]
-        : []),
-      ...(node || nodes
-        ? [
-            {
-              type: "separator" as const,
-            },
-          ]
-        : []),
-
       ...(node || nodes
         ? [
             {
@@ -267,6 +302,25 @@ const CanvasContextMenu: React.FC<Props> = ({
             },
           ]
         : []),
+      ...(node || nodes
+        ? [
+            {
+              type: "separator" as const,
+            },
+          ]
+        : []),
+      ...(node
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Action Settings"),
+                icon: <GearFineIcon weight="light" />,
+                onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
+              },
+            },
+          ]
+        : []),
     ];
 
     return items;
@@ -276,6 +330,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     nodes,
     clipboardHasReadersOrWriters,
     containsReadersOrWriters,
+    debugJobId,
     onCopy,
     onCut,
     onPaste,
@@ -283,6 +338,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     onNodesChange,
     onEdgesChange,
     onNodesDisable,
+    onDebugRunStartFromSelectedNode,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,
