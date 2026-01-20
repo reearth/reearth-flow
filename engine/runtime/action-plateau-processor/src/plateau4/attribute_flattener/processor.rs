@@ -409,7 +409,7 @@ impl AttributeFlattener {
                     continue;
                 }
                 let data_type = match attribute.data_type.as_str() {
-                    "string" | "date" => AttributeValue::default_string(),
+                    "string" | "date" | "buffer" => AttributeValue::default_string(),
                     "int" => AttributeValue::default_number(),
                     "double" | "measure" => AttributeValue::default_float(),
                     _ => continue,
