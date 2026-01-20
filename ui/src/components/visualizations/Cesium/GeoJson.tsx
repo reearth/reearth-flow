@@ -3,9 +3,10 @@ import { GeoJsonDataSource, useCesium } from "resium";
 
 type Props = {
   geoJsonData: any | null;
+  onEntitiesLoaded?: () => void;
 };
 
-const GeoJsonData: React.FC<Props> = ({ geoJsonData }) => {
+const GeoJsonData: React.FC<Props> = ({ geoJsonData, onEntitiesLoaded }) => {
   const { viewer } = useCesium();
   const [dataSourceKey, setDataSourceKey] = useState(0);
 
@@ -70,6 +71,7 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData }) => {
           if (viewer) {
             viewer.zoomTo(geoJsonDataSource.entities);
           }
+          onEntitiesLoaded?.();
         }}
       />
     )

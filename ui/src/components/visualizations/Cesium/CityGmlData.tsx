@@ -19,9 +19,10 @@ type Props = {
     type: "FeatureCollection";
     features: CityGmlFeature[];
   } | null;
+  onEntitiesLoaded?: () => void;
 };
 
-const CityGmlData: React.FC<Props> = ({ cityGmlData }) => {
+const CityGmlData: React.FC<Props> = ({ cityGmlData, onEntitiesLoaded }) => {
   const { viewer } = useCesium();
   const entitiesRef = useRef<Entity[]>([]);
 
@@ -84,9 +85,11 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData }) => {
       const removeListener = viewer.scene.postRender.addEventListener(() => {
         removeListener();
         viewer.zoomTo(viewer.entities);
+        // Notify parent that entities are loaded and ready
+        onEntitiesLoaded?.();
       });
     }
-  }, [cityGmlData, viewer, createCityGmlEntity]);
+  }, [cityGmlData, viewer, createCityGmlEntity, onEntitiesLoaded]);
 
   // Cleanup on unmount
   useEffect(() => {
