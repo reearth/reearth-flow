@@ -268,7 +268,7 @@ impl CommonAttributeProcessor {
         let mut result = HashMap::new();
         for (key, value) in self.attribute_to_attribute_type.iter() {
             match value.as_str() {
-                "string" | "date" => {
+                "string" | "date" | "buffer" => {
                     result.insert(
                         Attribute::new(key.clone()),
                         AttributeValue::default_string(),

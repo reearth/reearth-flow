@@ -17,6 +17,7 @@ cargo run -p plateau-tiles-test
   - `{workflow-path}` is relative to `runtime/examples/fixture/workflow/` (e.g., `data-convert/plateau4/02-tran-rwy-trk-squr-wwy`)
   - `profile.toml` - Test configuration (`workflow_path` is optional, auto-derived from directory structure)
   - `citymodel/udx/` - Test-specific GML files (filtered from source)
+  - `citymodel/{codelists,schemas}` - Symlink to corresponding citymodel data
   - `fme/` - Reference FME output directory with tile files
 - `results/{workflow-path}/{desc}/` - Runtime outputs (gitignored)
   - `{zip_name}` - Packed citymodel zip (generated from artifacts + testcase)
@@ -29,6 +30,7 @@ cargo run -p plateau-tiles-test
 
 - draco decoding not supported (TODO), disable it in the workflow to test.
 - 3D tiles v1.0 `.b3dm` output by FME is not supported. Use [3d-tiles-tool](https://github.com/CesiumGS/3d-tiles-tools) to upgrade it.
+  - `3d-tiles-tools` has several [problems](https://github.com/reearth/reearth-flow/pull/1841) especially when testing tiles containing multiple features.
 - FME's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
 
 ### Ignored differences in attribute test
