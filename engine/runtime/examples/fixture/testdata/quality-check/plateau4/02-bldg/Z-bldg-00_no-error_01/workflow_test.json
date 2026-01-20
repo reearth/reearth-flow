@@ -24,33 +24,22 @@
     }
   ],
   "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_bldg.json"
-    },
-    "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv"
-    },
-    "commonSummary": {
-      "expectedFile": "01_共通.csv"
-    },
-    "commonErrorCountSummary": {
-      "expectedFile": "summary_common.json"
-    },
-    "common2Summary": {
-      "expectedFile": "summary_common2-bldg.json"
-    },
-    "requiredAttributesSummary": {
-      "expectedFile": "01-2_必須属性等_C05必須属性等の欠落_bldg.csv"
-    },
-    "targetAttributesSummary": {
-      "expectedFile": "01-2_必須属性等_C06現われない属性等_bldg.csv"
-    },
-    "dataQualityC07Summary": {
-      "expectedFile": "01-2_必須属性等_C07品質属性_bldg.csv"
-    },
-    "dataQualityC08Summary": {
-      "expectedFile": "01-2_必須属性等_C08公共測量品質属性_bldg.csv"
-    }
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_bldg.json"
+      },
+      {
+        "expectedFile": "summary_common.json"
+      }
+    ],
+    "fileErrorSummary": [
+      {
+        "expectedFile": "02_建築物_検査結果一覧.csv"
+      },
+      {
+        "expectedFile": "01_共通.csv"
+      }
+    ]
   },
   "expectResultOkFile": true
 }
