@@ -3,8 +3,6 @@ use indexmap::IndexMap;
 use reearth_flow_types::AttributeValue;
 use serde_json::Value;
 
-use super::{ENUM_NO_DATA, FLOAT_NO_DATA, INT64_NO_DATA, UINT64_NO_DATA};
-
 /// Extract feature IDs from EXT_mesh_features extension
 pub fn read_mesh_features(
     primitive: &gltf::Primitive,
@@ -331,6 +329,15 @@ pub fn extract_feature_properties(
             .and_then(|v| v.as_str())
     };
 
+    // Get noData value from schema for each property
+    let get_no_data = |prop_name: &str| -> Option<&Value> {
+        metadata_value.pointer(&format!(
+            "/schema/classes/{}/properties/{}/noData",
+            prop_table.get("class")?.as_str()?,
+            prop_name
+        ))
+    };
+
     // Extract each property
     for (prop_name, prop_def) in properties {
         let values_idx = prop_def["values"].as_u64().ok_or_else(|| {
@@ -363,26 +370,96 @@ pub fn extract_feature_properties(
             GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name))
         })?;
 
+        // Get noData value from schema if it exists
+        let no_data = get_no_data(prop_name);
+
         for i in 0..count {
             let value = match component_type {
-                "INT64" => {
-                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    (v != INT64_NO_DATA).then(|| Value::Number(v.into()))
+                "INT8" => {
+                    let v = data[i] as i8;
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v as i64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as i64).into()))
                 }
-                "UINT64" => {
-                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    (v != UINT64_NO_DATA).then(|| Value::Number(v.into()))
+                "UINT8" => {
+                    let v = data[i];
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v as u64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as u64).into()))
                 }
-                "FLOAT64" => {
-                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    (v != FLOAT_NO_DATA)
-                        .then(|| serde_json::Number::from_f64(v))
-                        .flatten()
-                        .map(Value::Number)
+                "INT16" => {
+                    let v = i16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v as i64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as i64).into()))
+                }
+                "UINT16" => {
+                    let v = u16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v as u64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as u64).into()))
+                }
+                "INT32" => {
+                    let v = i32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v as i64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as i64).into()))
                 }
                 "UINT32" => {
                     let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
-                    (v != ENUM_NO_DATA).then(|| Value::Number(v.into()))
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v as u64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number(v.into()))
+                }
+                "INT64" => {
+                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number(v.into()))
+                }
+                "UINT64" => {
+                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number(v.into()))
+                }
+                "FLOAT32" => {
+                    let v = f32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_f64())
+                        .map(|nd| (v as f64 - nd).abs() < f64::EPSILON)
+                        .unwrap_or(false);
+                    (!is_no_data)
+                        .then(|| serde_json::Number::from_f64(v as f64))
+                        .flatten()
+                        .map(Value::Number)
+                }
+                "FLOAT64" => {
+                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_f64())
+                        .map(|nd| (v - nd).abs() < f64::EPSILON)
+                        .unwrap_or(false);
+                    (!is_no_data)
+                        .then(|| serde_json::Number::from_f64(v))
+                        .flatten()
+                        .map(Value::Number)
                 }
                 _ => {
                     return Err(GltfReaderError::Parse(format!(
