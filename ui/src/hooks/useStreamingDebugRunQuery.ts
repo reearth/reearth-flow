@@ -426,7 +426,7 @@ export const useStreamingDebugRunQuery = (
           visualizerType: null,
           totalFeatures: 0,
           isStreaming: false,
-          isLoading: true,
+          isLoading: false,
           isComplete: false,
           progress: { bytesProcessed: 0, featuresProcessed: 0 },
           hasMore: false,
@@ -482,7 +482,7 @@ export const useStreamingDebugRunQuery = (
     // Compatibility with existing interface
     fileContent,
     fileType: "geojson" as SupportedDataTypes,
-    isLoading: streamingState.isLoading,
+    isLoading: streamingState.isLoading || metadataQuery.isLoading,
 
     // React Query compatibility
     data: streamingQuery.data,

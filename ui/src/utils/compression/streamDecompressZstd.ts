@@ -26,11 +26,14 @@ export async function* streamDecompressZstdJsonl<T = any>(
   let currentBatch: T[] = [];
 
   const response = await fetch(url, { signal });
-  if (!response.ok)
+  if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
 
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("Response body is not readable");
+  if (!reader) {
+    throw new Error("Response body is not readable");
+  }
 
   const decoder = new TextDecoder("utf-8");
   const ready: T[][] = [];
@@ -134,7 +137,7 @@ export async function* streamDecompressZstdJsonl<T = any>(
 
       decompressor.push(value);
 
-      // progress callback even if we haven't yielded a batch yet
+      // Invoke progress callback on every chunk read, even if no batches have been yielded yet
       onProgress?.({ bytesDownloaded, featuresProcessed });
 
       while (ready.length) {
