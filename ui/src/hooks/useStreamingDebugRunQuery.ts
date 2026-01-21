@@ -170,23 +170,23 @@ export const useStreamingDebugRunQuery = (
 
   // State for progressive streaming updates
   const [streamingState, setStreamingState] = useState<{
-    dataUrl: string;
     data: any[];
     detectedGeometryType: GeometryType;
     visualizerType: VisualizerType;
     totalFeatures: number;
     isStreaming: boolean;
+    isLoading: boolean;
     isComplete: boolean;
     progress: { bytesProcessed: number; featuresProcessed: number };
     hasMore: boolean;
     error: Error | null;
   }>({
-    dataUrl: "",
     data: [],
     detectedGeometryType: null,
     visualizerType: null,
     totalFeatures: 0,
     isStreaming: false,
+    isLoading: false,
     isComplete: false,
     progress: { bytesProcessed: 0, featuresProcessed: 0 },
     hasMore: false,
@@ -213,8 +213,8 @@ export const useStreamingDebugRunQuery = (
       // Initialize streaming state
       setStreamingState((prev) => ({
         ...prev,
-        dataUrl,
         isStreaming: true,
+        isLoading: true,
         error: null,
       }));
 
@@ -268,7 +268,6 @@ export const useStreamingDebugRunQuery = (
             // Update streaming state
             setStreamingState((prev) => ({
               ...prev,
-              dataUrl,
               data: shouldUpdateData ? [...streamData] : prev.data,
               detectedGeometryType,
               visualizerType: detectedVisualizerType,
@@ -277,6 +276,7 @@ export const useStreamingDebugRunQuery = (
               hasMore: totalFeatures > displayLimit,
               isComplete: result.isComplete,
               isStreaming: !result.isComplete,
+              isLoading: !result.isComplete,
             }));
 
             if (result.isComplete) {
@@ -335,7 +335,6 @@ export const useStreamingDebugRunQuery = (
             // Update streaming state
             setStreamingState((prev) => ({
               ...prev,
-              dataUrl,
               data: shouldUpdateData ? [...streamData] : prev.data,
               detectedGeometryType,
               visualizerType: detectedVisualizerType,
@@ -344,6 +343,7 @@ export const useStreamingDebugRunQuery = (
               hasMore: totalFeatures > displayLimit,
               isComplete: result.isComplete,
               isStreaming: !result.isComplete,
+              isLoading: !result.isComplete,
             }));
 
             if (result.isComplete) {
@@ -376,17 +376,17 @@ export const useStreamingDebugRunQuery = (
         if (error instanceof Error && error.name === "AbortError") {
           setStreamingState((prev) => ({
             ...prev,
-            dataUrl,
             isStreaming: false,
+            isLoading: false,
           }));
           throw error;
         }
         const err = error as Error;
         setStreamingState((prev) => ({
           ...prev,
-          dataUrl,
           error: err,
           isStreaming: false,
+          isLoading: false,
         }));
         throw error;
       }
@@ -404,12 +404,12 @@ export const useStreamingDebugRunQuery = (
       if (cachedData && cachedData.isComplete) {
         // Use cached data immediately
         setStreamingState({
-          dataUrl,
           data: cachedData.data || cachedData.fileContent || [],
           detectedGeometryType: cachedData.detectedGeometryType,
           visualizerType: cachedData.visualizerType || null,
           totalFeatures: cachedData.totalFeatures || 0,
           isStreaming: false,
+          isLoading: false,
           isComplete: true,
           progress: cachedData.progress || {
             bytesProcessed: 0,
@@ -421,12 +421,12 @@ export const useStreamingDebugRunQuery = (
       } else {
         // Reset to empty state
         setStreamingState({
-          dataUrl,
           data: [],
           detectedGeometryType: null,
           visualizerType: null,
           totalFeatures: 0,
           isStreaming: false,
+          isLoading: true,
           isComplete: false,
           progress: { bytesProcessed: 0, featuresProcessed: 0 },
           hasMore: false,
@@ -466,72 +466,27 @@ export const useStreamingDebugRunQuery = (
     };
   }, []);
 
-  const effectiveState = useMemo(() => {
-    const isStreamingStateValid = streamingState.dataUrl === dataUrl;
-    if (
-      isStreamingStateValid &&
-      (streamingState.isComplete ||
-        streamingState.isStreaming ||
-        streamingState.data.length > 0)
-    ) {
-      return streamingState;
-    }
-
-    if (streamingQuery.data?.isComplete) {
-      return {
-        dataUrl,
-        data: streamingQuery.data.data || streamingQuery.data.fileContent || [],
-        detectedGeometryType: streamingQuery.data.detectedGeometryType || null,
-        visualizerType: streamingQuery.data.visualizerType || null,
-        totalFeatures: streamingQuery.data.totalFeatures || 0,
-        isStreaming: false,
-        isComplete: true,
-        progress: streamingQuery.data.progress || {
-          bytesProcessed: 0,
-          featuresProcessed: 0,
-        },
-        hasMore: streamingQuery.data.hasMore || false,
-        error: null,
-      };
-    }
-
-    if (!isStreamingStateValid) {
-      return {
-        dataUrl,
-        data: [],
-        detectedGeometryType: null,
-        visualizerType: null,
-        totalFeatures: 0,
-        isStreaming: false,
-        isComplete: false,
-        progress: { bytesProcessed: 0, featuresProcessed: 0 },
-        hasMore: false,
-        error: null,
-      };
-    }
-
-    return streamingState;
-  }, [streamingState, streamingQuery.data, dataUrl]);
-
   // Memoize fileContent to prevent infinite re-renders
   const fileContent = useMemo(
     () => ({
       type: "FeatureCollection" as const,
-      features: effectiveState.data,
+      features: streamingState.data,
     }),
-    [effectiveState.data],
+    [streamingState.data],
   );
 
   return {
     // Progressive streaming data (immediately available)
-    ...effectiveState,
+    ...streamingState,
 
     // Compatibility with existing interface
     fileContent,
     fileType: "geojson" as SupportedDataTypes,
-    isLoading: streamingQuery.isLoading,
+    isLoading: streamingState.isLoading,
+
+    // React Query compatibility
     data: streamingQuery.data,
     isError: streamingQuery.isError || metadataQuery.isError,
-    error: effectiveState.error || streamingQuery.error || metadataQuery.error,
+    error: streamingState.error || streamingQuery.error || metadataQuery.error,
   };
 };

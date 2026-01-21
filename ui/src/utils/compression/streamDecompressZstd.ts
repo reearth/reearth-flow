@@ -21,55 +21,83 @@ export async function* streamDecompressZstdJsonl<T = any>(
 ): AsyncGenerator<{ data: T[]; isComplete: boolean; progress: any }, void> {
   const { batchSize = 1000, signal, onProgress } = options;
 
-  let decompressedBuffer = "";
+  let buffer = "";
   let featuresProcessed = 0;
   let bytesDownloaded = 0;
   let currentBatch: T[] = [];
 
-  // Fetch the compressed file
   const response = await fetch(url, { signal });
-  if (!response.ok) {
+  if (!response.ok)
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
 
   const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("Response body is not readable");
-  }
+  if (!reader) throw new Error("Response body is not readable");
 
-  // Create streaming decompressor
-  const decompressor = new Decompress((chunk, final) => {
-    // Decode decompressed chunk to string
-    const decoder = new TextDecoder("utf-8");
-    const textChunk = decoder.decode(chunk, { stream: !final });
-    decompressedBuffer += textChunk;
+  // ✅ reuse decoder
+  const decoder = new TextDecoder("utf-8");
 
-    // Process complete JSONL lines
-    const lines = decompressedBuffer.split(/\r?\n/);
+  // queue of batches ready to yield
+  const ready: T[][] = [];
 
-    // Keep the last (potentially incomplete) line in the buffer
-    if (!final) {
-      decompressedBuffer = lines.pop() || "";
-    } else {
-      decompressedBuffer = "";
-    }
+  const flushLines = (final: boolean) => {
+    // Extract complete lines from buffer without split-allocation storms
+    while (true) {
+      const idx = buffer.indexOf("\n");
+      if (idx === -1) break;
 
-    // Parse complete lines
-    for (const line of lines) {
+      const line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+
       const trimmed = line.trim();
       if (!trimmed) continue;
 
       try {
-        const parsed = JSON.parse(trimmed) as T;
-        currentBatch.push(parsed);
+        currentBatch.push(JSON.parse(trimmed) as T);
         featuresProcessed++;
-      } catch (error) {
+      } catch (e) {
+        // keep going; optionally count failures separately
         console.warn(
           "Failed to parse JSONL line:",
           trimmed.substring(0, 100),
-          error,
+          e,
         );
       }
+
+      if (currentBatch.length >= batchSize) {
+        ready.push(currentBatch);
+        currentBatch = [];
+      }
+    }
+
+    if (final) {
+      const trimmed = buffer.trim();
+      buffer = "";
+
+      if (trimmed) {
+        try {
+          currentBatch.push(JSON.parse(trimmed) as T);
+          featuresProcessed++;
+        } catch (e) {
+          console.warn(
+            "Failed to parse final JSONL line:",
+            trimmed.substring(0, 100),
+            e,
+          );
+        }
+      }
+
+      if (currentBatch.length) {
+        ready.push(currentBatch);
+        currentBatch = [];
+      }
+    }
+  };
+
+  // Decompress callback: accumulate text + parse out lines
+  const decompressor = new Decompress((chunk, final) => {
+    buffer += decoder.decode(chunk, { stream: !final });
+    if (final) {
+      flushLines(final);
     }
   });
 
@@ -78,46 +106,49 @@ export async function* streamDecompressZstdJsonl<T = any>(
       const { done, value } = await reader.read();
 
       if (done) {
-        // Push final chunk to decompressor
+        // final flush
         decompressor.push(new Uint8Array(0), true);
 
-        // Yield any remaining batch
-        if (currentBatch.length > 0) {
-          yield {
-            data: [...currentBatch],
-            isComplete: true,
-            progress: {
-              bytesDownloaded,
-              featuresProcessed,
-            },
-          };
-          currentBatch = [];
+        // yield any remaining ready batches
+        while (ready.length) {
+          const batch = ready.shift();
+          if (batch) {
+            yield {
+              data: batch,
+              isComplete: false,
+              progress: { bytesDownloaded, featuresProcessed },
+            };
+          }
         }
+
+        // ✅ ALWAYS yield a terminal completion event
+        yield {
+          data: [],
+          isComplete: true,
+          progress: { bytesDownloaded, featuresProcessed },
+        };
         break;
       }
 
-      // Update progress
       bytesDownloaded += value.length;
 
-      // Push compressed chunk to decompressor
+      // Push compressed chunk
       decompressor.push(value);
 
-      // Yield batch when it reaches the desired size
-      if (currentBatch.length >= batchSize) {
-        const progress = {
-          bytesDownloaded,
-          featuresProcessed,
-        };
+      // progress callback even if no batch emitted yet
+      onProgress?.({ bytesDownloaded, featuresProcessed });
 
-        onProgress?.(progress);
+      // yield any ready batches
+      while (ready.length) {
+        const batch = ready.shift();
 
-        yield {
-          data: [...currentBatch],
-          isComplete: false,
-          progress,
-        };
-
-        currentBatch = [];
+        if (batch) {
+          yield {
+            data: batch,
+            isComplete: false,
+            progress: { bytesDownloaded, featuresProcessed },
+          };
+        }
       }
     }
   } finally {
