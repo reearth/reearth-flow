@@ -71,66 +71,49 @@ graphs:
         action: PLATEAU4.AttributeFlattener
 
       - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-        name: AttributeManager
+        name: AttributeMapper
         type: action
-        action: AttributeManager
+        action: AttributeMapper
         with:
-          operations:
-            - attribute: featureId
-              method: remove
-            - attribute: featureParentId
-              method: remove
-            - attribute: geometryName
-              method: remove
-            - attribute: cityCode
-              method: rename
-              value: city_code
-            - attribute: cityName
-              method: rename
-              value: city_name
-            - attribute: lod
-              method: remove
-            - attribute: gmlId
-              method: remove
-            - attribute: gmlPropertyName
-              method: remove
-            - attribute: fileIndex
-              method: remove
-            - attribute: root
-              method: remove
-            - attribute: cityGmlPath
-              method: remove
-            - attribute: admin
-              method: remove
-            - attribute: area
-              method: remove
-            - attribute: package
-              method: rename
-              value: __package
-            - attribute: extension
-              method: remove
-            - attribute: dirRoot
-              method: remove
-            - attribute: gmlRootId
-              method: remove
-            - attribute: maxLod
-              method: remove
-            - attribute: dirSchemas
-              method: remove
-            - attribute: dirCodelists
-              method: remove
-            - attribute: path
-              method: remove
-            - attribute: name
-              method: rename
-              value: __name
-            - attribute: udxDirs
-              method: rename
-              value: __udxDirs
-            - attribute: featureType
-              method: remove
-            - attribute: gmlName
-              method: remove
+          mappers:
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: gml:name
+              valueAttribute: gml:name
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: wtr:class
+              valueAttribute: wtr:class
+            - attribute: wtr:function
+              valueAttribute: wtr:function
+            - attribute: uro:description
+              valueAttribute: uro:description
+            - attribute: uro:rank
+              valueAttribute: uro:rank
+            - attribute: uro:rank_code
+              valueAttribute: uro:rank_code
+            - attribute: uro:rankOrg
+              valueAttribute: uro:rankOrg
+            - attribute: uro:rankOrg_code
+              valueAttribute: uro:rankOrg_code
+            - attribute: uro:adminType
+              valueAttribute: uro:adminType
+            - attribute: uro:scale
+              valueAttribute: uro:scale
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: __package
+              valueAttribute: package
+            - attribute: __name
+              valueAttribute: name
+            - attribute: __udxDirs
+              valueAttribute: udxDirs
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
@@ -169,6 +152,62 @@ graphs:
             let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
             let lod = name.split("_").pop();
             file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles_" + lod + "_no_texture.zip")
+
+      # Dictionary.json output branch
+      - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
+        name: CreateDictionaryNameDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: dict_name
+              method: create
+              value: |
+                let udx_dirs = env.get("__value")["__udxDirs"];
+                let parts = udx_dirs.split("/");
+                let last_segment = parts[parts.len() - 1];
+                let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
+                let lod = name.split("_").pop();
+                last_segment + "_" + lod
+
+      - id: c24dbf9e-1741-4c61-99bc-618582b1e03b
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - __package
+            - dict_name
+
+      - id: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            let packages = #{};
+            for feature in env.get("__features") {
+              let pkg = feature["__package"];
+              if pkg == () { continue; }
+              if packages[pkg] == () {
+                packages[pkg] = [];
+              }
+              let scale = feature["uro:scale"];
+              if scale[1] == "1" {
+                scale = "計画規模";
+              } else if scale[1] == "2" {
+                scale = "想定最大規模";
+              }
+              packages[pkg].push(#{
+                name: feature.dict_name,
+                description: feature["uro:description"],
+                admin: feature["uro:adminType"],
+                scale: scale,
+              });
+            }
+            packages
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -209,6 +248,22 @@ graphs:
       - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
         from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: default
+        toPort: default
+      # Dictionary branch edges
+      - id: 48893ceb-2d37-4ca2-b5c0-184ea4128409
+        from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+        to: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
+        fromPort: default
+        toPort: default
+      - id: 1e5c26d5-2082-4fed-9890-89fb517ef184
+        from: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
+        to: c24dbf9e-1741-4c61-99bc-618582b1e03b
+        fromPort: default
+        toPort: default
+      - id: db2b57d8-b2e2-4094-aa82-c76b555fdb60
+        from: c24dbf9e-1741-4c61-99bc-618582b1e03b
+        to: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
         fromPort: default
         toPort: default
 

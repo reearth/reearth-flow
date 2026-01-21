@@ -2,9 +2,9 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Detects if the given path is a risk type based on known risk type identifiers.
-/// Risk types: fld, tnm, htd, ifld, rfld, lsld
+/// Risk types: fld, tnm, htd, ifld, rfld
 fn is_risk_type(path: &str) -> bool {
-    const RISK_TYPES: &[&str] = &["fld", "tnm", "htd", "ifld", "rfld", "lsld"];
+    const RISK_TYPES: &[&str] = &["fld", "tnm", "htd", "ifld", "rfld"];
     RISK_TYPES.iter().any(|risk_type| {
         path.contains(&format!("_op_{}_", risk_type))
             || path.contains(&format!("_op_{}", risk_type))
@@ -12,7 +12,7 @@ fn is_risk_type(path: &str) -> bool {
 }
 
 /// Creates a composite key for feature comparison.
-/// For risk types (fld, tnm, htd, ifld, rfld, lsld) which don't have gml_id,
+/// For risk types (fld, tnm, htd, ifld, rfld) which don't have gml_id,
 /// use {path}/{uro:rank_code} to create a unique key.
 /// For DmGeometricAttribute features (which can have multiple children per parent),
 /// use gml_id + dm_geometryType_code to create a unique key.
@@ -21,9 +21,13 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     // For risk types, use path/rank_code as the key
     if let Some(p) = path {
         if is_risk_type(p) {
-            if let Some(rank_code) = props.get("uro_rank_code").and_then(|v| v.as_str()) {
-                return format!("{}/{}", p, rank_code);
-            }
+            let rank_code = props.get("uro_rank_code").unwrap();
+            // convert to string
+            let rank_code = match rank_code.as_str() {
+                Some(s) => s.to_string(),
+                None => rank_code.to_string(),
+            };
+            return format!("{}/{}", p, rank_code);
         }
     }
 

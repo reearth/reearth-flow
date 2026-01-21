@@ -14,8 +14,6 @@ comparator = "list_to_dict"
 key = ".name"
 
 [filter.tree]
-# "udx/fld/pref/oyabegawa_gandogawa/55360704_fld_6697_l2.gml" = [
-#     "fld_3dab99fd-de9f-4806-9b10-7befb7cb4c87",
-# ]
-
-"udx/fld/pref/oyabegawa_gandogawa/" = ["55360704_fld_6697_l2.gml"]
+"udx/fld/pref/oyabegawa_gandogawa/55360704_fld_6697_l2.gml" = [
+    "fld_3dab99fd-de9f-4806-9b10-7befb7cb4c87",
+]

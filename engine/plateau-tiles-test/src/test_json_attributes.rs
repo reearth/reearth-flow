@@ -20,17 +20,14 @@ pub fn test_json_attributes(
         let file_path = &file_cfg.path;
         let fme_file = fme_path.join(file_path);
         let flow_file = flow_path.join(file_path);
+        eprintln!("fme: {:?} flow: {:?}", fme_file, flow_file);
 
-        if !fme_file.exists() || !flow_file.exists() {
-            if fme_file.exists() || flow_file.exists() {
-                return Err(format!(
-                    "JSON file existence mismatch for {}: FME {}, Flow {}",
-                    name,
-                    fme_file.exists(),
-                    flow_file.exists()
-                ));
-            }
-            continue;
+        if !fme_file.exists() {
+            return Err(format!("FME file does not exist: {:?}", fme_file));
+        }
+
+        if !flow_file.exists() {
+            return Err(format!("Flow file does not exist: {:?}", flow_file));
         }
 
         // Read JSON files with BOM handling (FME produces UTF-8 with BOM)
