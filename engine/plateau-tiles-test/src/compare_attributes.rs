@@ -21,7 +21,9 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     // For risk types, use path/rank_code as the key
     if let Some(p) = path {
         if is_risk_type(p) {
-            let rank_code = props.get("uro_rank_code").unwrap();
+            let rank_code = props
+                .get("uro_rank_code")
+                .expect("test failed! no uro:rank_code");
             // convert to string
             let rank_code = match rank_code.as_str() {
                 Some(s) => s.to_string(),
