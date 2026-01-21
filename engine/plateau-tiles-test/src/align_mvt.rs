@@ -34,10 +34,10 @@ pub enum AlignedGeometry {
     ),
 }
 
-/// Result of aligning MVT features by gml_id
+/// Result of aligning MVT features by ident
 pub struct AlignedFeature {
     pub tile_path: String,
-    pub gml_id: String,
+    pub ident: String,
     pub geometry: AlignedGeometry,
 }
 
@@ -148,8 +148,8 @@ fn load_mvt(path: &Path) -> Result<Tile, String> {
     Tile::decode(&data[..]).map_err(|e| format!("Failed to decode MVT protobuf: {}", e))
 }
 
-/// Extracts features by gml_id from a tile, filtering by geometry type
-fn features_by_gml_id(
+/// Extracts features by ident from a tile, filtering by geometry type
+fn features_by_ident(
     tile: &Tile,
     filter_geom_type: Option<GeometryType>,
 ) -> HashMap<String, (Vec<u32>, i32, u32)> {
@@ -170,11 +170,11 @@ fn features_by_gml_id(
             }
 
             if let Ok(tags) = tags_decoder.decode(&feature.tags) {
-                if let Some(gml_id_value) = tags.iter().find(|(k, _)| *k == "gml_id") {
-                    if let tinymvt::tag::Value::String(gml_id) = &gml_id_value.1 {
+                if let Some(ident_value) = tags.iter().find(|(k, _)| *k == "ident") {
+                    if let tinymvt::tag::Value::String(ident) = &ident_value.1 {
                         // Store the geometry buffer, geometry type, and extent
                         result.insert(
-                            gml_id.clone(),
+                            ident.clone(),
                             (feature.geometry.clone(), geom_type, extent),
                         );
                     }
@@ -271,39 +271,39 @@ pub fn align_mvt_features(
         let tile2 = map2.get(&rel_path).map(|p| load_mvt(p)).transpose()?;
 
         let features1 = tile1
-            .map(|t| features_by_gml_id(&t, Some(geometry_type)))
+            .map(|t| features_by_ident(&t, Some(geometry_type)))
             .unwrap_or_default();
         let features2 = tile2
-            .map(|t| features_by_gml_id(&t, Some(geometry_type)))
+            .map(|t| features_by_ident(&t, Some(geometry_type)))
             .unwrap_or_default();
 
-        // Align by gml_id
-        let mut all_gml_ids: Vec<_> = features1.keys().chain(features2.keys()).cloned().collect();
-        all_gml_ids.sort();
-        all_gml_ids.dedup();
+        // Align by ident
+        let mut all_idents: Vec<_> = features1.keys().chain(features2.keys()).cloned().collect();
+        all_idents.sort();
+        all_idents.dedup();
 
-        for gml_id in all_gml_ids {
+        for ident in all_idents {
             let aligned_geom = match geometry_type {
                 GeometryType::Point => {
-                    let geom1 = decode_point_from_features(&features1, &gml_id);
-                    let geom2 = decode_point_from_features(&features2, &gml_id);
+                    let geom1 = decode_point_from_features(&features1, &ident);
+                    let geom2 = decode_point_from_features(&features2, &ident);
                     AlignedGeometry::Point(geom1, geom2)
                 }
                 GeometryType::Polygon => {
-                    let geom1 = decode_polygon_from_features(&features1, &gml_id);
-                    let geom2 = decode_polygon_from_features(&features2, &gml_id);
+                    let geom1 = decode_polygon_from_features(&features1, &ident);
+                    let geom2 = decode_polygon_from_features(&features2, &ident);
                     AlignedGeometry::Polygon(geom1, geom2)
                 }
                 GeometryType::LineString => {
-                    let geom1 = decode_linestring_from_features(&features1, &gml_id);
-                    let geom2 = decode_linestring_from_features(&features2, &gml_id);
+                    let geom1 = decode_linestring_from_features(&features1, &ident);
+                    let geom2 = decode_linestring_from_features(&features2, &ident);
                     AlignedGeometry::LineString(geom1, geom2)
                 }
             };
 
             result.push(AlignedFeature {
                 tile_path: rel_path.clone(),
-                gml_id,
+                ident,
                 geometry: aligned_geom,
             });
         }
@@ -314,10 +314,10 @@ pub fn align_mvt_features(
 
 fn decode_polygon_from_features(
     features: &HashMap<String, (Vec<u32>, i32, u32)>,
-    gml_id: &str,
+    ident: &str,
 ) -> Option<MultiPolygon2D<f64>> {
     features
-        .get(gml_id)
+        .get(ident)
         .and_then(|(geom_buf, geom_type, extent)| {
             if *geom_type == GeometryType::Polygon as i32 {
                 let mut decoder = GeometryDecoder::new(geom_buf);
@@ -333,10 +333,10 @@ fn decode_polygon_from_features(
 
 fn decode_linestring_from_features(
     features: &HashMap<String, (Vec<u32>, i32, u32)>,
-    gml_id: &str,
+    ident: &str,
 ) -> Option<MultiLineString2D<f64>> {
     features
-        .get(gml_id)
+        .get(ident)
         .and_then(|(geom_buf, geom_type, extent)| {
             if *geom_type == GeometryType::LineString as i32 {
                 let mut decoder = GeometryDecoder::new(geom_buf);
@@ -352,10 +352,10 @@ fn decode_linestring_from_features(
 
 fn decode_point_from_features(
     features: &HashMap<String, (Vec<u32>, i32, u32)>,
-    gml_id: &str,
+    ident: &str,
 ) -> Option<MultiPoint2D<f64>> {
     features
-        .get(gml_id)
+        .get(ident)
         .and_then(|(geom_buf, geom_type, extent)| {
             if *geom_type == GeometryType::Point as i32 {
                 let mut decoder = GeometryDecoder::new(geom_buf);

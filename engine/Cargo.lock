@@ -6314,6 +6314,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
+ "spade",
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
@@ -8067,6 +8068,18 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps 5.0.0",
+]
+
+[[package]]
+name = "spade"
+version = "2.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb313e1c8afee5b5647e00ee0fe6855e3d529eb863a0fdae1d60006c4d1e9990"
+dependencies = [
+ "hashbrown 0.15.5",
+ "num-traits",
+ "robust 1.2.0",
+ "smallvec",
 ]
 
 [[package]]

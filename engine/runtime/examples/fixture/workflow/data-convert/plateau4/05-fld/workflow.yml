@@ -57,15 +57,6 @@ graphs:
         action: AttributeManager
         with:
           operations:
-            - attribute: meshcode
-              method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
-            - attribute: gml_id
-              method: create
-              value: |
-                env.get("__feature_id") ?? env.get("__value")["gmlId"]
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
@@ -148,6 +139,11 @@ graphs:
         with:
           reprojectorType: jgd2011ToWgs84
 
+      - id: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+        name: FloodingAreaSurfaceGenerator
+        type: action
+        action: PLATEAU4.FloodingAreaSurfaceGenerator
+
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: Cesium3DTilesWriterNoTexture
         type: action
@@ -207,6 +203,11 @@ graphs:
         toPort: default
       - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+        fromPort: default
+        toPort: default
+      - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+        from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default

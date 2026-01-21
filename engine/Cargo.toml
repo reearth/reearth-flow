@@ -217,6 +217,7 @@ slog = { version = "2.8.2", features = [
 slog-async = "2.8.0"
 slog-term = "2.9.2"
 sloggers = { version = "2.2.0", default-features = false }
+spade = "2.15.0"
 sqlx = { version = "0.8.6", features = [
   "any",
   "chrono",

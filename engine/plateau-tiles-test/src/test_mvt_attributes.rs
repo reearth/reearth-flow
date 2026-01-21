@@ -1,5 +1,5 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::analyze_attributes;
+use crate::compare_attributes::{analyze_attributes, make_feature_key};
 use prost::Message;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -15,26 +15,7 @@ pub struct MvtAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
-/// Creates a composite key for feature comparison.
-/// For DmGeometricAttribute features (which can have multiple children per parent),
-/// use gml_id + dm_geometryType_code to create a unique key.
-/// For other features, use gml_id alone.
-fn make_feature_key(gml_id: &str, props: &Value) -> String {
-    // Check if this is a DmGeometricAttribute feature
-    if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {
-        if dm_feature_type == "DmGeometricAttribute" {
-            // Use dm_geometryType_code as discriminator for DM features
-            if let Some(dm_geometry_type_code) =
-                props.get("dm_geometryType_code").and_then(|v| v.as_str())
-            {
-                return format!("{}__dm_{}", gml_id, dm_geometry_type_code);
-            }
-        }
-    }
-    gml_id.to_string()
-}
-
-/// Loads all MVT attributes from a directory, keyed by gml_id (or composite key for DM features)
+/// Loads all MVT attributes from a directory, keyed by ident (or composite key for DM features)
 fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     let mut ret = HashMap::new();
     let mut rel = HashMap::new();
@@ -69,15 +50,8 @@ fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
                     }
                 };
 
-                // Extract gml_id
-                let gml_id = props
-                    .get("gml_id")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing gml_id in feature properties".to_string())?
-                    .to_string();
-
                 // Create composite key for DM features to handle multiple DmGeometricAttribute per parent
-                let feature_key = make_feature_key(&gml_id, &props);
+                let feature_key = make_feature_key(&props, None);
 
                 if let Some(existing) = ret.get(&feature_key) {
                     if existing != &props {
@@ -118,7 +92,7 @@ fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
     }
 }
 
-/// Aligns MVT attributes from two directories by gml_id
+/// Aligns MVT attributes from two directories by ident
 fn align_mvt_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)>, String> {
     let map1 = load_mvt_attr(dir1)?;
     let map2 = load_mvt_attr(dir2)?;
@@ -135,10 +109,10 @@ fn align_mvt_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)
 
     let all_keys: HashSet<_> = map1.keys().chain(map2.keys()).collect();
 
-    for gml_id in all_keys {
-        let attr1 = map1.get(gml_id).cloned().unwrap_or(Value::Null);
-        let attr2 = map2.get(gml_id).cloned().unwrap_or(Value::Null);
-        result.push((gml_id.clone(), attr1, attr2));
+    for ident in all_keys {
+        let attr1 = map1.get(ident).cloned().unwrap_or(Value::Null);
+        let attr2 = map2.get(ident).cloned().unwrap_or(Value::Null);
+        result.push((ident.clone(), attr1, attr2));
     }
 
     Ok(result)
@@ -229,8 +203,8 @@ pub fn test_mvt_attributes(
         compare_tilejson(&fme_dir, &flow_dir)?;
 
         // Compare MVT attributes
-        for (gml_id, attr1, attr2) in align_mvt_attr(&fme_dir, &flow_dir)? {
-            analyze_attributes(&gml_id, &attr1, &attr2, casts.clone())?;
+        for (ident, attr1, attr2) in align_mvt_attr(&fme_dir, &flow_dir)? {
+            analyze_attributes(&ident, &attr1, &attr2, casts.clone())?;
         }
     }
 

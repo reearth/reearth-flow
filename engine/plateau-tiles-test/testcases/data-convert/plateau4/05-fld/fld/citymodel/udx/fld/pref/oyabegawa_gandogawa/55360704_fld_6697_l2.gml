@@ -1,4 +1,5 @@
-<?xml version='1.0' encoding='utf-8'?><core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/profiles/base/2.0 http://schemas.opengis.net/citygml/profiles/base/2.0/CityGML.xsd https://www.geospatial.jp/iur/uro/3.1 ../../../../schemas/iur/uro/3.1/urbanObject.xsd https://www.geospatial.jp/iur/urf/3.1 ../../../../schemas/iur/urf/3.1/urbanFunction.xsd">
+<?xml version='1.0' encoding='utf-8'?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/profiles/base/2.0 http://schemas.opengis.net/citygml/profiles/base/2.0/CityGML.xsd https://www.geospatial.jp/iur/uro/3.1 ../../../../schemas/iur/uro/3.1/urbanObject.xsd https://www.geospatial.jp/iur/urf/3.1 ../../../../schemas/iur/urf/3.1/urbanFunction.xsd">
 <gml:boundedBy>
 <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 <gml:lowerCorner>36.674665942100866 136.92825445676428 27.748500000001513</gml:lowerCorner>
@@ -2815,10 +2816,286 @@
 </uro:floodingRiskAttribute>
 <uro:wtrDataQualityAttribute>
 <uro:DataQualityAttribute>
-<uro:geometrySrcDescLod1 codeSpace="../../../../codelists/DataQualityAttribute_geometrySrcDesc.xml">400</uro:geometrySrcDescLod1>
-<uro:thematicSrcDesc codeSpace="../../../../codelists/DataQualityAttribute_thematicSrcDesc.xml">400</uro:thematicSrcDesc>
-</uro:DataQualityAttribute>
-</uro:wtrDataQualityAttribute>
+  <uro:geometrySrcDescLod1 codeSpace="../../../../codelists/DataQualityAttribute_geometrySrcDesc.xml">400</uro:geometrySrcDescLod1>
+  <uro:thematicSrcDesc codeSpace="../../../../codelists/DataQualityAttribute_thematicSrcDesc.xml">400</uro:thematicSrcDesc>
+  </uro:DataQualityAttribute></uro:wtrDataQualityAttribute>
+</wtr:WaterBody>
+</core:cityObjectMember>
+<core:cityObjectMember>
+<wtr:WaterBody gml:id="fld_6fe3836a-9d2f-4e1f-9f82-fd1703c96e4f">
+<gml:name>小矢部川水系岸渡川洪水浸水想定区域（想定最大規模）</gml:name>
+<core:creationDate>2025-03-14</core:creationDate>
+<wtr:class codeSpace="../../../../codelists/WaterBody_class.xml">1140</wtr:class>
+<wtr:function codeSpace="../../../../codelists/WaterBody_function.xml">1</wtr:function>
+<wtr:lod1MultiSurface>
+<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67474894299725 136.92925445413934 28.03750000000582 36.674790942820074 136.9292544543494 28.02969999999914 36.67476994280776 136.92922345430642 28.021999999997206 36.67474894299725 136.92925445413934 28.03750000000582</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67472794298491 136.9292234540964 28.02499999999418 36.67474894299725 136.92925445413934 28.03750000000582 36.67476994280776 136.92922345430642 28.021999999997206 36.67472794298491 136.9292234540964 28.02499999999418</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67472794298491 136.9292234540964 28.02499999999418 36.67476994280776 136.92922345430642 28.021999999997206 36.674748942791034 136.92919245426341 28.022500000006403 36.67472794298491 136.9292234540964 28.02499999999418</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674748942791034 136.92919245426341 28.022500000006403 36.67476994280776 136.92922345430642 28.021999999997206 36.6747909426138 136.92919245447342 28.019799999994575 36.674748942791034 136.92919245426341 28.022500000006403</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67476994280776 136.92922345430642 28.021999999997206 36.674811442632645 136.92922345451393 28.019000000000233 36.6747909426138 136.92919245447342 28.019799999994575 36.67476994280776 136.92922345430642 28.021999999997206</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.6747909426138 136.92919245447342 28.019799999994575 36.674811442632645 136.92922345451393 28.019000000000233 36.67483194244065 136.92919245467849 28.0173000000068 36.6747909426138 136.92919245447342 28.019799999994575</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674811442632645 136.92922345451393 28.019000000000233 36.67483194264707 136.92925445455444 28.017500000001746 36.67483194244065 136.92919245467849 28.0173000000068 36.674811442632645 136.92922345451393 28.019000000000233</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67470694338396 136.92931745380338 28.072000000000116 36.674748943206865 136.92931745401336 28.051500000001397 36.67472794319298 136.9292859539713 28.054999999993015 36.67470694338396 136.92931745380338 28.072000000000116</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67470694338396 136.92931745380338 28.072000000000116 36.67472794319298 136.9292859539713 28.054999999993015 36.674706943174485 136.9292544539294 28.042700000005425 36.67470694338396 136.92931745380338 28.072000000000116</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674706943174485 136.9292544539294 28.042700000005425 36.67472794319298 136.9292859539713 28.054999999993015 36.67474894299725 136.92925445413934 28.03750000000582 36.674706943174485 136.9292544539294 28.042700000005425</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674706943174485 136.9292544539294 28.042700000005425 36.67472794298491 136.9292234540964 28.02499999999418 36.674706942968314 136.92919245405338 28.02520000000368 36.674706943174485 136.9292544539294 28.042700000005425</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674790942820074 136.9292544543494 28.02969999999914 36.67483194264707 136.92925445455444 28.017500000001746 36.674811442632645 136.92922345451393 28.019000000000233 36.674790942820074 136.9292544543494 28.02969999999914</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674706942968314 136.92919245405338 28.02520000000368 36.67472794298491 136.9292234540964 28.02499999999418 36.674748942791034 136.92919245426341 28.022500000006403 36.674706942968314 136.92919245405338 28.02520000000368</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674706943174485 136.9292544539294 28.042700000005425 36.67474894299725 136.92925445413934 28.03750000000582 36.67472794298491 136.9292234540964 28.02499999999418 36.674706943174485 136.9292544539294 28.042700000005425</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67476994280776 136.92922345430642 28.021999999997206 36.674790942820074 136.9292544543494 28.02969999999914 36.674811442632645 136.92922345451393 28.019000000000233 36.67476994280776 136.92922345430642 28.021999999997206</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67472794319298 136.9292859539713 28.054999999993015 36.674748943206865 136.92931745401336 28.051500000001397 36.67474894299725 136.92925445413934 28.03750000000582 36.67472794319298 136.9292859539713 28.054999999993015</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674852942249366 136.9291609548465 28.01600000000326 36.67489494207201 136.92916095505643 28.013000000006286 36.67487394205344 136.92912945501453 28.014200000005076 36.674852942249366 136.9291609548465 28.01600000000326</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67487394205344 136.92912945501453 28.014200000005076 36.67489494207201 136.92916095505643 28.013000000006286 36.67491594187617 136.92912945522448 28.013000000006286 36.67487394205344 136.92912945501453 28.014200000005076</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67487394205344 136.92912945501453 28.014200000005076 36.67491594187617 136.92912945522448 28.013000000006286 36.67489494186372 136.92909845518162 28.013000000006286 36.67487394205344 136.92912945501453 28.014200000005076</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674915941669624 136.92906745534867 28.01249999999709 36.67489494186372 136.92909845518162 28.013000000006286 36.67491594187617 136.92912945522448 28.013000000006286 36.674915941669624 136.92906745534867 28.01249999999709</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67483194244065 136.92919245467849 28.0173000000068 36.674852942249366 136.9291609548465 28.01600000000326 36.67483194223095 136.92912945480444 28.016499999997905 36.67483194244065 136.92919245467849 28.0173000000068</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67483194244065 136.92919245467849 28.0173000000068 36.67487394226328 136.92919245488847 28.014999999999418 36.674852942249366 136.9291609548465 28.01600000000326 36.67483194244065 136.92919245467849 28.0173000000068</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67487394226328 136.92919245488847 28.014999999999418 36.67491594208598 136.92919245509844 28.013000000006286 36.67489494207201 136.92916095505643 28.013000000006286 36.67487394226328 136.92919245488847 28.014999999999418</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67487394184704 136.9290674551386 28.01350000000093 36.67489494186372 136.92909845518162 28.013000000006286 36.674915941669624 136.92906745534867 28.01249999999709 36.67487394184704 136.9290674551386 28.01350000000093</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67487394184704 136.9290674551386 28.01350000000093 36.67487394205344 136.92912945501453 28.014200000005076 36.67489494186372 136.92909845518162 28.013000000006286 36.67487394184704 136.9290674551386 28.01350000000093</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67489494207201 136.92916095505643 28.013000000006286 36.67491594208598 136.92919245509844 28.013000000006286 36.67491594187617 136.92912945522448 28.013000000006286 36.67489494207201 136.92916095505643 28.013000000006286</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.67483194223095 136.92912945480444 28.016499999997905 36.674852942249366 136.9291609548465 28.01600000000326 36.67487394205344 136.92912945501453 28.014200000005076 36.67483194223095 136.92912945480444 28.016499999997905</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+<gml:surfaceMember>
+<gml:Polygon>
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>36.674852942249366 136.9291609548465 28.01600000000326 36.67487394226328 136.92919245488847 28.014999999999418 36.67489494207201 136.92916095505643 28.013000000006286 36.674852942249366 136.9291609548465 28.01600000000326</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+</gml:MultiSurface>
+</wtr:lod1MultiSurface>
+<uro:floodingRiskAttribute>
+<uro:RiverFloodingRiskAttribute>
+<uro:description codeSpace="../../../../codelists/RiverFloodingRiskAttribute_description.xml">8</uro:description>
+<uro:rank codeSpace="../../../../codelists/RiverFloodingRiskAttribute_rank.xml">2</uro:rank>
+<uro:adminType codeSpace="../../../../codelists/RiverFloodingRiskAttribute_adminType.xml">2</uro:adminType>
+<uro:scale codeSpace="../../../../codelists/RiverFloodingRiskAttribute_scale.xml">2</uro:scale>
+</uro:RiverFloodingRiskAttribute>
+</uro:floodingRiskAttribute>
+<uro:wtrDataQualityAttribute>
+<uro:DataQualityAttribute>
+  <uro:geometrySrcDescLod1 codeSpace="../../../../codelists/DataQualityAttribute_geometrySrcDesc.xml">400</uro:geometrySrcDescLod1>
+  <uro:thematicSrcDesc codeSpace="../../../../codelists/DataQualityAttribute_thematicSrcDesc.xml">400</uro:thematicSrcDesc>
+  </uro:DataQualityAttribute></uro:wtrDataQualityAttribute>
 </wtr:WaterBody>
 </core:cityObjectMember>
 </core:CityModel>
