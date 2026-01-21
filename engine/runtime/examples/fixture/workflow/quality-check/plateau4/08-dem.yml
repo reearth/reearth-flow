@@ -1891,24 +1891,6 @@ graphs:
         env.get("__value").name
       supplierAttributeValue: |
         env.get("__value").name
-  - id: cc3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    name: CommonErrorMerger01
-    type: action
-    action: FeatureMerger
-    with:
-      requestorAttributeValue: |
-        env.get("__value").name
-      supplierAttributeValue: |
-        env.get("__value").Filename
-  - id: dd4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-    name: CommonErrorMerger02
-    type: action
-    action: FeatureMerger
-    with:
-      requestorAttributeValue: |
-        env.get("__value").name
-      supplierAttributeValue: |
-        env.get("__value").filename
   - id: 6fac13ad-7487-4441-afd9-0812922bd4b8
     name: SummaryAttributeMapper
     type: action
@@ -1939,48 +1921,6 @@ graphs:
       - attribute: 不正な穴
         expr: |
           env.get("__value")._num_invalid_boundaries ?? 0
-      - attribute: L01エラー
-        expr: |
-          env.get("__value")["L01エラー"] ?? 0
-      - attribute: L02エラー
-        expr: |
-          env.get("__value")["L02エラー"] ?? 0
-      - attribute: L03エラー
-        expr: |
-          env.get("__value")["L03エラー"] ?? 0
-      - attribute: L04エラー
-        expr: |
-          env.get("__value")["L04エラー"] ?? 0
-      - attribute: L05CRS識別子エラー
-        expr: |
-          if env.get("__value")["L05CRS識別子"] == "Wrong" { 1 } else { 0 }
-      - attribute: L06エラー
-        expr: |
-          env.get("__value")["L06エラー"] ?? 0
-      - attribute: T03エラー
-        expr: |
-          env.get("__value")["T03エラー"] ?? 0
-      - attribute: xlink参照先なし
-        expr: |
-          env.get("__value")["xlink参照先なし"] ?? 0
-      - attribute: gml:id重複
-        expr: |
-          env.get("__value")["gml:id重複"] ?? 0
-      - attribute: gml:id書式不正
-        expr: |
-          env.get("__value")["gml:id書式不正"] ?? 0
-      - attribute: L-frn-01エラー
-        expr: |
-          env.get("__value")["L-frn-01エラー"] ?? 0
-      - attribute: C05エラー
-        expr: |
-          env.get("__value")["C05エラー"] ?? 0
-      - attribute: C07エラー
-        expr: |
-          env.get("__value")["C07エラー"] ?? 0
-      - attribute: C08エラー
-        expr: |
-          env.get("__value")["C08エラー"] ?? 0
   - id: 12bbb254-4ff2-4b51-92bb-60d0a9d2d48d
     name: CSVSummaryWriter
     type: action
@@ -2010,55 +1950,10 @@ graphs:
       - newAttribute: 不正な穴
         expr: |
           env.get("__value")["不正な穴"] ?? 0
-      - newAttribute: L01エラー
-        expr: |
-          env.get("__value")["L01エラー"] ?? 0
-      - newAttribute: L02エラー
-        expr: |
-          env.get("__value")["L02エラー"] ?? 0
-      - newAttribute: L03エラー
-        expr: |
-          env.get("__value")["L03エラー"] ?? 0
-      - newAttribute: L04エラー
-        expr: |
-          env.get("__value")["L04エラー"] ?? 0
-      - newAttribute: L05CRS識別子エラー
-        expr: |
-          env.get("__value")["L05CRS識別子エラー"] ?? 0
-      - newAttribute: L06エラー
-        expr: |
-          env.get("__value")["L06エラー"] ?? 0
-      - newAttribute: T03エラー
-        expr: |
-          env.get("__value")["T03エラー"] ?? 0
-      - newAttribute: xlink参照先なし
-        expr: |
-          env.get("__value")["xlink参照先なし"] ?? 0
-      - newAttribute: gml:id重複
-        expr: |
-          env.get("__value")["gml:id重複"] ?? 0
-      - newAttribute: gml:id書式不正
-        expr: |
-          env.get("__value")["gml:id書式不正"] ?? 0
-      - newAttribute: L-frn-01エラー
-        expr: |
-          env.get("__value")["L-frn-01エラー"] ?? 0
-      - newAttribute: C05エラー
-        expr: |
-          env.get("__value")["C05エラー"] ?? 0
-      - newAttribute: C07エラー
-        expr: |
-          env.get("__value")["C07エラー"] ?? 0
-      - newAttribute: C08エラー
-        expr: |
-          env.get("__value")["C08エラー"] ?? 0
       - newAttribute: totalErrorCount
         expr: |
           let total = 0;
-          let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形", "不正な穴",
-                      "L01エラー", "L02エラー", "L03エラー", "L04エラー", "L05CRS識別子エラー", "L06エラー",
-                      "T03エラー", "xlink参照先なし", "gml:id重複", "gml:id書式不正", "L-frn-01エラー",
-                      "C05エラー", "C07エラー", "C08エラー"];
+          let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形", "不正な穴"];
           for key in keys {
             total += env.get("__value")[key] ?? 0;
           }
@@ -2300,41 +2195,11 @@ graphs:
     toPort: supplier
   - id: 859b36c4-fab8-4747-82fe-9fbfed8578c3
     from: fb152eb6-3a92-403f-96ce-bf38a420ec51
-    to: cc3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    fromPort: merged
-    toPort: requestor
-  - id: f29d805a-2c6a-4787-975e-a190f12c0a12
-    from: fb152eb6-3a92-403f-96ce-bf38a420ec51
-    to: cc3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    fromPort: unmerged
-    toPort: requestor
-  - id: 3c4d5e6f-7a8b-9c0d-1e2f-2a3b4c5d6e7f
-    from: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-    to: cc3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    fromPort: perFileOutput
-    toPort: supplier
-  - id: 4d5e6f7a-8b9c-0d1e-2f3a-3b4c5d6e7f8a
-    from: cc3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    to: dd4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-    fromPort: merged
-    toPort: requestor
-  - id: 5e6f7a8b-9c0d-1e2f-3a4b-4c5d6e7f8a9b
-    from: cc3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    to: dd4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-    fromPort: unmerged
-    toPort: requestor
-  - id: 6f7a8b9c-0d1e-2f3a-4b5c-5d6e7f8a9b0c
-    from: bb2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
-    to: dd4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-    fromPort: perFileOutput
-    toPort: supplier
-  - id: 7a8b9c0d-1e2f-3a4b-5c6d-6e7f8a9b0c1d
-    from: dd4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
     to: 6fac13ad-7487-4441-afd9-0812922bd4b8
     fromPort: merged
     toPort: default
-  - id: 8b9c0d1e-2f3a-4b5c-6d7e-7f8a9b0c1d2e
-    from: dd4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+  - id: f29d805a-2c6a-4787-975e-a190f12c0a12
+    from: fb152eb6-3a92-403f-96ce-bf38a420ec51
     to: 6fac13ad-7487-4441-afd9-0812922bd4b8
     fromPort: unmerged
     toPort: default
@@ -2357,6 +2222,16 @@ graphs:
     from: 9fad8d36-c64d-47c2-9221-43e86524c8e5
     to: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
     fromPort: default
+    toPort: default
+  - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    from: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    to: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
+    fromPort: summaryOutput
+    toPort: default
+  - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+    from: bb2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    to: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
+    fromPort: summaryOutput
     toPort: default
   - id: c536ab2c-a495-4c61-aab6-631b66413302
     from: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
