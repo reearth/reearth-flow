@@ -141,7 +141,7 @@ function VirtualizedTable<TData, TValue>({
     setParentHeight(el.clientHeight);
 
     return () => ro.disconnect();
-  }, []);
+  }, [parentRef]);
 
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
