@@ -203,7 +203,7 @@ impl AttributeFlattener {
         let is_risk_package = feature
             .get("package")
             .and_then(|p| p.as_string())
-            .map(|pkg| ["fld", "tnm", "htd", "ifld", "rfld", "lsld"].contains(&pkg.as_str()))
+            .map(|pkg| ["fld", "tnm", "htd", "ifld", "rfld"].contains(&pkg.as_str()))
             .unwrap_or(false);
 
         if !is_risk_package {
