@@ -16,7 +16,7 @@
     },
     {
       "name": "objectListsPath",
-      "value": "08220_city_2023_objectlist_op.xlsx"
+      "value": "../08220_city_2023_objectlist_op_c06_excluded.xlsx"
     },
     {
       "name": "prcs",
@@ -29,7 +29,7 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "04_都市設備_植生_地物インスタンス数.csv",
+    "expectedFile": "04_都市設備_地物インスタンス数.csv",
     "except": [
       "Index"
     ]

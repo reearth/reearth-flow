@@ -167,7 +167,7 @@ graphs:
         method: convert
         value: |
           let attributes = env.get("__value").cityGmlAttributes;
-          let building_id_attributes = attributes["uro:BuildingIDAttribute"] ?? {};
+          let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
           let gml_city_code = building_id_attributes["uro:city_code"];
           if gml_city_code != () && gml_city_code != "" {
             gml_city_code
@@ -183,7 +183,7 @@ graphs:
         method: create
         value: |
           let attributes = env.get("__value").cityGmlAttributes;
-          let building_id_attributes = attributes["uro:BuildingIDAttribute"] ?? {};
+          let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
           building_id_attributes["uro:city"] ?? env.get("__value").cityName
   - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
     name: AttributeConversionTable

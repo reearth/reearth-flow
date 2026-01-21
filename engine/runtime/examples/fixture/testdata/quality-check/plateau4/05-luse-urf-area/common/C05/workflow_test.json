@@ -1,0 +1,43 @@
+{
+  "description": "Test quality check for C05",
+  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/luse/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "01-2_必須属性等_C05必須属性等の欠落_luse.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common2-luse.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "01_共通.csv"
+      },
+      {
+        "expectedFile": "05_土地利用_検査結果一覧.csv"
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}

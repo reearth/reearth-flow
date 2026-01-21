@@ -1,0 +1,43 @@
+{
+  "description": "Test quality check for C05",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/frn/input.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../08220_city_2023_objectlist_op_c06_excluded.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "01-2_必須属性等_C05必須属性等の欠落_frn.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common2-frn.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "01_共通.csv"
+      },
+      {
+        "expectedFile": "04_都市設備_検査結果一覧.csv"
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}
