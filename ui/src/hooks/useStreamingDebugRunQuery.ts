@@ -529,8 +529,8 @@ export const useStreamingDebugRunQuery = (
     // Compatibility with existing interface
     fileContent,
     fileType: "geojson" as SupportedDataTypes,
-    isLoading: streamingQuery.isLoading || metadataQuery.isLoading,
-    queryData: streamingQuery.data,
+    isLoading: streamingQuery.isLoading,
+    data: streamingQuery.data,
     isError: streamingQuery.isError || metadataQuery.isError,
     error: effectiveState.error || streamingQuery.error || metadataQuery.error,
   };
