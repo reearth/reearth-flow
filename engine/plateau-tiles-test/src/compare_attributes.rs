@@ -32,10 +32,7 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     }
 
     // Extract gml_id from props if present
-    let gml_id = props
-        .get("gml_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let gml_id = props.get("gml_id").and_then(|v| v.as_str()).unwrap_or("");
 
     // Check if this is a DmGeometricAttribute feature
     if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {

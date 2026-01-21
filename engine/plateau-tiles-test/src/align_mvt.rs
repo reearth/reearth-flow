@@ -173,10 +173,7 @@ fn features_by_ident(
                 if let Some(ident_value) = tags.iter().find(|(k, _)| *k == "ident") {
                     if let tinymvt::tag::Value::String(ident) = &ident_value.1 {
                         // Store the geometry buffer, geometry type, and extent
-                        result.insert(
-                            ident.clone(),
-                            (feature.geometry.clone(), geom_type, extent),
-                        );
+                        result.insert(ident.clone(), (feature.geometry.clone(), geom_type, extent));
                     }
                 }
             }

@@ -509,7 +509,9 @@ mod tests {
 
         for gml_id in &expected_gml_ids {
             assert!(
-                features.iter().any(|f| f.get("gml_id").and_then(|v| v.as_str()) == Some(*gml_id)),
+                features
+                    .iter()
+                    .any(|f| f.get("gml_id").and_then(|v| v.as_str()) == Some(*gml_id)),
                 "Missing feature with gml_id: {}",
                 gml_id
             );
@@ -518,7 +520,10 @@ mod tests {
         // Verify properties of the first feature
         let feature1 = features
             .iter()
-            .find(|f| f.get("gml_id").and_then(|v| v.as_str()) == Some("tran_4d448e8a-db1d-48ef-8f04-feb24b49b701"))
+            .find(|f| {
+                f.get("gml_id").and_then(|v| v.as_str())
+                    == Some("tran_4d448e8a-db1d-48ef-8f04-feb24b49b701")
+            })
             .expect("Feature 1 should exist");
 
         // Check expected properties
