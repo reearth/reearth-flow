@@ -562,7 +562,11 @@ mod tests {
 
         // Verify the second feature has correct gml_id
         let feature2 = features
-            .get("tran_3b28a7b2-a741-4569-bf09-0dadaf5996f4")
+            .iter()
+            .find(|f| {
+                f.get("gml_id").and_then(|v| v.as_str())
+                    == Some("tran_3b28a7b2-a741-4569-bf09-0dadaf5996f4")
+            })
             .expect("Feature 2 should exist");
         assert_eq!(
             feature2.get("gml_id").and_then(|v| v.as_str()),
