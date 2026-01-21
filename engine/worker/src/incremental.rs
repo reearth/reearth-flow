@@ -186,6 +186,8 @@ pub fn collect_reusable_edge_ids(
     Ok(v)
 }
 
+/// Collects reusable edges in a graph, treating nodes upstream of `start_node_id` as reusable.
+/// Also recursively processes any upstream subworkflow nodes to collect all their edges.
 fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
     graph_id: uuid::Uuid,
@@ -228,6 +230,9 @@ fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
         }
     }
 
+    // Track visited subgraphs to prevent infinite recursion in case of cycles
+    let mut visited_subgraphs = HashSet::new();
+
     // For upstream subworkflow nodes, collect all their edges recursively
     for node in &graph.nodes {
         let node_id = node.id();
@@ -254,18 +259,34 @@ fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
                 graph_id,
                 sub_graph_id
             );
-            collect_all_edges_in_graph_recursive(graphs, sub_graph_id, out)?;
+            collect_all_edges_in_graph_recursive(
+                graphs,
+                sub_graph_id,
+                out,
+                &mut visited_subgraphs,
+            )?;
         }
     }
 
     Ok(())
 }
 
+/// Recursively collects all edges in a graph and its nested subgraphs.
+/// Uses cycle detection to prevent infinite recursion if subgraphs form circular references.
 fn collect_all_edges_in_graph_recursive(
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
     graph_id: uuid::Uuid,
     out: &mut HashSet<uuid::Uuid>,
+    visited: &mut HashSet<uuid::Uuid>,
 ) -> crate::errors::Result<()> {
+    if !visited.insert(graph_id) {
+        tracing::info!(
+            "Skipping already-visited subgraph {} (cycle detected)",
+            graph_id
+        );
+        return Ok(());
+    }
+
     let graph = graphs
         .get(&graph_id)
         .ok_or_else(|| crate::errors::Error::init(format!("graph {} not found", graph_id)))?;
@@ -274,15 +295,17 @@ fn collect_all_edges_in_graph_recursive(
         out.insert(edge.id);
     }
 
+    // Recursively collect edges from nested subgraphs
     for node in &graph.nodes {
         if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            collect_all_edges_in_graph_recursive(graphs, sub_graph_id, out)?;
+            collect_all_edges_in_graph_recursive(graphs, sub_graph_id, out, visited)?;
         }
     }
 
     Ok(())
 }
 
+/// Extracts the subgraph ID from a node if it's a SubGraph node type.
 fn extract_subgraph_id_if_subworkflow_node(node: &reearth_flow_types::Node) -> Option<uuid::Uuid> {
     match node {
         reearth_flow_types::Node::SubGraph { sub_graph_id, .. } => Some(*sub_graph_id),
