@@ -169,9 +169,7 @@ pub fn collect_reusable_edge_ids(
 
     while let Some((gid, sid)) = q.pop_front() {
         // Collect reusable edges in current graph
-        collect_reusable_edges_in_graph_and_upstream_subworkflows(
-            workflow, &graphs, gid, sid, &mut out,
-        )?;
+        collect_reusable_edges_in_graph_and_upstream_subworkflows(&graphs, gid, sid, &mut out)?;
 
         // If current graph is a subworkflow, traverse up to parent graphs
         if let Some(parents) = callsites.get(&gid) {
@@ -189,7 +187,6 @@ pub fn collect_reusable_edge_ids(
 }
 
 fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
-    workflow: &Workflow,
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
     graph_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
@@ -257,7 +254,7 @@ fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
                 graph_id,
                 sub_graph_id
             );
-            collect_all_edges_in_graph_recursive(workflow, graphs, sub_graph_id, out)?;
+            collect_all_edges_in_graph_recursive(graphs, sub_graph_id, out)?;
         }
     }
 
@@ -265,7 +262,6 @@ fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
 }
 
 fn collect_all_edges_in_graph_recursive(
-    workflow: &Workflow,
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
     graph_id: uuid::Uuid,
     out: &mut HashSet<uuid::Uuid>,
@@ -280,7 +276,7 @@ fn collect_all_edges_in_graph_recursive(
 
     for node in &graph.nodes {
         if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            collect_all_edges_in_graph_recursive(workflow, graphs, sub_graph_id, out)?;
+            collect_all_edges_in_graph_recursive(graphs, sub_graph_id, out)?;
         }
     }
 
