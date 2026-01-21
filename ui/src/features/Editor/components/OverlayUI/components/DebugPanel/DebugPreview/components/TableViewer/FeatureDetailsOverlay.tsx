@@ -1,7 +1,12 @@
-import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, CaretDownIcon } from "@phosphor-icons/react";
 import { memo, useMemo } from "react";
 
-import { IconButton } from "@flow/components";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  IconButton,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
@@ -144,23 +149,50 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                     const valueType = getValueType(value);
                     return (
                       <div key={key} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {key
-                              .replace(/^attributes/, "")
-                              .replace(/^geometry/, "")}
-                          </span>
-                          {valueType && (
-                            <span className="text-xs text-muted-foreground">
-                              {valueType}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-md bg-muted/30 p-2">
-                          <pre className="text-xs break-all whitespace-pre-wrap">
-                            {formatValue(value)}
-                          </pre>
-                        </div>
+                        {valueType === "object" || valueType === "array" ? (
+                          <Collapsible>
+                            <CollapsibleTrigger asChild className="w-full">
+                              <div
+                                data-status="open"
+                                className="group flex items-center justify-between hover:cursor-pointer">
+                                <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                                  {key
+                                    .replace(/^attributes/, "")
+                                    .replace(/^geometry/, "")}
+                                  <CaretDownIcon
+                                    size={12}
+                                    className="ml-1 transition-transform group-data-[state=open]:rotate-180"
+                                  />
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {valueType}
+                                </span>
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mt-1 rounded-md bg-muted/30 p-2">
+                                <pre className="text-xs break-all whitespace-pre-wrap">
+                                  {formatValue(value)}
+                                </pre>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {key
+                                  .replace(/^attributes/, "")
+                                  .replace(/^geometry/, "")}
+                              </span>
+                            </div>
+                            <div className="rounded-md bg-muted/30 p-2">
+                              <pre className="text-xs break-all whitespace-pre-wrap">
+                                {formatValue(value)}
+                              </pre>
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   },
