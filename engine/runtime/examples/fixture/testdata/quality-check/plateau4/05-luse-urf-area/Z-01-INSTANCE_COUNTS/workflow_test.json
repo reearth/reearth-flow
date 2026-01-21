@@ -29,7 +29,7 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "05_土地利用_都市決定情報_区域_地物インスタンス数.csv",
+    "expectedFile": "05_土地利用_地物インスタンス数.csv",
     "except": [
       "Index"
     ]

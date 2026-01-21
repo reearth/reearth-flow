@@ -2693,24 +2693,6 @@ graphs:
         env.get("__value").Filename
       supplierAttributeValue: |
         env.get("__value").Filename
-  - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    name: CommonErrorMerger01
-    type: action
-    action: FeatureMerger
-    with:
-      requestorAttributeValue: |
-        env.get("__value").Filename
-      supplierAttributeValue: |
-        env.get("__value").gmlFilename
-  - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    name: CommonErrorMerger02
-    type: action
-    action: FeatureMerger
-    with:
-      requestorAttributeValue: |
-        env.get("__value").Filename
-      supplierAttributeValue: |
-        env.get("__value").filename
   - id: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f
     name: SummaryAttributeMapper
     type: action
@@ -2723,49 +2705,10 @@ graphs:
       - attribute: Filename
         expr: |
           env.get("__value").Filename
-      - attribute: L01エラー
-        expr: |
-          env.get("__value").L01Errors ?? 0
-      - attribute: L02エラー
-        expr: |
-          env.get("__value").L02Errors ?? 0
-      - attribute: L03エラー
-        expr: |
-          env.get("__value").L03Errors ?? 0
-      - attribute: L04エラー
-        expr: |
-          env.get("__value").L04Errors ?? 0
-      - attribute: L05エラー
-        expr: |
-          env.get("__value").L05Errors ?? 0
-      - attribute: L06エラー
-        expr: |
-          env.get("__value").L06Errors ?? 0
-      - attribute: T03エラー
-        expr: |
-          env.get("__value").T03Errors ?? 0
-      - attribute: xlinkエラー
-        expr: |
-          env.get("__value").xlinkErrors ?? 0
-      - attribute: gml:idエラー
-        expr: |
-          env.get("__value").gmlIdErrors ?? 0
-      - attribute: L-frn-01エラー
-        expr: |
-          env.get("__value").LFrn01Errors ?? 0
-      - attribute: C05エラー
-        expr: |
-          env.get("__value")["C05エラー"] ?? 0
-      - attribute: C07エラー
-        expr: |
-          env.get("__value")["C07エラー"] ?? 0
-      - attribute: C08エラー
-        expr: |
-          env.get("__value")["C08エラー"] ?? 0
       - attribute: L-TRAN-03 xlink参照エラー
         expr: |
           env.get("__value")._num_unreferenced_surface ?? 0
-      - attribute: Z-TRAN-01 面の向き不正
+      - attribute: 面の向き不正
         expr: |
           env.get("__value")._num_incorrect_orientation ?? 0
       - attribute: L-TRAN-02 隣接面重複
@@ -2788,51 +2731,12 @@ graphs:
     action: StatisticsCalculator
     with:
       calculations:
-      - newAttribute: L01エラー
-        expr: |
-          env.get("__value")["L01エラー"] ?? 0
-      - newAttribute: L02エラー
-        expr: |
-          env.get("__value")["L02エラー"] ?? 0
-      - newAttribute: L03エラー
-        expr: |
-          env.get("__value")["L03エラー"] ?? 0
-      - newAttribute: L04エラー
-        expr: |
-          env.get("__value")["L04エラー"] ?? 0
-      - newAttribute: L05エラー
-        expr: |
-          env.get("__value")["L05エラー"] ?? 0
-      - newAttribute: L06エラー
-        expr: |
-          env.get("__value")["L06エラー"] ?? 0
-      - newAttribute: T03エラー
-        expr: |
-          env.get("__value")["T03エラー"] ?? 0
-      - newAttribute: xlinkエラー
-        expr: |
-          env.get("__value")["xlinkエラー"] ?? 0
-      - newAttribute: gml:idエラー
-        expr: |
-          env.get("__value")["gml:idエラー"] ?? 0
-      - newAttribute: L-frn-01エラー
-        expr: |
-          env.get("__value")["L-frn-01エラー"] ?? 0
-      - newAttribute: C05エラー
-        expr: |
-          env.get("__value")["C05エラー"] ?? 0
-      - newAttribute: C07エラー
-        expr: |
-          env.get("__value")["C07エラー"] ?? 0
-      - newAttribute: C08エラー
-        expr: |
-          env.get("__value")["C08エラー"] ?? 0
       - newAttribute: L-TRAN-03 xlink参照エラー
         expr: |
           env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
-      - newAttribute: Z-TRAN-01 面の向き不正
+      - newAttribute: 面の向き不正
         expr: |
-          env.get("__value")["Z-TRAN-01 面の向き不正"] ?? 0
+          env.get("__value")["面の向き不正"] ?? 0
       - newAttribute: L-TRAN-02 隣接面重複
         expr: |
           env.get("__value")["L-TRAN-02 隣接面重複"] ?? 0
@@ -2842,11 +2746,7 @@ graphs:
       - newAttribute: totalErrorCount
         expr: |
           let total = 0;
-          let keys = ["L01エラー", "L02エラー", "L03エラー", "L04エラー", "L05エラー", "L06エラー",
-                      "T03エラー", "xlinkエラー", "gml:idエラー", "L-frn-01エラー",
-                      "C05エラー", "C07エラー", "C08エラー",
-                      "L-TRAN-03 xlink参照エラー", "Z-TRAN-01 面の向き不正",
-                      "L-TRAN-02 隣接面重複", "面のエラー"];
+          let keys = ["L-TRAN-03 xlink参照エラー", "面の向き不正", "L-TRAN-02 隣接面重複", "面のエラー"];
           for key in keys {
             total += env.get("__value")[key] ?? 0;
           }
@@ -3203,41 +3103,11 @@ graphs:
     toPort: supplier
   - id: 93acdb8c-7952-4533-89f8-c359ab5172aa
     from: 71fde7fe-d34a-4318-893a-4d648c09361d
-    to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    fromPort: merged
-    toPort: requestor
-  - id: f8a414c1-bd6a-44bb-a87e-8bf12ae74055
-    from: 71fde7fe-d34a-4318-893a-4d648c09361d
-    to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    fromPort: unmerged
-    toPort: requestor
-  - id: d7e8f9a0-b1c2-3d4e-5f6a-7b8c9d0e1f2a
-    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    fromPort: perFileOutput
-    toPort: supplier
-  - id: e8f9a0b1-c2d3-4e5f-6a7b-8c9d0e1f2a3b
-    from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    fromPort: merged
-    toPort: requestor
-  - id: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
-    from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    fromPort: unmerged
-    toPort: requestor
-  - id: a0b1c2d3-e4f5-6a7b-8c9d-0e1f2a3b4c5d
-    from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
-    to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    fromPort: perFileOutput
-    toPort: supplier
-  - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
-    from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
     to: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f
     fromPort: merged
     toPort: default
-  - id: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
-    from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
+  - id: f8a414c1-bd6a-44bb-a87e-8bf12ae74055
+    from: 71fde7fe-d34a-4318-893a-4d648c09361d
     to: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f
     fromPort: unmerged
     toPort: default
@@ -3260,6 +3130,16 @@ graphs:
     from: 9068494f-dee6-41ca-aef2-3e493441ece2
     to: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
     fromPort: default
+    toPort: default
+  - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    to: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
+    fromPort: summaryOutput
+    toPort: default
+  - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+    from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+    to: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
+    fromPort: summaryOutput
     toPort: default
   - id: 454c080f-90b1-4947-b232-d8a095d964b5
     from: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
