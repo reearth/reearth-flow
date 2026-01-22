@@ -1,7 +1,10 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { NodeChange } from "@xyflow/react";
+import { useMemo, useRef } from "react";
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import { useT } from "@flow/lib/i18n";
 import { Node, Workflow } from "@flow/types";
@@ -9,7 +12,6 @@ import { Node, Workflow } from "@flow/types";
 import SearchFilters from "../SearchFilters";
 
 import useHooks, { SearchNodeResult } from "./hooks";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 
 type SearchPanelProps = {
   showSearchPanel: boolean;
@@ -102,9 +104,23 @@ const SearchPanel = ({
     },
   ];
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: filteredNodes?.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 24,
+  });
+
+  const selectedRowIndex = useMemo(() => {
+    if (!selectedNodeId || !filteredNodes) return -1;
+
+    return filteredNodes.findIndex((row: any) => row.id === selectedNodeId);
+  }, [selectedNodeId, filteredNodes]);
+
   return (
     <div
-      className={`absolute flex h-[600px] z-50 w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      className={`absolute z-50 flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
       ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
       `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">
@@ -130,14 +146,15 @@ const SearchPanel = ({
         />
         <div className="flex min-h-0 flex-1 flex-col">
           <VirtualizedTable
+            parentRef={parentRef}
+            virtualizer={virtualizer}
             columns={searchNodeColumns}
             data={filteredNodes}
             searchTerm={searchTerm}
-            selectedFeatureId={selectedNodeId}
+            selectedRowIndex={selectedRowIndex}
             onRowClick={handleRowClick}
             onRowDoubleClick={handleRowDoubleClick}
             condensed
-            surpressAutoScroll
           />
         </div>
       </div>

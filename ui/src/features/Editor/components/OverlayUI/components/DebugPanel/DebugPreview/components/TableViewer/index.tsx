@@ -1,4 +1,5 @@
-import { memo, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -51,6 +52,41 @@ const TableViewer: React.FC<Props> = memo(
       [onDoubleClick],
     );
 
+    const parentRef = useRef<HTMLDivElement>(null);
+
+    const selectedRowIndex = useMemo(() => {
+      if (!selectedFeatureId || !formattedData.tableData) return -1;
+      const normalizedSelectedId = String(selectedFeatureId).replace(
+        /[^a-zA-Z0-9]/g,
+        "",
+      );
+      return formattedData.tableData.findIndex(
+        (row: any) =>
+          String(row.id || "").replace(/[^a-zA-Z0-9]/g, "") ===
+          normalizedSelectedId,
+      );
+    }, [selectedFeatureId, formattedData.tableData]);
+
+    const virtualizer = useVirtualizer({
+      count: formattedData?.tableData?.length,
+      getScrollElement: () => parentRef.current,
+      estimateSize: () => 24,
+    });
+
+    useEffect(() => {
+      if (
+        selectedRowIndex !== -1 &&
+        !(
+          selectedFeatureId?.startsWith('"') && selectedFeatureId?.endsWith('"')
+        )
+      ) {
+        virtualizer.scrollToIndex(selectedRowIndex, {
+          align: "start",
+          behavior: "auto",
+        });
+      }
+    }, [selectedRowIndex, selectedFeatureId, virtualizer]);
+
     // Loading state
     if (!fileContent || !formattedData.tableData) {
       return <BasicBoiler text={t("Loading data...")} className="h-full" />;
@@ -71,12 +107,14 @@ const TableViewer: React.FC<Props> = memo(
           {/* Table */}
           <div className="flex-1 overflow-hidden">
             <VirtualizedTable
+              parentRef={parentRef}
+              virtualizer={virtualizer}
               columns={formattedData.tableColumns}
               data={formattedData.tableData}
               selectColumns={true}
               showFiltering={true}
               condensed={true}
-              selectedFeatureId={selectedFeatureId}
+              selectedRowIndex={selectedRowIndex}
               onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />
