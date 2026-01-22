@@ -2,6 +2,7 @@ import { ArrowLeftIcon, CaretDownIcon } from "@phosphor-icons/react";
 import { memo, useMemo } from "react";
 
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -150,11 +151,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                     return (
                       <div key={key} className="space-y-1">
                         {valueType === "object" || valueType === "array" ? (
-                          <Collapsible>
+                          <Collapsible defaultOpen={true}>
                             <CollapsibleTrigger asChild className="w-full">
-                              <div
-                                data-status="open"
-                                className="group flex items-center justify-between hover:cursor-pointer">
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                                aria-expanded="true">
                                 <span className="group flex items-center text-xs font-medium text-muted-foreground">
                                   {key
                                     .replace(/^attributes/, "")
@@ -167,7 +170,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                                 <span className="text-xs text-muted-foreground">
                                   {valueType}
                                 </span>
-                              </div>
+                              </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                               <div className="mt-1 rounded-md bg-muted/30 p-2">
