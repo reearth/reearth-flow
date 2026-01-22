@@ -25,20 +25,20 @@
   ],
   "expectedOutput": {
     "expectedFile": [
-      "04_都市設備_植生_立体のエラー.csv",
-      "04_都市設備_植生_非水密体.csv"
+      "04_都市設備_立体のエラー.csv",
+      "04_都市設備_非水密体.csv"
     ]
   },
   "summaryOutput": {
     "errorCountSummary": {
-      "expectedFile": "summary_frn_veg.json",
+      "expectedFile": "summary_frn.json",
       "includeFields": [
         "立体のエラー",
         "非水密体"
       ]
     },
     "fileErrorSummary": {
-      "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
+      "expectedFile": "04_都市設備_検査結果一覧.csv",
       "includeColumns": [
         "立体のエラー",
         "非水密体"
