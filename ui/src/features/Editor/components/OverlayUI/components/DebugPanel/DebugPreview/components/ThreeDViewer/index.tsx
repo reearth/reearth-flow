@@ -1,4 +1,4 @@
-import { memo, RefObject } from "react";
+import { memo } from "react";
 
 import { CesiumViewer, RenderFallback } from "@flow/components";
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
