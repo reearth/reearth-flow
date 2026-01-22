@@ -184,3 +184,39 @@ impl Processor for ImageRasterizer {
         "ImageRasterizer"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(unused)]
+    use super::*;
+    use image::{ImageBuffer, ImageFormat, Rgb, RgbImage};
+    use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn case01() {
+        // Create a new 200x100 RGB image filled with white
+        let mut img = RgbImage::new(200, 100);
+
+        // Draw a red rectangle
+        for x in 50..150 {
+            for y in 20..80 {
+                img.put_pixel(x, y, Rgb([255, 0, 0]));
+            }
+        }
+
+        // Create the cache directory and save the image directly to the user-accessible location
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let cache_dir = Path::new(&home_dir).join(".cache").join("reearth-flow-test-images");
+
+        if let Err(_) = fs::create_dir_all(&cache_dir) {
+            panic!("Could not create cache directory for test images");
+        }
+
+        let dest_path = cache_dir.join("output.png");
+
+        // Save the image directly to the cache directory
+        img.save(&dest_path).unwrap();
+        println!("Successfully saved image directly to cache directory: {:?}", dest_path);
+    }
+}

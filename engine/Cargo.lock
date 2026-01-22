@@ -6335,6 +6335,7 @@ dependencies = [
  "chrono",
  "csv",
  "flatgeom",
+ "image 0.25.9",
  "indexmap 2.12.1",
  "itertools 0.14.0",
  "num-traits",
