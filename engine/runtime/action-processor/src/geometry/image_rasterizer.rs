@@ -186,26 +186,25 @@ pub struct Coordinate {
 }
 
 impl Coordinate {
-    // mapping from one CoordinatesBoudnary to another CoordinatesBoudnary
-    pub fn map_to(
-        &self, // Add reference to self to access the current coordinate's x, y values
+    // Creates a mapping function that can be reused to transform coordinates
+    pub fn create_mapping_function(
         from_geo_boundary: CoordinatesBoudnary,
         to_png_boundary: CoordinatesBoudnary,
-    ) -> Coordinate {
-        // Calculate the proportional position of the coordinate within the source boundary
-        let x_ratio = (self.x - from_geo_boundary.left_up.x)
+    ) -> impl Fn((f64, f64)) -> (f64, f64) {
+        // Pre-calculate the ratios to avoid repeated computation
+        let x_scale = (to_png_boundary.right_down.x - to_png_boundary.left_up.x)
             / (from_geo_boundary.right_down.x - from_geo_boundary.left_up.x);
-        let y_ratio = (self.y - from_geo_boundary.left_up.y)
+        let y_scale = (to_png_boundary.right_down.y - to_png_boundary.left_up.y)
             / (from_geo_boundary.right_down.y - from_geo_boundary.left_up.y);
 
-        // Apply the ratios to the destination boundary to get the new coordinate
-        let new_x = to_png_boundary.left_up.x
-            + (to_png_boundary.right_down.x - to_png_boundary.left_up.x) * x_ratio;
-        let new_y = to_png_boundary.left_up.y
-            + (to_png_boundary.right_down.y - to_png_boundary.left_up.y) * y_ratio;
+        let x_offset = to_png_boundary.left_up.x - from_geo_boundary.left_up.x * x_scale;
+        let y_offset = to_png_boundary.left_up.y - from_geo_boundary.left_up.y * y_scale;
 
-        // Return the new coordinate in the destination system
-        Coordinate { x: new_x, y: new_y }
+        move |(x, y): (f64, f64)| -> (f64, f64) {
+            let new_x = x * x_scale + x_offset;
+            let new_y = y * y_scale + y_offset;
+            (new_x, new_y)
+        }
     }
 }
 
@@ -239,13 +238,12 @@ pub struct GeometryPolygon {
 }
 
 impl GeometryPolygon {
-    // Maps the polygon's coordinates to PNG image space
-    pub fn map_to_png(
-        &self,
+    // Creates a mapping function that can be reused to transform the polygon's coordinates
+    pub fn create_mapping_function_to_png(
         geo_boundary: CoordinatesBoudnary,
         png_width: u32,
         png_height: u32,
-    ) -> GeometryPolygon {
+    ) -> impl Fn(&GeometryPolygon) -> GeometryPolygon {
         // Define the PNG boundary with (0,0) at top-left
         let png_boundary = CoordinatesBoudnary {
             left_up: Coordinate { x: 0.0, y: 0.0 },
@@ -263,24 +261,187 @@ impl GeometryPolygon {
             },
         };
 
-        // Map each coordinate in the polygon to the PNG space
-        let mapped_coordinates: Vec<(f64, f64)> = self
-            .coordinates
-            .iter()
-            .map(|(x, y)| {
-                let coord = Coordinate { x: *x, y: *y };
-                let mapped_coord = coord.map_to(geo_boundary.clone(), png_boundary.clone());
-                (mapped_coord.x, mapped_coord.y)
-            })
-            .collect();
+        // Create the coordinate mapping function
+        let coordinate_mapper = Coordinate::create_mapping_function(geo_boundary, png_boundary);
 
-        // Return a new polygon with the mapped coordinates but the same color
-        GeometryPolygon {
-            coordinates: mapped_coordinates,
-            color_r: self.color_r,
-            color_g: self.color_g,
-            color_b: self.color_b,
+        move |polygon: &GeometryPolygon| {
+            // Apply the coordinate mapping function to each coordinate in the polygon
+            let mapped_coordinates: Vec<(f64, f64)> = polygon
+                .coordinates
+                .iter()
+                .map(|&(x, y)| coordinate_mapper((x, y)))
+                .collect();
+
+            // Return a new polygon with the mapped coordinates but the same color
+            GeometryPolygon {
+                coordinates: mapped_coordinates,
+                color_r: polygon.color_r,
+                color_g: polygon.color_g,
+                color_b: polygon.color_b,
+            }
         }
+    }
+
+    // Maps the polygon to a vector of image pixels
+    pub fn to_image_pixels<F>(
+        &self,
+        mapping_fn: F,
+        fill_area: bool,
+    ) -> Vec<ImagePixel>
+    where
+        F: Fn(&GeometryPolygon) -> GeometryPolygon,
+    {
+        // Apply the mapping function to transform the polygon
+        let mapped_polygon = mapping_fn(self);
+
+        // Convert the mapped polygon's coordinates to image pixels
+        let mut pixels = Vec::new();
+
+        // Add the border pixels (outline of the polygon)
+        for (i, current) in mapped_polygon.coordinates.iter().enumerate() {
+            let next_index = (i + 1) % mapped_polygon.coordinates.len();
+            let next = &mapped_polygon.coordinates[next_index];
+
+            // Draw line between consecutive points
+            let line_pixels = self.draw_line(
+                current.0.round() as u32,
+                current.1.round() as u32,
+                next.0.round() as u32,
+                next.1.round() as u32,
+                mapped_polygon.color_r,
+                mapped_polygon.color_g,
+                mapped_polygon.color_b,
+            );
+            pixels.extend(line_pixels);
+        }
+
+        // If fill_area is true, fill the interior of the polygon
+        if fill_area {
+            let fill_pixels = self.fill_polygon_interior(&mapped_polygon);
+            pixels.extend(fill_pixels);
+        }
+
+        pixels
+    }
+
+    // Helper function to draw a line between two points using Bresenham's algorithm
+    fn draw_line(&self, x0: u32, y0: u32, x1: u32, y1: u32, r: u8, g: u8, b: u8) -> Vec<ImagePixel> {
+        let mut pixels = Vec::new();
+
+        let dx = (x1 as i32 - x0 as i32).abs();
+        let dy = (y1 as i32 - y0 as i32).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = dx - dy;
+
+        let mut x = x0 as i32;
+        let mut y = y0 as i32;
+
+        loop {
+            pixels.push(ImagePixel {
+                x: x as u32,
+                y: y as u32,
+                r,
+                g,
+                b,
+            });
+
+            if x == x1 as i32 && y == y1 as i32 {
+                break;
+            }
+
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
+        }
+
+        pixels
+    }
+
+    // Helper function to fill the interior of a polygon using scanline algorithm
+    fn fill_polygon_interior(&self, polygon: &GeometryPolygon) -> Vec<ImagePixel> {
+        if polygon.coordinates.len() < 3 {
+            return Vec::new(); // Not enough points to form a polygon
+        }
+
+        let mut pixels = Vec::new();
+
+        // Find the bounding box of the polygon
+        let mut min_y = u32::MAX;
+        let mut max_y = 0u32;
+        let mut min_x = u32::MAX;
+        let mut max_x = 0u32;
+
+        for &(x, y) in &polygon.coordinates {
+            let x_int = x.round() as u32;
+            let y_int = y.round() as u32;
+
+            if y_int < min_y {
+                min_y = y_int;
+            }
+            if y_int > max_y {
+                max_y = y_int;
+            }
+            if x_int < min_x {
+                min_x = x_int;
+            }
+            if x_int > max_x {
+                max_x = x_int;
+            }
+        }
+
+        // For each scanline (horizontal line), find intersections with polygon edges
+        for y in min_y..=max_y {
+            let mut intersections = Vec::new();
+
+            for i in 0..polygon.coordinates.len() {
+                let p1 = &polygon.coordinates[i];
+                let p2 = &polygon.coordinates[(i + 1) % polygon.coordinates.len()];
+
+                let y1 = p1.1.round() as u32;
+                let y2 = p2.1.round() as u32;
+
+                // Check if the edge crosses the current scanline
+                if (y1 <= y && y2 > y) || (y2 <= y && y1 > y) {
+                    if y2 != y1 {
+                        let x1 = p1.0.round() as f64;
+                        let x2 = p2.0.round() as f64;
+
+                        // Calculate intersection point
+                        let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
+                        intersections.push(x.round() as u32);
+                    }
+                }
+            }
+
+            // Sort intersections and fill between pairs
+            intersections.sort();
+
+            for i in (0..intersections.len()).step_by(2) {
+                if i + 1 < intersections.len() {
+                    let start_x = intersections[i];
+                    let end_x = intersections[i + 1];
+
+                    for x in start_x..=end_x {
+                        pixels.push(ImagePixel {
+                            x,
+                            y,
+                            r: polygon.color_r,
+                            g: polygon.color_g,
+                            b: polygon.color_b,
+                        });
+                    }
+                }
+            }
+        }
+
+        pixels
     }
 }
 
@@ -333,6 +494,33 @@ impl GemotryPolygons {
             right_up: Coordinate { x: max_x, y: max_y }, // top-right corner
             right_down: Coordinate { x: max_x, y: min_y }, // bottom-right corner
         }
+    }
+
+    // Draws the polygons to a PNG image with the specified width and height
+    pub fn draw(&self, width: u32, height: u32, fill_area: bool) -> image::RgbImage {
+        // Create a new image with white background
+        let mut img = image::RgbImage::new(width, height);
+
+        // Find the boundary of all polygons
+        let geo_boundary = self.find_coordinates_boudary();
+
+        // Create the mapping function using the geographic boundary and image dimensions
+        let mapping_fn = GeometryPolygon::create_mapping_function_to_png(geo_boundary, width, height);
+
+        // Generate pixels for each polygon and draw them on the image
+        for polygon in &self.polygons {
+            // Convert the polygon to image pixels using the mapping function
+            let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
+
+            // Draw each pixel on the image
+            for pixel in pixels {
+                if pixel.x < width && pixel.y < height {
+                    img.put_pixel(pixel.x, pixel.y, image::Rgb([pixel.r, pixel.g, pixel.b]));
+                }
+            }
+        }
+
+        img
     }
 }
 
@@ -496,6 +684,50 @@ mod tests {
         println!(
             "  Right Down: ({}, {})",
             boundary.right_down.x, boundary.right_down.y
+        );
+    }
+
+    #[test]
+    fn case03() {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        // Open and read the JSON file
+        let file_path =
+            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/image_rasterizer_input.json";
+        let file = File::open(file_path).expect("Failed to open image_rasterizer_input.json");
+        let reader = BufReader::new(file);
+
+        // Parse the JSON
+        let json_value: serde_json::Value = serde_json::from_reader(reader)
+            .expect("Failed to parse JSON from image_rasterizer_input.json");
+
+        println!("Successfully read and parsed JSON from: {}", file_path);
+
+        // Convert JSON to GemotryPolygons
+        let gemotry_polygons = json_to_gemotry_polygons(&json_value)
+            .expect("Failed to convert JSON to GemotryPolygons");
+
+        // Draw the polygons to a PNG image
+        let img = gemotry_polygons.draw(1000, 1000, true); // width=1000, height=1000, fill_area=true
+
+        // Create the cache directory and save the image
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let cache_dir = Path::new(&home_dir)
+            .join(".cache")
+            .join("reearth-flow-test-images");
+
+        if let Err(_) = fs::create_dir_all(&cache_dir) {
+            panic!("Could not create cache directory for test images");
+        }
+
+        let dest_path = cache_dir.join("generated_image.png");
+
+        // Save the image directly to the cache directory
+        img.save(&dest_path).unwrap();
+        println!(
+            "Successfully generated and saved image to: {:?}",
+            dest_path
         );
     }
 }
