@@ -33,6 +33,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
   onSelectedFeature?: (featureId: string | null) => void;
+  entityMapRef?: React.RefObject<Map<string | number, any>>;
 };
 
 const CesiumViewer: React.FC<Props> = ({
@@ -40,6 +41,7 @@ const CesiumViewer: React.FC<Props> = ({
   fileType,
   viewerRef,
   onSelectedFeature,
+  entityMapRef,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -57,9 +59,15 @@ const CesiumViewer: React.FC<Props> = ({
 
       if (defined(pickedObject) && defined(pickedObject.id)) {
         const entity = pickedObject.id;
+
         if (entity.id) {
           try {
-            onSelectedFeature(entity.id);
+            // Check for compound IDs (CityGML surfaces like "buildingId_wall_1")
+            if (entity.id.includes("_")) {
+              onSelectedFeature(entity.id.split("_")[0]);
+            } else {
+              onSelectedFeature(entity.id);
+            }
           } catch (e) {
             console.error("Cesium viewer error:", e);
           }
@@ -102,6 +110,7 @@ const CesiumViewer: React.FC<Props> = ({
                 type: "FeatureCollection",
                 features: geoJsonFeatures,
               }}
+              entityMapRef={entityMapRef}
             />
           )}
 

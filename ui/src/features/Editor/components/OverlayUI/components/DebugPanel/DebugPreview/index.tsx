@@ -34,6 +34,7 @@ type Props = {
   // enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
+  cesiumEntityMapRef?: React.RefObject<Map<string | number, any>>;
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
@@ -48,6 +49,7 @@ const DebugPreview: React.FC<Props> = ({
   onConvertedSelectedFeature,
   mapRef,
   cesiumViewerRef,
+  cesiumEntityMapRef,
   selectedFeatureId,
   onSelectedFeature,
   onFlyToSelectedFeature,
@@ -204,6 +206,7 @@ const DebugPreview: React.FC<Props> = ({
               fileContent={selectedOutputData}
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
+              cesiumEntityMapRef={cesiumEntityMapRef}
               onSelectedFeature={onSelectedFeature}
             />
           </div>

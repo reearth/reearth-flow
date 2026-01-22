@@ -22,6 +22,7 @@ export default () => {
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const cesiumViewerRef = useRef<any>(null);
+  const cesiumEntityMapRef = useRef<Map<string | number, any>>(new Map());
 
   const [currentProject] = useCurrentProject();
 
@@ -161,95 +162,79 @@ export default () => {
             return;
           }
 
-          // Find all entities that belong to this feature
-          const matchingEntities = cesiumViewer.entities.values.filter(
-            (entity: any) => {
-              // Method 1: Direct entity ID match (CityGML entities)
-              if (
-                entity.id === featureId ||
-                JSON.stringify(entity.id) === JSON.stringify(featureId)
-              ) {
-                return true;
+          // OPTIMIZED: Use entity map for O(1) lookup instead of O(n) filtering
+          const matchingEntities: any[] = [];
+
+          // First, try direct lookup from entity map (for GeoJSON features)
+          const directEntity = cesiumEntityMapRef.current.get(featureId);
+          if (directEntity) {
+            matchingEntities.push(directEntity);
+          }
+
+          // For CityGML features, we still need to search, but only if direct lookup failed
+          // CityGML creates multiple entities (building + surfaces) with related IDs
+          if (matchingEntities.length === 0) {
+            // Fallback to entity search, but with optimized checks
+            for (const entity of cesiumViewer.entities.values) {
+              // Quick checks first (avoid expensive operations)
+              if (entity.id === featureId) {
+                matchingEntities.push(entity);
+                continue;
               }
 
-              // Method 2: Check buildingId property (CityGML surface entities)
-              const buildingId = entity.properties?.getValue()?.buildingId;
+              // Check for compound IDs (CityGML surfaces like "buildingId_wall_1")
               if (
-                buildingId &&
-                (buildingId === featureId ||
-                  JSON.stringify(buildingId) === JSON.stringify(featureId))
-              ) {
-                return true;
-              }
-
-              // Method 3: Check compound ID prefix (CityGML surface entities like "buildingId_wall_1")
-              if (
-                entity.id &&
                 typeof entity.id === "string" &&
-                entity.id.includes("_")
+                entity.id.startsWith(featureId + "_")
               ) {
-                const baseId = entity.id.split("_")[0];
-                if (
-                  baseId === featureId ||
-                  JSON.stringify(baseId) === JSON.stringify(featureId)
-                ) {
-                  return true;
-                }
+                matchingEntities.push(entity);
+                continue;
               }
 
-              // Method 4: Check GeoJSON entity properties for original feature data
-              try {
-                const entityProps = entity.properties?.getValue();
-                if (entityProps) {
-                  // Check if this entity has original GeoJSON feature data
-                  const originalId = entityProps.id;
-                  if (
-                    originalId === featureId ||
-                    JSON.stringify(originalId) === JSON.stringify(featureId)
-                  ) {
-                    return true;
+              // Check buildingId property (for CityGML surface entities)
+              // Only access properties if entity has them (avoid unnecessary calls)
+              if (entity.properties) {
+                try {
+                  const props = entity.properties.getValue();
+                  if (props?.buildingId === featureId) {
+                    matchingEntities.push(entity);
+                    continue;
                   }
 
-                  // Also check all property keys for potential ID matches
-                  for (const [key, value] of Object.entries(entityProps)) {
-                    if (
-                      key.toLowerCase().includes("id") &&
-                      (value === featureId ||
-                        JSON.stringify(value) === JSON.stringify(featureId))
-                    ) {
-                      return true;
-                    }
+                  // Check _originalId property (set by GeoJsonData component)
+                  if (props?._originalId === featureId) {
+                    matchingEntities.push(entity);
+                    continue;
                   }
+                } catch {
+                  // Silent fail for property access errors
                 }
-              } catch {
-                // Silent fail for property access errors
               }
-
-              return false;
-            },
-          );
+            }
+          }
 
           if (matchingEntities.length > 0) {
-            // Validate entities have reasonable coordinates
+            // OPTIMIZED: Quick validation - only check first few positions per entity
             const validEntities = matchingEntities.filter((entity: any) => {
               try {
                 if (entity.polygon?.hierarchy?.getValue) {
                   const hierarchy = entity.polygon.hierarchy.getValue();
-                  if (hierarchy?.positions) {
-                    // Check if any position has invalid coordinates
-                    return hierarchy.positions.every(
-                      (pos: any) =>
-                        pos &&
-                        typeof pos.x === "number" &&
-                        !isNaN(pos.x) &&
-                        isFinite(pos.x) &&
-                        typeof pos.y === "number" &&
-                        !isNaN(pos.y) &&
-                        isFinite(pos.y) &&
-                        typeof pos.z === "number" &&
-                        !isNaN(pos.z) &&
-                        isFinite(pos.z),
-                    );
+                  if (hierarchy?.positions && hierarchy.positions.length > 0) {
+                    // Sample validation: check first and last position only for speed
+                    const firstPos = hierarchy.positions[0];
+                    const lastPos =
+                      hierarchy.positions[hierarchy.positions.length - 1];
+
+                    const isValid = (pos: any) =>
+                      pos &&
+                      typeof pos.x === "number" &&
+                      isFinite(pos.x) &&
+                      typeof pos.y === "number" &&
+                      isFinite(pos.y) &&
+                      typeof pos.z === "number" &&
+                      isFinite(pos.z);
+
+                    return isValid(firstPos) && isValid(lastPos);
                   }
                 }
                 return true; // If no polygon, assume valid
@@ -531,6 +516,7 @@ export default () => {
     fileType,
     mapRef,
     cesiumViewerRef,
+    cesiumEntityMapRef,
     fullscreenDebug,
     expanded,
     minimized,
