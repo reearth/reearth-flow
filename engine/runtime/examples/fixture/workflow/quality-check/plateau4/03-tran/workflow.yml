@@ -68,6 +68,7 @@ graphs:
           sourceDataset: |
             env.get("__value")["cityGmlPath"]
           extractArchive: true
+          destPrefix: udx
 
       - id: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
         name: FeatureFilterByGml

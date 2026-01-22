@@ -202,13 +202,15 @@ fn process_feature(
             .eval_ast::<String>(expr)
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
     };
+    println!("DEBUG: city_gml_path: {}", city_gml_path);
     let folders = city_gml_path
         .split(MAIN_SEPARATOR)
         .map(String::from)
         .collect::<Vec<String>>();
     let city_gml_path = Uri::from_str(city_gml_path.to_string().as_str())
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-    let (mut root, mut pkg, mut admin, mut area, mut dirs) = (
+    let (mut root, mut udx, mut pkg, mut admin, mut area, mut dirs) = (
+        String::new(),
         String::new(),
         String::new(),
         String::new(),
@@ -217,27 +219,30 @@ fn process_feature(
     );
     let mut rtdir = PathBuf::new();
     match folders.as_slice() {
-        [.., _fourth_last, third_last, second_last, _last]
+        [.., fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&second_last.as_str()) =>
         {
-            root = third_last.to_string();
+            root = fourth_last.to_string();
+            udx = third_last.to_string();
             pkg = second_last.to_string();
             dirs = second_last.to_string();
             rtdir = PathBuf::from(folders[..folders.len() - 3].join(MAIN_SEPARATOR_STR));
         }
-        [.., _fifth_last, fourth_last, third_last, second_last, _last]
+        [.., fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&third_last.as_str()) =>
         {
-            root = fourth_last.to_string();
+            root = fifth_last.to_string();
+            udx = fourth_last.to_string();
             pkg = third_last.to_string();
             area = second_last.to_string();
             dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
-        [.., _sixth_last, fifth_last, fourth_last, third_last, second_last, _last]
+        [.., sixth_last, fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&fourth_last.as_str()) =>
         {
-            root = fifth_last.to_string();
+            root = sixth_last.to_string();
+            udx = fifth_last.to_string();
             pkg = fourth_last.to_string();
             admin = third_last.to_string();
             area = second_last.to_string();
@@ -248,9 +253,9 @@ fn process_feature(
     };
 
     // Rename the root folder to "udx" if it's not already named that
-    let city_gml_path = if !root.is_empty() && root != "udx" {
-        let old_root_path = rtdir.join(&root);
-        let new_root_path = rtdir.join("udx");
+    let city_gml_path = if !udx.is_empty() && udx != "udx" {
+        let old_root_path = rtdir.join(&root).join(&udx);
+        let new_root_path = rtdir.join(&root).join("udx");
         if old_root_path.exists() && new_root_path.exists() {
             return Err(PlateauProcessorError::UDXFolderExtractor(format!(
                 "Cannot rename {:?} to {:?}: target directory already exists",
@@ -263,10 +268,9 @@ fn process_feature(
         }
         // Update the city_gml_path to reflect the new folder name
         let new_path = city_gml_path.to_string().replace(
-            &format!("{MAIN_SEPARATOR}{root}{MAIN_SEPARATOR}"),
+            &format!("{MAIN_SEPARATOR}{udx}{MAIN_SEPARATOR}"),
             &format!("{MAIN_SEPARATOR}udx{MAIN_SEPARATOR}"),
         );
-        root = "udx".to_string();
         Uri::from_str(&new_path)
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
     } else {
@@ -349,10 +353,17 @@ fn gen_codelists_and_schemas_path(
                 "Codelists not found, and fallback path is not set".to_string(),
             ),
         )?);
-        // Look for codelists subfolder in the base path
-        let source = base_path
+        let nested_path = base_path
             .join("codelists")
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        let source = if storage
+            .exists_sync(nested_path.path().as_path())
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+        {
+            nested_path
+        } else {
+            base_path
+        };
         if storage
             .exists_sync(source.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
@@ -375,10 +386,17 @@ fn gen_codelists_and_schemas_path(
                 "Schemas not found, and fallback path is not set".to_string(),
             ),
         )?);
-        // Look for schemas subfolder in the base path
-        let source = base_path
+        let nested_path = base_path
             .join("schemas")
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        let source = if storage
+            .exists_sync(nested_path.path().as_path())
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+        {
+            nested_path
+        } else {
+            base_path
+        };
         if storage
             .exists_sync(source.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
