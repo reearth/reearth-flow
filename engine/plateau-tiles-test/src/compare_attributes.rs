@@ -1,6 +1,55 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
+/// Detects if the given path is a risk type based on known risk type identifiers.
+/// Risk types: fld, tnm, htd, ifld, rfld
+fn is_risk_type(path: &str) -> bool {
+    const RISK_TYPES: &[&str] = &["fld", "tnm", "htd", "ifld", "rfld"];
+    RISK_TYPES.iter().any(|risk_type| {
+        path.contains(&format!("_op_{}_", risk_type))
+            || path.contains(&format!("_op_{}", risk_type))
+    })
+}
+
+/// Creates a composite key for feature comparison.
+/// For risk types (fld, tnm, htd, ifld, rfld) which don't have gml_id,
+/// use {path}/{uro:rank_code} to create a unique key.
+/// For DmGeometricAttribute features (which can have multiple children per parent),
+/// use gml_id + dm_geometryType_code to create a unique key.
+/// For other features, use gml_id alone (extracted from props).
+pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
+    // For risk types, use path/rank_code as the key
+    if let Some(p) = path {
+        if is_risk_type(p) {
+            let rank_code = props
+                .get("uro_rank_code")
+                .expect("test failed! no uro:rank_code");
+            // convert to string
+            let rank_code = match rank_code.as_str() {
+                Some(s) => s.to_string(),
+                None => rank_code.to_string(),
+            };
+            return format!("{}/{}", p, rank_code);
+        }
+    }
+
+    // Extract gml_id from props if present
+    let gml_id = props.get("gml_id").and_then(|v| v.as_str()).unwrap_or("");
+
+    // Check if this is a DmGeometricAttribute feature
+    if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {
+        if dm_feature_type == "DmGeometricAttribute" {
+            // Use dm_geometryType_code as discriminator for DM features
+            if let Some(dm_geometry_type_code) =
+                props.get("dm_geometryType_code").and_then(|v| v.as_str())
+            {
+                return format!("{}__dm_{}", gml_id, dm_geometry_type_code);
+            }
+        }
+    }
+    gml_id.to_string()
+}
+
 #[derive(Debug)]
 pub struct AttributeComparer {
     identifier: String,
@@ -262,7 +311,7 @@ impl AttributeComparer {
     pub fn compare(&mut self, attr1: &Value, attr2: &Value) -> Result<(), String> {
         if attr1.is_null() || attr2.is_null() {
             return Err(format!(
-                "Missing attributes for gmlId: {} for {}",
+                "Missing attributes for identifier: {} for {}",
                 self.identifier,
                 if attr1.is_null() { "FME" } else { "flow" }
             ));
@@ -285,12 +334,12 @@ impl AttributeComparer {
 }
 
 pub fn analyze_attributes(
-    gml_id: &str,
+    ident: &str,
     attr1: &Value,
     attr2: &Value,
     casts: HashMap<String, CastConfig>,
 ) -> Result<(), String> {
-    let mut comparer = AttributeComparer::new(gml_id.to_string(), casts);
+    let mut comparer = AttributeComparer::new(ident.to_string(), casts);
     comparer.compare(attr1, attr2)
 }
 

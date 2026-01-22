@@ -272,16 +272,14 @@ fn parse_string_property(
 }
 
 /// Extract feature properties as JSON values from a GLB file
-/// Returns a map of gml_id -> properties for each feature
+/// Returns a list of properties for each feature
 pub fn extract_feature_properties(
     gltf: &gltf::Gltf,
-) -> Result<IndexMap<String, serde_json::Map<String, Value>>, GltfReaderError> {
-    let mut result = IndexMap::new();
-
+) -> Result<Vec<serde_json::Map<String, Value>>, GltfReaderError> {
     // Get EXT_structural_metadata extension
     let metadata_value = match gltf.extension_value("EXT_structural_metadata") {
         Some(v) => v,
-        None => return Ok(result),
+        None => return Ok(Vec::new()),
     };
 
     // Get property tables
@@ -293,7 +291,7 @@ pub fn extract_feature_properties(
         })?;
 
     if property_tables.is_empty() {
-        return Ok(result);
+        return Ok(Vec::new());
     }
 
     // Process first property table
@@ -474,16 +472,7 @@ pub fn extract_feature_properties(
         }
     }
 
-    // Key by gml_id
-    for props in feature_props {
-        if let Some(Value::String(gml_id)) = props.get("gml_id") {
-            result.insert(gml_id.clone(), props);
-        } else {
-            return Err(GltfReaderError::Parse("Feature missing gml_id".to_string()));
-        }
-    }
-
-    Ok(result)
+    Ok(feature_props)
 }
 
 #[cfg(test)]
@@ -520,7 +509,9 @@ mod tests {
 
         for gml_id in &expected_gml_ids {
             assert!(
-                features.contains_key(*gml_id),
+                features
+                    .iter()
+                    .any(|f| f.get("gml_id").and_then(|v| v.as_str()) == Some(*gml_id)),
                 "Missing feature with gml_id: {}",
                 gml_id
             );
@@ -528,7 +519,11 @@ mod tests {
 
         // Verify properties of the first feature
         let feature1 = features
-            .get("tran_4d448e8a-db1d-48ef-8f04-feb24b49b701")
+            .iter()
+            .find(|f| {
+                f.get("gml_id").and_then(|v| v.as_str())
+                    == Some("tran_4d448e8a-db1d-48ef-8f04-feb24b49b701")
+            })
             .expect("Feature 1 should exist");
 
         // Check expected properties
@@ -567,7 +562,11 @@ mod tests {
 
         // Verify the second feature has correct gml_id
         let feature2 = features
-            .get("tran_3b28a7b2-a741-4569-bf09-0dadaf5996f4")
+            .iter()
+            .find(|f| {
+                f.get("gml_id").and_then(|v| v.as_str())
+                    == Some("tran_3b28a7b2-a741-4569-bf09-0dadaf5996f4")
+            })
             .expect("Feature 2 should exist");
         assert_eq!(
             feature2.get("gml_id").and_then(|v| v.as_str()),

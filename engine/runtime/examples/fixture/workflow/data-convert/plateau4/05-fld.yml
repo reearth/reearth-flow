@@ -144,7 +144,7 @@ graphs:
         [
           #{
             cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode"),
+            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             codelists: env.get("codelistsPath") ?? env.get("codelists"),
             schemas: env.get("schemasPath") ?? env.get("schemas"),
           },
@@ -159,89 +159,80 @@ graphs:
     action: FeatureCityGmlReader
     with:
       codelistsPath: env.get("__value").codelists
+      flatten: true
       dataset: |
         env.get("__value")["path"]
-  - id: dc498449-5478-4bff-abaa-59f2d160925f
-    name: PLATEAU4.MaxLodExtractor
+  - id: e2441531-649a-4dcd-916f-ac59f7d56de3
+    name: AttributeManagerPreFlattener
     type: action
-    action: PLATEAU4.MaxLodExtractor
+    action: AttributeManager
     with:
-      cityGmlPathAttribute: path
-      maxLodAttribute: maxLod
-  - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-    name: AttributeAggregatorByMaxLod
+      operations:
+      - attribute: feature_type
+        method: create
+        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
+        method: remove
+  - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+    name: AttributeFlattener
     type: action
-    action: AttributeAggregator
-    with:
-      aggregateAttributes:
-      - newAttribute: file
-        attributeValue: |
-          file::extract_filename(env.get("__value")["path"])
-      - newAttribute: type
-        attributeValue: |
-          env.get("__feature_type")
-      - newAttribute: maxLod
-        attributeValue: |
-          env.get("__value").maxLod
-      calculation: |
-        1
-      calculationAttribute: count
-      method: count
-  - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-    name: AttributeMapperByMaxLod
+    action: PLATEAU4.AttributeFlattener
+  - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+    name: AttributeMapper
     type: action
     action: AttributeMapper
     with:
       mappers:
-      - attribute: code
-        expr: |
-          env.get("__value").file[0..6]
-      - attribute: type
-        expr: |
-          env.get("__value")["type"].split(":")[0]
-      - attribute: maxLod
-        expr: |
-          env.get("__value").maxLod
-      - attribute: file
-        expr: |
-          env.get("__value").file
-  - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-    name: FileWriterTsvFilePath
-    type: action
-    action: CsvWriter
-    with:
-      format: tsv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "maxLod.tsv")
-  - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-    name: AttributeFlattener
-    type: action
-    action: AttributeFlattener
-    with:
-      attributes:
-      - cityGmlAttributes
-  - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    name: AttributeBulkArrayJoiner
-    type: action
-    action: AttributeBulkArrayJoiner
-  - id: c074f373-44e9-40b8-af83-76f36e141a9c
-    name: AttributeConvert
-    type: action
-    action: RhaiCaller
-    with:
-      isTarget: |
-        true
-      process: |
-        env.get("__value") + #{
-          "uro:description": env.get("__value")["gml:name"],
-          "uro:rank": env.get("__value")["uro:floodingRiskAttribute"]["uro:rank"]
-        }
+      - attribute: city_code
+        valueAttribute: cityCode
+      - attribute: city_name
+        valueAttribute: cityName
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: gml:name
+        valueAttribute: gml:name
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: wtr:class
+        valueAttribute: wtr:class
+      - attribute: wtr:function
+        valueAttribute: wtr:function
+      - attribute: uro:description
+        valueAttribute: uro:description
+      - attribute: uro:rank
+        valueAttribute: uro:rank
+      - attribute: uro:rank_code
+        valueAttribute: uro:rank_code
+      - attribute: uro:rankOrg
+        valueAttribute: uro:rankOrg
+      - attribute: uro:rankOrg_code
+        valueAttribute: uro:rankOrg_code
+      - attribute: uro:adminType
+        valueAttribute: uro:adminType
+      - attribute: uro:scale
+        valueAttribute: uro:scale
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: __package
+        valueAttribute: package
+      - attribute: __name
+        valueAttribute: name
+      - attribute: __udxDirs
+        valueAttribute: udxDirs
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojector
     type: action
     action: VerticalReprojector
     with:
       reprojectorType: jgd2011ToWgs84
+  - id: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+    name: FloodingAreaSurfaceGenerator
+    type: action
+    action: PLATEAU4.FloodingAreaSurfaceGenerator
   - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     name: Cesium3DTilesWriterNoTexture
     type: action
@@ -250,10 +241,73 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
+      skipUnexposedAttributes: true
       output: |
-        let udx_dirs = env.get("__value")["udxDirs"];
+        let udx_dirs = env.get("__value")["__udxDirs"];
         udx_dirs.replace("/", "_");
         file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let citygml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        let parts = citygml.split("_op_");
+        citygml = parts[0];
+        let udx_dirs = env.get("__value")["__udxDirs"];
+        udx_dirs.replace("/", "_");
+        let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
+        let lod = name.split("_").pop();
+        file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles_" + lod + "_no_texture.zip")
+  - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
+    name: CreateDictionaryNameDict
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: dict_name
+        method: create
+        value: |
+          let udx_dirs = env.get("__value")["__udxDirs"];
+          let parts = udx_dirs.split("/");
+          let last_segment = parts[parts.len() - 1];
+          let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
+          let lod = name.split("_").pop();
+          last_segment + "_" + lod
+  - id: c24dbf9e-1741-4c61-99bc-618582b1e03b
+    name: AttributeDuplicateFilterDict
+    type: action
+    action: AttributeDuplicateFilter
+    with:
+      filterBy:
+      - __package
+      - dict_name
+  - id: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
+    name: JsonWriterDict
+    type: action
+    action: JsonWriter
+    with:
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+      converter: |
+        let packages = #{};
+        for feature in env.get("__features") {
+          let pkg = feature["__package"];
+          if pkg == () { continue; }
+          if packages[pkg] == () {
+            packages[pkg] = [];
+          }
+          let scale = feature["uro:scale"];
+          if scale[1] == "1" {
+            scale = "計画規模";
+          } else if scale[1] == "2" {
+            scale = "想定最大規模";
+          }
+          packages[pkg].push(#{
+            name: feature.dict_name,
+            description: feature["uro:description"],
+            admin: feature["uro:adminType"],
+            scale: scale,
+          });
+        }
+        packages
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -267,46 +321,46 @@ graphs:
     toPort: default
   - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
     from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-    to: dc498449-5478-4bff-abaa-59f2d160925f
+    to: e2441531-649a-4dcd-916f-ac59f7d56de3
     fromPort: default
     toPort: default
-  - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
-    from: dc498449-5478-4bff-abaa-59f2d160925f
-    to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-    fromPort: default
-    toPort: default
-  - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
-    from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-    to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-    fromPort: default
-    toPort: default
-  - id: 993360df-5cfd-4525-9626-bfe13fa62117
-    from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-    to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-    fromPort: default
-    toPort: default
-  - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
-    from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+  - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    from: e2441531-649a-4dcd-916f-ac59f7d56de3
     to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     fromPort: default
     toPort: default
-  - id: e862f11a-88a6-4c1b-a743-ba80253039df
+  - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
     from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     to: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
     fromPort: default
     toPort: default
-  - id: 0929145d-e654-441e-8b4d-4f3df4396211
+  - id: e862f11a-88a6-4c1b-a743-ba80253039df
     from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    to: c074f373-44e9-40b8-af83-76f36e141a9c
-    fromPort: default
-    toPort: default
-  - id: 16c7a724-7b87-424e-8dff-d1f92ea74f42
-    from: c074f373-44e9-40b8-af83-76f36e141a9c
     to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     fromPort: default
     toPort: default
   - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
     from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+    to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+    fromPort: default
+    toPort: default
+  - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
     to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+    fromPort: default
+    toPort: default
+  - id: 48893ceb-2d37-4ca2-b5c0-184ea4128409
+    from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+    to: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
+    fromPort: default
+    toPort: default
+  - id: 1e5c26d5-2082-4fed-9890-89fb517ef184
+    from: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
+    to: c24dbf9e-1741-4c61-99bc-618582b1e03b
+    fromPort: default
+    toPort: default
+  - id: db2b57d8-b2e2-4094-aa82-c76b555fdb60
+    from: c24dbf9e-1741-4c61-99bc-618582b1e03b
+    to: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
     fromPort: default
     toPort: default

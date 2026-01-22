@@ -1,0 +1,19 @@
+# test fld (flood risk)
+citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op_fld.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.cesium_statistics]
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".fld"]
+comparator = "list_to_dict"
+key = ".name"
+
+[filter.tree]
+"udx/fld/pref/oyabegawa_gandogawa/55360704_fld_6697_l2.gml" = [
+    "fld_3dab99fd-de9f-4806-9b10-7befb7cb4c87",
+]

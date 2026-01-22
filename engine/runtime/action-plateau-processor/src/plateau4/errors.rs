@@ -67,6 +67,10 @@ pub(super) enum PlateauProcessorError {
     DestinationMeshCodeExtractorFactory(String),
     #[error("DestinationMeshCodeExtractor error: {0}")]
     DestinationMeshCodeExtractor(String),
+    #[error("FloodingAreaSurfaceGenerator Factory error: {0}")]
+    FloodingAreaSurfaceGeneratorFactory(String),
+    #[error("FloodingAreaSurfaceGenerator error: {0}")]
+    FloodingAreaSurfaceGenerator(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

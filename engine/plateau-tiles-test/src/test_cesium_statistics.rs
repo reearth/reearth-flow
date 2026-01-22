@@ -1,5 +1,5 @@
 use crate::align_cesium::{
-    collect_geometries_by_gmlid, find_cesium_tile_directories, DetailLevel, GeometryCollector,
+    collect_geometries_by_ident, find_cesium_tile_directories, DetailLevel, GeometryCollector,
 };
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use serde::Deserialize;
@@ -36,8 +36,8 @@ pub fn test_cesium_statistics(
 
         tracing::debug!("Collecting geometries from directory: {}", dir_name);
 
-        let fme_geometries = collect_geometries_by_gmlid(&fme_dir)?;
-        let flow_geometries = collect_geometries_by_gmlid(&flow_dir)?;
+        let fme_geometries = collect_geometries_by_ident(&fme_dir)?;
+        let flow_geometries = collect_geometries_by_ident(&flow_dir)?;
 
         align_and_compare(&fme_geometries, &flow_geometries)?;
     }
@@ -46,41 +46,41 @@ pub fn test_cesium_statistics(
 }
 
 fn test_texture_presence(
-    gml_id: &str,
+    ident: &str,
     fme_detail_levels: &[DetailLevel],
     flow_detail_levels: &[DetailLevel],
 ) -> Result<(), String> {
     // all detail levels must have same texture presence (indicated by source_idx)
     let fme_has_texture = fme_detail_levels
         .first()
-        .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?
+        .ok_or_else(|| format!("No detail levels for ident '{}' in FME", ident))?
         .source_idx
         .is_some();
     for level in fme_detail_levels.iter() {
         if level.source_idx.is_some() != fme_has_texture {
             return Err(format!(
-                "gml_id '{}': inconsistent texture presence in FME detail levels",
-                gml_id
+                "ident '{}': inconsistent texture presence in FME detail levels",
+                ident
             ));
         }
     }
     let flow_has_texture = flow_detail_levels
         .first()
-        .ok_or_else(|| format!("No detail levels for gml_id '{}' in Flow", gml_id))?
+        .ok_or_else(|| format!("No detail levels for ident '{}' in Flow", ident))?
         .source_idx
         .is_some();
     for level in flow_detail_levels.iter() {
         if level.source_idx.is_some() != flow_has_texture {
             return Err(format!(
-                "gml_id '{}': inconsistent texture presence in Flow detail levels",
-                gml_id
+                "ident '{}': inconsistent texture presence in Flow detail levels",
+                ident
             ));
         }
     }
     if fme_has_texture != flow_has_texture {
         return Err(format!(
-            "gml_id '{}': texture presence differs between FME ({}) and Flow ({})",
-            gml_id, fme_has_texture, flow_has_texture
+            "ident '{}': texture presence differs between FME ({}) and Flow ({})",
+            ident, fme_has_texture, flow_has_texture
         ));
     }
     Ok(())
@@ -106,25 +106,25 @@ fn align_and_compare(
         if !missing_in_fme.is_empty() {
             error_msg.push_str(&format!("Missing in FME: {:?}\n", missing_in_fme));
         }
-        panic!("gml_id mismatch between FME and Flow:\n{}", error_msg);
+        panic!("ident mismatch between FME and Flow:\n{}", error_msg);
     }
 
-    for gml_id in fme_keys {
-        let fme_detail_levels = &fme_detail_levels[gml_id];
-        let flow_detail_levels = &flow_detail_levels[gml_id];
-        test_texture_presence(gml_id, fme_detail_levels, flow_detail_levels)?;
+    for ident in fme_keys {
+        let fme_detail_levels = &fme_detail_levels[ident];
+        let flow_detail_levels = &flow_detail_levels[ident];
+        test_texture_presence(ident, fme_detail_levels, flow_detail_levels)?;
 
         // Assert geometric error decreases monotonically
-        verify_monotonic_geometric_error(gml_id, fme_detail_levels, "FME")?;
-        verify_monotonic_geometric_error(gml_id, flow_detail_levels, "Flow")?;
+        verify_monotonic_geometric_error(ident, fme_detail_levels, "FME")?;
+        verify_monotonic_geometric_error(ident, flow_detail_levels, "Flow")?;
 
         // compare each Flow detail level to the highest-detail FME level
         let fme_highest_level = fme_detail_levels
             .last()
-            .ok_or_else(|| format!("No detail levels for gml_id '{}' in FME", gml_id))?;
+            .ok_or_else(|| format!("No detail levels for ident '{}' in FME", ident))?;
         for (idx, level) in flow_detail_levels.iter().enumerate() {
             let result = compare_detail_level(
-                gml_id,
+                ident,
                 fme_highest_level,
                 fme_geometries,
                 level,
@@ -132,7 +132,7 @@ fn align_and_compare(
             )?;
             tracing::debug!(
                 "{}: level {}, bbox:{:.6}, center:{:.6}, color:{:.6}",
-                result.gml_id,
+                result.ident,
                 idx,
                 result.bounding_box_error,
                 result.mass_center_error,
@@ -145,7 +145,7 @@ fn align_and_compare(
 }
 
 fn verify_monotonic_geometric_error(
-    gml_id: &str,
+    ident: &str,
     detail_levels: &[DetailLevel],
     source: &str,
 ) -> Result<(), String> {
@@ -154,16 +154,16 @@ fn verify_monotonic_geometric_error(
     for (i, level) in detail_levels.iter().enumerate() {
         if level.geometric_error < 0.0 || !level.geometric_error.is_finite() {
             return Err(format!(
-                "{} gml_id '{}': invalid geometric error {} at level {}",
-                source, gml_id, level.geometric_error, i
+                "{} ident '{}': invalid geometric error {} at level {}",
+                source, ident, level.geometric_error, i
             ));
         }
 
         if level.geometric_error > prev_error {
             return Err(format!(
-                "{} gml_id '{}': geometric error is not monotonically decreasing at level {} \
+                "{} ident '{}': geometric error is not monotonically decreasing at level {} \
                  (previous: {}, current: {})",
-                source, gml_id, i, prev_error, level.geometric_error
+                source, ident, i, prev_error, level.geometric_error
             ));
         }
 
@@ -174,7 +174,7 @@ fn verify_monotonic_geometric_error(
 
 #[derive(Default, Debug)]
 pub struct DetailLevelComparisonResult {
-    gml_id: String,
+    ident: String,
     bounding_box_error: f64,
     mass_center_error: f64,
     average_color_error: f32,
@@ -185,28 +185,28 @@ impl std::fmt::Display for DetailLevelComparisonResult {
         write!(
             f,
             "{} bounding_box:{:.6} mass_center:{:.6} color:{:.6}",
-            self.gml_id, self.bounding_box_error, self.mass_center_error, self.average_color_error,
+            self.ident, self.bounding_box_error, self.mass_center_error, self.average_color_error,
         )
     }
 }
 
 impl DetailLevelComparisonResult {
-    fn new(gml_id: String) -> Self {
+    fn new(ident: String) -> Self {
         Self {
-            gml_id,
+            ident,
             ..Default::default()
         }
     }
 }
 
 fn compare_detail_level(
-    gml_id: &str,
+    ident: &str,
     fme_level: &DetailLevel,
     fme_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
 ) -> Result<DetailLevelComparisonResult, String> {
-    let mut result = DetailLevelComparisonResult::new(gml_id.to_string());
+    let mut result = DetailLevelComparisonResult::new(ident.to_string());
     let fme_error = fme_level.geometric_error;
     let flow_error = flow_level.geometric_error;
 
@@ -230,8 +230,8 @@ fn compare_detail_level(
     result.bounding_box_error = error_min.max(error_max);
     if result.bounding_box_error > 1.0 {
         return Err(format!(
-            "gml_id '{}': bounding box mismatch exceeds max error: {}: min:({}, {}, {}), max:({}, {}, {})",
-            gml_id, bbox_error,
+            "ident '{}': bounding box mismatch exceeds max error: {}: min:({}, {}, {}), max:({}, {}, {})",
+            ident, bbox_error,
             fme_bbox.0.x - flow_bbox.0.x,
             fme_bbox.0.y - flow_bbox.0.y,
             fme_bbox.0.z - flow_bbox.0.z,
@@ -254,8 +254,8 @@ fn compare_detail_level(
     result.mass_center_error = centroid_diff / centroid_error_bound;
     if result.mass_center_error > 1.0 {
         return Err(format!(
-            "gml_id '{}': mass center mismatch exceeds error bound: {}",
-            gml_id, result.mass_center_error
+            "ident '{}': mass center mismatch exceeds error bound: {}",
+            ident, result.mass_center_error
         ));
     }
 
@@ -266,7 +266,7 @@ fn compare_detail_level(
     if !has_texture {
         // Test face-weighted average color (material base color × vertex color)
         result.average_color_error = test_face_weighted_average_color(
-            gml_id,
+            ident,
             fme_level,
             fme_geometries,
             flow_level,
@@ -357,7 +357,7 @@ fn compute_centroid(
 /// Test face-weighted average color by comparing material base color × vertex color
 /// Returns normalized color error (0.0 = perfect match, 1.0 = at tolerance threshold)
 fn test_face_weighted_average_color(
-    gml_id: &str,
+    ident: &str,
     fme_level: &DetailLevel,
     fme_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
@@ -405,10 +405,10 @@ fn test_face_weighted_average_color(
 
     if max_diff > color_tolerance {
         return Err(format!(
-            "gml_id '{}': face-weighted average color differs by {:.4} (max allowed: {:.4})\n\
+            "ident '{}': face-weighted average color differs by {:.4} (max allowed: {:.4})\n\
              FME: [{:.4}, {:.4}, {:.4}, {:.4}]\n\
              Flow: [{:.4}, {:.4}, {:.4}, {:.4}]",
-            gml_id,
+            ident,
             max_diff,
             color_tolerance,
             fme_avg_color[0],

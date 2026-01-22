@@ -1,6 +1,6 @@
 use crate::align_cesium::{collect_glb_paths_from_tileset, find_cesium_tile_directories};
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::analyze_attributes;
+use crate::compare_attributes::{analyze_attributes, make_feature_key};
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
 use serde::Deserialize;
 use serde_json::Value;
@@ -13,10 +13,16 @@ pub struct CesiumAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
-/// Load all GLB attributes from a directory using tileset.json, keyed by gml_id
+/// Load all GLB attributes from a directory using tileset.json, keyed by ident
 fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     let mut ret = HashMap::new();
     let mut rel = HashMap::new();
+
+    // Extract directory name for risk type detection
+    let dir_name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|s| s.to_string());
 
     // Collect GLB paths from tileset.json
     let glb_paths = collect_glb_paths_from_tileset(dir)?;
@@ -30,24 +36,29 @@ fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
         let features = extract_feature_properties(&gltf)
             .map_err(|e| format!("Failed to extract features from {:?}: {}", path, e))?;
 
-        for (gml_id, props) in features {
-            if let Some(existing) = ret.get(&gml_id) {
-                if existing != &Value::Object(props.clone()) {
-                    let existing_path = rel.get(&gml_id).unwrap();
+        for props in features {
+            let props_value = Value::Object(props);
+
+            // Create composite key for risk types and DM features
+            let feature_key = make_feature_key(&props_value, dir_name.as_deref());
+
+            if let Some(existing) = ret.get(&feature_key) {
+                if existing != &props_value {
+                    let existing_path = rel.get(&feature_key).unwrap();
                     tracing::debug!(
-                        "Conflict for gml_id {}: {:?} vs {:?}",
-                        gml_id,
+                        "Conflict for feature_key {}: {:?} vs {:?}",
+                        feature_key,
                         existing,
-                        props
+                        props_value
                     );
                     return Err(format!(
-                        "Conflicting gml_id {}: properties differ between {:?} and {:?}",
-                        gml_id, existing_path, path
+                        "Conflicting feature_key {}: properties differ between {:?} and {:?}",
+                        feature_key, existing_path, path
                     ));
                 }
             } else {
-                ret.insert(gml_id.clone(), Value::Object(props));
-                rel.insert(gml_id, path.clone());
+                ret.insert(feature_key.clone(), props_value);
+                rel.insert(feature_key, path.clone());
             }
         }
     }
@@ -72,10 +83,10 @@ fn align_glb_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)
 
     let all_keys: HashSet<_> = map1.keys().chain(map2.keys()).collect();
 
-    for gml_id in all_keys {
-        let attr1 = map1.get(gml_id).cloned().unwrap_or(Value::Null);
-        let attr2 = map2.get(gml_id).cloned().unwrap_or(Value::Null);
-        result.push((gml_id.clone(), attr1, attr2));
+    for ident in all_keys {
+        let attr1 = map1.get(ident).cloned().unwrap_or(Value::Null);
+        let attr2 = map2.get(ident).cloned().unwrap_or(Value::Null);
+        result.push((ident.clone(), attr1, attr2));
     }
 
     Ok(result)
@@ -114,8 +125,8 @@ pub fn test_cesium_attributes(
 
         tracing::debug!("Comparing Cesium attributes in directory: {}", dir_name);
 
-        for (gml_id, attr1, attr2) in align_glb_attr(&fme_dir, &flow_dir)? {
-            analyze_attributes(&gml_id, &attr1, &attr2, casts.clone())?;
+        for (ident, attr1, attr2) in align_glb_attr(&fme_dir, &flow_dir)? {
+            analyze_attributes(&ident, &attr1, &attr2, casts.clone())?;
         }
     }
 
