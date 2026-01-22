@@ -179,6 +179,44 @@ impl Processor for ImageRasterizer {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Coordinate {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Coordinate {
+    // mapping from one CoordinatesBoudnary to another CoordinatesBoudnary
+    pub fn map_to(
+        &self, // Add reference to self to access the current coordinate's x, y values
+        from_geo_boundary: CoordinatesBoudnary,
+        to_png_boundary: CoordinatesBoudnary,
+    ) -> Coordinate {
+        // Calculate the proportional position of the coordinate within the source boundary
+        let x_ratio = (self.x - from_geo_boundary.left_up.x)
+            / (from_geo_boundary.right_down.x - from_geo_boundary.left_up.x);
+        let y_ratio = (self.y - from_geo_boundary.left_up.y)
+            / (from_geo_boundary.right_down.y - from_geo_boundary.left_up.y);
+
+        // Apply the ratios to the destination boundary to get the new coordinate
+        let new_x = to_png_boundary.left_up.x
+            + (to_png_boundary.right_down.x - to_png_boundary.left_up.x) * x_ratio;
+        let new_y = to_png_boundary.left_up.y
+            + (to_png_boundary.right_down.y - to_png_boundary.left_up.y) * y_ratio;
+
+        // Return the new coordinate in the destination system
+        Coordinate { x: new_x, y: new_y }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CoordinatesBoudnary {
+    pub left_up: Coordinate,
+    pub left_down: Coordinate,
+    pub right_up: Coordinate,
+    pub right_down: Coordinate,
+}
+
 // Define the GeometryPixels structure to hold the mapped data
 #[derive(Debug, Clone)]
 pub struct ImagePixel {
@@ -200,6 +238,52 @@ pub struct GeometryPolygon {
     pub color_b: u8,
 }
 
+impl GeometryPolygon {
+    // Maps the polygon's coordinates to PNG image space
+    pub fn map_to_png(
+        &self,
+        geo_boundary: CoordinatesBoudnary,
+        png_width: u32,
+        png_height: u32,
+    ) -> GeometryPolygon {
+        // Define the PNG boundary with (0,0) at top-left
+        let png_boundary = CoordinatesBoudnary {
+            left_up: Coordinate { x: 0.0, y: 0.0 },
+            left_down: Coordinate {
+                x: 0.0,
+                y: png_height as f64,
+            },
+            right_up: Coordinate {
+                x: png_width as f64,
+                y: 0.0,
+            },
+            right_down: Coordinate {
+                x: png_width as f64,
+                y: png_height as f64,
+            },
+        };
+
+        // Map each coordinate in the polygon to the PNG space
+        let mapped_coordinates: Vec<(f64, f64)> = self
+            .coordinates
+            .iter()
+            .map(|(x, y)| {
+                let coord = Coordinate { x: *x, y: *y };
+                let mapped_coord = coord.map_to(geo_boundary.clone(), png_boundary.clone());
+                (mapped_coord.x, mapped_coord.y)
+            })
+            .collect();
+
+        // Return a new polygon with the mapped coordinates but the same color
+        GeometryPolygon {
+            coordinates: mapped_coordinates,
+            color_r: self.color_r,
+            color_g: self.color_g,
+            color_b: self.color_b,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GemotryPolygons {
     pub polygons: Vec<GeometryPolygon>,
@@ -214,6 +298,41 @@ impl GemotryPolygons {
 
     pub fn add_polygon(&mut self, polygon: GeometryPolygon) {
         self.polygons.push(polygon);
+    }
+
+    pub fn find_coordinates_boudary(&self) -> CoordinatesBoudnary {
+        if self.polygons.is_empty() {
+            // Return a default boundary if no polygons exist
+            return CoordinatesBoudnary {
+                left_up: Coordinate { x: 0.0, y: 0.0 },
+                left_down: Coordinate { x: 0.0, y: 0.0 },
+                right_up: Coordinate { x: 0.0, y: 0.0 },
+                right_down: Coordinate { x: 0.0, y: 0.0 },
+            };
+        }
+
+        let mut min_x = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        // Iterate through all polygons and their coordinates to find the min/max values
+        for polygon in &self.polygons {
+            for (x, y) in &polygon.coordinates {
+                min_x = min_x.min(*x);
+                max_x = max_x.max(*x);
+                min_y = min_y.min(*y);
+                max_y = max_y.max(*y);
+            }
+        }
+
+        // Create the boundary coordinates
+        CoordinatesBoudnary {
+            left_up: Coordinate { x: min_x, y: max_y }, // top-left corner
+            left_down: Coordinate { x: min_x, y: min_y }, // bottom-left corner
+            right_up: Coordinate { x: max_x, y: max_y }, // top-right corner
+            right_down: Coordinate { x: max_x, y: min_y }, // bottom-right corner
+        }
     }
 }
 
@@ -358,5 +477,25 @@ mod tests {
                 polygon.color_b
             );
         }
+
+        // Test the find_coordinates_boudary function
+        let boundary = gemotry_polygons.find_coordinates_boudary();
+        println!("Boundary coordinates:");
+        println!(
+            "  Left Up: ({}, {})",
+            boundary.left_up.x, boundary.left_up.y
+        );
+        println!(
+            "  Left Down: ({}, {})",
+            boundary.left_down.x, boundary.left_down.y
+        );
+        println!(
+            "  Right Up: ({}, {})",
+            boundary.right_up.x, boundary.right_up.y
+        );
+        println!(
+            "  Right Down: ({}, {})",
+            boundary.right_down.x, boundary.right_down.y
+        );
     }
 }
