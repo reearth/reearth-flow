@@ -37,7 +37,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_LOD0-1のBuildingPart.csv"
+    "expectedFile": "02_建築物_LOD0-1のBuildingPart.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {

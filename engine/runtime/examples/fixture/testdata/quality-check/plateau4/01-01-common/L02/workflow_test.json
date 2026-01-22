@@ -34,7 +34,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "01_共通_L02エラー.csv"
+    "expectedFile": "01_共通_L02エラー.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {

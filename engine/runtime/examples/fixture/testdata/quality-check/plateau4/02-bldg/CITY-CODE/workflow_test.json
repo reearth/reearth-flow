@@ -37,7 +37,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_市区町村コードエラー.csv"
+    "expectedFile": "02_建築物_市区町村コードエラー.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {

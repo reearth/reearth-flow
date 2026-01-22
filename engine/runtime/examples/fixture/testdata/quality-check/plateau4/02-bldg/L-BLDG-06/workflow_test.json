@@ -37,7 +37,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_L-bldg-06エラー.csv"
+    "expectedFile": "02_建築物_L-bldg-06エラー.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {

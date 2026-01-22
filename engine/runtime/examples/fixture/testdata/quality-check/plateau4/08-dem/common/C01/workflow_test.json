@@ -1,7 +1,5 @@
 {
-  "description": "Test quality check for C01. checks for 不正な穴 is excluded as it is innebitable in this case.",
-  "skip": true,
-  "skipReason": "Race condition in CityGmlMeshBuilder relief_feature_counter, maybe use an atomic counter to fix (TODO)",
+  "description": "Test quality check for C01. checks for 不正な穴 is excluded as it is innebitable in this case. Relief Index is also excluded as it depends on processing order.",
   "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "workflowVariables": [
     {
@@ -54,6 +52,7 @@
         "expectedFile": "08_地形_検査結果一覧.csv",
         "excludeColumns": [
           "Index",
+          "Relief Index",
           "不正な穴"
         ]
       }

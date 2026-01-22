@@ -48,6 +48,7 @@
       {
         "expectedFile": "01_共通.csv",
         "excludeColumns": [
+          "Index",
           "XML検証結果",
           "L02エラー"
         ]

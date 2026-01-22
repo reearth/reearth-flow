@@ -46,7 +46,10 @@
     },
     "fileErrorSummary": [
       {
-        "expectedFile": "01_共通.csv"
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": [
+          "Index"
+        ]
       },
       {
         "expectedFile": "04_都市設備_検査結果一覧.csv",

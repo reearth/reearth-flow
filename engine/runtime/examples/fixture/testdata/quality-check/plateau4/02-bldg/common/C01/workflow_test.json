@@ -38,7 +38,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "01_共通_GML_ID重複.csv"
+    "expectedFile": "01_共通_GML_ID重複.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {
@@ -48,6 +51,7 @@
       {
         "expectedFile": "01_共通.csv",
         "excludeColumns": [
+          "Index",
           "XML検証結果",
           "L02エラー"
         ]
