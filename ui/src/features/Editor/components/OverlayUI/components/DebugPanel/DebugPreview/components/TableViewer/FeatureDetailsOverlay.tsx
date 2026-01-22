@@ -148,6 +148,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                 {Object.entries(processedFeature.properties).map(
                   ([key, value]) => {
                     const valueType = getValueType(value);
+                    const attributeKey = key
+                      .replace(/^attributes/, "")
+                      .replace(/^geometry/, "");
                     return (
                       <div key={key} className="space-y-1">
                         {valueType === "object" || valueType === "array" ? (
@@ -159,9 +162,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                                 className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
                                 aria-expanded="true">
                                 <span className="group flex items-center text-xs font-medium text-muted-foreground">
-                                  {key
-                                    .replace(/^attributes/, "")
-                                    .replace(/^geometry/, "")}
+                                  {attributeKey}
                                   <CaretDownIcon
                                     size={12}
                                     className="ml-1 transition-transform group-data-[state=open]:rotate-180"
@@ -184,9 +185,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                           <>
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-medium text-muted-foreground">
-                                {key
-                                  .replace(/^attributes/, "")
-                                  .replace(/^geometry/, "")}
+                                {attributeKey}
                               </span>
                             </div>
                             <div className="rounded-md bg-muted/30 p-2">
@@ -216,21 +215,41 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                     const valueType = getValueType(value);
                     return (
                       <div key={key} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {key}
-                          </span>
-                          {valueType && (
-                            <span className="text-xs text-muted-foreground">
-                              {valueType}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-md bg-muted/30 p-2">
-                          <pre className="text-xs break-all whitespace-pre-wrap">
-                            {formatValue(value)}
-                          </pre>
-                        </div>
+                        {valueType === "object" || valueType === "array" ? (
+                          <Collapsible defaultOpen={true}>
+                            <CollapsibleTrigger asChild className="w-full">
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                                aria-expanded="true">
+                                <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                                  {key}
+                                  <CaretDownIcon
+                                    size={12}
+                                    className="ml-1 transition-transform group-data-[state=open]:rotate-180"
+                                  />
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {valueType}
+                                </span>
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mt-1 rounded-md bg-muted/30 p-2">
+                                <pre className="text-xs break-all whitespace-pre-wrap">
+                                  {formatValue(value)}
+                                </pre>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <div className="rounded-md bg-muted/30 p-2">
+                            <pre className="text-xs break-all whitespace-pre-wrap">
+                              {formatValue(value)}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     );
                   },
