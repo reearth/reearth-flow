@@ -18,23 +18,38 @@ fn is_risk_type(path: &str) -> bool {
 /// use gml_id + dm_geometryType_code to create a unique key.
 /// For other features, use gml_id alone (extracted from props).
 pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
+    let getter = |key| {
+        // FME has unreliable number vs string types so we convert everything to string here
+        if let Some(value) = props.get(key) {
+            match value {
+                Value::String(s) => s.clone(),
+                _ => value.to_string(),
+            }
+        } else {
+            String::new()
+        }
+    };
+
     // For risk types, use path/rank_code as the key
     if let Some(p) = path {
         if is_risk_type(p) {
-            let rank_code = props
-                .get("uro_rank_code")
-                .expect("test failed! no uro:rank_code");
-            // convert to string
-            let rank_code = match rank_code.as_str() {
-                Some(s) => s.to_string(),
-                None => rank_code.to_string(),
-            };
-            return format!("{}/{}", p, rank_code);
+            let rank_code = getter("uro_rank_code");
+            if !rank_code.is_empty() {
+                return format!("{}/{}", p, rank_code);
+            }
+            let rankorg_code = getter("uro_rankOrg_code");
+            if !rankorg_code.is_empty() {
+                return format!("{}/{}", p, rankorg_code);
+            }
+            panic!(
+                "both uro:rank_code and uro_rankOrg_code are missing in {}",
+                p
+            );
         }
     }
 
     // Extract gml_id from props if present
-    let gml_id = props.get("gml_id").and_then(|v| v.as_str()).unwrap_or("");
+    let gml_id = getter("gml_id");
 
     // Check if this is a DmGeometricAttribute feature
     if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {
@@ -245,6 +260,12 @@ impl AttributeComparer {
                 for (idx, (val1, val2)) in arr1.iter().zip(arr2.iter()).enumerate() {
                     let new_key = format!("{}[{}]", key, idx);
                     self.compare_recurse(&new_key, val1.clone(), val2.clone());
+                }
+            }
+            (Value::String(s1), Value::String(s2)) => {
+                if s1.trim() != s2.trim() {
+                    self.mismatches
+                        .push((self.identifier.clone(), key.to_string(), v1, v2));
                 }
             }
             _ => {

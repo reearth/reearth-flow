@@ -146,12 +146,16 @@ graphs:
             let artifact = env.get("workerArtifactPath");
             let citygml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             let parts = citygml.split("_op_");
+            let pkg = env.get("__value")["__package"];
             citygml = parts[0];
             let udx_dirs = env.get("__value")["__udxDirs"];
             udx_dirs.replace("/", "_");
-            let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
-            let lod = name.split("_").pop();
-            file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles_" + lod + "_no_texture.zip")
+            let scale = "";
+            if pkg == "fld" {
+              let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
+              scale = "_" + name.split("_").pop();
+            }
+            file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
 
       # Dictionary.json output branch
       - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
@@ -166,9 +170,14 @@ graphs:
                 let udx_dirs = env.get("__value")["__udxDirs"];
                 let parts = udx_dirs.split("/");
                 let last_segment = parts[parts.len() - 1];
-                let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
-                let lod = name.split("_").pop();
-                last_segment + "_" + lod
+                let pkg = env.get("__value")["__package"];
+                if pkg == "fld" {
+                  let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
+                  let scale = name.split("_").pop();
+                  last_segment + "_" + scale
+                } else {
+                  last_segment
+                }
 
       - id: c24dbf9e-1741-4c61-99bc-618582b1e03b
         name: AttributeDuplicateFilterDict
@@ -194,18 +203,21 @@ graphs:
               if packages[pkg] == () {
                 packages[pkg] = [];
               }
-              let scale = feature["uro:scale"];
-              if scale[1] == "1" {
-                scale = "計画規模";
-              } else if scale[1] == "2" {
-                scale = "想定最大規模";
-              }
-              packages[pkg].push(#{
+              let item = #{
                 name: feature.dict_name,
                 description: feature["uro:description"],
-                admin: feature["uro:adminType"],
-                scale: scale,
-              });
+              };
+              if "uro:adminType" in feature {
+                item.admin = feature["uro:adminType"];
+              }
+              let scale = feature["uro:scale"] ?? "";
+              if scale.len() < 2 {
+              } else if scale[1] == "1" {
+                item.scale = "計画規模";
+              } else if scale[1] == "2" {
+                item.scale = "想定最大規模";
+              }
+              packages[pkg].push(item);
             }
             packages
 

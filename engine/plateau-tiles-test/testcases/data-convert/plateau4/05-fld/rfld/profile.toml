@@ -1,0 +1,19 @@
+# test rfld (reservoir flood risk)
+citygml_zip_name = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.cesium_statistics]
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".rfld"]
+comparator = "list_to_dict"
+key = ".name"
+
+[filter.tree]
+"udx/rfld/12_4/534000_rfld_6697_op.gml" = [
+    "rfld_71222538-3c3a-43ba-821c-f07e39e3a4be",
+]
