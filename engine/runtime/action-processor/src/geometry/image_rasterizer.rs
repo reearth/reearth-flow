@@ -1,7 +1,6 @@
 #![allow(unused)]
 use std::collections::HashMap;
 
-use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -9,7 +8,6 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -148,10 +146,6 @@ fn default_background_color_alpha() -> f64 {
     1.0
 }
 
-fn default_anti_aliasing() -> bool {
-    true
-}
-
 impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
@@ -185,6 +179,110 @@ impl Processor for ImageRasterizer {
     }
 }
 
+// Define the GeometryPixels structure to hold the mapped data
+#[derive(Debug, Clone)]
+pub struct ImagePixel {
+    // coordinate in image -- x
+    pub x: u32,
+    // coordinate in image -- y
+    pub y: u32,
+    // pixel color
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct GeometryPolygon {
+    pub coordinates: Vec<(f64, f64)>, // List of (x, y) coordinates forming the polygon
+    pub color_r: u8,
+    pub color_g: u8,
+    pub color_b: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct GemotryPolygons {
+    pub polygons: Vec<GeometryPolygon>,
+}
+
+impl GemotryPolygons {
+    pub fn new() -> Self {
+        Self {
+            polygons: Vec::new(),
+        }
+    }
+
+    pub fn add_polygon(&mut self, polygon: GeometryPolygon) {
+        self.polygons.push(polygon);
+    }
+}
+
+// Helper function to parse the JSON and convert to GemotryPolygons
+pub fn json_to_gemotry_polygons(
+    json_value: &Value,
+) -> Result<GemotryPolygons, Box<dyn std::error::Error>> {
+    let mut gemotry_polygons = GemotryPolygons::new();
+
+    if let Some(features) = json_value.as_array() {
+        for feature in features {
+            // Extract color information from the feature
+            let r = feature
+                .get("color_r")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u8>().ok())
+                .unwrap_or(255);
+            let g = feature
+                .get("color_g")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u8>().ok())
+                .unwrap_or(0);
+            let b = feature
+                .get("color_b")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u8>().ok())
+                .unwrap_or(0);
+
+            // Process the geometry
+            if let Some(geo) = feature.get("json_geometry") {
+                if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
+                    // The coordinates structure is [[[x, y], [x, y], ...]] - array of rings
+                    // The structure [[[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
+                    //  1. Outermost array: Contains multiple "rings" (usually just one outer ring, but can include inner rings for holes)
+                    //  2. Middle array: Represents a single "ring" - a sequence of connected coordinate pairs forming a closed shape
+                    //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along the ring
+                    for ring_array in coords {
+                        if let Some(ring_points) = ring_array.as_array() {
+                            let mut coordinates = Vec::new();
+
+                            for point in ring_points {
+                                if let Some(xy) = point.as_array() {
+                                    if xy.len() >= 2 {
+                                        let x = xy[0].as_f64().unwrap_or(0.0);
+                                        let y = xy[1].as_f64().unwrap_or(0.0);
+                                        coordinates.push((x, y));
+                                    }
+                                }
+                            }
+
+                            // Create a polygon with the collected coordinates and color
+                            let polygon = GeometryPolygon {
+                                coordinates,
+                                color_r: r,
+                                color_g: g,
+                                color_b: b,
+                            };
+
+                            gemotry_polygons.add_polygon(polygon);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(gemotry_polygons)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(unused)]
@@ -207,7 +305,9 @@ mod tests {
 
         // Create the cache directory and save the image directly to the user-accessible location
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = Path::new(&home_dir).join(".cache").join("reearth-flow-test-images");
+        let cache_dir = Path::new(&home_dir)
+            .join(".cache")
+            .join("reearth-flow-test-images");
 
         if let Err(_) = fs::create_dir_all(&cache_dir) {
             panic!("Could not create cache directory for test images");
@@ -217,6 +317,46 @@ mod tests {
 
         // Save the image directly to the cache directory
         img.save(&dest_path).unwrap();
-        println!("Successfully saved image directly to cache directory: {:?}", dest_path);
+        println!(
+            "Successfully saved image directly to cache directory: {:?}",
+            dest_path
+        );
+    }
+
+    #[test]
+    fn case02() {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        // Open and read the JSON file
+        let file_path =
+            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/image_rasterizer_input.json";
+        let file = File::open(file_path).expect("Failed to open image_rasterizer_input.json");
+        let reader = BufReader::new(file);
+
+        // Parse the JSON
+        let json_value: serde_json::Value = serde_json::from_reader(reader)
+            .expect("Failed to parse JSON from image_rasterizer_input.json");
+
+        println!("Successfully read and parsed JSON from: {}", file_path);
+
+        // Convert JSON to GemotryPolygons
+        let gemotry_polygons = json_to_gemotry_polygons(&json_value)
+            .expect("Failed to convert JSON to GemotryPolygons");
+
+        println!("Converted JSON to GemotryPolygons:");
+        println!("  Number of polygons: {}", gemotry_polygons.polygons.len());
+
+        // Print info about first few polygons as sample
+        for (i, polygon) in gemotry_polygons.polygons.iter().take(5).enumerate() {
+            println!(
+                "  Polygon {}: {} points, color ({}, {}, {})",
+                i,
+                polygon.coordinates.len(),
+                polygon.color_r,
+                polygon.color_g,
+                polygon.color_b
+            );
+        }
     }
 }
