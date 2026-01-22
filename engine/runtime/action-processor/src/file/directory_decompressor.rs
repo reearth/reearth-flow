@@ -181,7 +181,7 @@ fn extract_archive(
 }
 
 /// Unwraps a single-folder nesting by one level only.
-/// If the directory contains exactly one subfolder, returns that subfolder's path.
+/// If the directory contains exactly one subfolder and nothing else, returns that subfolder's path.
 /// Otherwise returns the original path.
 fn get_single_subfolder_or_self_once(parent_dir: &Uri) -> super::errors::Result<Uri> {
     let subfolders: Vec<PathBuf> = fs::read_dir(parent_dir.path())
@@ -195,11 +195,13 @@ fn get_single_subfolder_or_self_once(parent_dir: &Uri) -> super::errors::Result<
 
     if subfolders.len() == 1 && subfolders[0].is_dir() {
         let subfolder_uri = Uri::from_str(subfolders[0].to_str().ok_or(
-            super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
+            super::errors::FileProcessorError::DirectoryDecompressor(
+                "Failed to convert path to valid UTF-8 string".to_string(),
+            ),
         )?)
         .map_err(|e| {
             super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                "Failed to convert `subfolders[0]` to URI: {e}"
+                "Failed to convert subfolder to URI: {e}"
             ))
         })?;
         Ok(subfolder_uri)

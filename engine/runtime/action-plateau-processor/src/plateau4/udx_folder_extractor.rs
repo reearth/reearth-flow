@@ -251,7 +251,13 @@ fn process_feature(
     let city_gml_path = if !root.is_empty() && root != "udx" {
         let old_root_path = rtdir.join(&root);
         let new_root_path = rtdir.join("udx");
-        if old_root_path.exists() && !new_root_path.exists() {
+        if old_root_path.exists() && new_root_path.exists() {
+            return Err(PlateauProcessorError::UDXFolderExtractor(format!(
+                "Cannot rename {:?} to {:?}: target directory already exists",
+                old_root_path, new_root_path
+            )));
+        }
+        if old_root_path.exists() {
             std::fs::rename(&old_root_path, &new_root_path)
                 .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         }
