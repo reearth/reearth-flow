@@ -4,7 +4,7 @@ import { useCesium } from "resium";
 
 type Props = {
   geoJsonData: any | null;
-  entityMapRef?: React.RefObject<Map<string | number, any>>;
+  entityMapRef?: React.RefObject<Map<string, any>>;
 };
 
 const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
@@ -17,8 +17,8 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
 
     // Get existing feature IDs for comparison
     const existingIds = new Set(entityMapRef.current.keys());
-    const newIds = new Set<string | number>();
-    const newFeatureMap = new Map<string | number, any>();
+    const newIds = new Set<string>();
+    const newFeatureMap = new Map<string, any>();
 
     // Build map of new features by ID
     geoJsonData.features?.forEach((feature: any) => {
@@ -54,10 +54,9 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
           viewer.dataSources.add(newDataSource);
 
           // Build entity ID map with O(1) lookup
-          const newEntityMap = new Map<string | number, any>();
-
+          const newEntityMap = new Map<string, any>();
           newDataSource.entities.values.forEach((entity) => {
-            let featureId: string | number | undefined;
+            let featureId: string | undefined;
 
             // Extract feature ID from entity
             if (entity.properties) {
@@ -145,7 +144,7 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
             // Transfer entities from temp data source to main data source
             tempDataSource.entities.values.forEach((entity) => {
               const props = entity.properties?.getValue();
-              let featureId: string | number | undefined;
+              let featureId: string | undefined;
 
               // Find the feature ID for this entity
               if (props) {

@@ -124,7 +124,7 @@ export async function* streamDecompressZstdJsonl<T = any>(
           }
         }
 
-        // ✅ Always emit terminal completion event (prevents infinite load)
+        // Always emit terminal completion event (prevents infinite load)
         yield {
           data: [],
           isComplete: true,

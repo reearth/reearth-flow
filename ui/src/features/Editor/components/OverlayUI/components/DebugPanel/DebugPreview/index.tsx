@@ -34,7 +34,7 @@ type Props = {
   // enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
-  cesiumEntityMapRef?: React.RefObject<Map<string | number, any>>;
+  cesiumEntityMapRef?: React.RefObject<Map<string, any>>;
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
@@ -75,7 +75,7 @@ const DebugPreview: React.FC<Props> = ({
       return { featureMap: null, processedOutputData: selectedOutputData };
     }
 
-    const map = new Map<string | number, any>();
+    const map = new Map<string, any>();
     const processedFeatures = selectedOutputData.features.map((f: any) => {
       const processedFeature = {
         ...f,

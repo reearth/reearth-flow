@@ -33,7 +33,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
   onSelectedFeature?: (featureId: string | null) => void;
-  entityMapRef?: React.RefObject<Map<string | number, any>>;
+  entityMapRef?: React.RefObject<Map<string, any>>;
 };
 
 const CesiumViewer: React.FC<Props> = ({

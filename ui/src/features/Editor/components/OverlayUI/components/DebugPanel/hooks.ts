@@ -22,7 +22,7 @@ export default () => {
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const cesiumViewerRef = useRef<any>(null);
-  const cesiumEntityMapRef = useRef<Map<string | number, any>>(new Map());
+  const cesiumEntityMapRef = useRef<Map<string, any>>(new Map());
 
   const [currentProject] = useCurrentProject();
 
