@@ -169,9 +169,7 @@ fn extract_archive(
             "Failed to extract archive: {e}"
         ))
     })?;
-    // Always unwrap single-folder at root level (e.g., codelists.zip -> codelists/ -> return codelists/)
     let root_output_path = get_single_subfolder_or_self_once(&root_output_path)?;
-    // If findDeepestSingleFolder is true, continue recursively unwrapping
     let root_output_path = if find_deepest_single_folder {
         get_single_subfolder_or_self(&root_output_path)?
     } else {

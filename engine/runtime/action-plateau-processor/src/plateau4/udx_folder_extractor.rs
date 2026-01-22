@@ -202,7 +202,6 @@ fn process_feature(
             .eval_ast::<String>(expr)
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
     };
-    println!("DEBUG: city_gml_path: {}", city_gml_path);
     let folders = city_gml_path
         .split(MAIN_SEPARATOR)
         .map(String::from)
@@ -266,7 +265,6 @@ fn process_feature(
             std::fs::rename(&old_root_path, &new_root_path)
                 .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         }
-        // Update the city_gml_path to reflect the new folder name
         let new_path = city_gml_path.to_string().replace(
             &format!("{MAIN_SEPARATOR}{udx}{MAIN_SEPARATOR}"),
             &format!("{MAIN_SEPARATOR}udx{MAIN_SEPARATOR}"),
@@ -343,7 +341,6 @@ fn gen_codelists_and_schemas_path(
         .join("schemas")
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
 
-    // Copy codelists if not already present at rtdir
     if !storage
         .exists_sync(dir_codelists.path().as_path())
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
@@ -376,7 +373,6 @@ fn gen_codelists_and_schemas_path(
         }
     }
 
-    // Copy schemas if not already present at rtdir
     if !storage
         .exists_sync(dir_schemas.path().as_path())
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
