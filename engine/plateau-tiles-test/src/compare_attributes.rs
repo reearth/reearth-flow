@@ -247,6 +247,12 @@ impl AttributeComparer {
                     self.compare_recurse(&new_key, val1.clone(), val2.clone());
                 }
             }
+            (Value::String(s1), Value::String(s2)) => {
+                if s1.trim() != s2.trim() {
+                    self.mismatches
+                        .push((self.identifier.clone(), key.to_string(), v1, v2));
+                }
+            }
             _ => {
                 // Check if we should compare as floats with tolerance
                 if let Some(CastConfig::Float { epsilon }) = self.casts.get(key) {
