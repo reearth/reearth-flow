@@ -8,8 +8,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Virtualizer } from "@tanstack/react-virtual";
+import { RefObject, useCallback, useEffect, useState } from "react";
 
 import {
   DropdownMenu,
@@ -32,12 +32,13 @@ import { useT } from "@flow/lib/i18n";
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data?: TData[];
+  parentRef: RefObject<HTMLDivElement | null>;
+  virtualizer: Virtualizer<HTMLDivElement, Element>;
   selectColumns?: boolean;
   showFiltering?: boolean;
   condensed?: boolean;
   searchTerm?: string;
-  selectedFeatureId?: string | null;
-  surpressAutoScroll?: boolean;
+  selectedRowIndex: number;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   customGlobalFilter?: (
@@ -51,11 +52,12 @@ type DataTableProps<TData, TValue> = {
 function VirtualizedTable<TData, TValue>({
   columns,
   data,
+  parentRef,
+  virtualizer,
   selectColumns = false,
   showFiltering = false,
   condensed,
-  selectedFeatureId,
-  surpressAutoScroll,
+  selectedRowIndex,
   searchTerm,
   onRowClick,
   onRowDoubleClick,
@@ -123,13 +125,7 @@ function VirtualizedTable<TData, TValue>({
     setColumnVisibility(visibilityUpdate);
   }, [table]);
 
-  const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => (condensed ? 24 : 34),
-  });
 
   const [parentHeight, setParentHeight] = useState<number>(0);
 
@@ -145,29 +141,7 @@ function VirtualizedTable<TData, TValue>({
     setParentHeight(el.clientHeight);
 
     return () => ro.disconnect();
-  }, []);
-
-  const selectedRowIndex = useMemo(() => {
-    if (!selectedFeatureId || !data) return -1;
-    const normalizedSelectedId = String(selectedFeatureId).replace(
-      /[^a-zA-Z0-9]/g,
-      "",
-    );
-    return data.findIndex(
-      (row: any) =>
-        String(row.id || "").replace(/[^a-zA-Z0-9]/g, "") ===
-        normalizedSelectedId,
-    );
-  }, [selectedFeatureId, data]);
-
-  useEffect(() => {
-    if (selectedRowIndex !== -1 && !surpressAutoScroll) {
-      virtualizer.scrollToIndex(selectedRowIndex, {
-        align: "start",
-        behavior: "auto",
-      });
-    }
-  }, [selectedRowIndex, virtualizer, surpressAutoScroll]);
+  }, [parentRef]);
 
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
@@ -268,11 +242,10 @@ function VirtualizedTable<TData, TValue>({
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
                   const row = rows[virtualRow.index] as any;
                   const isSelected = selectedRowIndex === virtualRow.index;
-
                   return (
                     <TableRow
                       key={row.id}
-                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b"
                       style={{
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${
