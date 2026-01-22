@@ -41,7 +41,10 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
             if !rankorg_code.is_empty() {
                 return format!("{}/{}", p, rankorg_code);
             }
-            panic!("both uro:rank_code and uro_rankOrg_code are missing in {}", p);
+            panic!(
+                "both uro:rank_code and uro_rankOrg_code are missing in {}",
+                p
+            );
         }
     }
 
