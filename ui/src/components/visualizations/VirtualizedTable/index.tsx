@@ -245,7 +245,7 @@ function VirtualizedTable<TData, TValue>({
                   return (
                     <TableRow
                       key={row.id}
-                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b"
                       style={{
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${
