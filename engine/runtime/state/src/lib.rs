@@ -1,3 +1,4 @@
+use futures::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::io::Write;
 use std::{
@@ -187,6 +188,75 @@ impl State {
 
     /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (blocking, CLI-friendly).
     pub fn copy_jsonl_from_state(&self, src: &State, id: &str) -> Result<()> {
+        // Try direct match first (e.g., "edge-id" or "workflow-id.edge-id")
+        if let Ok(()) = self.copy_jsonl_from_state_exact(src, id) {
+            return Ok(());
+        }
+
+        if id.contains('.') {
+            return Err(Error::other("no candidate jsonl found"));
+        }
+
+        // Scan directory for namespaced files matching "<something>.<edge_id>.jsonl"
+        let edge_id = id;
+        let resolved_ids = src.find_namespaced_jsonl_ids_sync(edge_id);
+
+        tracing::info!(
+            "Resolved jsonl ids for edge_id={edge_id}: {:?}",
+            resolved_ids
+        );
+
+        if resolved_ids.is_empty() {
+            return Err(Error::other("no candidate jsonl found"));
+        }
+        if resolved_ids.len() > 1 {
+            return Err(Error::other(format!(
+                "multiple candidate jsonl found for edge_id={edge_id}: {:?}",
+                resolved_ids
+            )));
+        }
+
+        // Copy using the resolved namespaced id
+        self.copy_jsonl_from_state_exact(src, &resolved_ids[0])
+    }
+
+    /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (non-blocking, worker-friendly).
+    pub async fn copy_jsonl_from_state_async(&self, src: &State, id: &str) -> Result<()> {
+        // Try direct match first (e.g., "edge-id" or "workflow-id.edge-id")
+        if let Ok(()) = self.copy_jsonl_from_state_exact_async(src, id).await {
+            return Ok(());
+        }
+
+        if id.contains('.') {
+            return Err(Error::other("no candidate jsonl found"));
+        }
+
+        // Scan directory for namespaced files matching "<something>.<edge_id>.jsonl"
+        let edge_id = id;
+        let resolved_ids = src.find_namespaced_jsonl_ids_async(edge_id).await;
+
+        tracing::info!(
+            "Resolved jsonl ids for edge_id={edge_id}: {:?}",
+            resolved_ids
+        );
+
+        if resolved_ids.is_empty() {
+            return Err(Error::other("no candidate jsonl found"));
+        }
+        if resolved_ids.len() > 1 {
+            return Err(Error::other(format!(
+                "multiple candidate jsonl found for edge_id={edge_id}: {:?}",
+                resolved_ids
+            )));
+        }
+
+        // Copy using the resolved namespaced id
+        self.copy_jsonl_from_state_exact_async(src, &resolved_ids[0])
+            .await
+    }
+
+    /// Attempts to copy a JSONL file with exact `id` match.
+    fn copy_jsonl_from_state_exact(&self, src: &State, id: &str) -> Result<()> {
         let candidates = if src.use_compression {
             ["jsonl.zst", "jsonl"]
         } else {
@@ -215,7 +285,7 @@ impl State {
     }
 
     /// Copies a JSONL/JSONL.zst file identified by `id` from `src` into `self` (non-blocking, worker-friendly).
-    pub async fn copy_jsonl_from_state_async(&self, src: &State, id: &str) -> Result<()> {
+    async fn copy_jsonl_from_state_exact_async(&self, src: &State, id: &str) -> Result<()> {
         let candidates = if src.use_compression {
             ["jsonl.zst", "jsonl"]
         } else {
@@ -244,6 +314,102 @@ impl State {
         }
 
         Err(last_err.unwrap_or_else(|| Error::other("no candidate jsonl found")))
+    }
+
+    /// Scans the local filesystem for JSONL files matching the pattern `*.<edge_id>.jsonl(.zst)`.
+    /// Returns a list of resolved file stems (without extensions) that end with `.<edge_id>`.
+    ///
+    /// This is used for incremental runs with subworkflows where edge files are namespaced
+    /// as `<workflow_id>.<edge_id>.jsonl` instead of just `<edge_id>.jsonl`.
+    fn find_namespaced_jsonl_ids_sync(&self, edge_id: &str) -> Vec<String> {
+        let mut out = Vec::new();
+
+        let Ok(rd) = std::fs::read_dir(&self.root) else {
+            return out;
+        };
+
+        for entry in rd.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+                continue;
+            };
+
+            let stem = if let Some(s) = name.strip_suffix(".jsonl.zst") {
+                s
+            } else if let Some(s) = name.strip_suffix(".jsonl") {
+                s
+            } else {
+                continue;
+            };
+
+            if stem.ends_with(&format!(".{edge_id}")) {
+                out.push(stem.to_string());
+                if out.len() >= 2 {
+                    break;
+                }
+            }
+        }
+
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    /// Scans the remote filesystem for JSONL files matching the pattern `*.<edge_id>.jsonl(.zst)`.
+    /// Returns a list of resolved file stems (without extensions) that end with `.<edge_id>`.
+    ///
+    /// This is used for incremental runs with subworkflows where edge files are namespaced
+    /// as `<workflow_id>.<edge_id>.jsonl` instead of just `<edge_id>.jsonl`.
+    async fn find_namespaced_jsonl_ids_async(&self, edge_id: &str) -> Vec<String> {
+        let mut out = Vec::new();
+
+        let list_result = self.storage.list(Some(self.root.as_path()), false).await;
+
+        let mut stream = match list_result {
+            Ok(stream) => stream,
+            Err(e) => {
+                tracing::debug!("Cannot list directory {} : {:?}", self.root.display(), e);
+                return out;
+            }
+        };
+
+        while let Some(result) = stream.next().await {
+            if out.len() >= 2 {
+                break;
+            }
+
+            let uri = match result {
+                Ok(uri) => uri,
+                Err(e) => {
+                    tracing::debug!("Error reading list entry: {:?}", e);
+                    continue;
+                }
+            };
+
+            let path = uri.path();
+            let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+                continue;
+            };
+
+            let stem = if let Some(s) = name.strip_suffix(".jsonl.zst") {
+                s
+            } else if let Some(s) = name.strip_suffix(".jsonl") {
+                s
+            } else {
+                continue;
+            };
+
+            if stem.ends_with(&format!(".{edge_id}")) {
+                out.push(stem.to_string());
+            }
+        }
+
+        out.sort();
+        out.dedup();
+        out
     }
 
     fn looks_like_zstd(bytes: &[u8]) -> bool {
