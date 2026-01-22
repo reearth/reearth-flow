@@ -28,7 +28,6 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
-      findDeepestSingleFolder: true
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action

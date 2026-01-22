@@ -217,27 +217,27 @@ fn process_feature(
     );
     let mut rtdir = PathBuf::new();
     match folders.as_slice() {
-        [.., fourth_last, _third_last, second_last, _last]
+        [.., _fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&second_last.as_str()) =>
         {
-            root = fourth_last.to_string();
+            root = third_last.to_string();
             pkg = second_last.to_string();
             dirs = second_last.to_string();
             rtdir = PathBuf::from(folders[..folders.len() - 3].join(MAIN_SEPARATOR_STR));
         }
-        [.., fifth_last, _fourth_last, third_last, second_last, _last]
+        [.., _fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&third_last.as_str()) =>
         {
-            root = fifth_last.to_string();
+            root = fourth_last.to_string();
             pkg = third_last.to_string();
             area = second_last.to_string();
             dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
-        [.., sixth_last, _fifth_last, fourth_last, third_last, second_last, _last]
+        [.., _sixth_last, fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&fourth_last.as_str()) =>
         {
-            root = sixth_last.to_string();
+            root = fifth_last.to_string();
             pkg = fourth_last.to_string();
             admin = third_last.to_string();
             area = second_last.to_string();
@@ -246,6 +246,27 @@ fn process_feature(
         }
         _ => (),
     };
+
+    // Rename the root folder to "udx" if it's not already named that
+    let city_gml_path = if !root.is_empty() && root != "udx" {
+        let old_root_path = rtdir.join(&root);
+        let new_root_path = rtdir.join("udx");
+        if old_root_path.exists() && !new_root_path.exists() {
+            std::fs::rename(&old_root_path, &new_root_path)
+                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        }
+        // Update the city_gml_path to reflect the new folder name
+        let new_path = city_gml_path.to_string().replace(
+            &format!("{MAIN_SEPARATOR}{root}{MAIN_SEPARATOR}"),
+            &format!("{MAIN_SEPARATOR}udx{MAIN_SEPARATOR}"),
+        );
+        root = "udx".to_string();
+        Uri::from_str(&new_path)
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+    } else {
+        city_gml_path
+    };
+
     let codelists_path = if let Some(AttributeValue::String(codelists_path)) = codelists_path
         .clone()
         .and_then(|codelists_path| feature.get(&codelists_path))
@@ -305,44 +326,64 @@ fn gen_codelists_and_schemas_path(
         .resolve(&rtdir)
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
 
-    let mut dir_codelists = rtdir
+    let dir_codelists = rtdir
         .join("codelists")
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-    let mut dir_schemas = rtdir
+    let dir_schemas = rtdir
         .join("schemas")
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
 
+    // Copy codelists if not already present at rtdir
     if !storage
         .exists_sync(dir_codelists.path().as_path())
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
     {
-        let dir = Uri::for_test(&codelists_path.clone().ok_or(
+        let base_path = Uri::for_test(&codelists_path.clone().ok_or(
             PlateauProcessorError::UDXFolderExtractor(
                 "Codelists not found, and fallback path is not set".to_string(),
             ),
         )?);
+        // Look for codelists subfolder in the base path
+        let source = base_path
+            .join("codelists")
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         if storage
-            .exists_sync(dir.path().as_path())
+            .exists_sync(source.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
         {
-            dir_codelists = dir;
+            reearth_flow_common::fs::copy_sync_tree(
+                source.path().as_path(),
+                dir_codelists.path().as_path(),
+            )
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         }
     }
+
+    // Copy schemas if not already present at rtdir
     if !storage
         .exists_sync(dir_schemas.path().as_path())
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
     {
-        let dir = Uri::for_test(&schemas_path.clone().ok_or(
+        let base_path = Uri::for_test(&schemas_path.clone().ok_or(
             PlateauProcessorError::UDXFolderExtractor(
                 "Schemas not found, and fallback path is not set".to_string(),
             ),
         )?);
+        // Look for schemas subfolder in the base path
+        let source = base_path
+            .join("schemas")
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         if storage
-            .exists_sync(dir.path().as_path())
+            .exists_sync(source.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
         {
-            dir_schemas = dir;
+            reearth_flow_common::fs::copy_sync_tree(
+                source.path().as_path(),
+                dir_schemas.path().as_path(),
+            )
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         }
     }
+
     Ok((rtdir, dir_codelists, dir_schemas))
 }

@@ -169,12 +169,43 @@ fn extract_archive(
             "Failed to extract archive: {e}"
         ))
     })?;
+    // Always unwrap single-folder at root level (e.g., codelists.zip -> codelists/ -> return codelists/)
+    let root_output_path = get_single_subfolder_or_self_once(&root_output_path)?;
+    // If findDeepestSingleFolder is true, continue recursively unwrapping
     let root_output_path = if find_deepest_single_folder {
         get_single_subfolder_or_self(&root_output_path)?
     } else {
         root_output_path
     };
     Ok(root_output_path)
+}
+
+/// Unwraps a single-folder nesting by one level only.
+/// If the directory contains exactly one subfolder, returns that subfolder's path.
+/// Otherwise returns the original path.
+fn get_single_subfolder_or_self_once(parent_dir: &Uri) -> super::errors::Result<Uri> {
+    let subfolders: Vec<PathBuf> = fs::read_dir(parent_dir.path())
+        .map_err(|e| super::errors::FileProcessorError::DirectoryDecompressor(format!("{e:?}")))?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            Some(path)
+        })
+        .collect();
+
+    if subfolders.len() == 1 && subfolders[0].is_dir() {
+        let subfolder_uri = Uri::from_str(subfolders[0].to_str().ok_or(
+            super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
+        )?)
+        .map_err(|e| {
+            super::errors::FileProcessorError::DirectoryDecompressor(format!(
+                "Failed to convert `subfolders[0]` to URI: {e}"
+            ))
+        })?;
+        Ok(subfolder_uri)
+    } else {
+        Ok(parent_dir.clone())
+    }
 }
 
 /// Recursively unwraps single-folder nesting until the directory contains

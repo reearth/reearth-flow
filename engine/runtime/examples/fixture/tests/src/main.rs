@@ -203,6 +203,10 @@ impl TestContext {
         if !source_dir.exists() {
             anyhow::bail!("Source directory does not exist: {}", source_dir.display());
         }
+        let source_dir = source_dir.canonicalize()?;
+        let source_dir_parent = source_dir.parent().ok_or_else(|| {
+            anyhow::anyhow!("Source directory has no parent: {}", source_dir.display())
+        })?;
 
         let zip_path = self.test_dir.join(zip_file_name);
 
@@ -215,7 +219,7 @@ impl TestContext {
         for entry in WalkDir::new(&source_dir) {
             let entry = entry?;
             let path = entry.path();
-            let relative_path = path.strip_prefix(&source_dir)?;
+            let relative_path = path.strip_prefix(source_dir_parent)?;
 
             if relative_path.as_os_str().is_empty() {
                 continue;
