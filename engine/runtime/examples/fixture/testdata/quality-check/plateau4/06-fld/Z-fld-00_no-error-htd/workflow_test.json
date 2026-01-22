@@ -1,0 +1,31 @@
+{
+  "description": "Verify output files for quality check with no errors",
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "udx/htd/12_1/523977_htd_6697_op.gml"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas"
+    },
+    {
+      "name": "prcs",
+      "value": 6669
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "06_浸水想定区域_htd/12_1.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_htd_12_1.json"
+    }
+  },
+  "expectResultOkFile": true
+}
