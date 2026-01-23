@@ -660,12 +660,12 @@ impl RedisStore {
         for (entry_id, fields) in entries {
             entry_count += 1;
 
-            let mut msg_type: Option<String> = None;  // ← &str → String
+            let mut msg_type: Option<&str> = None;
             let mut data_len: Option<usize> = None;
 
             for (field_name, field_value) in fields {
                 if field_name == "type" {
-                    msg_type = std::str::from_utf8(&field_value).ok().map(|s| s.to_string());
+                    msg_type = std::str::from_utf8(&field_value).ok();
                 } else if field_name == "data" {
                     data_len = Some(field_value.len());
                     data_total_bytes += field_value.len();
@@ -684,7 +684,7 @@ impl RedisStore {
             }
 
             let len = data_len.unwrap();
-            match msg_type.as_deref() {
+            match msg_type {
                 Some(MESSAGE_TYPE_SYNC) => {
                     sync_entries += 1;
                     sync_bytes += len;
@@ -693,12 +693,9 @@ impl RedisStore {
                     awareness_entries += 1;
                     awareness_bytes += len;
                 }
-                Some(_) => {
+                Some(_) | None => {
                     unknown_entries += 1;
                     unknown_bytes += len;
-                }
-                None => {
-                    // Entries with missing type are only counted in `type_missing_entries`.
                 }
             }
 
@@ -707,7 +704,7 @@ impl RedisStore {
                     "read_all_stream_data: sample doc_id={}, entry_id={}, type={}, data_len={}",
                     doc_id,
                     entry_id,
-                    msg_type.as_deref().unwrap_or("<none>"),
+                    msg_type.unwrap_or("<none>"),
                     len
                 );
                 sample_logged += 1;
