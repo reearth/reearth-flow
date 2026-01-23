@@ -17,7 +17,7 @@ type Props = {
   edges: Edge[];
   isMainWorkflow: boolean;
   currentWorkflowId?: string;
-  openWorkflows: {
+  openWorkflows?: {
     id: string;
     name: string;
   }[];

@@ -36,7 +36,7 @@ type Props = {
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
-  openWorkflows: {
+  openWorkflows?: {
     id: string;
     name: string;
   }[];
