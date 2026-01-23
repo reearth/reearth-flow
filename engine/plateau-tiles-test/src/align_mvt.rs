@@ -385,7 +385,8 @@ mod tests {
     #[test]
     fn test_features_by_ident() {
         // Test MVT with 2 polygon features (Zone layer, extent 65536)
-        let mvt_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/test_zone_2features.mvt");
+        let mvt_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/test_zone_2features.mvt");
         let tile = load_mvt(&mvt_path).expect("Failed to load test MVT");
         let features = features_by_ident(&tile, Some(GeometryType::Polygon));
 
