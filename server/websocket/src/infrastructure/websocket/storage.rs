@@ -129,7 +129,7 @@ impl CollaborativeStorage {
         );
 
         info!(
-            "save_snapshot: document loaded from GCS, starting Redis stream updates for doc_id: {}",
+            "Loaded document {} from GCS, now applying Redis stream updates",
             doc_id
         );
 
@@ -145,7 +145,7 @@ impl CollaborativeStorage {
                     t.elapsed().as_millis(),
                     updates_count,
                     updates_total_bytes,
-                    last_id.as_deref().unwrap_or("<none>"),
+                    last_id.as_deref().unwrap_or("None"),
                 );
 
                 let t_apply = std::time::Instant::now();
