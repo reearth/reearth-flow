@@ -112,7 +112,6 @@ export default function Editor({
       undoTrackerActionWrapper,
     ],
   );
-
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
@@ -167,6 +166,7 @@ export default function Editor({
               yDoc={yDoc}
               users={users}
               currentWorkflowId={currentWorkflowId}
+              openWorkflows={openWorkflows}
               isMainWorkflow={isMainWorkflow}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}

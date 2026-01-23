@@ -4,18 +4,23 @@ import {
   NodeChange,
   XYPosition,
 } from "@xyflow/react";
-import { MouseEvent, useCallback, useRef, useState } from "react";
+import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";
 import { CANVAS_HOT_KEYS } from "@flow/global-constants";
-import { useEdges, useNodes } from "@flow/lib/reactFlow";
+import { createFullEdgeTypes, useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 type Props = {
   nodes: Node[];
   edges: Edge[];
   isMainWorkflow: boolean;
+  currentWorkflowId?: string;
+  openWorkflows: {
+    id: string;
+    name: string;
+  }[];
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
@@ -53,7 +58,9 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 export default ({
   nodes,
   edges,
+  currentWorkflowId,
   isMainWorkflow,
+  openWorkflows,
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
@@ -190,6 +197,23 @@ export default ({
     }
   });
 
+  const workflowChain = useMemo(() => {
+    if (!openWorkflows || !currentWorkflowId) return undefined;
+    const currentIndex = openWorkflows.findIndex(
+      (wf) => wf.id === currentWorkflowId,
+    );
+    if (currentIndex <= 0 && isMainWorkflow) return undefined;
+    return openWorkflows
+      .slice(1, currentIndex + 1)
+      .map((wf) => wf.id)
+      .join(".");
+  }, [openWorkflows, currentWorkflowId, isMainWorkflow]);
+
+  const fullEdgeTypes = useMemo(
+    () => createFullEdgeTypes(workflowChain),
+    [workflowChain],
+  );
+
   return {
     handleNodesChange,
     handleNodesDeleteCleanup,
@@ -206,5 +230,6 @@ export default ({
     handleCloseContextmenu,
     contextMenu,
     paneRef,
+    fullEdgeTypes,
   };
 };

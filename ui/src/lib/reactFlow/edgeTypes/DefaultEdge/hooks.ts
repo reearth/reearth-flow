@@ -2,7 +2,6 @@ import { useNodes } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
@@ -14,14 +13,14 @@ import { NodeCustomizations } from "@flow/types";
 
 export default ({
   id,
-  currentWorkflowId,
+  workflowChain,
   source,
   sourceHandleId,
   target,
   selected,
 }: {
   id: string;
-  currentWorkflowId?: string;
+  workflowChain?: string;
   source: string;
   sourceHandleId?: string | null;
   target: string;
@@ -63,16 +62,17 @@ export default ({
       debugJobState?.selectedIntermediateData?.find((sid) => sid.edgeId === id),
     [debugJobState?.selectedIntermediateData, id],
   );
-
   const intermediateDataUrl = useMemo(() => {
     if (!api || !debugJobState?.jobId) {
       return undefined;
     }
-    if (!currentWorkflowId || currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
+
+    if (!workflowChain) {
       return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
     }
-    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${currentWorkflowId}.${id}.jsonl.zst`;
-  }, [api, debugJobState?.jobId, id, currentWorkflowId]);
+
+    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${workflowChain}.${id}.jsonl.zst`;
+  }, [api, debugJobState?.jobId, id, workflowChain]);
 
   useEffect(() => {
     if (intermediateDataUrl) {

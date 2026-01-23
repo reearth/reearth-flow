@@ -9,9 +9,9 @@ export const edgeTypes: EdgeTypes = {
   simpleEdge: SimpleEdge,
 };
 
-export const createFullEdgeTypes = (currentWorkflowId?: string): EdgeTypes => ({
+export const createFullEdgeTypes = (workflowChain?: string): EdgeTypes => ({
   default: (props: CustomEdgeProps) =>
-    createElement(DefaultEdge, { ...props, currentWorkflowId }),
+    createElement(DefaultEdge, { ...props, workflowChain }),
 });
 
 export const simpleEdgeTypes: EdgeTypes = {

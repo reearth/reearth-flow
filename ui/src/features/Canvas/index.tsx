@@ -8,13 +8,12 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo, useMemo } from "react";
+import { MouseEvent, memo } from "react";
 import type { Doc } from "yjs";
 
 import {
   isValidConnection,
   CustomConnectionLine,
-  createFullEdgeTypes,
   simpleEdgeTypes,
   connectionLineStyle,
   nodeTypes,
@@ -37,6 +36,10 @@ type Props = {
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
+  openWorkflows: {
+    id: string;
+    name: string;
+  }[];
   isMainWorkflow: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
@@ -70,6 +73,7 @@ const Canvas: React.FC<Props> = ({
   edges,
   users,
   currentWorkflowId,
+  openWorkflows,
   isMainWorkflow,
   onWorkflowAdd,
   onWorkflowOpen,
@@ -103,10 +107,13 @@ const Canvas: React.FC<Props> = ({
     handleCloseContextmenu,
     contextMenu,
     paneRef,
+    fullEdgeTypes,
   } = useHooks({
     nodes,
     edges,
     isMainWorkflow,
+    currentWorkflowId,
+    openWorkflows,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
@@ -119,12 +126,6 @@ const Canvas: React.FC<Props> = ({
     onPaste,
     onNodesDisable,
   });
-
-  // Create edge types with currentWorkflowId injected
-  const fullEdgeTypes = useMemo(
-    () => createFullEdgeTypes(currentWorkflowId),
-    [currentWorkflowId],
-  );
 
   return (
     <ReactFlow
