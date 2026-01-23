@@ -4,15 +4,15 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "43206_tamana-shi_city_2024_citygml_1_op_wtr.zip"
+      "value": "wtr_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists.zip"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas.zip"
+      "value": "schemas_.zip"
     },
     {
       "name": "objectListsPath",
@@ -25,16 +25,16 @@
   ],
   "zipBeforeTest": [
     {
-      "path": "udx",
-      "name": "43206_tamana-shi_city_2024_citygml_1_op_wtr.zip"
+      "path": "udx/wtr",
+      "name": "wtr_.zip"
     },
     {
       "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/codelists",
-      "name": "codelists.zip"
+      "name": "codelists_.zip"
     },
     {
       "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas",
-      "name": "schemas.zip"
+      "name": "schemas_.zip"
     }
   ],
   "summaryOutput": {
