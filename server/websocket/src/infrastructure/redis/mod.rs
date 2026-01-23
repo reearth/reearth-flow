@@ -628,19 +628,105 @@ impl RedisStore {
             .await?;
 
         if entries.is_empty() {
+            debug!(
+                "read_all_stream_data: empty stream, doc_id: {}, stream_key: {}",
+                doc_id, stream_key
+            );
             return Ok((Vec::new(), None));
         }
 
         let mut updates = Vec::new();
         let last_id = entries.last().map(|(id, _)| id.clone());
 
-        for (_entry_id, fields) in entries {
+        // observability only
+        let mut entry_count = 0usize;
+        let mut data_total_bytes = 0usize;
+
+        let mut type_missing_entries = 0usize;
+        let mut data_missing_entries = 0usize;
+
+        let mut sync_entries = 0usize;
+        let mut sync_bytes = 0usize;
+
+        let mut awareness_entries = 0usize;
+        let mut awareness_bytes = 0usize;
+
+        let mut unknown_entries = 0usize;
+        let mut unknown_bytes = 0usize;
+
+        let mut sample_logged = 0usize;
+        const SAMPLE_LIMIT: usize = 10;
+
+        for (entry_id, fields) in entries {
+            entry_count += 1;
+
+            let mut msg_type: Option<&str> = None;
+            let mut data_len: Option<usize> = None;
+
             for (field_name, field_value) in fields {
-                if field_name == "data" {
+                if field_name == "type" {
+                    msg_type = std::str::from_utf8(&field_value).ok();
+                } else if field_name == "data" {
+                    data_len = Some(field_value.len());
+                    data_total_bytes += field_value.len();
+
+                    // === behavior unchanged ===
                     updates.push(field_value);
                 }
             }
+
+            if msg_type.is_none() {
+                type_missing_entries += 1;
+            }
+            if data_len.is_none() {
+                data_missing_entries += 1;
+                continue;
+            }
+
+            let len = data_len.unwrap();
+            match msg_type {
+                Some(MESSAGE_TYPE_SYNC) => {
+                    sync_entries += 1;
+                    sync_bytes += len;
+                }
+                Some(MESSAGE_TYPE_AWARENESS) => {
+                    awareness_entries += 1;
+                    awareness_bytes += len;
+                }
+                Some(_) | None => {
+                    unknown_entries += 1;
+                    unknown_bytes += len;
+                }
+            }
+
+            if sample_logged < SAMPLE_LIMIT {
+                debug!(
+                    "read_all_stream_data: sample doc_id={}, entry_id={}, type={}, data_len={}",
+                    doc_id,
+                    entry_id,
+                    msg_type.unwrap_or("<none>"),
+                    len
+                );
+                sample_logged += 1;
+            }
         }
+
+        info!(
+            "read_all_stream_data: doc_id={}, stream_key={}, entries={}, data_total_bytes={}, sync_entries={}, sync_bytes={}, awareness_entries={}, awareness_bytes={}, unknown_entries={}, unknown_bytes={}, type_missing_entries={}, data_missing_entries={}, last_id={}",
+            doc_id,
+            stream_key,
+            entry_count,
+            data_total_bytes,
+            sync_entries,
+            sync_bytes,
+            awareness_entries,
+            awareness_bytes,
+            unknown_entries,
+            unknown_bytes,
+            type_missing_entries,
+            data_missing_entries,
+            last_id.as_deref().unwrap_or("<none>")
+        );
 
         Ok((updates, last_id))
     }
