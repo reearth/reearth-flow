@@ -4,19 +4,33 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "udx/ifld/11_1/543905_ifld_6697_op.gml"
+      "value": "ifld_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "prcs",
       "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/ifld",
+      "name": "ifld_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/11100_saitama-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/11100_saitama-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "expectedOutput": {
