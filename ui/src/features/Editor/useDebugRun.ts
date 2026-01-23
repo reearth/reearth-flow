@@ -16,9 +16,11 @@ import { toast } from "../NotificationSystem/useToast";
 export default ({
   rawWorkflows,
   yAwareness,
+  onProjectSnapshotSave,
 }: {
   rawWorkflows: Workflow[];
   yAwareness: Awareness;
+  onProjectSnapshotSave: () => Promise<void>;
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
@@ -74,7 +76,7 @@ export default ({
       );
 
       if (!engineReadyWorkflow) return;
-
+      await onProjectSnapshotSave();
       const data = await runProject(
         currentProject.id,
         currentProject.workspaceId,
@@ -128,6 +130,7 @@ export default ({
       fitView,
       updateValue,
       runProject,
+      onProjectSnapshotSave,
     ],
   );
 
