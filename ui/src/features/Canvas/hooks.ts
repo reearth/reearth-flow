@@ -202,12 +202,12 @@ export default ({
     const currentIndex = openWorkflows.findIndex(
       (wf) => wf.id === currentWorkflowId,
     );
-    if (currentIndex <= 0 && isMainWorkflow) return undefined;
+    if (currentIndex < 1) return undefined;
     return openWorkflows
       .slice(1, currentIndex + 1)
       .map((wf) => wf.id)
       .join(".");
-  }, [openWorkflows, currentWorkflowId, isMainWorkflow]);
+  }, [openWorkflows, currentWorkflowId]);
 
   const fullEdgeTypes = useMemo(
     () => createFullEdgeTypes(workflowChain),
