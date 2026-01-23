@@ -128,8 +128,6 @@ impl CollaborativeStorage {
             t.elapsed().as_millis()
         );
 
-        let mut gcs_txn = gcs_doc.transact_mut();
-
         info!(
             "save_snapshot: document loaded from GCS, starting Redis stream updates for doc_id: {}",
             doc_id
