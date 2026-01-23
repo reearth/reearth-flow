@@ -136,6 +136,7 @@ graphs:
           maxZoom: 18
           attachTexture: false
           skipUnexposedAttributes: true
+          dracoCompression: false
           output: |
             let udx_dirs = env.get("__value")["__udxDirs"];
             udx_dirs.replace("/", "_");
