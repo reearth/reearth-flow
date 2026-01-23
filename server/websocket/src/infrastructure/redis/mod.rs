@@ -660,14 +660,12 @@ impl RedisStore {
         for (entry_id, fields) in entries {
             entry_count += 1;
 
-            let mut msg_type: Option<String> = None;
+            let mut msg_type: Option<String> = None;  // ← &str → String
             let mut data_len: Option<usize> = None;
 
             for (field_name, field_value) in fields {
                 if field_name == "type" {
-                    msg_type = std::str::from_utf8(&field_value)
-                        .ok()
-                        .map(|s| s.to_string());
+                    msg_type = std::str::from_utf8(&field_value).ok().map(|s| s.to_string());
                 } else if field_name == "data" {
                     data_len = Some(field_value.len());
                     data_total_bytes += field_value.len();
