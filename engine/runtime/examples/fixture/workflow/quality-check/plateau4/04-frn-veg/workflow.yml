@@ -47,7 +47,6 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
-          findDeepestSingleFolder: true
 
       # Common quality check subgraphs
       - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
@@ -68,6 +67,7 @@ graphs:
           sourceDataset: |
             env.get("__value")["cityGmlPath"]
           extractArchive: true
+          destPrefix: udx
 
       - id: 151fa081-4606-4493-8808-35d75f063159
         name: FeatureFilterByGml

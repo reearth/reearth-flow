@@ -4,15 +4,15 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "08220_tsukuba-shi_city_2023_citygml_1_op_bldg.zip"
+      "value": "brid_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "objectListsPath",
@@ -25,8 +25,16 @@
   ],
   "zipBeforeTest": [
     {
-      "path": "udx",
-      "name": "08220_tsukuba-shi_city_2023_citygml_1_op_bldg.zip"
+      "path": "udx/brid",
+      "name": "brid_.zip"
+    },
+    {
+      "path": "../../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "expectedOutput": {

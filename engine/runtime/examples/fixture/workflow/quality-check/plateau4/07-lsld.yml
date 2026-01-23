@@ -764,7 +764,7 @@ graphs:
     action: PLATEAU4.DomainOfDefinitionValidator
     with:
       codelistsPath: |
-        env.get("__value").codelists
+        env.get("__value").dirCodelists
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
@@ -936,6 +936,7 @@ graphs:
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
     name: FeatureFilterByGml
     type: action
@@ -1823,6 +1824,7 @@ graphs:
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
     name: FeatureFilterByGml
     type: action
@@ -2238,7 +2240,6 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
-      findDeepestSingleFolder: true
   - id: e275d299-2cd1-4e26-9d91-4d63921a29c7
     name: FeatureFilePathExtractor
     type: action
@@ -2247,6 +2248,7 @@ graphs:
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
   - id: 151fa081-4606-4493-8808-35d75f063159
     name: FeatureFilterByGml
     type: action
