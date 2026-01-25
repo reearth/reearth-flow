@@ -57,7 +57,6 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
-          findDeepestSingleFolder: true
 
       - id: e275d299-2cd1-4e26-9d91-4d63921a29c7
         name: FeatureFilePathExtractor
@@ -67,6 +66,7 @@ graphs:
           sourceDataset: |
             env.get("__value")["cityGmlPath"]
           extractArchive: true
+          destPrefix: udx
 
       - id: 151fa081-4606-4493-8808-35d75f063159
         name: FeatureFilterByGml

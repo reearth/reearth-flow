@@ -121,7 +121,7 @@ impl Sink for ZipFileWriter {
             .unwrap_or_else(|_| output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
-        dir::move_files(&temp_dir_path, &self.buffer)?;
+        dir::move_files_with_structure(&temp_dir_path, &self.buffer)?;
         let buffer = Vec::new();
         let mut cursor = Cursor::new(buffer);
         let writer = BufWriter::new(&mut cursor);

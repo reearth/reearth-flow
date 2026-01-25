@@ -44,7 +44,6 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
-          findDeepestSingleFolder: true
 
       - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         name: PLATEAU4.CommonQualityCheck-01-01-common

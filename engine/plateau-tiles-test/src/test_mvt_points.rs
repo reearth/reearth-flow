@@ -160,7 +160,7 @@ pub fn test_mvt_points(
         results.push((
             score,
             feature.tile_path,
-            feature.gml_id,
+            feature.ident,
             format!("{:?}", status),
         ));
     }
@@ -182,8 +182,8 @@ pub fn test_mvt_points(
         tracing::info!("Worst 5 failures:");
         let mut sorted_failures = failures.clone();
         sorted_failures.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-        for (score, path, gml_id, status) in sorted_failures.iter().take(5) {
-            tracing::info!("  {} | {} | {:.6} | {}", path, gml_id, score, status);
+        for (score, path, ident, status) in sorted_failures.iter().take(5) {
+            tracing::info!("  {} | {} | {:.6} | {}", path, ident, score, status);
         }
         return Err(format!(
             "MVT point comparison failed: {}/{} exceeded threshold {}",
@@ -197,8 +197,8 @@ pub fn test_mvt_points(
         sorted_results.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
 
         tracing::debug!("Worst 5 scores (all below threshold):");
-        for (score, path, gml_id, status) in sorted_results.iter().take(5) {
-            tracing::debug!("  {} | {} | {:.6} | {}", path, gml_id, score, status);
+        for (score, path, ident, status) in sorted_results.iter().take(5) {
+            tracing::debug!("  {} | {} | {:.6} | {}", path, ident, score, status);
         }
     }
 

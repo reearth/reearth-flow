@@ -1,0 +1,20 @@
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_trk.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.mvt_lines]
+threshold = 0.01
+zoom = [13, 16] # test from 13 to avoid thin polygons excluded by flow
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.cesium_statistics]
+
+[filter.tree]
+"udx/trk/54401008_trk_6697_op.gml" = [
+    "trk_799d20e2-9f75-4f0a-ac8c-96c4ff927ba2"
+]

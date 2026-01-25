@@ -105,6 +105,11 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/03-frn-veg/veg",
     "data-convert/plateau4/04-luse-lsld/luse",
     "data-convert/plateau4/04-luse-lsld/lsld",
+    "data-convert/plateau4/05-fld/fld",
+    "data-convert/plateau4/05-fld/tnm",
+    "data-convert/plateau4/05-fld/htd",
+    "data-convert/plateau4/05-fld/ifld",
+    "data-convert/plateau4/05-fld/rfld",
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
@@ -234,11 +239,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
-                test_json_attributes::test_json_attributes(
-                    &fme_extracted_dir,
-                    &flow_extracted_dir,
-                    cfg,
-                )
+                test_json_attributes::test_json_attributes(&fme_source_dir, &flow_source_dir, cfg)
             });
         }
 

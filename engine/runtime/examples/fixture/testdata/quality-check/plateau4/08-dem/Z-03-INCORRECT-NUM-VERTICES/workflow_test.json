@@ -4,15 +4,15 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "udx/dem/input.gml"
+      "value": "dem_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "objectListsPath",
@@ -21,6 +21,20 @@
     {
       "name": "prcs",
       "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/dem",
+      "name": "dem_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "intermediateAssertions": [

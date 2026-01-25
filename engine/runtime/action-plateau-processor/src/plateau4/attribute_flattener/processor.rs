@@ -199,18 +199,27 @@ impl AttributeFlattener {
         feature: &Feature,
         citygml_attributes: &mut HashMap<String, AttributeValue>,
     ) {
-        if let Some(gml_id) = feature.get("gml_id").or_else(|| feature.get("gmlId")) {
-            citygml_attributes.insert("gml:id".to_string(), gml_id.clone());
-        }
+        // Check if this is a risk feature type that should exclude gml_id and meshcode
+        let is_risk_package = feature
+            .get("package")
+            .and_then(|p| p.as_string())
+            .map(|pkg| ["fld", "tnm", "htd", "ifld", "rfld"].contains(&pkg.as_str()))
+            .unwrap_or(false);
 
-        // meshcode: extract from path attribute (e.g., "55371111_bldg_6697_op.gml" -> 55371111)
-        if let Some(AttributeValue::String(path)) = feature.get("path") {
-            if let Some(filename) = path.rsplit('/').next() {
-                if let Some(meshcode_str) = filename.split('_').next() {
-                    citygml_attributes.insert(
-                        "meshcode".to_string(),
-                        AttributeValue::String(meshcode_str.to_string()),
-                    );
+        if !is_risk_package {
+            if let Some(gml_id) = feature.get("gml_id").or_else(|| feature.get("gmlId")) {
+                citygml_attributes.insert("gml:id".to_string(), gml_id.clone());
+            }
+
+            // meshcode: extract from path attribute (e.g., "55371111_bldg_6697_op.gml" -> 55371111)
+            if let Some(AttributeValue::String(path)) = feature.get("path") {
+                if let Some(filename) = path.rsplit('/').next() {
+                    if let Some(meshcode_str) = filename.split('_').next() {
+                        citygml_attributes.insert(
+                            "meshcode".to_string(),
+                            AttributeValue::String(meshcode_str.to_string()),
+                        );
+                    }
                 }
             }
         }

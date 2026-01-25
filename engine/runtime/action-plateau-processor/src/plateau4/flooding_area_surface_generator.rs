@@ -420,8 +420,7 @@ impl FloodingAreaSurfaceGenerator {
         };
 
         // Calculate average z value for interior points
-        let avg_z: f64 =
-            exterior.0.iter().map(|p| p.z).sum::<f64>() / exterior.0.len() as f64;
+        let avg_z: f64 = exterior.0.iter().map(|p| p.z).sum::<f64>() / exterior.0.len() as f64;
 
         // Create grid points within the bounding box
         let mut interior_count = 0;
@@ -452,13 +451,7 @@ impl FloodingAreaSurfaceGenerator {
         }
     }
 
-    fn interpolate_z(
-        &self,
-        x: f64,
-        y: f64,
-        ring: &[Coordinate3D<f64>],
-        default_z: f64,
-    ) -> f64 {
+    fn interpolate_z(&self, x: f64, y: f64, ring: &[Coordinate3D<f64>], default_z: f64) -> f64 {
         // Simple inverse distance weighting interpolation
         let mut sum_weight = 0.0;
         let mut sum_z = 0.0;
@@ -551,13 +544,7 @@ impl FloodingAreaSurfaceGenerator {
         Ok(triangles)
     }
 
-    fn get_z_value(
-        &self,
-        point_map: &HashMap<(i64, i64), f64>,
-        x: f64,
-        y: f64,
-        scale: f64,
-    ) -> f64 {
+    fn get_z_value(&self, point_map: &HashMap<(i64, i64), f64>, x: f64, y: f64, scale: f64) -> f64 {
         let key = ((x * scale) as i64, (y * scale) as i64);
         if let Some(&z) = point_map.get(&key) {
             return z;
@@ -642,8 +629,11 @@ impl FloodingAreaSurfaceGenerator {
             .interiors()
             .iter()
             .map(|ring| {
-                let coords: Vec<Coordinate2D<f64>> =
-                    ring.0.iter().map(|c| Coordinate2D::new_(c.x, c.y)).collect();
+                let coords: Vec<Coordinate2D<f64>> = ring
+                    .0
+                    .iter()
+                    .map(|c| Coordinate2D::new_(c.x, c.y))
+                    .collect();
                 LineString2D::new(coords)
             })
             .collect();

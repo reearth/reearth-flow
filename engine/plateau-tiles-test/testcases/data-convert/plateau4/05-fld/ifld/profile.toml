@@ -1,0 +1,19 @@
+# test ifld (inland flood risk)
+citygml_zip_name = "11100_saitama-shi_city_2024_citygml_1_op_ifld.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.cesium_statistics]
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".ifld"]
+comparator = "list_to_dict"
+key = ".name"
+
+[filter.tree]
+"udx/ifld/11_1/533955_ifld_6697_op.gml" = [
+    "ifld_36544caf-3eb1-4f08-85aa-7b6989a2c405",
+]
