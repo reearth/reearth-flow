@@ -1,7 +1,10 @@
+use crate::compare_attributes::make_feature_key;
+use crate::test_mvt_attributes::tinymvt_value_to_json;
 use prost::Message;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::multi_point::MultiPoint2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -169,14 +172,23 @@ fn features_by_ident(
                 }
             }
 
-            if let Ok(tags) = tags_decoder.decode(&feature.tags) {
-                if let Some(ident_value) = tags.iter().find(|(k, _)| *k == "ident") {
-                    if let tinymvt::tag::Value::String(ident) = &ident_value.1 {
-                        // Store the geometry buffer, geometry type, and extent
-                        result.insert(ident.clone(), (feature.geometry.clone(), geom_type, extent));
-                    }
-                }
+            // Decode tags to JSON object
+            let tags = tags_decoder
+                .decode(&feature.tags)
+                .expect("Failed to decode MVT feature tags");
+
+            let mut props = serde_json::Map::new();
+            for (key, value) in tags {
+                let json_value = tinymvt_value_to_json(&value);
+                props.insert(key.to_string(), json_value);
             }
+            let props_value = Value::Object(props);
+
+            // Generate feature key using the same logic as attribute tests
+            let feature_key = make_feature_key(&props_value, None);
+
+            // Store the geometry buffer, geometry type, and extent
+            result.insert(feature_key, (feature.geometry.clone(), geom_type, extent));
         }
     }
 
@@ -364,4 +376,34 @@ fn decode_point_from_features(
                 None
             }
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_features_by_ident() {
+        // Test MVT with 2 polygon features (Zone layer, extent 65536)
+        let mvt_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/test_zone_2features.mvt");
+        let tile = load_mvt(&mvt_path).expect("Failed to load test MVT");
+        let features = features_by_ident(&tile, Some(GeometryType::Polygon));
+
+        assert_eq!(features.len(), 2, "Expected 2 polygon features");
+        let expected_ids = [
+            "area_d14a8141-6597-42ed-a5b4-6232986df2f4",
+            "area_e6b0bbf8-07f3-4afa-afa5-1a9b71ac777f",
+        ];
+        for id in &expected_ids {
+            let (geom_buf, geom_type, extent) = features.get(*id).expect("Missing gml_id");
+            assert_eq!(*geom_type, GeometryType::Polygon as i32);
+            assert_eq!(*extent, 65536);
+            let mut decoder = GeometryDecoder::new(geom_buf);
+            let polys = decoder.decode_polygons().expect("Failed to decode");
+            let multi_poly =
+                tinymvt_to_polygon(Geometry::Polygons(polys), *extent).expect("Failed to convert");
+            assert!(!multi_poly.0.is_empty());
+        }
+    }
 }

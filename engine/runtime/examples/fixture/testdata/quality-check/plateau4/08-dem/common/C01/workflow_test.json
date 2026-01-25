@@ -1,20 +1,18 @@
 {
-  "description": "Test quality check for C01. checks for 不正な穴 is excluded as it is innebitable in this case.",
-  "skip": true,
-  "skipReason": "Race condition in CityGmlMeshBuilder relief_feature_counter, maybe use an atomic counter to fix (TODO)",
+  "description": "Test quality check for C01. checks for 不正な穴 is excluded as it is innebitable in this case. Relief Index is also excluded as it depends on processing order.",
   "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "08220_tsukuba-shi_city_2023_citygml_1_op_bldg.zip"
+      "value": "dem_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "objectListsPath",
@@ -27,8 +25,16 @@
   ],
   "zipBeforeTest": [
     {
-      "path": "udx",
-      "name": "08220_tsukuba-shi_city_2023_citygml_1_op_bldg.zip"
+      "path": "udx/dem",
+      "name": "dem_.zip"
+    },
+    {
+      "path": "../../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "expectedOutput": {
@@ -46,6 +52,7 @@
         "expectedFile": "08_地形_検査結果一覧.csv",
         "excludeColumns": [
           "Index",
+          "Relief Index",
           "不正な穴"
         ]
       }

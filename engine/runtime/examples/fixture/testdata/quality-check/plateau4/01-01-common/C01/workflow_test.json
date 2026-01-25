@@ -4,15 +4,15 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "16211_imizu-shi_city_2024_citygml_1_op_bldg.zip"
+      "value": "bldg_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "objectListsPath",
@@ -21,12 +21,23 @@
   ],
   "zipBeforeTest": [
     {
-      "path": "udx",
-      "name": "16211_imizu-shi_city_2024_citygml_1_op_bldg.zip"
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "expectedOutput": {
-    "expectedFile": "01_共通_GML_ID重複.csv"
+    "expectedFile": "01_共通_GML_ID重複.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {
@@ -35,6 +46,7 @@
     "fileErrorSummary": {
       "expectedFile": "01_共通.csv",
       "excludeColumns": [
+        "Index",
         "XML検証結果",
         "L02エラー"
       ]

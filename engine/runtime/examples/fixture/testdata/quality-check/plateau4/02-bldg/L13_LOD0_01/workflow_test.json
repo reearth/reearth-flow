@@ -4,15 +4,15 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "udx/bldg/L13_LOD0_01.gml"
+      "value": "bldg_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "objectListsPath",
@@ -21,6 +21,20 @@
     {
       "name": "prcs",
       "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "expectedOutput": {

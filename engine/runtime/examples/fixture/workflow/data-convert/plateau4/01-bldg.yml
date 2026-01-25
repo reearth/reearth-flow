@@ -28,7 +28,6 @@ graphs:
       archiveAttributes:
       - codelists
       - schemas
-      findDeepestSingleFolder: true
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
@@ -37,6 +36,7 @@ graphs:
       sourceDataset: |
         env.get("__value").cityGmlPath
       extractArchive: true
+      destPrefix: udx
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
     name: FeatureFilter
     type: action
@@ -706,6 +706,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -736,6 +737,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -766,6 +768,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -796,6 +799,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -826,6 +830,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -856,6 +861,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -886,6 +892,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
+      dracoCompression: false
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");

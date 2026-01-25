@@ -4,19 +4,33 @@
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "udx/fld/natl/1_1_kikuchigawa_kikuchigawa/49300002_fld_6697_l1_op.gml"
+      "value": "fld_.zip"
     },
     {
       "name": "codelistsPath",
-      "value": "codelists"
+      "value": "codelists_.zip"
     },
     {
       "name": "schemasPath",
-      "value": "schemas"
+      "value": "schemas_.zip"
     },
     {
       "name": "prcs",
       "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/fld",
+      "name": "fld_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas",
+      "name": "schemas_.zip"
     }
   ],
   "summaryOutput": {

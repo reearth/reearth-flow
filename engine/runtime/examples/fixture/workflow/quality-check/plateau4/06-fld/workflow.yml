@@ -37,7 +37,6 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
-          findDeepestSingleFolder: true
 
       - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
         name: FeatureFilePathExtractor
@@ -47,6 +46,7 @@ graphs:
           sourceDataset: |
             env.get("__value")["cityGmlPath"]
           extractArchive: true
+          destPrefix: udx
 
       - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
         name: FeatureFilterByGml
@@ -316,13 +316,12 @@ graphs:
             if folder == () || folder == "" {
               return file::join_path(base_path, "06_浸水想定区域_fld.csv");
             }
-            // Remove leading "fld/" if present
-            let path = folder;
-            if path.starts_with("fld/") {
-              path = path.sub_string(4, path.len());
-            }
-            // Create hierarchical path: 06_浸水想定区域_fld/{path}.csv
-            let csv_filepath = "06_浸水想定区域_fld/" + path + ".csv";
+            // Extract flood type from first path segment (e.g., "htd/12_1" -> "htd", "12_1")
+            let slash_pos = folder.index_of("/");
+            let flood_type = folder.sub_string(0, slash_pos);
+            let path = folder.sub_string(slash_pos + 1);
+            // Create hierarchical path: 06_浸水想定区域_{flood_type}/{path}.csv
+            let csv_filepath = "06_浸水想定区域_" + flood_type + "/" + path + ".csv";
             file::join_path(base_path, csv_filepath)
 
       # JSON Writer for aggregated counts (one file per folder)
@@ -401,6 +400,17 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+            let dirname = env.get("workerArtifactPath");
+            file::join_path(dirname, filename)
+
+      # ZipFileWriter - Bundle all output files
+      - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
             let dirname = env.get("workerArtifactPath");
             file::join_path(dirname, filename)
 
@@ -603,5 +613,20 @@ graphs:
       - id: 6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         from: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         to: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+        fromPort: default
+        toPort: default
+
+      # ===== ZipFileWriter connections =====
+      # CSVWriter → ZipFileWriter
+      - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+        from: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+        to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
+        fromPort: default
+        toPort: default
+
+      # JSONWriter → ZipFileWriter
+      - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
+        from: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+        to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
         fromPort: default
         toPort: default

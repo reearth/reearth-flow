@@ -73,7 +73,7 @@ fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
 }
 
 /// Converts tinymvt::tag::Value to serde_json::Value
-fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
+pub fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
     use tinymvt::tag::Value as TValue;
     match value {
         TValue::String(s) => Value::String(s.clone()),
