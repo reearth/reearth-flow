@@ -174,9 +174,13 @@ impl Processor for ImageRasterizer {
         // 3. each processed feature should get a GeometryPolygon, accumulate it in GemotryPolygons
         let feature = &ctx.feature;
 
-        if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
-            // Accumulate the polygon in the collection
-            self.gemotry_polygons.add_polygon(polygon);
+        // Convert Feature to Value to use the existing function
+        let feature_value: serde_json::Value = feature.clone().into();
+        if let Some(feature_attributes) = feature_value.get("attributes") {
+            if let Some(polygon) = extract_geometry_polygon_from_feature(&feature_attributes) {
+                // Accumulate the polygon in the collection
+                self.gemotry_polygons.add_polygon(polygon);
+            }
         }
 
         // Forward the feature to the output port
