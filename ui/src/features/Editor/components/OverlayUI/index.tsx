@@ -175,6 +175,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             <DebugActionBar
               activeUsersDebugRuns={activeUsersDebugRuns}
               selectedNodeIds={selectedNodeIds}
+              isSaving={isSaving}
               onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}

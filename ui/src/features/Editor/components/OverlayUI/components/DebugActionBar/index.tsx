@@ -38,6 +38,7 @@ const tooltipOffset = 6;
 type Props = {
   activeUsersDebugRuns?: AwarenessUser[];
   selectedNodeIds: string[];
+  isSaving: boolean;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
@@ -52,6 +53,7 @@ type Props = {
 const DebugActionBar: React.FC<Props> = ({
   activeUsersDebugRuns,
   selectedNodeIds,
+  isSaving,
   customDebugRunWorkflowVariables,
   onDebugRunJoin,
   onDebugRunStart,
@@ -83,6 +85,7 @@ const DebugActionBar: React.FC<Props> = ({
       <StartButton
         debugRunStarted={debugRunStarted}
         selectedNodeIds={selectedNodeIds}
+        isSaving={isSaving}
         onShowDebugStartPopover={handleShowDebugStartPopover}
         onShowDebugWorkflowVariablesDialog={
           handleShowDebugWorkflowVariablesDialog
@@ -137,6 +140,7 @@ export default memo(DebugActionBar);
 const StartButton: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
+  isSaving: boolean;
   showPopover: string | undefined;
   onShowDebugStartPopover: () => void;
   onShowDebugWorkflowVariablesDialog: () => void;
@@ -149,6 +153,7 @@ const StartButton: React.FC<{
 }> = ({
   debugRunStarted,
   selectedNodeIds,
+  isSaving,
   showPopover,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
@@ -189,6 +194,7 @@ const StartButton: React.FC<{
                   : "w-9"
               }`}
               disabled={
+                isSaving ||
                 debugRunStarted ||
                 jobStatus === "running" ||
                 jobStatus === "queued"
@@ -225,6 +231,7 @@ const StartButton: React.FC<{
             <DebugRunDropDownMenu
               debugRunStarted={debugRunStarted}
               selectedNodeIds={selectedNodeIds}
+              isSaving={isSaving}
               jobStatus={jobStatus}
               debugJobId={debugJobId}
               showPopover={showPopover}
@@ -296,6 +303,7 @@ const DebugRunDropDownMenu: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   showPopover: string | undefined;
+  isSaving: boolean;
   jobStatus: string | undefined;
   debugJobId: string | undefined;
   onDebugRunStartFromSelectedNode?: (
@@ -307,6 +315,7 @@ const DebugRunDropDownMenu: React.FC<{
 }> = ({
   debugRunStarted,
   selectedNodeIds,
+  isSaving,
   jobStatus,
   debugJobId,
   onDebugRunStartFromSelectedNode,
@@ -349,6 +358,7 @@ const DebugRunDropDownMenu: React.FC<{
         alignOffset={-42}>
         <DropdownMenuItem
           className="flex items-center justify-between"
+          disabled={debugRunStarted || isSaving}
           onClick={() => {
             setTimeout(() => {
               onShowDebugStartPopover();
@@ -362,6 +372,7 @@ const DebugRunDropDownMenu: React.FC<{
         <DropdownMenuItem
           className="flex items-center justify-between"
           disabled={
+            isSaving ||
             !selectedNode ||
             selectedNode.type === "batch" ||
             selectedNode.type === "note" ||
