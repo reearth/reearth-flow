@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check for surface-not-closed errors",
+  "description": "Test quality check for solid boundary surface errors",
   "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
   "workflowVariables": [
     {
@@ -38,7 +38,7 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "11_水部_LOD2-3非水密立体.csv"
+    "expectedFile": "11_水部_LOD2-3境界面のエラー.csv"
   },
   "summaryOutput": {
     "errorCountSummary": {
