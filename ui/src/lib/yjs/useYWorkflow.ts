@@ -21,6 +21,7 @@ import {
 } from "./conversions";
 import type { YNode, YNodesMap, YEdgesMap, YWorkflow } from "./types";
 import { computeWorkflowPath } from "./utils/computeWorkflowPath";
+import { updateNestedSubworkflowPaths } from "./utils/updateNestedSubworkflowPaths";
 
 export default ({
   yWorkflows,
@@ -496,6 +497,13 @@ export default ({
             ...internalEdges,
             ...additionalInternalEdges,
           ];
+
+          // Recursively update workflowPath for nodes inside nested subworkflows
+          updateNestedSubworkflowPaths(
+            yWorkflows,
+            adjustedNodes,
+            subworkflowNodePath,
+          );
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
