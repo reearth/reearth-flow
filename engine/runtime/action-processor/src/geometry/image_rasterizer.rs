@@ -173,37 +173,8 @@ impl Processor for ImageRasterizer {
         // 2. from feature.geometry, get coordinates
         // 3. each processed feature should get a GeometryPolygon, accumulate it in GemotryPolygons
         let feature = &ctx.feature;
-        let geometry = &feature.geometry;
 
-        // Extract color information from the feature properties
-        let color_r = feature
-            .get("color_r")
-            .and_then(|v| v.as_f64())
-            .map(|v| v as u8)
-            .unwrap_or(255);
-        let color_g = feature
-            .get("color_g")
-            .and_then(|v| v.as_f64())
-            .map(|v| v as u8)
-            .unwrap_or(0);
-        let color_b = feature
-            .get("color_b")
-            .and_then(|v| v.as_f64())
-            .map(|v| v as u8)
-            .unwrap_or(0);
-
-        // Extract coordinates from the geometry
-        let coordinates = extract_coordinates_from_geometry(geometry)?;
-
-        if !coordinates.is_empty() {
-            // Create a GeometryPolygon with the extracted coordinates and colors
-            let polygon = GeometryPolygon {
-                coordinates,
-                color_r,
-                color_g,
-                color_b,
-            };
-
+        if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
             // Accumulate the polygon in the collection
             self.gemotry_polygons.add_polygon(polygon);
         }
@@ -659,6 +630,63 @@ impl GemotryPolygons {
     }
 }
 
+pub fn extract_geometry_polygon_from_feature(feature: &Value) -> Option<GeometryPolygon> {
+    // Extract color information from the feature
+    let r = feature
+        .get("color_r")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<u8>().ok())
+        .unwrap_or(255);
+    let g = feature
+        .get("color_g")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<u8>().ok())
+        .unwrap_or(0);
+    let b = feature
+        .get("color_b")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<u8>().ok())
+        .unwrap_or(0);
+
+    // Process the geometry
+    if let Some(geo) = feature.get("json_geometry") {
+        if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
+            // The coordinates structure is [[[x, y], [x, y], ...]] - array of rings
+            // The structure [[[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
+            //  1. Outermost array: Contains multiple "rings" (usually just one outer ring, but can include inner rings for holes)
+            //  2. Middle array: Represents a single "ring" - a sequence of connected coordinate pairs forming a closed shape
+            //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along the ring
+            for ring_array in coords {
+                if let Some(ring_points) = ring_array.as_array() {
+                    let mut coordinates = Vec::new();
+
+                    for point in ring_points {
+                        if let Some(xy) = point.as_array() {
+                            if xy.len() >= 2 {
+                                let x = xy[0].as_f64().unwrap_or(0.0);
+                                let y = xy[1].as_f64().unwrap_or(0.0);
+                                coordinates.push((x, y));
+                            }
+                        }
+                    }
+
+                    // Create a polygon with the collected coordinates and color
+                    let polygon = GeometryPolygon {
+                        coordinates,
+                        color_r: r,
+                        color_g: g,
+                        color_b: b,
+                    };
+
+                    return Some(polygon);
+                }
+            }
+        }
+    }
+
+    return None;
+}
+
 // Helper function to parse the JSON and convert to GemotryPolygons
 pub fn json_to_gemotry_polygons(
     json_value: &Value,
@@ -667,57 +695,8 @@ pub fn json_to_gemotry_polygons(
 
     if let Some(features) = json_value.as_array() {
         for feature in features {
-            // Extract color information from the feature
-            let r = feature
-                .get("color_r")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u8>().ok())
-                .unwrap_or(255);
-            let g = feature
-                .get("color_g")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u8>().ok())
-                .unwrap_or(0);
-            let b = feature
-                .get("color_b")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.parse::<u8>().ok())
-                .unwrap_or(0);
-
-            // Process the geometry
-            if let Some(geo) = feature.get("json_geometry") {
-                if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
-                    // The coordinates structure is [[[x, y], [x, y], ...]] - array of rings
-                    // The structure [[[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
-                    //  1. Outermost array: Contains multiple "rings" (usually just one outer ring, but can include inner rings for holes)
-                    //  2. Middle array: Represents a single "ring" - a sequence of connected coordinate pairs forming a closed shape
-                    //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along the ring
-                    for ring_array in coords {
-                        if let Some(ring_points) = ring_array.as_array() {
-                            let mut coordinates = Vec::new();
-
-                            for point in ring_points {
-                                if let Some(xy) = point.as_array() {
-                                    if xy.len() >= 2 {
-                                        let x = xy[0].as_f64().unwrap_or(0.0);
-                                        let y = xy[1].as_f64().unwrap_or(0.0);
-                                        coordinates.push((x, y));
-                                    }
-                                }
-                            }
-
-                            // Create a polygon with the collected coordinates and color
-                            let polygon = GeometryPolygon {
-                                coordinates,
-                                color_r: r,
-                                color_g: g,
-                                color_b: b,
-                            };
-
-                            gemotry_polygons.add_polygon(polygon);
-                        }
-                    }
-                }
+            if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
+                gemotry_polygons.add_polygon(polygon);
             }
         }
     }
