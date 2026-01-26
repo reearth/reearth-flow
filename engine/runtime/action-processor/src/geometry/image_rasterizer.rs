@@ -75,6 +75,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
             color_interpretation: params.color_interpretation,
             background_color: params.background_color,
             background_color_alpha: params.background_color_alpha,
+            gemotry_polygons: GemotryPolygons::new(),
         };
         Ok(Box::new(process))
     }
@@ -128,6 +129,7 @@ struct ImageRasterizer {
     color_interpretation: ColorInterpretation,
     background_color: [u8; 3],
     background_color_alpha: f64,
+    gemotry_polygons: GemotryPolygons,
 }
 
 fn default_cell_size() -> f64 {
@@ -164,18 +166,142 @@ impl Processor for ImageRasterizer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // During process
+        // 1. extract color related features, color_r, color_g, color_b
+        // 2. from feature.geometry, get coordinates
+        // 3. each processed feature should get a GeometryPolygon, accumulate it in GemotryPolygons
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
+        // Extract color information from the feature properties
+        let color_r = feature
+            .get("color_r")
+            .and_then(|v| v.as_f64())
+            .map(|v| v as u8)
+            .unwrap_or(255);
+        let color_g = feature
+            .get("color_g")
+            .and_then(|v| v.as_f64())
+            .map(|v| v as u8)
+            .unwrap_or(0);
+        let color_b = feature
+            .get("color_b")
+            .and_then(|v| v.as_f64())
+            .map(|v| v as u8)
+            .unwrap_or(0);
+
+        // Extract coordinates from the geometry
+        let coordinates = extract_coordinates_from_geometry(geometry)?;
+
+        if !coordinates.is_empty() {
+            // Create a GeometryPolygon with the extracted coordinates and colors
+            let polygon = GeometryPolygon {
+                coordinates,
+                color_r,
+                color_g,
+                color_b,
+            };
+
+            // Accumulate the polygon in the collection
+            self.gemotry_polygons.add_polygon(polygon);
+        }
+
+        // Forward the feature to the output port
+        fw.send(ctx);
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        // When all features are processed, during finish phase
+        // call draw method on GeometryPolygon, with dependent parameters get from &self
+
+        // Determine image dimensions based on the accumulated polygons and cell sizes
+        let boundary = self.gemotry_polygons.find_coordinates_boudary();
+
+        // Calculate the width and height of the image based on the boundary and cell size
+        let width = if boundary.right_down.x > boundary.left_up.x {
+            ((boundary.right_down.x - boundary.left_up.x) / self.cell_size_x).ceil() as u32
+        } else {
+            1 // Minimum width of 1 pixel
+        };
+
+        let height = if boundary.right_down.y > boundary.left_up.y {
+            ((boundary.right_down.y - boundary.left_up.y) / self.cell_size_y).ceil() as u32
+        } else {
+            1 // Minimum height of 1 pixel
+        };
+
+        // Draw the accumulated polygons to an image
+        let img = self.gemotry_polygons.draw(width, height, true); // fill_area = true
+
+        // Create the cache directory and save the image
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let cache_dir = std::path::Path::new(&home_dir)
+            .join(".cache")
+            .join("reearth-flow-generated-images");
+
+        if let Err(e) = std::fs::create_dir_all(&cache_dir) {
+            ctx.event_hub.warn_log(None, format!("Failed to create cache directory: {}", e));
+        } else {
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let dest_path = cache_dir.join(format!("image_rasterizer_output_{}.png", timestamp));
+
+            // Save the image to the cache directory
+            if let Err(e) = img.save(&dest_path) {
+                ctx.event_hub.warn_log(None, format!("Failed to save image: {}", e));
+            } else {
+                ctx.event_hub.info_log(
+                    None,
+                    format!("ImageRasterizer saved image to: {:?}", dest_path),
+                );
+            }
+        }
+
+        // Log the completion of the image creation
+        ctx.event_hub.info_log(
+            None,
+            format!("ImageRasterizer created image with dimensions {}x{}", width, height),
+        );
+
         Ok(())
     }
 
     fn name(&self) -> &str {
         "ImageRasterizer"
+    }
+}
+
+// Helper function to extract coordinates from geometry
+fn extract_coordinates_from_geometry(geometry: &reearth_flow_types::Geometry) -> Result<Vec<(f64, f64)>, BoxedError> {
+    use reearth_flow_types::GeometryValue;
+
+    match &geometry.value {
+        GeometryValue::None => Ok(Vec::new()),
+        GeometryValue::FlowGeometry2D(geom) => {
+            use reearth_flow_geometry::types::geometry::Geometry2D;
+            match geom {
+                Geometry2D::Polygon(polygon) => {
+                    // For a polygon, we typically want the exterior ring
+                    let exterior = polygon.exterior();
+                    Ok(exterior.0.iter().map(|p| (p.x, p.y)).collect())
+                },
+                _ => {
+                    // For other geometry types, return an error indicating it's not supported
+                    Err(GeometryProcessorError::ImageRasterizer(
+                        "Only Polygon geometry type is supported".to_string(),
+                    ).into())
+                }
+            }
+        },
+        GeometryValue::FlowGeometry3D(_) | GeometryValue::CityGmlGeometry(_) => {
+            // For 3D geometry types, return an error asking to convert to 2D first
+            Err(GeometryProcessorError::ImageRasterizer(
+                "Please convert 3D geometry to 2D first".to_string(),
+            ).into())
+        },
     }
 }
 
@@ -283,11 +409,7 @@ impl GeometryPolygon {
     }
 
     // Maps the polygon to a vector of image pixels
-    pub fn to_image_pixels<F>(
-        &self,
-        mapping_fn: F,
-        fill_area: bool,
-    ) -> Vec<ImagePixel>
+    pub fn to_image_pixels<F>(&self, mapping_fn: F, fill_area: bool) -> Vec<ImagePixel>
     where
         F: Fn(&GeometryPolygon) -> GeometryPolygon,
     {
@@ -325,7 +447,16 @@ impl GeometryPolygon {
     }
 
     // Helper function to draw a line between two points using Bresenham's algorithm
-    fn draw_line(&self, x0: u32, y0: u32, x1: u32, y1: u32, r: u8, g: u8, b: u8) -> Vec<ImagePixel> {
+    fn draw_line(
+        &self,
+        x0: u32,
+        y0: u32,
+        x1: u32,
+        y1: u32,
+        r: u8,
+        g: u8,
+        b: u8,
+    ) -> Vec<ImagePixel> {
         let mut pixels = Vec::new();
 
         let dx = (x1 as i32 - x0 as i32).abs();
@@ -505,7 +636,8 @@ impl GemotryPolygons {
         let geo_boundary = self.find_coordinates_boudary();
 
         // Create the mapping function using the geographic boundary and image dimensions
-        let mapping_fn = GeometryPolygon::create_mapping_function_to_png(geo_boundary, width, height);
+        let mapping_fn =
+            GeometryPolygon::create_mapping_function_to_png(geo_boundary, width, height);
 
         // Generate pixels for each polygon and draw them on the image
         for polygon in &self.polygons {
@@ -652,7 +784,7 @@ mod tests {
             .expect("Failed to convert JSON to GemotryPolygons");
 
         println!("Converted JSON to GemotryPolygons:");
-        println!("  Number of polygons: {}", gemotry_polygons.polygons.len());
+        println!("Number of polygons: {}", gemotry_polygons.polygons.len());
 
         // Print info about first few polygons as sample
         for (i, polygon) in gemotry_polygons.polygons.iter().take(5).enumerate() {
@@ -725,9 +857,6 @@ mod tests {
 
         // Save the image directly to the cache directory
         img.save(&dest_path).unwrap();
-        println!(
-            "Successfully generated and saved image to: {:?}",
-            dest_path
-        );
+        println!("Successfully generated and saved image to: {:?}", dest_path);
     }
 }
