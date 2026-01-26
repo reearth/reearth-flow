@@ -1,6 +1,5 @@
 {
   "description": "Test quality check for invalid geometry type errors",
-  "skip": false,
   "skipReason": "Requires nusamai bug fix. On hold for higher priority tasks.",
   "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
   "workflowVariables": [
