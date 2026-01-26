@@ -76,7 +76,12 @@ export default ({
       );
 
       if (!engineReadyWorkflow) return;
-      await onProjectSnapshotSave();
+      try {
+        await onProjectSnapshotSave();
+      } catch {
+        // Abort run if snapshot save fails
+        return;
+      }
       const data = await runProject(
         currentProject.id,
         currentProject.workspaceId,
