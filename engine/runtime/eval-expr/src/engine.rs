@@ -14,9 +14,7 @@ use crate::module::xml::xml_module;
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 
 /// Inner environment exposed to Rhai scripts as "env" at the Engine level.
-/// This is separate from `Engine` to avoid a cyclic reference:
-/// `Engine` owns `rhai::Scope`, and if we stored `Engine` inside `rhai::Scope`,
-/// the Arc reference counts would never reach zero.
+/// This is separate from `Engine` to avoid a cyclic reference.
 #[derive(Debug, Clone)]
 pub(crate) struct EngineEnv {
     vars: ShareLock<Vars>,
@@ -77,9 +75,6 @@ impl Engine {
 
         let vars = Arc::new(RwLock::new(Vars::new()));
 
-        // Create the environment that will be exposed to Rhai scripts.
-        // EngineEnv only holds an Arc to vars, not to the rhai::Scope itself,
-        // which breaks the cyclic reference.
         let env = EngineEnv {
             vars: Arc::clone(&vars),
         };

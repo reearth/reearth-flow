@@ -3,9 +3,7 @@ use std::sync::{Arc, RwLock};
 use crate::{engine::Engine, error::Error, ShareLock, Value, Vars};
 
 /// Inner environment exposed to Rhai scripts as "env".
-/// This is separate from `Scope` to avoid a cyclic reference:
-/// `Scope` owns `rhai::Scope`, and if we stored `Scope` inside `rhai::Scope`,
-/// the Arc reference counts would never reach zero.
+/// This is separate from `Scope` to avoid a cyclic reference.
 #[derive(Debug, Clone)]
 pub(crate) struct ScopeEnv {
     engine: Arc<Engine>,
@@ -42,9 +40,6 @@ impl Scope {
         let engine = Arc::new(engine.clone());
         let vars = Arc::new(RwLock::new(Vars::new()));
 
-        // Create the environment that will be exposed to Rhai scripts.
-        // ScopeEnv only holds Arc references to engine and vars, not to
-        // the rhai::Scope itself, which breaks the cyclic reference.
         let env = ScopeEnv {
             engine: Arc::clone(&engine),
             vars: Arc::clone(&vars),
