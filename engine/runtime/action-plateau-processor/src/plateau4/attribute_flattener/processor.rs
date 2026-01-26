@@ -288,8 +288,21 @@ impl AttributeFlattener {
         };
         strip_parent_info(&mut citygml_attributes);
 
+        // For LOD4 subfeatures, inherit parent attributes that child doesn't have
+        if let Some(AttributeValue::Number(lod)) = feature.get("lod") {
+            if lod.as_i64() == Some(4) {
+                if let Some(AttributeValue::Map(first_ancestor)) = ancestors.first() {
+                    for (key, value) in first_ancestor.iter() {
+                        if !citygml_attributes.contains_key(key) {
+                            citygml_attributes.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
+            }
+        }
+
         if !ancestors.is_empty() {
-            citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
+            citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors.clone()));
         }
 
         // Extract bldg:address from core:Address nested structure if not present
