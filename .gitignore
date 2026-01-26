@@ -5,3 +5,4 @@
 reearth-flow-websocket/
 reearth-flow-websocket-rs/
 target/
+engine/runtime/tests/fixture/testdata/image_rasterizer/*.json

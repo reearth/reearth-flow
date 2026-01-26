@@ -70,8 +70,8 @@ impl ProcessorFactory for ImageRasterizerFactory {
         };
 
         let process = ImageRasterizer {
-            cell_size_x: params.cell_size_x,
-            cell_size_y: params.cell_size_y,
+            width: params.image_width,
+            height: params.image_height,
             color_interpretation: params.color_interpretation,
             background_color: params.background_color,
             background_color_alpha: params.background_color_alpha,
@@ -98,15 +98,13 @@ enum ColorInterpretation {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ImageRasterizerParam {
-    /// # Cell Size X
-    /// The width of each pixel in coordinate units
-    #[serde(default = "default_cell_size")]
-    cell_size_x: f64,
+    /// The width of image
+    #[serde(default = "default_image_width")]
+    image_width: u32,
 
-    /// # Cell Size Y
-    /// The height of each pixel in coordinate units
-    #[serde(default = "default_cell_size")]
-    cell_size_y: f64,
+    /// The height of image
+    #[serde(default = "default_image_height")]
+    image_height: u32,
 
     /// # Color Interpretation
     /// How to interpret and store color information
@@ -124,16 +122,20 @@ struct ImageRasterizerParam {
 
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
-    cell_size_x: f64,
-    cell_size_y: f64,
+    width: u32,
+    height: u32,
     color_interpretation: ColorInterpretation,
     background_color: [u8; 3],
     background_color_alpha: f64,
     gemotry_polygons: GemotryPolygons,
 }
 
-fn default_cell_size() -> f64 {
-    1.0
+fn default_image_width() -> u32 {
+    1000
+}
+
+fn default_image_height() -> u32 {
+    800
 }
 
 fn default_color_interpretation() -> ColorInterpretation {
@@ -151,8 +153,8 @@ fn default_background_color_alpha() -> f64 {
 impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
-            cell_size_x: default_cell_size(),
-            cell_size_y: default_cell_size(),
+            image_width: default_image_width(),
+            image_height: default_image_height(),
             color_interpretation: default_color_interpretation(),
             background_color: default_background_color(),
             background_color_alpha: default_background_color_alpha(),
@@ -219,17 +221,9 @@ impl Processor for ImageRasterizer {
         let boundary = self.gemotry_polygons.find_coordinates_boudary();
 
         // Calculate the width and height of the image based on the boundary and cell size
-        let width = if boundary.right_down.x > boundary.left_up.x {
-            ((boundary.right_down.x - boundary.left_up.x) / self.cell_size_x).ceil() as u32
-        } else {
-            1 // Minimum width of 1 pixel
-        };
+        let width = self.width;
 
-        let height = if boundary.right_down.y > boundary.left_up.y {
-            ((boundary.right_down.y - boundary.left_up.y) / self.cell_size_y).ceil() as u32
-        } else {
-            1 // Minimum height of 1 pixel
-        };
+        let height = self.height;
 
         // Draw the accumulated polygons to an image
         let img = self.gemotry_polygons.draw(width, height, true); // fill_area = true
@@ -241,7 +235,8 @@ impl Processor for ImageRasterizer {
             .join("reearth-flow-generated-images");
 
         if let Err(e) = std::fs::create_dir_all(&cache_dir) {
-            ctx.event_hub.warn_log(None, format!("Failed to create cache directory: {}", e));
+            ctx.event_hub
+                .warn_log(None, format!("Failed to create cache directory: {}", e));
         } else {
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -251,7 +246,8 @@ impl Processor for ImageRasterizer {
 
             // Save the image to the cache directory
             if let Err(e) = img.save(&dest_path) {
-                ctx.event_hub.warn_log(None, format!("Failed to save image: {}", e));
+                ctx.event_hub
+                    .warn_log(None, format!("Failed to save image: {}", e));
             } else {
                 ctx.event_hub.info_log(
                     None,
@@ -263,7 +259,10 @@ impl Processor for ImageRasterizer {
         // Log the completion of the image creation
         ctx.event_hub.info_log(
             None,
-            format!("ImageRasterizer created image with dimensions {}x{}", width, height),
+            format!(
+                "ImageRasterizer created image with dimensions {}x{}",
+                width, height
+            ),
         );
 
         Ok(())
@@ -275,7 +274,9 @@ impl Processor for ImageRasterizer {
 }
 
 // Helper function to extract coordinates from geometry
-fn extract_coordinates_from_geometry(geometry: &reearth_flow_types::Geometry) -> Result<Vec<(f64, f64)>, BoxedError> {
+fn extract_coordinates_from_geometry(
+    geometry: &reearth_flow_types::Geometry,
+) -> Result<Vec<(f64, f64)>, BoxedError> {
     use reearth_flow_types::GeometryValue;
 
     match &geometry.value {
@@ -287,21 +288,23 @@ fn extract_coordinates_from_geometry(geometry: &reearth_flow_types::Geometry) ->
                     // For a polygon, we typically want the exterior ring
                     let exterior = polygon.exterior();
                     Ok(exterior.0.iter().map(|p| (p.x, p.y)).collect())
-                },
+                }
                 _ => {
                     // For other geometry types, return an error indicating it's not supported
                     Err(GeometryProcessorError::ImageRasterizer(
                         "Only Polygon geometry type is supported".to_string(),
-                    ).into())
+                    )
+                    .into())
                 }
             }
-        },
+        }
         GeometryValue::FlowGeometry3D(_) | GeometryValue::CityGmlGeometry(_) => {
             // For 3D geometry types, return an error asking to convert to 2D first
             Err(GeometryProcessorError::ImageRasterizer(
                 "Please convert 3D geometry to 2D first".to_string(),
-            ).into())
-        },
+            )
+            .into())
+        }
     }
 }
 

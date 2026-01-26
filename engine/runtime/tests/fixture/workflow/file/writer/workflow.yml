@@ -1,0 +1,38 @@
+id: 7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22
+name: "ImageRasterizer Demo"
+entryGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+graphs:
+  - id: c6863b71-953b-4d15-af56-396fc93fc617
+    name: entrypoint
+    nodes:
+      - id: a1a91180-ab88-4c1a-aab5-48c242a218ca
+        name: LoadJsonData
+        type: action
+        action: JsonReader        
+        with:
+          dataset: |
+            "file:///home/zw/code/rust_programming/reearth-flow/engine/runtime/tests/fixture/testdata/image_rasterizer/image_rasterizer_input.json"
+
+      - id: fc2dc8d0-fa8b-11f0-97bf-6c02e0440ed6
+        name: ImageRasterizer
+        type: action 
+        action: ImageRasterizer
+
+
+      - id: 90747e8c-fa85-11f0-9328-6c02e0440ed6
+        name: DummyOutput
+        type: action
+        action: NoopSink
+    
+    edges:
+      - id: 839ae39a-fa85-11f0-a827-6c02e0440ed6
+        from: a1a91180-ab88-4c1a-aab5-48c242a218ca
+        to: fc2dc8d0-fa8b-11f0-97bf-6c02e0440ed6
+        fromPort: default 
+        toPort: default
+
+      - id: 13c7ca2c-fa8c-11f0-95ab-6c02e0440ed6
+        from: fc2dc8d0-fa8b-11f0-97bf-6c02e0440ed6
+        to: 90747e8c-fa85-11f0-9328-6c02e0440ed6
+        fromPort: default 
+        toPort: default        
