@@ -10,6 +10,7 @@ import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
+import { computeWorkflowPath } from "@flow/lib/yjs/utils/computeWorkflowPath";
 import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
@@ -19,6 +20,7 @@ export default ({
   nodes,
   edges,
   rawWorkflows,
+  currentWorkflowId,
   isMainWorkflow,
   handleWorkflowUpdate,
   handleNodesAdd,
@@ -29,6 +31,7 @@ export default ({
   nodes: Node[];
   edges: Edge[];
   rawWorkflows: Workflow[];
+  currentWorkflowId: string;
   isMainWorkflow: boolean;
   handleWorkflowUpdate: (
     workflowId: string,
@@ -143,7 +146,7 @@ export default ({
           id: newId,
           position: newPosition,
           selected: true,
-          data: { ...n.data },
+          data: { ...n.data, workflowPath: undefined },
         };
         if (n.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId });
@@ -169,10 +172,13 @@ export default ({
     [calculateOffset],
   );
   const newWorkflowCreation = useCallback(
-    (nodes: Node[], pastedWorkflows: Workflow[]) => {
+    (nodes: Node[], pastedWorkflows: Workflow[], parentPath: string) => {
       const newWorkflows: Workflow[] = [];
 
-      const processSubworkflow = (node: Node): Node => {
+      const processSubworkflow = (
+        node: Node,
+        currentParentPath: string,
+      ): Node => {
         const subworkflowId = generateUUID();
         const originalSubworkflow = pastedWorkflows.find(
           (w) => w.id === node.data.subworkflowId,
@@ -180,19 +186,36 @@ export default ({
 
         if (!originalSubworkflow) return node;
 
+        // Compute the path for nodes inside this subworkflow
+        const subworkflowPath = currentParentPath
+          ? `${currentParentPath}.${subworkflowId}`
+          : subworkflowId;
+
+        // The subworkflow node itself lives in the parent, so its path is currentParentPath
         const newSubWorkflowNode = {
           ...node,
           data: {
             ...node.data,
             subworkflowId,
+            workflowPath: currentParentPath,
           },
         };
 
         const updatedSubworkflowNodes = originalSubworkflow.nodes?.map(
-          (subNode) =>
-            subNode.type === "subworkflow"
-              ? processSubworkflow(subNode)
-              : subNode,
+          (subNode) => {
+            // Recursively process nested subworkflows
+            if (subNode.type === "subworkflow") {
+              return processSubworkflow(subNode, subworkflowPath);
+            }
+            // Update workflowPath for regular nodes inside the subworkflow
+            return {
+              ...subNode,
+              data: {
+                ...subNode.data,
+                workflowPath: subworkflowPath,
+              },
+            };
+          },
         );
 
         const newSubworkflow = {
@@ -206,7 +229,7 @@ export default ({
       };
 
       const processedNewNodes = nodes.map((n) =>
-        n.type === "subworkflow" ? processSubworkflow(n) : n,
+        n.type === "subworkflow" ? processSubworkflow(n, parentPath) : n,
       );
 
       return { newWorkflows, processedNewNodes };
@@ -376,9 +399,13 @@ export default ({
         isCutByShortCut,
       );
       const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
+
+      // Compute the current workflow path for pasted subworkflows
+      const currentPath = computeWorkflowPath(rawWorkflows, currentWorkflowId);
       const { newWorkflows, processedNewNodes } = newWorkflowCreation(
         newNodes,
         pastedWorkflows,
+        currentPath,
       );
 
       // deselect all previously selected nodes
@@ -417,6 +444,8 @@ export default ({
     [
       nodes,
       edges,
+      rawWorkflows,
+      currentWorkflowId,
       isMainWorkflow,
       t,
       copy,

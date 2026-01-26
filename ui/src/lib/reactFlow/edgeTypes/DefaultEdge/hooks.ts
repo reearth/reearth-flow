@@ -63,7 +63,6 @@ export default ({
       debugJobState?.selectedIntermediateData?.find((sid) => sid.edgeId === id),
     [debugJobState?.selectedIntermediateData, id],
   );
-
   const intermediateDataUrl = useMemo(() => {
     if (!api || !debugJobState?.jobId) {
       return undefined;
@@ -71,9 +70,16 @@ export default ({
     if (!currentWorkflowId || currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
       return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
     }
-    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${currentWorkflowId}.${id}.jsonl.zst`;
-  }, [api, debugJobState?.jobId, id, currentWorkflowId]);
 
+    if (sourceNode) {
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${sourceNode.data.workflowPath}.${id}.jsonl.zst`;
+    }
+    if (targetNode) {
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${targetNode.data.workflowPath}.${id}.jsonl.zst`;
+    }
+  }, [api, debugJobState?.jobId, id, currentWorkflowId, sourceNode, targetNode]);
+
+  console.log("INTERMEDIATE DATA URL:", intermediateDataUrl);
   useEffect(() => {
     if (intermediateDataUrl) {
       if (

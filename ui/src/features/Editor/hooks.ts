@@ -204,6 +204,7 @@ export default ({
     nodes,
     edges,
     rawWorkflows,
+    currentWorkflowId,
     isMainWorkflow,
     handleWorkflowUpdate: handleYWorkflowUpdate,
     handleNodesAdd: handleYNodesAdd,
@@ -389,6 +390,8 @@ export default ({
     },
     [handleSpotlightUserDeselect],
   );
+
+  console.log("RAW WORKFLOWS:", rawWorkflows);
 
   return {
     currentWorkflowId,
