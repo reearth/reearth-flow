@@ -1,6 +1,7 @@
 #![allow(unused)]
 use std::collections::HashMap;
 
+use image::ImageBuffer;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -76,6 +77,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
             color_interpretation: params.color_interpretation,
             background_color: params.background_color,
             background_color_alpha: params.background_color_alpha,
+            save_to: params.save_to,
             gemotry_polygons: GemotryPolygons::new(),
         };
         Ok(Box::new(process))
@@ -115,6 +117,11 @@ struct ImageRasterizerParam {
 
     #[serde(default = "default_background_color_alpha")]
     background_color_alpha: f64,
+
+    /// # Save To
+    /// Optional path to save the generated image. If not provided, uses default cache directory.
+    #[serde(default)]
+    save_to: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +130,7 @@ struct ImageRasterizer {
     color_interpretation: ColorInterpretation,
     background_color: [u8; 3],
     background_color_alpha: f64,
+    save_to: Option<String>,
     gemotry_polygons: GemotryPolygons,
 }
 
@@ -142,6 +150,47 @@ fn default_background_color_alpha() -> f64 {
     1.0
 }
 
+// Helper function to save image to a path, either custom or default cache location
+fn save_image_with_path_option(
+    img: &image::RgbImage,
+    custom_path: Option<String>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    match custom_path {
+        Some(path_str) => {
+            // Use the provided custom path
+            let path = std::path::Path::new(&path_str);
+
+            // Create parent directories if they don't exist
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            // Save the image to the custom path
+            img.save(path)?;
+            Ok(path_str)
+        }
+        None => {
+            // Use the default cache directory
+            let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            let cache_dir = std::path::Path::new(&home_dir)
+                .join(".cache")
+                .join("reearth-flow-generated-images");
+
+            std::fs::create_dir_all(&cache_dir)?;
+
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let dest_path = cache_dir.join(format!("image_rasterizer_output_{}.png", timestamp));
+
+            // Save the image to the cache directory
+            img.save(&dest_path)?;
+            Ok(dest_path.to_string_lossy().to_string())
+        }
+    }
+}
+
 impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
@@ -149,6 +198,7 @@ impl Default for ImageRasterizerParam {
             color_interpretation: default_color_interpretation(),
             background_color: default_background_color(),
             background_color_alpha: default_background_color_alpha(),
+            save_to: None,
         }
     }
 }
@@ -193,44 +243,28 @@ impl Processor for ImageRasterizer {
         // Draw the accumulated polygons to an image
         let img = self.gemotry_polygons.draw(width, height, true); // fill_area = true
 
-        // Create the cache directory and save the image
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = std::path::Path::new(&home_dir)
-            .join(".cache")
-            .join("reearth-flow-generated-images");
-
-        if let Err(e) = std::fs::create_dir_all(&cache_dir) {
-            ctx.event_hub
-                .warn_log(None, format!("Failed to create cache directory: {}", e));
-        } else {
-            let timestamp = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let dest_path = cache_dir.join(format!("image_rasterizer_output_{}.png", timestamp));
-
-            // Save the image to the cache directory
-            if let Err(e) = img.save(&dest_path) {
-                ctx.event_hub
-                    .warn_log(None, format!("Failed to save image: {}", e));
-            } else {
+        // Save the image using the helper function with the save_to path from parameters
+        match save_image_with_path_option(&img, self.save_to.clone()) {
+            Ok(saved_path) => {
                 ctx.event_hub.info_log(
                     None,
-                    format!("ImageRasterizer saved image to: {:?}", dest_path),
+                    format!("ImageRasterizer saved image to: {:?}", saved_path),
                 );
 
                 let mut feature = Feature::new();
                 feature.insert(
                     "png_image",
-                    reearth_flow_types::AttributeValue::String(
-                        dest_path.to_str().unwrap().to_string(),
-                    ),
+                    reearth_flow_types::AttributeValue::String(saved_path),
                 );
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     feature,
                     DEFAULT_PORT.clone(),
                 ));
+            }
+            Err(e) => {
+                ctx.event_hub
+                    .warn_log(None, format!("Failed to save image: {}", e));
             }
         }
 
@@ -831,14 +865,13 @@ mod tests {
         use std::io::BufReader;
 
         // Open and read the JSON file
-        let file_path =
-            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/image_rasterizer_input.json";
-        let file = File::open(file_path).expect("Failed to open image_rasterizer_input.json");
+        let file_path = "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input.json";
+        let file = File::open(file_path).expect(format!("Failed to open {}", file_path).as_str());
         let reader = BufReader::new(file);
 
         // Parse the JSON
         let json_value: serde_json::Value = serde_json::from_reader(reader)
-            .expect("Failed to parse JSON from image_rasterizer_input.json");
+            .expect(format!("Failed to parse {}", file_path).as_str());
 
         println!("Successfully read and parsed JSON from: {}", file_path);
 

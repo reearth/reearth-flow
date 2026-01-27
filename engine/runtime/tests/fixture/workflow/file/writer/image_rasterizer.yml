@@ -18,7 +18,6 @@ graphs:
         type: action 
         action: ImageRasterizer
 
-
       - id: 90747e8c-fa85-11f0-9328-6c02e0440ed6
         name: DummyOutput
         type: action
