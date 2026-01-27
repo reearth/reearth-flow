@@ -182,6 +182,7 @@ export default ({
 
         const newSubWorkflowNode = {
           ...node,
+          id: subworkflowId,
           data: {
             ...node.data,
             subworkflowId,
