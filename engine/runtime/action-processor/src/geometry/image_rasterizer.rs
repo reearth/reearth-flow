@@ -8,6 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::Feature;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -141,20 +142,6 @@ fn default_background_color_alpha() -> f64 {
     1.0
 }
 
-// // Helper function to calculate height based on boundary ratio relative to width
-// fn calculate_height_from_boundary_ratio(boundary: &CoordinatesBoudnary, width: u32) -> u32 {
-//     let right_most = boundary.right_up.x.max(boundary.right_down.x);
-//     let left_most = boundary.left_up.x.min(boundary.left_down.x);
-//     let original_width = (right_most - left_most).abs();
-//     let ratio = width as f64 / original_width;
-
-//     let up_most = boundary.left_up.y.max(boundary.left_down.y);
-//     let down_most = boundary.left_up.y.min(boundary.left_down.y);
-//     let original_height = (up_most - down_most).abs();
-
-//     (original_height * ratio) as u32
-// }
-
 impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
@@ -187,8 +174,6 @@ impl Processor for ImageRasterizer {
             }
         }
 
-        // Forward the feature to the output port
-        fw.send(ctx);
         Ok(())
     }
 
@@ -233,6 +218,19 @@ impl Processor for ImageRasterizer {
                     None,
                     format!("ImageRasterizer saved image to: {:?}", dest_path),
                 );
+
+                let mut feature = Feature::new();
+                feature.insert(
+                    "png_image",
+                    reearth_flow_types::AttributeValue::String(
+                        dest_path.to_str().unwrap().to_string(),
+                    ),
+                );
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    feature,
+                    DEFAULT_PORT.clone(),
+                ));
             }
         }
 
