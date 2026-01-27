@@ -124,13 +124,16 @@ fn parse_tree_reader<R: BufRead>(
                 Ok(())
             }
             b"app:appearanceMember" => {
-                let mut app: models::appearance::AppearanceProperty = Default::default();
-                match app.parse(st) {
+                let mut appearance_prop: models::appearance::AppearanceProperty =
+                    Default::default();
+                match appearance_prop.parse(st) {
                     Ok(()) => {
-                        let models::appearance::AppearanceProperty::Appearance(app) = app else {
+                        let models::appearance::AppearanceProperty::Appearance(appearance) =
+                            appearance_prop
+                        else {
                             unreachable!();
                         };
-                        global_appearances.update(app);
+                        global_appearances.update(appearance);
                     }
                     Err(e) => {
                         // Log warning for appearance parsing errors (e.g., invalid UV coordinates)
