@@ -331,8 +331,7 @@ fn decompress_glbs(flow_extracted_dir: &Path) {
         })
         .collect();
 
-    let mut cmd = std::process::Command::new("npx");
-    cmd.arg("glb-decompress");
+    let mut cmd = std::process::Command::new("glb-decompress");
     for glb_file in &glb_files {
         cmd.arg(glb_file.as_os_str());
     }

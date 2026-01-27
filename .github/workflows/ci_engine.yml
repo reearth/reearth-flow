@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install glb-decompress
-        run: npm install -g github:asrcpq/glb_decompress_draco#729e2369de15521da9048c2596e149f93ffddfc7
+        run: npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
