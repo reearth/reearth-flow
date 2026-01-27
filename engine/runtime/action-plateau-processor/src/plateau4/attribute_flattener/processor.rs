@@ -91,6 +91,12 @@ pub(super) struct AttributeFlattener {
     // storing processed features' citygml attributes for ancestor lookup
     // does not include pending features in children_buffer
     gmlid_to_citygml_attributes: HashMap<String, AttributeMap>,
+    // storing processed features' citygml attributes for subfeature auto-inheriting toplevel attributes
+    // corresponding to two-round processing in FME:
+    // 1. PythonCaller produces toplevel attributes
+    // 2. The toplevel attributes are copied to all its subfeatures
+    // 3. These subfeatures are then processed by PythonCaller2 without toplevel as ancestor
+    gmlid_to_subfeature_inherited: HashMap<String, AttributeMap>,
     // blocking ancestor gml_id -> children features
     children_buffer: HashMap<String, Vec<Feature>>,
 }
@@ -195,6 +201,27 @@ impl AttributeFlattener {
         AttributeMap::new()
     }
 
+    // LOD4 subfeatures inherit top-level ancestor's extracted attributes
+    // They also do not have toplevel ancestor in their ancestors list (popped here)
+    fn inherit_lod4_attributes(&self, feature: &mut Feature, ancestors: &mut Vec<AttributeValue>) {
+        let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
+        if !is_lod4 {
+            return;
+        }
+
+        let Some(AttributeValue::Map(toplevel_ancestor)) = ancestors.pop() else { return };
+        let Some(AttributeValue::String(toplevel_gml_id)) = toplevel_ancestor.get("gml:id") else { return };
+        let Some(toplevel_attrs) = self.gmlid_to_subfeature_inherited.get(toplevel_gml_id) else { return };
+
+        // Inherit attributes that the subfeature doesn't have
+        for (key, value) in toplevel_attrs.iter() {
+            let attr_key = Attribute::new(key.clone());
+            if !feature.attributes.contains_key(&attr_key) {
+                feature.attributes.insert(attr_key, value.clone());
+            }
+        }
+    }
+
     fn insert_common_attributes(
         feature: &Feature,
         citygml_attributes: &mut HashMap<String, AttributeValue>,
@@ -288,21 +315,11 @@ impl AttributeFlattener {
         };
         strip_parent_info(&mut citygml_attributes);
 
-        // For LOD4 subfeatures, inherit parent attributes that child doesn't have
-        if let Some(AttributeValue::Number(lod)) = feature.get("lod") {
-            if lod.as_i64() == Some(4) {
-                if let Some(AttributeValue::Map(first_ancestor)) = ancestors.first() {
-                    for (key, value) in first_ancestor.iter() {
-                        if !citygml_attributes.contains_key(key) {
-                            citygml_attributes.insert(key.clone(), value.clone());
-                        }
-                    }
-                }
-            }
-        }
+        // For LOD4 subfeatures, inherit top-level ancestor's extracted attributes
+        self.inherit_lod4_attributes(feature, &mut ancestors);
 
         if !ancestors.is_empty() {
-            citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors.clone()));
+            citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors.iter().rev().cloned().collect()));
         }
 
         // Extract bldg:address from core:Address nested structure if not present
@@ -359,6 +376,18 @@ impl AttributeFlattener {
             Attribute::new("attributes".to_string()),
             AttributeValue::String(citygml_attributes_json),
         );
+
+        // Cache all extracted/flattened attributes for LOD4 subfeature inheritance
+        // Convert feature.attributes (HashMap<Attribute, AttributeValue>) to AttributeMap (HashMap<String, AttributeValue>)
+        if let Some(feature_id) = feature.feature_id() {
+            let flattened_attrs: AttributeMap = feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect();
+            self.gmlid_to_subfeature_inherited
+                .insert(feature_id, flattened_attrs);
+        }
     }
 
     fn get_parent_id(map: &AttributeMap) -> Option<String> {
