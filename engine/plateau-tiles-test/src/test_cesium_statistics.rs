@@ -159,7 +159,8 @@ fn verify_monotonic_geometric_error(
             ));
         }
 
-        if level.geometric_error > prev_error {
+        // 1mm tolerance, FME is observed to produce slight non-monotonic errors
+        if level.geometric_error > prev_error + 1e-3 {
             return Err(format!(
                 "{} ident '{}': geometric error is not monotonically decreasing at level {} \
                  (previous: {}, current: {})",
