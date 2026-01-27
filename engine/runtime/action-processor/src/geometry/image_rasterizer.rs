@@ -71,7 +71,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
 
         let process = ImageRasterizer {
             width: params.image_width,
-            height: params.image_height,
+
             color_interpretation: params.color_interpretation,
             background_color: params.background_color,
             background_color_alpha: params.background_color_alpha,
@@ -102,10 +102,6 @@ struct ImageRasterizerParam {
     #[serde(default = "default_image_width")]
     image_width: u32,
 
-    /// The height of image
-    #[serde(default = "default_image_height")]
-    image_height: u32,
-
     /// # Color Interpretation
     /// How to interpret and store color information
     #[serde(default = "default_color_interpretation")]
@@ -123,7 +119,6 @@ struct ImageRasterizerParam {
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    height: u32,
     color_interpretation: ColorInterpretation,
     background_color: [u8; 3],
     background_color_alpha: f64,
@@ -132,10 +127,6 @@ struct ImageRasterizer {
 
 fn default_image_width() -> u32 {
     1000
-}
-
-fn default_image_height() -> u32 {
-    800
 }
 
 fn default_color_interpretation() -> ColorInterpretation {
@@ -150,11 +141,24 @@ fn default_background_color_alpha() -> f64 {
     1.0
 }
 
+// // Helper function to calculate height based on boundary ratio relative to width
+// fn calculate_height_from_boundary_ratio(boundary: &CoordinatesBoudnary, width: u32) -> u32 {
+//     let right_most = boundary.right_up.x.max(boundary.right_down.x);
+//     let left_most = boundary.left_up.x.min(boundary.left_down.x);
+//     let original_width = (right_most - left_most).abs();
+//     let ratio = width as f64 / original_width;
+
+//     let up_most = boundary.left_up.y.max(boundary.left_down.y);
+//     let down_most = boundary.left_up.y.min(boundary.left_down.y);
+//     let original_height = (up_most - down_most).abs();
+
+//     (original_height * ratio) as u32
+// }
+
 impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
             image_width: default_image_width(),
-            image_height: default_image_height(),
             color_interpretation: default_color_interpretation(),
             background_color: default_background_color(),
             background_color_alpha: default_background_color_alpha(),
@@ -198,7 +202,8 @@ impl Processor for ImageRasterizer {
         // Calculate the width and height of the image based on the boundary and cell size
         let width = self.width;
 
-        let height = self.height;
+        // derive the height according to the ratio of boundary with relative to width
+        let height = boundary.calculate_height_from_boundary_ratio(width);
 
         // Draw the accumulated polygons to an image
         let img = self.gemotry_polygons.draw(width, height, true); // fill_area = true
@@ -318,6 +323,16 @@ pub struct CoordinatesBoudnary {
     pub left_down: Coordinate,
     pub right_up: Coordinate,
     pub right_down: Coordinate,
+}
+
+impl CoordinatesBoudnary {
+    fn calculate_height_from_boundary_ratio(&self, width: u32) -> u32 {
+        let original_width = (self.left_up.x - self.right_up.x).abs();
+        let original_height = (self.left_up.y - self.left_down.y).abs();
+        let ratio = width as f64 / original_width;
+
+        (original_height * ratio) as u32
+    }
 }
 
 // Define the GeometryPixels structure to hold the mapped data
@@ -610,6 +625,13 @@ impl GemotryPolygons {
         // Create a new image with white background
         let mut img = image::RgbImage::new(width, height);
 
+        // Fill the image with white background
+        for x in 0..width {
+            for y in 0..height {
+                img.put_pixel(x, y, image::Rgb([255, 255, 255])); // White background
+            }
+        }
+
         // Find the boundary of all polygons
         let geo_boundary = self.find_coordinates_boudary();
 
@@ -825,9 +847,11 @@ mod tests {
         // Convert JSON to GemotryPolygons
         let gemotry_polygons = json_to_gemotry_polygons(&json_value)
             .expect("Failed to convert JSON to GemotryPolygons");
-
+        let boundary = gemotry_polygons.find_coordinates_boudary();
+        let width = 1000;
+        let height = boundary.calculate_height_from_boundary_ratio(width);
         // Draw the polygons to a PNG image
-        let img = gemotry_polygons.draw(1000, 1000, true); // width=1000, height=1000, fill_area=true
+        let img = gemotry_polygons.draw(width, height, true);
 
         // Create the cache directory and save the image
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
