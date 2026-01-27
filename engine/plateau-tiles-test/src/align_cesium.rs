@@ -215,7 +215,8 @@ impl GeometryCollector {
                         );
                     }
                 } else {
-                    self.feature_attributes.insert(key.clone(), Value::Object(props.clone()));
+                    self.feature_attributes
+                        .insert(key.clone(), Value::Object(props.clone()));
                 }
 
                 (key, props)

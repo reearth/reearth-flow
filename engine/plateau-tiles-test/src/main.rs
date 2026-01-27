@@ -116,6 +116,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/07-brid-tun-cons/brid",
     "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
     "data-convert/plateau4/07-brid-tun-cons/cons",
+    "data-convert/plateau4/08-ubld/ubld",
     "data-convert/plateau4/10-wtr/lod1",
 ];
 

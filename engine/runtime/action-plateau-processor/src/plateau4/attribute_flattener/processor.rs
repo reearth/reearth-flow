@@ -209,9 +209,15 @@ impl AttributeFlattener {
             return;
         }
 
-        let Some(AttributeValue::Map(toplevel_ancestor)) = ancestors.pop() else { return };
-        let Some(AttributeValue::String(toplevel_gml_id)) = toplevel_ancestor.get("gml:id") else { return };
-        let Some(toplevel_attrs) = self.gmlid_to_subfeature_inherited.get(toplevel_gml_id) else { return };
+        let Some(AttributeValue::Map(toplevel_ancestor)) = ancestors.pop() else {
+            return;
+        };
+        let Some(AttributeValue::String(toplevel_gml_id)) = toplevel_ancestor.get("gml:id") else {
+            return;
+        };
+        let Some(toplevel_attrs) = self.gmlid_to_subfeature_inherited.get(toplevel_gml_id) else {
+            return;
+        };
 
         // Inherit attributes that the subfeature doesn't have
         for (key, value) in toplevel_attrs.iter() {
@@ -319,7 +325,10 @@ impl AttributeFlattener {
         self.inherit_lod4_attributes(feature, &mut ancestors);
 
         if !ancestors.is_empty() {
-            citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors.iter().rev().cloned().collect()));
+            citygml_attributes.insert(
+                "ancestors".to_string(),
+                AttributeValue::Array(ancestors.iter().rev().cloned().collect()),
+            );
         }
 
         // Extract bldg:address from core:Address nested structure if not present
