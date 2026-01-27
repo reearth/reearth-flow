@@ -365,6 +365,29 @@ impl CoordinatesBoudnary {
 
         (original_height * ratio) as u32
     }
+
+    // Creates a mapping function that can be reused to transform coordinates from this boundary to a PNG boundary
+    pub fn create_mapping_function_to_png(&self, png_width: u32, png_height: u32) -> impl Fn((f64, f64)) -> (f64, f64) {
+        // Define the PNG boundary with (0,0) at top-left
+        let png_boundary = CoordinatesBoudnary {
+            left_up: Coordinate { x: 0.0, y: 0.0 },
+            left_down: Coordinate {
+                x: 0.0,
+                y: png_height as f64,
+            },
+            right_up: Coordinate {
+                x: png_width as f64,
+                y: 0.0,
+            },
+            right_down: Coordinate {
+                x: png_width as f64,
+                y: png_height as f64,
+            },
+        };
+
+        // Create the coordinate mapping function
+        Coordinate::create_mapping_function(self.clone(), png_boundary)
+    }
 }
 
 // Define the GeometryPixels structure to hold the mapped data
@@ -382,7 +405,8 @@ pub struct ImagePixel {
 
 #[derive(Debug, Clone)]
 pub struct GeometryPolygon {
-    pub coordinates: Vec<(f64, f64)>, // List of (x, y) coordinates forming the polygon
+    pub exterior_coordinates: Vec<(f64, f64)>, // List of (x, y) coordinates forming the exterior ring
+    pub interior_coordinates: Vec<Vec<(f64, f64)>>, // List of interior rings (holes)
     pub color_r: u8,
     pub color_g: u8,
     pub color_b: u8,
@@ -416,16 +440,28 @@ impl GeometryPolygon {
         let coordinate_mapper = Coordinate::create_mapping_function(geo_boundary, png_boundary);
 
         move |polygon: &GeometryPolygon| {
-            // Apply the coordinate mapping function to each coordinate in the polygon
-            let mapped_coordinates: Vec<(f64, f64)> = polygon
-                .coordinates
+            // Apply the coordinate mapping function to each coordinate in the exterior ring
+            let mapped_exterior_coordinates: Vec<(f64, f64)> = polygon
+                .exterior_coordinates
                 .iter()
                 .map(|&(x, y)| coordinate_mapper((x, y)))
                 .collect();
 
+            // Apply the coordinate mapping function to each coordinate in the interior rings
+            let mapped_interior_coordinates: Vec<Vec<(f64, f64)>> = polygon
+                .interior_coordinates
+                .iter()
+                .map(|ring| {
+                    ring.iter()
+                        .map(|&(x, y)| coordinate_mapper((x, y)))
+                        .collect()
+                })
+                .collect();
+
             // Return a new polygon with the mapped coordinates but the same color
             GeometryPolygon {
-                coordinates: mapped_coordinates,
+                exterior_coordinates: mapped_exterior_coordinates,
+                interior_coordinates: mapped_interior_coordinates,
                 color_r: polygon.color_r,
                 color_g: polygon.color_g,
                 color_b: polygon.color_b,
@@ -444,10 +480,10 @@ impl GeometryPolygon {
         // Convert the mapped polygon's coordinates to image pixels
         let mut pixels = Vec::new();
 
-        // Add the border pixels (outline of the polygon)
-        for (i, current) in mapped_polygon.coordinates.iter().enumerate() {
-            let next_index = (i + 1) % mapped_polygon.coordinates.len();
-            let next = &mapped_polygon.coordinates[next_index];
+        // Add the border pixels (outline of the exterior ring)
+        for (i, current) in mapped_polygon.exterior_coordinates.iter().enumerate() {
+            let next_index = (i + 1) % mapped_polygon.exterior_coordinates.len();
+            let next = &mapped_polygon.exterior_coordinates[next_index];
 
             // Draw line between consecutive points
             let line_pixels = self.draw_line(
@@ -462,7 +498,27 @@ impl GeometryPolygon {
             pixels.extend(line_pixels);
         }
 
-        // If fill_area is true, fill the interior of the polygon
+        // Add the border pixels for each interior ring (holes)
+        for interior_ring in &mapped_polygon.interior_coordinates {
+            for (i, current) in interior_ring.iter().enumerate() {
+                let next_index = (i + 1) % interior_ring.len();
+                let next = &interior_ring[next_index];
+
+                // Draw line between consecutive points
+                let line_pixels = self.draw_line(
+                    current.0.round() as u32,
+                    current.1.round() as u32,
+                    next.0.round() as u32,
+                    next.1.round() as u32,
+                    mapped_polygon.color_r,
+                    mapped_polygon.color_g,
+                    mapped_polygon.color_b,
+                );
+                pixels.extend(line_pixels);
+            }
+        }
+
+        // If fill_area is true, fill the interior of the polygon (including holes)
         if fill_area {
             let fill_pixels = self.fill_polygon_interior(&mapped_polygon);
             pixels.extend(fill_pixels);
@@ -522,19 +578,19 @@ impl GeometryPolygon {
 
     // Helper function to fill the interior of a polygon using scanline algorithm
     fn fill_polygon_interior(&self, polygon: &GeometryPolygon) -> Vec<ImagePixel> {
-        if polygon.coordinates.len() < 3 {
+        if polygon.exterior_coordinates.len() < 3 {
             return Vec::new(); // Not enough points to form a polygon
         }
 
         let mut pixels = Vec::new();
 
-        // Find the bounding box of the polygon
+        // Find the bounding box of the polygon (considering exterior ring only)
         let mut min_y = u32::MAX;
         let mut max_y = 0u32;
         let mut min_x = u32::MAX;
         let mut max_x = 0u32;
 
-        for &(x, y) in &polygon.coordinates {
+        for &(x, y) in &polygon.exterior_coordinates {
             let x_int = x.round() as u32;
             let y_int = y.round() as u32;
 
@@ -556,9 +612,10 @@ impl GeometryPolygon {
         for y in min_y..=max_y {
             let mut intersections = Vec::new();
 
-            for i in 0..polygon.coordinates.len() {
-                let p1 = &polygon.coordinates[i];
-                let p2 = &polygon.coordinates[(i + 1) % polygon.coordinates.len()];
+            // Process exterior ring
+            for i in 0..polygon.exterior_coordinates.len() {
+                let p1 = &polygon.exterior_coordinates[i];
+                let p2 = &polygon.exterior_coordinates[(i + 1) % polygon.exterior_coordinates.len()];
 
                 let y1 = p1.1.round() as u32;
                 let y2 = p2.1.round() as u32;
@@ -576,22 +633,68 @@ impl GeometryPolygon {
                 }
             }
 
-            // Sort intersections and fill between pairs
+            // Process interior rings (holes)
+            for interior_ring in &polygon.interior_coordinates {
+                for i in 0..interior_ring.len() {
+                    let p1 = &interior_ring[i];
+                    let p2 = &interior_ring[(i + 1) % interior_ring.len()];
+
+                    let y1 = p1.1.round() as u32;
+                    let y2 = p2.1.round() as u32;
+
+                    // Check if the edge crosses the current scanline
+                    if (y1 <= y && y2 > y) || (y2 <= y && y1 > y) {
+                        if y2 != y1 {
+                            let x1 = p1.0.round() as f64;
+                            let x2 = p2.0.round() as f64;
+
+                            // Calculate intersection point
+                            let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
+                            intersections.push(x.round() as u32);
+                        }
+                    }
+                }
+            }
+
+            // Sort intersections
             intersections.sort();
 
-            for i in (0..intersections.len()).step_by(2) {
-                if i + 1 < intersections.len() {
-                    let start_x = intersections[i];
-                    let end_x = intersections[i + 1];
+            // Apply even-odd rule to determine which segments to fill
+            // We start with the assumption that we're outside the polygon
+            // Each intersection toggles whether we're inside or outside
+            let mut inside_exterior = false;
+            let mut last_x = 0;
 
-                    for x in start_x..=end_x {
-                        pixels.push(ImagePixel {
-                            x,
-                            y,
-                            r: polygon.color_r,
-                            g: polygon.color_g,
-                            b: polygon.color_b,
-                        });
+            for &current_x in &intersections {
+                // Toggle the inside/outside state
+                inside_exterior = !inside_exterior;
+
+                // If we're now inside the exterior polygon but not inside a hole, fill the segment
+                if inside_exterior {
+                    last_x = current_x;
+                } else {
+                    // We're transitioning from inside to outside
+                    // Fill from last_x to current_x if we're inside the exterior polygon
+                    for x in last_x..=current_x {
+                        // Count how many interior (hole) polygons this point is inside
+                        let mut inside_hole_count = 0;
+
+                        for interior_ring in &polygon.interior_coordinates {
+                            if point_in_polygon(x as f64, y as f64, interior_ring) {
+                                inside_hole_count += 1;
+                            }
+                        }
+
+                        // Only fill if we're inside the exterior polygon AND inside an even number of holes (or no holes)
+                        if inside_hole_count % 2 == 0 {
+                            pixels.push(ImagePixel {
+                                x,
+                                y,
+                                r: polygon.color_r,
+                                g: polygon.color_g,
+                                b: polygon.color_b,
+                            });
+                        }
                     }
                 }
             }
@@ -599,6 +702,33 @@ impl GeometryPolygon {
 
         pixels
     }
+}
+
+// Helper function to determine if a point is inside a polygon using ray casting algorithm
+fn point_in_polygon(point_x: f64, point_y: f64, polygon: &Vec<(f64, f64)>) -> bool {
+    if polygon.len() < 3 {
+        return false; // Not enough points to form a polygon
+    }
+
+    let mut inside = false;
+
+    for i in 0..polygon.len() {
+        let p1 = &polygon[i];
+        let p2 = &polygon[(i + 1) % polygon.len()];
+
+        // Check if the point is on the same horizontal level as the edge
+        if ((p1.1 > point_y) != (p2.1 > point_y)) {
+            // Calculate the x-coordinate where the horizontal ray intersects the edge
+            let x_intersection = (p2.0 - p1.0) * (point_y - p1.1) / (p2.1 - p1.1) + p1.0;
+
+            // If the intersection is to the right of the point, we have crossed an edge
+            if point_x < x_intersection {
+                inside = !inside;
+            }
+        }
+    }
+
+    inside
 }
 
 #[derive(Debug, Clone)]
@@ -635,11 +765,22 @@ impl GemotryPolygons {
 
         // Iterate through all polygons and their coordinates to find the min/max values
         for polygon in &self.polygons {
-            for (x, y) in &polygon.coordinates {
+            // Check exterior coordinates
+            for (x, y) in &polygon.exterior_coordinates {
                 min_x = min_x.min(*x);
                 max_x = max_x.max(*x);
                 min_y = min_y.min(*y);
                 max_y = max_y.max(*y);
+            }
+
+            // Also check interior coordinates (holes)
+            for ring in &polygon.interior_coordinates {
+                for (x, y) in ring {
+                    min_x = min_x.min(*x);
+                    max_x = max_x.max(*x);
+                    min_y = min_y.min(*y);
+                    max_y = max_y.max(*y);
+                }
             }
         }
 
@@ -709,28 +850,52 @@ pub fn extract_geometry_polygon_from_feature(feature: &Value) -> Option<Geometry
     // Process the geometry
     if let Some(geo) = feature.get("json_geometry") {
         if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
-            // The coordinates structure is [[[x, y], [x, y], ...]] - array of rings
-            // The structure [[[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
-            //  1. Outermost array: Contains multiple "rings" (usually just one outer ring, but can include inner rings for holes)
-            //  2. Middle array: Represents a single "ring" - a sequence of connected coordinate pairs forming a closed shape
-            //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along the ring
-            for ring_array in coords {
-                if let Some(ring_points) = ring_array.as_array() {
-                    let mut coordinates = Vec::new();
+            // The coordinates structure is [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] - array of rings
+            // The structure [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
+            //  1. Outermost array: Contains multiple "rings" (first is outer ring, subsequent ones are inner rings/holes)
+            //  2. Middle arrays: Represent individual "rings" - sequences of connected coordinate pairs forming closed shapes
+            //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along each ring
+            if !coords.is_empty() {
+                // First ring is the exterior (outer boundary), subsequent rings are interiors (holes)
+                if let Some(exterior_ring) = coords[0].as_array() {
+                    let mut exterior_coordinates = Vec::new();
 
-                    for point in ring_points {
+                    for point in exterior_ring {
                         if let Some(xy) = point.as_array() {
                             if xy.len() >= 2 {
                                 let x = xy[0].as_f64().unwrap_or(0.0);
                                 let y = xy[1].as_f64().unwrap_or(0.0);
-                                coordinates.push((x, y));
+                                exterior_coordinates.push((x, y));
                             }
                         }
                     }
 
-                    // Create a polygon with the collected coordinates and color
+                    // Collect interior rings (holes) if they exist
+                    let mut interior_rings = Vec::new();
+                    for i in 1..coords.len() {
+                        if let Some(interior_ring) = coords[i].as_array() {
+                            let mut interior_coords = Vec::new();
+
+                            for point in interior_ring {
+                                if let Some(xy) = point.as_array() {
+                                    if xy.len() >= 2 {
+                                        let x = xy[0].as_f64().unwrap_or(0.0);
+                                        let y = xy[1].as_f64().unwrap_or(0.0);
+                                        interior_coords.push((x, y));
+                                    }
+                                }
+                            }
+
+                            if !interior_coords.is_empty() {
+                                interior_rings.push(interior_coords);
+                            }
+                        }
+                    }
+
+                    // Create a polygon with the exterior and interior coordinates and color
                     let polygon = GeometryPolygon {
-                        coordinates,
+                        exterior_coordinates,
+                        interior_coordinates: interior_rings,
                         color_r: r,
                         color_g: g,
                         color_b: b,
@@ -831,7 +996,7 @@ mod tests {
             println!(
                 "  Polygon {}: {} points, color ({}, {}, {})",
                 i,
-                polygon.coordinates.len(),
+                polygon.exterior_coordinates.len(),
                 polygon.color_r,
                 polygon.color_g,
                 polygon.color_b
