@@ -375,6 +375,21 @@ impl AttributeFlattener {
         // Convert GYear string fields to numbers in citygml_attributes before serialization
         let citygml_attributes = convert_gyear_fields(citygml_attributes);
 
+        // Cache attributes only for top-level + LOD4 features (for LOD4 subfeature inheritance)
+        let is_toplevel = !citygml_attributes.contains_key("parentId");
+        let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
+        if let Some(feature_id) = feature.feature_id() {
+            if is_toplevel || is_lod4 {
+                let flattened_attrs: AttributeMap = feature
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect();
+                self.gmlid_to_subfeature_inherited
+                    .insert(feature_id, flattened_attrs);
+            }
+        }
+
         // save the whole `citygml_attributes` values as `attributes`
         let citygml_attributes_json = serde_json::to_string(&serde_json::Value::from(
             AttributeValue::Map(citygml_attributes),
@@ -385,18 +400,6 @@ impl AttributeFlattener {
             Attribute::new("attributes".to_string()),
             AttributeValue::String(citygml_attributes_json),
         );
-
-        // Cache all extracted/flattened attributes for LOD4 subfeature inheritance
-        // Convert feature.attributes (HashMap<Attribute, AttributeValue>) to AttributeMap (HashMap<String, AttributeValue>)
-        if let Some(feature_id) = feature.feature_id() {
-            let flattened_attrs: AttributeMap = feature
-                .attributes
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone()))
-                .collect();
-            self.gmlid_to_subfeature_inherited
-                .insert(feature_id, flattened_attrs);
-        }
     }
 
     fn get_parent_id(map: &AttributeMap) -> Option<String> {
