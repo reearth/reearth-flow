@@ -206,7 +206,7 @@ impl Processor for ImageRasterizer {
         // 3. each processed feature should get a GeometryPolygon, accumulate it in GemotryPolygons
         let feature = &ctx.feature;
 
-        if let Some(polygon) = extract_geometry_polygon_from_feature(&feature) {
+        if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
             // Accumulate the polygon in the collection
             self.gemotry_polygons.add_polygon(polygon);
         }
@@ -420,9 +420,7 @@ impl GeometryPolygon {
                 current.1.round() as u32,
                 next.0.round() as u32,
                 next.1.round() as u32,
-                mapped_polygon.color_r,
-                mapped_polygon.color_g,
-                mapped_polygon.color_b,
+                (mapped_polygon.color_r, mapped_polygon.color_g, mapped_polygon.color_b),
             );
             pixels.extend(line_pixels);
         }
@@ -439,9 +437,7 @@ impl GeometryPolygon {
                     current.1.round() as u32,
                     next.0.round() as u32,
                     next.1.round() as u32,
-                    mapped_polygon.color_r,
-                    mapped_polygon.color_g,
-                    mapped_polygon.color_b,
+                    (mapped_polygon.color_r, mapped_polygon.color_g, mapped_polygon.color_b),
                 );
                 pixels.extend(line_pixels);
             }
@@ -463,9 +459,7 @@ impl GeometryPolygon {
         y0: u32,
         x1: u32,
         y1: u32,
-        r: u8,
-        g: u8,
-        b: u8,
+        color: (u8, u8, u8), // (r, g, b) tuple to reduce argument count
     ) -> Vec<ImagePixel> {
         let mut pixels = Vec::new();
 
@@ -482,9 +476,9 @@ impl GeometryPolygon {
             pixels.push(ImagePixel {
                 x: x as u32,
                 y: y as u32,
-                r,
-                g,
-                b,
+                r: color.0,
+                g: color.1,
+                b: color.2,
             });
 
             if x == x1 as i32 && y == y1 as i32 {
@@ -551,15 +545,13 @@ impl GeometryPolygon {
                 let y2 = p2.1.round() as u32;
 
                 // Check if the edge crosses the current scanline
-                if (y1 <= y && y2 > y) || (y2 <= y && y1 > y) {
-                    if y2 != y1 {
-                        let x1 = p1.0.round() as f64;
-                        let x2 = p2.0.round() as f64;
+                if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) && y2 != y1 {
+                    let x1 = p1.0;
+                    let x2 = p2.0;
 
-                        // Calculate intersection point
-                        let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
-                        intersections.push(x.round() as u32);
-                    }
+                    // Calculate intersection point
+                    let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
+                    intersections.push(x.round() as u32);
                 }
             }
 
@@ -573,16 +565,13 @@ impl GeometryPolygon {
                     let y2 = p2.1.round() as u32;
 
                     // Check if the edge crosses the current scanline
-                    if (y1 <= y && y2 > y) || (y2 <= y && y1 > y) {
-                        if y2 != y1 {
-                            let x1 = p1.0.round() as f64;
-                            let x2 = p2.0.round() as f64;
+                    if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) && y2 != y1 {
+                        let x1 = p1.0.round();
+                        let x2 = p2.0.round();
 
-                            // Calculate intersection point
-                            let x =
-                                x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
-                            intersections.push(x.round() as u32);
-                        }
+                        // Calculate intersection point
+                        let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
+                        intersections.push(x.round() as u32);
                     }
                 }
             }
@@ -636,7 +625,7 @@ impl GeometryPolygon {
 }
 
 // Helper function to determine if a point is inside a polygon using ray casting algorithm
-fn point_in_polygon(point_x: f64, point_y: f64, polygon: &Vec<(f64, f64)>) -> bool {
+fn point_in_polygon(point_x: f64, point_y: f64, polygon: &[(f64, f64)]) -> bool {
     if polygon.len() < 3 {
         return false; // Not enough points to form a polygon
     }
@@ -816,8 +805,8 @@ pub fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<Geomet
 
                     // Collect interior rings (holes) if they exist
                     let mut interior_rings = Vec::new();
-                    for i in 1..coords.len() {
-                        if let Some(interior_ring) = coords[i].as_array() {
+                    for coord in coords.iter().skip(1) {
+                        if let Some(interior_ring) = coord.as_array() {
                             let mut interior_coords = Vec::new();
 
                             for point in interior_ring {
@@ -856,7 +845,7 @@ pub fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<Geomet
     if let Some(coords) = extract_coordinates_from_feature_geometry(feature) {
         if !coords.is_empty() {
             // First ring is the exterior (outer boundary), subsequent rings are interiors (holes)
-            if let Some(exterior_ring) = coords.get(0) {
+            if let Some(exterior_ring) = coords.first() {
                 let mut exterior_coordinates = Vec::new();
 
                 for &(x, y) in exterior_ring {
@@ -891,7 +880,7 @@ pub fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<Geomet
         }
     }
 
-    return None;
+    None
 }
 
 // Helper function to extract coordinates from the feature's geometry field
@@ -908,16 +897,14 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
                         let exterior: Vec<(f64, f64)> = polygon
                             .exterior()
                             .iter()
-                            .map(|coord| (coord.x.into(), coord.y.into()))
+                            .map(|coord| (coord.x, coord.y))
                             .collect();
                         all_rings.push(exterior);
 
                         // Add interior rings (holes)
                         for interior in polygon.interiors() {
-                            let interior_ring: Vec<(f64, f64)> = interior
-                                .iter()
-                                .map(|coord| (coord.x.into(), coord.y.into()))
-                                .collect();
+                            let interior_ring: Vec<(f64, f64)> =
+                                interior.iter().map(|coord| (coord.x, coord.y)).collect();
                             all_rings.push(interior_ring);
                         }
                     }
@@ -931,16 +918,14 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
                     let exterior: Vec<(f64, f64)> = poly
                         .exterior()
                         .iter()
-                        .map(|coord| (coord.x.into(), coord.y.into()))
+                        .map(|coord| (coord.x, coord.y))
                         .collect();
                     all_rings.push(exterior);
 
                     // Add interior rings (holes)
                     for interior in poly.interiors() {
-                        let interior_ring: Vec<(f64, f64)> = interior
-                            .iter()
-                            .map(|coord| (coord.x.into(), coord.y.into()))
-                            .collect();
+                        let interior_ring: Vec<(f64, f64)> =
+                            interior.iter().map(|coord| (coord.x, coord.y)).collect();
                         all_rings.push(interior_ring);
                     }
 
