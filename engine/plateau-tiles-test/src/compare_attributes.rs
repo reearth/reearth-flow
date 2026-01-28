@@ -228,8 +228,10 @@ impl AttributeComparer {
                 }
             }
             // let NULL match empty string due to the limitation of 3d-tiles-tools upgrade
-            if v1.as_str().unwrap_or("").is_empty() && v2.is_null() {
-                return;
+            if let Some(v1_str) = v1.as_str() {
+                if v1_str.is_empty() && v2.is_null() {
+                    return;
+                }
             }
             self.mismatches
                 .push((self.identifier.clone(), key.to_string(), v1, v2));
@@ -248,6 +250,7 @@ impl AttributeComparer {
                     };
                     let val1 = obj1.get(k).cloned().unwrap_or(Value::Null);
                     let val2 = obj2.get(k).cloned().unwrap_or(Value::Null);
+                    eprintln!("{:?} {:?}", val1, val2);
                     self.compare_recurse(&new_key, val1, val2);
                 }
             }

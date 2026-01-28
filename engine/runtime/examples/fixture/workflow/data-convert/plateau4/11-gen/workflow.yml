@@ -77,6 +77,45 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
 
+      # Dictionary writer branch
+      - id: 8f254c7d-fa35-416c-8093-dbaafd72d95a
+        name: AttributeManagerDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: code
+              method: create
+              value: |
+                env.get("__value")["gml:name_code"]
+            - attribute: description
+              method: create
+              value: |
+                env.get("__value")["gml:name"]
+
+      - id: abc6a99c-5730-423c-a449-38911ab4a4e7
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - code
+
+      - id: ea88ce7b-1525-419e-a869-d193d8318b71
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              gen: env.get("__features").map(|f| #{
+                code: f.code,
+                description: f.description
+              })
+            }
+
       - id: 75faa932-e0a9-482c-a3f9-267817ed311c
         name: LodSplitter
         type: subGraph
@@ -162,7 +201,8 @@ graphs:
           maxZoom: 16
           extent: 65536
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
+            let gml_name_code = env.get("__value").__gml_name_code;
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_" + gml_name_code + "_lod" + env.get("__value").__lod)
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
@@ -206,6 +246,25 @@ graphs:
       - id: d22e994e-2ae9-47e2-9ddd-501492d864f1
         from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
         to: 75faa932-e0a9-482c-a3f9-267817ed311c
+        fromPort: default
+        toPort: default
+      # Dictionary writer branch edges
+      # AttributeFlattener -> AttributeManagerDict
+      - id: 6770737c-d1ed-4545-bc7d-8701a052fe6b
+        from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
+        to: 8f254c7d-fa35-416c-8093-dbaafd72d95a
+        fromPort: default
+        toPort: default
+      # AttributeManagerDict -> AttributeDuplicateFilterDict
+      - id: 20a9426e-e4be-411a-96fa-1f048def2ea1
+        from: 8f254c7d-fa35-416c-8093-dbaafd72d95a
+        to: abc6a99c-5730-423c-a449-38911ab4a4e7
+        fromPort: default
+        toPort: default
+      # AttributeDuplicateFilterDict -> JsonWriterDict
+      - id: b40ba70c-2298-4f1e-ab44-0b52694733a6
+        from: abc6a99c-5730-423c-a449-38911ab4a4e7
+        to: ea88ce7b-1525-419e-a869-d193d8318b71
         fromPort: default
         toPort: default
       # LodSplitter (lod0) -> AttributeManager
