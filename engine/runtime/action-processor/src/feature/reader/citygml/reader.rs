@@ -124,12 +124,28 @@ fn parse_tree_reader<R: BufRead>(
                 Ok(())
             }
             b"app:appearanceMember" => {
-                let mut app: models::appearance::AppearanceProperty = Default::default();
-                app.parse(st)?;
-                let models::appearance::AppearanceProperty::Appearance(app) = app else {
-                    unreachable!();
-                };
-                global_appearances.update(app);
+                let mut appearance_prop: models::appearance::AppearanceProperty =
+                    Default::default();
+                match appearance_prop.parse(st) {
+                    Ok(()) => {
+                        let models::appearance::AppearanceProperty::Appearance(appearance) =
+                            appearance_prop
+                        else {
+                            unreachable!();
+                        };
+                        global_appearances.update(appearance);
+                    }
+                    Err(e) => {
+                        // Log warning for appearance parsing errors (e.g., invalid UV coordinates)
+                        // but continue processing the file - this allows QC to complete
+                        // even when there are texture coordinate issues in the data
+                        tracing::warn!(
+                            "Skipping appearance due to parse error (file: {}): {:?}",
+                            base_url,
+                            e
+                        );
+                    }
+                }
                 Ok(())
             }
             other => Err(ParseError::SchemaViolation(format!(
@@ -188,12 +204,12 @@ fn parse_tree_reader<R: BufRead>(
         if let Some(max_lod) = lod.highest_lod() {
             attributes.insert(
                 Attribute::new("maxLod"),
-                AttributeValue::Number(serde_json::Number::from(max_lod)),
+                AttributeValue::String(max_lod.to_string()),
             );
             // Also add as "lod" attribute for StatisticsCalculator to use
             attributes.insert(
                 Attribute::new("lod"),
-                AttributeValue::Number(serde_json::Number::from(max_lod)),
+                AttributeValue::String(max_lod.to_string()),
             );
         }
         attributes.extend(base_attributes.clone());
@@ -250,7 +266,7 @@ fn parse_tree_reader<R: BufRead>(
                 if let Some(max_lod) = effective_lod {
                     attributes.insert(
                         Attribute::new("lod"),
-                        AttributeValue::Number(serde_json::Number::from(max_lod)),
+                        AttributeValue::String(max_lod.to_string()),
                     );
                 }
             }

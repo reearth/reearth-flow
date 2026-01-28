@@ -12975,5 +12975,101 @@
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
+	],
+	"ubld/bldg:BuildingInstallation": [
+		{
+			"attribute": "bldg:class",
+			"data_type": "buffer",
+			"json_path": "bldg:class"
+		},
+		{
+			"attribute": "bldg:function",
+			"data_type": "buffer",
+			"json_path": "bldg:function"
+		}
+	],
+	"ubld/bldg:BuildingPart": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:buildingID",
+			"data_type": "buffer",
+			"json_path": "uro:BuildingIDAttribute uro:buildingID"
+		},
+		{
+			"attribute": "uro:branchID",
+			"data_type": "int16",
+			"json_path": "uro:BuildingIDAttribute uro:branchID"
+		},
+		{
+			"attribute": "uro:partID",
+			"data_type": "int16",
+			"json_path": "uro:BuildingIDAttribute uro:partID"
+		},
+		{
+			"attribute": "uro:prefecture",
+			"data_type": "buffer",
+			"json_path": "uro:BuildingIDAttribute uro:prefecture"
+		},
+		{
+			"attribute": "uro:city",
+			"data_type": "buffer",
+			"json_path": "uro:BuildingIDAttribute uro:city"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"ubld/uro:UndergroundBuilding": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:buildingID",
+			"data_type": "buffer",
+			"json_path": "uro:BuildingIDAttribute uro:buildingID"
+		},
+		{
+			"attribute": "uro:branchID",
+			"data_type": "int16",
+			"json_path": "uro:BuildingIDAttribute uro:branchID"
+		},
+		{
+			"attribute": "uro:partID",
+			"data_type": "int16",
+			"json_path": "uro:BuildingIDAttribute uro:partID"
+		},
+		{
+			"attribute": "uro:prefecture",
+			"data_type": "buffer",
+			"json_path": "uro:BuildingIDAttribute uro:prefecture"
+		},
+		{
+			"attribute": "uro:city",
+			"data_type": "buffer",
+			"json_path": "uro:BuildingIDAttribute uro:city"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
 	]
 }
