@@ -5147,6 +5147,45 @@ Reproject Geometry to Different Coordinate System
 ### Category
 * Geometry
 
+## ImageRasterizer
+### Type
+* processor
+### Description
+Convert vector geometries to raster image format
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Image Rasterizer Parameters",
+  "description": "Configure how to convert vector geometries to raster images",
+  "type": "object",
+  "properties": {
+    "imageWidth": {
+      "description": "The width of image",
+      "default": 1000,
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "saveTo": {
+      "title": "Save To",
+      "description": "Optional path to save the generated image. If not provided, uses default cache directory.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## InputRouter
 ### Type
 * processor
