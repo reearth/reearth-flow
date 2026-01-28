@@ -20,7 +20,7 @@ use url::Url;
 
 use super::errors::GeometryProcessorError;
 
-static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("attachTextureCoordinates"));
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoords"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ImageRasterizerFactory;
@@ -79,6 +79,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
             width: params.image_width,
             save_to: params.save_to,
             geometry_polygons: GeometryPolygons::new(),
+            texture_coord_features: Vec::new(),
         };
         Ok(Box::new(process))
     }
@@ -104,6 +105,7 @@ struct ImageRasterizer {
     width: u32,
     save_to: Option<String>,
     geometry_polygons: GeometryPolygons,
+    texture_coord_features: Vec<Feature>,
 }
 
 fn default_image_width() -> u32 {
@@ -166,15 +168,18 @@ impl Processor for ImageRasterizer {
         ctx: ExecutorContext,
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // During process
-        // 1. extract color related features, color_r, color_g, color_b
-        // 2. from feature.geometry, get coordinates
-        // 3. each processed feature should get a GeometryPolygon, accumulate it in GeometryPolygons
         let feature = &ctx.feature;
 
-        if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
-            // Accumulate the polygon in the collection
-            self.geometry_polygons.add_polygon(polygon);
+        // Check which port the feature came from
+        if ctx.port == *TEXTURE_COORDS_PORT {
+            // Features from textureCoords port are collected for UV assignment
+            self.texture_coord_features.push(feature.clone());
+        } else {
+            // Features from default port are used to build the rasterized image
+            // Extract color and geometry to accumulate in GeometryPolygons
+            if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
+                self.geometry_polygons.add_polygon(polygon);
+            }
         }
 
         Ok(())
@@ -479,7 +484,6 @@ impl GeometryPolygon {
     }
 
     // Helper function to draw a line between two points using Bresenham's algorithm
-    #[allow(clippy::too_many_arguments)]
     fn draw_line(
         &self,
         x0: u32,
@@ -527,7 +531,6 @@ impl GeometryPolygon {
     }
 
     // Helper function to fill the interior of a polygon using scanline algorithm
-    #[allow(clippy::collapsible_if, clippy::unnecessary_cast)]
     fn fill_polygon_interior(&self, polygon: &GeometryPolygon) -> Vec<ImagePixel> {
         if polygon.exterior_coordinates.len() < 3 {
             return Vec::new(); // Not enough points to form a polygon
@@ -818,13 +821,15 @@ fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPo
 
                 // Collect interior rings (holes) if they exist
                 let mut interior_rings = Vec::new();
-                for interior_ring in coords.iter().skip(1) {
-                    let mut interior_coords = Vec::new();
-                    for &(x, y) in interior_ring {
-                        interior_coords.push((x, y));
-                    }
-                    if !interior_coords.is_empty() {
-                        interior_rings.push(interior_coords);
+                for i in 1..coords.len() {
+                    if let Some(interior_ring) = coords.get(i) {
+                        let mut interior_coords = Vec::new();
+                        for &(x, y) in interior_ring {
+                            interior_coords.push((x, y));
+                        }
+                        if !interior_coords.is_empty() {
+                            interior_rings.push(interior_coords);
+                        }
                     }
                 }
 
@@ -909,7 +914,7 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
 /// Also sets the texture reference on each polygon to point to the generated image.
 fn assign_texture_coordinates(
     feature: &Feature,
-    boundary: &CoordinatesBoudnary,
+    boundary: &CoordinatesBoundary,
     texture_url: &Url,
 ) -> Result<Feature, GeometryProcessorError> {
     let mut updated_feature = feature.clone();
@@ -957,8 +962,8 @@ fn assign_texture_coordinates(
                 .map(|v| {
                     let u = (v.x - min_x) / width;
                     // Flip v coordinate: image origin is top-left, but geometry Y increases upward
-                    let v = 1.0 - (v.y - min_y) / height;
-                    Coordinate2D::new_(u.clamp(0.0, 1.0), v.clamp(0.0, 1.0))
+                    let v_coord = 1.0 - (v.y - min_y) / height;
+                    Coordinate2D::new_(u.clamp(0.0, 1.0), v_coord.clamp(0.0, 1.0))
                 })
                 .collect();
 
@@ -972,8 +977,8 @@ fn assign_texture_coordinates(
                         .iter()
                         .map(|v| {
                             let u = (v.x - min_x) / width;
-                            let v = 1.0 - (v.y - min_y) / height;
-                            Coordinate2D::new_(u.clamp(0.0, 1.0), v.clamp(0.0, 1.0))
+                            let v_coord = 1.0 - (v.y - min_y) / height;
+                            Coordinate2D::new_(u.clamp(0.0, 1.0), v_coord.clamp(0.0, 1.0))
                         })
                         .collect();
                     LineString2D::new(uvs)
@@ -1088,84 +1093,5 @@ mod tests {
 
         img.save(&dest_path).expect("Failed to save test image");
         println!("Successfully generated and saved image to: {:?}", dest_path);
-    }
-
-    #[test]
-    #[ignore] // Depends on local test files
-    fn case03() {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        // Open and read the JSON file
-        let file_path = "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input.json";
-        let file = File::open(file_path).expect(format!("Failed to open {}", file_path).as_str());
-        let reader = BufReader::new(file);
-
-        // Parse the JSON
-        let json_value: serde_json::Value = serde_json::from_reader(reader)
-            .expect(format!("Failed to parse {}", file_path).as_str());
-
-        println!("Successfully read and parsed JSON from: {}", file_path);
-
-        // Convert JSON to GemotryPolygons
-        let gemotry_polygons = json_to_gemotry_polygons(&json_value)
-            .expect("Failed to convert JSON to GemotryPolygons");
-        let boundary = gemotry_polygons.find_coordinates_boudary();
-        let width = 1000;
-        let height = boundary.calculate_height_from_boundary_ratio(width);
-        // Draw the polygons to a PNG image
-        let img = gemotry_polygons.draw(width, height, true);
-
-        // Create the cache directory and save the image
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = Path::new(&home_dir)
-            .join(".cache")
-            .join("reearth-flow-test-images");
-
-        if let Err(_) = fs::create_dir_all(&cache_dir) {
-            panic!("Could not create cache directory for test images");
-        }
-
-        let dest_path = cache_dir.join("generated_image.png");
-
-        // Save the image directly to the cache directory
-        img.save(&dest_path).unwrap();
-        println!("Successfully generated and saved image to: {:?}", dest_path);
-    }
-
-    #[test]
-    #[ignore] // Depends on local test files
-    fn case04() {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        // Load and parse the debug_input_features.json file into Vec<Feature>
-        let file_path =
-            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input_features.json";
-        let file = File::open(file_path).expect("Failed to open debug_input_features.json");
-        let reader = BufReader::new(file);
-
-        let features: Vec<Feature> =
-            serde_json::from_reader(reader).expect("Failed to parse JSON into Vec<Feature>");
-
-        assert!(!features.is_empty(), "Features vector should not be empty");
-        println!(
-            "Successfully parsed {} features from debug_input_features.json",
-            features.len()
-        );
-
-        // Verify the structure of the first feature
-        let first_feature = &features[0];
-        assert!(
-            !first_feature.attributes.is_empty(),
-            "First feature should have attributes"
-        );
-        // Note: We can't check if geometry is empty since Geometry doesn't have an is_empty method
-
-        println!("First feature ID: {}", first_feature.id);
-        println!(
-            "First feature has {} attributes",
-            first_feature.attributes.len()
-        );
     }
 }
