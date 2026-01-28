@@ -44,12 +44,9 @@ const TableViewer: React.FC<Props> = memo(
       [onSingleClick],
     );
 
-    const isDoubleClickRef = useRef(false);
-
     // Handle row double click
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
-        isDoubleClickRef.current = true;
         onDoubleClick?.(feature);
       },
       [onDoubleClick],
@@ -77,23 +74,22 @@ const TableViewer: React.FC<Props> = memo(
     });
 
     useEffect(() => {
-      if (isDoubleClickRef.current) {
-        isDoubleClickRef.current = false;
-        return;
-      }
+      if (selectedRowIndex === -1) return;
 
-      if (
-        selectedRowIndex !== -1 &&
-        !(
-          selectedFeatureId?.startsWith('"') && selectedFeatureId?.endsWith('"')
-        )
-      ) {
-        virtualizer.scrollToIndex(selectedRowIndex, {
-          align: "start",
-          behavior: "auto",
-        });
-      }
-    }, [selectedRowIndex, selectedFeatureId, virtualizer]);
+      const items = virtualizer.getVirtualItems();
+      if (!items.length) return;
+
+      const start = items[0].index;
+      const end = items[items.length - 1].index;
+
+      const isVisible = selectedRowIndex >= start && selectedRowIndex <= end;
+      if (isVisible) return;
+
+      virtualizer.scrollToIndex(selectedRowIndex, {
+        align: "start",
+        behavior: "auto",
+      });
+    }, [selectedRowIndex, virtualizer]);
 
     // Loading state
     if (!fileContent || !formattedData.tableData) {
