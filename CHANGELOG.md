@@ -2,6 +2,130 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0 - 2026-01-28
+
+### Misc
+
+#### 🔧 Bug Fixes
+
+- Renamed environment variables of qc-workflows ([#1807](https://github.com/reearth/reearth-flow/pull/1807)) [`d6e9a1`](https://github.com/reearth/reearth-flow/commit/d6e9a1)
+- Fixed directrory structure handling for plateau workflows. ([#1799](https://github.com/reearth/reearth-flow/pull/1799)) [`446ae0`](https://github.com/reearth/reearth-flow/commit/446ae0)
+
+#### Miscellaneous Tasks
+
+- Upgrade MongoDB version to 7-jammy in CI and Docker configurations ([#1861](https://github.com/reearth/reearth-flow/pull/1861)) [`add307`](https://github.com/reearth/reearth-flow/commit/add307)
+
+### api
+
+#### 🔧 Bug Fixes
+
+- Asset list sorting via pagination parameters not applied correctly ([#1827](https://github.com/reearth/reearth-flow/pull/1827)) [`f11f40`](https://github.com/reearth/reearth-flow/commit/f11f40)
+
+### api, subscriber
+
+#### 🚀 Features
+
+- Add comprehensive health check endpoint ([#1830](https://github.com/reearth/reearth-flow/pull/1830)) [`1d1efa`](https://github.com/reearth/reearth-flow/commit/1d1efa)
+
+### engine
+
+#### 🚀 Features
+
+- Add ubld data-convert workflow and fix lod4 geometry parsing ([#1860](https://github.com/reearth/reearth-flow/pull/1860)) [`a68ee0`](https://github.com/reearth/reearth-flow/commit/a68ee0)
+- Finalize WTR (WaterBody) quality check workflow implementation ([#1862](https://github.com/reearth/reearth-flow/pull/1862)) [`fc01ce`](https://github.com/reearth/reearth-flow/commit/fc01ce)
+- Fix output file names for 06-fld qc workflow ([#1856](https://github.com/reearth/reearth-flow/pull/1856)) [`80b3a2`](https://github.com/reearth/reearth-flow/commit/80b3a2)
+- Implement 05-fld data-convert workflow (finish) ([#1850](https://github.com/reearth/reearth-flow/pull/1850)) [`dde0bd`](https://github.com/reearth/reearth-flow/commit/dde0bd)
+- Implement &#x60;05-fld&#x60; data-convert workflow (fld part) ([#1846](https://github.com/reearth/reearth-flow/pull/1846)) [`a48217`](https://github.com/reearth/reearth-flow/commit/a48217)
+- Add support for PLATEAU v5 ([#1847](https://github.com/reearth/reearth-flow/pull/1847)) [`bfa88d`](https://github.com/reearth/reearth-flow/commit/bfa88d)
+- Add wtr quality-check workflow ([#1838](https://github.com/reearth/reearth-flow/pull/1838)) [`3748e7`](https://github.com/reearth/reearth-flow/commit/3748e7)
+- Implement average color test and fix material parsing ([#1831](https://github.com/reearth/reearth-flow/pull/1831)) [`6fe6ea`](https://github.com/reearth/reearth-flow/commit/6fe6ea)
+- Ray intersector implemented ([#1825](https://github.com/reearth/reearth-flow/pull/1825)) [`6823f3`](https://github.com/reearth/reearth-flow/commit/6823f3)
+- Implement data-convert &#x60;10-wtr&#x60; workflow and update testing framework ([#1824](https://github.com/reearth/reearth-flow/pull/1824)) [`cf1f32`](https://github.com/reearth/reearth-flow/commit/cf1f32)
+- Refactor HTTPCaller action to enhance configuration options and response handling ([#1822](https://github.com/reearth/reearth-flow/pull/1822)) [`6200ef`](https://github.com/reearth/reearth-flow/commit/6200ef)
+- Upgrade MVT metadata.json to tilejson.json ([#1811](https://github.com/reearth/reearth-flow/pull/1811)) [`b26fb4`](https://github.com/reearth/reearth-flow/commit/b26fb4)
+- Introduce previous-artifacts&#x2F; for incremental runs ([#1797](https://github.com/reearth/reearth-flow/pull/1797)) [`acba29`](https://github.com/reearth/reearth-flow/commit/acba29)
+- Add 3D Tiles output for cons and MVT output for brid (DmGeometricAttribute) ([#1803](https://github.com/reearth/reearth-flow/pull/1803)) [`dbc9dc`](https://github.com/reearth/reearth-flow/commit/dbc9dc)
+- Feature&#x2F;extending plateau data to surface ([#1798](https://github.com/reearth/reearth-flow/pull/1798)) [`a617cb`](https://github.com/reearth/reearth-flow/commit/a617cb)
+
+#### 🔧 Bug Fixes
+
+- Engine mem leak in eval_expr fixed ([#1859](https://github.com/reearth/reearth-flow/pull/1859)) [`a35309`](https://github.com/reearth/reearth-flow/commit/a35309)
+- Update nusamai-citygml deps to fix trk parsing ([#1851](https://github.com/reearth/reearth-flow/pull/1851)) [`5409bd`](https://github.com/reearth/reearth-flow/commit/5409bd)
+- Changed plateau ds handling from fallback to copy ([#1849](https://github.com/reearth/reearth-flow/pull/1849)) [`29325f`](https://github.com/reearth/reearth-flow/commit/29325f)
+- Plateau result aggregation ([#1842](https://github.com/reearth/reearth-flow/pull/1842)) [`682ee4`](https://github.com/reearth/reearth-flow/commit/682ee4)
+- Fix building data-convert workflow and add test ([#1841](https://github.com/reearth/reearth-flow/pull/1841)) [`c07084`](https://github.com/reearth/reearth-flow/commit/c07084)
+- Handle TEMP_ARTIFACT_DIRECTORY change ([#1840](https://github.com/reearth/reearth-flow/pull/1840)) [`e560b8`](https://github.com/reearth/reearth-flow/commit/e560b8)
+- Workflow tests made more flexible ([#1829](https://github.com/reearth/reearth-flow/pull/1829)) [`6d324d`](https://github.com/reearth/reearth-flow/commit/6d324d)
+- Unique temp folder creation when FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY is set ([#1832](https://github.com/reearth/reearth-flow/pull/1832)) [`f84950`](https://github.com/reearth/reearth-flow/commit/f84950)
+- Handle backslash path separator in zip decompressor ([#1826](https://github.com/reearth/reearth-flow/pull/1826)) [`d3ff7b`](https://github.com/reearth/reearth-flow/commit/d3ff7b)
+- Use job-scoped workerArtifactPath as fallback ([#1821](https://github.com/reearth/reearth-flow/pull/1821)) [`d0b965`](https://github.com/reearth/reearth-flow/commit/d0b965)
+- Add gml:curveMembers support and update workflows ([#1815](https://github.com/reearth/reearth-flow/pull/1815)) [`766cc5`](https://github.com/reearth/reearth-flow/commit/766cc5)
+- Revert downgrades introduced in [#1816](https://github.com/reearth/reearth-flow/pull/1816) [`0d82de`](https://github.com/reearth/reearth-flow/commit/0d82de)
+- Incremental workflow runs(Use the copied data to run only from start_node_id onward) ([#1809](https://github.com/reearth/reearth-flow/pull/1809)) [`bd5a4f`](https://github.com/reearth/reearth-flow/commit/bd5a4f)
+- HTTPCaller runtime with lazy client initialization ([#1816](https://github.com/reearth/reearth-flow/pull/1816)) [`79241e`](https://github.com/reearth/reearth-flow/commit/79241e)
+- Make workflow environment backward compatible ([#1808](https://github.com/reearth/reearth-flow/pull/1808)) [`28d856`](https://github.com/reearth/reearth-flow/commit/28d856)
+- Gltf writer fixes for cesium rendering ([#1801](https://github.com/reearth/reearth-flow/pull/1801)) [`a3cfff`](https://github.com/reearth/reearth-flow/commit/a3cfff)
+- Fix download_remote_tree for Introduce previous-artifacts ([#1805](https://github.com/reearth/reearth-flow/pull/1805)) [`af6b3a`](https://github.com/reearth/reearth-flow/commit/af6b3a)
+- Separately zip codelists&#x2F;schemas for tiles test ([#1800](https://github.com/reearth/reearth-flow/pull/1800)) [`1dfe31`](https://github.com/reearth/reearth-flow/commit/1dfe31)
+
+#### Miscellaneous Tasks
+
+- Add 05-fld as a target to the generate-examples-cms-workflow task in Makefile.toml. ([#1802](https://github.com/reearth/reearth-flow/pull/1802)) [`300c07`](https://github.com/reearth/reearth-flow/commit/300c07)
+
+### ui
+
+#### 🚀 Features
+
+- Added saving when a debug run is run [FLOW-FE-355] ([#1854](https://github.com/reearth/reearth-flow/pull/1854)) [`ba7b85`](https://github.com/reearth/reearth-flow/commit/ba7b85)
+- Run From Selected Node Debug Run [FLOW-FE-368-PHASE-1] ([#1834](https://github.com/reearth/reearth-flow/pull/1834)) [`2f0c09`](https://github.com/reearth/reearth-flow/commit/2f0c09)
+- Add advanced search filtering to search canvas [FLOW-FE-332-PHASE-2] ([#1812](https://github.com/reearth/reearth-flow/pull/1812)) [`72c00e`](https://github.com/reearth/reearth-flow/commit/72c00e)
+- Added intermediate data url selection to feature details page [FLOW-FE-343] ([#1810](https://github.com/reearth/reearth-flow/pull/1810)) [`22d304`](https://github.com/reearth/reearth-flow/commit/22d304)
+- Search Canvas Phase 1 [FLOW-FE-332] ([#1806](https://github.com/reearth/reearth-flow/pull/1806)) [`966db7`](https://github.com/reearth/reearth-flow/commit/966db7)
+- Multiple theme support [FLOW-FE-169] ([#1525](https://github.com/reearth/reearth-flow/pull/1525)) [`f490d6`](https://github.com/reearth/reearth-flow/commit/f490d6)
+- Be able to change default values for workflow variables for debug runs if available [FLOW-FE-360] ([#1782](https://github.com/reearth/reearth-flow/pull/1782)) [`7f8c8a`](https://github.com/reearth/reearth-flow/commit/7f8c8a)
+
+#### 🔧 Bug Fixes
+
+- Formatting in package.json [`9cee65`](https://github.com/reearth/reearth-flow/commit/9cee65)
+- Use default edge port for undefined target and source handles ([#1863](https://github.com/reearth/reearth-flow/pull/1863)) [`eb833c`](https://github.com/reearth/reearth-flow/commit/eb833c)
+- Improve virtualized table scrolling behavior and item visibility check [FLOW-FE-375] ([#1843](https://github.com/reearth/reearth-flow/pull/1843)) [`465179`](https://github.com/reearth/reearth-flow/commit/465179)
+- Add collapsible for object and arrays in feature details [FLOW-FE-376] ([#1848](https://github.com/reearth/reearth-flow/pull/1848)) [`141484`](https://github.com/reearth/reearth-flow/commit/141484)
+- Add onSelectedFeature prop and enhance Cesium viewer interaction [FLOW-FE-349] ([#1839](https://github.com/reearth/reearth-flow/pull/1839)) [`0140c4`](https://github.com/reearth/reearth-flow/commit/0140c4)
+- Add check for defaultValue change for workflow variables [FLOW-FE-371] ([#1836](https://github.com/reearth/reearth-flow/pull/1836)) [`e48afa`](https://github.com/reearth/reearth-flow/commit/e48afa)
+- Remove failed job status checks for intermediate data fetching [FLOW-FE-363] ([#1823](https://github.com/reearth/reearth-flow/pull/1823)) [`0090ab`](https://github.com/reearth/reearth-flow/commit/0090ab)
+- Set debugRunStarted as false when stopping debug run ([#1819](https://github.com/reearth/reearth-flow/pull/1819)) [`69cf35`](https://github.com/reearth/reearth-flow/commit/69cf35)
+- Adjust positioning of search bar in OverlayUI component ([#1813](https://github.com/reearth/reearth-flow/pull/1813)) [`407cad`](https://github.com/reearth/reearth-flow/commit/407cad)
+
+#### Miscellaneous Tasks
+
+- Up version to 0.1.0-alpha.3 [`25156f`](https://github.com/reearth/reearth-flow/commit/25156f)
+- Update tanstack router and query [FLOW-FE-370] ([#1828](https://github.com/reearth/reearth-flow/pull/1828)) [`6cfd43`](https://github.com/reearth/reearth-flow/commit/6cfd43)
+- Jan 2026 updated dependencies [FLOW-FE-342] ([#1817](https://github.com/reearth/reearth-flow/pull/1817)) [`32a0df`](https://github.com/reearth/reearth-flow/commit/32a0df)
+
+### websocket
+
+#### 🔧 Bug Fixes
+
+- Add getLatestSnapshot handler ([#1865](https://github.com/reearth/reearth-flow/pull/1865)) [`53e4a6`](https://github.com/reearth/reearth-flow/commit/53e4a6)
+- Resolve transact_mut deadlock in save_snapshot ([#1852](https://github.com/reearth/reearth-flow/pull/1852)) [`ec51dd`](https://github.com/reearth/reearth-flow/commit/ec51dd)
+
+#### Miscellaneous Tasks
+
+- Revert debug logs for manual save of project broken ([#1858](https://github.com/reearth/reearth-flow/pull/1858)) [`004b96`](https://github.com/reearth/reearth-flow/commit/004b96)
+- Add Redis stream type metrics logging to aid snapshot debugging ([#1855](https://github.com/reearth/reearth-flow/pull/1855)) [`b4f62f`](https://github.com/reearth/reearth-flow/commit/b4f62f)
+- Add debug logs for Manual save of Project broken ([#1833](https://github.com/reearth/reearth-flow/pull/1833)) [`73a9af`](https://github.com/reearth/reearth-flow/commit/73a9af)
+
+### 
+
+#### 🔧 Bug Fixes
+
+- Renamed environment variables of qc-workflows ([#1807](https://github.com/reearth/reearth-flow/pull/1807)) [`d6e9a1`](https://github.com/reearth/reearth-flow/commit/d6e9a1)
+- Fixed directrory structure handling for plateau workflows. ([#1799](https://github.com/reearth/reearth-flow/pull/1799)) [`446ae0`](https://github.com/reearth/reearth-flow/commit/446ae0)
+
+#### Miscellaneous Tasks
+
+- Upgrade MongoDB version to 7-jammy in CI and Docker configurations ([#1861](https://github.com/reearth/reearth-flow/pull/1861)) [`add307`](https://github.com/reearth/reearth-flow/commit/add307)
+
 ## 0.1.0-alpha.2 - 2025-12-24
 
 ### Server
