@@ -124,12 +124,28 @@ fn parse_tree_reader<R: BufRead>(
                 Ok(())
             }
             b"app:appearanceMember" => {
-                let mut app: models::appearance::AppearanceProperty = Default::default();
-                app.parse(st)?;
-                let models::appearance::AppearanceProperty::Appearance(app) = app else {
-                    unreachable!();
-                };
-                global_appearances.update(app);
+                let mut appearance_prop: models::appearance::AppearanceProperty =
+                    Default::default();
+                match appearance_prop.parse(st) {
+                    Ok(()) => {
+                        let models::appearance::AppearanceProperty::Appearance(appearance) =
+                            appearance_prop
+                        else {
+                            unreachable!();
+                        };
+                        global_appearances.update(appearance);
+                    }
+                    Err(e) => {
+                        // Log warning for appearance parsing errors (e.g., invalid UV coordinates)
+                        // but continue processing the file - this allows QC to complete
+                        // even when there are texture coordinate issues in the data
+                        tracing::warn!(
+                            "Skipping appearance due to parse error (file: {}): {:?}",
+                            base_url,
+                            e
+                        );
+                    }
+                }
                 Ok(())
             }
             other => Err(ParseError::SchemaViolation(format!(
