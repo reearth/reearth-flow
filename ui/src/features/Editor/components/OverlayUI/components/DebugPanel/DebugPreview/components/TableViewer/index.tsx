@@ -44,9 +44,12 @@ const TableViewer: React.FC<Props> = memo(
       [onSingleClick],
     );
 
+    const isDoubleClickRef = useRef(false);
+
     // Handle row double click
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
+        isDoubleClickRef.current = true;
         onDoubleClick?.(feature);
       },
       [onDoubleClick],
@@ -74,6 +77,11 @@ const TableViewer: React.FC<Props> = memo(
     });
 
     useEffect(() => {
+      if (isDoubleClickRef.current) {
+        isDoubleClickRef.current = false;
+        return;
+      }
+
       if (
         selectedRowIndex !== -1 &&
         !(
