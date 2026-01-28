@@ -57,10 +57,6 @@
       "description": "Writes features to a file"
     },
     {
-      "name": "CityGmlWriter",
-      "description": "Writes features to CityGML 2.0 files"
-    },
-    {
       "name": "Clipper",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately"
     },
@@ -231,6 +227,10 @@
     {
       "name": "GltfWriter",
       "description": "Writes features to a Gltf"
+    },
+    {
+      "name": "HTTPCaller",
+      "description": "Make HTTP/HTTPS requests and enrich features with response data"
     },
     {
       "name": "HoleCounter",

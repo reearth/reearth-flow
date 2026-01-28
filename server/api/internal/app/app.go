@@ -102,6 +102,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	// apis
 	api := e.Group("/api")
 	api.GET("/ping", Ping(), privateCache)
+	api.GET("/health", cfg.HealthChecker.Handler(), privateCache)
 
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)

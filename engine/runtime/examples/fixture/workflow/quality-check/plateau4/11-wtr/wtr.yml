@@ -1,0 +1,711 @@
+# WaterBody quality check subgraph
+# LOD1 expects MultiSurface, LOD2+ expects Solid
+# Uses GeometryFilter to detect non-MultiSurface geometry in LOD1 (invalid spatial attribute type)
+# Uses SolidBoundaryValidator to validate solids for LOD2+
+id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+name: "WTR.WaterBodyValidation"
+nodes:
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  # LOD splitter
+  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    name: LodSplitterWithDM
+    type: subGraph
+    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+  # ===== LOD1: Detect non-MultiSurface geometry using GeometryFilter =====
+  # LOD1 expects MultiSurface. Any other geometry type (Solid, Curve, etc.) is invalid.
+  - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    name: GeometryFilterLod1
+    type: action
+    action: GeometryFilter
+    with:
+      filterType: geometryType
+
+  # Merge all invalid geometry types (solid, curve, point, triangle, unfiltered) for LOD1
+  # Surface (MultiSurface) is valid for LOD1, so it's not processed here
+  - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    name: AttributeManagerInvalidSpatialAttrType
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: Folder
+          method: create
+          value: |
+            env.get("__value").udxDirs ?? ""
+        - attribute: Index
+          method: create
+          value: |
+            env.get("__value").fileIndex ?? 0
+        - attribute: Filename
+          method: create
+          value: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          method: create
+          value: |
+            let ft = env.get("__value").featureType ?? "WaterBody";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          method: create
+          value: |
+            env.get("__value").lod ?? "1"
+        - attribute: "gml:id"
+          method: create
+          value: |
+            env.get("__value").gmlId ?? ""
+        - attribute: "無効な空間属性の型"
+          method: create
+          value: |
+            // Get actual geometry type from geometryName attribute (set by GeometrySplitter)
+            env.get("__value").geometryName ?? "Unknown"
+        # Remove all extra attributes
+        - attribute: udxDirs
+          method: remove
+        - attribute: fileIndex
+          method: remove
+        - attribute: gmlFilename
+          method: remove
+        - attribute: featureType
+          method: remove
+        - attribute: lod
+          method: remove
+        - attribute: gmlId
+          method: remove
+        - attribute: cityGmlAttributes
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: schemas
+          method: remove
+        - attribute: featureId
+          method: remove
+        - attribute: featureIndex
+          method: remove
+        - attribute: featureParentId
+          method: remove
+        - attribute: geometryName
+          method: remove
+        - attribute: gmlName
+          method: remove
+        - attribute: gmlPath
+          method: remove
+        - attribute: gmlPropertyName
+          method: remove
+        - attribute: gmlRootId
+          method: remove
+        - attribute: maxLod
+          method: remove
+
+  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+    name: FeatureWriterInvalidSpatialAttr
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "11_水部_無効な空間属性の型.csv")
+
+  - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
+    name: StatisticsCalculatorInvalidSpatialAttr
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _num_invalid_spatial_attr
+          expr: '1'
+
+  - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
+    name: OutputRouterInvalidSpatialAttr
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountInvalidSpatialAttr
+
+  # ===== LOD1: SurfaceValidator3D for surface errors =====
+  # LOD1 MultiSurface geometry validation (same as bldg workflow)
+  - id: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    name: SurfaceValidatorLod1
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    name: AttributeMapperLod1SurfaceErrors
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr: |
+            env.get("__value").udxDirs ?? "wtr"
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex ?? 1
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          expr: |
+            let ft = env.get("__value").featureType ?? "WaterBody";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          expr: |
+            env.get("__value").lod ?? "1"
+        - attribute: "gml:id"
+          expr: |
+            env.get("__value").gmlId ?? ""
+        - attribute: エラー数
+          expr: |
+            1
+        - attribute: エラー内容
+          expr: |
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
+            }
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
+
+  - id: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
+    name: FeatureWriterLod1SurfaceErrors
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD1面のエラー.csv")
+
+  - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
+    name: StatisticsCalculatorLod1SurfaceErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupId: gmlFilename
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _num_lod1_surface_errors
+          expr: '1'
+
+  - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
+    name: OutputRouterLod1SurfaceErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod1SurfaceErrors
+
+  # ===== LOD2/3: SolidBoundaryValidator =====
+  - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e4f
+    name: SolidBoundaryValidatorLod2Plus
+    type: action
+    action: SolidBoundaryValidator
+    with:
+      tolerance: |
+        0.01
+
+  - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
+    name: FeatureFilterSolidIssues
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            let issue = env.get("__value").solid_boundary_issues.issue;
+            issue == "NotA2Manifold"
+          outputPort: notClosed
+
+  # Non-watertight solid (NotA2Manifold) - following building workflow pattern
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    name: AttributeMapperNotClosed
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            let ft = env.get("__value").featureType ?? "WaterBody";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: issue
+          expr: |
+            "Surface Not Closed"
+
+  - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+    name: FeatureWriterNotClosed
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD2-3非水密立体.csv")
+
+  - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+    name: StatisticsCalculatorNotClosed
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupId: gmlFilename
+      groupBy:
+        - filename
+      calculations:
+        - newAttribute: _num_not_closed_solid
+          expr: '1'
+
+  - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+    name: OutputRouterNotClosed
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountNotClosedSolid
+
+  # Other solid errors - following building workflow pattern
+  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+    name: AttributeMapperOtherSolidErrors
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            let ft = env.get("__value").featureType ?? "WaterBody";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: issue
+          expr: |
+            "Invalid Solid Boundaries"
+
+  - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
+    name: FeatureWriterOtherSolidErrors
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD2-3立体のエラー.csv")
+
+  - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+    name: StatisticsCalculatorOtherSolidErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupId: gmlFilename
+      groupBy:
+        - filename
+      calculations:
+        - newAttribute: _num_other_solid_errors
+          expr: '1'
+
+  - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
+    name: OutputRouterOtherSolidErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountOtherSolidErrors
+
+  # ===== LOD2/3: SurfaceValidator for boundary surface errors =====
+  - id: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    name: SurfaceValidatorLod2Plus
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    name: AttributeMapperBoundarySurfaceErrors
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr: |
+            env.get("__value").udxDirs ?? "wtr"
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex ?? 1
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          expr: |
+            let ft = env.get("__value").featureType ?? "WaterBody";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          expr: |
+            env.get("__value").lod ?? "2"
+        - attribute: "gml:id"
+          expr: |
+            env.get("__value").gmlId ?? ""
+        - attribute: エラー数
+          expr: |
+            1
+        - attribute: エラー内容
+          expr: |
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
+            }
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
+
+  - id: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
+    name: FeatureWriterBoundarySurfaceErrors
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD2-3境界面のエラー.csv")
+
+  - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
+    name: StatisticsCalculatorBoundarySurfaceErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupId: gmlFilename
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _num_boundary_surface_errors
+          expr: '1'
+
+  - id: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
+    name: OutputRouterBoundarySurfaceErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountBoundarySurfaceErrors
+
+  # File output router
+  - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+    name: OutputRouterFileOutput
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileOutput
+
+edges:
+  # Input → LodSplitter
+  - id: 01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    to: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    fromPort: default
+    toPort: default
+
+  # ===== LOD1 → GeometryFilter =====
+  - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: lod1
+    toPort: default
+
+  # GeometryFilter (solid port = Has Solid geometry = Invalid spatial attribute type for LOD1)
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    fromPort: solid
+    toPort: default
+
+  # GeometryFilter (curve port = Has Curve geometry = Invalid spatial attribute type for LOD1)
+  # LOD1 expects MultiSurface, so MultiCurve/Curve is invalid
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    fromPort: curve
+    toPort: default
+
+  # GeometryFilter (point port = Has Point geometry = Invalid spatial attribute type for LOD1)
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7ea
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    fromPort: point
+    toPort: default
+
+  # GeometryFilter (triangle port = Has Triangle geometry = Invalid spatial attribute type for LOD1)
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7eb
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    fromPort: triangle
+    toPort: default
+
+  # GeometryFilter (unfiltered port = Unknown geometry = Invalid spatial attribute type for LOD1)
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7ec
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    fromPort: unfiltered
+    toPort: default
+
+  # AttributeManager → FeatureWriter
+  - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
+    from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter → FileOutput
+  - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0
+    from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+    fromPort: default
+    toPort: default
+
+  # AttributeManager → StatisticsCalculator
+  - id: 06f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1
+    from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+    to: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
+    fromPort: default
+    toPort: default
+
+  # StatisticsCalculator → OutputRouter (error count)
+  - id: 07a8b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c2
+    from: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
+    to: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
+    fromPort: default
+    toPort: default
+
+  # ===== LOD1 surface (MultiSurface) → SurfaceValidator3D =====
+  - id: 30a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+    to: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    fromPort: surface
+    toPort: default
+
+  # SurfaceValidator (invalidSurface) → AttributeMapper
+  - id: 31b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6
+    from: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    to: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    fromPort: invalidSurface
+    toPort: default
+
+  # AttributeMapper → FeatureWriter
+  - id: 32c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7
+    from: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    to: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter → FileOutput
+  - id: 33d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8
+    from: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+    fromPort: default
+    toPort: default
+
+  # AttributeMapper → StatisticsCalculator
+  - id: 34e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9
+    from: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    to: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
+    fromPort: default
+    toPort: default
+
+  # StatisticsCalculator → OutputRouter
+  - id: 35f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0
+    from: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
+    to: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
+    fromPort: default
+    toPort: default
+
+  # ===== LOD2 → SolidBoundaryValidator =====
+  - id: 08b9c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d3
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    to: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e4f
+    fromPort: lod2
+    toPort: default
+
+  # LOD3 → SolidBoundaryValidator
+  - id: 09c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e4
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    to: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e4f
+    fromPort: lod3
+    toPort: default
+
+  # SolidBoundaryValidator (failed) → FeatureFilter
+  - id: 10d1e2f3-a4b5-c6d7-e8f9-a0b1c2d3e4f5
+    from: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e4f
+    to: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
+    fromPort: failed
+    toPort: default
+
+  # FeatureFilter (notClosed) → AttributeManager (Non-watertight)
+  - id: 11e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+    from: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
+    to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    fromPort: notClosed
+    toPort: default
+
+  # AttributeManager → FeatureWriter (Non-watertight CSV)
+  - id: 12f3a4b5-c6d7-e8f9-a0b1-c2d3e4f5a6b7
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter → FileOutput
+  - id: 13a4b5c6-d7e8-f9a0-b1c2-d3e4f5a6b7c8
+    from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+    fromPort: default
+    toPort: default
+
+  # AttributeManager → StatisticsCalculator (Non-watertight)
+  - id: 14b5c6d7-e8f9-a0b1-c2d3-e4f5a6b7c8d9
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+    fromPort: default
+    toPort: default
+
+  # StatisticsCalculator → OutputRouter (Non-watertight count)
+  - id: 15c6d7e8-f9a0-b1c2-d3e4-f5a6b7c8d9e0
+    from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+    to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+    fromPort: default
+    toPort: default
+
+  # FeatureFilter (other errors) → AttributeManager (Other solid errors)
+  - id: 16d7e8f9-a0b1-c2d3-e4f5-a6b7c8d9e0f1
+    from: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+    fromPort: unfiltered
+    toPort: default
+
+  # AttributeManager → FeatureWriter (Other solid errors CSV)
+  - id: 17e8f9a0-b1c2-d3e4-f5a6-b7c8d9e0f1a2
+    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+    to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter → FileOutput
+  - id: 18f9a0b1-c2d3-e4f5-a6b7-c8d9e0f1a2b3
+    from: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+    fromPort: default
+    toPort: default
+
+  # AttributeManager → StatisticsCalculator (Other solid errors)
+  - id: 19a0b1c2-d3e4-f5a6-b7c8-d9e0f1a2b3c4
+    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+    to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+    fromPort: default
+    toPort: default
+
+  # StatisticsCalculator → OutputRouter (Other solid errors count)
+  - id: 20b1c2d3-e4f5-a6b7-c8d9-e0f1a2b3c4d5
+    from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+    to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
+    fromPort: default
+    toPort: default
+
+  # ===== LOD2/3 → SurfaceValidator for boundary surface errors =====
+  - id: 21c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    to: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    fromPort: lod2
+    toPort: default
+
+  - id: 22d3e4f5-a6b7-c8d9-e0f1-a2b3c4d5e6f7
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
+    to: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    fromPort: lod3
+    toPort: default
+
+  # SurfaceValidator (invalidSurface) → AttributeMapper
+  - id: 23e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a8
+    from: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
+    to: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    fromPort: invalidSurface
+    toPort: default
+
+  # AttributeMapper → FeatureWriter
+  - id: 24f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8b9
+    from: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    to: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter → FileOutput
+  - id: 25a6b7c8-d9e0-f1a2-b3c4-d5e6f7a8b9c0
+    from: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+    fromPort: default
+    toPort: default
+
+  # AttributeMapper → StatisticsCalculator
+  - id: 26b7c8d9-e0f1-a2b3-c4d5-e6f7a8b9c0d1
+    from: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
+    to: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
+    fromPort: default
+    toPort: default
+
+  # StatisticsCalculator → OutputRouter
+  - id: 27c8d9e0-f1a2-b3c4-d5e6-f7a8b9c0d1e2
+    from: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
+    to: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
+    fromPort: default
+    toPort: default
+
+ports:
+  outputs:
+    - id: errorCountInvalidSpatialAttr
+      nodeId: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
+      port: default
+    - id: errorCountLod1SurfaceErrors
+      nodeId: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
+      port: default
+    - id: errorCountNotClosedSolid
+      nodeId: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+      port: default
+    - id: errorCountOtherSolidErrors
+      nodeId: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
+      port: default
+    - id: errorCountBoundarySurfaceErrors
+      nodeId: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
+      port: default
+    - id: fileOutput
+      nodeId: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
+      port: default

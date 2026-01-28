@@ -7,6 +7,8 @@ with:
   cityCode:
   codelistsPath:
   schemasPath:
+  codelists:
+  schemas:
   targetPackages:
     - frn
     - veg
@@ -28,6 +30,8 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
               },
             ]
 
@@ -41,7 +45,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          format: citygml
+          codelistsPath: env.get("__value").codelists
           flatten: true
           dataset: |
             env.get("__value")["path"]
@@ -110,7 +114,7 @@ graphs:
             }
 
       - id: 0f670054-828b-48d8-9672-dbc34247f2b3
-        name: AttributeManager
+        name: AttributeManagerPreFlattener
         type: action
         action: AttributeManager
         with:
@@ -127,6 +131,10 @@ graphs:
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
 
       - id: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
         name: Flattener
@@ -244,8 +252,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
           skipUnexposedAttributes: true
+          dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").__lod)
           compressOutput: |
@@ -488,8 +496,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
           skipUnexposedAttributes: true
+          dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").__lod)
           compressOutput: |
@@ -731,8 +739,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
           skipUnexposedAttributes: true
+          dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").__lod)
           compressOutput: |

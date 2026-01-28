@@ -1,18 +1,59 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Verify output files: no errors, empty CityGML (no features)",
-  "cityGmlPath": "udx/bldg/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "expectResultOkFile": true,
-  "prcs": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx",
-  "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_bldg.json"
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
     },
-    "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv"
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
     }
-  }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_bldg.json"
+      },
+      {
+        "expectedFile": "summary_common.json"
+      }
+    ],
+    "fileErrorSummary": [
+      {
+        "expectedFile": "02_建築物_検査結果一覧.csv"
+      },
+      {
+        "expectedFile": "01_共通.csv"
+      }
+    ]
+  },
+  "expectResultOkFile": true
 }

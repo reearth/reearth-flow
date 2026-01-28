@@ -48,6 +48,10 @@ export default function Editor({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    rawWorkflows,
+    customDebugRunWorkflowVariables,
+    showSearchPanel,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -72,6 +76,7 @@ export default function Editor({
     handleWorkflowRename,
     handleWorkflowAddFromSelection,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
     handleCopy,
@@ -83,6 +88,8 @@ export default function Editor({
     handleSpotlightUserDeselect,
     handleNodesDisable,
     handlePaneClick,
+    setShowSearchPanel,
+    selectedNodeIds,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -114,6 +121,7 @@ export default function Editor({
           style={{ borderColor: spotlightUser?.color || "" }}>
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
+            selectedNodeIds={selectedNodeIds}
             project={currentProject}
             yDoc={yDoc}
             self={self}
@@ -124,11 +132,15 @@ export default function Editor({
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
+            rawWorkflows={rawWorkflows}
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
+            customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
+            onWorkflowOpen={handleWorkflowOpen}
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
+            onNodesChange={handleNodesChange}
             onNodePickerClose={handleNodePickerClose}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}
@@ -136,13 +148,19 @@ export default function Editor({
             onProjectExport={handleCurrentProjectExport}
             onWorkflowDeployment={handleWorkflowDeployment}
             onDebugRunStart={handleDebugRunStart}
+            onDebugRunStartFromSelectedNode={
+              handleFromSelectedNodeDebugRunStart
+            }
             onDebugRunStop={handleDebugRunStop}
+            onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
             onProjectSnapshotSave={handleProjectSnapshotSave}
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
             onDebugRunJoin={loadExternalDebugJob}
-            activeUsersDebugRuns={activeUsersDebugRuns}>
+            activeUsersDebugRuns={activeUsersDebugRuns}
+            showSearchPanel={showSearchPanel}
+            onShowSearchPanel={setShowSearchPanel}>
             <Canvas
               nodes={nodes}
               edges={edges}
@@ -166,6 +184,9 @@ export default function Editor({
               onPaneMouseMove={handlePaneMouseMove}
               onNodesDisable={handleNodesDisable}
               onPaneClick={handlePaneClick}
+              onDebugRunStartFromSelectedNode={
+                handleFromSelectedNodeDebugRunStart
+              }
             />
           </OverlayUI>
 

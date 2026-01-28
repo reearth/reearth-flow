@@ -1,14 +1,44 @@
 {
-  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
   "description": "Test for plateau4 instance counts inspection.",
+  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "lsld_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/lsld",
+      "name": "lsld_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "07_土砂災害警戒区域_地物インスタンス数.csv"
   },
-  "cityGmlPath": "udx/lsld/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "expectResultOkFile": true,
-  "skip": false,
-  "prcs": 6677,
-  "objectLists": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": true
 }

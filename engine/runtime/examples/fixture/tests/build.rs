@@ -7,127 +7,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-enum ExpectedFiles {
-    Single(String),
-    Multiple(Vec<String>),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-enum CityGmlPath {
-    GmlFile(String),
-    Config(CityGmlPathConfig),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-enum CityGmlPathConfig {
-    File(FileSource),
-    Zip(ZipSource),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct FileSource {
-    source: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ZipSource {
-    source: String,
-    name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct WorkflowTestProfile {
-    workflow_path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    expected_output: Option<TestOutput>,
-    city_gml_path: CityGmlPath,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    codelists: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    schemas: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    object_lists: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prcs: Option<i64>,
-    #[serde(default)]
-    intermediate_assertions: Vec<IntermediateAssertion>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    summary_output: Option<SummaryOutput>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    expect_result_ok_file: Option<bool>,
-    #[serde(default)]
-    skip: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    skip_reason: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct TestOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    expected_file: Option<ExpectedFiles>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    expected_inline: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    except: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    source_node: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct IntermediateAssertion {
-    edge_id: String,
-    expected_file: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    except: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    json_filter: Option<String>,
-    #[serde(default)]
-    partial_match: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct SummaryOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error_count_summary: Option<ErrorCountSummaryValidation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    file_error_summary: Option<FileErrorSummaryValidation>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ErrorCountSummaryValidation {
-    expected_file: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    include_fields: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct FileErrorSummaryValidation {
-    expected_file: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    include_columns: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    exclude_columns: Option<Vec<String>>,
-    #[serde(default = "default_key_columns")]
-    key_columns: Vec<String>,
-}
-
-fn default_key_columns() -> Vec<String> {
-    vec!["Filename".to_string()]
-}
+// Include shared type definitions
+include!("shared_types.rs");
 
 struct TestCase {
     name: String,
@@ -137,6 +18,7 @@ struct TestCase {
 
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=shared_types.rs");
     println!("cargo:rerun-if-changed=../fixture/testdata");
 
     let out_dir = env::var("OUT_DIR").context("OUT_DIR not set")?;
@@ -150,9 +32,6 @@ fn main() -> Result<()> {
 
     fs::write(&out_path, generated_code.to_string())?;
 
-    println!("cargo:rustc-env=WORKFLOW_TEST_COUNT={}", test_cases.len());
-    println!("Generated {} workflow test cases", test_cases.len());
-
     Ok(())
 }
 
@@ -160,8 +39,9 @@ fn discover_tests(testdata_dir: &Path) -> Result<Vec<TestCase>> {
     let mut test_cases = Vec::new();
 
     if !testdata_dir.exists() {
-        eprintln!("Test data directory does not exist: {testdata_dir:?}");
-        return Ok(test_cases);
+        return Err(anyhow::anyhow!(
+            "Test data directory does not exist: {testdata_dir:?}"
+        ));
     }
 
     for entry in WalkDir::new(testdata_dir)
@@ -232,21 +112,27 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                     profile,
                 )?;
 
-                // Load and run workflow
-                let workflow = ctx.load_workflow()?;
-                ctx.run_workflow(workflow)?;
+                // Run test and ensure cleanup happens even on failure
+                let result = (|| -> Result<()> {
+                    let workflow = ctx.load_workflow()?;
+                    ctx.run_workflow(workflow)?;
+                    ctx.verify_output()?;
+                    ctx.verify_intermediate_data()?;
+                    ctx.verify_summary_output()?;
+                    ctx.verify_no_unexpected_output_files()?;
+                    ctx.verify_result_ok_file()?;
+                    Ok(())
+                })();
 
+                // Clean up generated ZIP files
+                let cleanup_result = ctx.cleanup_generated_zips();
 
-                // Verify output
-                ctx.verify_output()?;
+                // Return the test result (cleanup errors are logged but don't fail the test)
+                if let Err(e) = cleanup_result {
+                    tracing::warn!("Failed to cleanup generated zips: {}", e);
+                }
 
-                // Verify intermediate data
-                ctx.verify_intermediate_data()?;
-
-                ctx.verify_summary_output()?;
-                ctx.verify_result_ok_file()?;
-
-                Ok(())
+                result
             }
         });
     }

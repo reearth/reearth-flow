@@ -1,7 +1,13 @@
-import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, CaretDownIcon } from "@phosphor-icons/react";
 import { memo, useMemo } from "react";
 
-import { IconButton } from "@flow/components";
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  IconButton,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
@@ -89,7 +95,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   return (
     <div className="absolute inset-y-0 -top-10 left-0 z-10 w-full rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-border p-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
           <IconButton
             className="h-7 w-7"
@@ -142,25 +148,53 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                 {Object.entries(processedFeature.properties).map(
                   ([key, value]) => {
                     const valueType = getValueType(value);
+                    const attributeKey = key
+                      .replace(/^attributes/, "")
+                      .replace(/^geometry/, "");
                     return (
                       <div key={key} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {key
-                              .replace(/^attributes/, "")
-                              .replace(/^geometry/, "")}
-                          </span>
-                          {valueType && (
-                            <span className="text-xs text-muted-foreground">
-                              {valueType}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-md bg-muted/30 p-2">
-                          <pre className="text-xs break-all whitespace-pre-wrap">
-                            {formatValue(value)}
-                          </pre>
-                        </div>
+                        {valueType === "object" || valueType === "array" ? (
+                          <Collapsible defaultOpen={true}>
+                            <CollapsibleTrigger asChild className="w-full">
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                                aria-expanded="true">
+                                <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                                  {attributeKey}
+                                  <CaretDownIcon
+                                    size={12}
+                                    className="ml-1 transition-transform group-data-[state=open]:rotate-180"
+                                  />
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {valueType}
+                                </span>
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mt-1 rounded-md bg-muted/30 p-2">
+                                <pre className="text-xs break-all whitespace-pre-wrap">
+                                  {formatValue(value)}
+                                </pre>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {attributeKey}
+                              </span>
+                            </div>
+                            <div className="rounded-md bg-muted/30 p-2">
+                              <pre className="text-xs break-all whitespace-pre-wrap">
+                                {formatValue(value)}
+                              </pre>
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   },
@@ -181,21 +215,41 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                     const valueType = getValueType(value);
                     return (
                       <div key={key} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {key}
-                          </span>
-                          {valueType && (
-                            <span className="text-xs text-muted-foreground">
-                              {valueType}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-md bg-muted/30 p-2">
-                          <pre className="text-xs break-all whitespace-pre-wrap">
-                            {formatValue(value)}
-                          </pre>
-                        </div>
+                        {valueType === "object" || valueType === "array" ? (
+                          <Collapsible defaultOpen={true}>
+                            <CollapsibleTrigger asChild className="w-full">
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                                aria-expanded="true">
+                                <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                                  {key}
+                                  <CaretDownIcon
+                                    size={12}
+                                    className="ml-1 transition-transform group-data-[state=open]:rotate-180"
+                                  />
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {valueType}
+                                </span>
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mt-1 rounded-md bg-muted/30 p-2">
+                                <pre className="text-xs break-all whitespace-pre-wrap">
+                                  {formatValue(value)}
+                                </pre>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <div className="rounded-md bg-muted/30 p-2">
+                            <pre className="text-xs break-all whitespace-pre-wrap">
+                              {formatValue(value)}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     );
                   },

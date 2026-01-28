@@ -1,14 +1,16 @@
-import { type XYPosition } from "@xyflow/react";
+import { NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
 import type {
   ActionNodeType,
   Algorithm,
+  AnyWorkflowVariable,
   AwarenessUser,
   Direction,
   Node,
   Project,
+  Workflow,
 } from "@flow/types";
 
 import {
@@ -21,6 +23,7 @@ import {
   DebugPanel,
   Homebar,
   VersionDialog,
+  SearchActionBar,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -29,9 +32,11 @@ type OverlayUIProps = {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
+  selectedNodeIds: string[];
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
+  rawWorkflows: Workflow[];
   project?: Project;
   yDoc: Doc | null;
   openWorkflows: {
@@ -39,7 +44,9 @@ type OverlayUIProps = {
     name: string;
   }[];
   currentWorkflowId: string;
+  customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onNodesAdd: (nodes: Node[]) => void;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
@@ -54,6 +61,7 @@ type OverlayUIProps = {
   allowedToDeploy: boolean;
   isSaving: boolean;
   onWorkflowClose: (workflowId: string) => void;
+  onWorkflowOpen: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowDeployment: (
     description: string,
@@ -62,20 +70,29 @@ type OverlayUIProps = {
   onProjectExport: () => void;
   onProjectShare: (share: boolean) => void;
   onDebugRunStart: () => Promise<void>;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
+  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
-  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   children?: React.ReactNode;
+  showSearchPanel: boolean;
+  onShowSearchPanel: (open: boolean) => void;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
   nodePickerOpen,
+  selectedNodeIds,
   canUndo,
   canRedo,
   isMainWorkflow,
+  rawWorkflows,
   yDoc,
   project,
   allowedToDeploy,
@@ -85,24 +102,31 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   spotlightUserClientId,
   openWorkflows,
   currentWorkflowId,
+  customDebugRunWorkflowVariables,
   onNodesAdd,
+  onNodesChange,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
   onWorkflowChange,
+  onWorkflowOpen,
   onWorkflowClose,
   onLayoutChange,
   onWorkflowDeployment,
   onProjectExport,
   onProjectShare,
   onDebugRunStart,
+  onDebugRunStartFromSelectedNode,
   onDebugRunStop,
+  onDebugRunVariableValueChange,
+  onDebugRunJoin,
   onProjectSnapshotSave,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
   activeUsersDebugRuns,
-  onDebugRunJoin,
+  showSearchPanel,
+  onShowSearchPanel,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
@@ -146,29 +170,32 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           />
         </div>
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
-          {isMainWorkflow && (
-            <div
-              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
-              <DebugActionBar
-                activeUsersDebugRuns={activeUsersDebugRuns}
-                onDebugRunJoin={onDebugRunJoin}
-                onDebugRunStart={onDebugRunStart}
-                onDebugRunStop={onDebugRunStop}
-              />
-              <div className="h-4/5 border-r" />
-              <ActionBar
-                allowedToDeploy={allowedToDeploy}
-                isSaving={isSaving}
-                showDialog={showDialog}
-                onDialogOpen={handleDialogOpen}
-                onDialogClose={handleDialogClose}
-                onProjectShare={onProjectShare}
-                onProjectExport={onProjectExport}
-                onWorkflowDeployment={onWorkflowDeployment}
-                onProjectSnapshotSave={onProjectSnapshotSave}
-              />
-            </div>
-          )}
+          <div
+            className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+            <DebugActionBar
+              activeUsersDebugRuns={activeUsersDebugRuns}
+              selectedNodeIds={selectedNodeIds}
+              isSaving={isSaving}
+              onDebugRunJoin={onDebugRunJoin}
+              onDebugRunStart={onDebugRunStart}
+              onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+              onDebugRunStop={onDebugRunStop}
+              customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+              onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+            />
+            <div className="h-4/5 border-r" />
+            <ActionBar
+              allowedToDeploy={allowedToDeploy}
+              isSaving={isSaving}
+              showDialog={showDialog}
+              onDialogOpen={handleDialogOpen}
+              onDialogClose={handleDialogClose}
+              onProjectShare={onProjectShare}
+              onProjectExport={onProjectExport}
+              onWorkflowDeployment={onWorkflowDeployment}
+              onProjectSnapshotSave={onProjectSnapshotSave}
+            />
+          </div>
         </div>
         {showDialog === "version" && (
           <VersionDialog
@@ -177,17 +204,29 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDialogClose={handleDialogClose}
           />
         )}
-        <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
+        <div
+          id="left-bottom-search-bar"
+          className="pointer-events-none absolute bottom-2 left-2">
+          <div className="pointer-events-auto">
+            <SearchActionBar
+              rawWorkflows={rawWorkflows}
+              currentWorkflowId={currentWorkflowId}
+              onWorkflowOpen={onWorkflowOpen}
+              onNodesChange={onNodesChange}
+              showSearchPanel={showSearchPanel}
+              onShowSearchPanel={onShowSearchPanel}
+            />
+          </div>
+        </div>
+        <div id="middle-bottom-debug-panel">
           <DebugPanel />
         </div>
         <div
-          id="bottom-middle"
-          className="pointer-events-none absolute inset-x-0 bottom-2 flex shrink-0 justify-center *:pointer-events-auto"
-        />
-        <div
-          id="right-bottom"
-          className="pointer-events-none absolute right-2 bottom-2 flex flex-row-reverse items-end gap-4">
-          <CanvasActionBar />
+          id="right-bottom-canvas-action-bar"
+          className="pointer-events-none absolute right-2 bottom-2 z-10">
+          <div className="pointer-events-auto">
+            <CanvasActionBar />
+          </div>
         </div>
       </div>
       <LayoutOptionsDialog

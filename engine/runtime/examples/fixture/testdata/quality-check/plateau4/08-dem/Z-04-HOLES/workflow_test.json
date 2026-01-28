@@ -1,6 +1,42 @@
 {
-  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "description": "Test for plateau4 08 holes error.",
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "dem_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/dem",
+      "name": "dem_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "intermediateAssertions": [
     {
       "edgeId": "0e624ddf-8600-496e-b3e7-7ed51c0357c5",
@@ -11,18 +47,16 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_dem.json",
-      "includeFields": ["不正な穴"]
+      "includeFields": [
+        "不正な穴"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "08_地形_検査結果一覧.csv",
-      "includeColumns": ["不正な穴"]
+      "includeColumns": [
+        "不正な穴"
+      ]
     }
   },
-  "cityGmlPath": "udx/dem/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "objectLists": "08220_city_2023_objectlist_op.xlsx",
-  "prcs": 6677,
-  "expectResultOkFile": false,
-  "skip": false
+  "expectResultOkFile": false
 }

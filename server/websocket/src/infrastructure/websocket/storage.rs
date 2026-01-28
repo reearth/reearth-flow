@@ -110,7 +110,6 @@ impl CollaborativeStorage {
         let gcs_doc = Doc::new();
         let mut gcs_txn = gcs_doc.transact_mut();
         self.store.load_doc_v2(doc_id, &mut gcs_txn).await?;
-        let mut gcs_txn = gcs_doc.transact_mut();
 
         info!(
             "Loaded document {} from GCS, now applying Redis stream updates",

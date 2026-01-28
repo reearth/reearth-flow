@@ -1,3 +1,4 @@
+import { TrashIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import {
@@ -30,8 +31,10 @@ const WorkspaceDeletionDialog: React.FC<Props> = ({
         <Button
           variant={"destructive"}
           disabled={disabled}
+          size="sm"
           className="self-end">
-          {t("Delete Workspace")}
+          <TrashIcon />
+          {t("Delete")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

@@ -204,6 +204,7 @@ const DebugPreview: React.FC<Props> = ({
               fileContent={selectedOutputData}
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
+              onSelectedFeature={onSelectedFeature}
             />
           </div>
         </div>

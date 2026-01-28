@@ -6,6 +6,8 @@ with:
   cityCode: null
   codelistsPath: null
   schemasPath: null
+  codelists: null
+  schemas: null
   targetPackages:
   - urf
   - area
@@ -33,10 +35,10 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value").cityGmlPath
       extractArchive: true
+      destPrefix: udx
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
     name: FeatureFilter
     type: action
@@ -140,6 +142,8 @@ graphs:
           #{
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -151,7 +155,7 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      format: citygml
+      codelistsPath: env.get("__value").codelists
       flatten: true
       dataset: |
         env.get("__value")["path"]
@@ -173,6 +177,10 @@ graphs:
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
     name: AttributeFlattener
     type: action

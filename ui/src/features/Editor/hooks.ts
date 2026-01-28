@@ -251,13 +251,17 @@ export default ({
   );
 
   const {
+    customDebugRunWorkflowVariables,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     activeUsersDebugRuns,
   } = useDebugRun({
     rawWorkflows,
     yAwareness,
+    onProjectSnapshotSave: handleProjectSnapshotSave,
   });
 
   const handleBeforeDeleteNodes = useCallback(
@@ -303,6 +307,7 @@ export default ({
   );
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
+  const [showSearchPanel, setShowSearchPanel] = useState<boolean>(false);
 
   useHotkeys(
     EDITOR_HOT_KEYS,
@@ -316,6 +321,10 @@ export default ({
             handleProjectSnapshotSave?.();
           if (hasModifier && hasShift)
             handleYWorkflowAddFromSelection(nodes, edges);
+          break;
+        case "k":
+          if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
+          if (hasModifier && showSearchPanel) setShowSearchPanel(false);
 
           break;
         case "z":
@@ -403,6 +412,10 @@ export default ({
     spotlightUserClientId,
     spotlightUser,
     activeUsersDebugRuns,
+    rawWorkflows,
+    customDebugRunWorkflowVariables,
+    showSearchPanel,
+    handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -429,6 +442,7 @@ export default ({
     handleLayoutChange,
     handleDeleteDialogClose,
     handleDebugRunStart,
+    handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleCopy,
     handleCut,
@@ -438,5 +452,7 @@ export default ({
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
+    selectedNodeIds,
+    setShowSearchPanel,
   };
 };

@@ -71,7 +71,13 @@ fn extract_zip(
             ))
         })?;
         let filename = entry.name();
-        let outpath = root_output_path.join(filename).map_err(|e| {
+        // Non-standard workaround: Normalize backslashes to forward slashes.
+        // While ZIP format specifies forward slashes, some tools (especially on Windows)
+        // may create archives with backslashes. This ensures proper path extraction.
+        // Note: Does not prevent directory traversal attacks (e.g., "../../../etc/passwd").
+        // Callers should validate archive contents from trusted sources only.
+        let normalized_filename = filename.replace('\\', "/");
+        let outpath = root_output_path.join(&normalized_filename).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
                 "Output path join error with: error = {e:?}"
             ))
@@ -173,4 +179,41 @@ fn extract_sevenz(
         })
         .collect::<Vec<_>>();
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::TempDir;
+    use zip::write::FileOptions;
+
+    #[test]
+    fn test_backslash_separator_in_zip() {
+        // Create a zip with backslash separators
+        let mut buf = Vec::new();
+        {
+            let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
+            zip.start_file("folder\\file.txt", FileOptions::<()>::default())
+                .unwrap();
+            zip.write_all(b"test").unwrap();
+            zip.finish().unwrap();
+        }
+
+        // Extract and verify proper directory structure
+        let temp_dir = TempDir::new().unwrap();
+        let root_uri = Uri::for_test(temp_dir.path().to_str().unwrap());
+        let storage_resolver = Arc::new(StorageResolver::new());
+        let storage = storage_resolver.resolve(&root_uri).unwrap();
+
+        let result = extract_zip(bytes::Bytes::from(buf), &root_uri, storage);
+        assert!(result.is_ok());
+
+        // Verify file extracted to folder/file.txt, not "folder\file.txt"
+        let extracted_path = temp_dir.path().join("folder").join("file.txt");
+        assert!(
+            extracted_path.exists(),
+            "File should be in folder/file.txt structure"
+        );
+    }
 }

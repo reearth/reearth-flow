@@ -32,6 +32,9 @@ type Config struct {
 	OTLPEndpoint     string `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT" pp:",omitempty"`
 	OTLPInsecure     bool   `envconfig:"OTEL_EXPORTER_OTLP_INSECURE" default:"false"`
 	TelemetryEnabled bool   `envconfig:"OTEL_ENABLED" default:"false"`
+
+	HealthCheckUsername string `envconfig:"HEALTH_CHECK_USERNAME" pp:",omitempty"`
+	HealthCheckPassword string `envconfig:"HEALTH_CHECK_PASSWORD" pp:",omitempty"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {

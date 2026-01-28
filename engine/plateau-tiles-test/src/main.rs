@@ -73,62 +73,19 @@ struct Tests {
     cesium_statistics: Option<CesiumStatisticsConfig>,
 }
 
-fn pack_citymodel_zip(
-    zip_stem: &str,
-    testcase_dir: &Path,
-    artifacts_base: &Path,
-    output_path: &Path,
-) {
-    // Strip feature type suffix after "_op" for artifact directory lookup
-    // e.g., "43206_tamana-shi_city_2024_citygml_2_op_brid" -> "43206_tamana-shi_city_2024_citygml_2_op"
-    // G空間データ uses "_op" suffix, but Re:Earth CMS adds feature type like "_op_brid"
-    let artifact_stem = if let Some(pos) = zip_stem.rfind("_op_") {
-        &zip_stem[..pos + 3] // Include "_op" but not the feature type suffix
-    } else {
-        zip_stem
-    };
-    let artifact_dir = artifacts_base.join(artifact_stem);
-    let testcase_citymodel = testcase_dir.join("citymodel");
-
-    if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent).unwrap();
-    }
-
-    let file = fs::File::create(output_path).unwrap();
+fn zip_dir(src_dir: &Path, zip_path: &Path) {
+    let file = fs::File::create(zip_path).unwrap();
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for dirname in ["codelists", "schemas"] {
-        let src = artifact_dir.join(dirname);
-        if src.exists() {
-            for entry in WalkDir::new(&src).into_iter().filter_map(|e| e.ok()) {
-                let path = entry.path();
-                if path.is_file() {
-                    let relative_path = path.strip_prefix(&src).unwrap();
-                    let zip_path = format!("{}/{}", dirname, relative_path.display());
-                    zip.start_file(zip_path, options).unwrap();
-                    let content = fs::read(path).unwrap();
-                    std::io::Write::write_all(&mut zip, &content).unwrap();
-                }
-            }
-        }
-    }
-
-    if testcase_citymodel.exists() {
-        for entry in WalkDir::new(&testcase_citymodel)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-            // Debug, locate huge files in citymodel folder
-            tracing::debug!("Packing citymodel file: {}", path.display());
-            if path.is_file() {
-                let relative_path = path.strip_prefix(&testcase_citymodel).unwrap();
-                let zip_path = relative_path.to_string_lossy().to_string();
-                zip.start_file(zip_path, options).unwrap();
-                let content = fs::read(path).unwrap();
-                std::io::Write::write_all(&mut zip, &content).unwrap();
-            }
+    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_file() {
+            let relative_path = path.strip_prefix(src_dir).unwrap();
+            let zip_path = relative_path.to_string_lossy().to_string();
+            zip.start_file(zip_path, options).unwrap();
+            let content = fs::read(path).unwrap();
+            std::io::Write::write_all(&mut zip, &content).unwrap();
         }
     }
 
@@ -136,19 +93,30 @@ fn pack_citymodel_zip(
 }
 
 const DEFAULT_TESTS: &[&str] = &[
+    "data-convert/plateau4/01-bldg/lod1",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
-    // "data-convert/plateau4/03-frn-veg/frn",
+    "data-convert/plateau4/03-frn-veg/curvemembers",
+    "data-convert/plateau4/03-frn-veg/frn",
+    "data-convert/plateau4/03-frn-veg/veg",
     "data-convert/plateau4/04-luse-lsld/luse",
     "data-convert/plateau4/04-luse-lsld/lsld",
+    "data-convert/plateau4/05-fld/fld",
+    "data-convert/plateau4/05-fld/tnm",
+    "data-convert/plateau4/05-fld/htd",
+    "data-convert/plateau4/05-fld/ifld",
+    "data-convert/plateau4/05-fld/rfld",
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
     "data-convert/plateau4/07-brid-tun-cons/brid",
+    "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
+    "data-convert/plateau4/07-brid-tun-cons/cons",
+    "data-convert/plateau4/10-wtr/lod1",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -196,19 +164,37 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             .join("workflow.yml")
     };
 
-    let citygml_path = output_dir.join(&profile.citygml_zip_name);
-
     if stages.contains('r') {
         let _ = fs::remove_dir_all(&output_dir);
+        fs::create_dir_all(&output_dir).unwrap();
+
         tracing::debug!("packing citymodel zip...");
         let zip_stem = profile
             .citygml_zip_name
             .strip_suffix(".zip")
             .unwrap_or(&profile.citygml_zip_name);
-        let artifacts_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("artifacts")
-            .join("citymodel");
-        pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
+
+        // Create citymodel zip (zip only the udx subdirectory)
+        let citymodel_udx_dir = test_path.join("citymodel/udx");
+        assert!(citymodel_udx_dir.exists());
+        let citymodel_path = output_dir.join(zip_stem.to_string() + ".zip");
+        zip_dir(&citymodel_udx_dir, &citymodel_path);
+
+        // Create codelists zip if directory exists (symlinked from artifacts)
+        let codelist_dir = test_path.join("citymodel/codelists");
+        let codelist_path = codelist_dir.exists().then(|| {
+            let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
+            zip_dir(&codelist_dir, &path);
+            path
+        });
+
+        // Create schemas zip if directory exists (symlinked from artifacts)
+        let schemas_dir = test_path.join("citymodel/schemas");
+        let schemas_path = schemas_dir.exists().then(|| {
+            let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
+            zip_dir(&schemas_dir, &path);
+            path
+        });
 
         info!(
             "Starting run: {} to {}",
@@ -217,9 +203,13 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
-        fs::create_dir_all(&output_dir).unwrap();
-
-        runner::run_workflow(&workflow_path, &citygml_path, &output_dir);
+        runner::run_workflow(
+            &workflow_path,
+            &citymodel_path,
+            &output_dir,
+            codelist_path.as_deref(),
+            schemas_path.as_deref(),
+        );
 
         let elapsed = start_time.elapsed();
         info!(
@@ -240,16 +230,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let flow_extracted_dir = output_dir.join("flow_extracted");
         extract_toplevel_zips(&flow_source_dir, &flow_extracted_dir);
 
+        // Decompress draco-compressed glb in flow output
+        // fme.zip should be preprocessed to contain only decompressed glb files
+        decompress_glbs(&flow_extracted_dir);
+
         let tests = &profile.tests;
         let relative_path_display = relative_path.display();
 
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
-                test_json_attributes::test_json_attributes(
-                    &fme_extracted_dir,
-                    &flow_extracted_dir,
-                    cfg,
-                )
+                test_json_attributes::test_json_attributes(&fme_source_dir, &flow_source_dir, cfg)
             });
         }
 
@@ -319,12 +309,30 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
         if path.extension().is_some_and(|e| e == "zip") {
             let stem = path.file_stem().unwrap().to_str().unwrap();
             let out = output_dir.join(stem);
-            if out.exists() {
-                continue;
-            }
+            let _ = fs::remove_dir_all(&out);
             fs::create_dir_all(&out).unwrap();
             let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
             zip.extract(&out).unwrap();
+        }
+    }
+}
+
+fn decompress_glbs(flow_extracted_dir: &Path) {
+    for entry in WalkDir::new(flow_extracted_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
+            tracing::debug!("Decompressing glb file: {}", path.display());
+            let status = std::process::Command::new("npx")
+                .arg("glb-decompress")
+                .arg(path.as_os_str())
+                .status()
+                .expect("Failed to execute glb-decompress command");
+            if !status.success() {
+                panic!("glb-decompress failed");
+            }
         }
     }
 }

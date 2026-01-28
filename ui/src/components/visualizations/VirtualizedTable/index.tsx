@@ -8,8 +8,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Virtualizer } from "@tanstack/react-virtual";
+import { RefObject, useCallback, useEffect, useState } from "react";
 
 import {
   DropdownMenu,
@@ -32,25 +32,36 @@ import { useT } from "@flow/lib/i18n";
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data?: TData[];
+  parentRef: RefObject<HTMLDivElement | null>;
+  virtualizer: Virtualizer<HTMLDivElement, Element>;
   selectColumns?: boolean;
   showFiltering?: boolean;
   condensed?: boolean;
   searchTerm?: string;
-  selectedFeatureId?: string | null;
+  selectedRowIndex: number;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
+  customGlobalFilter?: (
+    row: any,
+    _columnId: string,
+    filterValue: string,
+  ) => boolean;
   setSearchTerm?: (term: string) => void;
 };
 
 function VirtualizedTable<TData, TValue>({
   columns,
   data,
+  parentRef,
+  virtualizer,
   selectColumns = false,
   showFiltering = false,
   condensed,
-  selectedFeatureId,
+  selectedRowIndex,
+  searchTerm,
   onRowClick,
   onRowDoubleClick,
+  customGlobalFilter,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -80,18 +91,18 @@ function VirtualizedTable<TData, TValue>({
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
+    globalFilterFn: customGlobalFilter ? customGlobalFilter : undefined,
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     state: {
       sorting,
       columnVisibility,
       rowSelection,
-      globalFilter,
+      globalFilter: searchTerm || globalFilter,
     },
     manualPagination: true,
   });
 
-  // Handle select all columns
   const handleSelectAllColumns = useCallback(() => {
     const visibilityUpdate: Record<string, boolean> = {};
     table
@@ -103,7 +114,6 @@ function VirtualizedTable<TData, TValue>({
     setColumnVisibility(visibilityUpdate);
   }, [table]);
 
-  // Handle deselect all columns
   const handleDeselectAllColumns = useCallback(() => {
     const visibilityUpdate: Record<string, boolean> = {};
     table
@@ -115,38 +125,29 @@ function VirtualizedTable<TData, TValue>({
     setColumnVisibility(visibilityUpdate);
   }, [table]);
 
-  const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
-  });
 
-  const selectedRowIndex = useMemo(() => {
-    if (!selectedFeatureId || !data) return -1;
-    const normalizedSelectedId = String(selectedFeatureId).replace(
-      /[^a-zA-Z0-9]/g,
-      "",
-    );
-    return data.findIndex(
-      (row: any) =>
-        String(row.id || "").replace(/[^a-zA-Z0-9]/g, "") ===
-        normalizedSelectedId,
-    );
-  }, [selectedFeatureId, data]);
+  const [parentHeight, setParentHeight] = useState<number>(0);
 
   useEffect(() => {
-    if (selectedRowIndex !== -1) {
-      virtualizer.scrollToIndex(selectedRowIndex, {
-        align: "start",
-        behavior: "auto",
-      });
-    }
-  }, [selectedRowIndex, virtualizer]);
+    if (!parentRef.current) return;
+    const el = parentRef.current;
+
+    const ro = new ResizeObserver(() => {
+      setParentHeight(el.clientHeight);
+    });
+
+    ro.observe(el);
+    setParentHeight(el.clientHeight);
+
+    return () => ro.disconnect();
+  }, [parentRef]);
+
+  const totalSize = virtualizer.getTotalSize();
+  const spacerHeight = Math.max(totalSize, parentHeight);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {(showFiltering || selectColumns) && (
         <div
           className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
@@ -198,17 +199,16 @@ function VirtualizedTable<TData, TValue>({
           )}
         </div>
       )}
-
       <div
         ref={parentRef}
-        className="h-full overflow-auto rounded-md bg-primary/40"
+        className="min-h-0 flex-1 overflow-auto rounded-md bg-primary/40"
         style={{ contain: "paint", willChange: "transform" }}>
         <div
-          className="w-full caption-bottom overflow-auto text-xs"
+          className="relative w-full"
           style={{
-            height: `${virtualizer.getTotalSize() + 32}px`,
+            height: `${spacerHeight}px`,
           }}>
-          <Table>
+          <Table className="w-full text-xs">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -236,6 +236,7 @@ function VirtualizedTable<TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
+
             <TableBody>
               {rows.length ? (
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
@@ -244,39 +245,36 @@ function VirtualizedTable<TData, TValue>({
                   return (
                     <TableRow
                       key={row.id}
-                      // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b"
                       style={{
                         height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                        transform: `translateY(${
+                          virtualRow.start - idx * virtualRow.size
+                        }px)`,
                       }}
                       data-state={isSelected ? "selected" : undefined}
                       onClick={() => {
                         row.toggleSelected();
                         onRowClick?.(row.original);
                       }}
-                      onDoubleClick={() => {
-                        onRowDoubleClick?.(row.original);
-                      }}>
-                      {row.getVisibleCells().map((cell: any) => {
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
-                            style={{
-                              width: Math.min(
-                                cell.column.getSize(),
-                                cell.column.columnDef.maxSize || 400,
-                              ),
-                              maxWidth: cell.column.columnDef.maxSize || 400,
-                            }}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        );
-                      })}
+                      onDoubleClick={() => onRowDoubleClick?.(row.original)}>
+                      {row.getVisibleCells().map((cell: any) => (
+                        <TableCell
+                          key={cell.id}
+                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
+                          style={{
+                            width: Math.min(
+                              cell.column.getSize(),
+                              cell.column.columnDef.maxSize || 400,
+                            ),
+                            maxWidth: cell.column.columnDef.maxSize || 400,
+                          }}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   );
                 })

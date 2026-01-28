@@ -12,7 +12,14 @@ use crate::{uri::Uri, Error};
 static WORKING_DIRECTORY: Lazy<Option<String>> =
     Lazy::new(|| env::var("FLOW_RUNTIME_WORKING_DIRECTORY").ok());
 
+// If FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY is set, job-scoped temp dirs are used instead of project-level cache.
 pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
+    if let Ok(root) = std::env::var("FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY") {
+        let dir_path = PathBuf::from(root).join(id);
+        fs::create_dir_all(&dir_path).map_err(Error::dir)?;
+        return Ok(dir_path);
+    }
+
     let p = get_project_cache_dir_path("temp")?;
     let dir_path = PathBuf::from(p).join("temp").join(id);
     fs::create_dir_all(&dir_path).map_err(Error::dir)?;
@@ -75,4 +82,94 @@ pub fn move_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
         fs::rename(file.path(), file_path.clone()).map_err(Error::dir)?;
     }
     Ok(())
+}
+
+/// Move files to destination while preserving directory structure relative to a common base path.
+/// This finds the longest common path prefix among all files and preserves the structure below that.
+/// After moving files, empty source directories are cleaned up.
+pub fn move_files_with_structure(dest: &Path, files: &[Uri]) -> crate::Result<()> {
+    if files.is_empty() {
+        return Ok(());
+    }
+
+    // Find common base path by looking at parent directories
+    let paths: Vec<PathBuf> = files.iter().map(|f| f.path().to_path_buf()).collect();
+
+    // Find the longest common prefix
+    let common_base = find_common_base(&paths);
+
+    // Collect source directories to clean up later
+    let mut source_dirs_to_cleanup: Vec<PathBuf> = Vec::new();
+
+    for file in files {
+        let file_path = file.path();
+        // Calculate relative path from common base
+        let relative_path = file_path.strip_prefix(&common_base).unwrap_or(
+            file_path
+                .file_name()
+                .map(Path::new)
+                .unwrap_or(Path::new("")),
+        );
+
+        let dest_path = dest.join(relative_path);
+
+        // Create parent directories if needed
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent).map_err(Error::dir)?;
+        }
+
+        // Remember the source directory for cleanup
+        if let Some(parent) = file_path.parent() {
+            if parent != common_base {
+                source_dirs_to_cleanup.push(parent.to_path_buf());
+            }
+        }
+
+        fs::rename(file_path, &dest_path).map_err(Error::dir)?;
+    }
+
+    // Clean up empty source directories (from deepest to shallowest)
+    source_dirs_to_cleanup.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
+    for dir in source_dirs_to_cleanup {
+        // Remove empty directories up to (but not including) common_base
+        let mut current = dir.as_path();
+        while current != common_base && current.starts_with(&common_base) {
+            if let Ok(entries) = fs::read_dir(current) {
+                if entries.count() == 0 {
+                    let _ = fs::remove_dir(current);
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+            current = match current.parent() {
+                Some(p) => p,
+                None => break,
+            };
+        }
+    }
+
+    Ok(())
+}
+
+/// Find the longest common base path among a list of paths
+fn find_common_base(paths: &[PathBuf]) -> PathBuf {
+    if paths.is_empty() {
+        return PathBuf::new();
+    }
+    if paths.len() == 1 {
+        return paths[0].parent().unwrap_or(Path::new("")).to_path_buf();
+    }
+
+    let first = &paths[0];
+    let mut common = first.parent().unwrap_or(Path::new("")).to_path_buf();
+
+    for path in paths.iter().skip(1) {
+        while !path.starts_with(&common) && common.parent().is_some() {
+            common = common.parent().unwrap().to_path_buf();
+        }
+    }
+
+    common
 }

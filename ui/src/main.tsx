@@ -1,7 +1,9 @@
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { createRouter } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 
+import { App } from "@flow/App";
 import loadConfig, { config } from "@flow/config";
+import { AuthProvider } from "@flow/lib/auth";
 import { enableMocking } from "@flow/mocks";
 import { routeTree } from "@flow/routeTree.gen.ts";
 
@@ -32,5 +34,9 @@ loadConfig().finally(async () => {
   await openDatabase();
 
   const root = createRoot(element);
-  root.render(<RouterProvider router={router} />);
+  root.render(
+    <AuthProvider>
+      <App router={router} />
+    </AuthProvider>,
+  );
 });

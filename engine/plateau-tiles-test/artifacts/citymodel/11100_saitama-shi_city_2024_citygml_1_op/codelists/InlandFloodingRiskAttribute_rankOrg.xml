@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_0ebd2a5c-9b08-4b58-ba54-ea9e3f9b37bf">
+<gml:name>InlandFloodingRiskAttribute_rankOrg</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="InlandFloodingRiskAttribute_rankOrg_1">
+<gml:description>0.2m以上0.3m未満</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="InlandFloodingRiskAttribute_rankOrg_2">
+<gml:description>0.3m以上0.5m未満</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="InlandFloodingRiskAttribute_rankOrg_3">
+<gml:description>0.5m以上1m未満</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="InlandFloodingRiskAttribute_rankOrg_4">
+<gml:description>1m以上3m未満</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="InlandFloodingRiskAttribute_rankOrg_5">
+<gml:description>3m以上5m未満</gml:description>
+<gml:name>5</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="InlandFloodingRiskAttribute_rankOrg_6">
+<gml:description>5m以上</gml:description>
+<gml:name>6</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

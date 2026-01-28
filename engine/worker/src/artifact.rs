@@ -29,6 +29,15 @@ pub(crate) async fn upload_artifact(
                 && !e
                     .path()
                     .starts_with(local_artifact_root_path.join("assets"))
+                && !e
+                    .path()
+                    .starts_with(local_artifact_root_path.join("previous-artifacts"))
+                && !e
+                    .path()
+                    .starts_with(local_artifact_root_path.join("previous-temp-artifacts"))
+                && !e
+                    .path()
+                    .starts_with(local_artifact_root_path.join("previous-feature-store"))
         })
         .filter_map(|entry| entry.path().as_os_str().to_str().map(String::from))
         .map(|entry| Uri::from_str(entry.as_str()))
@@ -104,13 +113,14 @@ pub(crate) fn artifact_job_root_uri(
         .map_err(crate::errors::Error::failed_to_upload_artifact)
 }
 
-/// Builds the remote artifact feature-store root URI for the given job.
-pub(crate) fn artifact_feature_store_root_uri(
+/// Builds the remote artifact job subdirectory URI (e.g., GCS) for the given job.
+pub(crate) fn artifact_job_subdir_root_uri(
     metadata: &Metadata,
     job_id: uuid::Uuid,
+    subdir: &str,
 ) -> crate::errors::Result<Uri> {
     let job_root = artifact_job_root_uri(metadata, job_id)?;
     job_root
-        .join("feature-store")
+        .join(subdir)
         .map_err(crate::errors::Error::failed_to_upload_artifact)
 }

@@ -1,9 +1,38 @@
 {
-  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "description": "Test quality check for unshared edges #3 - threshold boundary cases",
-  "cityGmlPath": "udx/fld/natl/1_1_kikuchigawa_kikuchigawa/49300004_fld_6697_l1_op.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "fld_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/fld",
+      "name": "fld_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_fld_natl_1_1_kikuchigawa_kikuchigawa.json"
@@ -12,6 +41,5 @@
       "expectedFile": "06_浸水想定区域_fld/natl/1_1_kikuchigawa_kikuchigawa.csv"
     }
   },
-  "expectResultOkFile": false,
-  "prcs": 6677
+  "expectResultOkFile": false
 }

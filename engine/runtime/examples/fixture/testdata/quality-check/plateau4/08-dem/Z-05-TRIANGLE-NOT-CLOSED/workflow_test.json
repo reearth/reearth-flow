@@ -1,6 +1,42 @@
 {
-  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "description": "Test for plateau4 08 not-closed triangle error.",
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "dem_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/dem",
+      "name": "dem_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "intermediateAssertions": [
     {
       "edgeId": "e7d05d16-c412-43d5-a1af-3e754eb10b02",
@@ -11,18 +47,16 @@
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_dem.json",
-      "includeFields": ["閉じていない三角形"]
+      "includeFields": [
+        "閉じていない三角形"
+      ]
     },
     "fileErrorSummary": {
       "expectedFile": "08_地形_検査結果一覧.csv",
-      "includeColumns": ["閉じていない三角形"]
+      "includeColumns": [
+        "閉じていない三角形"
+      ]
     }
   },
-  "cityGmlPath": "udx/dem/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "objectLists": "08220_city_2023_objectlist_op.xlsx",
-  "prcs": 6677,
-  "expectResultOkFile": false,
-  "skip": false
+  "expectResultOkFile": false
 }

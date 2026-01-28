@@ -8,24 +8,15 @@ nodes:
     with:
       routingPort: default
 
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-        - codelists
-        - schemas
-
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: "udx"
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
 
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
     name: FeatureFilterByGml
@@ -127,7 +118,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L01エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L01エラー.csv")
 
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
@@ -157,7 +148,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L02エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L02エラー.csv")
 
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
@@ -273,7 +264,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通.csv")
 
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
@@ -350,7 +341,7 @@ nodes:
           result
         }
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_common.json")
+        file::join_path(env.get("workerArtifactPath"), "summary_common.json")
 
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
@@ -376,7 +367,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID書式不正.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID書式不正.csv")
 
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
@@ -402,7 +393,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID重複.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID重複.csv")
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
@@ -454,7 +445,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L06エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L06エラー.csv")
 
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
@@ -486,7 +477,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L04エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L04エラー.csv")
 
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
@@ -518,7 +509,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_不正なcodeSpace.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_不正なcodeSpace.csv")
 
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
@@ -561,7 +552,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_xlink参照先なし.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_xlink参照先なし.csv")
 
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
@@ -595,7 +586,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_T03エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_T03エラー.csv")
 
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
@@ -624,7 +615,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L-frn-01エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L-frn-01エラー.csv")
 
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
@@ -678,11 +669,6 @@ nodes:
 edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
     from: 3a85e550-49e8-4b67-bc92-908430ef6eee
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: b729c108-a200-4b6f-aa60-7c0c10866343
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     fromPort: default
     toPort: default

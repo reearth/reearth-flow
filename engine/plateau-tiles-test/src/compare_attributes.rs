@@ -1,6 +1,70 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
+/// Detects if the given path is a risk type based on known risk type identifiers.
+/// Risk types: fld, tnm, htd, ifld, rfld
+fn is_risk_type(path: &str) -> bool {
+    const RISK_TYPES: &[&str] = &["fld", "tnm", "htd", "ifld", "rfld"];
+    RISK_TYPES.iter().any(|risk_type| {
+        path.contains(&format!("_op_{}_", risk_type))
+            || path.contains(&format!("_op_{}", risk_type))
+    })
+}
+
+/// Creates a composite key for feature comparison.
+/// For risk types (fld, tnm, htd, ifld, rfld) which don't have gml_id,
+/// use {path}/{uro:rank_code} to create a unique key.
+/// For DmGeometricAttribute features (which can have multiple children per parent),
+/// use gml_id + dm_geometryType_code to create a unique key.
+/// For other features, use gml_id alone (extracted from props).
+pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
+    let getter = |key| {
+        // FME has unreliable number vs string types so we convert everything to string here
+        if let Some(value) = props.get(key) {
+            match value {
+                Value::String(s) => s.clone(),
+                _ => value.to_string(),
+            }
+        } else {
+            String::new()
+        }
+    };
+
+    // For risk types, use path/rank_code as the key
+    if let Some(p) = path {
+        if is_risk_type(p) {
+            let rank_code = getter("uro_rank_code");
+            if !rank_code.is_empty() {
+                return format!("{}/{}", p, rank_code);
+            }
+            let rankorg_code = getter("uro_rankOrg_code");
+            if !rankorg_code.is_empty() {
+                return format!("{}/{}", p, rankorg_code);
+            }
+            panic!(
+                "both uro:rank_code and uro_rankOrg_code are missing in {}",
+                p
+            );
+        }
+    }
+
+    // Extract gml_id from props if present
+    let gml_id = getter("gml_id");
+
+    // Check if this is a DmGeometricAttribute feature
+    if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {
+        if dm_feature_type == "DmGeometricAttribute" {
+            // Use dm_geometryType_code as discriminator for DM features
+            if let Some(dm_geometry_type_code) =
+                props.get("dm_geometryType_code").and_then(|v| v.as_str())
+            {
+                return format!("{}__dm_{}", gml_id, dm_geometry_type_code);
+            }
+        }
+    }
+    gml_id.to_string()
+}
+
 #[derive(Debug)]
 pub struct AttributeComparer {
     identifier: String,
@@ -198,6 +262,12 @@ impl AttributeComparer {
                     self.compare_recurse(&new_key, val1.clone(), val2.clone());
                 }
             }
+            (Value::String(s1), Value::String(s2)) => {
+                if s1.trim() != s2.trim() {
+                    self.mismatches
+                        .push((self.identifier.clone(), key.to_string(), v1, v2));
+                }
+            }
             _ => {
                 // Check if we should compare as floats with tolerance
                 if let Some(CastConfig::Float { epsilon }) = self.casts.get(key) {
@@ -262,7 +332,7 @@ impl AttributeComparer {
     pub fn compare(&mut self, attr1: &Value, attr2: &Value) -> Result<(), String> {
         if attr1.is_null() || attr2.is_null() {
             return Err(format!(
-                "Missing attributes for gmlId: {} for {}",
+                "Missing attributes for identifier: {} for {}",
                 self.identifier,
                 if attr1.is_null() { "FME" } else { "flow" }
             ));
@@ -285,12 +355,12 @@ impl AttributeComparer {
 }
 
 pub fn analyze_attributes(
-    gml_id: &str,
+    ident: &str,
     attr1: &Value,
     attr2: &Value,
     casts: HashMap<String, CastConfig>,
 ) -> Result<(), String> {
-    let mut comparer = AttributeComparer::new(gml_id.to_string(), casts);
+    let mut comparer = AttributeComparer::new(ident.to_string(), casts);
     comparer.compare(attr1, attr2)
 }
 

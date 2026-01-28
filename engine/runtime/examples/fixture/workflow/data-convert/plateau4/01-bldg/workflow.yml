@@ -4,6 +4,8 @@ name: "PLATEAU4-DataConvert-01-bldg-workflow"
 entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
   cityGmlPath:
+  codelistsPath:
+  schemasPath:
   codelists:
   schemas:
   targetPackages:
@@ -25,8 +27,8 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                codelists: env.get("codelists"),
-                schemas: env.get("schemas"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
               },
             ]
 
@@ -40,7 +42,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          format: citygml
+          codelistsPath: env.get("__value").codelists
           dataset: |
             env.get("__value")["path"]
 
@@ -54,7 +56,7 @@ graphs:
               method: convert
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
-                let building_id_attributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
                 let gml_city_code = building_id_attributes["uro:city_code"];
                 if gml_city_code != () && gml_city_code != "" {
                   gml_city_code
@@ -71,7 +73,7 @@ graphs:
               method: create
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
-                let building_id_attributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
                 building_id_attributes["uro:city"] ?? env.get("__value").cityName
 
       - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
@@ -450,6 +452,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
+          dracoCompression: false
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -513,6 +516,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
+          dracoCompression: false
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -576,6 +580,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
+          dracoCompression: false
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");

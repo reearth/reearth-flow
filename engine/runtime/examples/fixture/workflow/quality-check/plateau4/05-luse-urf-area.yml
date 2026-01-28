@@ -3,10 +3,13 @@ name: PLATEAU4-quality-check-05-luse-urf-area
 entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
 with:
   cityGmlPath: null
+  schemasPath: null
   schemas: null
+  codelistsPath: null
   codelists: null
-  outputPath: null
+  workerArtifactPath: null
   prcs: null
+  objectListsPath: null
   objectLists: null
 graphs:
 - id: 7e98d856-1438-4148-bdcb-91747ef2e405
@@ -759,6 +762,9 @@ graphs:
     name: PLATEAU4.DomainOfDefinitionValidator
     type: action
     action: PLATEAU4.DomainOfDefinitionValidator
+    with:
+      codelistsPath: |
+        env.get("__value").dirCodelists
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
@@ -922,23 +928,15 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-      - codelists
-      - schemas
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
     name: FeatureFilterByGml
     type: action
@@ -1027,7 +1025,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L01エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L01エラー.csv")
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
@@ -1053,7 +1051,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L02エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L02エラー.csv")
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -1164,7 +1162,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通.csv")
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
@@ -1229,7 +1227,7 @@ graphs:
           result
         }
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_common.json")
+        file::join_path(env.get("workerArtifactPath"), "summary_common.json")
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
@@ -1253,7 +1251,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID書式不正.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID書式不正.csv")
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
@@ -1277,7 +1275,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID重複.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID重複.csv")
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
@@ -1323,7 +1321,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L06エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L06エラー.csv")
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
@@ -1353,7 +1351,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L04エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L04エラー.csv")
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
@@ -1383,7 +1381,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_不正なcodeSpace.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_不正なcodeSpace.csv")
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -1423,7 +1421,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_xlink参照先なし.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_xlink参照先なし.csv")
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
@@ -1455,7 +1453,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_T03エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_T03エラー.csv")
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
@@ -1482,7 +1480,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L-frn-01エラー.csv")
+        file::join_path(env.get("workerArtifactPath"), "01_共通_L-frn-01エラー.csv")
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -1530,11 +1528,6 @@ graphs:
   edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
     from: 3a85e550-49e8-4b67-bc92-908430ef6eee
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: b729c108-a200-4b6f-aa60-7c0c10866343
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     fromPort: default
     toPort: default
@@ -1817,20 +1810,12 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
-  - id: c7315341-26b3-4405-9d02-039d721cd225
-    name: DirectoryDecompressor
-    type: action
-    action: DirectoryDecompressor
-    with:
-      archiveAttributes:
-      - codelists
-      - schemas
   - id: c790e59a-4283-452f-bc24-9cc966c3ec79
     name: PLATEAU4.ObjectListExtractor
     type: action
     action: PLATEAU4.ObjectListExtractor
     with:
-      objectListPathAttribute: objectListPath
+      objectListPathAttribute: objectListsPath
   - id: c760d4d3-7b61-4451-878e-58783cfcbf30
     name: FeatureFilePathExtractor
     type: action
@@ -1839,6 +1824,7 @@ graphs:
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
     name: FeatureFilterByGml
     type: action
@@ -1895,7 +1881,7 @@ graphs:
           feature["dataFileData"]
         }
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_common2-" + env.get("__value")["package"] + ".json")
+        file::join_path(env.get("workerArtifactPath"), "summary_common2-" + env.get("__value")["package"] + ".json")
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
@@ -1924,7 +1910,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
@@ -1944,7 +1930,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv")
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
@@ -1973,7 +1959,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv")
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
@@ -2002,7 +1988,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv")
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
@@ -2076,11 +2062,6 @@ graphs:
   edges:
   - id: 668cbbf5-9da8-45db-baca-312d69d219c2
     from: 00f42e7e-080b-4927-933b-70fc8d8136b8
-    to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
-  - id: ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc
-    from: c7315341-26b3-4405-9d02-039d721cd225
     to: c790e59a-4283-452f-bc24-9cc966c3ec79
     fromPort: default
     toPort: default
@@ -2246,9 +2227,9 @@ graphs:
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            schemas: env.get("schemas"),
-            codelists: env.get("codelists"),
-            objectListPath: env.get("objectLists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
           },
         ]
   - id: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
@@ -2264,10 +2245,10 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      destPrefix: udx
       sourceDataset: |
         env.get("__value")["cityGmlPath"]
       extractArchive: true
+      destPrefix: udx
   - id: 151fa081-4606-4493-8808-35d75f063159
     name: FeatureFilterByGml
     type: action
@@ -2298,7 +2279,7 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      format: citygml
+      codelistsPath: env.get("__value").codelists
       flatten: true
       dataset: |
         env.get("__value")["path"]
@@ -2371,7 +2352,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "05_土地利用_都市決定情報_区域_地物インスタンス数.csv")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
+        file::join_path(env.get("workerArtifactPath"), name + "_地物インスタンス数.csv")
   - id: 7ccbb722-d0cc-4843-a42e-179576530340
     name: FileInfoExtractor
     type: action
@@ -2384,6 +2367,9 @@ graphs:
       - attribute: Filename
         expr: |
           env.get("__value").name
+      - attribute: Folder
+        expr: |
+          env.get("__value")["package"]
   - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
     name: PLATEAU3.SurfaceValidator2D
     type: subGraph
@@ -2421,7 +2407,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "05_土地利用_都市決定情報_区域_面の向き不正.csv")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
+        file::join_path(env.get("workerArtifactPath"), name + "_面の向き不正.csv")
   - id: 26751290-4ac7-4884-908a-7c231b5f820a
     name: SurfaceOrientationErrorCounter
     type: action
@@ -2466,7 +2454,9 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "05_土地利用_都市決定情報_区域_面のエラー.csv")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
+        file::join_path(env.get("workerArtifactPath"), name + "_面のエラー.csv")
   - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
     name: SurfaceErrorCounter
     type: action
@@ -2486,30 +2476,15 @@ graphs:
         env.get("__value").Filename
       supplierAttributeValue: |
         env.get("__value").name
-  - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    name: CommonErrorMerger01
-    type: action
-    action: FeatureMerger
-    with:
-      requestorAttributeValue: |
-        env.get("__value").Filename
-      supplierAttributeValue: |
-        env.get("__value").gmlFilename
-  - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    name: CommonErrorMerger02
-    type: action
-    action: FeatureMerger
-    with:
-      requestorAttributeValue: |
-        env.get("__value").Filename
-      supplierAttributeValue: |
-        env.get("__value").filename
   - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
     name: SummaryAttributeMapper
     type: action
     action: AttributeMapper
     with:
       mappers:
+      - attribute: Folder
+        expr: |
+          env.get("__value").Folder
       - attribute: Index
         expr: |
           env.get("__value").Index
@@ -2522,45 +2497,6 @@ graphs:
       - attribute: 面のエラー
         expr: |
           env.get("__value")._num_surface_issues ?? 0
-      - attribute: L01 XML整合性エラー(データ読み込み不可)
-        expr: |
-          env.get("__value").L01_XMLIntegrityError ?? 0
-      - attribute: L02 XML Schemaエラー
-        expr: |
-          env.get("__value").L02_XMLSchemaError ?? 0
-      - attribute: L03 GML整合性エラー(データ読み込み不可)
-        expr: |
-          env.get("__value").L03_GMLIntegrityError ?? 0
-      - attribute: L04 GML妥当性エラー(データ読み込み不可)
-        expr: |
-          env.get("__value").L04_GMLValidityError ?? 0
-      - attribute: L05 i-URのファイル命名規則エラー
-        expr: |
-          env.get("__value").L05_IURFileNamingError ?? 0
-      - attribute: L06 その他データセットのファイル命名規則エラー
-        expr: |
-          env.get("__value").L06_OtherDatasetFileNamingError ?? 0
-      - attribute: T03 ファイル参照先エラー(xlink)
-        expr: |
-          env.get("__value").T03_FileReferenceError ?? 0
-      - attribute: xlink:hrefで参照するファイル
-        expr: |
-          env.get("__value").ReferencedFile ?? ""
-      - attribute: gml:idが重複している地物
-        expr: |
-          env.get("__value").DuplicateGmlId ?? ""
-      - attribute: L-frn-01 掲載されていない地物の有無(FRN)
-        expr: |
-          env.get("__value")["L-frn-01"] ?? 0
-      - attribute: C05 定義域(コードリストへの適合)エラー
-        expr: |
-          env.get("__value").C05_CodelistDomainError ?? 0
-      - attribute: C07 定義域(数値の範囲)エラー
-        expr: |
-          env.get("__value").C07_NumericRangeError ?? 0
-      - attribute: C08 定義域(列挙値)エラー
-        expr: |
-          env.get("__value").C08_EnumerationError ?? 0
   - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
     name: CSVSummaryWriter
     type: action
@@ -2568,12 +2504,16 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "05_土地利用_都市決定情報_区域_検査結果一覧.csv")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
+        file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
   - id: 521b2dea-51af-460f-9eb5-672917768692
     name: StatisticsCalculator
     type: action
     action: StatisticsCalculator
     with:
+      groupBy:
+      - Folder
       calculations:
       - newAttribute: 面の向き不正
         expr: |
@@ -2581,43 +2521,10 @@ graphs:
       - newAttribute: 面のエラー
         expr: |
           env.get("__value")["面のエラー"] ?? 0
-      - newAttribute: L01 XML整合性エラー(データ読み込み不可)
-        expr: |
-          env.get("__value")["L01 XML整合性エラー(データ読み込み不可)"] ?? 0
-      - newAttribute: L02 XML Schemaエラー
-        expr: |
-          env.get("__value")["L02 XML Schemaエラー"] ?? 0
-      - newAttribute: L03 GML整合性エラー(データ読み込み不可)
-        expr: |
-          env.get("__value")["L03 GML整合性エラー(データ読み込み不可)"] ?? 0
-      - newAttribute: L04 GML妥当性エラー(データ読み込み不可)
-        expr: |
-          env.get("__value")["L04 GML妥当性エラー(データ読み込み不可)"] ?? 0
-      - newAttribute: L05 i-URのファイル命名規則エラー
-        expr: |
-          env.get("__value")["L05 i-URのファイル命名規則エラー"] ?? 0
-      - newAttribute: L06 その他データセットのファイル命名規則エラー
-        expr: |
-          env.get("__value")["L06 その他データセットのファイル命名規則エラー"] ?? 0
-      - newAttribute: T03 ファイル参照先エラー(xlink)
-        expr: |
-          env.get("__value")["T03 ファイル参照先エラー(xlink)"] ?? 0
-      - newAttribute: L-frn-01 掲載されていない地物の有無(FRN)
-        expr: |
-          env.get("__value")["L-frn-01 掲載されていない地物の有無(FRN)"] ?? 0
-      - newAttribute: C05 定義域(コードリストへの適合)エラー
-        expr: |
-          env.get("__value")["C05 定義域(コードリストへの適合)エラー"] ?? 0
-      - newAttribute: C07 定義域(数値の範囲)エラー
-        expr: |
-          env.get("__value")["C07 定義域(数値の範囲)エラー"] ?? 0
-      - newAttribute: C08 定義域(列挙値)エラー
-        expr: |
-          env.get("__value")["C08 定義域(列挙値)エラー"] ?? 0
       - newAttribute: totalErrorCount
         expr: |
           let total = 0;
-          let keys = ["面の向き不正","面のエラー","L01 XML整合性エラー(データ読み込み不可)","L02 XML Schemaエラー","L03 GML整合性エラー(データ読み込み不可)","L04 GML妥当性エラー(データ読み込み不可)","L05 i-URのファイル命名規則エラー","L06 その他データセットのファイル命名規則エラー","T03 ファイル参照先エラー(xlink)","L-frn-01 掲載されていない地物の有無(FRN)","C05 定義域(コードリストへの適合)エラー","C07 定義域(数値の範囲)エラー","C08 定義域(列挙値)エラー"];
+          let keys = ["面の向き不正", "面のエラー"];
           for key in keys {
             total += env.get("__value")[key] ?? 0;
           }
@@ -2643,7 +2550,8 @@ graphs:
           result
         }
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_luse_urf_area.json")
+        let pkg = env.get("__value")["Folder"] ?? "";
+        file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
   - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -2670,7 +2578,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
     name: ZipFileWriter
@@ -2679,19 +2587,9 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        let dirname = env.get("workerArtifactPath");
         file::join_path(dirname, filename)
   edges:
-  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
-    from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
-    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    fromPort: default
-    toPort: default
-  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
-    from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
-    to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
-    fromPort: default
-    toPort: default
   - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
     from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
     to: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
@@ -2700,6 +2598,16 @@ graphs:
   - id: e24c990c-4c60-461c-9ac3-a8b05f01af86
     from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
     to: e275d299-2cd1-4e26-9d91-4d63921a29c7
+    fromPort: default
+    toPort: default
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: default
+    toPort: default
+  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+    from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
+    to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
     fromPort: default
     toPort: default
   - id: c9d3e589-4e51-47ff-86dc-0e915b368072
@@ -2814,41 +2722,11 @@ graphs:
     toPort: supplier
   - id: cd72aac5-c44c-4195-a881-6dd12406b360
     from: 92119eb6-9343-49b7-b6c2-e2142374c52c
-    to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    fromPort: merged
-    toPort: requestor
-  - id: ca661de4-3521-4920-ba92-6154c822d64a
-    from: 92119eb6-9343-49b7-b6c2-e2142374c52c
-    to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    fromPort: unmerged
-    toPort: requestor
-  - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
-    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    to: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    fromPort: perFileOutput
-    toPort: supplier
-  - id: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
-    from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    fromPort: merged
-    toPort: requestor
-  - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
-    from: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
-    to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    fromPort: unmerged
-    toPort: requestor
-  - id: e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b
-    from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
-    to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
-    fromPort: perFileOutput
-    toPort: supplier
-  - id: f5a6b7c8-d9e0-1f2a-3b4c-5d6e7f8a9b0c
-    from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
     to: f58eeb2c-9187-4880-8c1f-7da2f9388069
     fromPort: merged
     toPort: default
-  - id: a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d
-    from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d
+  - id: ca661de4-3521-4920-ba92-6154c822d64a
+    from: 92119eb6-9343-49b7-b6c2-e2142374c52c
     to: f58eeb2c-9187-4880-8c1f-7da2f9388069
     fromPort: unmerged
     toPort: default
@@ -2871,6 +2749,16 @@ graphs:
     from: 521b2dea-51af-460f-9eb5-672917768692
     to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
     fromPort: default
+    toPort: default
+  - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
+    fromPort: summaryOutput
+    toPort: default
+  - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+    from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+    to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
+    fromPort: summaryOutput
     toPort: default
   - id: 3054b3f1-24b0-45d8-a3e7-7938409c900d
     from: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -2910,10 +2798,10 @@ graphs:
   - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-    fromPort: output
+    fromPort: default
     toPort: default
   - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
     from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
     to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-    fromPort: output
+    fromPort: default
     toPort: default

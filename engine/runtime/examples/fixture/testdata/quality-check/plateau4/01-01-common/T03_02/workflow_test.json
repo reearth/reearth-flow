@@ -1,10 +1,38 @@
 {
-  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "description": "Test quality check for T03 #2",
-  "cityGmlPath": "udx/bldg/49303425_bldg_6697_op.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "objectLists": "43206_city_2024_objectlist_op.xlsx",
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "43206_city_2024_objectlist_op.xlsx"
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "01_共通_xlink参照先なし.csv"
   },
@@ -14,9 +42,11 @@
     },
     "fileErrorSummary": {
       "expectedFile": "01_共通.csv",
-      "excludeColumns": ["XML検証結果", "L02エラー"]
+      "excludeColumns": [
+        "XML検証結果",
+        "L02エラー"
+      ]
     }
   },
-  "expectResultOkFile": false,
-  "skip": false
+  "expectResultOkFile": false
 }

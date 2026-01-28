@@ -56,7 +56,14 @@ const GeneralSettings: React.FC = () => {
   return (
     <>
       <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
-        <p className="text-lg dark:font-extralight">{t("General Settings")}</p>
+        <p className="text-lg font-light dark:font-extralight">
+          {t("General Settings")}
+        </p>
+
+        <WorkspaceDeletionDialog
+          disabled={currentWorkspace?.personal || loading}
+          onWorkspaceDelete={handleDeleteWorkspace}
+        />
       </div>
       <div className="mt-4 flex max-w-[700px] flex-col gap-6">
         <div className="flex flex-col gap-2">
@@ -75,10 +82,6 @@ const GeneralSettings: React.FC = () => {
           onClick={handleUpdateWorkspace}>
           {t("Save")}
         </Button>
-        <WorkspaceDeletionDialog
-          disabled={currentWorkspace?.personal || loading}
-          onWorkspaceDelete={handleDeleteWorkspace}
-        />
         <div
           className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
           {showError === "delete" && t("Failed to delete Workspace")}

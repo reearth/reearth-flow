@@ -25,6 +25,8 @@ pub(super) enum PlateauProcessorError {
     MissingAttributeDetectorFactory(String),
     #[error("MissingAttributeDetector error: {0}")]
     MissingAttributeDetector(String),
+    #[error("DomainOfDefinitionValidator Factory error: {0}")]
+    DomainOfDefinitionValidatorFactory(String),
     #[error("DomainOfDefinitionValidator error: {0}")]
     DomainOfDefinitionValidator(String),
     #[error("Unmatched Xlink Detector Factory error: {0}")]
@@ -65,6 +67,10 @@ pub(super) enum PlateauProcessorError {
     DestinationMeshCodeExtractorFactory(String),
     #[error("DestinationMeshCodeExtractor error: {0}")]
     DestinationMeshCodeExtractor(String),
+    #[error("FloodingAreaSurfaceGenerator Factory error: {0}")]
+    FloodingAreaSurfaceGeneratorFactory(String),
+    #[error("FloodingAreaSurfaceGenerator error: {0}")]
+    FloodingAreaSurfaceGenerator(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

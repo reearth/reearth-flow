@@ -36,7 +36,7 @@ const MapLibre: React.FC<Props> = ({
       if (e.features?.[0]?.id) {
         onSelectedFeature(e.features[0].id);
       } else {
-        onSelectedFeature(undefined);
+        onSelectedFeature(null);
       }
     },
     [onSelectedFeature],

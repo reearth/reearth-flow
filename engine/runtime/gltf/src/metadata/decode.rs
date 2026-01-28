@@ -3,8 +3,6 @@ use indexmap::IndexMap;
 use reearth_flow_types::AttributeValue;
 use serde_json::Value;
 
-use super::{ENUM_NO_DATA, FLOAT_NO_DATA, INT64_NO_DATA, UINT64_NO_DATA};
-
 /// Extract feature IDs from EXT_mesh_features extension
 pub fn read_mesh_features(
     primitive: &gltf::Primitive,
@@ -274,16 +272,14 @@ fn parse_string_property(
 }
 
 /// Extract feature properties as JSON values from a GLB file
-/// Returns a map of gml_id -> properties for each feature
+/// Returns a list of properties for each feature
 pub fn extract_feature_properties(
     gltf: &gltf::Gltf,
-) -> Result<IndexMap<String, serde_json::Map<String, Value>>, GltfReaderError> {
-    let mut result = IndexMap::new();
-
+) -> Result<Vec<serde_json::Map<String, Value>>, GltfReaderError> {
     // Get EXT_structural_metadata extension
     let metadata_value = match gltf.extension_value("EXT_structural_metadata") {
         Some(v) => v,
-        None => return Ok(result),
+        None => return Ok(Vec::new()),
     };
 
     // Get property tables
@@ -295,7 +291,7 @@ pub fn extract_feature_properties(
         })?;
 
     if property_tables.is_empty() {
-        return Ok(result);
+        return Ok(Vec::new());
     }
 
     // Process first property table
@@ -331,6 +327,15 @@ pub fn extract_feature_properties(
             .and_then(|v| v.as_str())
     };
 
+    // Get noData value from schema for each property
+    let get_no_data = |prop_name: &str| -> Option<&Value> {
+        metadata_value.pointer(&format!(
+            "/schema/classes/{}/properties/{}/noData",
+            prop_table.get("class")?.as_str()?,
+            prop_name
+        ))
+    };
+
     // Extract each property
     for (prop_name, prop_def) in properties {
         let values_idx = prop_def["values"].as_u64().ok_or_else(|| {
@@ -363,26 +368,96 @@ pub fn extract_feature_properties(
             GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name))
         })?;
 
+        // Get noData value from schema if it exists
+        let no_data = get_no_data(prop_name);
+
         for i in 0..count {
             let value = match component_type {
-                "INT64" => {
-                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    (v != INT64_NO_DATA).then(|| Value::Number(v.into()))
+                "INT8" => {
+                    let v = data[i] as i8;
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v as i64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as i64).into()))
                 }
-                "UINT64" => {
-                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    (v != UINT64_NO_DATA).then(|| Value::Number(v.into()))
+                "UINT8" => {
+                    let v = data[i];
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v as u64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as u64).into()))
                 }
-                "FLOAT64" => {
-                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    (v != FLOAT_NO_DATA)
-                        .then(|| serde_json::Number::from_f64(v))
-                        .flatten()
-                        .map(Value::Number)
+                "INT16" => {
+                    let v = i16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v as i64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as i64).into()))
+                }
+                "UINT16" => {
+                    let v = u16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v as u64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as u64).into()))
+                }
+                "INT32" => {
+                    let v = i32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v as i64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number((v as i64).into()))
                 }
                 "UINT32" => {
                     let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
-                    (v != ENUM_NO_DATA).then(|| Value::Number(v.into()))
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v as u64 == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number(v.into()))
+                }
+                "INT64" => {
+                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_i64())
+                        .map(|nd| v == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number(v.into()))
+                }
+                "UINT64" => {
+                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_u64())
+                        .map(|nd| v == nd)
+                        .unwrap_or(false);
+                    (!is_no_data).then(|| Value::Number(v.into()))
+                }
+                "FLOAT32" => {
+                    let v = f32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_f64())
+                        .map(|nd| (v as f64 - nd).abs() < f64::EPSILON)
+                        .unwrap_or(false);
+                    (!is_no_data)
+                        .then(|| serde_json::Number::from_f64(v as f64))
+                        .flatten()
+                        .map(Value::Number)
+                }
+                "FLOAT64" => {
+                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
+                    let is_no_data = no_data
+                        .and_then(|nd| nd.as_f64())
+                        .map(|nd| (v - nd).abs() < f64::EPSILON)
+                        .unwrap_or(false);
+                    (!is_no_data)
+                        .then(|| serde_json::Number::from_f64(v))
+                        .flatten()
+                        .map(Value::Number)
                 }
                 _ => {
                     return Err(GltfReaderError::Parse(format!(
@@ -397,16 +472,7 @@ pub fn extract_feature_properties(
         }
     }
 
-    // Key by gml_id
-    for props in feature_props {
-        if let Some(Value::String(gml_id)) = props.get("gml_id") {
-            result.insert(gml_id.clone(), props);
-        } else {
-            return Err(GltfReaderError::Parse("Feature missing gml_id".to_string()));
-        }
-    }
-
-    Ok(result)
+    Ok(feature_props)
 }
 
 #[cfg(test)]
@@ -443,7 +509,9 @@ mod tests {
 
         for gml_id in &expected_gml_ids {
             assert!(
-                features.contains_key(*gml_id),
+                features
+                    .iter()
+                    .any(|f| f.get("gml_id").and_then(|v| v.as_str()) == Some(*gml_id)),
                 "Missing feature with gml_id: {}",
                 gml_id
             );
@@ -451,7 +519,11 @@ mod tests {
 
         // Verify properties of the first feature
         let feature1 = features
-            .get("tran_4d448e8a-db1d-48ef-8f04-feb24b49b701")
+            .iter()
+            .find(|f| {
+                f.get("gml_id").and_then(|v| v.as_str())
+                    == Some("tran_4d448e8a-db1d-48ef-8f04-feb24b49b701")
+            })
             .expect("Feature 1 should exist");
 
         // Check expected properties
@@ -490,7 +562,11 @@ mod tests {
 
         // Verify the second feature has correct gml_id
         let feature2 = features
-            .get("tran_3b28a7b2-a741-4569-bf09-0dadaf5996f4")
+            .iter()
+            .find(|f| {
+                f.get("gml_id").and_then(|v| v.as_str())
+                    == Some("tran_3b28a7b2-a741-4569-bf09-0dadaf5996f4")
+            })
             .expect("Feature 2 should exist");
         assert_eq!(
             feature2.get("gml_id").and_then(|v| v.as_str()),

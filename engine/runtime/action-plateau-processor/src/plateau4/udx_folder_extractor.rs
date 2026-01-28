@@ -208,7 +208,8 @@ fn process_feature(
         .collect::<Vec<String>>();
     let city_gml_path = Uri::from_str(city_gml_path.to_string().as_str())
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-    let (mut root, mut pkg, mut admin, mut area, mut dirs) = (
+    let (mut root, mut udx, mut pkg, mut admin, mut area, mut dirs) = (
+        String::new(),
         String::new(),
         String::new(),
         String::new(),
@@ -217,27 +218,30 @@ fn process_feature(
     );
     let mut rtdir = PathBuf::new();
     match folders.as_slice() {
-        [.., fourth_last, _third_last, second_last, _last]
+        [.., fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&second_last.as_str()) =>
         {
             root = fourth_last.to_string();
+            udx = third_last.to_string();
             pkg = second_last.to_string();
             dirs = second_last.to_string();
             rtdir = PathBuf::from(folders[..folders.len() - 3].join(MAIN_SEPARATOR_STR));
         }
-        [.., fifth_last, _fourth_last, third_last, second_last, _last]
+        [.., fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&third_last.as_str()) =>
         {
             root = fifth_last.to_string();
+            udx = fourth_last.to_string();
             pkg = third_last.to_string();
             area = second_last.to_string();
             dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
-        [.., sixth_last, _fifth_last, fourth_last, third_last, second_last, _last]
+        [.., sixth_last, fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&fourth_last.as_str()) =>
         {
             root = sixth_last.to_string();
+            udx = fifth_last.to_string();
             pkg = fourth_last.to_string();
             admin = third_last.to_string();
             area = second_last.to_string();
@@ -246,6 +250,31 @@ fn process_feature(
         }
         _ => (),
     };
+
+    // Rename the root folder to "udx" if it's not already named that
+    let city_gml_path = if !udx.is_empty() && udx != "udx" {
+        let old_root_path = rtdir.join(&root).join(&udx);
+        let new_root_path = rtdir.join(&root).join("udx");
+        if old_root_path.exists() && new_root_path.exists() {
+            return Err(PlateauProcessorError::UDXFolderExtractor(format!(
+                "Cannot rename {:?} to {:?}: target directory already exists",
+                old_root_path, new_root_path
+            )));
+        }
+        if old_root_path.exists() {
+            std::fs::rename(&old_root_path, &new_root_path)
+                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        }
+        let new_path = city_gml_path.to_string().replace(
+            &format!("{MAIN_SEPARATOR}{udx}{MAIN_SEPARATOR}"),
+            &format!("{MAIN_SEPARATOR}udx{MAIN_SEPARATOR}"),
+        );
+        Uri::from_str(&new_path)
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+    } else {
+        city_gml_path
+    };
+
     let codelists_path = if let Some(AttributeValue::String(codelists_path)) = codelists_path
         .clone()
         .and_then(|codelists_path| feature.get(&codelists_path))
@@ -269,7 +298,6 @@ fn process_feature(
             &codelists_path,
             &schemas_path,
             rtdir,
-            pkg.clone(),
             Arc::clone(&storage_resolver),
         )?;
         (
@@ -297,7 +325,6 @@ fn gen_codelists_and_schemas_path(
     codelists_path: &Option<String>,
     schemas_path: &Option<String>,
     rtdir: PathBuf,
-    pkg: String,
     storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<(Uri, Uri, Uri)> {
     let rtdir: Uri = rtdir
@@ -314,47 +341,69 @@ fn gen_codelists_and_schemas_path(
         .join("schemas")
         .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
 
-    if PKG_FOLDERS.contains(&pkg.as_str()) {
-        if !storage
-            .exists_sync(dir_codelists.path().as_path())
+    if !storage
+        .exists_sync(dir_codelists.path().as_path())
+        .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+    {
+        let base_path = Uri::for_test(&codelists_path.clone().ok_or(
+            PlateauProcessorError::UDXFolderExtractor(
+                "Codelists not found, and fallback path is not set".to_string(),
+            ),
+        )?);
+        let nested_path = base_path
+            .join("codelists")
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        let source = if storage
+            .exists_sync(nested_path.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
         {
-            let dir = Uri::for_test(&codelists_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor(format!(
-                    "Invalid codelists path: {codelists_path:?}",
-                )),
-            )?);
-            if storage
-                .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
-            {
-                reearth_flow_common::fs::copy_sync_tree(
-                    dir.path().as_path(),
-                    dir_codelists.path().as_path(),
-                )
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-            }
-        }
-        if !storage
-            .exists_sync(dir_schemas.path().as_path())
+            nested_path
+        } else {
+            base_path
+        };
+        if storage
+            .exists_sync(source.path().as_path())
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
         {
-            let dir = Uri::for_test(&schemas_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor(format!(
-                    "Invalid schemas path: {schemas_path:?}",
-                )),
-            )?);
-            if storage
-                .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
-            {
-                reearth_flow_common::fs::copy_sync_tree(
-                    dir.path().as_path(),
-                    dir_schemas.path().as_path(),
-                )
-                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
-            }
+            reearth_flow_common::fs::copy_sync_tree(
+                source.path().as_path(),
+                dir_codelists.path().as_path(),
+            )
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
         }
     }
+
+    if !storage
+        .exists_sync(dir_schemas.path().as_path())
+        .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+    {
+        let base_path = Uri::for_test(&schemas_path.clone().ok_or(
+            PlateauProcessorError::UDXFolderExtractor(
+                "Schemas not found, and fallback path is not set".to_string(),
+            ),
+        )?);
+        let nested_path = base_path
+            .join("schemas")
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        let source = if storage
+            .exists_sync(nested_path.path().as_path())
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+        {
+            nested_path
+        } else {
+            base_path
+        };
+        if storage
+            .exists_sync(source.path().as_path())
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
+        {
+            reearth_flow_common::fs::copy_sync_tree(
+                source.path().as_path(),
+                dir_schemas.path().as_path(),
+            )
+            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
+        }
+    }
+
     Ok((rtdir, dir_codelists, dir_schemas))
 }

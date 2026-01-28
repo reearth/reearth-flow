@@ -58,6 +58,10 @@ type Props = {
   onPaste?: () => void;
   onPaneMouseMove?: (e: MouseEvent) => void;
   onPaneClick?: (e: MouseEvent) => void;
+  onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -83,6 +87,7 @@ const Canvas: React.FC<Props> = ({
   onPaneMouseMove,
   onNodesDisable,
   onPaneClick,
+  onDebugRunStartFromSelectedNode,
 }) => {
   const {
     handleNodesDeleteCleanup,
@@ -162,7 +167,7 @@ const Canvas: React.FC<Props> = ({
       onPaneMouseMove={onPaneMouseMove}
       onPaneClick={onPaneClick}>
       <Background
-        className="bg-background"
+        className="bg-background dark:bg-background"
         variant={BackgroundVariant["Dots"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
@@ -189,6 +194,7 @@ const Canvas: React.FC<Props> = ({
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
           onNodesDisable={onNodesDisable}
+          onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
         />
       )}
     </ReactFlow>

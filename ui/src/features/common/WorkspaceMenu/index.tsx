@@ -48,10 +48,10 @@ const WorkspaceMenu: React.FC = () => {
           className={`group flex gap-2 overflow-auto rounded-md p-2 ${openDropdown ? "bg-background" : undefined} hover:bg-primary`}>
           <div className="relative flex w-full gap-1">
             <div className="flex w-full flex-col gap-1">
-              <p className="self-start text-xs font-thin">
+              <p className="self-start text-xs font-light dark:font-thin">
                 {t("Current workspace:")}
               </p>
-              <p className="line-clamp-2 w-full px-4 text-start text-sm font-light italic">
+              <p className="line-clamp-2 w-full px-4 text-start text-sm font-light italic dark:font-extralight">
                 {currentWorkspace?.name}
               </p>
             </div>
@@ -73,7 +73,7 @@ const WorkspaceMenu: React.FC = () => {
                   key={personalWorkspace.id}
                   className={`rounded-md px-3 py-1 text-sm ${currentWorkspace?.id === personalWorkspace.id ? "bg-accent" : ""}`}
                   onClick={() => handleWorkspaceChange(personalWorkspace)}>
-                  <p className="w-full truncate font-extralight">
+                  <p className="w-full truncate font-light dark:font-extralight">
                     {personalWorkspace.name}
                   </p>
                 </DropdownMenuItem>
@@ -87,7 +87,7 @@ const WorkspaceMenu: React.FC = () => {
                     key={workspace.id}
                     className={`mx-1 rounded-md px-2 py-[2px] text-sm ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
                     onClick={() => handleWorkspaceChange(workspace)}>
-                    <p className="w-full truncate font-extralight">
+                    <p className="w-full truncate font-light dark:font-extralight">
                       {workspace.name}
                     </p>
                   </DropdownMenuItem>

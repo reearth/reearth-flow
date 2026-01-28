@@ -1,0 +1,18 @@
+citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_area.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[tests.mvt_lines]
+threshold = 0.01
+
+# both should not exist (no urf in area data)
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+
+[filter.tree]
+"udx/frn/" = ["56380598_frn_6697_op.gml"]

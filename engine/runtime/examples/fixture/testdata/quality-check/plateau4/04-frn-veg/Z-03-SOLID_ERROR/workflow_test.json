@@ -1,33 +1,63 @@
 {
-  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
   "description": "Test for plateau4 solid errors.",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "frn_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/frn",
+      "name": "frn_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "expectedOutput": {
     "expectedFile": [
-      "04_都市設備_植生_立体のエラー.csv",
-      "04_都市設備_植生_非水密体.csv"
+      "04_都市設備_立体のエラー.csv",
+      "04_都市設備_非水密体.csv"
     ]
   },
   "summaryOutput": {
     "errorCountSummary": {
-      "expectedFile": "summary_frn_veg.json",
+      "expectedFile": "summary_frn.json",
       "includeFields": [
         "立体のエラー",
         "非水密体"
       ]
     },
     "fileErrorSummary": {
-      "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
+      "expectedFile": "04_都市設備_検査結果一覧.csv",
       "includeColumns": [
         "立体のエラー",
         "非水密体"
       ]
     }
   },
-  "cityGmlPath": "udx/frn/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "expectResultOkFile": false,
-  "skip": false,
-  "prcs": 6677,
-  "objectLists": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

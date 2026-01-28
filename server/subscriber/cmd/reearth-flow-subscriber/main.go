@@ -48,12 +48,8 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		if _, err := fmt.Fprintf(w, "OK"); err != nil {
-			log.Printf("failed to write response: %v", err)
-		}
-	})
+	// Health checker will be initialized after clients are created
+	var healthChecker *HealthChecker
 
 	listener, err := net.Listen("tcp", ":"+conf.Port)
 	if err != nil {
@@ -129,6 +125,11 @@ func main() {
 			log.Printf("failed to close redis client: %v", rerr)
 		}
 	}()
+
+	// Initialize health checker with the clients we have so far
+	// MongoDB client will be nil if not needed
+	healthChecker = NewHealthChecker(conf, "dev", redisClient, nil, pubsubClient)
+	http.HandleFunc("/health", healthChecker.Handler())
 
 	// Initialize storage components
 	redisStorage := flow_redis.NewRedisStorage(redisClient)

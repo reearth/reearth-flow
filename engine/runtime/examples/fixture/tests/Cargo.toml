@@ -1,7 +1,11 @@
 [package]
 name = "workflow-tests"
-version = "0.1.116"
+version = "0.1.139"
 edition = "2021"
+
+[[bin]]
+name = "normalize-workflow-tests"
+path = "src/normalize.rs"
 
 [dependencies]
 serde.workspace = true

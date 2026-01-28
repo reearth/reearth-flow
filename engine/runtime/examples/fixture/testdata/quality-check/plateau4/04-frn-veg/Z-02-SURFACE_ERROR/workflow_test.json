@@ -1,28 +1,59 @@
 {
-  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
   "description": "Test for plateau4 surface errors.",
+  "skip": true,
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "frn_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/frn",
+      "name": "frn_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "expectedOutput": {
-    "expectedFile": "04_都市設備_植生_面のエラー.csv"
+    "expectedFile": "04_都市設備_面のエラー.csv"
   },
   "summaryOutput": {
     "errorCountSummary": {
-      "expectedFile": "summary_frn_veg.json",
+      "expectedFile": "summary_frn.json",
       "includeFields": [
         "面のエラー"
       ]
     },
     "fileErrorSummary": {
-      "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
+      "expectedFile": "04_都市設備_検査結果一覧.csv",
       "includeColumns": [
         "面のエラー"
       ]
     }
   },
-  "cityGmlPath": "udx/frn/input.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "expectResultOkFile": false,
-  "skip": true,
-  "prcs": 6677,
-  "objectLists": "08220_city_2023_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

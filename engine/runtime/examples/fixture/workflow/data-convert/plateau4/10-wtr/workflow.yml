@@ -1,0 +1,228 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 75bead26-2e72-4fdf-9d82-e09774d4a2c9
+name: "PLATEAU4-DataConvert-10-wtr"
+entryGraphId: 649c73df-d38a-4732-a779-45b58e7d0a46
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  codelists:
+  schemas:
+  targetPackages:
+    - wtr
+  workerArtifactPath:
+graphs:
+  - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+
+  - id: 649c73df-d38a-4732-a779-45b58e7d0a46
+    name: entry_point
+    nodes:
+      - id: 6935ea45-2f34-4047-a33d-e8c34416e328
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+              },
+            ]
+
+      - id: 76953c1a-33fb-401e-af09-787d10ff466a
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: e3fb9c45-57d1-4d3d-8723-8fe9932f2a17
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          codelistsPath: env.get("__value").codelists
+          flatten: true
+          dataset: |
+            env.get("__value")["path"]
+
+      - id: e2441531-649a-4dcd-916f-ac59f7d56de3
+        name: AttributeManagerPreFlattener
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: meshcode
+              method: create
+              value: |
+                let file = file::extract_filename(env.get("__value")["path"]);
+                file.split("_")[0]
+            - attribute: gml_id
+              method: create
+              value: |
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+            - attribute: feature_type
+              method: create
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
+
+      - id: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+        name: AttributeFlattener
+        type: action
+        action: PLATEAU4.AttributeFlattener
+
+      - id: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
+        name: LodSplitterWithDM
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
+        name: VerticalReprojectorLod1
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: d032eab0-4358-4141-a3cd-35c2448fa304
+        name: AttributeManagerByLod1
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: 123e1a65-7cad-4412-9336-91f37694aa08
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - __package
+          order: ascending
+
+      - id: 674b22f7-ffb7-4594-b569-4c4f780326ce
+        name: Cesium3DTilesWriterLod1
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          skipUnexposedAttributes: true
+          dracoCompression: false
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value").__package;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
+
+    edges:
+      - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9
+        from: 6935ea45-2f34-4047-a33d-e8c34416e328
+        to: 76953c1a-33fb-401e-af09-787d10ff466a
+        fromPort: default
+        toPort: default
+      - id: c7b964f5-d5ae-4406-b07b-e44aab6059fe
+        from: 76953c1a-33fb-401e-af09-787d10ff466a
+        to: e3fb9c45-57d1-4d3d-8723-8fe9932f2a17
+        fromPort: default
+        toPort: default
+      - id: 2fda72bd-a8a2-439e-9220-ed04dfad61c6
+        from: e3fb9c45-57d1-4d3d-8723-8fe9932f2a17
+        to: e2441531-649a-4dcd-916f-ac59f7d56de3
+        fromPort: default
+        toPort: default
+      - id: b49929c4-526c-4345-aefe-8972b18e9aed
+        from: e2441531-649a-4dcd-916f-ac59f7d56de3
+        to: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+        fromPort: default
+        toPort: default
+      - id: ec7b5a34-fc54-4709-a88a-e903952ddb14
+        from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+        to: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
+        fromPort: default
+        toPort: default
+      - id: 1e4665bb-cbc2-4c38-933a-04df26192ae4
+        from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
+        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
+        fromPort: lod1
+        toPort: default
+      - id: ad5d5514-c17c-4732-b32f-9133a4a8bc0d
+        from: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
+        to: d032eab0-4358-4141-a3cd-35c2448fa304
+        fromPort: default
+        toPort: default
+      - id: abe991c7-5e6b-4fd9-a02a-49678e4dfa92
+        from: d032eab0-4358-4141-a3cd-35c2448fa304
+        to: 123e1a65-7cad-4412-9336-91f37694aa08
+        fromPort: default
+        toPort: default
+      - id: a0b1c2d3-e4f5-6789-0abc-def123456789
+        from: 123e1a65-7cad-4412-9336-91f37694aa08
+        to: 674b22f7-ffb7-4594-b569-4c4f780326ce
+        fromPort: default
+        toPort: default

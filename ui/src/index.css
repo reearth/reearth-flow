@@ -21,89 +21,222 @@
 }
 
 @layer base {
-  /* TODO: Fix light mode colors and enable light mode */
-  :root {
-    --background: 229, 228, 228;
-    --foreground: 39, 39, 42;
-    --card: 250, 250, 250;
-    --card-foreground: 39, 39, 42;
-    --popover: 250, 250, 250;
-    --popover-foreground: 49, 49, 42;
-    --primary: 207, 207, 207;
-    --primary-foreground: 51, 51, 56;
-    --secondary: 216, 216, 217;
-    --secondary-foreground: 31, 31, 34;
-    --muted: 161, 161, 170;
-    --muted-foreground: 26, 26, 26;
-    --accent: 212, 212, 216;
-    --accent-foreground: 63, 63, 70;
-    --destructive: 239, 68, 68;
-    --destructive-foreground: 250, 250, 250;
-    --warning: 255, 159, 67;
-    --warning-foreground: 250, 250, 250;
-    --border: 202, 202, 202;
-    --border-secondary: 175, 174, 174;
-    --input: 228, 228, 231;
-    --ring: 24, 24, 27;
+  /* Light theme (default) */
+  :root,
+  [data-theme="light"] {
+    --background: oklch(95% 0.005 250); /* softer cool gray - less bright */
+    --foreground: oklch(25% 0.008 270); /* darker text for better contrast */
+    --card: oklch(97% 0.004 240); /* lighter than background for elevation */
+    --card-foreground: oklch(25% 0.008 270);
+    --popover: oklch(98% 0.003 250); /* elevated popover */
+    --popover-foreground: oklch(25% 0.008 270);
+    --primary: oklch(90% 0.01 260); /* more visible primary against softer bg */
+    --primary-foreground: oklch(25% 0.008 270);
+    --secondary: oklch(96% 0.006 270); /* clear distinction from background */
+    --secondary-foreground: oklch(25% 0.008 270);
+    --muted: oklch(88% 0.008 270); /* more contrast for muted elements */
+    --muted-foreground: oklch(45% 0.01 270);
+    --accent: oklch(85% 0.018 280); /* more defined accent */
+    --accent-foreground: oklch(25% 0.01 280);
+    --destructive: oklch(62% 0.22 25); /* red */
+    --destructive-foreground: oklch(98.5% 0 0);
+    --warning: oklch(75% 0.15 65); /* orange */
+    --warning-foreground: oklch(98.5% 0 0);
+    --border: oklch(82% 0.008 260); /* more visible borders */
+    --border-secondary: oklch(72% 0.01 260);
+    --input: oklch(98% 0.004 270); /* lighter input for clear distinction */
+    --ring: oklch(16% 0.01 270);
     --radius: 0.5rem;
     /* Custom Flow colors */
-    --logo: 0, 163, 64;
-    /* Workflow colors */
-    --node-entrance: 162, 28, 175;
-    --node-exit: 126, 34, 206;
-    --node-reader: 22, 78, 99;
-    --node-transformer: 99, 22, 40;
-    --node-writer: 72, 62, 28;
-    --node-subworkflow: 111, 32, 119;
-    /* Selected Node colors */
-    --node-reader-selected: 25, 94, 117;
-    --node-transformer-selected: 117, 34, 54;
-    --node-writer-selected: 102, 84, 32;
-    --node-subworkflow-selected: 162, 28, 175;
+    --logo: oklch(70% 0.16 155); /* pastel green for light mode */
+    /* Workflow colors - lighter & moderately saturated for light mode */
+    --node-entrance: oklch(65% 0.18 320); /* light purple */
+    --node-exit: oklch(63% 0.18 290); /* light violet */
+    --node-reader: oklch(55% 0.09 230); /* light teal */
+    --node-transformer: oklch(52% 0.14 15); /* light burgundy */
+    --node-writer: oklch(60% 0.07 85.875); /* light olive/brown */
+    --node-subworkflow: oklch(60% 0.16 310); /* light purple */
+    /* Selected Node colors - brighter & more saturated */
+    --node-reader-selected: oklch(70% 0.2 230);
+    --node-transformer-selected: oklch(67% 0.25 15);
+    --node-writer-selected: oklch(72% 0.18 85.875);
+    --node-subworkflow-selected: oklch(65% 0.2 320);
     /* success green */
-    --success: 34, 197, 94;
+    --success: oklch(72% 0.18 145);
   }
-  .dark {
-    --background: 39, 39, 42;
-    --foreground: 250, 250, 250;
-    --card: 39, 39, 42;
-    --card-foreground: 250, 250, 250;
-    --popover: 49, 49, 53;
-    --popover-foreground: 250, 250, 250;
-    --primary: 51, 51, 56;
-    --primary-foreground: 126, 126, 129;
-    --secondary: 31, 31, 34;
-    --secondary-foreground: 250, 250, 250;
-    --muted: 26, 26, 26;
-    --muted-foreground: 161, 161, 170;
-    --accent: 63, 63, 70;
-    --accent-foreground: 212, 212, 216;
-    --destructive: 239, 67, 67;
-    --destructive-foreground: 250, 250, 250;
-    --border: 63, 63, 70;
-    --input: 26, 26, 26;
-    --ring: 2, 8, 23;
+  .dark,
+  [data-theme="dark"] {
+    --background: oklch(
+      26% 0.003 270
+    ); /* dark gray with barely visible cool tint */
+    --foreground: oklch(97% 0.002 270); /* near white with hint of warmth */
+    --card: oklch(23% 0.003 270); /* darker gray card */
+    --card-foreground: oklch(97% 0.002 270);
+    --popover: oklch(29% 0.004 270); /* slightly lighter popover */
+    --popover-foreground: oklch(97% 0.002 270);
+    --primary: oklch(32% 0.006 270); /* dark primary with subtle tint */
+    --primary-foreground: oklch(55% 0.006 270);
+    --secondary: oklch(23% 0.003 270); /* dark secondary */
+    --secondary-foreground: oklch(97% 0.002 270);
+    --muted: oklch(18% 0.002 270); /* very dark muted */
+    --muted-foreground: oklch(68% 0.006 270);
+    --accent: oklch(38% 0.008 275); /* subtle accent with cool tint */
+    --accent-foreground: oklch(85% 0.006 270);
+    --destructive: oklch(62% 0.22 25); /* red */
+    --destructive-foreground: oklch(98.5% 0 0);
+    --border: oklch(38% 0.006 270); /* border with subtle cool tint */
+    --input: oklch(18% 0.002 270); /* darker input */
+    --ring: oklch(12% 0.004 270); /* subtle ring */
+    /* Custom Flow colors */
+    --logo: oklch(68% 0.17 155); /* softer pastel green for dark mode */
+    /* Workflow colors - slightly softer pastels */
+    --node-entrance: oklch(60% 0.2 320); /* softer purple */
+    --node-exit: oklch(58% 0.2 290); /* softer violet */
+    --node-reader: oklch(50% 0.1 230); /* softer teal */
+    --node-transformer: oklch(48% 0.15 15); /* softer burgundy */
+    --node-writer: oklch(55% 0.08 85.875); /* softer olive/brown */
+    --node-subworkflow: oklch(55% 0.18 310); /* softer purple */
+    /* Selected Node colors - brighter pastels */
+    --node-reader-selected: oklch(65% 0.2 230);
+    --node-transformer-selected: oklch(63% 0.25 15);
+    --node-writer-selected: oklch(68% 0.16 85.875);
+    --node-subworkflow-selected: oklch(60% 0.22 320);
+  }
+
+  /* Midnight theme - Extra dark for OLED and night work */
+  [data-theme="midnight"] {
+    --background: oklch(15% 0.008 270); /* deep dark blue-black */
+    --foreground: oklch(92% 0.005 260); /* soft light text */
+    --card: oklch(18% 0.01 270); /* slightly elevated dark */
+    --card-foreground: oklch(92% 0.005 260);
+    --popover: oklch(20% 0.012 270); /* elevated surfaces */
+    --popover-foreground: oklch(92% 0.005 260);
+    --primary: oklch(25% 0.015 275); /* dark muted primary */
+    --primary-foreground: oklch(85% 0.008 270);
+    --secondary: oklch(17% 0.008 270); /* very dark secondary */
+    --secondary-foreground: oklch(92% 0.005 260);
+    --muted: oklch(22% 0.01 275); /* dark muted */
+    --muted-foreground: oklch(65% 0.008 270);
+    --accent: oklch(30% 0.02 280); /* subtle accent */
+    --accent-foreground: oklch(88% 0.008 270);
+    --destructive: oklch(62% 0.22 25); /* red */
+    --destructive-foreground: oklch(98.5% 0 0);
+    --warning: oklch(75% 0.15 65); /* orange */
+    --warning-foreground: oklch(98.5% 0 0);
+    --border: oklch(28% 0.012 275); /* subtle dark border */
+    --border-secondary: oklch(35% 0.015 275);
+    --input: oklch(12% 0.006 270); /* very dark input */
+    --ring: oklch(40% 0.03 280); /* visible but subdued ring */
+    /* Custom Flow colors - same as dark theme */
+    --logo: oklch(68% 0.17 155);
+    --node-entrance: oklch(60% 0.2 320);
+    --node-exit: oklch(58% 0.2 290);
+    --node-reader: oklch(50% 0.1 230);
+    --node-transformer: oklch(48% 0.15 15);
+    --node-writer: oklch(55% 0.08 85.875);
+    --node-subworkflow: oklch(55% 0.18 310);
+    --node-reader-selected: oklch(65% 0.2 230);
+    --node-transformer-selected: oklch(63% 0.25 15);
+    --node-writer-selected: oklch(68% 0.16 85.875);
+    --node-subworkflow-selected: oklch(60% 0.22 320);
+    --success: oklch(72% 0.18 145);
+  }
+
+  /* Synthwave theme - Neon 80s vibes */
+  [data-theme="synthwave"] {
+    --background: oklch(22% 0.025 280); /* deep purple-blue base */
+    --foreground: oklch(92% 0.03 300); /* soft lavender text */
+    --card: oklch(25% 0.03 280); /* slightly elevated purple */
+    --card-foreground: oklch(92% 0.03 300);
+    --popover: oklch(28% 0.035 280); /* elevated surfaces */
+    --popover-foreground: oklch(92% 0.03 300);
+    --primary: oklch(60% 0.2 320); /* vibrant pink */
+    --primary-foreground: oklch(98.5% 0 0);
+    --secondary: oklch(30% 0.04 280); /* muted purple secondary */
+    --secondary-foreground: oklch(92% 0.03 300);
+    --muted: oklch(32% 0.04 280); /* muted purple */
+    --muted-foreground: oklch(70% 0.025 300);
+    --accent: oklch(65% 0.18 195); /* cyan accent */
+    --accent-foreground: oklch(20% 0.025 280);
+    --destructive: oklch(62% 0.22 25); /* red */
+    --destructive-foreground: oklch(98.5% 0 0);
+    --warning: oklch(70% 0.18 85); /* warm yellow-orange */
+    --warning-foreground: oklch(20% 0.025 280);
+    --border: oklch(40% 0.08 280); /* purple border */
+    --border-secondary: oklch(45% 0.1 280);
+    --input: oklch(20% 0.025 280); /* dark purple input */
+    --ring: oklch(60% 0.2 320); /* pink ring */
+    /* Custom Flow colors - same as dark theme for consistency */
+    --logo: oklch(68% 0.17 155);
+    --node-entrance: oklch(60% 0.2 320);
+    --node-exit: oklch(58% 0.2 290);
+    --node-reader: oklch(50% 0.1 230);
+    --node-transformer: oklch(48% 0.15 15);
+    --node-writer: oklch(55% 0.08 85.875);
+    --node-subworkflow: oklch(55% 0.18 310);
+    --node-reader-selected: oklch(65% 0.2 230);
+    --node-transformer-selected: oklch(63% 0.25 15);
+    --node-writer-selected: oklch(68% 0.16 85.875);
+    --node-subworkflow-selected: oklch(60% 0.22 320);
+    --success: oklch(72% 0.18 145);
+    --canvas-background: oklch(18% 0.02 280); /* deep purple canvas */
+  }
+
+  /* Terminal theme - Classic green phosphor CRT */
+  [data-theme="terminal"] {
+    --background: oklch(12% 0.01 145); /* very dark green-black */
+    --foreground: oklch(75% 0.15 145); /* bright phosphor green */
+    --card: oklch(15% 0.012 145); /* slightly lighter dark green */
+    --card-foreground: oklch(75% 0.15 145);
+    --popover: oklch(18% 0.015 145); /* elevated dark green */
+    --popover-foreground: oklch(75% 0.15 145);
+    --primary: oklch(25% 0.02 145); /* dark muted green */
+    --primary-foreground: oklch(80% 0.18 145); /* bright green */
+    --secondary: oklch(14% 0.01 145); /* subtle secondary */
+    --secondary-foreground: oklch(75% 0.15 145);
+    --muted: oklch(20% 0.015 145); /* muted green */
+    --muted-foreground: oklch(55% 0.12 145); /* dimmed green */
+    --accent: oklch(30% 0.025 145); /* brighter green accent */
+    --accent-foreground: oklch(85% 0.2 145); /* vivid green */
+    --destructive: oklch(55% 0.18 25); /* red error (darker for terminal) */
+    --destructive-foreground: oklch(85% 0.2 145); /* green text on red */
+    --warning: oklch(65% 0.15 100); /* amber warning */
+    --warning-foreground: oklch(15% 0.01 145);
+    --border: oklch(28% 0.02 145); /* visible green border */
+    --border-secondary: oklch(35% 0.025 145);
+    --input: oklch(10% 0.008 145); /* darker input */
+    --ring: oklch(60% 0.18 145); /* bright green ring */
+    /* Custom Flow colors - all in green spectrum */
+    --logo: oklch(70% 0.16 145); /* green logo */
+    /* Workflow colors - slightly softer pastels */
+    --node-entrance: oklch(60% 0.2 320); /* softer purple */
+    --node-exit: oklch(58% 0.2 290); /* softer violet */
+    --node-reader: oklch(50% 0.1 230); /* softer teal */
+    --node-transformer: oklch(48% 0.15 15); /* softer burgundy */
+    --node-writer: oklch(55% 0.08 85.875); /* softer olive/brown */
+    --node-subworkflow: oklch(55% 0.18 310); /* softer purple */
+    /* Selected Node colors - brighter pastels */
+    --node-reader-selected: oklch(65% 0.2 230);
+    --node-transformer-selected: oklch(63% 0.25 15);
+    --node-writer-selected: oklch(68% 0.16 85.875);
+    --node-subworkflow-selected: oklch(60% 0.22 320);
+    --success: oklch(86.687% 0.29129 142.889); /* bright success green */
   }
 }
-/* Note: following two @layer is need to ensure code reflects previous styles from Tailwind 3 */
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: #3f3f3f;
+    border-color: var(--border);
   }
-}
 
-@layer base {
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-}
 
-@layer base {
   * {
     @apply no-scrollbar;
   }
@@ -116,19 +249,19 @@
 /* Animation for active node - shadow */
 @keyframes cycleActiveColorsShadow {
   0% {
-    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--primary);
   }
   25% {
-    box-shadow: 0 0 5px 2px rgba(var(--success), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--success);
   }
   50% {
-    box-shadow: 0 0 5px 2px rgba(var(--warning), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--warning);
   }
   75% {
-    box-shadow: 0 0 5px 2px rgba(var(--destructive), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--destructive);
   }
   100% {
-    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--primary);
   }
 }
 
@@ -154,19 +287,19 @@
 /* Animation for active node - border */
 @keyframes cycleActiveColorsBorder {
   0% {
-    border-color: rgba(var(--primary));
+    border-color: var(--primary);
   }
   25% {
-    border-color: rgba(var(--success));
+    border-color: var(--success);
   }
   50% {
-    border-color: rgba(var(--warning));
+    border-color: var(--warning);
   }
   75% {
-    border-color: rgba(var(--destructive));
+    border-color: var(--destructive);
   }
   100% {
-    border-color: rgba(var(--primary));
+    border-color: var(--primary);
   }
 }
 
@@ -207,39 +340,39 @@
 /* Animation for queued node - shadow */
 @keyframes cycleColorsShadow {
   0% {
-    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--foreground);
   }
   50% {
-    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--primary);
   }
   100% {
-    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+    box-shadow: 0 0 5px 2px var(--foreground);
   }
 }
 
 /* Animation for queued node - background */
 @keyframes cycleColors {
   0% {
-    background-color: rgba(var(--foreground));
+    background-color: var(--foreground);
   }
   50% {
-    background-color: rgba(var(--primary));
+    background-color: var(--primary);
   }
   100% {
-    background-color: rgba(var(--foreground));
+    background-color: var(--foreground);
   }
 }
 
 /* Animation for queued node - border */
 @keyframes cycleColorsBorder {
   0% {
-    border-color: rgba(var(--foreground));
+    border-color: var(--foreground);
   }
   50% {
-    border-color: rgba(var(--primary));
+    border-color: var(--primary);
   }
   100% {
-    border-color: rgba(var(--foreground));
+    border-color: var(--foreground);
   }
 }
 
@@ -258,13 +391,6 @@
 }
 
 /* Animation for queued node END */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 /* We need to set the z-index to -1 so that the nodes are rendered behind the edges */
 .react-flow__node-batch {

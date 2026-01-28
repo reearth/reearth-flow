@@ -6,20 +6,13 @@ import { useT } from "@flow/lib/i18n";
 type Props = {
   debugRunStarted?: boolean;
   onDebugRunStart: () => Promise<void>;
-  onPopoverClose: () => void;
 };
 
 const DebugStartPopover: React.FC<Props> = ({
   debugRunStarted,
   onDebugRunStart,
-  onPopoverClose,
 }) => {
   const t = useT();
-
-  const handleDebugRunStart = async () => {
-    await onDebugRunStart();
-    onPopoverClose();
-  };
 
   return (
     <div className="flex flex-col gap-2 p-4">
@@ -36,7 +29,7 @@ const DebugStartPopover: React.FC<Props> = ({
         <div className="flex items-center justify-end">
           <Button
             variant="outline"
-            onClick={handleDebugRunStart}
+            onClick={onDebugRunStart}
             disabled={debugRunStarted}>
             {t("Start")}
           </Button>

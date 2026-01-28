@@ -1,6 +1,42 @@
 {
-  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test quality check L13 for LOD1 #2",
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/23201_toyohashi-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/23201_toyohashi-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
   "expectedOutput": {
     "expectedFile": "02_建築物_LOD1境界面のエラー.csv"
   },
@@ -18,10 +54,5 @@
       ]
     }
   },
-  "cityGmlPath": "udx/bldg/l13_fail_exterior_interior_touching.gml",
-  "codelists": "codelists",
-  "schemas": "schemas",
-  "expectResultOkFile": false,
-  "prcs": 6675,
-  "objectLists": "16211_city_2024_objectlist_op.xlsx"
+  "expectResultOkFile": false
 }

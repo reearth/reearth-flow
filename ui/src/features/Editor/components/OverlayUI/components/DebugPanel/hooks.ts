@@ -13,7 +13,7 @@ export default () => {
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
-  const [detailsFeature, setDetailsFeature] = useState<any>(null);
+  const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
@@ -92,6 +92,7 @@ export default () => {
           }) ?? [],
       });
       setMinimized(false);
+      prevSelectedDataURLRef.current = debugJobState?.focusedIntermediateData;
     }
   };
 
@@ -403,9 +404,8 @@ export default () => {
     const map = new Map<string | number, any>();
     formattedData.tableData.forEach((row: any) => {
       const id = row.id;
-      if (id !== null && id !== undefined) {
-        map.set(id, row);
-      }
+      const normalizedId = JSON.parse(id);
+      map.set(normalizedId, row);
     });
     return map;
   }, [formattedData.tableData]);
@@ -416,17 +416,18 @@ export default () => {
     return featureIdMap.get(selectedFeatureId);
   }, [selectedFeatureId, featureIdMap]);
 
+  const detailsFeature = useMemo(() => {
+    if (!detailsOverlayOpen || !selectedFeature) return null;
+    return selectedFeature;
+  }, [detailsOverlayOpen, selectedFeature]);
+
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {
       if (selectedFeatureId !== featureId) {
         setSelectedFeatureId(featureId);
-        if (detailsOverlayOpen && featureId) {
-          const matchingRow = featureIdMap?.get(JSON.stringify(featureId));
-          setDetailsFeature(matchingRow);
-        }
       }
     },
-    [featureIdMap, selectedFeatureId, detailsOverlayOpen],
+    [selectedFeatureId],
   );
 
   const handleRowSingleClick = useCallback(
@@ -440,23 +441,16 @@ export default () => {
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleFeatureSelect(value?.id ?? null);
+      const normalizedId = JSON.parse(value?.id);
+      handleFeatureSelect(normalizedId ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
-      const matchingRow = featureIdMap?.get(value?.id);
-      setDetailsFeature(matchingRow);
       setDetailsOverlayOpen(true);
     },
-    [
-      convertedSelectedFeature,
-      featureIdMap,
-      handleFlyToSelectedFeature,
-      handleFeatureSelect,
-    ],
+    [convertedSelectedFeature, handleFlyToSelectedFeature, handleFeatureSelect],
   );
 
   const handleCloseFeatureDetails = useCallback(() => {
     setDetailsOverlayOpen(false);
-    setDetailsFeature(null);
   }, []);
 
   const handleRemoveDataURL = useCallback(
@@ -520,6 +514,7 @@ export default () => {
               };
             }) ?? [],
         });
+        prevSelectedDataURLRef.current = undefined;
       }
     },
     [
