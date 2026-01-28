@@ -605,6 +605,7 @@ export default ({
     [
       yWorkflows,
       currentYWorkflow,
+      currentWorkflowId,
       rawWorkflows,
       t,
       createYWorkflow,

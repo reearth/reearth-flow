@@ -77,9 +77,15 @@ export default ({
     if (targetNode) {
       return `${api}/artifacts/${debugJobState.jobId}/feature-store/${targetNode.data.workflowPath}.${id}.jsonl.zst`;
     }
-  }, [api, debugJobState?.jobId, id, currentWorkflowId, sourceNode, targetNode]);
+  }, [
+    api,
+    debugJobState?.jobId,
+    id,
+    currentWorkflowId,
+    sourceNode,
+    targetNode,
+  ]);
 
-  console.log("INTERMEDIATE DATA URL:", intermediateDataUrl);
   useEffect(() => {
     if (intermediateDataUrl) {
       if (

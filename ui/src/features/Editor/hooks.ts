@@ -392,8 +392,6 @@ export default ({
     [handleSpotlightUserDeselect],
   );
 
-  console.log("RAW WORKFLOWS:", rawWorkflows);
-
   return {
     currentWorkflowId,
     currentYWorkflow,
