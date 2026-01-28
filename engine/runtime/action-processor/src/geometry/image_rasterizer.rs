@@ -1,7 +1,5 @@
-#![allow(unused)]
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::File, io::BufReader};
 
-use image::ImageBuffer;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -73,10 +71,6 @@ impl ProcessorFactory for ImageRasterizerFactory {
 
         let process = ImageRasterizer {
             width: params.image_width,
-
-            color_interpretation: params.color_interpretation,
-            background_color: params.background_color,
-            background_color_alpha: params.background_color_alpha,
             save_to: params.save_to,
             gemotry_polygons: GemotryPolygons::new(),
         };
@@ -127,9 +121,6 @@ struct ImageRasterizerParam {
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    color_interpretation: ColorInterpretation,
-    background_color: [u8; 3],
-    background_color_alpha: f64,
     save_to: Option<String>,
     gemotry_polygons: GemotryPolygons,
 }
@@ -207,7 +198,7 @@ impl Processor for ImageRasterizer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         // During process
         // 1. extract color related features, color_r, color_g, color_b
@@ -285,41 +276,6 @@ impl Processor for ImageRasterizer {
     }
 }
 
-// Helper function to extract coordinates from geometry
-fn extract_coordinates_from_geometry(
-    geometry: &reearth_flow_types::Geometry,
-) -> Result<Vec<(f64, f64)>, BoxedError> {
-    use reearth_flow_types::GeometryValue;
-
-    match &geometry.value {
-        GeometryValue::None => Ok(Vec::new()),
-        GeometryValue::FlowGeometry2D(geom) => {
-            use reearth_flow_geometry::types::geometry::Geometry2D;
-            match geom {
-                Geometry2D::Polygon(polygon) => {
-                    // For a polygon, we typically want the exterior ring
-                    let exterior = polygon.exterior();
-                    Ok(exterior.0.iter().map(|p| (p.x, p.y)).collect())
-                }
-                _ => {
-                    // For other geometry types, return an error indicating it's not supported
-                    Err(GeometryProcessorError::ImageRasterizer(
-                        "Only Polygon geometry type is supported".to_string(),
-                    )
-                    .into())
-                }
-            }
-        }
-        GeometryValue::FlowGeometry3D(_) | GeometryValue::CityGmlGeometry(_) => {
-            // For 3D geometry types, return an error asking to convert to 2D first
-            Err(GeometryProcessorError::ImageRasterizer(
-                "Please convert 3D geometry to 2D first".to_string(),
-            )
-            .into())
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Coordinate {
     pub x: f64,
@@ -364,29 +320,6 @@ impl CoordinatesBoudnary {
         let ratio = width as f64 / original_width;
 
         (original_height * ratio) as u32
-    }
-
-    // Creates a mapping function that can be reused to transform coordinates from this boundary to a PNG boundary
-    pub fn create_mapping_function_to_png(&self, png_width: u32, png_height: u32) -> impl Fn((f64, f64)) -> (f64, f64) {
-        // Define the PNG boundary with (0,0) at top-left
-        let png_boundary = CoordinatesBoudnary {
-            left_up: Coordinate { x: 0.0, y: 0.0 },
-            left_down: Coordinate {
-                x: 0.0,
-                y: png_height as f64,
-            },
-            right_up: Coordinate {
-                x: png_width as f64,
-                y: 0.0,
-            },
-            right_down: Coordinate {
-                x: png_width as f64,
-                y: png_height as f64,
-            },
-        };
-
-        // Create the coordinate mapping function
-        Coordinate::create_mapping_function(self.clone(), png_boundary)
     }
 }
 
@@ -615,7 +548,8 @@ impl GeometryPolygon {
             // Process exterior ring
             for i in 0..polygon.exterior_coordinates.len() {
                 let p1 = &polygon.exterior_coordinates[i];
-                let p2 = &polygon.exterior_coordinates[(i + 1) % polygon.exterior_coordinates.len()];
+                let p2 =
+                    &polygon.exterior_coordinates[(i + 1) % polygon.exterior_coordinates.len()];
 
                 let y1 = p1.1.round() as u32;
                 let y2 = p2.1.round() as u32;
@@ -649,7 +583,8 @@ impl GeometryPolygon {
                             let x2 = p2.0.round() as f64;
 
                             // Calculate intersection point
-                            let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
+                            let x =
+                                x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
                             intersections.push(x.round() as u32);
                         }
                     }
@@ -717,7 +652,7 @@ fn point_in_polygon(point_x: f64, point_y: f64, polygon: &Vec<(f64, f64)>) -> bo
         let p2 = &polygon[(i + 1) % polygon.len()];
 
         // Check if the point is on the same horizontal level as the edge
-        if ((p1.1 > point_y) != (p2.1 > point_y)) {
+        if (p1.1 > point_y) != (p2.1 > point_y) {
             // Calculate the x-coordinate where the horizontal ray intersects the edge
             let x_intersection = (p2.0 - p1.0) * (point_y - p1.1) / (p2.1 - p1.1) + p1.0;
 
@@ -829,6 +764,7 @@ impl GemotryPolygons {
     }
 }
 
+// TODO: need to change from feature: &Value to feature: &Feature
 pub fn extract_geometry_polygon_from_feature(feature: &Value) -> Option<GeometryPolygon> {
     // Extract color information from the feature
     let r = feature
@@ -934,6 +870,25 @@ mod tests {
     use image::{ImageBuffer, ImageFormat, Rgb, RgbImage};
     use std::fs;
     use std::path::Path;
+
+    // Helper function which loads exported FME intermidate data as .json file into Vec<Feature>
+    fn load_fme_json_to_engine_feature(
+        file_path: &str,
+    ) -> Result<Vec<Feature>, Box<dyn std::error::Error>> {
+        let file = File::open(file_path).expect(&format!("failed to open: {}", file_path));
+        let reader = BufReader::new(file);
+        let _features: Vec<Feature> =
+            serde_json::from_reader(reader).expect("failed to parse json into Features");
+        let features = Vec::new();
+        Ok(features)
+    }
+
+    #[test]
+    fn case04() {
+        let file_path =
+            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input_features.json";
+        let features = load_fme_json_to_engine_feature(file_path).unwrap();
+    }
 
     #[test]
     fn case01() {
