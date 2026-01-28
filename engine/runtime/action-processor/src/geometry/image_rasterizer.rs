@@ -239,8 +239,8 @@ struct Coordinate {
 impl Coordinate {
     // Creates a mapping function that can be reused to transform coordinates
     pub fn create_mapping_function(
-        from_geo_boundary: CoordinatesBoudnary,
-        to_png_boundary: CoordinatesBoudnary,
+        from_geo_boundary: CoordinatesBoundary,
+        to_png_boundary: CoordinatesBoundary,
     ) -> impl Fn((f64, f64)) -> (f64, f64) {
         // Pre-calculate the ratios to avoid repeated computation
         let x_scale = (to_png_boundary.right_down.x - to_png_boundary.left_up.x)
@@ -260,14 +260,14 @@ impl Coordinate {
 }
 
 #[derive(Clone, Debug)]
-struct CoordinatesBoudnary {
+struct CoordinatesBoundary {
     left_up: Coordinate,
     left_down: Coordinate,
     right_up: Coordinate,
     right_down: Coordinate,
 }
 
-impl CoordinatesBoudnary {
+impl CoordinatesBoundary {
     fn calculate_height_from_boundary_ratio(&self, width: u32) -> u32 {
         let original_width = (self.left_up.x - self.right_up.x).abs();
         let original_height = (self.left_up.y - self.left_down.y).abs();
@@ -302,12 +302,12 @@ struct GeometryPolygon {
 impl GeometryPolygon {
     // Creates a mapping function that can be reused to transform the polygon's coordinates
     fn create_mapping_function_to_png(
-        geo_boundary: CoordinatesBoudnary,
+        geo_boundary: CoordinatesBoundary,
         png_width: u32,
         png_height: u32,
     ) -> impl Fn(&GeometryPolygon) -> GeometryPolygon {
         // Define the PNG boundary with (0,0) at top-left
-        let png_boundary = CoordinatesBoudnary {
+        let png_boundary = CoordinatesBoundary {
             left_up: Coordinate { x: 0.0, y: 0.0 },
             left_down: Coordinate {
                 x: 0.0,
@@ -633,10 +633,10 @@ impl GeometryPolygons {
         self.polygons.push(polygon);
     }
 
-    fn find_coordinates_boundary(&self) -> CoordinatesBoudnary {
+    fn find_coordinates_boundary(&self) -> CoordinatesBoundary {
         if self.polygons.is_empty() {
             // Return a default boundary if no polygons exist
-            return CoordinatesBoudnary {
+            return CoordinatesBoundary {
                 left_up: Coordinate { x: 0.0, y: 0.0 },
                 left_down: Coordinate { x: 0.0, y: 0.0 },
                 right_up: Coordinate { x: 0.0, y: 0.0 },
@@ -671,7 +671,7 @@ impl GeometryPolygons {
         }
 
         // Create the boundary coordinates
-        CoordinatesBoudnary {
+        CoordinatesBoundary {
             left_up: Coordinate { x: min_x, y: max_y }, // top-left corner
             left_down: Coordinate { x: min_x, y: min_y }, // bottom-left corner
             right_up: Coordinate { x: max_x, y: max_y }, // top-right corner
