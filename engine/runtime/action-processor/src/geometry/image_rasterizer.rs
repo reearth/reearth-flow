@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::BufReader};
+use std::collections::HashMap;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -206,13 +206,9 @@ impl Processor for ImageRasterizer {
         // 3. each processed feature should get a GeometryPolygon, accumulate it in GemotryPolygons
         let feature = &ctx.feature;
 
-        // Convert Feature to Value to use the existing function
-        let feature_value: serde_json::Value = feature.clone().into();
-        if let Some(feature_attributes) = feature_value.get("attributes") {
-            if let Some(polygon) = extract_geometry_polygon_from_feature(&feature_attributes) {
-                // Accumulate the polygon in the collection
-                self.gemotry_polygons.add_polygon(polygon);
-            }
+        if let Some(polygon) = extract_geometry_polygon_from_feature(&feature) {
+            // Accumulate the polygon in the collection
+            self.gemotry_polygons.add_polygon(polygon);
         }
 
         Ok(())
@@ -764,28 +760,40 @@ impl GemotryPolygons {
     }
 }
 
-// TODO: need to change from feature: &Value to feature: &Feature
-pub fn extract_geometry_polygon_from_feature(feature: &Value) -> Option<GeometryPolygon> {
-    // Extract color information from the feature
+pub fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPolygon> {
+    // Extract color information from the feature attributes
     let r = feature
         .get("color_r")
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<u8>().ok())
+        .and_then(|v| match v {
+            reearth_flow_types::AttributeValue::String(s) => s.parse::<u8>().ok(),
+            reearth_flow_types::AttributeValue::Number(n) => n.as_f64().map(|f| f as u8),
+            _ => None,
+        })
         .unwrap_or(255);
     let g = feature
         .get("color_g")
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<u8>().ok())
+        .and_then(|v| match v {
+            reearth_flow_types::AttributeValue::String(s) => s.parse::<u8>().ok(),
+            reearth_flow_types::AttributeValue::Number(n) => n.as_f64().map(|f| f as u8),
+            _ => None,
+        })
         .unwrap_or(0);
     let b = feature
         .get("color_b")
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<u8>().ok())
+        .and_then(|v| match v {
+            reearth_flow_types::AttributeValue::String(s) => s.parse::<u8>().ok(),
+            reearth_flow_types::AttributeValue::Number(n) => n.as_f64().map(|f| f as u8),
+            _ => None,
+        })
         .unwrap_or(0);
 
-    // Process the geometry
-    if let Some(geo) = feature.get("json_geometry") {
-        if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
+    // Process the geometry from the feature
+    // Look for coordinates in the attributes, possibly under a "json_geometry" key
+    if let Some(json_geometry_value) = feature.get("json_geometry") {
+        // Convert the AttributeValue to a serde_json::Value to work with coordinates
+        let json_geometry = serde_json::Value::from(json_geometry_value.clone());
+
+        if let Some(coords) = json_geometry.get("coordinates").and_then(|c| c.as_array()) {
             // The coordinates structure is [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] - array of rings
             // The structure [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
             //  1. Outermost array: Contains multiple "rings" (first is outer ring, subsequent ones are inner rings/holes)
@@ -843,24 +851,106 @@ pub fn extract_geometry_polygon_from_feature(feature: &Value) -> Option<Geometry
         }
     }
 
-    return None;
-}
+    // Alternative: Check if geometry is stored directly in the feature's geometry field
+    // This handles the case where the geometry is already parsed into the Feature's geometry field
+    if let Some(coords) = extract_coordinates_from_feature_geometry(feature) {
+        if !coords.is_empty() {
+            // First ring is the exterior (outer boundary), subsequent rings are interiors (holes)
+            if let Some(exterior_ring) = coords.get(0) {
+                let mut exterior_coordinates = Vec::new();
 
-// Helper function to parse the JSON and convert to GemotryPolygons
-pub fn json_to_gemotry_polygons(
-    json_value: &Value,
-) -> Result<GemotryPolygons, Box<dyn std::error::Error>> {
-    let mut gemotry_polygons = GemotryPolygons::new();
+                for &(x, y) in exterior_ring {
+                    exterior_coordinates.push((x, y));
+                }
 
-    if let Some(features) = json_value.as_array() {
-        for feature in features {
-            if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
-                gemotry_polygons.add_polygon(polygon);
+                // Collect interior rings (holes) if they exist
+                let mut interior_rings = Vec::new();
+                for i in 1..coords.len() {
+                    if let Some(interior_ring) = coords.get(i) {
+                        let mut interior_coords = Vec::new();
+                        for &(x, y) in interior_ring {
+                            interior_coords.push((x, y));
+                        }
+                        if !interior_coords.is_empty() {
+                            interior_rings.push(interior_coords);
+                        }
+                    }
+                }
+
+                // Create a polygon with the exterior and interior coordinates and color
+                let polygon = GeometryPolygon {
+                    exterior_coordinates,
+                    interior_coordinates: interior_rings,
+                    color_r: r,
+                    color_g: g,
+                    color_b: b,
+                };
+
+                return Some(polygon);
             }
         }
     }
 
-    Ok(gemotry_polygons)
+    return None;
+}
+
+// Helper function to extract coordinates from the feature's geometry field
+fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Vec<(f64, f64)>>> {
+    // Access the geometry field of the feature
+    match &feature.geometry.value {
+        reearth_flow_types::GeometryValue::FlowGeometry2D(geom) => {
+            match geom {
+                reearth_flow_geometry::types::geometry::Geometry2D::MultiPolygon(mpoly) => {
+                    let mut all_rings = Vec::new();
+
+                    for polygon in &mpoly.0 {
+                        // Add exterior ring
+                        let exterior: Vec<(f64, f64)> = polygon
+                            .exterior()
+                            .iter()
+                            .map(|coord| (coord.x.into(), coord.y.into()))
+                            .collect();
+                        all_rings.push(exterior);
+
+                        // Add interior rings (holes)
+                        for interior in polygon.interiors() {
+                            let interior_ring: Vec<(f64, f64)> = interior
+                                .iter()
+                                .map(|coord| (coord.x.into(), coord.y.into()))
+                                .collect();
+                            all_rings.push(interior_ring);
+                        }
+                    }
+
+                    Some(all_rings)
+                }
+                reearth_flow_geometry::types::geometry::Geometry2D::Polygon(poly) => {
+                    let mut all_rings = Vec::new();
+
+                    // Add exterior ring
+                    let exterior: Vec<(f64, f64)> = poly
+                        .exterior()
+                        .iter()
+                        .map(|coord| (coord.x.into(), coord.y.into()))
+                        .collect();
+                    all_rings.push(exterior);
+
+                    // Add interior rings (holes)
+                    for interior in poly.interiors() {
+                        let interior_ring: Vec<(f64, f64)> = interior
+                            .iter()
+                            .map(|coord| (coord.x.into(), coord.y.into()))
+                            .collect();
+                        all_rings.push(interior_ring);
+                    }
+
+                    Some(all_rings)
+                }
+                _ => None, // Handle other geometry types as needed
+            }
+        }
+        _ => None, // Handle other geometry value types as needed
+    }
 }
 
 #[cfg(test)]
@@ -868,7 +958,8 @@ mod tests {
     #![allow(unused)]
     use super::*;
     use image::{ImageBuffer, ImageFormat, Rgb, RgbImage};
-    use std::fs;
+    use std::fs::{self, File};
+    use std::io::BufReader;
     use std::path::Path;
 
     // Helper function which loads exported FME intermidate data as .json file into Vec<Feature>
@@ -883,11 +974,103 @@ mod tests {
         Ok(features)
     }
 
-    #[test]
-    fn case04() {
-        let file_path =
-            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input_features.json";
-        let features = load_fme_json_to_engine_feature(file_path).unwrap();
+    // Helper function to parse the JSON and convert to GemotryPolygons
+    fn json_to_gemotry_polygons(
+        json_value: &Value,
+    ) -> Result<GemotryPolygons, Box<dyn std::error::Error>> {
+        let mut gemotry_polygons = GemotryPolygons::new();
+
+        if let Some(features) = json_value.as_array() {
+            for feature in features {
+                if let Some(polygon) = extract_geometry_polygon_from_fme_value(feature) {
+                    gemotry_polygons.add_polygon(polygon);
+                }
+            }
+        }
+
+        Ok(gemotry_polygons)
+    }
+
+    // helper function which parse a serde_json::Value into GeometryPolygon
+    fn extract_geometry_polygon_from_fme_value(feature: &Value) -> Option<GeometryPolygon> {
+        // Extract color information from the feature
+        let r = feature
+            .get("color_r")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse::<u8>().ok())
+            .unwrap_or(255);
+        let g = feature
+            .get("color_g")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse::<u8>().ok())
+            .unwrap_or(0);
+        let b = feature
+            .get("color_b")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse::<u8>().ok())
+            .unwrap_or(0);
+
+        // Process the geometry
+        if let Some(geo) = feature.get("json_geometry") {
+            if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
+                // The coordinates structure is [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] - array of rings
+                // The structure [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
+                //  1. Outermost array: Contains multiple "rings" (first is outer ring, subsequent ones are inner rings/holes)
+                //  2. Middle arrays: Represent individual "rings" - sequences of connected coordinate pairs forming closed shapes
+                //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along each ring
+                if !coords.is_empty() {
+                    // First ring is the exterior (outer boundary), subsequent rings are interiors (holes)
+                    if let Some(exterior_ring) = coords[0].as_array() {
+                        let mut exterior_coordinates = Vec::new();
+
+                        for point in exterior_ring {
+                            if let Some(xy) = point.as_array() {
+                                if xy.len() >= 2 {
+                                    let x = xy[0].as_f64().unwrap_or(0.0);
+                                    let y = xy[1].as_f64().unwrap_or(0.0);
+                                    exterior_coordinates.push((x, y));
+                                }
+                            }
+                        }
+
+                        // Collect interior rings (holes) if they exist
+                        let mut interior_rings = Vec::new();
+                        for i in 1..coords.len() {
+                            if let Some(interior_ring) = coords[i].as_array() {
+                                let mut interior_coords = Vec::new();
+
+                                for point in interior_ring {
+                                    if let Some(xy) = point.as_array() {
+                                        if xy.len() >= 2 {
+                                            let x = xy[0].as_f64().unwrap_or(0.0);
+                                            let y = xy[1].as_f64().unwrap_or(0.0);
+                                            interior_coords.push((x, y));
+                                        }
+                                    }
+                                }
+
+                                if !interior_coords.is_empty() {
+                                    interior_rings.push(interior_coords);
+                                }
+                            }
+                        }
+
+                        // Create a polygon with the exterior and interior coordinates and color
+                        let polygon = GeometryPolygon {
+                            exterior_coordinates,
+                            interior_coordinates: interior_rings,
+                            color_r: r,
+                            color_g: g,
+                            color_b: b,
+                        };
+
+                        return Some(polygon);
+                    }
+                }
+            }
+        }
+
+        return None;
     }
 
     #[test]
@@ -1019,5 +1202,40 @@ mod tests {
         // Save the image directly to the cache directory
         img.save(&dest_path).unwrap();
         println!("Successfully generated and saved image to: {:?}", dest_path);
+    }
+
+    #[test]
+    fn case04() {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        // Load and parse the debug_input_features.json file into Vec<Feature>
+        let file_path =
+            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input_features.json";
+        let file = File::open(file_path).expect("Failed to open debug_input_features.json");
+        let reader = BufReader::new(file);
+
+        let features: Vec<Feature> =
+            serde_json::from_reader(reader).expect("Failed to parse JSON into Vec<Feature>");
+
+        assert!(!features.is_empty(), "Features vector should not be empty");
+        println!(
+            "Successfully parsed {} features from debug_input_features.json",
+            features.len()
+        );
+
+        // Verify the structure of the first feature
+        let first_feature = &features[0];
+        assert!(
+            !first_feature.attributes.is_empty(),
+            "First feature should have attributes"
+        );
+        // Note: We can't check if geometry is empty since Geometry doesn't have an is_empty method
+
+        println!("First feature ID: {}", first_feature.id);
+        println!(
+            "First feature has {} attributes",
+            first_feature.attributes.len()
+        );
     }
 }
