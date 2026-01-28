@@ -962,16 +962,16 @@ mod tests {
         use std::fs::File;
         use std::io::BufReader;
 
-        // Load and parse the debug_input_features.json file into Vec<Feature>
+        // Load and parse the input_features.json file into Vec<Feature>
         // The file is located in the runtime/tests directory relative to the project root
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        let project_root = std::path::Path::new(manifest_dir).parent().unwrap(); // Go up from runtime/action-processor to runtime
+        let project_root = std::path::Path::new(manifest_dir).parent().unwrap();
         let file_path = project_root
             .join("tests")
             .join("fixture")
             .join("testdata")
             .join("image_rasterizer")
-            .join("debug_input_features.json");
+            .join("input_features.json");
 
         let file =
             File::open(&file_path).expect(&format!("failed to open: {}", file_path.display()));
@@ -982,7 +982,7 @@ mod tests {
 
         assert!(!features.is_empty(), "Features vector should not be empty");
         println!(
-            "Successfully parsed {} features from debug_input_features.json",
+            "Successfully parsed {} features from input_features.json",
             features.len()
         );
 
