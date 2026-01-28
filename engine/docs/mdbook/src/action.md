@@ -5160,23 +5160,6 @@ Convert vector geometries to raster image format
   "description": "Configure how to convert vector geometries to raster images",
   "type": "object",
   "properties": {
-    "backgroundColor": {
-      "title": "Background Color",
-      "description": "The color to use for background pixels (RGB values 0-255)",
-      "default": [
-        255,
-        255,
-        255
-      ],
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      },
-      "maxItems": 3,
-      "minItems": 3
-    },
     "imageWidth": {
       "description": "The width of image",
       "default": 1000,

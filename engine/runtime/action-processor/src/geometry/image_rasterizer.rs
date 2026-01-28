@@ -85,11 +85,6 @@ struct ImageRasterizerParam {
     #[serde(default = "default_image_width")]
     image_width: u32,
 
-    /// # Background Color
-    /// The color to use for background pixels (RGB values 0-255)
-    #[serde(default = "default_background_color")]
-    background_color: [u8; 3],
-
     /// # Save To
     /// Optional path to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
@@ -105,10 +100,6 @@ struct ImageRasterizer {
 
 fn default_image_width() -> u32 {
     1000
-}
-
-fn default_background_color() -> [u8; 3] {
-    [255, 255, 255] // White
 }
 
 // Helper function to save image to a path, either custom or default cache location
@@ -156,7 +147,6 @@ impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
             image_width: default_image_width(),
-            background_color: default_background_color(),
             save_to: None,
         }
     }
