@@ -1,11 +1,9 @@
-use crate::align_cesium::{collect_glb_paths_from_tileset, find_cesium_tile_directories};
+use crate::align_cesium::{collect_geometries_by_ident, find_cesium_tile_directories};
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::{analyze_attributes, make_feature_key};
-use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
+use crate::compare_attributes::analyze_attributes;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -13,57 +11,10 @@ pub struct CesiumAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
-/// Load all GLB attributes from a directory using tileset.json, keyed by ident
+/// Load all GLB attributes from a directory using the GeometryCollector
 fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
-    let mut ret = HashMap::new();
-    let mut rel = HashMap::new();
-
-    // Extract directory name for risk type detection
-    let dir_name = dir
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(|s| s.to_string());
-
-    // Collect GLB paths from tileset.json
-    let glb_paths = collect_glb_paths_from_tileset(dir)?;
-
-    for path in glb_paths {
-        let content = fs::read(&path).map_err(|e| format!("Failed to read GLB: {}", e))?;
-        let gltf = parse_gltf(&bytes::Bytes::from(content))
-            .map_err(|e| format!("Failed to parse GLB: {}", e))?;
-
-        // Extract feature properties using the gltf module
-        let features = extract_feature_properties(&gltf)
-            .map_err(|e| format!("Failed to extract features from {:?}: {}", path, e))?;
-
-        for props in features {
-            let props_value = Value::Object(props);
-
-            // Create composite key for risk types and DM features
-            let feature_key = make_feature_key(&props_value, dir_name.as_deref());
-
-            if let Some(existing) = ret.get(&feature_key) {
-                if existing != &props_value {
-                    let existing_path = rel.get(&feature_key).unwrap();
-                    tracing::debug!(
-                        "Conflict for feature_key {}: {:?} vs {:?}",
-                        feature_key,
-                        existing,
-                        props_value
-                    );
-                    return Err(format!(
-                        "Conflicting feature_key {}: properties differ between {:?} and {:?}",
-                        feature_key, existing_path, path
-                    ));
-                }
-            } else {
-                ret.insert(feature_key.clone(), props_value);
-                rel.insert(feature_key, path.clone());
-            }
-        }
-    }
-
-    Ok(ret)
+    let collector = collect_geometries_by_ident(dir)?;
+    Ok(collector.feature_attributes)
 }
 
 /// Align attributes from two GLB directories

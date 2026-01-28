@@ -73,68 +73,6 @@ pub fn load_tileset(dir: &Path) -> Result<TilesetInfo, String> {
     })
 }
 
-/// Collect all GLB file paths referenced in a tileset by traversing the tile hierarchy
-pub fn collect_glb_paths_from_tileset(tileset_dir: &Path) -> Result<Vec<PathBuf>, String> {
-    let tileset_info = load_tileset(tileset_dir)?;
-    let mut glb_paths = Vec::new();
-
-    fn traverse_tile(
-        tile: &Value,
-        tileset_dir: &Path,
-        glb_paths: &mut Vec<PathBuf>,
-    ) -> Result<(), String> {
-        // Check for content.uri (singular) pointing to a GLB file
-        if let Some(content) = tile.get("content") {
-            if let Some(uri) = content.get("uri").and_then(|u| u.as_str()) {
-                if uri.ends_with(".glb") {
-                    let glb_path = tileset_dir.join(uri);
-                    if !glb_path.exists() {
-                        return Err(format!(
-                            "GLB file referenced in tileset does not exist: {:?}",
-                            glb_path
-                        ));
-                    }
-                    glb_paths.push(glb_path);
-                }
-            }
-        }
-
-        // Check for contents[] (plural array) with URIs
-        if let Some(contents) = tile.get("contents").and_then(|c| c.as_array()) {
-            for content_item in contents {
-                if let Some(uri) = content_item.get("uri").and_then(|u| u.as_str()) {
-                    if uri.ends_with(".glb") {
-                        let glb_path = tileset_dir.join(uri);
-                        if !glb_path.exists() {
-                            return Err(format!(
-                                "GLB file referenced in tileset does not exist: {:?}",
-                                glb_path
-                            ));
-                        }
-                        glb_paths.push(glb_path);
-                    }
-                }
-            }
-        }
-
-        // Recursively traverse children
-        if let Some(children) = tile.get("children").and_then(|c| c.as_array()) {
-            for child in children {
-                traverse_tile(child, tileset_dir, glb_paths)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    // Start traversal from the root tile
-    if let Some(root) = tileset_info.content.get("root") {
-        traverse_tile(root, tileset_dir, &mut glb_paths)?;
-    }
-
-    Ok(glb_paths)
-}
-
 pub(crate) struct GeometryCollector {
     tileset_dir: PathBuf,
     pub(crate) vertex_positions: Vec<Coordinate>,
@@ -142,6 +80,8 @@ pub(crate) struct GeometryCollector {
     pub(crate) vertex_materials: Option<Vec<u32>>,
     pub(crate) materials: Vec<Material>,
     pub(crate) detail_levels: HashMap<String, Vec<DetailLevel>>,
+    /// Feature attributes keyed by feature identifier (from make_feature_key)
+    pub(crate) feature_attributes: HashMap<String, Value>,
 }
 
 impl GeometryCollector {
@@ -153,6 +93,7 @@ impl GeometryCollector {
             vertex_materials: None,
             materials: Vec::new(),
             detail_levels: HashMap::new(),
+            feature_attributes: HashMap::new(),
         }
     }
 
@@ -262,6 +203,22 @@ impl GeometryCollector {
             .map(|props| {
                 let props_value = Value::Object(props.clone());
                 let key = make_feature_key(&props_value, dir_name);
+
+                // Store feature attributes in the collector
+                // Panic on conflicts - this means duplicate feature keys with different attributes
+                if let Some(existing) = self.feature_attributes.get(&key) {
+                    let new_value = Value::Object(props.clone());
+                    if existing != &new_value {
+                        panic!(
+                            "Conflicting feature_key {}: properties differ in {:?}",
+                            key, glb_path
+                        );
+                    }
+                } else {
+                    self.feature_attributes
+                        .insert(key.clone(), Value::Object(props.clone()));
+                }
+
                 (key, props)
             })
             .collect();
