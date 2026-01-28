@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+use once_cell::sync::Lazy;
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
+use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -7,12 +12,15 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attributes, Feature};
+use reearth_flow_types::{material::Texture, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use url::Url;
 
 use super::errors::GeometryProcessorError;
+
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("attachTextureCoordinates"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ImageRasterizerFactory;
@@ -35,7 +43,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -200,16 +208,64 @@ impl Processor for ImageRasterizer {
                     format!("ImageRasterizer saved image to: {:?}", saved_path),
                 );
 
-                let mut feature = Feature::new_with_attributes(Attributes::new());
-                feature.insert(
-                    "png_image",
-                    reearth_flow_types::AttributeValue::String(saved_path),
-                );
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    DEFAULT_PORT.clone(),
-                ));
+                // If we have features waiting for texture coordinates, process them
+                if !self.texture_coord_features.is_empty() {
+                    // Create texture URL from the saved path
+                    let texture_url = Url::from_file_path(&saved_path).map_err(|_| {
+                        GeometryProcessorError::ImageRasterizer(format!(
+                            "Failed to create URL from path: {}",
+                            saved_path
+                        ))
+                    })?;
+
+                    ctx.event_hub.info_log(
+                        None,
+                        format!(
+                            "ImageRasterizer assigning texture coordinates to {} features",
+                            self.texture_coord_features.len()
+                        ),
+                    );
+
+                    // Process each feature that needs texture coordinates
+                    for feature in &self.texture_coord_features {
+                        match assign_texture_coordinates(feature, &boundary, &texture_url) {
+                            Ok(updated_feature) => {
+                                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                                    &ctx,
+                                    updated_feature,
+                                    DEFAULT_PORT.clone(),
+                                ));
+                            }
+                            Err(e) => {
+                                ctx.event_hub.warn_log(
+                                    None,
+                                    format!(
+                                        "Failed to assign texture coordinates to feature: {}",
+                                        e
+                                    ),
+                                );
+                                // Forward the original feature unchanged
+                                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                                    &ctx,
+                                    feature.clone(),
+                                    DEFAULT_PORT.clone(),
+                                ));
+                            }
+                        }
+                    }
+                } else {
+                    // No texture coordinate features, output image path as before
+                    let mut feature = Feature::new();
+                    feature.insert(
+                        "png_image",
+                        reearth_flow_types::AttributeValue::String(saved_path),
+                    );
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        feature,
+                        DEFAULT_PORT.clone(),
+                    ));
+                }
             }
             Err(e) => {
                 ctx.event_hub
@@ -423,6 +479,7 @@ impl GeometryPolygon {
     }
 
     // Helper function to draw a line between two points using Bresenham's algorithm
+    #[allow(clippy::too_many_arguments)]
     fn draw_line(
         &self,
         x0: u32,
@@ -470,6 +527,7 @@ impl GeometryPolygon {
     }
 
     // Helper function to fill the interior of a polygon using scanline algorithm
+    #[allow(clippy::collapsible_if, clippy::unnecessary_cast)]
     fn fill_polygon_interior(&self, polygon: &GeometryPolygon) -> Vec<ImagePixel> {
         if polygon.exterior_coordinates.len() < 3 {
             return Vec::new(); // Not enough points to form a polygon
@@ -760,15 +818,13 @@ fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPo
 
                 // Collect interior rings (holes) if they exist
                 let mut interior_rings = Vec::new();
-                for i in 1..coords.len() {
-                    if let Some(interior_ring) = coords.get(i) {
-                        let mut interior_coords = Vec::new();
-                        for &(x, y) in interior_ring {
-                            interior_coords.push((x, y));
-                        }
-                        if !interior_coords.is_empty() {
-                            interior_rings.push(interior_coords);
-                        }
+                for interior_ring in coords.iter().skip(1) {
+                    let mut interior_coords = Vec::new();
+                    for &(x, y) in interior_ring {
+                        interior_coords.push((x, y));
+                    }
+                    if !interior_coords.is_empty() {
+                        interior_rings.push(interior_coords);
                     }
                 }
 
@@ -842,6 +898,103 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
         }
         _ => None, // Handle other geometry value types as needed
     }
+}
+
+/// Assigns texture coordinates to a feature's CityGmlGeometry based on the rasterized image boundary.
+///
+/// For each polygon vertex at position (x, y), computes UV coordinates as:
+///   u = (x - min_x) / (max_x - min_x)
+///   v = 1.0 - (y - min_y) / (max_y - min_y)  (flipped for image coordinate system)
+///
+/// Also sets the texture reference on each polygon to point to the generated image.
+fn assign_texture_coordinates(
+    feature: &Feature,
+    boundary: &CoordinatesBoudnary,
+    texture_url: &Url,
+) -> Result<Feature, GeometryProcessorError> {
+    let mut updated_feature = feature.clone();
+
+    // Get the geometry - must be CityGmlGeometry
+    let GeometryValue::CityGmlGeometry(citygml) = &feature.geometry.value else {
+        return Err(GeometryProcessorError::ImageRasterizer(
+            "Feature does not have CityGmlGeometry".to_string(),
+        ));
+    };
+
+    let mut updated_citygml = citygml.clone();
+
+    // Calculate boundary dimensions
+    let min_x = boundary.left_down.x;
+    let max_x = boundary.right_down.x;
+    let min_y = boundary.left_down.y;
+    let max_y = boundary.left_up.y;
+
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+
+    // Avoid division by zero
+    if width.abs() < f64::EPSILON || height.abs() < f64::EPSILON {
+        return Err(GeometryProcessorError::ImageRasterizer(
+            "Boundary has zero width or height".to_string(),
+        ));
+    }
+
+    // Clear existing texture data and set up for single texture
+    updated_citygml.textures = vec![Texture {
+        uri: texture_url.clone(),
+    }];
+    updated_citygml.polygon_textures.clear();
+    updated_citygml.polygon_uvs = MultiPolygon2D::new(Vec::new());
+
+    // Process each GmlGeometry entry
+    for gml in &updated_citygml.gml_geometries {
+        for polygon in &gml.polygons {
+            // Compute UV for exterior ring
+            let exterior_uvs: Vec<Coordinate2D<f64>> = polygon
+                .exterior()
+                .0
+                .iter()
+                .map(|v| {
+                    let u = (v.x - min_x) / width;
+                    // Flip v coordinate: image origin is top-left, but geometry Y increases upward
+                    let v = 1.0 - (v.y - min_y) / height;
+                    Coordinate2D::new_(u.clamp(0.0, 1.0), v.clamp(0.0, 1.0))
+                })
+                .collect();
+
+            // Compute UV for interior rings (holes)
+            let interior_uvs: Vec<LineString2D<f64>> = polygon
+                .interiors()
+                .iter()
+                .map(|ring| {
+                    let uvs: Vec<Coordinate2D<f64>> = ring
+                        .0
+                        .iter()
+                        .map(|v| {
+                            let u = (v.x - min_x) / width;
+                            let v = 1.0 - (v.y - min_y) / height;
+                            Coordinate2D::new_(u.clamp(0.0, 1.0), v.clamp(0.0, 1.0))
+                        })
+                        .collect();
+                    LineString2D::new(uvs)
+                })
+                .collect();
+
+            // Add UV polygon
+            updated_citygml.polygon_uvs.0.push(Polygon2D::new(
+                LineString2D::new(exterior_uvs),
+                interior_uvs,
+            ));
+
+            // All polygons reference texture index 0 (the single generated texture)
+            updated_citygml.polygon_textures.push(Some(0));
+        }
+    }
+
+    // Update the feature's geometry
+    updated_feature.geometry.value = GeometryValue::CityGmlGeometry(updated_citygml);
+
+    Ok(updated_feature)
 }
 
 #[cfg(test)]
@@ -935,5 +1088,84 @@ mod tests {
 
         img.save(&dest_path).expect("Failed to save test image");
         println!("Successfully generated and saved image to: {:?}", dest_path);
+    }
+
+    #[test]
+    #[ignore] // Depends on local test files
+    fn case03() {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        // Open and read the JSON file
+        let file_path = "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input.json";
+        let file = File::open(file_path).expect(format!("Failed to open {}", file_path).as_str());
+        let reader = BufReader::new(file);
+
+        // Parse the JSON
+        let json_value: serde_json::Value = serde_json::from_reader(reader)
+            .expect(format!("Failed to parse {}", file_path).as_str());
+
+        println!("Successfully read and parsed JSON from: {}", file_path);
+
+        // Convert JSON to GemotryPolygons
+        let gemotry_polygons = json_to_gemotry_polygons(&json_value)
+            .expect("Failed to convert JSON to GemotryPolygons");
+        let boundary = gemotry_polygons.find_coordinates_boudary();
+        let width = 1000;
+        let height = boundary.calculate_height_from_boundary_ratio(width);
+        // Draw the polygons to a PNG image
+        let img = gemotry_polygons.draw(width, height, true);
+
+        // Create the cache directory and save the image
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let cache_dir = Path::new(&home_dir)
+            .join(".cache")
+            .join("reearth-flow-test-images");
+
+        if let Err(_) = fs::create_dir_all(&cache_dir) {
+            panic!("Could not create cache directory for test images");
+        }
+
+        let dest_path = cache_dir.join("generated_image.png");
+
+        // Save the image directly to the cache directory
+        img.save(&dest_path).unwrap();
+        println!("Successfully generated and saved image to: {:?}", dest_path);
+    }
+
+    #[test]
+    #[ignore] // Depends on local test files
+    fn case04() {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        // Load and parse the debug_input_features.json file into Vec<Feature>
+        let file_path =
+            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input_features.json";
+        let file = File::open(file_path).expect("Failed to open debug_input_features.json");
+        let reader = BufReader::new(file);
+
+        let features: Vec<Feature> =
+            serde_json::from_reader(reader).expect("Failed to parse JSON into Vec<Feature>");
+
+        assert!(!features.is_empty(), "Features vector should not be empty");
+        println!(
+            "Successfully parsed {} features from debug_input_features.json",
+            features.len()
+        );
+
+        // Verify the structure of the first feature
+        let first_feature = &features[0];
+        assert!(
+            !first_feature.attributes.is_empty(),
+            "First feature should have attributes"
+        );
+        // Note: We can't check if geometry is empty since Geometry doesn't have an is_empty method
+
+        println!("First feature ID: {}", first_feature.id);
+        println!(
+            "First feature has {} attributes",
+            first_feature.attributes.len()
+        );
     }
 }

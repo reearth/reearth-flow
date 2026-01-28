@@ -104,11 +104,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<SpatialFilterFactory>::default(),
         Box::<PolygonNormalExtractorFactory>::default(),
         Box::<RayIntersectorFactory>::default(),
-<<<<<<< HEAD
         Box::<ImageRasterizerFactory>::default(),
-=======
         Box::<GridDividerFactory>::default(),
->>>>>>> 934b730b4 (complete workflow but visualzation)
     ];
     factories
         .into_iter()

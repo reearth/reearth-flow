@@ -279,13 +279,7 @@ impl Processor for RayIntersector {
                                 return Ok(());
                             }
                             1 => Geometry3D::Polygon(Polygon3D::from(polygons[0].clone())),
-                            _ => Geometry3D::MultiPolygon(MultiPolygon3D::new(
-                                polygons
-                                    .iter()
-                                    .cloned()
-                                    .map(Polygon3D::from)
-                                    .collect::<Vec<_>>(),
-                            )),
+                            _ => Geometry3D::MultiPolygon(MultiPolygon3D::new(polygons.to_vec())),
                         };
                     self.geom_buffer.entry(pair_id).or_default().push(geo);
                 } else {

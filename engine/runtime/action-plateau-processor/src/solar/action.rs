@@ -274,7 +274,7 @@ impl Clone for SolarPositionCalculator {
             source_epsg_ast: self.source_epsg_ast.clone(),
             standard_meridian_ast: self.standard_meridian_ast.clone(),
             output_type: self.output_type.clone(),
-            source_epsg: self.source_epsg.clone(),
+            source_epsg: self.source_epsg,
             proj: None,
         }
     }
