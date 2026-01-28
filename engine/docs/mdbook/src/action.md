@@ -5177,11 +5177,6 @@ Convert vector geometries to raster image format
       "maxItems": 3,
       "minItems": 3
     },
-    "backgroundColorAlpha": {
-      "default": 1.0,
-      "type": "number",
-      "format": "double"
-    },
     "imageWidth": {
       "description": "The width of image",
       "default": 1000,

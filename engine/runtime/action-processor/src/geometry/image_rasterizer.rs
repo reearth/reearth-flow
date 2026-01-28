@@ -70,7 +70,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
         let process = ImageRasterizer {
             width: params.image_width,
             save_to: params.save_to,
-            gemotry_polygons: GemotryPolygons::new(),
+            geometry_polygons: GeometryPolygons::new(),
         };
         Ok(Box::new(process))
     }
@@ -90,9 +90,6 @@ struct ImageRasterizerParam {
     #[serde(default = "default_background_color")]
     background_color: [u8; 3],
 
-    #[serde(default = "default_background_color_alpha")]
-    background_color_alpha: f64,
-
     /// # Save To
     /// Optional path to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
@@ -103,7 +100,7 @@ struct ImageRasterizerParam {
 struct ImageRasterizer {
     width: u32,
     save_to: Option<String>,
-    gemotry_polygons: GemotryPolygons,
+    geometry_polygons: GeometryPolygons,
 }
 
 fn default_image_width() -> u32 {
@@ -112,10 +109,6 @@ fn default_image_width() -> u32 {
 
 fn default_background_color() -> [u8; 3] {
     [255, 255, 255] // White
-}
-
-fn default_background_color_alpha() -> f64 {
-    1.0
 }
 
 // Helper function to save image to a path, either custom or default cache location
@@ -164,7 +157,6 @@ impl Default for ImageRasterizerParam {
         Self {
             image_width: default_image_width(),
             background_color: default_background_color(),
-            background_color_alpha: default_background_color_alpha(),
             save_to: None,
         }
     }
@@ -179,12 +171,12 @@ impl Processor for ImageRasterizer {
         // During process
         // 1. extract color related features, color_r, color_g, color_b
         // 2. from feature.geometry, get coordinates
-        // 3. each processed feature should get a GeometryPolygon, accumulate it in GemotryPolygons
+        // 3. each processed feature should get a GeometryPolygon, accumulate it in GeometryPolygons
         let feature = &ctx.feature;
 
         if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
             // Accumulate the polygon in the collection
-            self.gemotry_polygons.add_polygon(polygon);
+            self.geometry_polygons.add_polygon(polygon);
         }
 
         Ok(())
@@ -195,7 +187,7 @@ impl Processor for ImageRasterizer {
         // call draw method on GeometryPolygon, with dependent parameters get from &self
 
         // Determine image dimensions based on the accumulated polygons and cell sizes
-        let boundary = self.gemotry_polygons.find_coordinates_boundary();
+        let boundary = self.geometry_polygons.find_coordinates_boundary();
 
         // Calculate the width and height of the image based on the boundary and cell size
         let width = self.width;
@@ -204,7 +196,7 @@ impl Processor for ImageRasterizer {
         let height = boundary.calculate_height_from_boundary_ratio(width);
 
         // Draw the accumulated polygons to an image
-        let img = self.gemotry_polygons.draw(width, height, true); // fill_area = true
+        let img = self.geometry_polygons.draw(width, height, true); // fill_area = true
 
         // Save the image using the helper function with the save_to path from parameters
         match save_image_with_path_option(&img, self.save_to.clone()) {
@@ -249,7 +241,7 @@ impl Processor for ImageRasterizer {
 }
 
 #[derive(Clone, Debug)]
-pub struct Coordinate {
+struct Coordinate {
     pub x: f64,
     pub y: f64,
 }
@@ -278,11 +270,11 @@ impl Coordinate {
 }
 
 #[derive(Clone, Debug)]
-pub struct CoordinatesBoudnary {
-    pub left_up: Coordinate,
-    pub left_down: Coordinate,
-    pub right_up: Coordinate,
-    pub right_down: Coordinate,
+struct CoordinatesBoudnary {
+    left_up: Coordinate,
+    left_down: Coordinate,
+    right_up: Coordinate,
+    right_down: Coordinate,
 }
 
 impl CoordinatesBoudnary {
@@ -297,29 +289,29 @@ impl CoordinatesBoudnary {
 
 // Define the GeometryPixels structure to hold the mapped data
 #[derive(Debug, Clone)]
-pub struct ImagePixel {
+struct ImagePixel {
     // coordinate in image -- x
-    pub x: u32,
+    x: u32,
     // coordinate in image -- y
-    pub y: u32,
+    y: u32,
     // pixel color
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
+    r: u8,
+    g: u8,
+    b: u8,
 }
 
 #[derive(Debug, Clone)]
-pub struct GeometryPolygon {
-    pub exterior_coordinates: Vec<(f64, f64)>, // List of (x, y) coordinates forming the exterior ring
-    pub interior_coordinates: Vec<Vec<(f64, f64)>>, // List of interior rings (holes)
-    pub color_r: u8,
-    pub color_g: u8,
-    pub color_b: u8,
+struct GeometryPolygon {
+    exterior_coordinates: Vec<(f64, f64)>, // List of (x, y) coordinates forming the exterior ring
+    interior_coordinates: Vec<Vec<(f64, f64)>>, // List of interior rings (holes)
+    color_r: u8,
+    color_g: u8,
+    color_b: u8,
 }
 
 impl GeometryPolygon {
     // Creates a mapping function that can be reused to transform the polygon's coordinates
-    pub fn create_mapping_function_to_png(
+    fn create_mapping_function_to_png(
         geo_boundary: CoordinatesBoudnary,
         png_width: u32,
         png_height: u32,
@@ -375,7 +367,7 @@ impl GeometryPolygon {
     }
 
     // Maps the polygon to a vector of image pixels
-    pub fn to_image_pixels<F>(&self, mapping_fn: F, fill_area: bool) -> Vec<ImagePixel>
+    fn to_image_pixels<F>(&self, mapping_fn: F, fill_area: bool) -> Vec<ImagePixel>
     where
         F: Fn(&GeometryPolygon) -> GeometryPolygon,
     {
@@ -636,22 +628,22 @@ fn point_in_polygon(point_x: f64, point_y: f64, polygon: &[(f64, f64)]) -> bool 
 }
 
 #[derive(Debug, Clone)]
-struct GemotryPolygons {
-    pub polygons: Vec<GeometryPolygon>,
+struct GeometryPolygons {
+    polygons: Vec<GeometryPolygon>,
 }
 
-impl GemotryPolygons {
-    pub fn new() -> Self {
+impl GeometryPolygons {
+    fn new() -> Self {
         Self {
             polygons: Vec::new(),
         }
     }
 
-    pub fn add_polygon(&mut self, polygon: GeometryPolygon) {
+    fn add_polygon(&mut self, polygon: GeometryPolygon) {
         self.polygons.push(polygon);
     }
 
-    pub fn find_coordinates_boundary(&self) -> CoordinatesBoudnary {
+    fn find_coordinates_boundary(&self) -> CoordinatesBoudnary {
         if self.polygons.is_empty() {
             // Return a default boundary if no polygons exist
             return CoordinatesBoudnary {
@@ -698,7 +690,7 @@ impl GemotryPolygons {
     }
 
     // Draws the polygons to a PNG image with the specified width and height
-    pub fn draw(&self, width: u32, height: u32, fill_area: bool) -> image::RgbImage {
+    fn draw(&self, width: u32, height: u32, fill_area: bool) -> image::RgbImage {
         // Create a new image with white background
         let mut img = image::RgbImage::new(width, height);
 
@@ -733,7 +725,7 @@ impl GemotryPolygons {
     }
 }
 
-pub fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPolygon> {
+fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPolygon> {
     // Extract color information from the feature attributes
     let r = feature
         .get("color_r")
@@ -906,11 +898,11 @@ mod tests {
         );
 
         // Use the Vec<Feature> to draw an image using extract_geometry_polygon_from_feature
-        let mut gemotry_polygons = GemotryPolygons::new();
+        let mut geometry_polygons = GeometryPolygons::new();
 
         for feature in &features {
             if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
-                gemotry_polygons.add_polygon(polygon);
+                geometry_polygons.add_polygon(polygon);
                 println!("Added polygon from feature ID: {}", feature.id);
             } else {
                 println!("No polygon extracted from feature ID: {}", feature.id);
@@ -918,19 +910,19 @@ mod tests {
         }
 
         assert!(
-            !gemotry_polygons.polygons.is_empty(),
+            !geometry_polygons.polygons.is_empty(),
             "At least one polygon should have been extracted from features"
         );
         println!(
             "Successfully extracted {} polygons from features",
-            gemotry_polygons.polygons.len()
+            geometry_polygons.polygons.len()
         );
 
         // Draw the polygons to an image
         let width = 1000;
-        let boundary = gemotry_polygons.find_coordinates_boundary();
+        let boundary = geometry_polygons.find_coordinates_boundary();
         let height = boundary.calculate_height_from_boundary_ratio(width);
-        let img = gemotry_polygons.draw(width, height, true);
+        let img = geometry_polygons.draw(width, height, true);
 
         // Save the image to verify it worked
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
