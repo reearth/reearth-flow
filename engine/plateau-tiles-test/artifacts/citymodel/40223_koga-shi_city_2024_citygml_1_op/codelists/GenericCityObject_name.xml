@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_648ec288-7280-4dc8-b7e2-c19306d7b5f6">
+<gml:name>GenericCityObject_name</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="GenericCityObject_name_1">
+<gml:description>福岡県開発許可条例に基づく区域指定(開発許可区域)</gml:description>
+<gml:name>20</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>
