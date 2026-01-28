@@ -420,7 +420,11 @@ impl GeometryPolygon {
                 current.1.round() as u32,
                 next.0.round() as u32,
                 next.1.round() as u32,
-                (mapped_polygon.color_r, mapped_polygon.color_g, mapped_polygon.color_b),
+                (
+                    mapped_polygon.color_r,
+                    mapped_polygon.color_g,
+                    mapped_polygon.color_b,
+                ),
             );
             pixels.extend(line_pixels);
         }
@@ -437,7 +441,11 @@ impl GeometryPolygon {
                     current.1.round() as u32,
                     next.0.round() as u32,
                     next.1.round() as u32,
-                    (mapped_polygon.color_r, mapped_polygon.color_g, mapped_polygon.color_b),
+                    (
+                        mapped_polygon.color_r,
+                        mapped_polygon.color_g,
+                        mapped_polygon.color_b,
+                    ),
                 );
                 pixels.extend(line_pixels);
             }
