@@ -5157,6 +5157,99 @@
       ]
     },
     {
+      "name": "ImageRasterizer",
+      "type": "processor",
+      "description": "Convert vector geometries to raster image format",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Image Rasterizer Parameters",
+        "description": "Configure how to convert vector geometries to raster images",
+        "type": "object",
+        "properties": {
+          "backgroundColor": {
+            "title": "Background Color",
+            "description": "The color to use for background pixels (RGB values 0-255)",
+            "default": [
+              255,
+              255,
+              255
+            ],
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            },
+            "maxItems": 3,
+            "minItems": 3
+          },
+          "backgroundColorAlpha": {
+            "default": 1.0,
+            "type": "number",
+            "format": "double"
+          },
+          "colorInterpretation": {
+            "title": "Color Interpretation",
+            "description": "How to interpret and store color information",
+            "default": "rgba32",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ColorInterpretation"
+              }
+            ]
+          },
+          "imageWidth": {
+            "description": "The width of image",
+            "default": 1000,
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "saveTo": {
+            "title": "Save To",
+            "description": "Optional path to save the generated image. If not provided, uses default cache directory.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "ColorInterpretation": {
+            "oneOf": [
+              {
+                "title": "RGBA32",
+                "description": "32-bit color with alpha channel (Red, Green, Blue, Alpha)",
+                "type": "string",
+                "enum": [
+                  "rgba32"
+                ]
+              },
+              {
+                "title": "RGB24",
+                "description": "24-bit color without alpha channel (Red, Green, Blue)",
+                "type": "string",
+                "enum": [
+                  "rgb24"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "InputRouter",
       "type": "processor",
       "description": "サブワークフローで最初のポートを転送するアクション",
