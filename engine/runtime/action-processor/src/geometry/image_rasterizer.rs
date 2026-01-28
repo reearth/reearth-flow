@@ -966,8 +966,8 @@ mod tests {
             .join("image_rasterizer")
             .join("input_features.json");
 
-        let file =
-            File::open(&file_path).expect(&format!("failed to open: {}", file_path.display()));
+        let file = File::open(&file_path)
+            .unwrap_or_else(|_| panic!("failed to open: {}", file_path.display()));
         let reader = BufReader::new(file);
 
         let features: Vec<Feature> =
