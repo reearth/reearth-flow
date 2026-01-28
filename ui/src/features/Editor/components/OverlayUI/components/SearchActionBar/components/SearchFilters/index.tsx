@@ -75,10 +75,12 @@ const SearchFilters = ({
         <Select
           value={currentWorkflowFilter}
           onValueChange={setCurrentWorkflowFilter}>
-          <SelectTrigger className="h-[28px] w-full truncate">
-            <div className="flex items-center gap-2">
-              <ShareNetworkIcon weight="light" size={14} />
-              <SelectValue />
+          <SelectTrigger className="h-7 w-full min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <ShareNetworkIcon weight="light" size={14} className="shrink-0" />
+              <div className="min-w-0 flex-1 text-left [&>span]:block [&>span]:truncate">
+                <SelectValue />
+              </div>
             </div>
           </SelectTrigger>
           <SelectContent>
@@ -92,10 +94,12 @@ const SearchFilters = ({
         <Select
           value={currentActionTypeFilter}
           onValueChange={setCurrentActionTypeFilter}>
-          <SelectTrigger className="h-[28px] w-full">
-            <div className="flex items-center gap-2">
-              <StackIcon weight="light" size={14} />
-              <SelectValue />
+          <SelectTrigger className="h-7 w-full min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <StackIcon weight="light" size={14} className="shrink-0" />
+              <div className="min-w-0 flex-1 text-left [&>span]:block [&>span]:truncate">
+                <SelectValue />
+              </div>
             </div>
           </SelectTrigger>
           <SelectContent>
