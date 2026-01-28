@@ -955,264 +955,26 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
 
 #[cfg(test)]
 mod tests {
-    #![allow(unused)]
     use super::*;
-    use image::{ImageBuffer, ImageFormat, Rgb, RgbImage};
-    use std::fs::{self, File};
-    use std::io::BufReader;
-    use std::path::Path;
-
-    // Helper function which loads exported FME intermidate data as .json file into Vec<Feature>
-    fn load_fme_json_to_engine_feature(
-        file_path: &str,
-    ) -> Result<Vec<Feature>, Box<dyn std::error::Error>> {
-        let file = File::open(file_path).expect(&format!("failed to open: {}", file_path));
-        let reader = BufReader::new(file);
-        let _features: Vec<Feature> =
-            serde_json::from_reader(reader).expect("failed to parse json into Features");
-        let features = Vec::new();
-        Ok(features)
-    }
-
-    // Helper function to parse the JSON and convert to GemotryPolygons
-    fn json_to_gemotry_polygons(
-        json_value: &Value,
-    ) -> Result<GemotryPolygons, Box<dyn std::error::Error>> {
-        let mut gemotry_polygons = GemotryPolygons::new();
-
-        if let Some(features) = json_value.as_array() {
-            for feature in features {
-                if let Some(polygon) = extract_geometry_polygon_from_fme_value(feature) {
-                    gemotry_polygons.add_polygon(polygon);
-                }
-            }
-        }
-
-        Ok(gemotry_polygons)
-    }
-
-    // helper function which parse a serde_json::Value into GeometryPolygon
-    fn extract_geometry_polygon_from_fme_value(feature: &Value) -> Option<GeometryPolygon> {
-        // Extract color information from the feature
-        let r = feature
-            .get("color_r")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u8>().ok())
-            .unwrap_or(255);
-        let g = feature
-            .get("color_g")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u8>().ok())
-            .unwrap_or(0);
-        let b = feature
-            .get("color_b")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u8>().ok())
-            .unwrap_or(0);
-
-        // Process the geometry
-        if let Some(geo) = feature.get("json_geometry") {
-            if let Some(coords) = geo.get("coordinates").and_then(|c| c.as_array()) {
-                // The coordinates structure is [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] - array of rings
-                // The structure [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
-                //  1. Outermost array: Contains multiple "rings" (first is outer ring, subsequent ones are inner rings/holes)
-                //  2. Middle arrays: Represent individual "rings" - sequences of connected coordinate pairs forming closed shapes
-                //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along each ring
-                if !coords.is_empty() {
-                    // First ring is the exterior (outer boundary), subsequent rings are interiors (holes)
-                    if let Some(exterior_ring) = coords[0].as_array() {
-                        let mut exterior_coordinates = Vec::new();
-
-                        for point in exterior_ring {
-                            if let Some(xy) = point.as_array() {
-                                if xy.len() >= 2 {
-                                    let x = xy[0].as_f64().unwrap_or(0.0);
-                                    let y = xy[1].as_f64().unwrap_or(0.0);
-                                    exterior_coordinates.push((x, y));
-                                }
-                            }
-                        }
-
-                        // Collect interior rings (holes) if they exist
-                        let mut interior_rings = Vec::new();
-                        for i in 1..coords.len() {
-                            if let Some(interior_ring) = coords[i].as_array() {
-                                let mut interior_coords = Vec::new();
-
-                                for point in interior_ring {
-                                    if let Some(xy) = point.as_array() {
-                                        if xy.len() >= 2 {
-                                            let x = xy[0].as_f64().unwrap_or(0.0);
-                                            let y = xy[1].as_f64().unwrap_or(0.0);
-                                            interior_coords.push((x, y));
-                                        }
-                                    }
-                                }
-
-                                if !interior_coords.is_empty() {
-                                    interior_rings.push(interior_coords);
-                                }
-                            }
-                        }
-
-                        // Create a polygon with the exterior and interior coordinates and color
-                        let polygon = GeometryPolygon {
-                            exterior_coordinates,
-                            interior_coordinates: interior_rings,
-                            color_r: r,
-                            color_g: g,
-                            color_b: b,
-                        };
-
-                        return Some(polygon);
-                    }
-                }
-            }
-        }
-
-        return None;
-    }
 
     #[test]
     fn case01() {
-        // Create a new 200x100 RGB image filled with white
-        let mut img = RgbImage::new(200, 100);
-
-        // Draw a red rectangle
-        for x in 50..150 {
-            for y in 20..80 {
-                img.put_pixel(x, y, Rgb([255, 0, 0]));
-            }
-        }
-
-        // Create the cache directory and save the image directly to the user-accessible location
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = Path::new(&home_dir)
-            .join(".cache")
-            .join("reearth-flow-test-images");
-
-        if let Err(_) = fs::create_dir_all(&cache_dir) {
-            panic!("Could not create cache directory for test images");
-        }
-
-        let dest_path = cache_dir.join("output.png");
-
-        // Save the image directly to the cache directory
-        img.save(&dest_path).unwrap();
-        println!(
-            "Successfully saved image directly to cache directory: {:?}",
-            dest_path
-        );
-    }
-
-    #[test]
-    fn case02() {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        // Open and read the JSON file
-        let file_path =
-            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/image_rasterizer_input.json";
-        let file = File::open(file_path).expect("Failed to open image_rasterizer_input.json");
-        let reader = BufReader::new(file);
-
-        // Parse the JSON
-        let json_value: serde_json::Value = serde_json::from_reader(reader)
-            .expect("Failed to parse JSON from image_rasterizer_input.json");
-
-        println!("Successfully read and parsed JSON from: {}", file_path);
-
-        // Convert JSON to GemotryPolygons
-        let gemotry_polygons = json_to_gemotry_polygons(&json_value)
-            .expect("Failed to convert JSON to GemotryPolygons");
-
-        println!("Converted JSON to GemotryPolygons:");
-        println!("Number of polygons: {}", gemotry_polygons.polygons.len());
-
-        // Print info about first few polygons as sample
-        for (i, polygon) in gemotry_polygons.polygons.iter().take(5).enumerate() {
-            println!(
-                "  Polygon {}: {} points, color ({}, {}, {})",
-                i,
-                polygon.exterior_coordinates.len(),
-                polygon.color_r,
-                polygon.color_g,
-                polygon.color_b
-            );
-        }
-
-        // Test the find_coordinates_boudary function
-        let boundary = gemotry_polygons.find_coordinates_boudary();
-        println!("Boundary coordinates:");
-        println!(
-            "  Left Up: ({}, {})",
-            boundary.left_up.x, boundary.left_up.y
-        );
-        println!(
-            "  Left Down: ({}, {})",
-            boundary.left_down.x, boundary.left_down.y
-        );
-        println!(
-            "  Right Up: ({}, {})",
-            boundary.right_up.x, boundary.right_up.y
-        );
-        println!(
-            "  Right Down: ({}, {})",
-            boundary.right_down.x, boundary.right_down.y
-        );
-    }
-
-    #[test]
-    fn case03() {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        // Open and read the JSON file
-        let file_path = "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input.json";
-        let file = File::open(file_path).expect(format!("Failed to open {}", file_path).as_str());
-        let reader = BufReader::new(file);
-
-        // Parse the JSON
-        let json_value: serde_json::Value = serde_json::from_reader(reader)
-            .expect(format!("Failed to parse {}", file_path).as_str());
-
-        println!("Successfully read and parsed JSON from: {}", file_path);
-
-        // Convert JSON to GemotryPolygons
-        let gemotry_polygons = json_to_gemotry_polygons(&json_value)
-            .expect("Failed to convert JSON to GemotryPolygons");
-        let boundary = gemotry_polygons.find_coordinates_boudary();
-        let width = 1000;
-        let height = boundary.calculate_height_from_boundary_ratio(width);
-        // Draw the polygons to a PNG image
-        let img = gemotry_polygons.draw(width, height, true);
-
-        // Create the cache directory and save the image
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = Path::new(&home_dir)
-            .join(".cache")
-            .join("reearth-flow-test-images");
-
-        if let Err(_) = fs::create_dir_all(&cache_dir) {
-            panic!("Could not create cache directory for test images");
-        }
-
-        let dest_path = cache_dir.join("generated_image.png");
-
-        // Save the image directly to the cache directory
-        img.save(&dest_path).unwrap();
-        println!("Successfully generated and saved image to: {:?}", dest_path);
-    }
-
-    #[test]
-    fn case04() {
         use std::fs::File;
         use std::io::BufReader;
 
         // Load and parse the debug_input_features.json file into Vec<Feature>
-        let file_path =
-            "/home/zw/code/rust_programming/reearth-flow/engine/tmp/debug_input_features.json";
-        let file = File::open(file_path).expect("Failed to open debug_input_features.json");
+        // The file is located in the runtime/tests directory relative to the project root
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let project_root = std::path::Path::new(manifest_dir).parent().unwrap(); // Go up from runtime/action-processor to runtime
+        let file_path = project_root
+            .join("tests")
+            .join("fixture")
+            .join("testdata")
+            .join("image_rasterizer")
+            .join("debug_input_features.json");
+
+        let file =
+            File::open(&file_path).expect(&format!("failed to open: {}", file_path.display()));
         let reader = BufReader::new(file);
 
         let features: Vec<Feature> =
@@ -1237,5 +999,50 @@ mod tests {
             "First feature has {} attributes",
             first_feature.attributes.len()
         );
+
+        // Use the Vec<Feature> to draw an image using extract_geometry_polygon_from_feature
+        let mut gemotry_polygons = GemotryPolygons::new();
+
+        for feature in &features {
+            if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
+                gemotry_polygons.add_polygon(polygon);
+                println!("Added polygon from feature ID: {}", feature.id);
+            } else {
+                println!("No polygon extracted from feature ID: {}", feature.id);
+            }
+        }
+
+        assert!(
+            !gemotry_polygons.polygons.is_empty(),
+            "At least one polygon should have been extracted from features"
+        );
+        println!(
+            "Successfully extracted {} polygons from features",
+            gemotry_polygons.polygons.len()
+        );
+
+        // Draw the polygons to an image
+        let width = 1000;
+        let boundary = gemotry_polygons.find_coordinates_boudary();
+        let height = boundary.calculate_height_from_boundary_ratio(width);
+        let img = gemotry_polygons.draw(width, height, true);
+
+        // Save the image to verify it worked
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let cache_dir = std::path::Path::new(&home_dir)
+            .join(".cache")
+            .join("reearth-flow-test-images");
+
+        std::fs::create_dir_all(&cache_dir)
+            .expect("Could not create cache directory for test images");
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let dest_path = cache_dir.join(format!("test_case04_output_{}.png", timestamp));
+
+        img.save(&dest_path).expect("Failed to save test image");
+        println!("Successfully generated and saved image to: {:?}", dest_path);
     }
 }
