@@ -194,6 +194,7 @@ export default ({
         // The subworkflow node itself lives in the parent, so its path is currentParentPath
         const newSubWorkflowNode = {
           ...node,
+          id: subworkflowId,
           data: {
             ...node.data,
             subworkflowId,

@@ -5,6 +5,7 @@ import { Map as YMap } from "yjs";
 
 import { config } from "@flow/config";
 import {
+  DEFAULT_EDGE_PORT,
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
 } from "@flow/global-constants";
@@ -357,7 +358,7 @@ export default ({
                 if (instanceNum !== undefined) {
                   portName += `-${instanceNum}`;
                 }
-                portName += `-${edge.targetHandle}`;
+                portName += `-${edge.targetHandle ?? DEFAULT_EDGE_PORT}`;
 
                 const inputRouter: Node = {
                   id: inputRouterId,
@@ -428,12 +429,11 @@ export default ({
                 const sourceNodeName =
                   nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
                 const instanceNum = nodeInstanceNumbers.get(edge.source);
-
                 portName = sourceNodeName;
                 if (instanceNum !== undefined) {
                   portName += `-${instanceNum}`;
                 }
-                portName += `-${edge.sourceHandle}`;
+                portName += `-${edge.sourceHandle ?? DEFAULT_EDGE_PORT}`;
 
                 const outputRouter: Node = {
                   id: outputRouterId,

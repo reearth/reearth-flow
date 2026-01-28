@@ -80,22 +80,33 @@ export default ({
         const additions: EdgeChange[] = !hasMultiple
           ? incomers
               .filter(({ id }) => !deletedIds.has(id))
-              .flatMap(({ id: source }) =>
-                outgoers
+              .flatMap((incomer) => {
+                // Find the edge from incomer to deleted node to get sourceHandle
+                const incomerEdge = connectedEdges.find(
+                  (e) => e.source === incomer.id && e.target === node.id,
+                );
+                return outgoers
                   .filter(({ id }) => !deletedIds.has(id))
-                  .map(({ id: target }) => {
+                  .map((outgoer) => {
+                    // Find the edge from deleted node to outgoer to get targetHandle
+                    const outgoerEdge = connectedEdges.find(
+                      (e) => e.source === node.id && e.target === outgoer.id,
+                    );
+
                     const edgeId = generateUUID();
                     return {
                       id: edgeId,
                       type: "add" as const,
                       item: {
                         id: edgeId,
-                        source,
-                        target,
+                        source: incomer.id,
+                        target: outgoer.id,
+                        sourceHandle: incomerEdge?.sourceHandle ?? null,
+                        targetHandle: outgoerEdge?.targetHandle ?? null,
                       },
                     };
-                  }),
-              )
+                  });
+              })
           : [];
 
         return [...acc, ...removals, ...additions];
@@ -218,6 +229,22 @@ export default ({
               type: "remove" as const,
             },
           ];
+
+          let droppedNodeTargetHandle: string | null = null;
+          let droppedNodeSourceHandle: string | null = null;
+
+          if (droppedNode.type === "subworkflow") {
+            droppedNodeTargetHandle =
+              droppedNode.data.pseudoInputs?.[0]?.portName ?? null;
+            droppedNodeSourceHandle =
+              droppedNode.data.pseudoOutputs?.[0]?.portName ?? null;
+          } else {
+            droppedNodeTargetHandle =
+              droppedNode.handles?.find((h) => h.type === "target")?.id ?? null;
+            droppedNodeSourceHandle =
+              droppedNode.handles?.find((h) => h.type === "source")?.id ?? null;
+          }
+
           const addChanges: EdgeChange[] = [
             {
               type: "add" as const,
@@ -226,9 +253,7 @@ export default ({
                 source: e.source,
                 target: droppedNode.id,
                 sourceHandle: e.sourceHandle ?? null,
-                targetHandle:
-                  droppedNode.handles?.find((h) => h.type === "target")?.type ??
-                  null,
+                targetHandle: droppedNodeTargetHandle,
               },
             },
             {
@@ -237,9 +262,7 @@ export default ({
                 id: generateUUID(),
                 source: droppedNode.id,
                 target: e.target,
-                sourceHandle:
-                  droppedNode.handles?.find((h) => h.type === "source")?.type ??
-                  null,
+                sourceHandle: droppedNodeSourceHandle,
                 targetHandle: e.targetHandle ?? null,
               },
             },
