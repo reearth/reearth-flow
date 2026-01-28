@@ -2,7 +2,6 @@ import { useNodes } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
@@ -64,18 +63,16 @@ export default ({
     [debugJobState?.selectedIntermediateData, id],
   );
   const intermediateDataUrl = useMemo(() => {
-    if (!api || !debugJobState?.jobId) {
+    if (!api || !debugJobState?.jobId || !currentWorkflowId) {
       return undefined;
     }
-    if (!currentWorkflowId || currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID) {
-      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
-    }
 
+    // If there is a workflowPath, it means the node is nested. If not, it's in the root/main workflow.
     if (sourceNode) {
-      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${sourceNode.data.workflowPath}.${id}.jsonl.zst`;
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${sourceNode.data.workflowPath ? `${sourceNode.data.workflowPath}.` : ""}${id}.jsonl.zst`;
     }
     if (targetNode) {
-      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${targetNode.data.workflowPath}.${id}.jsonl.zst`;
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${targetNode.data.workflowPath ? `${targetNode.data.workflowPath}.` : ""}${id}.jsonl.zst`;
     }
   }, [
     api,
