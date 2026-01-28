@@ -175,6 +175,7 @@ export const useStreamingDebugRunQuery = (
     visualizerType: VisualizerType;
     totalFeatures: number;
     isStreaming: boolean;
+    isLoading: boolean;
     isComplete: boolean;
     progress: { bytesProcessed: number; featuresProcessed: number };
     hasMore: boolean;
@@ -185,6 +186,7 @@ export const useStreamingDebugRunQuery = (
     visualizerType: null,
     totalFeatures: 0,
     isStreaming: false,
+    isLoading: false,
     isComplete: false,
     progress: { bytesProcessed: 0, featuresProcessed: 0 },
     hasMore: false,
@@ -212,6 +214,7 @@ export const useStreamingDebugRunQuery = (
       setStreamingState((prev) => ({
         ...prev,
         isStreaming: true,
+        isLoading: true,
         error: null,
       }));
 
@@ -273,6 +276,7 @@ export const useStreamingDebugRunQuery = (
               hasMore: totalFeatures > displayLimit,
               isComplete: result.isComplete,
               isStreaming: !result.isComplete,
+              isLoading: !result.isComplete,
             }));
 
             if (result.isComplete) {
@@ -339,6 +343,7 @@ export const useStreamingDebugRunQuery = (
               hasMore: totalFeatures > displayLimit,
               isComplete: result.isComplete,
               isStreaming: !result.isComplete,
+              isLoading: !result.isComplete,
             }));
 
             if (result.isComplete) {
@@ -372,6 +377,7 @@ export const useStreamingDebugRunQuery = (
           setStreamingState((prev) => ({
             ...prev,
             isStreaming: false,
+            isLoading: false,
           }));
           throw error;
         }
@@ -380,6 +386,7 @@ export const useStreamingDebugRunQuery = (
           ...prev,
           error: err,
           isStreaming: false,
+          isLoading: false,
         }));
         throw error;
       }
@@ -402,6 +409,7 @@ export const useStreamingDebugRunQuery = (
           visualizerType: cachedData.visualizerType || null,
           totalFeatures: cachedData.totalFeatures || 0,
           isStreaming: false,
+          isLoading: false,
           isComplete: true,
           progress: cachedData.progress || {
             bytesProcessed: 0,
@@ -418,6 +426,7 @@ export const useStreamingDebugRunQuery = (
           visualizerType: null,
           totalFeatures: 0,
           isStreaming: false,
+          isLoading: false,
           isComplete: false,
           progress: { bytesProcessed: 0, featuresProcessed: 0 },
           hasMore: false,
@@ -473,7 +482,7 @@ export const useStreamingDebugRunQuery = (
     // Compatibility with existing interface
     fileContent,
     fileType: "geojson" as SupportedDataTypes,
-    isLoading: streamingQuery.isLoading || metadataQuery.isLoading,
+    isLoading: streamingState.isLoading || metadataQuery.isLoading,
 
     // React Query compatibility
     data: streamingQuery.data,

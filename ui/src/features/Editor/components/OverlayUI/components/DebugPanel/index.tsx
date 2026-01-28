@@ -41,6 +41,7 @@ const DebugPanel: React.FC = () => {
     fileType,
     mapRef,
     cesiumViewerRef,
+    cesiumEntityMapRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -266,6 +267,7 @@ const DebugPanel: React.FC = () => {
                           selectedFeatureId={selectedFeatureId}
                           mapRef={mapRef}
                           cesiumViewerRef={cesiumViewerRef}
+                          cesiumEntityMapRef={cesiumEntityMapRef}
                           onConvertedSelectedFeature={
                             setConvertedSelectedFeature
                           }
