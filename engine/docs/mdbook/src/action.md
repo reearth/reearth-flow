@@ -5182,16 +5182,6 @@ Convert vector geometries to raster image format
       "type": "number",
       "format": "double"
     },
-    "colorInterpretation": {
-      "title": "Color Interpretation",
-      "description": "How to interpret and store color information",
-      "default": "rgba32",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ColorInterpretation"
-        }
-      ]
-    },
     "imageWidth": {
       "description": "The width of image",
       "default": 1000,
@@ -5206,28 +5196,6 @@ Convert vector geometries to raster image format
       "type": [
         "string",
         "null"
-      ]
-    }
-  },
-  "definitions": {
-    "ColorInterpretation": {
-      "oneOf": [
-        {
-          "title": "RGBA32",
-          "description": "32-bit color with alpha channel (Red, Green, Blue, Alpha)",
-          "type": "string",
-          "enum": [
-            "rgba32"
-          ]
-        },
-        {
-          "title": "RGB24",
-          "description": "24-bit color without alpha channel (Red, Green, Blue)",
-          "type": "string",
-          "enum": [
-            "rgb24"
-          ]
-        }
       ]
     }
   }

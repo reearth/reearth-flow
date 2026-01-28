@@ -51,19 +51,17 @@ impl ProcessorFactory for ImageRasterizerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: ImageRasterizerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::BuffererFactory(format!(
-                    // Using an existing error variant
+                GeometryProcessorError::ImageRasterizerFactory(format!(
                     "Failed to serialize 'with' parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::BuffererFactory(format!(
-                    // Using an existing error variant
+                GeometryProcessorError::ImageRasterizerFactory(format!(
                     "Failed to deserialize 'with' parameter: {e}"
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::BuffererFactory(
+            return Err(GeometryProcessorError::ImageRasterizerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -78,18 +76,6 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-enum ColorInterpretation {
-    /// # RGBA32
-    /// 32-bit color with alpha channel (Red, Green, Blue, Alpha)
-    #[serde(rename = "rgba32")]
-    Rgba32,
-    /// # RGB24
-    /// 24-bit color without alpha channel (Red, Green, Blue)
-    #[serde(rename = "rgb24")]
-    Rgb24,
-}
-
 /// # Image Rasterizer Parameters
 /// Configure how to convert vector geometries to raster images
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -98,11 +84,6 @@ struct ImageRasterizerParam {
     /// The width of image
     #[serde(default = "default_image_width")]
     image_width: u32,
-
-    /// # Color Interpretation
-    /// How to interpret and store color information
-    #[serde(default = "default_color_interpretation")]
-    color_interpretation: ColorInterpretation,
 
     /// # Background Color
     /// The color to use for background pixels (RGB values 0-255)
@@ -127,10 +108,6 @@ struct ImageRasterizer {
 
 fn default_image_width() -> u32 {
     1000
-}
-
-fn default_color_interpretation() -> ColorInterpretation {
-    ColorInterpretation::Rgba32
 }
 
 fn default_background_color() -> [u8; 3] {
@@ -186,7 +163,6 @@ impl Default for ImageRasterizerParam {
     fn default() -> Self {
         Self {
             image_width: default_image_width(),
-            color_interpretation: default_color_interpretation(),
             background_color: default_background_color(),
             background_color_alpha: default_background_color_alpha(),
             save_to: None,
@@ -219,7 +195,7 @@ impl Processor for ImageRasterizer {
         // call draw method on GeometryPolygon, with dependent parameters get from &self
 
         // Determine image dimensions based on the accumulated polygons and cell sizes
-        let boundary = self.gemotry_polygons.find_coordinates_boudary();
+        let boundary = self.gemotry_polygons.find_coordinates_boundary();
 
         // Calculate the width and height of the image based on the boundary and cell size
         let width = self.width;
@@ -660,7 +636,7 @@ fn point_in_polygon(point_x: f64, point_y: f64, polygon: &[(f64, f64)]) -> bool 
 }
 
 #[derive(Debug, Clone)]
-pub struct GemotryPolygons {
+struct GemotryPolygons {
     pub polygons: Vec<GeometryPolygon>,
 }
 
@@ -675,7 +651,7 @@ impl GemotryPolygons {
         self.polygons.push(polygon);
     }
 
-    pub fn find_coordinates_boudary(&self) -> CoordinatesBoudnary {
+    pub fn find_coordinates_boundary(&self) -> CoordinatesBoudnary {
         if self.polygons.is_empty() {
             // Return a default boundary if no polygons exist
             return CoordinatesBoudnary {
@@ -734,7 +710,7 @@ impl GemotryPolygons {
         }
 
         // Find the boundary of all polygons
-        let geo_boundary = self.find_coordinates_boudary();
+        let geo_boundary = self.find_coordinates_boundary();
 
         // Create the mapping function using the geographic boundary and image dimensions
         let mapping_fn =
@@ -783,70 +759,6 @@ pub fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<Geomet
             _ => None,
         })
         .unwrap_or(0);
-
-    // Process the geometry from the feature
-    // Look for coordinates in the attributes, possibly under a "json_geometry" key
-    if let Some(json_geometry_value) = feature.get("json_geometry") {
-        // Convert the AttributeValue to a serde_json::Value to work with coordinates
-        let json_geometry = serde_json::Value::from(json_geometry_value.clone());
-
-        if let Some(coords) = json_geometry.get("coordinates").and_then(|c| c.as_array()) {
-            // The coordinates structure is [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] - array of rings
-            // The structure [[[x, y], [x, y], ...], [[x, y], [x, y], ...]] represents a GeoJSON Polygon structure, which consists of:
-            //  1. Outermost array: Contains multiple "rings" (first is outer ring, subsequent ones are inner rings/holes)
-            //  2. Middle arrays: Represent individual "rings" - sequences of connected coordinate pairs forming closed shapes
-            //  3. Innermost arrays: Individual [x, y] coordinate pairs that define points along each ring
-            if !coords.is_empty() {
-                // First ring is the exterior (outer boundary), subsequent rings are interiors (holes)
-                if let Some(exterior_ring) = coords[0].as_array() {
-                    let mut exterior_coordinates = Vec::new();
-
-                    for point in exterior_ring {
-                        if let Some(xy) = point.as_array() {
-                            if xy.len() >= 2 {
-                                let x = xy[0].as_f64().unwrap_or(0.0);
-                                let y = xy[1].as_f64().unwrap_or(0.0);
-                                exterior_coordinates.push((x, y));
-                            }
-                        }
-                    }
-
-                    // Collect interior rings (holes) if they exist
-                    let mut interior_rings = Vec::new();
-                    for coord in coords.iter().skip(1) {
-                        if let Some(interior_ring) = coord.as_array() {
-                            let mut interior_coords = Vec::new();
-
-                            for point in interior_ring {
-                                if let Some(xy) = point.as_array() {
-                                    if xy.len() >= 2 {
-                                        let x = xy[0].as_f64().unwrap_or(0.0);
-                                        let y = xy[1].as_f64().unwrap_or(0.0);
-                                        interior_coords.push((x, y));
-                                    }
-                                }
-                            }
-
-                            if !interior_coords.is_empty() {
-                                interior_rings.push(interior_coords);
-                            }
-                        }
-                    }
-
-                    // Create a polygon with the exterior and interior coordinates and color
-                    let polygon = GeometryPolygon {
-                        exterior_coordinates,
-                        interior_coordinates: interior_rings,
-                        color_r: r,
-                        color_g: g,
-                        color_b: b,
-                    };
-
-                    return Some(polygon);
-                }
-            }
-        }
-    }
 
     // Alternative: Check if geometry is stored directly in the feature's geometry field
     // This handles the case where the geometry is already parsed into the Feature's geometry field
@@ -1016,7 +928,7 @@ mod tests {
 
         // Draw the polygons to an image
         let width = 1000;
-        let boundary = gemotry_polygons.find_coordinates_boudary();
+        let boundary = gemotry_polygons.find_coordinates_boundary();
         let height = boundary.calculate_height_from_boundary_ratio(width);
         let img = gemotry_polygons.draw(width, height, true);
 
