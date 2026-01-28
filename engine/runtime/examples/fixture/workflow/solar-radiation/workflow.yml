@@ -1,320 +1,900 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-name: "Solar Radiation and Power Generation Calculation"
-entryGraphId: 10203040-5060-7080-90a0-b0c0d0e0f010
+id: 6a8c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
+name: SolarRadiationWorkflow
+entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
-  # Solar parameters (adjust per location/date)
-  solar_altitude_degrees: 54.1
-  panel_capacity_factor: 0.167
-  panel_efficiency: 0.8
-  unit_adjustment: 0.01
+  cityGmlPath:
+  codelistsPath:
+  schemasPath:
+  codelists:
+  schemas:
+  prcs:
+  startTime: "2024/06/21/16/00/00"
+  endTime: "2024/06/21/16/00/00"
+  outputPath:
+  dailySunDataPath:
+  monthlyWeatherDataPath:
 graphs:
-  - id: 10203040-5060-7080-90a0-b0c0d0e0f010
-    name: SolarRadiationCalculation
+  - !include ../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include cloud_factor.yml
+  - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+    name: main
     nodes:
-      # Source: Create test data with solar parameters
-      - id: 11111111-1111-1111-1111-111111111111
-        name: CreateSolarInputData
+      - id: 00000001-0000-0000-0000-000000000001
+        name: FeatureCreator
         type: action
         action: FeatureCreator
         with:
           creator: |
             [
               #{
-                building_id: "bldg-001",
-                sunrise_hour: 6,
-                sunrise_minute: 15,
-                sunset_hour: 18,
-                sunset_minute: 45,
-                solar_noon_hour: 12,
-                solar_noon_minute: 30,
-                solar_noon_second: 15,
-                solar_altitude_deg: 54.1,
-                roof_slope_degrees: 30.0,
-                roof_azimuth_degrees: 180.0,
-                roof_area_m2: 100.0,
-                shadow_impact_score: 0.2,
-                reflection_intensity: 0.1
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
               },
-              #{
-                building_id: "bldg-002",
-                sunrise_hour: 6,
-                sunrise_minute: 20,
-                sunset_hour: 18,
-                sunset_minute: 40,
-                solar_noon_hour: 12,
-                solar_noon_minute: 30,
-                solar_noon_second: 0,
-                solar_altitude_deg: 54.1,
-                roof_slope_degrees: 20.0,
-                roof_azimuth_degrees: 165.0,
-                roof_area_m2: 150.0,
-                shadow_impact_score: 0.15,
-                reflection_intensity: 0.05
-              }
             ]
 
-      # Single AttributeMapper: Calculate all solar radiation expressions
-      - id: 22222222-2222-2222-2222-222222222222
-        name: SolarCalculations
+      - id: 00000001-0000-0000-0000-000000000111
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: 00000001-0000-0000-0000-000000000002
+        name: CityGmlReader
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          format: citygml
+          flatten: true
+          dataset: |
+            env.get("__value")["cityGmlPath"]
+
+      # Filter to keep only LOD2 geometry
+      - id: 00000001-0000-0000-0000-00000000003a
+        name: LodFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").lod == 2
+              outputPort: default
+
+      # Keep only featureType attribute to reduce memory footprint
+      - id: 00000001-0000-0000-0000-00000000003b
+        name: KeepFeatureType
         type: action
         action: AttributeMapper
         with:
           mappers:
-            # Expression 1: Sunrise time to TIMEVALUE
-            - attribute: sunrise_seconds
+          - attribute: featureType
+            expr: env.get("__value").featureType
+
+      - id: 00000001-0000-0000-0000-000000000004
+        name: GeometryPartExtractor
+        type: action
+        action: GeometryPartExtractor
+
+      - id: 00000001-0000-0000-0000-000000000005
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: |
+            env.get("prcs")
+
+      - id: 00000001-0000-0000-0000-000000000006
+        name: GeometrySplitter
+        type: action
+        action: GeometrySplitter
+        with:
+          splitLevel: polygon
+
+      # Note: GeometryCoercer removed to preserve CityGmlGeometry for 3D tiles output
+      # PolygonNormalExtractor now supports CityGmlGeometry directly
+
+      # ========================================
+      # Section 2: Surface Analysis
+      # ========================================
+
+      - id: 00000001-0000-0000-0000-000000000008
+        name: PolygonNormalExtractor
+        type: action
+        action: PolygonNormalExtractor
+
+      - id: 00000001-0000-0000-0000-000000000009
+        name: GridDivider
+        type: action
+        action: GridDivider
+        with:
+          unitSquareSize: 1.0
+          keepSquareOnly: true
+
+      - id: 00000001-0000-0000-0000-00000000000a
+        name: FilterRoofSurfaces
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["featureType"] == "bldg:RoofSurface";
+              outputPort: default
+
+      # ========================================
+      # Section 3: Solar Position Calculation
+      # ========================================
+
+      - id: 00000001-0000-0000-0000-00000000000b
+        name: SunPositionCalculator
+        type: action
+        action: PLATEAU4.SolarPositionCalculator
+        with:
+          type: duration
+          start: |
+            env.get("startTime")
+          end: |
+            env.get("endTime")
+          step: "1"
+          stepUnit: hour
+          sourceEpsg: |
+            env.get("prcs")
+          outputType: both
+
+      - id: 00000001-0000-0000-0000-00000000000c
+        name: AreaCalculator
+        type: action
+        action: AreaCalculator
+        with:
+          areaType: slopedArea
+          outputAttribute: cell_area
+          multiplier: 1.0
+
+      # Counter to assign unique cell_id for later merge with shadow results
+      - id: 00000001-0000-0000-0000-000000000030
+        name: CellIdCounter
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 0
+          outputAttribute: cell_id
+
+      # ========================================
+      # Section 5: Shadow Detection
+      # ========================================
+
+      - id: 00000001-0000-0000-0000-000000000010
+        name: RayIntersectorShadow
+        type: action
+        action: RayIntersector
+        with:
+          # All rays are checked with all geometries
+          pairId: |
+            "all" 
+          closestIntersectionOnly: "true"
+          includeRayOrigin: "false"
+          tolerance: "0.01"
+          outputGeometryType: lineSegmentToIntersection
+          ray:
+            posX: ray_origin_x
+            posY: ray_origin_y
+            posZ: ray_origin_z
+            dirX: solar_direction_x
+            dirY: solar_direction_y
+            dirZ: solar_direction_z
+
+      # Mark shadowed features (ray hit something = in shadow)
+      - id: 00000001-0000-0000-0000-000000000031
+        name: MarkShadowed
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _is_shadow
+              method: create
+              value: |
+                1
+
+      # Mark non-shadowed features (ray reached sun = not in shadow)
+      - id: 00000001-0000-0000-0000-000000000032
+        name: MarkNotShadowed
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _is_shadow
+              method: create
+              value: |
+                0
+
+      # Merge shadow results back to original polygons by cell_id
+      - id: 00000001-0000-0000-0000-000000000033
+        name: ShadowMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute:
+            - cell_id
+          supplierAttribute:
+            - cell_id
+
+      # ========================================
+      # Section 6: Direct Radiation Computation (non-shadowed surfaces)
+      # ========================================
+
+      # First compute cos_theta and ray endpoints
+      - id: 00000001-0000-0000-0000-000000000011
+        name: ComputeCosTheta
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            # cos(theta) = solar_dir · normal (dot product of unit vectors)
+            - attribute: cos_theta
+              method: create
+              value: |
+                let sdx = env.get("__value")["solar_direction_x"];
+                let sdy = env.get("__value")["solar_direction_y"];
+                let sdz = env.get("__value")["solar_direction_z"];
+                let nx = env.get("__value")["normalX"];
+                let ny = env.get("__value")["normalY"];
+                let nz = env.get("__value")["normalZ"];
+                let cos_th = sdx * nx + sdy * ny + sdz * nz;
+                if cos_th < 0.0 { 0.0 } else { cos_th }
+            # Ray end point (origin + 100 * solar_direction for visualization)
+            - attribute: ray_end_x
+              method: create
+              value: |
+                env.get("__value")["ray_origin_x"] + 100.0 * env.get("__value")["solar_direction_x"]
+            - attribute: ray_end_y
+              method: create
+              value: |
+                env.get("__value")["ray_origin_y"] + 100.0 * env.get("__value")["solar_direction_y"]
+            - attribute: ray_end_z
+              method: create
+              value: |
+                env.get("__value")["ray_origin_z"] + 100.0 * env.get("__value")["solar_direction_z"]
+
+      # Then compute DT using the cos_theta from previous step
+      # Also extract year and month from solar_datetime for aggregation
+      - id: 00000001-0000-0000-0000-00000000001c
+        name: ComputeDTSunny
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            # Extract year from solar_datetime (format: "YYYY/MM/DD/HH/mm/ss")
+            - attribute: year
+              method: create
+              value: |
+                let dt = env.get("__value")["solar_datetime"];
+                let parts = dt.split("/");
+                if parts.len() > 0 { parts[0] } else { "" }
+            # Extract month from solar_datetime
+            - attribute: month
+              method: create
+              value: |
+                let dt = env.get("__value")["solar_datetime"];
+                let parts = dt.split("/");
+                if parts.len() > 1 { parts[1] } else { "" }
+            - attribute: DTSunny
+              method: create
+              value: |
+                let S_const = 1367.0;
+                let p = 0.75;
+                let h_deg = env.get("__value")["solar_altitude"];
+                let h_rad = h_deg * 3.14159265358979 / 180.0;
+                let sin_h = math::sin(h_rad);
+                let m = 1.0 / sin_h;
+                let beta_m = math::pow(p, m);
+                let DN = S_const * beta_m;
+                let cos_theta = env.get("__value")["cos_theta"];
+                let cell_area = env.get("__value")["cell_area"];
+                DN * cos_theta * cell_area
+
+            - attribute: DTCloudy
+              method: create
+              value: |
+                let S_const = 1367.0;
+                let p = 0.25;
+                let h_deg = env.get("__value")["solar_altitude"];
+                let h_rad = h_deg * 3.14159265358979 / 180.0;
+                let sin_h = math::sin(h_rad);
+                let m = 1.0 / sin_h;
+                let beta_m = math::pow(p, m);
+                let DN = S_const * beta_m;
+                let cos_theta = env.get("__value")["cos_theta"];
+                let cell_area = env.get("__value")["cell_area"];
+                DN * cos_theta * cell_area
+
+      # ========================================
+      # Section 6b: Monthly Radiation with Cloud Factor
+      # ========================================
+
+      # Cloud Factor Calculator subgraph - computes sunny ratio per month
+      - id: 00000001-0000-0000-0000-000000000050
+        name: CloudFactorCalculator
+        type: subGraph
+        subGraphId: b2f4a1c8-7e3d-4b9a-8c5f-1a2e3b4c5d6e
+
+      # Aggregate DTSunny and DTCloudy by year/month
+      - id: 00000001-0000-0000-0000-000000000051
+        name: MonthlyDTAggregator
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - year
+            - month
+            - cell_id
+          calculations:
+            - newAttribute: DTSunnySum
               expr: |
-                (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60)
-
-            # Expression 2: Sunset time to TIMEVALUE
-            - attribute: sunset_seconds
+                env.get("__value")["DTSunny"]
+            - newAttribute: DTCloudySum
               expr: |
-                (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60)
+                env.get("__value")["DTCloudy"]
 
-            # Expression 3: Solar noon time to TIMEVALUE
-            - attribute: solar_noon_seconds
-              expr: |
-                (env.get("__value").solar_noon_hour * 3600)
-                + (env.get("__value").solar_noon_minute * 60)
-                + env.get("__value").solar_noon_second
+      # Merge cloud factor (sunnyRatio) with monthly DT sums
+      - id: 00000001-0000-0000-0000-000000000052
+        name: CloudFactorDTMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute:
+            - year
+            - month
+          supplierAttribute:
+            - year
+            - month
 
-            # Expression 4: Planar solar radiation calculation
-            - attribute: planar_radiation_rate
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
+      # Calculate DTperMonth using sunny ratio
+      - id: 00000001-0000-0000-0000-000000000053
+        name: CalcDTperMonth
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: DTperMonth
+              method: create
+              value: |
+                let sunny_ratio = env.get("__value")["sunnyRatio"];
+                let dt_sunny = env.get("__value")["DTSunnySum"];
+                let dt_cloudy = env.get("__value")["DTCloudySum"];
+                sunny_ratio * dt_sunny + (1.0 - sunny_ratio) * dt_cloudy
 
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation = daylight_fraction * 24.0
-                  * math::sin(math::to_radians(altitude))
-                  * (2.0 / math::pi());
-
-                radiation
-
-            # Expression 5: Incidence angle calculation (cosine)
-            - attribute: cos_incidence_angle
-              expr: |
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad)
-                  + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                cos_angle
-
-            # Expression 6: Solar radiation on surface
-            - attribute: surface_solar_radiation
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
-
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                let area_m2 = env.get("__value").roof_area_m2;
-                let effective_cos = math::max(cos_angle, 0.0);
-                let total_radiation = radiation_rate * effective_cos * area_m2;
-
-                total_radiation
-
-            # Expression 7: Daily power generation
-            - attribute: daily_power_generation_kwh
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
-
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                let area_m2 = env.get("__value").roof_area_m2;
-                let effective_cos = math::max(cos_angle, 0.0);
-                let surface_radiation = radiation_rate * effective_cos * area_m2;
-
-                let capacity = env.get("panel_capacity_factor");
-                let efficiency = env.get("panel_efficiency");
-                let adjustment = env.get("unit_adjustment");
-                let power_kwh = surface_radiation * capacity * efficiency * adjustment;
-
-                power_kwh
-
-            # Expression 8: Final solar potential with shadow/reflection
-            - attribute: adjusted_solar_potential_kwh
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
-
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                let area_m2 = env.get("__value").roof_area_m2;
-                let effective_cos = math::max(cos_angle, 0.0);
-                let surface_radiation = radiation_rate * effective_cos * area_m2;
-
-                let capacity = env.get("panel_capacity_factor");
-                let efficiency = env.get("panel_efficiency");
-                let adjustment = env.get("unit_adjustment");
-                let base_power = surface_radiation * capacity * efficiency * adjustment;
-
-                let shadow_loss = env.get("__value").shadow_impact_score;
-                let reflection_gain = env.get("__value").reflection_intensity;
-                let adjusted = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
-
-                adjusted
-
-            # Additional useful metrics
-            - attribute: annual_potential_kwh
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
-
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                let area_m2 = env.get("__value").roof_area_m2;
-                let effective_cos = math::max(cos_angle, 0.0);
-                let surface_radiation = radiation_rate * effective_cos * area_m2;
-
-                let capacity = env.get("panel_capacity_factor");
-                let efficiency = env.get("panel_efficiency");
-                let adjustment = env.get("unit_adjustment");
-                let base_power = surface_radiation * capacity * efficiency * adjustment;
-
-                let shadow_loss = env.get("__value").shadow_impact_score;
-                let reflection_gain = env.get("__value").reflection_intensity;
-                let daily = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
-
-                daily * 365.0
-
-            - attribute: is_viable_for_panels
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
-
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                let area_m2 = env.get("__value").roof_area_m2;
-                let effective_cos = math::max(cos_angle, 0.0);
-                let surface_radiation = radiation_rate * effective_cos * area_m2;
-
-                let capacity = env.get("panel_capacity_factor");
-                let efficiency = env.get("panel_efficiency");
-                let adjustment = env.get("unit_adjustment");
-                let base_power = surface_radiation * capacity * efficiency * adjustment;
-
-                let shadow_loss = env.get("__value").shadow_impact_score;
-                let reflection_gain = env.get("__value").reflection_intensity;
-                let potential = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
-
-                let min_threshold = 1.0;
-                potential >= min_threshold
-
-            - attribute: panel_priority
-              expr: |
-                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
-                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
-                let altitude = env.get("__value").solar_altitude_deg;
-                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
-                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
-
-                let solar_alt = env.get("__value").solar_altitude_deg;
-                let roof_slope = env.get("__value").roof_slope_degrees;
-                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
-                let solar_alt_rad = math::to_radians(solar_alt);
-                let slope_rad = math::to_radians(roof_slope);
-                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
-                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
-
-                let area_m2 = env.get("__value").roof_area_m2;
-                let effective_cos = math::max(cos_angle, 0.0);
-                let surface_radiation = radiation_rate * effective_cos * area_m2;
-
-                let capacity = env.get("panel_capacity_factor");
-                let efficiency = env.get("panel_efficiency");
-                let adjustment = env.get("unit_adjustment");
-                let base_power = surface_radiation * capacity * efficiency * adjustment;
-
-                let shadow_loss = env.get("__value").shadow_impact_score;
-                let reflection_gain = env.get("__value").reflection_intensity;
-                let potential = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
-
-                if potential >= 10.0 {
-                  "high"
-                } else if potential >= 5.0 {
-                  "medium"
-                } else if potential >= 1.0 {
-                  "low"
-                } else {
-                  "not-viable"
-                }
-
-      # Sink: Write results to CSV
-      - id: 88888888-8888-8888-8888-888888888888
-        name: WriteResultsCSV
+      # Write monthly radiation results
+      - id: 00000001-0000-0000-0000-000000000054
+        name: MonthlyRadiationWriter
         type: action
         action: CsvWriter
         with:
           format: csv
           output: |
-            "solar-radiation-results.csv"
+            file::join_path(env.get("outputPath"), "monthly_radiation.csv")
+
+      - id: 00000001-0000-0000-0000-000000000012
+        name: DirectRadiationWriter
+        type: action
+        action: CsvWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "direct_radiation.csv")
+
+      # ========================================
+      # Section 7: Reflection Computation (COMMENTED OUT FOR DEBUGGING)
+      # ========================================
+
+      - id: 00000001-0000-0000-0000-000000000013
+        name: ComputeReflection
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            # Reflection direction: R = I - 2(I·N)N where I is incident direction (opposite of solar)
+            # I = -solar_direction
+            - attribute: reflect_dir_x
+              method: create
+              value: |
+                let ix = -env.get("__value")["solar_direction_x"];
+                let iy = -env.get("__value")["solar_direction_y"];
+                let iz = -env.get("__value")["solar_direction_z"];
+                let nx = env.get("__value")["normalX"];
+                let ny = env.get("__value")["normalY"];
+                let nz = env.get("__value")["normalZ"];
+                let dot = ix * nx + iy * ny + iz * nz;
+                ix - 2.0 * dot * nx
+            - attribute: reflect_dir_y
+              method: create
+              value: |
+                let ix = -env.get("__value")["solar_direction_x"];
+                let iy = -env.get("__value")["solar_direction_y"];
+                let iz = -env.get("__value")["solar_direction_z"];
+                let nx = env.get("__value")["normalX"];
+                let ny = env.get("__value")["normalY"];
+                let nz = env.get("__value")["normalZ"];
+                let dot = ix * nx + iy * ny + iz * nz;
+                iy - 2.0 * dot * ny
+            - attribute: reflect_dir_z
+              method: create
+              value: |
+                let ix = -env.get("__value")["solar_direction_x"];
+                let iy = -env.get("__value")["solar_direction_y"];
+                let iz = -env.get("__value")["solar_direction_z"];
+                let nx = env.get("__value")["normalX"];
+                let ny = env.get("__value")["normalY"];
+                let nz = env.get("__value")["normalZ"];
+                let dot = ix * nx + iy * ny + iz * nz;
+                iz - 2.0 * dot * nz
+
+      - id: 00000001-0000-0000-0000-000000000014
+        name: RayIntersectorReflect
+        type: action
+        action: RayIntersector
+        with:
+          # All rays are checked with all geometries
+          pairId: |
+            "all"
+          closestIntersectionOnly: "true"
+          includeRayOrigin: "false"
+          tolerance: "0.01"
+          ray:
+            posX: ray_origin_x
+            posY: ray_origin_y
+            posZ: ray_origin_z
+            dirX: reflect_dir_x
+            dirY: reflect_dir_y
+            dirZ: reflect_dir_z
+
+      # Extract intersection point coordinates (BoundsExtractor on a point)
+      - id: 00000001-0000-0000-0000-00000000001b
+        name: ReflectionBoundsExtractor
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: reflect_hit_x
+          ymin: reflect_hit_y
+          zmin: reflect_hit_z
+          xmax: _reflect_xmax
+          ymax: _reflect_ymax
+          zmax: _reflect_zmax
+
+      - id: 00000001-0000-0000-0000-000000000015
+        name: FormatReflection
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            # Coordinates are already extracted by BoundsExtractor, just pass them through
+            - attribute: dummy_passthrough
+              method: create
+              value: |
+                1
+
+      - id: 00000001-0000-0000-0000-000000000016
+        name: ReflectionWriter
+        type: action
+        action: CsvWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "reflection.csv")
+
+      # ========================================
+      # Debug Section: 3D Tiles Output for GridDivider Visualization
+      # ========================================
+
+      # Convert back from JGD2011 projected (prcs) to WGS84 for Cesium
+      - id: 00000001-0000-0000-0000-00000000001e
+        name: DebugHorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          sourceEpsgCode: |
+            env.get("prcs")
+          targetEpsgCode: |
+            6697
+
+      # BoundsExtractor to get geometry bounds for tiling
+      - id: 00000001-0000-0000-0000-000000000020
+        name: DebugBoundsExtractor
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          xmax: _xmax
+          ymin: _ymin
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      # Calculate center coordinates for tiling (matching reference workflow)
+      - id: 00000001-0000-0000-0000-000000000021
+        name: DebugCenterCoords
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      # Convert from JGD2011 (vertical) to WGS84
+      - id: 00000001-0000-0000-0000-000000000022
+        name: DebugVerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      # Write 3D Tiles
+      - id: 00000001-0000-0000-0000-000000000023
+        name: Debug3DTilesWriter
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: false
+          dracoCompression: false
+          output: |
+            file::join_path(env.get("outputPath"), "debug_grid_3dtiles")
+
+      # ========================================
+      # Section 8: Shadow Ray Visualization (GeoJSON Output)
+      # ========================================
+
+      - id: 00000001-0000-0000-0000-100000000010
+        name: AttributeMapperRemoveUnusedShadowRayAttrs
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+          - attribute: some
+            expr: null
+
+      # Reproject shadow ray lines from projected CRS to WGS84 (EPSG:6697)
+      - id: 00000001-0000-0000-0000-000000000040
+        name: ShadowRayReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          sourceEpsgCode: |
+            env.get("prcs")
+          targetEpsgCode: |
+            6697
+
+      # Vertical reprojection from JGD2011 to WGS84
+      - id: 00000001-0000-0000-0000-000000000042
+        name: ShadowRayVerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      # Write shadow ray lines to GeoJSON
+      - id: 00000001-0000-0000-0000-000000000041
+        name: ShadowRayGeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "shadow_rays.geojson")
 
     edges:
-      # Source -> AttributeMapper
-      - id: e1111111-1111-1111-1111-111111111111
-        from: 11111111-1111-1111-1111-111111111111
-        to: 22222222-2222-2222-2222-222222222222
+      # Section 1: CityGML Loading Pipeline
+      - id: e0000001-0000-0000-0000-000000000001
+        from: 00000001-0000-0000-0000-000000000001
+        to: 00000001-0000-0000-0000-000000000111
         fromPort: default
         toPort: default
 
-      # AttributeMapper -> CsvWriter
-      - id: e2222222-2222-2222-2222-222222222222
-        from: 22222222-2222-2222-2222-222222222222
-        to: 88888888-8888-8888-8888-888888888888
+      - id: e0000001-0000-0000-0000-000000000101
+        from: 00000001-0000-0000-0000-000000000111
+        to: 00000001-0000-0000-0000-000000000002
+        fromPort: default
+        toPort: default
+
+      # CityGmlReader → LodFilter
+      - id: e0000001-0000-0000-0000-000000000002
+        from: 00000001-0000-0000-0000-000000000002
+        to: 00000001-0000-0000-0000-00000000003a
+        fromPort: default
+        toPort: default
+
+      # LodFilter → KeepFeatureType (AttributeMapper)
+      - id: e0000001-0000-0000-0000-00000000003a
+        from: 00000001-0000-0000-0000-00000000003a
+        to: 00000001-0000-0000-0000-00000000003b
+        fromPort: default
+        toPort: default
+
+      # KeepFeatureType → FilterBuildings
+      - id: e0000001-0000-0000-0000-00000000003b
+        from: 00000001-0000-0000-0000-00000000003b
+        to: 00000001-0000-0000-0000-000000000004
+        fromPort: default
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000004
+        from: 00000001-0000-0000-0000-000000000004
+        to: 00000001-0000-0000-0000-000000000005
+        fromPort: extracted
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000005
+        from: 00000001-0000-0000-0000-000000000005
+        to: 00000001-0000-0000-0000-000000000006
+        fromPort: default
+        toPort: default
+
+      # Section 2: Surface Analysis (GeometryCoercer removed, direct to PolygonNormalExtractor)
+      - id: e0000001-0000-0000-0000-000000000006
+        from: 00000001-0000-0000-0000-000000000006
+        to: 00000001-0000-0000-0000-000000000008
+        fromPort: default
+        toPort: default
+
+      # PolygonNormalExtractor → FilterRoofSurfaces (filter first, then divide)
+      - id: e0000001-0000-0000-0000-000000000008
+        from: 00000001-0000-0000-0000-000000000008
+        to: 00000001-0000-0000-0000-00000000000a
+        fromPort: default
+        toPort: default
+
+      # FilterRoofSurfaces → GridDivider
+      - id: e0000001-0000-0000-0000-000000000009
+        from: 00000001-0000-0000-0000-00000000000a
+        to: 00000001-0000-0000-0000-000000000009
+        fromPort: default
+        toPort: default
+
+      # Section 3: Solar Position Calculation
+      # GridDivider → SunPositionCalculator
+      - id: e0000001-0000-0000-0000-00000000000a
+        from: 00000001-0000-0000-0000-000000000009
+        to: 00000001-0000-0000-0000-00000000000b
+        fromPort: default
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-00000000000b
+        from: 00000001-0000-0000-0000-00000000000b
+        to: 00000001-0000-0000-0000-00000000000c
+        fromPort: default
+        toPort: default
+
+      # AreaCalculator → CellIdCounter
+      - id: e0000001-0000-0000-0000-00000000000c
+        from: 00000001-0000-0000-0000-00000000000c
+        to: 00000001-0000-0000-0000-000000000030
+        fromPort: default
+        toPort: default
+
+      # CellIdCounter → ShadowMerger (requestor - original polygons with cell_id)
+      - id: e0000001-0000-0000-0000-000000000031
+        from: 00000001-0000-0000-0000-000000000030
+        to: 00000001-0000-0000-0000-000000000033
+        fromPort: default
+        toPort: requestor
+
+      # Section 4: Ray Setup
+      # Branch: Building geometries to ray intersector (from GeometrySplitter output)
+      - id: e0000001-0000-0000-0000-00000000000f
+        from: 00000001-0000-0000-0000-000000000005
+        to: 00000001-0000-0000-0000-000000000010
+        fromPort: default
+        toPort: geom
+
+      # CellIdCounter to ray intersector
+      - id: e0000001-0000-0000-0000-000000000010
+        from: 00000001-0000-0000-0000-000000000030
+        to: 00000001-0000-0000-0000-000000000010
+        fromPort: default
+        toPort: ray
+
+      # Section 5-6: Shadow Detection and Direct Radiation
+      # RayIntersector intersection → MarkShadowed
+      - id: e0000001-0000-0000-0000-000000000032
+        from: 00000001-0000-0000-0000-000000000010
+        to: 00000001-0000-0000-0000-000000000031
+        fromPort: intersection
+        toPort: default
+
+      # RayIntersector no_intersection → MarkNotShadowed
+      - id: e0000001-0000-0000-0000-000000000011
+        from: 00000001-0000-0000-0000-000000000010
+        to: 00000001-0000-0000-0000-000000000032
+        fromPort: no_intersection
+        toPort: default
+
+      # MarkShadowed → ShadowMerger (supplier)
+      - id: e0000001-0000-0000-0000-000000000033
+        from: 00000001-0000-0000-0000-000000000031
+        to: 00000001-0000-0000-0000-000000000033
+        fromPort: default
+        toPort: supplier
+
+      # MarkNotShadowed → ShadowMerger (supplier)
+      - id: e0000001-0000-0000-0000-000000000034
+        from: 00000001-0000-0000-0000-000000000032
+        to: 00000001-0000-0000-0000-000000000033
+        fromPort: default
+        toPort: supplier
+
+      # RayIntersector no_intersection → ComputeCosTheta (continue radiation calculation)
+      - id: e0000001-0000-0000-0000-000000000035
+        from: 00000001-0000-0000-0000-000000000010
+        to: 00000001-0000-0000-0000-000000000011
+        fromPort: no_intersection
+        toPort: default
+
+      # ComputeCosTheta → ComputeDT
+      - id: e0000001-0000-0000-0000-00000000001c
+        from: 00000001-0000-0000-0000-000000000011
+        to: 00000001-0000-0000-0000-00000000001c
+        fromPort: default
+        toPort: default
+
+      # ComputeDT → DirectRadiationWriter
+      - id: e0000001-0000-0000-0000-000000000012
+        from: 00000001-0000-0000-0000-00000000001c
+        to: 00000001-0000-0000-0000-000000000012
+        fromPort: default
+        toPort: default
+
+      # Section 6b: Monthly Radiation with Cloud Factor edges
+      # ComputeDTSunny → MonthlyDTAggregator
+      - id: e0000001-0000-0000-0000-000000000050
+        from: 00000001-0000-0000-0000-00000000001c
+        to: 00000001-0000-0000-0000-000000000051
+        fromPort: default
+        toPort: default
+
+      # MonthlyDTAggregator (aggregated results) → CloudFactorDTMerger (requestor)
+      - id: e0000001-0000-0000-0000-000000000051
+        from: 00000001-0000-0000-0000-000000000051
+        to: 00000001-0000-0000-0000-000000000052
+        fromPort: default
+        toPort: requestor
+
+      # CloudFactorCalculator → CloudFactorDTMerger (supplier)
+      - id: e0000001-0000-0000-0000-000000000052
+        from: 00000001-0000-0000-0000-000000000050
+        to: 00000001-0000-0000-0000-000000000052
+        fromPort: default
+        toPort: supplier
+
+      # CloudFactorDTMerger (merged) → CalcDTperMonth
+      - id: e0000001-0000-0000-0000-000000000053
+        from: 00000001-0000-0000-0000-000000000052
+        to: 00000001-0000-0000-0000-000000000053
+        fromPort: merged
+        toPort: default
+
+      # CalcDTperMonth → MonthlyRadiationWriter
+      - id: e0000001-0000-0000-0000-000000000054
+        from: 00000001-0000-0000-0000-000000000053
+        to: 00000001-0000-0000-0000-000000000054
+        fromPort: default
+        toPort: default
+
+      # Section 7: Reflection Computation (COMMENTED OUT FOR DEBUGGING)
+      - id: e0000001-0000-0000-0000-000000000013
+        from: 00000001-0000-0000-0000-000000000011
+        to: 00000001-0000-0000-0000-000000000013
+        fromPort: default
+        toPort: default
+
+      # Building geometries to reflection ray intersector
+      - id: e0000001-0000-0000-0000-000000000014
+        from: 00000001-0000-0000-0000-000000000005
+        to: 00000001-0000-0000-0000-000000000014
+        fromPort: default
+        toPort: geom
+
+      # Reflection rays to ray intersector
+      - id: e0000001-0000-0000-0000-000000000015
+        from: 00000001-0000-0000-0000-000000000013
+        to: 00000001-0000-0000-0000-000000000014
+        fromPort: default
+        toPort: ray
+
+      # Reflection intersection results → BoundsExtractor → FormatReflection
+      - id: e0000001-0000-0000-0000-000000000016
+        from: 00000001-0000-0000-0000-000000000014
+        to: 00000001-0000-0000-0000-00000000001b
+        fromPort: intersection
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-00000000001b
+        from: 00000001-0000-0000-0000-00000000001b
+        to: 00000001-0000-0000-0000-000000000015
+        fromPort: default
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000017
+        from: 00000001-0000-0000-0000-000000000015
+        to: 00000001-0000-0000-0000-000000000016
+        fromPort: default
+        toPort: default
+
+      # Debug Section: 3D Tiles Output edges
+      # ShadowMerger merged output (roof surfaces with _is_shadow attribute)
+      - id: e0000001-0000-0000-0000-00000000001e
+        from: 00000001-0000-0000-0000-000000000033
+        to: 00000001-0000-0000-0000-00000000001e
+        fromPort: merged
+        toPort: default
+
+      # Send merged features to schema port to register _is_shadow attribute
+      - id: e0000001-0000-0000-0000-000000000039
+        from: 00000001-0000-0000-0000-000000000033
+        to: 00000001-0000-0000-0000-000000000023
+        fromPort: merged
+        toPort: schema
+
+      # Non-roof surfaces (walls, ground) from FilterRoofSurfaces rejected port
+      - id: e0000001-0000-0000-0000-00000000001d
+        from: 00000001-0000-0000-0000-00000000000a
+        to: 00000001-0000-0000-0000-00000000001e
+        fromPort: unfiltered
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000020
+        from: 00000001-0000-0000-0000-00000000001e
+        to: 00000001-0000-0000-0000-000000000020
+        fromPort: default
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000021
+        from: 00000001-0000-0000-0000-000000000020
+        to: 00000001-0000-0000-0000-000000000021
+        fromPort: default
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000022
+        from: 00000001-0000-0000-0000-000000000021
+        to: 00000001-0000-0000-0000-000000000022
+        fromPort: default
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000023
+        from: 00000001-0000-0000-0000-000000000022
+        to: 00000001-0000-0000-0000-000000000023
+        fromPort: default
+        toPort: default
+
+      # Section 8: Shadow Ray Visualization edges
+      # RayIntersectorShadow intersection → ShadowRayReprojector
+      - id: e0000001-0000-0000-0000-000000000040
+        from: 00000001-0000-0000-0000-000000000010
+        to: 00000001-0000-0000-0000-100000000010
+        fromPort: intersection
+        toPort: default
+
+      - id: e0000001-0000-0000-0000-000000000044
+        from: 00000001-0000-0000-0000-100000000010
+        to: 00000001-0000-0000-0000-000000000040
+        fromPort: default
+        toPort: default
+      
+      # ShadowRayReprojector → ShadowRayVerticalReprojector
+      - id: e0000001-0000-0000-0000-000000000043
+        from: 00000001-0000-0000-0000-000000000040
+        to: 00000001-0000-0000-0000-000000000042
+        fromPort: default
+        toPort: default
+
+      # ShadowRayVerticalReprojector → ShadowRayGeoJsonWriter
+      - id: e0000001-0000-0000-0000-000000000045
+        from: 00000001-0000-0000-0000-000000000042
+        to: 00000001-0000-0000-0000-000000000041
         fromPort: default
         toPort: default

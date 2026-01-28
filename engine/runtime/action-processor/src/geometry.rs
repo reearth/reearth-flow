@@ -19,6 +19,7 @@ pub(crate) mod extruder;
 pub(crate) mod filter;
 pub(crate) mod footprint_replacer;
 pub(crate) mod geometry_part_extractor;
+pub(crate) mod grid_divider;
 pub(crate) mod hole_counter;
 pub(crate) mod hole_extractor;
 pub(crate) mod horizontal_reprojector;

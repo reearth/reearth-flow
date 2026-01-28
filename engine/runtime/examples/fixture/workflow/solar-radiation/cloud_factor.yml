@@ -1,0 +1,211 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+# Cloud Factor Calculator Subgraph
+#
+# Calculates a "sunny ratio" by:
+# 1. Reading daily sun data to compute potential daylight hours per month
+# 2. Reading monthly weather data with actual sunshine hours
+# 3. Merging and computing the ratio (actual / potential)
+#
+# Input environment variables:
+# - dailySunDataPath: Path to CSV with daily sun data (columns: 年月日, 出, 入り)
+# - monthlyWeatherDataPath: Path to CSV with monthly weather data (columns: 年, 月, 日照時間(時間))
+#
+# Output: Features with year, month, monthlyDayTimeSumInHours, 日照時間(時間), sunnyRatio
+
+id: b2f4a1c8-7e3d-4b9a-8c5f-1a2e3b4c5d6e
+name: CloudFactorCalculator
+nodes:
+  # ========================================
+  # Node 1: Read Daily Sun Data CSV
+  # ========================================
+  - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    name: DailySunDataReader
+    type: action
+    action: CsvReader
+    with:
+      format: csv
+      inline: |
+        env.get("dailySunDataPath")
+
+  # ========================================
+  # Node 2: Parse Date and Calculate DayTime
+  # ========================================
+  - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+    name: ParseDateAndCalcDayTime
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        # Parse year from 年月日 (format "YYYY/MM/DD")
+        - attribute: year
+          expr: |
+            let date_parts = env.get("__value")["年月日"].split("/");
+            if date_parts.len() > 0 { date_parts[0] } else { "" }
+        # Parse month from 年月日
+        - attribute: month
+          expr: |
+            let date_parts = env.get("__value")["年月日"].split("/");
+            if date_parts.len() > 1 { date_parts[1] } else { "" }
+        # Parse day from 年月日
+        - attribute: day
+          expr: |
+            let date_parts = env.get("__value")["年月日"].split("/");
+            if date_parts.len() > 2 { date_parts[2] } else { "" }
+        # Calculate dayTime (sunset - sunrise in hours)
+        # 出 (sunrise) format: "HH:MM"
+        # 入り (sunset) format: "HH:MM"
+        - attribute: dayTime
+          expr: |
+            let sunrise_str = env.get("__value")["出"];
+            let sunset_str = env.get("__value")["入り"];
+            let sunrise_parts = sunrise_str.split(":");
+            let sunset_parts = sunset_str.split(":");
+            let sunrise_hour = if sunrise_parts.len() > 0 { parse_float(sunrise_parts[0]) } else { 0.0 };
+            let sunrise_min = if sunrise_parts.len() > 1 { parse_float(sunrise_parts[1]) } else { 0.0 };
+            let sunset_hour = if sunset_parts.len() > 0 { parse_float(sunset_parts[0]) } else { 0.0 };
+            let sunset_min = if sunset_parts.len() > 1 { parse_float(sunset_parts[1]) } else { 0.0 };
+            let sunrise_hours = sunrise_hour + sunrise_min / 60.0;
+            let sunset_hours = sunset_hour + sunset_min / 60.0;
+            sunset_hours - sunrise_hours
+
+  # ========================================
+  # Node 3: Aggregate DayTime by Year/Month
+  # ========================================
+  - id: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+    name: MonthlyDayTimeAggregator
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - year
+        - month
+      calculations:
+        - newAttribute: monthlyDayTimeSumInHours
+          expr: |
+            env.get("__value")["dayTime"]
+
+  # ========================================
+  # Node 4: Read Monthly Weather Data CSV
+  # ========================================
+  - id: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
+    name: MonthlyWeatherDataReader
+    type: action
+    action: CsvReader
+    with:
+      format: csv
+      inline: |
+        env.get("monthlyWeatherDataPath")
+
+  # ========================================
+  # Node 5: Prepare Weather Data Year/Month for Merge
+  # ========================================
+  - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+    name: PrepareWeatherDataForMerge
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        # Copy 年 to year for merge compatibility
+        - attribute: year
+          valueAttribute: 年
+        # Copy 月 to month for merge compatibility
+        - attribute: month
+          valueAttribute: 月
+        # Preserve 日照時間(時間) - actual sunshine hours
+        - attribute: 日照時間(時間)
+          valueAttribute: 日照時間(時間)
+
+  # ========================================
+  # Node 6: Merge Daily Aggregates with Monthly Weather
+  # ========================================
+  - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    name: MergeMonthlyData
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - year
+        - month
+      supplierAttribute:
+        - year
+        - month
+
+  # ========================================
+  # Node 7: Calculate Sunny Ratio
+  # ========================================
+  - id: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    name: CalcSunnyRatio
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: sunnyRatio
+          method: create
+          value: |
+            let actual_sunshine = env.get("__value")["日照時間(時間)"];
+            let potential_daylight = env.get("__value")["monthlyDayTimeSumInHours"];
+            if potential_daylight > 0.0 {
+              actual_sunshine / potential_daylight
+            } else {
+              0.0
+            }
+
+  # ========================================
+  # Node 8: Output Router
+  # ========================================
+  - id: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    name: CloudFactorOutput
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+
+edges:
+  # DailySunDataReader → ParseDateAndCalcDayTime
+  - id: e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    from: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    to: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+    fromPort: default
+    toPort: default
+
+  # ParseDateAndCalcDayTime → MonthlyDayTimeAggregator
+  - id: e2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    from: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+    to: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+    fromPort: default
+    toPort: default
+
+  # MonthlyDayTimeAggregator (default port - aggregated results) → MergeMonthlyData (requestor)
+  - id: e3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    from: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+    to: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    fromPort: default
+    toPort: requestor
+
+  # MonthlyWeatherDataReader → PrepareWeatherDataForMerge
+  - id: e4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    from: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
+    to: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+    fromPort: default
+    toPort: default
+
+  # PrepareWeatherDataForMerge → MergeMonthlyData (supplier)
+  - id: e5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    from: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+    to: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    fromPort: default
+    toPort: supplier
+
+  # MergeMonthlyData (merged) → CalcSunnyRatio
+  - id: e6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    from: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    to: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    fromPort: merged
+    toPort: default
+
+  # CalcSunnyRatio → CloudFactorOutput
+  - id: e7a8b9c0-d1e2-4f3a-4b5c-6d7e8f9a0b1c
+    from: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    to: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    fromPort: default
+    toPort: default

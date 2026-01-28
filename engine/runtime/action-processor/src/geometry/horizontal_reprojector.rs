@@ -353,6 +353,9 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
             global_params: with,
             source_epsg_ast,
             target_epsg_ast,
+            from_crs: None,
+            to_crs: None,
+            proj: None,
         }))
     }
 }
@@ -376,11 +379,14 @@ pub struct HorizontalReprojectorParam {
     target_epsg_code: Expr,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HorizontalReprojector {
     global_params: Option<HashMap<String, serde_json::Value>>,
     source_epsg_ast: Option<rhai::AST>,
     target_epsg_ast: rhai::AST,
+    from_crs: Option<String>,
+    to_crs: Option<String>,
+    proj: Option<std::sync::Mutex<proj::Proj>>,
 }
 
 /// Helper function to get or create a cached Proj transformation.
