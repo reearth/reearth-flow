@@ -50,7 +50,10 @@ const createYNode = (
   return yNode;
 };
 
-const createYWorkflow = (id: string, nodeConfigs: NodeConfig[] = []): YWorkflow => {
+const createYWorkflow = (
+  id: string,
+  nodeConfigs: NodeConfig[] = [],
+): YWorkflow => {
   const yWorkflow = new Y.Map() as YWorkflow;
 
   const yId = new Y.Text();
@@ -64,7 +67,10 @@ const createYWorkflow = (id: string, nodeConfigs: NodeConfig[] = []): YWorkflow 
   const yNodes = new Y.Map() as YNodesMap;
   nodeConfigs.forEach(({ nodeId, type, subworkflowId }) => {
     const yNode = createYNode(nodeId, type, subworkflowId);
-    yNodes.set(nodeId, yNode as Y.Map<Y.Text | Y.Map<unknown> | number | boolean>);
+    yNodes.set(
+      nodeId,
+      yNode as Y.Map<Y.Text | Y.Map<unknown> | number | boolean>,
+    );
   });
   yWorkflow.set("nodes", yNodes);
 
@@ -74,7 +80,9 @@ const createYWorkflow = (id: string, nodeConfigs: NodeConfig[] = []): YWorkflow 
   return yWorkflow;
 };
 
-const getWorkflowPathFromYNode = (yNode: Y.Map<unknown>): string | undefined => {
+const getWorkflowPathFromYNode = (
+  yNode: Y.Map<unknown>,
+): string | undefined => {
   const yData = yNode.get("data") as Y.Map<unknown> | undefined;
   const workflowPath = yData?.get("workflowPath") as Y.Text | undefined;
   return workflowPath?.toJSON();
@@ -145,8 +153,12 @@ describe("updateNestedSubworkflowPaths", () => {
       const node2 = yNodes.get("child-node-2");
       expect(node1).toBeDefined();
       expect(node2).toBeDefined();
-      expect(getWorkflowPathFromYNode(node1 as Y.Map<unknown>)).toBe(childWorkflowId);
-      expect(getWorkflowPathFromYNode(node2 as Y.Map<unknown>)).toBe(childWorkflowId);
+      expect(getWorkflowPathFromYNode(node1 as Y.Map<unknown>)).toBe(
+        childWorkflowId,
+      );
+      expect(getWorkflowPathFromYNode(node2 as Y.Map<unknown>)).toBe(
+        childWorkflowId,
+      );
     });
 
     it("should prepend basePath to workflowPath when basePath is provided", () => {
@@ -196,8 +208,12 @@ describe("updateNestedSubworkflowPaths", () => {
       const nodeInChild2 = child2Nodes.get("node-in-child-2");
       expect(nodeInChild1).toBeDefined();
       expect(nodeInChild2).toBeDefined();
-      expect(getWorkflowPathFromYNode(nodeInChild1 as Y.Map<unknown>)).toBe(child1Id);
-      expect(getWorkflowPathFromYNode(nodeInChild2 as Y.Map<unknown>)).toBe(child2Id);
+      expect(getWorkflowPathFromYNode(nodeInChild1 as Y.Map<unknown>)).toBe(
+        child1Id,
+      );
+      expect(getWorkflowPathFromYNode(nodeInChild2 as Y.Map<unknown>)).toBe(
+        child2Id,
+      );
     });
   });
 
@@ -207,7 +223,11 @@ describe("updateNestedSubworkflowPaths", () => {
       const level2Id = "level-2";
 
       const level1Workflow = createYWorkflow(level1Id, [
-        { nodeId: "level1-subworkflow-node", type: "subworkflow", subworkflowId: level2Id },
+        {
+          nodeId: "level1-subworkflow-node",
+          type: "subworkflow",
+          subworkflowId: level2Id,
+        },
         { nodeId: "level1-transformer", type: "transformer" },
       ]);
       const level2Workflow = createYWorkflow(level2Id, [
@@ -217,7 +237,9 @@ describe("updateNestedSubworkflowPaths", () => {
       yWorkflows.set(level1Id, level1Workflow);
       yWorkflows.set(level2Id, level2Workflow);
 
-      const rootNodes: Node[] = [createNode("root-node", "subworkflow", level1Id)];
+      const rootNodes: Node[] = [
+        createNode("root-node", "subworkflow", level1Id),
+      ];
 
       updateNestedSubworkflowPaths(yWorkflows, rootNodes, "");
 
@@ -227,8 +249,12 @@ describe("updateNestedSubworkflowPaths", () => {
       const l1Transformer = level1Nodes.get("level1-transformer");
       expect(l1SubNode).toBeDefined();
       expect(l1Transformer).toBeDefined();
-      expect(getWorkflowPathFromYNode(l1SubNode as Y.Map<unknown>)).toBe(level1Id);
-      expect(getWorkflowPathFromYNode(l1Transformer as Y.Map<unknown>)).toBe(level1Id);
+      expect(getWorkflowPathFromYNode(l1SubNode as Y.Map<unknown>)).toBe(
+        level1Id,
+      );
+      expect(getWorkflowPathFromYNode(l1Transformer as Y.Map<unknown>)).toBe(
+        level1Id,
+      );
 
       // Level 2 nodes should have path "level-1.level-2"
       const level2Nodes = level2Workflow.get("nodes") as YNodesMap;
@@ -245,10 +271,18 @@ describe("updateNestedSubworkflowPaths", () => {
       const level3Id = "level-3";
 
       const level1Workflow = createYWorkflow(level1Id, [
-        { nodeId: "l1-subworkflow", type: "subworkflow", subworkflowId: level2Id },
+        {
+          nodeId: "l1-subworkflow",
+          type: "subworkflow",
+          subworkflowId: level2Id,
+        },
       ]);
       const level2Workflow = createYWorkflow(level2Id, [
-        { nodeId: "l2-subworkflow", type: "subworkflow", subworkflowId: level3Id },
+        {
+          nodeId: "l2-subworkflow",
+          type: "subworkflow",
+          subworkflowId: level3Id,
+        },
       ]);
       const level3Workflow = createYWorkflow(level3Id, [
         { nodeId: "l3-node", type: "transformer" },
@@ -258,7 +292,9 @@ describe("updateNestedSubworkflowPaths", () => {
       yWorkflows.set(level2Id, level2Workflow);
       yWorkflows.set(level3Id, level3Workflow);
 
-      const rootNodes: Node[] = [createNode("root-node", "subworkflow", level1Id)];
+      const rootNodes: Node[] = [
+        createNode("root-node", "subworkflow", level1Id),
+      ];
 
       updateNestedSubworkflowPaths(yWorkflows, rootNodes, "");
 
@@ -300,8 +336,12 @@ describe("updateNestedSubworkflowPaths", () => {
       const sub2Workflow = createYWorkflow(sub2, [
         { nodeId: "sub2-child-ref", type: "subworkflow", subworkflowId: sub2a },
       ]);
-      const sub1aWorkflow = createYWorkflow(sub1a, [{ nodeId: "leaf1", type: "transformer" }]);
-      const sub2aWorkflow = createYWorkflow(sub2a, [{ nodeId: "leaf2", type: "transformer" }]);
+      const sub1aWorkflow = createYWorkflow(sub1a, [
+        { nodeId: "leaf1", type: "transformer" },
+      ]);
+      const sub2aWorkflow = createYWorkflow(sub2a, [
+        { nodeId: "leaf2", type: "transformer" },
+      ]);
 
       yWorkflows.set(sub1, sub1Workflow);
       yWorkflows.set(sub2, sub2Workflow);
@@ -323,8 +363,12 @@ describe("updateNestedSubworkflowPaths", () => {
 
       expect(sub1ChildRef).toBeDefined();
       expect(leaf1).toBeDefined();
-      expect(getWorkflowPathFromYNode(sub1ChildRef as Y.Map<unknown>)).toBe(sub1);
-      expect(getWorkflowPathFromYNode(leaf1 as Y.Map<unknown>)).toBe(`${sub1}.${sub1a}`);
+      expect(getWorkflowPathFromYNode(sub1ChildRef as Y.Map<unknown>)).toBe(
+        sub1,
+      );
+      expect(getWorkflowPathFromYNode(leaf1 as Y.Map<unknown>)).toBe(
+        `${sub1}.${sub1a}`,
+      );
 
       // Check sub2 branch
       const sub2Nodes = sub2Workflow.get("nodes") as YNodesMap;
@@ -334,8 +378,12 @@ describe("updateNestedSubworkflowPaths", () => {
 
       expect(sub2ChildRef).toBeDefined();
       expect(leaf2).toBeDefined();
-      expect(getWorkflowPathFromYNode(sub2ChildRef as Y.Map<unknown>)).toBe(sub2);
-      expect(getWorkflowPathFromYNode(leaf2 as Y.Map<unknown>)).toBe(`${sub2}.${sub2a}`);
+      expect(getWorkflowPathFromYNode(sub2ChildRef as Y.Map<unknown>)).toBe(
+        sub2,
+      );
+      expect(getWorkflowPathFromYNode(leaf2 as Y.Map<unknown>)).toBe(
+        `${sub2}.${sub2a}`,
+      );
     });
   });
 
@@ -360,7 +408,9 @@ describe("updateNestedSubworkflowPaths", () => {
       ];
 
       // Should not throw and should not modify anything
-      expect(() => updateNestedSubworkflowPaths(yWorkflows, parentNodes, "")).not.toThrow();
+      expect(() =>
+        updateNestedSubworkflowPaths(yWorkflows, parentNodes, ""),
+      ).not.toThrow();
 
       const yNodes = childWorkflow.get("nodes") as YNodesMap;
       const yNode = yNodes.get("child-node");
@@ -374,7 +424,9 @@ describe("updateNestedSubworkflowPaths", () => {
       ];
 
       // Should not throw
-      expect(() => updateNestedSubworkflowPaths(yWorkflows, parentNodes, "")).not.toThrow();
+      expect(() =>
+        updateNestedSubworkflowPaths(yWorkflows, parentNodes, ""),
+      ).not.toThrow();
     });
 
     it("should handle workflow with empty nodes map", () => {
@@ -382,9 +434,13 @@ describe("updateNestedSubworkflowPaths", () => {
       const childWorkflow = createYWorkflow(childWorkflowId, []);
       yWorkflows.set(childWorkflowId, childWorkflow);
 
-      const parentNodes: Node[] = [createNode("parent-node", "subworkflow", childWorkflowId)];
+      const parentNodes: Node[] = [
+        createNode("parent-node", "subworkflow", childWorkflowId),
+      ];
 
-      expect(() => updateNestedSubworkflowPaths(yWorkflows, parentNodes, "")).not.toThrow();
+      expect(() =>
+        updateNestedSubworkflowPaths(yWorkflows, parentNodes, ""),
+      ).not.toThrow();
     });
 
     it("should handle workflow with missing nodes map", () => {
@@ -396,9 +452,13 @@ describe("updateNestedSubworkflowPaths", () => {
       // Intentionally not setting "nodes"
       yWorkflows.set(childWorkflowId, yWorkflow);
 
-      const parentNodes: Node[] = [createNode("parent-node", "subworkflow", childWorkflowId)];
+      const parentNodes: Node[] = [
+        createNode("parent-node", "subworkflow", childWorkflowId),
+      ];
 
-      expect(() => updateNestedSubworkflowPaths(yWorkflows, parentNodes, "")).not.toThrow();
+      expect(() =>
+        updateNestedSubworkflowPaths(yWorkflows, parentNodes, ""),
+      ).not.toThrow();
     });
 
     it("should handle nodes with missing data map", () => {
@@ -412,14 +472,21 @@ describe("updateNestedSubworkflowPaths", () => {
       const badYNode = new Y.Map();
       badYNode.set("type", new Y.Text());
       // Intentionally not setting "data"
-      yNodes.set("bad-node", badYNode as Y.Map<Y.Text | Y.Map<unknown> | number | boolean>);
+      yNodes.set(
+        "bad-node",
+        badYNode as Y.Map<Y.Text | Y.Map<unknown> | number | boolean>,
+      );
       yWorkflow.set("nodes", yNodes);
 
       yWorkflows.set(childWorkflowId, yWorkflow);
 
-      const parentNodes: Node[] = [createNode("parent-node", "subworkflow", childWorkflowId)];
+      const parentNodes: Node[] = [
+        createNode("parent-node", "subworkflow", childWorkflowId),
+      ];
 
-      expect(() => updateNestedSubworkflowPaths(yWorkflows, parentNodes, "")).not.toThrow();
+      expect(() =>
+        updateNestedSubworkflowPaths(yWorkflows, parentNodes, ""),
+      ).not.toThrow();
     });
 
     it("should update workflowPath on nodes that already have it set", () => {
@@ -440,7 +507,9 @@ describe("updateNestedSubworkflowPaths", () => {
       existingPath.insert(0, "old.path");
       yData.set("workflowPath", existingPath);
 
-      const parentNodes: Node[] = [createNode("parent-node", "subworkflow", childWorkflowId)];
+      const parentNodes: Node[] = [
+        createNode("parent-node", "subworkflow", childWorkflowId),
+      ];
 
       updateNestedSubworkflowPaths(yWorkflows, parentNodes, "new.base");
 
@@ -464,7 +533,9 @@ describe("updateNestedSubworkflowPaths", () => {
       const yNodesBefore = childWorkflow.get("nodes") as YNodesMap;
       const yNodeBefore = yNodesBefore.get("child-node");
 
-      const parentNodes: Node[] = [createNode("parent-node", "subworkflow", childWorkflowId)];
+      const parentNodes: Node[] = [
+        createNode("parent-node", "subworkflow", childWorkflowId),
+      ];
 
       updateNestedSubworkflowPaths(yWorkflows, parentNodes, "");
 
@@ -474,7 +545,9 @@ describe("updateNestedSubworkflowPaths", () => {
       // Should be the same Y.Map instance (mutated, not replaced)
       expect(yNodeAfter).toBe(yNodeBefore);
       expect(yNodeAfter).toBeDefined();
-      expect(getWorkflowPathFromYNode(yNodeAfter as Y.Map<unknown>)).toBe(childWorkflowId);
+      expect(getWorkflowPathFromYNode(yNodeAfter as Y.Map<unknown>)).toBe(
+        childWorkflowId,
+      );
     });
 
     it("should use Y.Text for workflowPath values", () => {
@@ -484,7 +557,9 @@ describe("updateNestedSubworkflowPaths", () => {
       ]);
       yWorkflows.set(childWorkflowId, childWorkflow);
 
-      const parentNodes: Node[] = [createNode("parent-node", "subworkflow", childWorkflowId)];
+      const parentNodes: Node[] = [
+        createNode("parent-node", "subworkflow", childWorkflowId),
+      ];
 
       updateNestedSubworkflowPaths(yWorkflows, parentNodes, "");
 
