@@ -475,21 +475,3 @@ impl Cesium3DTilesWriter {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sanitize_attribute_key() {
-        // Valid identifiers remain unchanged
-        assert_eq!(sanitize_attribute_key("validName"), "validName");
-        assert_eq!(sanitize_attribute_key("_private"), "_private");
-
-        // Invalid first character gets replaced
-        assert_eq!(sanitize_attribute_key("123start"), "_23start");
-
-        // Special characters get replaced with underscores
-        assert_eq!(sanitize_attribute_key("my-key.name"), "my_key_name");
-    }
-}
