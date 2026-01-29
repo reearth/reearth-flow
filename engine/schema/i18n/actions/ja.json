@@ -78,11 +78,11 @@
     },
     {
       "name": "CzmlReader",
-      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取る"
+      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応"
     },
     {
       "name": "CzmlWriter",
-      "description": "CZMLファイルに地物を書き込む"
+      "description": "地物をCZMLファイルとしてエクスポートします。時間動的エンティティや時系列位置データに対応"
     },
     {
       "name": "DimensionFilter",

@@ -6408,6 +6408,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "cesiumtiles",
+ "chrono",
  "crossbeam",
  "crossbeam-channel",
  "crossbeam-utils",
