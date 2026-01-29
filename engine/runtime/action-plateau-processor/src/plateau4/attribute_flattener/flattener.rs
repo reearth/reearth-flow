@@ -59,7 +59,7 @@ impl Flattener {
                     AttributeValue::default_number(),
                     rank_code,
                 ),
-                ("浸水深", AttributeValue::default_number(), depth),
+                ("浸水深", AttributeValue::default_float(), depth),
                 ("浸水継続時間", AttributeValue::default_number(), duration),
             ];
 
