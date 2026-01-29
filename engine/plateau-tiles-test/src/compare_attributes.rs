@@ -228,8 +228,10 @@ impl AttributeComparer {
                 }
             }
             // let NULL match empty string due to the limitation of 3d-tiles-tools upgrade
-            if v1.as_str().unwrap_or("").is_empty() && v2.is_null() {
-                return;
+            if let Some(v1_str) = v1.as_str() {
+                if v1_str.is_empty() && v2.is_null() {
+                    return;
+                }
             }
             self.mismatches
                 .push((self.identifier.clone(), key.to_string(), v1, v2));
