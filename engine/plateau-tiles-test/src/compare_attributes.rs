@@ -250,7 +250,6 @@ impl AttributeComparer {
                     };
                     let val1 = obj1.get(k).cloned().unwrap_or(Value::Null);
                     let val2 = obj2.get(k).cloned().unwrap_or(Value::Null);
-                    eprintln!("{:?} {:?}", val1, val2);
                     self.compare_recurse(&new_key, val1, val2);
                 }
             }
