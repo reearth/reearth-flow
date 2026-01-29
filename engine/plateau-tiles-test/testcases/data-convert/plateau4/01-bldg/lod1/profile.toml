@@ -4,8 +4,8 @@ citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg.zip"
 
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
-".uro_BuildingDetailAttribute_uro_surveyYear" = "string" # ignore
-"._______________________L2_______________" = "float" # ignore
+".uro:BuildingDetailAttribute_uro:surveyYear" = "string" # ignore
+".信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間" = "float" # ignore
 
 [filter.tree]
 "udx/bldg/56381634_bldg_6697_op.gml" = ["bldg_5f70c68a-6fef-4591-81eb-d19edca66f09"]
