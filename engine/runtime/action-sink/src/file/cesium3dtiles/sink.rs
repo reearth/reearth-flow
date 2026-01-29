@@ -104,6 +104,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
             },
+            properties: Default::default(),
         };
         Ok(Box::new(sink))
     }
@@ -111,12 +112,22 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
 type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PropertyMetadata {
+    // Currently empty, but can be extended with:
+    // - minimum/maximum values
+    // - data type information
+    // - statistical information
+    // - etc.
+}
+
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     pub(super) schema: Schema,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
+    pub(super) properties: HashMap<String, PropertyMetadata>,
 }
 
 /// # Cesium3DTilesWriter Parameters
@@ -234,6 +245,13 @@ impl Cesium3DTilesWriter {
             feature
         };
 
+        // Collect attribute keys for properties
+        for key in feature.attributes.keys() {
+            self.properties
+                .entry(key.to_string())
+                .or_insert_with(PropertyMetadata::default);
+        }
+
         let buffer = self
             .buffer
             .entry((output, feature_type.clone(), compress_output.clone()))
@@ -273,7 +291,7 @@ impl Cesium3DTilesWriter {
                 .push((feature_type.clone(), buffer.clone()));
         }
         for ((output, compress_output), buffer) in &features {
-            self.write(ctx.clone(), buffer, output, compress_output)?;
+            self.write(ctx.clone(), buffer, output, compress_output, &self.properties)?;
         }
         Ok(())
     }
@@ -285,6 +303,7 @@ impl Cesium3DTilesWriter {
         upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
         compress_output: &Option<Uri>,
+        properties: &HashMap<String, PropertyMetadata>,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
@@ -384,6 +403,7 @@ impl Cesium3DTilesWriter {
                             &schema,
                             None,
                             self.params.draco_compression.unwrap_or(true), // On by default
+                            properties,
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();

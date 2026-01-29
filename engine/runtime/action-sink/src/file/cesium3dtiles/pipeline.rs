@@ -241,6 +241,7 @@ pub(super) fn tile_writing_stage(
     schema: &Schema,
     limit_texture_resolution: Option<bool>,
     draco_compression: bool,
+    properties: &std::collections::HashMap<String, super::sink::PropertyMetadata>,
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
@@ -344,7 +345,7 @@ pub(super) fn tile_writing_stage(
         tree.add_content(content);
     }
 
-    let tileset = cesiumtiles::tileset::Tileset {
+    let mut tileset = cesiumtiles::tileset::Tileset {
         asset: cesiumtiles::tileset::Asset {
             version: "1.1".to_string(),
             ..Default::default()
@@ -353,6 +354,20 @@ pub(super) fn tile_writing_stage(
         geometric_error: 1e+100,
         ..Default::default()
     };
+
+    // Set properties in tileset
+    if !properties.is_empty() {
+        let properties_map: std::collections::HashMap<String, serde_json::Value> = properties
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    serde_json::to_value(v).unwrap_or(serde_json::json!({})),
+                )
+            })
+            .collect();
+        tileset.properties = Some(properties_map);
+    }
 
     let storage = ctx
         .storage_resolver

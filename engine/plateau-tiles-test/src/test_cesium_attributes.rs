@@ -11,6 +11,20 @@ pub struct CesiumAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
+/// Load tileset.json properties from a directory
+fn load_tileset_properties(dir: &Path) -> Result<Value, String> {
+    let tileset_path = dir.join("tileset.json");
+    let content = std::fs::read_to_string(&tileset_path)
+        .map_err(|e| format!("Failed to read tileset.json at {:?}: {}", tileset_path, e))?;
+    let tileset: Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse tileset.json at {:?}: {}", tileset_path, e))?;
+
+    tileset
+        .get("properties")
+        .cloned()
+        .ok_or_else(|| format!("No 'properties' field in tileset.json at {:?}", tileset_path))
+}
+
 /// Load all GLB attributes from a directory using the GeometryCollector
 fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     let collector = collect_geometries_by_ident(dir)?;
@@ -76,6 +90,18 @@ pub fn test_cesium_attributes(
 
         tracing::debug!("Comparing Cesium attributes in directory: {}", dir_name);
 
+        // Compare tileset.json properties
+        tracing::debug!("Comparing tileset.json properties for: {}", dir_name);
+        let fme_properties = load_tileset_properties(&fme_dir)?;
+        let flow_properties = load_tileset_properties(&flow_dir)?;
+        analyze_attributes(
+            &format!("{}/tileset.json", dir_name),
+            &fme_properties,
+            &flow_properties,
+            casts.clone(),
+        )?;
+
+        // Compare GLB attributes
         for (ident, attr1, attr2) in align_glb_attr(&fme_dir, &flow_dir)? {
             analyze_attributes(&ident, &attr1, &attr2, casts.clone())?;
         }
