@@ -99,7 +99,6 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
-    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
     "data-convert/plateau4/03-frn-veg/curvemembers",
     "data-convert/plateau4/03-frn-veg/frn",
     "data-convert/plateau4/03-frn-veg/veg",

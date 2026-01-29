@@ -33,16 +33,16 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     // For risk types, use path/rank_code as the key
     if let Some(p) = path {
         if is_risk_type(p) {
-            let rank_code = getter("uro_rank_code");
+            let rank_code = getter("uro:rank_code");
             if !rank_code.is_empty() {
                 return format!("{}/{}", p, rank_code);
             }
-            let rankorg_code = getter("uro_rankOrg_code");
+            let rankorg_code = getter("uro:rankOrg_code");
             if !rankorg_code.is_empty() {
                 return format!("{}/{}", p, rankorg_code);
             }
             panic!(
-                "both uro:rank_code and uro_rankOrg_code are missing in {}",
+                "both uro:rank_code and uro:rankOrg_code are missing in {}",
                 p
             );
         }
