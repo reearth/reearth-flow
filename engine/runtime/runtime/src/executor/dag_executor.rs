@@ -374,7 +374,7 @@ fn collect_executable_node_ids(
         // Check incoming edges
         let has_unavailable_edge = g.edges_directed(node_idx, Direction::Incoming).any(|edge| {
             let edge_id = edge.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
-            edge_id.map_or(true, |id| !cfg.available_edge_ids.contains(&id))
+            edge_id.is_none_or(|id| !cfg.available_edge_ids.contains(&id))
         });
 
         // If this node has any incoming edge that's not available, it must be executed
@@ -424,7 +424,7 @@ fn build_replay_groups(
         // 3. Edge is in available_edges (was actually copied)
         if execute.contains(&dst) && !execute.contains(&src) {
             let edge_id_parsed = e.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
-            let is_available = edge_id_parsed.map_or(false, |id| available_edge_ids.contains(&id));
+            let is_available = edge_id_parsed.is_some_and(|id| available_edge_ids.contains(&id));
 
             if !is_available {
                 tracing::info!(
