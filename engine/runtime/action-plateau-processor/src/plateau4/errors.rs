@@ -73,6 +73,10 @@ pub(super) enum PlateauProcessorError {
     FloodingAreaSurfaceGeneratorFactory(String),
     #[error("FloodingAreaSurfaceGenerator error: {0}")]
     FloodingAreaSurfaceGenerator(String),
+    #[error("GmlNameCodeSpaceValidator Factory error: {0}")]
+    GmlNameCodeSpaceValidatorFactory(String),
+    #[error("GmlNameCodeSpaceValidator error: {0}")]
+    GmlNameCodeSpaceValidator(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
