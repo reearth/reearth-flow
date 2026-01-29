@@ -35,7 +35,7 @@ pub fn prepare_incremental_feature_store(
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
     feature_state: &State,
-) -> crate::Result<Arc<State>> {
+) -> crate::Result<(Arc<State>, HashSet<uuid::Uuid>)> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
@@ -61,18 +61,17 @@ pub fn prepare_incremental_feature_store(
     let reuse_state = State::new(&reuse_feature_store_uri, storage_resolver)
         .map_err(crate::errors::Error::init)?;
 
-    let edge_ids = collect_reusable_edge_ids(workflow, start_node_id)?;
+    let candidate_edge_ids = collect_reusable_edge_ids(workflow, start_node_id)?;
     tracing::info!(
-        "Incremental run: reusable edge IDs for node {}: {:?}",
+        "Incremental run: candidate reusable edge IDs for node {}: {:?}",
         start_node_id,
-        edge_ids
-    );
-    tracing::info!(
-        "Incremental run: copying {} edge(s) into previous-feature-store",
-        edge_ids.len()
+        candidate_edge_ids
     );
 
-    for edge_id in &edge_ids {
+    // Filter candidate edges by checking which ones actually exist in the previous feature store
+    let mut actually_copied_edge_ids = Vec::new();
+
+    for edge_id in &candidate_edge_ids {
         let edge_id_str = edge_id.to_string();
         match reuse_state.copy_jsonl_from_state(&prev_feature_store_state, &edge_id_str) {
             Ok(()) => {
@@ -81,13 +80,15 @@ pub fn prepare_incremental_feature_store(
                     edge_id_str,
                     reuse_feature_store_uri.path().display()
                 );
+                actually_copied_edge_ids.push(*edge_id);
             }
             Err(e) => {
-                tracing::warn!(
-                    "Incremental run: failed to copy edge {} from previous feature-store: {:?}",
+                tracing::info!(
+                    "Incremental run: edge {} does not exist in previous feature-store, skipping: {:?}",
                     edge_id_str,
                     e
                 );
+                continue;
             }
         }
 
@@ -104,7 +105,19 @@ pub fn prepare_incremental_feature_store(
         }
     }
 
-    Ok(Arc::new(reuse_state))
+    let actually_copied_edges: HashSet<uuid::Uuid> = actually_copied_edge_ids.into_iter().collect();
+
+    tracing::info!(
+        "Incremental run: successfully copied {} out of {} candidate edges",
+        actually_copied_edges.len(),
+        candidate_edge_ids.len()
+    );
+    tracing::info!(
+        "Incremental run: actually copied edge IDs: {:?}",
+        actually_copied_edges
+    );
+
+    Ok((Arc::new(reuse_state), actually_copied_edges))
 }
 
 pub fn collect_reusable_edge_ids(

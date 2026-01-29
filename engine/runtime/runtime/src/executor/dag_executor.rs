@@ -87,7 +87,7 @@ impl DagExecutor {
             Arc::clone(&feature_state),
         )?;
         let execute_node_ids: HashSet<NodeId> = if let Some(cfg) = &incremental_run_config {
-            collect_downstream_node_ids(&execution_dag, cfg.start_node_id)?
+            collect_executable_node_ids(&execution_dag, cfg)?
         } else {
             execution_dag
                 .graph()
@@ -189,7 +189,8 @@ impl DagExecutor {
         }
 
         if let Some(cfg) = incremental_run_config.clone() {
-            let replay_groups = build_replay_groups(&execution_dag, &execute_node_ids);
+            let replay_groups =
+                build_replay_groups(&execution_dag, &execute_node_ids, &cfg.available_edge_ids);
             tracing::info!("Replay groups:");
             for g in &replay_groups {
                 tracing::info!("  group edges={}", g.edges.len());
@@ -323,37 +324,70 @@ fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
         .map_err(ExecutionError::CannotSpawnWorkerThread)
 }
 
-fn collect_downstream_node_ids(
+/// Collects nodes that should be executed in incremental run.
+/// Only includes nodes that either:
+/// 1. Are downstream of the start node, OR
+/// 2. Have at least one incoming edge that is NOT in available_edges (need to be executed)
+fn collect_executable_node_ids(
     dag: &ExecutionDag,
-    start_node_id: uuid::Uuid,
+    cfg: &IncrementalRunConfig,
 ) -> Result<HashSet<NodeId>, ExecutionError> {
     let g = dag.graph();
 
     let start_index = g
         .node_indices()
-        .find(|&i| g[i].handle.id.to_string() == start_node_id.to_string())
+        .find(|&i| g[i].handle.id.to_string() == cfg.start_node_id.to_string())
         .ok_or_else(|| {
             ExecutionError::CannotSpawnWorkerThread(std::io::Error::other(format!(
                 "start_node_id not found in execution graph: {}",
-                start_node_id
+                cfg.start_node_id
             )))
         })?;
 
-    let mut out: HashSet<NodeId> = HashSet::new();
+    // First, collect all downstream nodes from start_node
+    let mut downstream_nodes: HashSet<NodeId> = HashSet::new();
     let mut q = VecDeque::new();
 
-    out.insert(g[start_index].handle.id.clone());
+    downstream_nodes.insert(g[start_index].handle.id.clone());
     q.push_back(start_index);
 
     while let Some(n) = q.pop_front() {
         for nb in g.neighbors_directed(n, Direction::Outgoing) {
             let id = g[nb].handle.id.clone();
-            if out.insert(id) {
+            if downstream_nodes.insert(id) {
                 q.push_back(nb);
             }
         }
     }
-    Ok(out)
+
+    // Second, check all nodes to see if they have incoming edges not in available_edges
+    let mut executable_nodes = downstream_nodes.clone();
+
+    for node_idx in g.node_indices() {
+        let node_id = g[node_idx].handle.id.clone();
+
+        // Skip if already marked as executable
+        if executable_nodes.contains(&node_id) {
+            continue;
+        }
+
+        // Check incoming edges
+        let has_unavailable_edge = g.edges_directed(node_idx, Direction::Incoming).any(|edge| {
+            let edge_id = edge.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
+            edge_id.map_or(true, |id| !cfg.available_edge_ids.contains(&id))
+        });
+
+        // If this node has any incoming edge that's not available, it must be executed
+        if has_unavailable_edge {
+            tracing::info!(
+                "Node {} marked as executable: has incoming edges not in available_edges",
+                node_id
+            );
+            executable_nodes.insert(node_id);
+        }
+    }
+
+    Ok(executable_nodes)
 }
 
 #[derive(Clone)]
@@ -368,7 +402,13 @@ struct ReplayGroup {
     edges: Vec<ReplayEdge>,
 }
 
-fn build_replay_groups(dag: &ExecutionDag, execute: &HashSet<NodeId>) -> Vec<ReplayGroup> {
+/// Builds replay groups only for edges that are in available_edges.
+/// This ensures we only replay data that was actually copied from the previous run.
+fn build_replay_groups(
+    dag: &ExecutionDag,
+    execute: &HashSet<NodeId>,
+    available_edge_ids: &HashSet<uuid::Uuid>,
+) -> Vec<ReplayGroup> {
     let g = dag.graph();
 
     let mut grouped: HashMap<(NodeId, Port), (Sender<ExecutorOperation>, Vec<ReplayEdge>)> =
@@ -378,7 +418,24 @@ fn build_replay_groups(dag: &ExecutionDag, execute: &HashSet<NodeId>) -> Vec<Rep
         let src = g[e.source()].handle.id.clone();
         let dst = g[e.target()].handle.id.clone();
 
+        // Only create replay groups for edges where:
+        // 1. Destination is executable
+        // 2. Source is not executable (i.e., upstream)
+        // 3. Edge is in available_edges (was actually copied)
         if execute.contains(&dst) && !execute.contains(&src) {
+            let edge_id_parsed = e.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
+            let is_available = edge_id_parsed.map_or(false, |id| available_edge_ids.contains(&id));
+
+            if !is_available {
+                tracing::info!(
+                    "Skipping replay edge {} -> {}: edge {} not in available_edges",
+                    src,
+                    dst,
+                    e.weight().edge_id
+                );
+                continue;
+            }
+
             let downstream_input_port = e.weight().input_port.clone();
 
             let replay_edge = ReplayEdge {
