@@ -1949,13 +1949,10 @@ graphs:
       - newAttribute: 潰れた三角形
         expr: |
           env.get("__value")["潰れた三角形"] ?? 0
-      - newAttribute: 不正な穴
-        expr: |
-          env.get("__value")["不正な穴"] ?? 0
       - newAttribute: totalErrorCount
         expr: |
           let total = 0;
-          let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形", "不正な穴"];
+          let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形"];
           for key in keys {
             total += env.get("__value")[key] ?? 0;
           }
