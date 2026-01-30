@@ -1786,7 +1786,7 @@
     {
       "name": "CzmlReader",
       "type": "source",
-      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization",
+      "description": "Lit les entités géographiques à partir de fichiers CZML (langage Cesium) pour la visualisation 3D, avec prise en charge des propriétés dynamiques dans le temps et des données de séries temporelles",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CzmlReader Parameters",
@@ -1828,11 +1828,47 @@
             "description": "If true, skips the document packet (first packet with version/clock info)",
             "default": true,
             "type": "boolean"
+          },
+          "timeSampling": {
+            "title": "Time Sampling Strategy",
+            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter.",
+            "default": "preserveRaw",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TimeSamplingStrategy"
+              }
+            ]
           }
         },
         "definitions": {
           "Expr": {
             "type": "string"
+          },
+          "TimeSamplingStrategy": {
+            "description": "Strategy for handling time-dynamic CZML properties.",
+            "oneOf": [
+              {
+                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+                "type": "string",
+                "enum": [
+                  "allSamples"
+                ]
+              },
+              {
+                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+                "type": "string",
+                "enum": [
+                  "firstSampleOnly"
+                ]
+              },
+              {
+                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter.",
+                "type": "string",
+                "enum": [
+                  "preserveRaw"
+                ]
+              }
+            ]
           }
         }
       },
@@ -1848,15 +1884,24 @@
     {
       "name": "CzmlWriter",
       "type": "sink",
-      "description": "Export Features as CZML for Cesium Visualization",
+      "description": "Exporte les entités au format CZML pour la visualisation Cesium, avec prise en charge des entités dynamiques dans le temps et des positions de séries temporelles",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CzmlWriter Parameters",
+        "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
+          "epoch": {
+            "title": "Epoch",
+            "description": "ISO 8601 datetime used as the base time for numeric time offsets in the output CZML.  If omitted the first timestamp encountered is used.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "groupBy": {
             "title": "Group By Attributes",
             "description": "Attributes used to group features into separate CZML files",
@@ -1868,12 +1913,54 @@
               "$ref": "#/definitions/Attribute"
             }
           },
+          "groupTimeseriesBy": {
+            "title": "Group Timeseries By",
+            "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interpolationAlgorithm": {
+            "title": "Interpolation Algorithm",
+            "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
+            "default": "LINEAR",
+            "allOf": [
+              {
+                "$ref": "#/definitions/InterpolationAlgorithm"
+              }
+            ]
+          },
+          "interpolationDegree": {
+            "title": "Interpolation Degree",
+            "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE).",
+            "default": 1,
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "output": {
             "title": "Output File Path",
             "description": "Path where the CZML file will be written",
             "allOf": [
               {
                 "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "timeField": {
+            "title": "Time Field",
+            "description": "Attribute containing the timestamp (ISO 8601 string or numeric seconds since epoch) for each feature. When set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -1884,6 +1971,32 @@
           },
           "Expr": {
             "type": "string"
+          },
+          "InterpolationAlgorithm": {
+            "description": "Interpolation algorithm for Cesium time-dynamic properties.",
+            "oneOf": [
+              {
+                "description": "Linear interpolation between samples (degree 1).",
+                "type": "string",
+                "enum": [
+                  "LINEAR"
+                ]
+              },
+              {
+                "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5).",
+                "type": "string",
+                "enum": [
+                  "LAGRANGE"
+                ]
+              },
+              {
+                "description": "Hermite spline interpolation using tangent data.",
+                "type": "string",
+                "enum": [
+                  "HERMITE"
+                ]
+              }
+            ]
           }
         }
       },
