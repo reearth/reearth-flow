@@ -1831,7 +1831,7 @@
           },
           "timeSampling": {
             "title": "Time Sampling Strategy",
-            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"firstSampleOnly\" for backward compatibility.",
+            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter.",
             "default": "preserveRaw",
             "allOf": [
               {

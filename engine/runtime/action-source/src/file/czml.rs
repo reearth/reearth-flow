@@ -97,7 +97,7 @@ pub(super) struct CzmlReaderParam {
     pub(super) skip_document_packet: bool,
     /// # Time Sampling Strategy
     /// How to handle time-dynamic properties in CZML packets.
-    /// Defaults to "firstSampleOnly" for backward compatibility.
+    /// Defaults to "preserveRaw" for lossless round-trip with CzmlWriter.
     #[serde(default)]
     pub(super) time_sampling: TimeSamplingStrategy,
 }
