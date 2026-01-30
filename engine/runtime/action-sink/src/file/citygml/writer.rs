@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -7,6 +8,7 @@ use super::converter::{
     format_pos_list, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSurface,
 };
 use crate::errors::SinkError;
+use reearth_flow_types::attribute::AttributeValue;
 
 const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:core", "http://www.opengis.net/citygml/2.0"),
@@ -107,6 +109,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         city_type: CityObjectType,
         geometries: &[GeometryEntry],
         gml_id: Option<&str>,
+        feature_attributes: Option<&HashMap<String, AttributeValue>>,
     ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
@@ -122,6 +125,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(city_obj_elem))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        // Write feature attributes first (like creationDate, class, usage, etc.)
+        if let Some(attrs) = feature_attributes {
+            self.write_feature_attributes(attrs)?;
+        }
+
+        // Then write geometries
         for entry in geometries {
             self.write_lod_geometry(city_type, entry)?;
         }
@@ -133,6 +142,601 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        Ok(())
+    }
+
+    fn write_feature_attributes(
+        &mut self,
+        attributes: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        for (key, value) in attributes {
+            // Handle special attributes like creationDate, class, usage, etc.
+            match key.as_str() {
+                "cityGmlAttributes" => {
+                    if let AttributeValue::Map(ref attr_map) = value {
+                        self.write_citygml_attributes(attr_map)?;
+                    }
+                }
+                "gmlName" => {
+                    // Skip gmlName as it's handled via feature type
+                }
+                "gmlId" => {
+                    // Skip gmlId as it's handled separately
+                }
+                "gmlRootId" => {
+                    // Skip gmlRootId as it's not needed in output
+                }
+                _ => {
+                    // Handle other attributes as needed
+                    self.write_generic_attribute(key, value)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn write_citygml_attributes(
+        &mut self,
+        attributes: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        for (key, value) in attributes {
+            match key.as_str() {
+                // Core attributes
+                "core:creationDate" => {
+                    if let AttributeValue::String(date_str) = value {
+                        self.write_text_element("core:creationDate", date_str)?;
+                    }
+                }
+                // Building attributes
+                "bldg:class" => {
+                    if let AttributeValue::String(class_str) = value {
+                        self.write_text_element_with_attribute(
+                            "bldg:class",
+                            class_str,
+                            "codeSpace",
+                            "../../codelists/Building_class.xml",
+                        )?;
+                    }
+                }
+                "bldg:usage" => {
+                    if let AttributeValue::String(usage_str) = value {
+                        self.write_text_element_with_attribute(
+                            "bldg:usage",
+                            usage_str,
+                            "codeSpace",
+                            "../../codelists/Building_usage.xml",
+                        )?;
+                    }
+                }
+                "bldg:measuredHeight" => {
+                    if let AttributeValue::Number(height_num) = value {
+                        self.write_text_element_with_attribute(
+                            "bldg:measuredHeight",
+                            &height_num.to_string(),
+                            "uom",
+                            "m",
+                        )?;
+                    }
+                }
+                "bldg:storeysAboveGround" => {
+                    if let AttributeValue::Number(storeys_num) = value {
+                        self.write_text_element(
+                            "bldg:storeysAboveGround",
+                            &storeys_num.to_string(),
+                        )?;
+                    }
+                }
+                // LOD0 and LOD1 geometry
+                "bldg:lod0RoofEdge" | "bldg:lod1Solid" => {
+                    // These are handled separately as geometries
+                }
+                // URO attributes
+                "uro:bldgDataQualityAttribute" => {
+                    if let AttributeValue::Map(ref quality_attr) = value {
+                        self.write_bldg_data_quality_attribute(quality_attr)?;
+                    }
+                }
+                "uro:bldgDisasterRiskAttribute" => {
+                    if let AttributeValue::Array(ref risks) = value {
+                        for risk in risks {
+                            if let AttributeValue::Map(ref risk_map) = risk {
+                                self.write_bldg_disaster_risk_attribute(risk_map)?;
+                            }
+                        }
+                    }
+                }
+                "uro:buildingDetailAttribute" => {
+                    if let AttributeValue::Map(ref detail_attr) = value {
+                        self.write_building_detail_attribute(detail_attr)?;
+                    }
+                }
+                "uro:buildingIDAttribute" => {
+                    if let AttributeValue::Map(ref id_attr) = value {
+                        self.write_building_id_attribute(id_attr)?;
+                    }
+                }
+                _ => {
+                    // Handle other attributes generically
+                    self.write_generic_attribute(key, value)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn write_bldg_data_quality_attribute(
+        &mut self,
+        quality_attr: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        self.writer
+            .write_event(Event::Start(BytesStart::new(
+                "uro:bldgDataQualityAttribute",
+            )))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new("uro:DataQualityAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        for (key, value) in quality_attr {
+            match key.as_str() {
+                "uro:geometrySrcDescLod0" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:geometrySrcDescLod0",
+                            code,
+                            "codeSpace",
+                            "../../codelists/DataQualityAttribute_geometrySrcDesc.xml",
+                        )?;
+                    }
+                }
+                "uro:geometrySrcDescLod1" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:geometrySrcDescLod1",
+                            code,
+                            "codeSpace",
+                            "../../codelists/DataQualityAttribute_geometrySrcDesc.xml",
+                        )?;
+                    }
+                }
+                "uro:geometrySrcDescLod2" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:geometrySrcDescLod2",
+                            code,
+                            "codeSpace",
+                            "../../codelists/DataQualityAttribute_geometrySrcDesc.xml",
+                        )?;
+                    }
+                }
+                "uro:thematicSrcDesc" => {
+                    if let AttributeValue::Array(ref codes) = value {
+                        for code_val in codes {
+                            if let AttributeValue::String(code) = code_val {
+                                self.write_text_element_with_attribute(
+                                    "uro:thematicSrcDesc",
+                                    code,
+                                    "codeSpace",
+                                    "../../codelists/DataQualityAttribute_thematicSrcDesc.xml",
+                                )?;
+                            }
+                        }
+                    } else if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:thematicSrcDesc",
+                            code,
+                            "codeSpace",
+                            "../../codelists/DataQualityAttribute_thematicSrcDesc.xml",
+                        )?;
+                    }
+                }
+                "uro:appearanceSrcDescLod2" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:appearanceSrcDescLod2",
+                            code,
+                            "codeSpace",
+                            "../../codelists/DataQualityAttribute_appearanceSrcDesc.xml",
+                        )?;
+                    }
+                }
+                "uro:lod1HeightType" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:lod1HeightType",
+                            code,
+                            "codeSpace",
+                            "../../codelists/DataQualityAttribute_lod1HeightType.xml",
+                        )?;
+                    }
+                }
+                "uro:publicSurveyDataQualityAttribute" => {
+                    if let AttributeValue::Map(ref survey_attr) = value {
+                        self.write_public_survey_data_quality_attribute(survey_attr)?;
+                    }
+                }
+                _ => {
+                    self.write_generic_attribute(key, value)?;
+                }
+            }
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("uro:DataQualityAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        self.writer
+            .write_event(Event::End(BytesEnd::new("uro:bldgDataQualityAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_public_survey_data_quality_attribute(
+        &mut self,
+        survey_attr: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        self.writer
+            .write_event(Event::Start(BytesStart::new(
+                "uro:publicSurveyDataQualityAttribute",
+            )))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new(
+                "uro:PublicSurveyDataQualityAttribute",
+            )))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        for (key, value) in survey_attr {
+            match key.as_str() {
+                "uro:srcScaleLod0" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:srcScaleLod0",
+                            code,
+                            "codeSpace",
+                            "../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml",
+                        )?;
+                    }
+                }
+                "uro:srcScaleLod1" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:srcScaleLod1",
+                            code,
+                            "codeSpace",
+                            "../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml",
+                        )?;
+                    }
+                }
+                "uro:publicSurveySrcDescLod0" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute("uro:publicSurveySrcDescLod0", code, "codeSpace", "../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml")?;
+                    }
+                }
+                "uro:publicSurveySrcDescLod1" => {
+                    if let AttributeValue::Array(ref codes) = value {
+                        for code_val in codes {
+                            if let AttributeValue::String(code) = code_val {
+                                self.write_text_element_with_attribute("uro:publicSurveySrcDescLod1", code, "codeSpace", "../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml")?;
+                            }
+                        }
+                    } else if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute("uro:publicSurveySrcDescLod1", code, "codeSpace", "../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml")?;
+                    }
+                }
+                _ => {
+                    self.write_generic_attribute(key, value)?;
+                }
+            }
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(
+                "uro:PublicSurveyDataQualityAttribute",
+            )))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        self.writer
+            .write_event(Event::End(BytesEnd::new(
+                "uro:publicSurveyDataQualityAttribute",
+            )))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_bldg_disaster_risk_attribute(
+        &mut self,
+        risk_attr: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        // Find the type of risk attribute (RiverFloodingRiskAttribute, InlandFloodingRiskAttribute, etc.)
+        for (key, value) in risk_attr {
+            if key.starts_with("uro:") && key.contains("RiskAttribute") {
+                self.writer
+                    .write_event(Event::Start(BytesStart::new(format!(
+                        "uro:{}",
+                        key.replace("uro:", "")
+                    ))))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+                if let AttributeValue::Map(ref risk_details) = value {
+                    for (detail_key, detail_value) in risk_details {
+                        match detail_key.as_str() {
+                            "uro:description" => {
+                                if let AttributeValue::String(code) = detail_value {
+                                    self.write_text_element_with_attribute("uro:description", code, "codeSpace", "../../codelists/RiverFloodingRiskAttribute_description.xml")?;
+                                }
+                            }
+                            "uro:rank" => {
+                                if let AttributeValue::String(rank) = detail_value {
+                                    self.write_text_element_with_attribute(
+                                        "uro:rank",
+                                        rank,
+                                        "codeSpace",
+                                        "../../codelists/RiverFloodingRiskAttribute_rank.xml",
+                                    )?;
+                                }
+                            }
+                            "uro:depth" => {
+                                if let AttributeValue::Number(depth_num) = detail_value {
+                                    self.write_text_element_with_attribute(
+                                        "uro:depth",
+                                        &depth_num.to_string(),
+                                        "uom",
+                                        "m",
+                                    )?;
+                                }
+                            }
+                            "uro:adminType" => {
+                                if let AttributeValue::String(code) = detail_value {
+                                    self.write_text_element_with_attribute(
+                                        "uro:adminType",
+                                        code,
+                                        "codeSpace",
+                                        "../../codelists/RiverFloodingRiskAttribute_adminType.xml",
+                                    )?;
+                                }
+                            }
+                            "uro:scale" => {
+                                if let AttributeValue::String(scale) = detail_value {
+                                    self.write_text_element_with_attribute(
+                                        "uro:scale",
+                                        scale,
+                                        "codeSpace",
+                                        "../../codelists/RiverFloodingRiskAttribute_scale.xml",
+                                    )?;
+                                }
+                            }
+                            "uro:duration" => {
+                                if let AttributeValue::Number(duration_num) = detail_value {
+                                    self.write_text_element_with_attribute(
+                                        "uro:duration",
+                                        &duration_num.to_string(),
+                                        "uom",
+                                        "hour",
+                                    )?;
+                                }
+                            }
+                            _ => {
+                                self.write_generic_attribute(detail_key, detail_value)?;
+                            }
+                        }
+                    }
+                }
+
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(format!(
+                        "uro:{}",
+                        key.replace("uro:", "")
+                    ))))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_building_detail_attribute(
+        &mut self,
+        detail_attr: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        self.writer
+            .write_event(Event::Start(BytesStart::new("uro:buildingDetailAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new("uro:BuildingDetailAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        for (key, value) in detail_attr {
+            match key.as_str() {
+                "uro:totalFloorArea" => {
+                    if let AttributeValue::Number(area_num) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:totalFloorArea",
+                            &area_num.to_string(),
+                            "uom",
+                            "m2",
+                        )?;
+                    }
+                }
+                "uro:buildingRoofEdgeArea" => {
+                    if let AttributeValue::Number(area_num) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:buildingRoofEdgeArea",
+                            &area_num.to_string(),
+                            "uom",
+                            "m2",
+                        )?;
+                    }
+                }
+                "uro:buildingStructureType" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:buildingStructureType",
+                            code,
+                            "codeSpace",
+                            "../../codelists/BuildingDetailAttribute_buildingStructureType.xml",
+                        )?;
+                    }
+                }
+                "uro:buildingStructureOrgType" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:buildingStructureOrgType",
+                            code,
+                            "codeSpace",
+                            "../../codelists/BuildingDetailAttribute_buildingStructureOrgType.xml",
+                        )?;
+                    }
+                }
+                "uro:detailedUsage" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:detailedUsage",
+                            code,
+                            "codeSpace",
+                            "../../codelists/BuildingDetailAttribute_detailedUsage.xml",
+                        )?;
+                    }
+                }
+                "uro:surveyYear" => {
+                    if let AttributeValue::String(year) = value {
+                        self.write_text_element("uro:surveyYear", year)?;
+                    }
+                }
+                _ => {
+                    self.write_generic_attribute(key, value)?;
+                }
+            }
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("uro:BuildingDetailAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        self.writer
+            .write_event(Event::End(BytesEnd::new("uro:buildingDetailAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_building_id_attribute(
+        &mut self,
+        id_attr: &HashMap<String, AttributeValue>,
+    ) -> Result<(), SinkError> {
+        self.writer
+            .write_event(Event::Start(BytesStart::new("uro:buildingIDAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new("uro:BuildingIDAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        for (key, value) in id_attr {
+            match key.as_str() {
+                "uro:buildingID" => {
+                    if let AttributeValue::String(id) = value {
+                        self.write_text_element("uro:buildingID", id)?;
+                    }
+                }
+                "uro:prefecture" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:prefecture",
+                            code,
+                            "codeSpace",
+                            "../../codelists/Common_localPublicAuthorities.xml",
+                        )?;
+                    }
+                }
+                "uro:city" => {
+                    if let AttributeValue::String(code) = value {
+                        self.write_text_element_with_attribute(
+                            "uro:city",
+                            code,
+                            "codeSpace",
+                            "../../codelists/Common_localPublicAuthorities.xml",
+                        )?;
+                    }
+                }
+                _ => {
+                    self.write_generic_attribute(key, value)?;
+                }
+            }
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("uro:BuildingIDAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        self.writer
+            .write_event(Event::End(BytesEnd::new("uro:buildingIDAttribute")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_text_element_with_attribute(
+        &mut self,
+        tag: &str,
+        text: &str,
+        attr_name: &str,
+        attr_value: &str,
+    ) -> Result<(), SinkError> {
+        let mut elem = BytesStart::new(tag);
+        elem.push_attribute((attr_name, attr_value));
+        self.writer
+            .write_event(Event::Start(elem))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        self.writer
+            .write_event(Event::Text(BytesText::new(text)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        self.writer
+            .write_event(Event::End(BytesEnd::new(tag)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        Ok(())
+    }
+
+    fn write_generic_attribute(
+        &mut self,
+        key: &str,
+        value: &AttributeValue,
+    ) -> Result<(), SinkError> {
+        match value {
+            AttributeValue::String(s) => {
+                self.write_text_element(key, s)?;
+            }
+            AttributeValue::Number(n) => {
+                self.write_text_element(key, &n.to_string())?;
+            }
+            AttributeValue::Bool(b) => {
+                self.write_text_element(key, &b.to_string())?;
+            }
+            AttributeValue::Array(arr) => {
+                for item in arr {
+                    self.write_generic_attribute(key, item)?;
+                }
+            }
+            AttributeValue::Map(map) => {
+                // For nested maps, we'll write them as nested elements
+                self.writer
+                    .write_event(Event::Start(BytesStart::new(key)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+                for (sub_key, sub_value) in map {
+                    self.write_generic_attribute(sub_key, sub_value)?;
+                }
+
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(key)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            _ => {
+                // For other types, convert to string representation
+                self.write_text_element(key, &value.to_string())?;
+            }
+        }
         Ok(())
     }
 

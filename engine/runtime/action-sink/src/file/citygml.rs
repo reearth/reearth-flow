@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{attribute::AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -203,8 +203,20 @@ impl Sink for CityGmlWriterSink {
                     continue;
                 }
 
+                // Extract feature attributes to pass to the writer
+                let feature_attributes: HashMap<String, AttributeValue> = feature
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.inner(), v.clone()))
+                    .collect();
+
                 let gml_id_str = feature.id.to_string();
-                xml_writer.write_city_object(city_type, &geometries, Some(gml_id_str.as_str()))?;
+                xml_writer.write_city_object(
+                    city_type,
+                    &geometries,
+                    Some(gml_id_str.as_str()),
+                    Some(&feature_attributes),
+                )?;
             }
 
             xml_writer.write_footer()?;
