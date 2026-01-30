@@ -196,12 +196,11 @@ impl Sink for CzmlWriter {
                 .map_err(crate::errors::SinkError::czml_writer)?;
 
             let has_embedded = features
-                .first()
-                .map(|f| {
+                .iter()
+                .any(|f| {
                     f.attributes
                         .contains_key(&Attribute::new("czml.timeseries"))
-                })
-                .unwrap_or(false);
+                });
             let is_grouped_timeseries =
                 self.params.group_timeseries_by.is_some() && self.params.time_field.is_some();
 
