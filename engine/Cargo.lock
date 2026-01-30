@@ -6801,6 +6801,7 @@ name = "reearth-flow-state"
 version = "0.0.269"
 dependencies = [
  "bytes",
+ "futures",
  "reearth-flow-common",
  "reearth-flow-storage",
  "serde",
