@@ -204,7 +204,7 @@ pub fn test_mvt_attributes(
 
         // Compare MVT attributes
         for (ident, attr1, attr2) in align_mvt_attr(&fme_dir, &flow_dir)? {
-            analyze_attributes(&ident, &attr1, &attr2, casts.clone())?;
+            analyze_attributes(&ident, &attr1, &attr2, casts.clone(), HashMap::new())?;
         }
     }
 
