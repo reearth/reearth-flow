@@ -13,6 +13,17 @@ path = "dictionary.json"
 comparator = "list_to_dict"
 key = ".name"
 
+[tests.json_attributes.tilesets]
+path = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld_12_4_3dtiles_no_texture/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets.casts]
+".geometricError" = "null"
+".root" = "null"
+
+[tests.json_attributes.tilesets.values]
+".properties.uro:rank_code" = {} # FME silently convert this to number type, causing min/max values to appear
+
 [filter.tree]
 "udx/rfld/12_4/534000_rfld_6697_op.gml" = [
     "rfld_71222538-3c3a-43ba-821c-f07e39e3a4be",

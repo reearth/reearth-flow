@@ -7,7 +7,6 @@ citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg.zip"
 ".uro:BuildingDetailAttribute_uro:surveyYear" = "string" # ignore
 ".信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間" = "float" # ignore
 
-# we do not follow FME output which uses string type for surveyYear
 [tests.json_attributes.tilesets_lod1]
 path = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
 extracted = true
@@ -17,6 +16,7 @@ extracted = true
 ".root" = "null"
 
 [tests.json_attributes.tilesets_lod1.values]
+# we do not follow FME output which uses string type for surveyYear
 ".properties.uro:BuildingDetailAttribute_uro:surveyYear" = { "minimum" = 2022, "maximum" = 2022 }
 
 [filter.tree]

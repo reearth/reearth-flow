@@ -10,6 +10,8 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{metadata::Metadata, Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::plateau4::errors::PlateauProcessorError;
@@ -17,16 +19,6 @@ use crate::plateau4::errors::PlateauProcessorError;
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
-        ("_lod".to_string(), AttributeValue::default_number()),
-        ("_lod_type".to_string(), AttributeValue::default_string()),
-        ("_x".to_string(), AttributeValue::default_float()),
-        ("_y".to_string(), AttributeValue::default_float()),
-        ("_xmin".to_string(), AttributeValue::default_float()),
-        ("_xmax".to_string(), AttributeValue::default_float()),
-        ("_ymin".to_string(), AttributeValue::default_float()),
-        ("_ymax".to_string(), AttributeValue::default_float()),
-        ("_zmin".to_string(), AttributeValue::default_float()),
-        ("_zmax".to_string(), AttributeValue::default_float()),
         ("meshcode".to_string(), AttributeValue::default_string()),
         ("feature_type".to_string(), AttributeValue::default_string()),
         ("city_code".to_string(), AttributeValue::default_string()),
@@ -39,6 +31,30 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
         ),
     ]
 });
+static BLDG_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
+    vec![
+        ("_lod".to_string(), AttributeValue::default_number()),
+        ("_lod_type".to_string(), AttributeValue::default_string()),
+        ("_x".to_string(), AttributeValue::default_float()),
+        ("_y".to_string(), AttributeValue::default_float()),
+        ("_xmin".to_string(), AttributeValue::default_float()),
+        ("_xmax".to_string(), AttributeValue::default_float()),
+        ("_ymin".to_string(), AttributeValue::default_float()),
+        ("_ymax".to_string(), AttributeValue::default_float()),
+        ("_zmin".to_string(), AttributeValue::default_float()),
+        ("_zmax".to_string(), AttributeValue::default_float()),
+    ]
+});
+
+/// # AttributeFlattener Parameters
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AttributeFlattenerParam {
+    /// When true, only include attributes that were actually used during processing in the schema output.
+    /// When false (default), include all defined attributes in the schema regardless of usage.
+    #[serde(default)]
+    existing_flatten_attributes: bool,
+}
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AttributeFlattenerFactory;
@@ -53,7 +69,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(AttributeFlattenerParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -73,9 +89,26 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        _with: Option<HashMap<String, Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let process = AttributeFlattener::default();
+        let params: AttributeFlattenerParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                PlateauProcessorError::AttributeFlattenerFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                PlateauProcessorError::AttributeFlattenerFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            AttributeFlattenerParam::default()
+        };
+        let process = AttributeFlattener {
+            filter_existing_flatten_attributes: params.existing_flatten_attributes,
+            ..Default::default()
+        };
         Ok(Box::new(process))
     }
 }
@@ -84,6 +117,7 @@ type AttributeMap = HashMap<String, AttributeValue>;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeFlattener {
+    filter_existing_flatten_attributes: bool,
     existing_flatten_attributes: HashSet<String>,
     encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
@@ -460,14 +494,20 @@ impl AttributeFlattener {
         for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
             feature.attributes.insert(Attribute::new(key), value);
         }
+        if feature_type_key.starts_with("bldg/") {
+            for (key, value) in BLDG_SCHEMA_KEYS.clone().into_iter() {
+                feature.attributes.insert(Attribute::new(key), value);
+            }
+        }
 
         // Add attributes specific to this feature type that were actually used
         if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key)
         {
             for attribute in flatten_attributes {
-                if !self
-                    .existing_flatten_attributes
-                    .contains(&attribute.attribute)
+                if self.filter_existing_flatten_attributes
+                    && !self
+                        .existing_flatten_attributes
+                        .contains(&attribute.attribute)
                 {
                     continue;
                 }
