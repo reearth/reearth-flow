@@ -132,16 +132,16 @@ export const useQueries = () => {
       projectId,
       workspaceId,
       file,
-      previousJobId,
-      startNodeId,
+      // previousJobId,
+      // startNodeId,
     }: RunProjectInput) => {
       const data = await graphQLContext?.RunProject({
         input: {
           projectId,
           workspaceId,
           file: file.get("file"),
-          previousJobId,
-          startNodeId,
+          previousJobId: "91f64245-4917-4e87-8acb-ce94f02d405e",
+          startNodeId: "2ebe845a-d248-42a4-8e30-72142277e41d",
         },
       });
       if (!data?.runProject?.job) return { workspaceId };
