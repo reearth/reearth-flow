@@ -314,8 +314,10 @@ fn collect_property_stats(
                     _ => None,
                 },
                 TypeRef::Double | TypeRef::Measure => match value {
-                    AttributeValue::Number(n) => n.as_f64().and_then(serde_json::Number::from_f64),
-                    AttributeValue::String(s) => s.parse::<f64>().ok().and_then(serde_json::Number::from_f64),
+                    AttributeValue::Number(n) => Some(n.clone()),
+                    AttributeValue::String(s) => {
+                        serde_json::from_str::<serde_json::Number>(s).ok()
+                    }
                     _ => None,
                 },
                 _ => None,
