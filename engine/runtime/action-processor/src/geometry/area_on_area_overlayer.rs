@@ -8,7 +8,7 @@ use reearth_flow_geometry::{
         area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
         tolerance::glue_vertices_closer_than,
     },
-    types::{multi_polygon::MultiPolygon2D, rect::Rect2D},
+    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D, rect::Rect2D},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -181,7 +181,11 @@ impl Processor for AreaOnAreaOverlayer {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let overlaid = self.overlay();
         for feature in &overlaid.area {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -230,41 +234,37 @@ impl MiddlePolygon {
 }
 
 impl AreaOnAreaOverlayer {
-    fn overlay(&self) -> OverlaidFeatures {
+    fn overlay(&mut self) -> OverlaidFeatures {
         let mut overlaid = OverlaidFeatures::new();
-        for buffer in self.buffer.values() {
-            let buffered_features_2d = buffer
-                .iter()
-                .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
-                .collect::<Vec<_>>();
-            let mut polygons = buffered_features_2d
-                .iter()
-                .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
-                .filter_map(|g| {
-                    // Try to get MultiPolygon directly
-                    if let Some(multi_polygon) = g.as_multi_polygon() {
-                        return Some(multi_polygon);
-                    }
+        for buffer in std::mem::take(&mut self.buffer).into_values() {
+            let (attributes, mut polygons): (Vec<_>, Vec<_>) = buffer
+                .into_iter()
+                .filter_map(|f| {
+                    let Feature { attributes, geometry, .. } = f;
 
-                    // Try to get polygon directly
-                    if let Some(polygon) = g.as_polygon() {
-                        return Some(MultiPolygon2D::new(vec![polygon]));
+                    let geometry = geometry.value.as_flow_geometry_2d()?;
+                    
+                    match geometry {
+                        Geometry2D::MultiPolygon(multi_polygon) => Some((attributes, multi_polygon)),
+                        Geometry2D::Polygon(polygon) => {
+                            Some((attributes, MultiPolygon2D::new(vec![polygon])))
+                        },
+                        Geometry2D::LineString(linestring) => {
+                            // If it's a closed LineString, convert to Polygon
+                            let coords = linestring.coords().collect::<Vec<_>>();
+                            if coords.len() >= 4 && coords.first() == coords.last() {
+                                // Create polygon from closed linestring
+                                use reearth_flow_geometry::types::polygon::Polygon2D;
+                                let polygon = Polygon2D::new(linestring.clone(), vec![]);
+                                Some((attributes, MultiPolygon2D::new(vec![polygon])))
+                            } else {
+                                None
+                            }
+                        },
+                        _ => None,
                     }
-
-                    // If it's a closed LineString, convert to Polygon
-                    if let Some(linestring) = g.as_line_string() {
-                        let coords = linestring.coords().collect::<Vec<_>>();
-                        if coords.len() >= 4 && coords.first() == coords.last() {
-                            // Create polygon from closed linestring
-                            use reearth_flow_geometry::types::polygon::Polygon2D;
-                            let polygon = Polygon2D::new(linestring.clone(), vec![]);
-                            return Some(MultiPolygon2D::new(vec![polygon]));
-                        }
-                    }
-
-                    None
                 })
-                .collect::<Vec<_>>();
+                .unzip();
 
             // glue vertices that are closer than the tolerance
             let mut vertices = Vec::new();
@@ -277,10 +277,7 @@ impl AreaOnAreaOverlayer {
 
             let overlaid_features = OverlaidFeatures::from_midpolygons(
                 midpolygons,
-                buffered_features_2d
-                    .iter()
-                    .map(|f| (*f.attributes).clone())
-                    .collect(),
+                attributes,
                 &self.group_by,
                 &self.output_attribute,
                 &self.generate_list,
@@ -441,7 +438,7 @@ impl OverlaidFeatures {
 
     fn from_midpolygons(
         midpolygons: Vec<MiddlePolygon>,
-        base_attributes: Vec<IndexMap<Attribute, AttributeValue>>,
+        base_attributes: Vec<Arc<IndexMap<Attribute, AttributeValue>>>,
         _group_by: &Option<Vec<Attribute>>,
         output_attribute: &Option<String>,
         generate_list: &Option<String>,
@@ -457,7 +454,7 @@ impl OverlaidFeatures {
                         AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
                             let first_feature = &base_attributes[parents[0]];
-                            first_feature.clone()
+                            (*first_feature).clone()
                         }
                     };
                     let mut feature = Feature::new_with_attributes(attrs);
@@ -477,7 +474,7 @@ impl OverlaidFeatures {
                             .iter()
                             .map(|&parent_index| {
                                 let mut map = HashMap::new();
-                                for (attr, value) in &base_attributes[parent_index] {
+                                for (attr, value) in &*base_attributes[parent_index] {
                                     map.insert(attr.as_ref().to_string(), value.clone());
                                 }
                                 AttributeValue::Map(map)
@@ -498,7 +495,7 @@ impl OverlaidFeatures {
                     let attrs = match accumulation_mode {
                         AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
-                            base_attributes[parent].clone()
+                            (*base_attributes[parent]).clone()
                         }
                     };
                     let mut feature = Feature::new_with_attributes(attrs);
@@ -514,7 +511,7 @@ impl OverlaidFeatures {
                     // Add generate list attribute if specified (single item for remnants)
                     if let Some(list_name) = generate_list {
                         let mut map = HashMap::new();
-                        for (attr, value) in &base_attributes[parent] {
+                        for (attr, value) in &*base_attributes[parent] {
                             map.insert(attr.as_ref().to_string(), value.clone());
                         }
                         let list_items = vec![AttributeValue::Map(map)];

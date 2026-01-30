@@ -190,7 +190,11 @@ impl Processor for FeatureCityGmlReader {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let timeout = std::time::Duration::from_secs(60 * 60);
         let mut errors = Vec::new();
 

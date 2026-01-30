@@ -245,7 +245,11 @@ impl Processor for RayIntersector {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
 
         // Process each pair group

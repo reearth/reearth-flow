@@ -540,7 +540,11 @@ impl Processor for FaceExtractor {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Cast self to mutable to flush buffer
         // This is safe because finish is called once at the end
         let mut mutable_self = self.clone();

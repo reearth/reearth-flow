@@ -164,7 +164,11 @@ impl Processor for LineOnLineOverlayer {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let overlaid = self.overlay()?;
         for feature in &overlaid.line {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(

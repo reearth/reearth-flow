@@ -176,7 +176,11 @@ impl Processor for Dissolver {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         for dissolved in self.dissolve() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -193,11 +197,11 @@ impl Processor for Dissolver {
 }
 
 impl Dissolver {
-    fn dissolve(&self) -> Vec<Feature> {
+    fn dissolve(&mut self) -> Vec<Feature> {
         let mut dissolved = Vec::new();
-        for buffer in self.buffer.values() {
+        for buffer in std::mem::take(&mut self.buffer).into_values() {
             let buffered_features_2d = buffer
-                .iter()
+                .into_iter()
                 .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
                 .collect::<Vec<_>>();
 
@@ -208,7 +212,7 @@ impl Dissolver {
         dissolved
     }
 
-    fn dissolve_2d(&self, buffered_features_2d: Vec<&Feature>) -> Option<Feature> {
+    fn dissolve_2d(&mut self, buffered_features_2d: Vec<Feature>) -> Option<Feature> {
         // Start with an empty multi-polygon
         let mut multi_polygon_2d = MultiPolygon2D::new(vec![]);
 

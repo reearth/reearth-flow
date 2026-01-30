@@ -124,7 +124,11 @@ impl Processor for FeatureSorter {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let mut sorted = self.buffer.keys().collect_vec();
         if self.params.order == Order::Desc {
             sorted.sort_by(|a, b| b.cmp(a));

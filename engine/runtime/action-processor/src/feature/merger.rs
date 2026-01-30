@@ -264,7 +264,11 @@ impl Processor for FeatureMerger {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         for (request_value, (_, request_features)) in self.requestor_buffer.iter() {
             let Some((_, supplier_features)) = self.supplier_buffer.get(request_value) else {
                 for request_feature in request_features.iter() {

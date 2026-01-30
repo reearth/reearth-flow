@@ -750,7 +750,11 @@ impl Processor for AttributeFlattener {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Warn about any remaining buffered children (orphans without parents)
         if !self.children_buffer.is_empty() {
             tracing::error!(

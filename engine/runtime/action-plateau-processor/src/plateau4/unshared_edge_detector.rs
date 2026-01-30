@@ -153,7 +153,11 @@ impl Processor for UnsharedEdgeDetector {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Extract all edges from all polygons
         let all_edges = extract_all_edges(&self.features);
 
