@@ -48,10 +48,16 @@
     ],
     "fileErrorSummary": [
       {
-        "expectedFile": "05_土地利用_検査結果一覧.csv"
+        "expectedFile": "05_都市計画決定情報_検査結果一覧.csv",
+        "excludeColumns": [
+          "Index"
+        ]
       },
       {
-        "expectedFile": "01_共通.csv"
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": [
+          "Index"
+        ]
       }
     ]
   },
