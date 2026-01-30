@@ -19,6 +19,30 @@ threshold = 0.01
 zoom = [12, 16]
 threshold = 0.001
 
+[tests.json_attributes.tilesets_lod1]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod1/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod1.casts]
+".geometricError" = "null"
+".root" = "null"
+
+[tests.json_attributes.tilesets_lod2]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod2/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod2.casts]
+".geometricError" = "null"
+".root" = "null"
+
+[tests.json_attributes.tilesets_lod3]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod3/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod3.casts]
+".geometricError" = "null"
+".root" = "null"
+
 [filter.tree]
 # Warn: some other features in this dataset contains NaN and are excluded.
 # I added NaN check to force return errors in nusamai-citygml,

@@ -103,6 +103,8 @@ graphs:
         name: AttributeFlattener
         type: action
         action: PLATEAU4.AttributeFlattener
+        with:
+          existingFlattenAttributes: true
 
       - id: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         name: AttributeManagerRemoveUnnecessaryAttributes
