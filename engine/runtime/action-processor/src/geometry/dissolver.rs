@@ -216,27 +216,6 @@ impl Dissolver {
         // Start with an empty multi-polygon
         let mut multi_polygon_2d = MultiPolygon2D::new(vec![]);
 
-        // Process all features uniformly
-        for feature in buffered_features_2d.iter() {
-            let geometry = feature.geometry.value.as_flow_geometry_2d()?;
-            let mut multi_polygon = if let Some(mp) = geometry.as_multi_polygon() {
-                mp
-            } else if let Some(polygon) = geometry.as_polygon() {
-                MultiPolygon2D::new(vec![polygon.clone()])
-            } else {
-                continue;
-            };
-            let mut vertices = multi_polygon_2d.get_vertices_mut();
-            vertices.extend(multi_polygon.get_vertices_mut());
-            glue_vertices_closer_than(self.tolerance, vertices);
-            multi_polygon_2d = multi_polygon_2d.union(&multi_polygon);
-        }
-
-        // Only create feature if we accumulated some geometry
-        if multi_polygon_2d.is_empty() {
-            return None;
-        }
-
         // Apply attribute accumulation strategy
         let attrs: IndexMap<_, _> = match self.attribute_accumulation {
             AttributeAccumulationStrategy::DropAttributes => {
@@ -295,6 +274,27 @@ impl Dissolver {
                 }
             }
         };
+
+        // Process all features uniformly
+        for feature in buffered_features_2d {
+            let geometry = feature.geometry.value.as_flow_geometry_2d()?;
+            let mut multi_polygon = if let Some(mp) = geometry.as_multi_polygon() {
+                mp.clone()
+            } else if let Some(polygon) = geometry.as_polygon() {
+                MultiPolygon2D::new(vec![polygon.clone()])
+            } else {
+                continue;
+            };
+            let mut vertices = multi_polygon_2d.get_vertices_mut();
+            vertices.extend(multi_polygon.get_vertices_mut());
+            glue_vertices_closer_than(self.tolerance, vertices);
+            multi_polygon_2d = multi_polygon_2d.union(&multi_polygon);
+        }
+
+        // Only create feature if we accumulated some geometry
+        if multi_polygon_2d.is_empty() {
+            return None;
+        }
 
         let mut feature = Feature::new_with_attributes(attrs);
         feature.geometry_mut().value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());

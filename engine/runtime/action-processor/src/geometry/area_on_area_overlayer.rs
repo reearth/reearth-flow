@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, sync::Arc};
 
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
@@ -245,9 +245,9 @@ impl AreaOnAreaOverlayer {
                     let geometry = geometry.value.as_flow_geometry_2d()?;
                     
                     match geometry {
-                        Geometry2D::MultiPolygon(multi_polygon) => Some((attributes, multi_polygon)),
+                        Geometry2D::MultiPolygon(multi_polygon) => Some((attributes, multi_polygon.clone())),
                         Geometry2D::Polygon(polygon) => {
-                            Some((attributes, MultiPolygon2D::new(vec![polygon])))
+                            Some((attributes, MultiPolygon2D::new(vec![polygon.clone()])))
                         },
                         Geometry2D::LineString(linestring) => {
                             // If it's a closed LineString, convert to Polygon
@@ -256,7 +256,7 @@ impl AreaOnAreaOverlayer {
                                 // Create polygon from closed linestring
                                 use reearth_flow_geometry::types::polygon::Polygon2D;
                                 let polygon = Polygon2D::new(linestring.clone(), vec![]);
-                                Some((attributes, MultiPolygon2D::new(vec![polygon])))
+                                Some((attributes, MultiPolygon2D::new(vec![polygon.clone()])))
                             } else {
                                 None
                             }
@@ -454,7 +454,7 @@ impl OverlaidFeatures {
                         AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
                             let first_feature = &base_attributes[parents[0]];
-                            (*first_feature).clone()
+                            (&**first_feature).clone()
                         }
                     };
                     let mut feature = Feature::new_with_attributes(attrs);
