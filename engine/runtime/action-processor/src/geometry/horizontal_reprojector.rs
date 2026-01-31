@@ -466,7 +466,6 @@ impl Processor for HorizontalReprojector {
                 let transformed =
                     with_proj(&from_crs, &to_crs, |proj| transform_geometry_2d(geom, proj))?;
                 let mut feature = feature.clone();
-
                 feature.geometry_mut().value = GeometryValue::FlowGeometry2D(transformed);
                 feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
