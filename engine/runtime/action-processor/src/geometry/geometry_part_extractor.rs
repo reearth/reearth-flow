@@ -1,4 +1,4 @@
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, sync::Arc, vec};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
@@ -260,7 +260,7 @@ fn send_remaining_feature_with_empty_geometry(
 ) {
     let mut remaining_feature = original_feature.clone();
     // Create empty geometry but keep the same type structure
-    remaining_feature.geometry = Geometry::new();
+    remaining_feature.geometry = Arc::new(Geometry::default());
 
     fw.send(ctx.new_with_feature_and_port(remaining_feature, REMAINING_PORT.clone()));
 }
@@ -282,9 +282,9 @@ fn create_surface_feature_from_face_2d(
     let mut surface_feature = original_feature.clone();
     surface_feature.refresh_id();
 
-    let mut surface_geometry = original_feature.geometry.clone();
+    let mut surface_geometry = (*original_feature.geometry).clone();
     surface_geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
-    surface_feature.geometry = surface_geometry;
+    surface_feature.geometry = Arc::new(surface_geometry);
 
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
@@ -306,9 +306,9 @@ fn create_surface_feature_from_face_3d(
     let mut surface_feature = original_feature.clone();
     surface_feature.refresh_id();
 
-    let mut surface_geometry = original_feature.geometry.clone();
+    let mut surface_geometry = (*original_feature.geometry).clone();
     surface_geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-    surface_feature.geometry = surface_geometry;
+    surface_feature.geometry = Arc::new(surface_geometry);
 
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
@@ -364,9 +364,9 @@ fn create_surface_feature_from_citygml_polygon(
         polygon_uvs: Default::default(),
     };
 
-    let mut surface_geometry = original_feature.geometry.clone();
+    let mut surface_geometry = (*original_feature.geometry).clone();
     surface_geometry.value = GeometryValue::CityGmlGeometry(new_citygml);
-    surface_feature.geometry = surface_geometry;
+    surface_feature.geometry = Arc::new(surface_geometry);
 
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }

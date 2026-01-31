@@ -177,21 +177,21 @@ impl Processor for DestinationMeshCodeExtractor {
                 };
 
                 let mut new_feature = feature.clone();
-                new_feature.attributes.insert(
+                new_feature.attributes_mut().insert(
                     Attribute::new(&self.meshcode_attr),
                     AttributeValue::String(mesh_result.selected_mesh.to_number().to_string()),
                 );
-                new_feature.attributes.insert(
+                new_feature.attributes_mut().insert(
                     Attribute::new("_mesh_count"),
                     AttributeValue::Number(Number::from(mesh_result.mesh_count)),
                 );
-                new_feature.attributes.insert(
+                new_feature.attributes_mut().insert(
                     Attribute::new("__area"),
                     AttributeValue::Number(
                         Number::from_f64(mesh_result.max_area).unwrap_or(Number::from(0)),
                     ),
                 );
-                new_feature.attributes.insert(
+                new_feature.attributes_mut().insert(
                     Attribute::new("_meshcode_to_area"),
                     AttributeValue::String(
                         serde_json::to_string(&mesh_result.meshcode_to_area)

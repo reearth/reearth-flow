@@ -421,7 +421,7 @@ fn send_feature_as_non_planar_surface(
 #[cfg(test)]
 mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::Feature;
+    use reearth_flow_types::{feature::Attributes, Feature};
 
     use super::*;
     use crate::tests::utils::create_default_execute_context;
@@ -444,7 +444,7 @@ mod tests {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
 
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();
@@ -464,7 +464,7 @@ mod tests {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
 
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();

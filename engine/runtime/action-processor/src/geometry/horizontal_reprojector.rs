@@ -422,15 +422,15 @@ impl Processor for HorizontalReprojector {
             GeometryValue::FlowGeometry2D(geom) => {
                 let mut feature = feature.clone();
                 let transformed = transform_geometry_2d(geom, &proj_transform)?;
-                feature.geometry.value = GeometryValue::FlowGeometry2D(transformed);
-                feature.geometry.epsg = Some(target_epsg);
+                feature.geometry_mut().value = GeometryValue::FlowGeometry2D(transformed);
+                feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geom) => {
                 let mut feature = feature.clone();
                 let transformed = transform_geometry_3d(geom, &proj_transform)?;
-                feature.geometry.value = GeometryValue::FlowGeometry3D(transformed);
-                feature.geometry.epsg = Some(target_epsg);
+                feature.geometry_mut().value = GeometryValue::FlowGeometry3D(transformed);
+                feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(ref geos) => {
@@ -443,8 +443,8 @@ impl Processor for HorizontalReprojector {
                         })
                     })
                     .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })?;
-                feature.geometry.value = GeometryValue::CityGmlGeometry(transformed_geos);
-                feature.geometry.epsg = Some(target_epsg);
+                feature.geometry_mut().value = GeometryValue::CityGmlGeometry(transformed_geos);
+                feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::None => {

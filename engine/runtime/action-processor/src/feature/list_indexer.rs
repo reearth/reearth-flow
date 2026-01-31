@@ -143,7 +143,9 @@ impl Processor for ListIndexer {
                 }
 
                 // Add the attribute to the feature
-                feature.attributes.insert(Attribute::new(new_key), value);
+                feature
+                    .attributes_mut()
+                    .insert(Attribute::new(new_key), value);
             }
         }
 

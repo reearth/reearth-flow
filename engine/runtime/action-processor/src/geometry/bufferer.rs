@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_geometry::algorithm::bufferable::Bufferable;
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -153,7 +154,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         coord.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 Geometry2D::LineString(line_string) => {
@@ -162,7 +163,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         line_string.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 Geometry2D::Polygon(polygon) => {
@@ -171,7 +172,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         polygon.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 _ => {
@@ -204,7 +205,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         coord_2d.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 Geometry3D::LineString(line_string) => {
@@ -214,7 +215,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         line_string.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 Geometry3D::Polygon(polygon) => {
@@ -224,7 +225,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         polygon.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 _ => {
@@ -232,7 +233,7 @@ impl Bufferer {
                     let mut geometry = geometry.clone();
                     geometry.value = GeometryValue::FlowGeometry2D(value);
                     let mut feature = feature.clone();
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             },

@@ -108,8 +108,8 @@ impl Processor for ElevationExtractor {
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
-                    self.output_attribute.clone(),
+                feature.insert(
+                    &self.output_attribute,
                     AttributeValue::Number(
                         serde_json::Number::from_f64(geometry.elevation()).ok_or(
                             GeometryProcessorError::ElevationExtractor(
@@ -122,8 +122,8 @@ impl Processor for ElevationExtractor {
             }
             GeometryValue::FlowGeometry3D(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
-                    self.output_attribute.clone(),
+                feature.insert(
+                    &self.output_attribute,
                     AttributeValue::Number(
                         serde_json::Number::from_f64(geometry.elevation()).ok_or(
                             GeometryProcessorError::ElevationExtractor(
@@ -136,8 +136,8 @@ impl Processor for ElevationExtractor {
             }
             GeometryValue::CityGmlGeometry(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
-                    self.output_attribute.clone(),
+                feature.insert(
+                    &self.output_attribute,
                     AttributeValue::Number(
                         serde_json::Number::from_f64(geometry.elevation()).ok_or(
                             GeometryProcessorError::ElevationExtractor(

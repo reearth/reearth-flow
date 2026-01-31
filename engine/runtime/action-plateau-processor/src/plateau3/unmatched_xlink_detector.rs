@@ -255,13 +255,13 @@ impl Processor for UnmatchedXlinkDetector {
                 let mut feature = feature.clone();
                 feature.refresh_id();
                 let attributes: HashMap<Attribute, AttributeValue> = response.clone().into();
-                feature.attributes.extend(attributes);
+                feature.attributes_mut().extend(attributes);
                 fw.send(ctx.new_with_feature_and_port(feature, port.clone()));
             }
         }
         let mut feature = feature.clone();
         let attributes: HashMap<Attribute, AttributeValue> = summary.clone().into();
-        feature.attributes.extend(attributes);
+        feature.attributes_mut().extend(attributes);
         fw.send(ctx.new_with_feature_and_port(feature.clone(), SUMMARY_PORT.clone()));
         Ok(())
     }

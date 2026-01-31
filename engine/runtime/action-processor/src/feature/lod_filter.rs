@@ -227,19 +227,15 @@ impl FeatureLodFilter {
             None
         };
 
-        // Filter geometry to only include the calculated LOD level
         if let Some(target_lod) = actual_lod {
             if let Some(citygml_geometry) = filtered_feature.geometry.value.as_citygml_geometry() {
-                // Extract only the geometry data for the target LOD with properly remapped indices
                 let filtered_citygml_geometry =
                     citygml_geometry.filter_by_lod(|gml_geom| gml_geom.lod == Some(target_lod));
 
-                // Replace the geometry with the filtered version
-                filtered_feature.geometry.value =
+                filtered_feature.geometry_mut().value =
                     reearth_flow_types::GeometryValue::CityGmlGeometry(filtered_citygml_geometry);
             }
 
-            // Update feature-level LOD metadata to only include the target LOD
             if filtered_feature.metadata.lod.is_some() {
                 let mut new_lod_mask = LodMask::default();
                 new_lod_mask.add_lod(target_lod);

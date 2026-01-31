@@ -70,7 +70,7 @@ pub(crate) async fn read_csv(
 
         // Create feature with geometry
         let mut feature = Feature::from(attributes);
-        feature.geometry = geometry;
+        feature.geometry = std::sync::Arc::new(geometry);
 
         sender
             .send((

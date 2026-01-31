@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Processor, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::AttributeValue;
 use serde_json::Value;
 
 use super::client::{ClientConfig, HttpClient, HttpResponse, ReqwestHttpClient};
@@ -261,11 +261,11 @@ impl HttpCallerProcessor {
         };
 
         let result =
-            super::response::process_response(response, &config, &mut new_feature.attributes);
+            super::response::process_response(response, &config, new_feature.attributes_mut());
 
         match result {
             Ok(()) => {
-                metrics.add_to_attributes(&mut new_feature.attributes, &self.params.observability);
+                metrics.add_to_attributes(new_feature.attributes_mut(), &self.params.observability);
 
                 fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
             }
@@ -294,10 +294,7 @@ impl HttpCallerProcessor {
             .as_ref()
             .map(|r| r.error_attribute.as_str())
             .unwrap_or("_http_error");
-        rejected_feature.attributes.insert(
-            Attribute::new(error_attr.to_string()),
-            AttributeValue::String(error_msg.to_string()),
-        );
+        rejected_feature.insert(error_attr, AttributeValue::String(error_msg.to_string()));
 
         fw.send(ctx.new_with_feature_and_port(rejected_feature, REJECTED_PORT.clone()));
     }

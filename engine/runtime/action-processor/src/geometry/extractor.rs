@@ -99,9 +99,7 @@ impl Processor for GeometryExtractor {
         })?;
         let dump = serde_json::to_string(&value)?;
         let dump = compress(&dump)?;
-        feature
-            .attributes
-            .insert(self.output_attribute.clone(), AttributeValue::String(dump));
+        feature.insert(&self.output_attribute, AttributeValue::String(dump));
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

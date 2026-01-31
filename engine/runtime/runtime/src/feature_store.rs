@@ -100,7 +100,10 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
         if *FEATURE_WRITER_DISABLE {
             return Ok(());
         }
-        let item: serde_json::Value = feature.clone().into();
+        // Serialize directly from reference - no clone needed
+        let item = serde_json::to_value(feature).map_err(|e| {
+            FeatureWriterError::Serialize(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+        })?;
         self.thread_counter
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let item = self
@@ -111,6 +114,7 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
         buffer.push_back(item);
         if buffer.len() > self.flush_threshold {
             let elements = buffer.drain(..).collect::<Vec<_>>();
+            buffer.shrink_to_fit(); // Release memory after drain
             self.state
                 .append_strings(&elements, self.edge_id.to_string().as_str())
                 .await

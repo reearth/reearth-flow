@@ -168,7 +168,17 @@ fn write_csv(
         .map(super::writer_geometry::get_geometry_column_names)
         .unwrap_or_default();
 
-    let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
+    let rows: Vec<AttributeValue> = features
+        .iter()
+        .map(|f| {
+            AttributeValue::Map(
+                f.attributes
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect(),
+            )
+        })
+        .collect();
     let mut attribute_fields = get_fields(rows.first().unwrap());
 
     // Prepare attribute fields (without geometry columns)

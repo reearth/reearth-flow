@@ -656,7 +656,7 @@ impl Processor for XmlAttributeExtractor {
                     serde_json::Value::String(tag.clone()),
                 );
                 xml_id_to_feature_and_attribute.insert(xml_id.to_string(), (row_id, attr.clone()));
-                let mut result_feature = feature.clone();
+                let mut result_feature = (**feature).clone();
                 result_feature.insert(
                     Attribute::new("featureType"),
                     AttributeValue::String(tag.clone()),

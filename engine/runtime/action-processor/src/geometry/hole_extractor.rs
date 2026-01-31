@@ -1,4 +1,4 @@
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, sync::Arc, vec};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
@@ -135,18 +135,18 @@ fn handle_polygon2d(
     let exterior_polygon = Polygon2D::new(exterior.clone(), vec![]);
     let mut exterior_feature = feature.clone();
     exterior_feature.refresh_id();
-    let mut exterior_geometry = feature.geometry.clone();
+    let mut exterior_geometry = (*feature.geometry).clone();
     exterior_geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(exterior_polygon));
-    exterior_feature.geometry = exterior_geometry;
+    exterior_feature.geometry = Arc::new(exterior_geometry);
     fw.send(ctx.new_with_feature_and_port(exterior_feature, OUTERSHELL_PORT.clone()));
     for interior in polygon.interiors().iter() {
         let interior_polygon = Polygon2D::new(interior.clone(), vec![]);
         let mut interior_feature = feature.clone();
         interior_feature.refresh_id();
-        let mut interior_geometry = feature.geometry.clone();
+        let mut interior_geometry = (*feature.geometry).clone();
         interior_geometry.value =
             GeometryValue::FlowGeometry2D(Geometry2D::Polygon(interior_polygon));
-        interior_feature.geometry = interior_geometry;
+        interior_feature.geometry = Arc::new(interior_geometry);
         fw.send(ctx.new_with_feature_and_port(interior_feature, HOLE_PORT.clone()));
     }
 }
@@ -161,18 +161,18 @@ fn handle_polygon3d(
     let exterior_polygon = Polygon3D::new(exterior.clone(), vec![]);
     let mut exterior_feature = feature.clone();
     exterior_feature.refresh_id();
-    let mut exterior_geometry = feature.geometry.clone();
+    let mut exterior_geometry = (*feature.geometry).clone();
     exterior_geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(exterior_polygon));
-    exterior_feature.geometry = exterior_geometry;
+    exterior_feature.geometry = Arc::new(exterior_geometry);
     fw.send(ctx.new_with_feature_and_port(exterior_feature, OUTERSHELL_PORT.clone()));
     for interior in polygon.interiors().iter() {
         let interior_polygon = Polygon3D::new(interior.clone(), vec![]);
         let mut interior_feature = feature.clone();
         interior_feature.refresh_id();
-        let mut interior_geometry = feature.geometry.clone();
+        let mut interior_geometry = (*feature.geometry).clone();
         interior_geometry.value =
             GeometryValue::FlowGeometry3D(Geometry3D::Polygon(interior_polygon));
-        interior_feature.geometry = interior_geometry;
+        interior_feature.geometry = Arc::new(interior_geometry);
         fw.send(ctx.new_with_feature_and_port(interior_feature, HOLE_PORT.clone()));
     }
 }

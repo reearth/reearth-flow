@@ -20,7 +20,7 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
@@ -464,7 +464,7 @@ impl Processor for DomainOfDefinitionValidator {
         for filename in &self.filenames {
             let duplicate_count = duplicate_gml_id_count.get(filename).unwrap_or(&0);
 
-            let mut result_feature = Feature::new();
+            let mut result_feature = Feature::new_with_attributes(Attributes::new());
             result_feature.insert("filename", AttributeValue::String(filename.clone()));
             result_feature.insert(
                 "duplicateGmlIdCount",
@@ -485,7 +485,7 @@ impl Processor for DomainOfDefinitionValidator {
                 continue;
             }
             for attribute in attributes.iter() {
-                let mut result_feature = Feature::new();
+                let mut result_feature = Feature::new_with_attributes(Attributes::new());
                 result_feature.insert(
                     "flag",
                     AttributeValue::String("GMLID_NotUnique".to_string()),
@@ -1771,8 +1771,8 @@ mod tests {
             AttributeValue::String(file_path.to_string()),
         );
 
-        let mut feature = Feature::new();
-        feature.attributes = attributes;
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.attributes = Arc::new(attributes);
         feature
     }
 

@@ -19,7 +19,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
@@ -274,12 +274,12 @@ impl LineOnLineOverlayer {
                 overlay_count,
                 overlay_ids,
             } = ls;
-            let mut feature = Feature::new();
-            feature.attributes.insert(
+            let mut feature = Feature::new_with_attributes(Attributes::new());
+            feature.attributes_mut().insert(
                 Attribute::new("overlayCount"),
                 AttributeValue::Number(Number::from(*overlay_count)),
             );
-            feature.attributes.insert(
+            feature.attributes_mut().insert(
                 Attribute::new(&self.overlaid_lists_attr_name),
                 AttributeValue::Array(
                     overlay_ids
@@ -288,9 +288,8 @@ impl LineOnLineOverlayer {
                             AttributeValue::Map(
                                 features_2d[map_ls_to_features[id]]
                                     .attributes
-                                    .clone()
-                                    .into_iter()
-                                    .map(|(k, v)| (k.inner(), v))
+                                    .iter()
+                                    .map(|(k, v)| (k.inner(), v.clone()))
                                     .collect::<HashMap<_, _>>(),
                             )
                         })
@@ -303,7 +302,9 @@ impl LineOnLineOverlayer {
                 let attr = &features_2d[map_ls_to_features[overlay_ids[0]]].attributes;
                 for group_by in group_by {
                     if let Some(value) = attr.get(group_by) {
-                        feature.attributes.insert(group_by.clone(), value.clone());
+                        feature
+                            .attributes_mut()
+                            .insert(group_by.clone(), value.clone());
                     } else {
                         return Err(Box::new(
                             GeometryProcessorError::LineOnLineOverlayerFactory(
@@ -313,7 +314,7 @@ impl LineOnLineOverlayer {
                     }
                 }
             };
-            feature.geometry.value =
+            feature.geometry_mut().value =
                 GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone()));
             overlaid.line.push(feature);
         }
@@ -321,21 +322,20 @@ impl LineOnLineOverlayer {
         let last_feature = features_2d.last().unwrap();
 
         for result_coords in line_string_intersection_result.split_coords {
-            let mut feature = Feature::new();
-
-            if let Some(group_by) = &self.group_by {
-                feature.attributes = group_by
+            let attrs = if let Some(group_by) = &self.group_by {
+                group_by
                     .iter()
                     .filter_map(|attr| {
                         let value = last_feature.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
-                    .collect::<IndexMap<_, _>>();
+                    .collect::<IndexMap<_, _>>()
             } else {
-                feature.attributes = IndexMap::new();
-            }
+                IndexMap::new()
+            };
+            let mut feature = Feature::new_with_attributes(attrs);
 
-            feature.geometry.value =
+            feature.geometry_mut().value =
                 GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords)));
             overlaid.point.push(feature);
         }

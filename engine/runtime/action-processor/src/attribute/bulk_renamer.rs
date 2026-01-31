@@ -196,13 +196,12 @@ impl BulkAttributeRenamer {
         let mut attributes_to_remove = vec![];
 
         for attr in attributes {
-            if let Some(value) = feature.attributes.get(&attr) {
+            if let Some(value) = feature.get(&attr).cloned() {
                 let new_name = self.get_new_name(&attr.inner())?;
                 if new_name.is_empty() {
                     feature.remove(&attr);
                 } else {
-                    let new_attr = Attribute::new(new_name);
-                    feature.attributes.insert(new_attr, value.clone());
+                    feature.insert(&new_name, value);
                     attributes_to_remove.push(attr.clone());
                 }
             }

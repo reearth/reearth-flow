@@ -430,16 +430,16 @@ impl RayIntersector {
         fw: &ProcessorChannelForwarder,
     ) {
         let mut output_feature = ray_feature.clone();
-        output_feature.geometry = Geometry {
+        output_feature.geometry = Arc::new(Geometry {
             value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::new(
                 hit.point.x,
                 hit.point.y,
                 hit.point.z,
             ))),
             ..Default::default()
-        };
+        });
 
-        output_feature.attributes.insert(
+        output_feature.attributes_mut().insert(
             Attribute::new("ray_intersection_t"),
             AttributeValue::Number(
                 serde_json::Number::from_f64(hit.t).unwrap_or_else(|| serde_json::Number::from(0)),

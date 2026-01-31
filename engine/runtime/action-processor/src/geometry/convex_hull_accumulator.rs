@@ -184,20 +184,22 @@ impl ConvexHullAccumulator {
         let convex_hull = quick_hull_2d(&mut collection);
         let convex_hull = Polygon::new(LineString::new(convex_hull.0), Vec::new());
 
-        let mut feature = Feature::new();
-        if let (Some(group_by), Some(last_feature)) = (&self.group_by, buffered_features_2d.last())
+        let attrs = if let (Some(group_by), Some(last_feature)) =
+            (&self.group_by, buffered_features_2d.last())
         {
-            feature.attributes = group_by
+            group_by
                 .iter()
                 .filter_map(|attr| {
                     let value = last_feature.attributes.get(attr).cloned()?;
                     Some((attr.clone(), value))
                 })
-                .collect::<IndexMap<_, _>>();
+                .collect::<IndexMap<_, _>>()
         } else {
-            feature.attributes = IndexMap::new();
-        }
-        feature.geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
+            IndexMap::new()
+        };
+        let mut feature = Feature::new_with_attributes(attrs);
+        feature.geometry_mut().value =
+            GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
         feature
     }
 }

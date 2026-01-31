@@ -35,18 +35,15 @@ use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metada
 )]
 pub struct MetadataKey(String);
 
+/// Type alias for feature attributes to reduce verbosity
+pub type Attributes = IndexMap<Attribute, AttributeValue>;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
     pub id: uuid::Uuid,
-    pub attributes: IndexMap<Attribute, AttributeValue>,
+    pub attributes: Arc<Attributes>,
     pub metadata: Metadata,
-    pub geometry: Geometry,
-}
-
-impl Default for Feature {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub geometry: Arc<Geometry>,
 }
 
 impl Display for Feature {
@@ -66,14 +63,14 @@ impl Eq for Feature {}
 impl From<IndexMap<String, AttributeValue>> for Feature {
     fn from(v: IndexMap<String, AttributeValue>) -> Self {
         let attributes = v
-            .iter()
-            .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
-            .collect::<IndexMap<_, _>>();
+            .into_iter()
+            .map(|(k, v)| (Attribute::new(k), v))
+            .collect::<Attributes>();
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes,
-            metadata: Default::default(),
-            geometry: Default::default(),
+            attributes: Arc::new(attributes),
+            metadata: Metadata::default(),
+            geometry: Arc::new(Geometry::default()),
         }
     }
 }
@@ -84,13 +81,13 @@ impl Hash for Feature {
     }
 }
 
-impl From<IndexMap<Attribute, AttributeValue>> for Feature {
-    fn from(v: IndexMap<Attribute, AttributeValue>) -> Self {
+impl From<Attributes> for Feature {
+    fn from(v: Attributes) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes: v,
-            metadata: Default::default(),
-            geometry: Default::default(),
+            attributes: Arc::new(v),
+            metadata: Metadata::default(),
+            geometry: Arc::new(Geometry::default()),
         }
     }
 }
@@ -99,9 +96,9 @@ impl From<Geometry> for Feature {
     fn from(v: Geometry) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
-            geometry: v,
-            metadata: Default::default(),
-            attributes: IndexMap::new(),
+            geometry: Arc::new(v),
+            metadata: Metadata::default(),
+            attributes: Arc::new(Attributes::new()),
         }
     }
 }
@@ -119,27 +116,15 @@ impl From<AttributeValue> for Feature {
             _ => HashMap::new(),
         };
         let attributes = attributes
-            .iter()
-            .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
-            .collect::<IndexMap<_, _>>();
+            .into_iter()
+            .map(|(k, v)| (Attribute::new(k), v))
+            .collect::<Attributes>();
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes,
-            metadata: Default::default(),
-            geometry: Default::default(),
+            attributes: Arc::new(attributes),
+            metadata: Metadata::default(),
+            geometry: Arc::new(Geometry::default()),
         }
-    }
-}
-
-impl From<Feature> for AttributeValue {
-    fn from(v: Feature) -> Self {
-        let mut attributes = v
-            .attributes
-            .into_iter()
-            .map(|(k, v)| (k.into_inner(), v))
-            .collect::<HashMap<_, _>>();
-        attributes.insert("_id".to_string(), AttributeValue::String(v.id.to_string()));
-        AttributeValue::Map(attributes)
     }
 }
 
@@ -184,14 +169,14 @@ impl From<Feature> for HashMap<String, AttributeValue> {
 impl From<serde_json::Value> for Feature {
     fn from(v: serde_json::Value) -> Self {
         let serde_json::Value::Object(v) = v else {
-            return Self::new();
+            return Self::new_with_attributes(Attributes::new());
         };
         let Some(serde_json::Value::Object(attributes)) = v
             .get("attributes")
             .cloned()
             .or_else(|| Some(serde_json::Value::Object(serde_json::Map::new())))
         else {
-            return Self::new();
+            return Self::new_with_attributes(Attributes::new());
         };
         let attributes = attributes
             .iter()
@@ -201,7 +186,7 @@ impl From<serde_json::Value> for Feature {
                     AttributeValue::from(v.clone()),
                 )
             })
-            .collect::<IndexMap<_, _>>();
+            .collect::<Attributes>();
         let id = if let Some(serde_json::Value::String(id)) = v.get(&"id".to_string()) {
             uuid::Uuid::parse_str(id).unwrap_or_else(|_| uuid::Uuid::new_v4())
         } else {
@@ -218,8 +203,8 @@ impl From<serde_json::Value> for Feature {
             .map(|v| serde_json::from_value(v).unwrap_or_default());
         Self {
             id,
-            attributes,
-            geometry: geometry.unwrap_or_default(),
+            attributes: Arc::new(attributes),
+            geometry: Arc::new(geometry.unwrap_or_default()),
             metadata: metadata.unwrap_or_default(),
         }
     }
@@ -289,79 +274,39 @@ impl TryFrom<sqlx::any::AnyRow> for Feature {
                 };
                 Ok::<(Attribute, AttributeValue), Self::Error>(result)
             })
-            .collect::<Result<IndexMap<_, _>, _>>()?;
+            .collect::<Result<Attributes, _>>()?;
         Ok(Self::from(attributes))
     }
 }
 
-impl From<Feature> for serde_json::Value {
-    fn from(v: Feature) -> Self {
-        let mut map = serde_json::Map::new();
-        map.insert(
-            "id".to_string(),
-            serde_json::Value::String(v.id.to_string()),
-        );
-        map.insert(
-            "attributes".to_string(),
-            serde_json::Value::Object(
-                v.attributes
-                    .into_iter()
-                    .map(|(k, v)| (k.into_inner().to_string(), v.into()))
-                    .collect::<serde_json::Map<_, _>>(),
-            ),
-        );
-        map.insert(
-            "geometry".to_string(),
-            serde_json::to_value(v.geometry).unwrap_or_default(),
-        );
-        map.insert(
-            "metadata".to_string(),
-            serde_json::to_value(v.metadata).unwrap_or_default(),
-        );
-        serde_json::Value::Object(map)
-    }
-}
-
 impl Feature {
-    pub fn new() -> Self {
-        Self {
-            id: uuid::Uuid::new_v4(),
-            attributes: IndexMap::new(),
-            metadata: Metadata::new(),
-            geometry: Geometry::new(),
-        }
-    }
-
-    pub fn new_with_id_and_attributes(
-        id: uuid::Uuid,
-        attributes: IndexMap<Attribute, AttributeValue>,
-    ) -> Self {
+    pub fn new_with_id_and_attributes(id: uuid::Uuid, attributes: Attributes) -> Self {
         Self {
             id,
-            attributes,
-            metadata: Default::default(),
-            geometry: Default::default(),
+            attributes: Arc::new(attributes),
+            metadata: Metadata::default(),
+            geometry: Arc::new(Geometry::default()),
         }
     }
 
-    pub fn new_with_attributes(attributes: IndexMap<Attribute, AttributeValue>) -> Self {
+    pub fn new_with_attributes(attributes: Attributes) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes,
-            metadata: Default::default(),
-            geometry: Default::default(),
+            attributes: Arc::new(attributes),
+            metadata: Metadata::default(),
+            geometry: Arc::new(Geometry::default()),
         }
     }
 
     pub fn new_with_attributes_and_geometry(
-        attributes: IndexMap<Attribute, AttributeValue>,
+        attributes: Attributes,
         geometry: Geometry,
         metadata: Metadata,
     ) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes,
-            geometry,
+            attributes: Arc::new(attributes),
+            geometry: Arc::new(geometry),
             metadata,
         }
     }
@@ -370,19 +315,21 @@ impl Feature {
         self.id = uuid::Uuid::new_v4();
     }
 
-    pub fn with_attributes(&self, attributes: IndexMap<Attribute, AttributeValue>) -> Self {
+    /// Replace attributes, keeping other fields. Wraps in new Arc.
+    pub fn with_attributes(&self, attributes: Attributes) -> Self {
         Self {
             id: self.id,
-            attributes,
-            geometry: self.geometry.clone(),
+            attributes: Arc::new(attributes),
+            geometry: Arc::clone(&self.geometry),
             metadata: self.metadata.clone(),
         }
     }
 
-    pub fn into_with_attributes(self, attributes: IndexMap<Attribute, AttributeValue>) -> Self {
+    /// Replace attributes by consuming self. More efficient - reuses Arc for geometry.
+    pub fn into_with_attributes(self, attributes: Attributes) -> Self {
         Self {
             id: self.id,
-            attributes,
+            attributes: Arc::new(attributes),
             geometry: self.geometry,
             metadata: self.metadata,
         }
@@ -414,27 +361,39 @@ impl Feature {
         }
     }
 
+    /// Insert an attribute. Uses copy-on-write if shared.
     pub fn insert<T: AsRef<str> + std::fmt::Display>(
         &mut self,
         key: T,
         value: AttributeValue,
     ) -> Option<AttributeValue> {
-        self.attributes
-            .insert(Attribute::new(key.to_string()), value)
+        Arc::make_mut(&mut self.attributes).insert(Attribute::new(key.to_string()), value)
     }
 
+    /// Extend attributes. Uses copy-on-write if shared.
     pub fn extend(&mut self, attributes: HashMap<Attribute, AttributeValue>) {
-        self.attributes.extend(attributes);
+        Arc::make_mut(&mut self.attributes).extend(attributes);
     }
 
+    /// Extend attributes from string keys. Uses copy-on-write if shared.
     pub fn extend_attributes(&mut self, attributes: HashMap<String, AttributeValue>) {
-        self.attributes
+        Arc::make_mut(&mut self.attributes)
             .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
     }
 
+    /// Remove an attribute. Uses copy-on-write if shared.
     pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: T) -> Option<AttributeValue> {
-        self.attributes
-            .swap_remove(&Attribute::new(key.to_string()))
+        Arc::make_mut(&mut self.attributes).swap_remove(&Attribute::new(key.to_string()))
+    }
+
+    /// Get mutable access to attributes. Uses copy-on-write if shared.
+    pub fn attributes_mut(&mut self) -> &mut Attributes {
+        Arc::make_mut(&mut self.attributes)
+    }
+
+    /// Get mutable access to geometry. Uses copy-on-write if shared.
+    pub fn geometry_mut(&mut self) -> &mut Geometry {
+        Arc::make_mut(&mut self.geometry)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&Attribute, &AttributeValue)> {
@@ -449,9 +408,8 @@ impl Feature {
         let scope = engine.new_scope();
         let value: serde_json::Value = serde_json::Value::Object(
             self.attributes
-                .clone()
-                .into_iter()
-                .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                .iter()
+                .map(|(k, v)| (k.clone().into_inner(), v.clone().into()))
                 .collect::<serde_json::Map<_, _>>(),
         );
         scope.set("__value", value);
@@ -521,7 +479,7 @@ impl Feature {
 
     pub fn all_attribute_keys(&self) -> Vec<String> {
         let mut keys = Vec::new();
-        for (key, value) in &self.attributes {
+        for (key, value) in self.attributes.iter() {
             keys.push(key.clone().to_string());
             if let AttributeValue::Map(map) = value {
                 keys.extend(all_attribute_keys(map));

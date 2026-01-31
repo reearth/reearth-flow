@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -278,7 +279,7 @@ fn forward_polygon2d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(inside.clone()));
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -289,7 +290,7 @@ fn forward_polygon2d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(outside.clone()));
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -342,7 +343,7 @@ fn forward_polygon3d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(inside.clone()));
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -353,7 +354,7 @@ fn forward_polygon3d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(outside.clone()));
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -580,7 +581,7 @@ fn handle_citygml_geometry(
             polygon_uvs: citygml.polygon_uvs.clone(),
         };
         geometry.value = GeometryValue::CityGmlGeometry(inside_citygml);
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -601,7 +602,7 @@ fn handle_citygml_geometry(
             polygon_uvs: citygml.polygon_uvs.clone(),
         };
         geometry.value = GeometryValue::CityGmlGeometry(outside_citygml);
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -620,7 +621,13 @@ mod tests {
     use reearth_flow_runtime::executor_operation::NodeContext;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
 
+    use reearth_flow_types::feature::Attributes;
+
     use crate::tests::utils::create_default_execute_context;
+
+    fn make_feature(geometry: Geometry) -> Feature {
+        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry, Default::default())
+    }
 
     fn create_test_polygon_2d() -> Polygon2D<f64> {
         let exterior = LineString2D::new(vec![
@@ -676,7 +683,7 @@ mod tests {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
 
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
 
         let result = clipper.process(ctx, &fw);
@@ -697,21 +704,15 @@ mod tests {
         };
 
         let polygon = create_test_polygon_2d();
-        let clipper_feature = Feature {
-            geometry: Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone())),
-                ..Default::default()
-            },
+        let clipper_feature = make_feature(Geometry {
+            value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone())),
             ..Default::default()
-        };
+        });
 
-        let candidate_feature = Feature {
-            geometry: Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone())),
-                ..Default::default()
-            },
+        let candidate_feature = make_feature(Geometry {
+            value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone())),
             ..Default::default()
-        };
+        });
 
         // Process clipper feature
         let noop = NoopChannelForwarder::default();
@@ -740,7 +741,7 @@ mod tests {
     fn test_clipper_finish_with_no_clippers() {
         let clipper = Clipper {
             clippers: Vec::new(),
-            candidates: vec![Feature::default()],
+            candidates: vec![Feature::new_with_attributes(Attributes::new())],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -928,20 +929,14 @@ mod tests {
         let clip_polygon = create_clipper_polygon_2d();
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -965,20 +960,14 @@ mod tests {
         let clip_polygon = create_clipper_polygon_3d();
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1028,15 +1017,12 @@ mod tests {
         };
 
         // Create a point geometry (non-polygon)
-        let point_feature = Feature {
-            geometry: Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::new_(
-                    5.0, 5.0, NoValue,
-                ))),
-                ..Default::default()
-            },
+        let point_feature = make_feature(Geometry {
+            value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::new_(
+                5.0, 5.0, NoValue,
+            ))),
             ..Default::default()
-        };
+        });
 
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
@@ -1054,22 +1040,16 @@ mod tests {
         let clip_polygon = create_clipper_polygon_2d();
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::new_(
-                        5.0, 5.0, NoValue,
-                    ))),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::new_(
+                    5.0, 5.0, NoValue,
+                ))),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1119,20 +1099,14 @@ mod tests {
         };
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::CityGmlGeometry(citygml),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1183,20 +1157,14 @@ mod tests {
         };
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::CityGmlGeometry(citygml_clipper),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml_clipper),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1264,20 +1232,14 @@ mod tests {
         };
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::CityGmlGeometry(citygml),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1335,20 +1297,14 @@ mod tests {
         };
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::CityGmlGeometry(citygml),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1432,20 +1388,14 @@ mod tests {
         let clip_polygon = create_clipper_polygon_3d();
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::CityGmlGeometry(citygml),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -1475,20 +1425,14 @@ mod tests {
         let clip_polygon = create_clipper_polygon_2d();
 
         let clipper = Clipper {
-            clippers: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
-                    ..Default::default()
-                },
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
                 ..Default::default()
-            }],
-            candidates: vec![Feature {
-                geometry: Geometry {
-                    value: GeometryValue::FlowGeometry2D(collection),
-                    ..Default::default()
-                },
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry2D(collection),
                 ..Default::default()
-            }],
+            })],
         };
 
         let noop = NoopChannelForwarder::default();
