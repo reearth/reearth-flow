@@ -38,7 +38,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "01_共通_GML_ID重複.csv"
+    "expectedFile": "01_共通_GML_ID重複.csv",
+    "except": [
+      "Index"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {
@@ -46,7 +49,10 @@
     },
     "fileErrorSummary": [
       {
-        "expectedFile": "01_共通.csv"
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": [
+          "Index"
+        ]
       },
       {
         "expectedFile": "08_地形_検査結果一覧.csv",

@@ -473,8 +473,8 @@ impl AttributeFlattener {
                 }
                 let data_type = match attribute.data_type.as_str() {
                     "string" | "date" | "buffer" => AttributeValue::default_string(),
-                    "int" => AttributeValue::default_number(),
-                    "double" | "measure" => AttributeValue::default_float(),
+                    "int" | "int16" => AttributeValue::default_number(),
+                    "double" | "real64" | "measure" => AttributeValue::default_float(),
                     _ => continue,
                 };
                 feature
@@ -575,13 +575,17 @@ impl AttributeFlattener {
     /// always flattens gen:genericAttribute, so the actual implementation does not necessarily
     /// follow the definition strictly.
     ///
-    /// For now, the bldg package always flattens generic attributes.
+    /// For now, the bldg and gen packages always flattens generic attributes.
     /// Support for other packages needs to be added later.
     fn should_flatten_generic_attributes(&self, feature: &Feature) -> bool {
-        feature
+        let package = feature
             .get("package")
-            .map(|package| package.as_string().as_deref() == Some("bldg"))
-            .unwrap_or(false)
+            .and_then(|v| v.as_string())
+            .unwrap_or("".to_string());
+        if package == "bldg" || package == "gen" {
+            return true;
+        }
+        false
     }
 }
 

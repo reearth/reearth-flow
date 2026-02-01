@@ -163,6 +163,10 @@ pub(super) enum GeometryProcessorError {
     RayIntersectorFactory(String),
     #[error("RayIntersector error: {0}")]
     RayIntersector(String),
+    #[error("ImageRasterizer Factory error: {0}")]
+    ImageRasterizerFactory(String),
+    #[error("ImageRasterizer error: {0}")]
+    ImageRasterizer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

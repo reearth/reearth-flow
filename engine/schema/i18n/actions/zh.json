@@ -78,11 +78,11 @@
     },
     {
       "name": "CzmlReader",
-      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素"
+      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据"
     },
     {
       "name": "CzmlWriter",
-      "description": "将要素写入CZML文件"
+      "description": "将要素导出为CZML格式用于Cesium可视化，支持时间动态实体和时间序列位置数据"
     },
     {
       "name": "DimensionFilter",

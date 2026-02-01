@@ -13071,5 +13071,37 @@
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
+	],
+	"gen/gen:GenericCityObject": [
+		{
+			"attribute": "gml:name",
+			"data_type": "buffer",
+			"json_path": "gml:name"
+		},
+		{
+			"attribute": "gml:name_code",
+			"data_type": "buffer",
+			"json_path": "gml:name_code"
+		},
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "gen:class",
+			"data_type": "buffer",
+			"json_path": "gen:class"
+		},
+		{
+			"attribute": "gen:function",
+			"data_type": "buffer",
+			"json_path": "gen:function"
+		},
+		{
+			"attribute": "gen:usage",
+			"data_type": "buffer",
+			"json_path": "gen:usage"
+		}
 	]
 }

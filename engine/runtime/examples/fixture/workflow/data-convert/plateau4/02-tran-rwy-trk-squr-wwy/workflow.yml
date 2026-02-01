@@ -415,7 +415,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
