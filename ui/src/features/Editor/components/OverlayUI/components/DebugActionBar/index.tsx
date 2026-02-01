@@ -22,7 +22,7 @@ import {
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
+import { JobState, useCurrentProject } from "@flow/stores";
 import { AnyWorkflowVariable, AwarenessUser, Node } from "@flow/types";
 
 import {
@@ -165,17 +165,16 @@ const StartButton: React.FC<{
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
-  const debugJobId = useMemo(
+  const debugJob = useMemo(
     () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
 
   const { data: jobStatus } = useSubscription(
     "GetSubscribedJobStatus",
-    debugJobId,
-    !debugJobId,
+    debugJob?.jobId,
+    !debugJob,
   );
 
   return (
@@ -233,7 +232,7 @@ const StartButton: React.FC<{
               selectedNodeIds={selectedNodeIds}
               isSaving={isSaving}
               jobStatus={jobStatus}
-              debugJobId={debugJobId}
+              debugJob={debugJob}
               showPopover={showPopover}
               onShowDebugStartPopover={onShowDebugStartPopover}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
@@ -305,7 +304,7 @@ const DebugRunDropDownMenu: React.FC<{
   showPopover: string | undefined;
   isSaving: boolean;
   jobStatus: string | undefined;
-  debugJobId: string | undefined;
+  debugJob: JobState | undefined;
   onDebugRunStartFromSelectedNode?: (
     node?: Node,
     nodes?: Node[],
@@ -317,7 +316,7 @@ const DebugRunDropDownMenu: React.FC<{
   selectedNodeIds,
   isSaving,
   jobStatus,
-  debugJobId,
+  debugJob,
   onDebugRunStartFromSelectedNode,
   onShowDebugStartPopover,
 }) => {
@@ -376,9 +375,11 @@ const DebugRunDropDownMenu: React.FC<{
             !selectedNode ||
             selectedNode.type === "batch" ||
             selectedNode.type === "note" ||
+            selectedNode.type === "writer" ||
             selectedNode.type === "subworkflow" ||
             selectedNodeIds.length > 1 ||
-            !debugJobId
+            !debugJob?.jobId ||
+            debugJob.status !== "completed"
           }
           onClick={() => {
             setTimeout(() => {
