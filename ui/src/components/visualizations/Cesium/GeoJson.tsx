@@ -11,6 +11,12 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
   const { viewer } = useCesium();
   const dataSourceRef = useRef<GeoJsonDataSource | null>(null);
   const isInitialLoadRef = useRef(true);
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!viewer || !geoJsonData || !entityMapRef) return;
@@ -50,6 +56,7 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
       // Load new data source
       GeoJsonDataSource.load(geoJsonData)
         .then((newDataSource) => {
+          if (!isMounted.current) return;
           dataSourceRef.current = newDataSource;
           viewer.dataSources.add(newDataSource);
 
@@ -197,7 +204,7 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
       ) {
         viewer.dataSources.remove(dataSourceRef.current);
       }
-      entityMapRef?.current.clear();
+      entityMapRef?.current?.clear();
     };
   }, [viewer, entityMapRef]);
 

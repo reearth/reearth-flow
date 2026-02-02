@@ -166,7 +166,9 @@ export default () => {
           const matchingEntities: any[] = [];
 
           // First, try direct lookup from entity map (for GeoJSON features)
-          const directEntity = cesiumEntityMapRef.current.get(featureId);
+          const directEntity = cesiumEntityMapRef.current.get(
+            String(featureId),
+          );
           if (directEntity) {
             matchingEntities.push(directEntity);
           }
@@ -375,7 +377,7 @@ export default () => {
         }
       }
     },
-    [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
+    [streamingQuery.detectedGeometryType],
   );
 
   const formattedData = useDataColumnizer({
