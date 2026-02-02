@@ -197,8 +197,8 @@ nodes:
       groupBy:
         - surfaceId
         - holeId
-      # TODO: Temporary value, fix later
-      tolerance: 0.001
+      # Match FME RING_INTERSECTION_TOLERANCE value
+      tolerance: 0.01
       outputAttribute: overlap
 
   ## Intersection between Interior and Interior
@@ -220,6 +220,9 @@ nodes:
         - surfaceId
       accumulationMode: useAttributesFromOneFeature
       outputAttribute: overlap
+      # Filter out small intersections (min_area = tolerance^2)
+      # FME uses AUTO cleaning, we use a larger tolerance to match behavior
+      tolerance: 0.1
 
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
     name: FeatureFilterByAreaOnAreaOverlap
