@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io::{BufRead, BufReader, BufWriter, Read as _, Seek, SeekFrom, Write as _},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -96,7 +96,6 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
             tolerance: param.tolerance.unwrap_or(0.0),
             group_map: HashMap::new(),
             group_count: 0,
-            writers: HashMap::new(),
             temp_dir: None,
         };
 
@@ -131,27 +130,15 @@ struct AreaOnAreaOverlayerParam {
     tolerance: Option<f64>,
 }
 
-struct GroupWriters {
-    aabb_writer: BufWriter<File>,
-    feat_writer: BufWriter<File>,
-}
-
-impl std::fmt::Debug for GroupWriters {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GroupWriters").finish_non_exhaustive()
-    }
-}
-
 struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     output_attribute: Option<String>,
     generate_list: Option<String>,
     accumulation_mode: AccumulationMode,
     tolerance: f64,
-    // Disk-backed state: open file handles per group
+    // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
     group_count: usize,
-    writers: HashMap<usize, GroupWriters>,
     temp_dir: Option<PathBuf>,
 }
 
@@ -173,7 +160,6 @@ impl Clone for AreaOnAreaOverlayer {
             tolerance: self.tolerance,
             group_map: HashMap::new(),
             group_count: 0,
-            writers: HashMap::new(),
             temp_dir: None,
         }
     }
@@ -196,30 +182,31 @@ impl AreaOnAreaOverlayer {
         Ok(self.temp_dir.as_ref().unwrap())
     }
 
-    fn ensure_writers(&mut self, group_idx: usize) -> Result<&mut GroupWriters, BoxedError> {
-        if !self.writers.contains_key(&group_idx) {
-            let dir = self.ensure_temp_dir()?.clone();
-            let group_dir = dir.join(format!("group_{group_idx:06}"));
-            std::fs::create_dir_all(&group_dir)?;
-
-            let aabb_file = File::create(group_dir.join("aabbs.jsonl"))?;
-            let feat_file = File::create(group_dir.join("features.jsonl"))?;
-
-            self.writers.insert(
-                group_idx,
-                GroupWriters {
-                    aabb_writer: BufWriter::new(aabb_file),
-                    feat_writer: BufWriter::new(feat_file),
-                },
-            );
-        }
-        Ok(self.writers.get_mut(&group_idx).unwrap())
+    fn ensure_group_dir(&mut self, group_idx: usize) -> Result<PathBuf, BoxedError> {
+        let dir = self.ensure_temp_dir()?.clone();
+        let group_dir = dir.join(format!("group_{group_idx:06}"));
+        std::fs::create_dir_all(&group_dir)?;
+        Ok(group_dir)
     }
 
-    fn flush_all_writers(&mut self) -> Result<(), BoxedError> {
-        for writers in self.writers.values_mut() {
-            writers.aabb_writer.flush()?;
-            writers.feat_writer.flush()?;
+    fn append_to_group(
+        group_dir: &Path,
+        aabb: &[f64; 4],
+        feature_json: &str,
+    ) -> Result<(), BoxedError> {
+        {
+            let file = File::options().create(true).append(true).open(group_dir.join("aabbs.jsonl"))?;
+            let mut w = BufWriter::new(file);
+            serde_json::to_writer(&mut w, aabb)?;
+            w.write_all(b"\n")?;
+            w.flush()?;
+        }
+        {
+            let file = File::options().create(true).append(true).open(group_dir.join("features.jsonl"))?;
+            let mut w = BufWriter::new(file);
+            w.write_all(feature_json.as_bytes())?;
+            w.write_all(b"\n")?;
+            w.flush()?;
         }
         Ok(())
     }
@@ -283,11 +270,8 @@ impl Processor for AreaOnAreaOverlayer {
                 };
 
                 let feature_json = serde_json::to_string(&ctx.feature)?;
-                let writers = self.ensure_writers(group_idx)?;
-                serde_json::to_writer(&mut writers.aabb_writer, &aabb)?;
-                writers.aabb_writer.write_all(b"\n")?;
-                writers.feat_writer.write_all(feature_json.as_bytes())?;
-                writers.feat_writer.write_all(b"\n")?;
+                let group_dir = self.ensure_group_dir(group_idx)?;
+                Self::append_to_group(&group_dir, &aabb, &feature_json)?;
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -301,10 +285,6 @@ impl Processor for AreaOnAreaOverlayer {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        self.flush_all_writers()?;
-        // Drop all file handles before reading
-        self.writers.clear();
-
         let temp_dir = match &self.temp_dir {
             Some(d) => d.clone(),
             None => return Ok(()),
@@ -588,8 +568,7 @@ fn overlay_2d_disk(
                     if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
                         let mut new_queue = Vec::new();
                         for subpolygon in queue {
-                            let intersection =
-                                bool_op_intersection(&subpolygon.polygon, geom_j_2d);
+                            let intersection = bool_op_intersection(&subpolygon.polygon, geom_j_2d);
 
                             let min_area = tolerance * tolerance;
                             let intersection_area = intersection.unsigned_area2d();
@@ -607,8 +586,7 @@ fn overlay_2d_disk(
                                 });
                             }
 
-                            let difference =
-                                bool_op_difference(&subpolygon.polygon, geom_j_2d);
+                            let difference = bool_op_difference(&subpolygon.polygon, geom_j_2d);
                             if !difference.is_empty() {
                                 new_queue.push(MiddlePolygon {
                                     polygon: difference,
@@ -765,7 +743,12 @@ mod tests {
     use super::*;
 
     fn make_geom(coords: Vec<(f64, f64)>) -> Arc<Geometry> {
-        let ls = LineString2D::new(coords.into_iter().map(|(x, y)| Coordinate2D::new_(x, y)).collect());
+        let ls = LineString2D::new(
+            coords
+                .into_iter()
+                .map(|(x, y)| Coordinate2D::new_(x, y))
+                .collect(),
+        );
         Arc::new(Geometry::with_value(GeometryValue::FlowGeometry2D(
             Geometry2D::MultiPolygon(MultiPolygon2D::new(vec![Polygon2D::new(ls, vec![])])),
         )))
@@ -786,14 +769,23 @@ mod tests {
         std::fs::create_dir_all(&group_dir).unwrap();
 
         let features = vec![
-            make_feature(vec![(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0), (0.0, 0.0)]),
-            make_feature(vec![(1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0), (1.0, 1.0)]),
+            make_feature(vec![
+                (0.0, 0.0),
+                (2.0, 0.0),
+                (2.0, 2.0),
+                (0.0, 2.0),
+                (0.0, 0.0),
+            ]),
+            make_feature(vec![
+                (1.0, 1.0),
+                (3.0, 1.0),
+                (3.0, 3.0),
+                (1.0, 3.0),
+                (1.0, 1.0),
+            ]),
         ];
 
-        let aabbs: Vec<[f64; 4]> = vec![
-            [0.0, 0.0, 2.0, 2.0],
-            [1.0, 1.0, 3.0, 3.0],
-        ];
+        let aabbs: Vec<[f64; 4]> = vec![[0.0, 0.0, 2.0, 2.0], [1.0, 1.0, 3.0, 3.0]];
 
         // Write features.jsonl
         let features_path = group_dir.join("features.jsonl");
@@ -824,10 +816,7 @@ mod tests {
             make_feature(vec![(0.0, 0.0), (2.0, 0.0), (1.0, 1.0), (0.0, 0.0)]),
         ];
 
-        let aabbs: Vec<[f64; 4]> = vec![
-            [0.0, 0.0, 2.0, 2.0],
-            [0.0, 0.0, 2.0, 1.0],
-        ];
+        let aabbs: Vec<[f64; 4]> = vec![[0.0, 0.0, 2.0, 2.0], [0.0, 0.0, 2.0, 1.0]];
 
         let features_path = group_dir.join("features.jsonl");
         {

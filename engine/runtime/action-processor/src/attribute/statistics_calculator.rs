@@ -183,7 +183,7 @@ struct Calculation {
 
 impl Processor for StatisticsCalculator {
     fn is_accumulating(&self) -> bool {
-        true
+        false
     }
 
     fn process(

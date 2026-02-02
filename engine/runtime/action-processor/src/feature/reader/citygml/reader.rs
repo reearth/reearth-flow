@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader, Cursor},
+    io::{BufRead, BufReader, BufWriter, Cursor, Write},
     str::FromStr,
     sync::{Arc, RwLock},
 };
@@ -87,6 +87,75 @@ fn parse_tree_reader<R: BufRead>(
     ctx: &Context,
     fw: &ProcessorChannelForwarder,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
+    // Phase 1: Parse CityGML, build features, write them to a temp JSONL file.
+    // This lets us drop all parsed entities/appearances/geometry before sending,
+    // so backpressure on fw.send() doesn't trap large parsing data in memory.
+    let temp_dir = reearth_flow_common::dir::project_temp_dir(
+        uuid::Uuid::new_v4().to_string().as_str(),
+    )
+    .map_err(|e| {
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+    })?;
+    let temp_path = temp_dir.join("features.jsonl");
+
+    let feature_count = {
+        let file = std::fs::File::create(&temp_path).map_err(|e| {
+            crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        })?;
+        let mut writer = BufWriter::new(file);
+        let count = parse_and_write_features(
+            st,
+            base_attributes,
+            flatten,
+            base_url,
+            &mut writer,
+        )?;
+        writer.flush().map_err(|e| {
+            crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        })?;
+        count
+    };
+    // All parsing data (entities, appearances, geometry stores) is now dropped.
+
+    // Phase 2: Stream features from disk one at a time.
+    if feature_count > 0 {
+        let file = std::fs::File::open(&temp_path).map_err(|e| {
+            crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        })?;
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let line = line.map_err(|e| {
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+            })?;
+            if line.is_empty() {
+                continue;
+            }
+            let feature: Feature = serde_json::from_str(&line).map_err(|e| {
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+            })?;
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                ctx,
+                feature,
+                DEFAULT_PORT.clone(),
+            ));
+        }
+    }
+
+    // Cleanup temp directory
+    let _ = std::fs::remove_dir_all(&temp_dir);
+    Ok(())
+}
+
+/// Parses CityGML entities and appearances, transforms them into Features,
+/// and writes each Feature as a JSON line. Returns the number of features written.
+#[allow(clippy::uninlined_format_args)]
+fn parse_and_write_features<R: BufRead, W: Write>(
+    st: &mut SubTreeReader<'_, '_, R>,
+    base_attributes: &IndexMap<Attribute, AttributeValue>,
+    flatten: bool,
+    base_url: Url,
+    writer: &mut W,
+) -> Result<usize, crate::feature::errors::FeatureProcessorError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();
     let mut envelope = Envelope::default();
@@ -100,9 +169,6 @@ fn parse_tree_reader<R: BufRead>(
                 Ok(())
             }
             b"core:cityObjectMember" => {
-                // Parse top-level CityGML objects (Building, Road, etc.)
-                // TopLevelCityObject is an enum of CityGML Feature Types defined in the specification
-                // with #[citygml_feature] macro, ensuring only valid Feature Types are parsed
                 let mut cityobj: models::TopLevelCityObject = Default::default();
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
@@ -134,9 +200,6 @@ fn parse_tree_reader<R: BufRead>(
                         global_appearances.update(appearance);
                     }
                     Err(e) => {
-                        // Log warning for appearance parsing errors (e.g., invalid UV coordinates)
-                        // but continue processing the file - this allows QC to complete
-                        // even when there are texture coordinate issues in the data
                         tracing::warn!(
                             "Skipping appearance due to parse error (file: {}): {:?}",
                             base_url,
@@ -155,7 +218,9 @@ fn parse_tree_reader<R: BufRead>(
     .map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
+
     let mut transformer = GeometricMergedownTransform::new();
+    let mut count = 0usize;
     for entity in entities {
         {
             let geom_store = entity.geometry_store.read().map_err(|e| {
@@ -170,7 +235,6 @@ fn parse_tree_reader<R: BufRead>(
         {
             let mut geom_store = entity.geometry_store.write().unwrap();
             geom_store.vertices.iter_mut().for_each(|v| {
-                // Swap x and y (lat, lng -> lng, lat)
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
@@ -204,24 +268,21 @@ fn parse_tree_reader<R: BufRead>(
                 Attribute::new("maxLod"),
                 AttributeValue::String(max_lod.to_string()),
             );
-            // Also add as "lod" attribute for StatisticsCalculator to use
             attributes.insert(
                 Attribute::new("lod"),
                 AttributeValue::String(max_lod.to_string()),
             );
         }
         attributes.extend(base_attributes.clone());
-        let entities = if flatten {
+        let flat_entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
             vec![entity]
         };
-        for mut ent in entities {
+        for mut ent in flat_entities {
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
-            // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
-            // Also extract geom feature_id from GeometryRef if child doesn't have gml:id
             let mut child_lod = LodMask::default();
             let mut geom_feature_id: Option<String> = None;
             if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
@@ -229,7 +290,6 @@ fn parse_tree_reader<R: BufRead>(
             {
                 for geom in geometries {
                     child_lod.add_lod(geom.lod);
-                    // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
                     let has_id = ent.id.as_ref().is_some_and(|id| !id.is_empty());
                     if !has_id && geom_feature_id.is_none() {
                         geom_feature_id = geom.feature_id.clone();
@@ -240,7 +300,6 @@ fn parse_tree_reader<R: BufRead>(
             }
             transformer.transform(&mut ent);
 
-            // Use entity's own non-empty gml:id or None, toplevel id is stored in gmlId attribute
             let child_id = ent.id.clone();
             let child_typename = ent.typename.clone();
             let mut attributes = attributes.clone();
@@ -251,15 +310,12 @@ fn parse_tree_reader<R: BufRead>(
                             Attribute::new("featureType"),
                             AttributeValue::String(typename.to_string()),
                         );
-                        // Override gmlName with child's typename
                         attributes.insert(
                             Attribute::new("gmlName"),
                             AttributeValue::String(typename.to_string()),
                         );
                     }
                 }
-                // Add lod attribute for StatisticsCalculator to use
-                // Use child_lod if available, otherwise use parent lod
                 let effective_lod = child_lod.highest_lod().or_else(|| lod.highest_lod());
                 if let Some(max_lod) = effective_lod {
                     attributes.insert(
@@ -276,29 +332,25 @@ fn parse_tree_reader<R: BufRead>(
             })?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
-            // Insert child's own cityGmlAttributes
             feature.insert("cityGmlAttributes", citygml_attributes);
-            // When flatten is true, each child entity should have its own LOD and feature_type/feature_id
-            // calculated from its geometries instead of inheriting from the parent
             let mut child_metadata = metadata.clone();
             if flatten {
                 if child_lod.highest_lod().is_some() {
                     child_metadata.lod = Some(child_lod);
                 }
                 child_metadata.feature_id = child_id;
-                // Use the entity's own typename for feature_type, not from GeometryRef
-                // GeometryRef.feature_type points to the parent feature (e.g., Building)
-                // but for error reporting we need the child's typename (e.g., GroundSurface)
                 child_metadata.feature_type = child_typename;
             }
             feature.metadata = child_metadata;
 
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
-                ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
+            serde_json::to_writer(&mut *writer, &feature).map_err(|e| {
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+            })?;
+            writer.write_all(b"\n").map_err(|e| {
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+            })?;
+            count += 1;
         }
     }
-    Ok(())
+    Ok(count)
 }

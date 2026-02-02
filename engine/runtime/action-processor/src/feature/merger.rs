@@ -133,8 +133,6 @@ impl ProcessorFactory for FeatureMergerFactory {
             supplier_key_map: HashMap::new(),
             requestor_complete: HashMap::new(),
             supplier_complete: HashMap::new(),
-            requestor_writers: HashMap::new(),
-            supplier_writers: HashMap::new(),
             next_requestor_idx: 0,
             next_supplier_idx: 0,
             requestor_before_value: None,
@@ -171,8 +169,6 @@ pub struct FeatureMerger {
     supplier_key_map: HashMap<String, usize>,
     requestor_complete: HashMap<String, bool>,
     supplier_complete: HashMap<String, bool>,
-    requestor_writers: HashMap<usize, BufWriter<File>>,
-    supplier_writers: HashMap<usize, BufWriter<File>>,
     next_requestor_idx: usize,
     next_supplier_idx: usize,
     requestor_before_value: Option<String>,
@@ -198,8 +194,6 @@ impl Clone for FeatureMerger {
             supplier_key_map: HashMap::new(),
             requestor_complete: HashMap::new(),
             supplier_complete: HashMap::new(),
-            requestor_writers: HashMap::new(),
-            supplier_writers: HashMap::new(),
             next_requestor_idx: 0,
             next_supplier_idx: 0,
             requestor_before_value: None,
@@ -264,22 +258,13 @@ impl FeatureMerger {
             .join(format!("supplier/{idx:06}.jsonl"))
     }
 
-    fn ensure_requestor_writer(&mut self, idx: usize) -> Result<&mut BufWriter<File>, BoxedError> {
-        if !self.requestor_writers.contains_key(&idx) {
-            let path = self.requestor_file_path(idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            self.requestor_writers.insert(idx, BufWriter::new(file));
-        }
-        Ok(self.requestor_writers.get_mut(&idx).unwrap())
-    }
-
-    fn ensure_supplier_writer(&mut self, idx: usize) -> Result<&mut BufWriter<File>, BoxedError> {
-        if !self.supplier_writers.contains_key(&idx) {
-            let path = self.supplier_file_path(idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            self.supplier_writers.insert(idx, BufWriter::new(file));
-        }
-        Ok(self.supplier_writers.get_mut(&idx).unwrap())
+    fn append_feature_to_file(path: &Path, feature: &Feature) -> Result<(), BoxedError> {
+        let file = File::options().create(true).append(true).open(path)?;
+        let mut writer = BufWriter::new(file);
+        serde_json::to_writer(&mut writer, feature)?;
+        writer.write_all(b"\n")?;
+        writer.flush()?;
+        Ok(())
     }
 
     fn write_feature_to_requestor(
@@ -287,10 +272,7 @@ impl FeatureMerger {
         idx: usize,
         feature: &Feature,
     ) -> Result<(), BoxedError> {
-        let writer = self.ensure_requestor_writer(idx)?;
-        serde_json::to_writer(&mut *writer, feature)?;
-        writer.write_all(b"\n")?;
-        Ok(())
+        Self::append_feature_to_file(&self.requestor_file_path(idx), feature)
     }
 
     fn write_feature_to_supplier(
@@ -298,23 +280,7 @@ impl FeatureMerger {
         idx: usize,
         feature: &Feature,
     ) -> Result<(), BoxedError> {
-        let writer = self.ensure_supplier_writer(idx)?;
-        serde_json::to_writer(&mut *writer, feature)?;
-        writer.write_all(b"\n")?;
-        Ok(())
-    }
-
-    fn flush_and_drop_writers_for_key(&mut self, key: &str) {
-        if let Some(idx) = self.requestor_key_map.get(key) {
-            if let Some(mut w) = self.requestor_writers.remove(idx) {
-                let _ = w.flush();
-            }
-        }
-        if let Some(idx) = self.supplier_key_map.get(key) {
-            if let Some(mut w) = self.supplier_writers.remove(idx) {
-                let _ = w.flush();
-            }
-        }
+        Self::append_feature_to_file(&self.supplier_file_path(idx), feature)
     }
 
     fn change_group(&mut self, ctx: Context, fw: &ProcessorChannelForwarder) -> errors::Result<()> {
@@ -335,16 +301,15 @@ impl FeatureMerger {
             complete_keys.push(attribute.clone());
         }
         for attribute_value in complete_keys.iter() {
-            self.flush_and_drop_writers_for_key(attribute_value);
-
             let requestor_idx = match self.requestor_key_map.remove(attribute_value) {
                 Some(idx) => idx,
                 None => return Ok(()),
             };
             self.requestor_complete.remove(attribute_value);
             let requestor_features =
-                read_features_from_file(&self.requestor_file_path(requestor_idx))
-                    .map_err(|e| FeatureProcessorError::Merger(format!("Failed to read requestor features: {e}")))?;
+                read_features_from_file(&self.requestor_file_path(requestor_idx)).map_err(|e| {
+                    FeatureProcessorError::Merger(format!("Failed to read requestor features: {e}"))
+                })?;
             let _ = std::fs::remove_file(self.requestor_file_path(requestor_idx));
 
             let supplier_idx = match self.supplier_key_map.remove(attribute_value) {
@@ -361,9 +326,10 @@ impl FeatureMerger {
                     return Ok(());
                 }
             };
-            let supplier_features =
-                read_features_from_file(&self.supplier_file_path(supplier_idx))
-                    .map_err(|e| FeatureProcessorError::Merger(format!("Failed to read supplier features: {e}")))?;
+            let supplier_features = read_features_from_file(&self.supplier_file_path(supplier_idx))
+                .map_err(|e| {
+                    FeatureProcessorError::Merger(format!("Failed to read supplier features: {e}"))
+                })?;
             let _ = std::fs::remove_file(self.supplier_file_path(supplier_idx));
 
             for request_feature in requestor_features.iter() {
@@ -401,7 +367,10 @@ impl Processor for FeatureMerger {
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
                 );
-                let idx = match self.requestor_key_map.entry(requestor_attribute_value.clone()) {
+                let idx = match self
+                    .requestor_key_map
+                    .entry(requestor_attribute_value.clone())
+                {
                     Entry::Occupied(entry) => {
                         self.requestor_before_value = Some(requestor_attribute_value.clone());
                         *entry.get()
@@ -410,7 +379,8 @@ impl Processor for FeatureMerger {
                         let idx = self.next_requestor_idx;
                         self.next_requestor_idx += 1;
                         entry.insert(idx);
-                        self.requestor_complete.insert(requestor_attribute_value.clone(), false);
+                        self.requestor_complete
+                            .insert(requestor_attribute_value.clone(), false);
                         if self.requestor_before_value.is_some() {
                             let prev = self.requestor_before_value.clone().unwrap();
                             self.requestor_complete.insert(prev, true);
@@ -439,7 +409,10 @@ impl Processor for FeatureMerger {
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
                 );
-                let idx = match self.supplier_key_map.entry(supplier_attribute_value.clone()) {
+                let idx = match self
+                    .supplier_key_map
+                    .entry(supplier_attribute_value.clone())
+                {
                     Entry::Occupied(entry) => {
                         self.supplier_before_value = Some(supplier_attribute_value.clone());
                         *entry.get()
@@ -448,7 +421,8 @@ impl Processor for FeatureMerger {
                         let idx = self.next_supplier_idx;
                         self.next_supplier_idx += 1;
                         entry.insert(idx);
-                        self.supplier_complete.insert(supplier_attribute_value.clone(), false);
+                        self.supplier_complete
+                            .insert(supplier_attribute_value.clone(), false);
                         if self.supplier_before_value.is_some() {
                             let prev = self.supplier_before_value.clone().unwrap();
                             self.supplier_complete.insert(prev, true);
@@ -478,16 +452,6 @@ impl Processor for FeatureMerger {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Flush all writers
-        for (_, w) in self.requestor_writers.drain() {
-            let mut w = w;
-            w.flush()?;
-        }
-        for (_, w) in self.supplier_writers.drain() {
-            let mut w = w;
-            w.flush()?;
-        }
-
         for (request_value, &req_idx) in self.requestor_key_map.iter() {
             let requestor_features = read_features_from_file(&self.requestor_file_path(req_idx))?;
 
