@@ -295,7 +295,10 @@ pub enum ValidationType {
     DuplicatePoints,
     DuplicateConsecutivePoints(f64),
     CorruptGeometry,
-    SelfIntersection,
+    /// Self-intersection check with optional tolerance (in coordinate units).
+    /// If tolerance is None or 0.0, exact intersection check is performed.
+    /// If tolerance > 0.0, intersections where the overlap distance is less than tolerance are ignored.
+    SelfIntersection(Option<f64>),
 }
 
 pub trait Validator<
@@ -483,7 +486,7 @@ impl<
                     ));
                 }
             }
-            ValidationType::SelfIntersection => {}
+            ValidationType::SelfIntersection(_) => {}
         }
 
         if reason.is_empty() {
@@ -537,7 +540,7 @@ impl<
                     }
                 }
             }
-            ValidationType::SelfIntersection => {}
+            ValidationType::SelfIntersection(_) => {}
         }
         if reason.is_empty() {
             None
@@ -633,9 +636,10 @@ impl<
                     }
                 }
             }
-            ValidationType::SelfIntersection => {
+            ValidationType::SelfIntersection(tolerance) => {
+                // Check for self-intersection within each ring
                 for (j, line_string) in self.rings().iter().enumerate() {
-                    if utils::linestring_has_self_intersection_3d(line_string) {
+                    if utils::linestring_has_self_intersection_3d(line_string, tolerance) {
                         reason.push(ValidationProblemAtPosition(
                             ValidationProblem::SelfIntersection,
                             ValidationProblemPosition::Polygon(
@@ -649,48 +653,57 @@ impl<
                         ));
                     }
                 }
-                let polygon_exterior = Polygon::new(self.exterior().clone(), vec![]);
-                for (j, interior) in self.interiors().iter().enumerate() {
-                    let im = polygon_exterior.relate(interior);
+                // When tolerance is specified, skip ring-to-ring intersection checks
+                // as FME's SELF_INTERSECTION_TOLERANCE = "Automatic" focuses on
+                // self-intersection within rings, not ring-to-ring intersection.
+                // Ring-to-ring intersection is handled separately with tolerance
+                // by other validators (e.g., LineOnLineOverlayer, AreaOnAreaOverlayer).
+                if tolerance.is_none() || tolerance == Some(0.0) {
+                    let polygon_exterior = Polygon::new(self.exterior().clone(), vec![]);
+                    for (j, interior) in self.interiors().iter().enumerate() {
+                        let im = polygon_exterior.relate(interior);
 
-                    // Interior ring and exterior ring may only touch at point (not as a line)
-                    // and not cross
-                    if im.get(CoordPos::OnBoundary, CoordPos::Inside) == Dimensions::OneDimensional
-                    {
-                        reason.push(ValidationProblemAtPosition(
-                            ValidationProblem::IntersectingRingsOnALine,
-                            ValidationProblemPosition::Polygon(
-                                RingRole::Interior(j as isize),
-                                CoordinatePosition(-1),
-                            ),
-                        ));
-                    }
-                    let pol_interior1 = Polygon::new(interior.clone(), vec![]);
-                    for (i, interior2) in self.interiors().iter().enumerate() {
-                        if j != i {
-                            let pol_interior2 = Polygon::new(interior2.clone(), vec![]);
-                            let intersection_matrix = pol_interior1.relate(&pol_interior2);
-                            if intersection_matrix.get(CoordPos::Inside, CoordPos::Inside)
-                                == Dimensions::TwoDimensional
-                            {
-                                reason.push(ValidationProblemAtPosition(
-                                    ValidationProblem::IntersectingRingsOnAnArea,
-                                    ValidationProblemPosition::Polygon(
-                                        RingRole::Interior(j as isize),
-                                        CoordinatePosition(-1),
-                                    ),
-                                ));
-                            }
-                            if intersection_matrix.get(CoordPos::OnBoundary, CoordPos::OnBoundary)
-                                == Dimensions::OneDimensional
-                            {
-                                reason.push(ValidationProblemAtPosition(
-                                    ValidationProblem::IntersectingRingsOnALine,
-                                    ValidationProblemPosition::Polygon(
-                                        RingRole::Interior(j as isize),
-                                        CoordinatePosition(-1),
-                                    ),
-                                ));
+                        // Interior ring and exterior ring may only touch at point (not as a line)
+                        // and not cross
+                        if im.get(CoordPos::OnBoundary, CoordPos::Inside)
+                            == Dimensions::OneDimensional
+                        {
+                            reason.push(ValidationProblemAtPosition(
+                                ValidationProblem::IntersectingRingsOnALine,
+                                ValidationProblemPosition::Polygon(
+                                    RingRole::Interior(j as isize),
+                                    CoordinatePosition(-1),
+                                ),
+                            ));
+                        }
+                        let pol_interior1 = Polygon::new(interior.clone(), vec![]);
+                        for (i, interior2) in self.interiors().iter().enumerate() {
+                            if j != i {
+                                let pol_interior2 = Polygon::new(interior2.clone(), vec![]);
+                                let intersection_matrix = pol_interior1.relate(&pol_interior2);
+                                if intersection_matrix.get(CoordPos::Inside, CoordPos::Inside)
+                                    == Dimensions::TwoDimensional
+                                {
+                                    reason.push(ValidationProblemAtPosition(
+                                        ValidationProblem::IntersectingRingsOnAnArea,
+                                        ValidationProblemPosition::Polygon(
+                                            RingRole::Interior(j as isize),
+                                            CoordinatePosition(-1),
+                                        ),
+                                    ));
+                                }
+                                if intersection_matrix
+                                    .get(CoordPos::OnBoundary, CoordPos::OnBoundary)
+                                    == Dimensions::OneDimensional
+                                {
+                                    reason.push(ValidationProblemAtPosition(
+                                        ValidationProblem::IntersectingRingsOnALine,
+                                        ValidationProblemPosition::Polygon(
+                                            RingRole::Interior(j as isize),
+                                            CoordinatePosition(-1),
+                                        ),
+                                    ));
+                                }
                             }
                         }
                     }

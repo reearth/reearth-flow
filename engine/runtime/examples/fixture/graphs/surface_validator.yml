@@ -69,7 +69,8 @@ nodes:
     action: GeometryValidator
     with:
       validationTypes:
-        - duplicatePoints
+        # Note: duplicatePoints removed to match FME SurfaceValidator_2D behavior
+        # FME doesn't check for duplicate points in surface validation
         - corruptGeometry
 
   - id: 6a1d4f7c-9e2b-4c8a-f5e1-7c2a6f9d4e1b
@@ -116,7 +117,8 @@ nodes:
     with:
       validationTypes:
         - duplicateConsecutivePoints: 0.01
-        - selfIntersection
+        # Match FME's SELF_INTERSECTION_TOLERANCE = "Automatic" behavior
+        - selfIntersection: 0.01
 
   ## Ring not closed
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
