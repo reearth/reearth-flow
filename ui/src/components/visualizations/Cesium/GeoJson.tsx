@@ -88,8 +88,6 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
 
                 if (matchingFeature?.id !== undefined) {
                   featureId = matchingFeature.id;
-                  // Store original ID in entity properties for future reference
-                  entity.properties.addProperty("_originalId", featureId);
                 }
               }
             }
@@ -170,7 +168,6 @@ const GeoJsonData: React.FC<Props> = ({ geoJsonData, entityMapRef }) => {
 
                 if (matchingFeature?.id !== undefined) {
                   featureId = matchingFeature.id;
-                  entity.properties?.addProperty("_originalId", featureId);
                 }
               }
 
