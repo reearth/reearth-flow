@@ -74,18 +74,22 @@ const TableViewer: React.FC<Props> = memo(
     });
 
     useEffect(() => {
-      if (
-        selectedRowIndex !== -1 &&
-        !(
-          selectedFeatureId?.startsWith('"') && selectedFeatureId?.endsWith('"')
-        )
-      ) {
-        virtualizer.scrollToIndex(selectedRowIndex, {
-          align: "start",
-          behavior: "auto",
-        });
-      }
-    }, [selectedRowIndex, selectedFeatureId, virtualizer]);
+      if (selectedRowIndex === -1) return;
+
+      const items = virtualizer.getVirtualItems();
+      if (!items.length) return;
+
+      const start = items[0].index;
+      const end = items[items.length - 1].index;
+
+      const isVisible = selectedRowIndex >= start && selectedRowIndex <= end;
+      if (isVisible) return;
+
+      virtualizer.scrollToIndex(selectedRowIndex, {
+        align: "start",
+        behavior: "auto",
+      });
+    }, [selectedRowIndex, virtualizer]);
 
     // Loading state
     if (!fileContent || !formattedData.tableData) {

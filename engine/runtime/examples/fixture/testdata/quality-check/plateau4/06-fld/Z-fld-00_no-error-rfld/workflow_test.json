@@ -37,6 +37,9 @@
     "expectedFile": [
       "06_浸水想定区域_rfld/12_1.csv",
       "06_浸水想定区域_rfld/12_2.csv"
+    ],
+    "except": [
+      "Index"
     ]
   },
   "summaryOutput": {

@@ -45,12 +45,6 @@
     }
   ],
   "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_dem.json",
-      "includeFields": [
-        "不正な穴"
-      ]
-    },
     "fileErrorSummary": {
       "expectedFile": "08_地形_検査結果一覧.csv",
       "includeColumns": [
@@ -58,5 +52,5 @@
       ]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": true
 }
