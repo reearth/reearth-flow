@@ -405,12 +405,12 @@ pub(super) fn tile_writing_stage(
             // Transform features
             let features = transform_features(feats, &mut tile_ctx.content, tile_ctx.translation)?;
 
-            // Collect property stats for this tile
-            let tile_stats = collect_property_stats(&features, &typename, schema);
-            merge_property_stats(&mut property_stats.lock().unwrap(), tile_stats);
-
             // Encode metadata and filter valid features
             let valid_features = encode_metadata(&features, &typename, &mut metadata_encoder);
+
+            // Collect property stats from valid features only
+            let tile_stats = collect_property_stats(&valid_features, &typename, schema);
+            merge_property_stats(&mut property_stats.lock().unwrap(), tile_stats);
 
             // Prepare texture packing
             let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
