@@ -49,12 +49,7 @@ static BLDG_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
 /// # AttributeFlattener Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AttributeFlattenerParam {
-    /// When true, only include attributes that were actually used during processing in the schema output.
-    /// When false (default), include all defined attributes in the schema regardless of usage.
-    #[serde(default)]
-    existing_flatten_attributes: bool,
-}
+pub(crate) struct AttributeFlattenerParam {}
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AttributeFlattenerFactory;
@@ -89,26 +84,9 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        with: Option<HashMap<String, Value>>,
+        _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeFlattenerParam = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
-                PlateauProcessorError::AttributeFlattenerFactory(format!(
-                    "Failed to serialize `with` parameter: {e}"
-                ))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                PlateauProcessorError::AttributeFlattenerFactory(format!(
-                    "Failed to deserialize `with` parameter: {e}"
-                ))
-            })?
-        } else {
-            AttributeFlattenerParam::default()
-        };
-        let process = AttributeFlattener {
-            filter_existing_flatten_attributes: params.existing_flatten_attributes,
-            ..Default::default()
-        };
+        let process = AttributeFlattener::default();
         Ok(Box::new(process))
     }
 }
@@ -117,8 +95,6 @@ type AttributeMap = HashMap<String, AttributeValue>;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeFlattener {
-    filter_existing_flatten_attributes: bool,
-    existing_flatten_attributes: HashSet<String>,
     encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
@@ -133,6 +109,8 @@ pub(super) struct AttributeFlattener {
     gmlid_to_subfeature_inherited: HashMap<String, AttributeMap>,
     // blocking ancestor gml_id -> children features
     children_buffer: HashMap<String, Vec<Feature>>,
+    // LOD4 feature_type_key -> ancestor feature_type_key mapping for schema generation
+    lod4_to_ancestor_type: HashMap<String, String>,
 }
 
 // remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
@@ -237,7 +215,7 @@ impl AttributeFlattener {
 
     // LOD4 subfeatures inherit top-level ancestor's extracted attributes
     // They also do not have toplevel ancestor in their ancestors list (popped here)
-    fn inherit_lod4_attributes(&self, feature: &mut Feature, ancestors: &mut Vec<AttributeValue>) {
+    fn inherit_lod4_attributes(&mut self, feature: &mut Feature, ancestors: &mut Vec<AttributeValue>, lookup_key: &str) {
         let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
         if !is_lod4 {
             return;
@@ -252,6 +230,14 @@ impl AttributeFlattener {
         let Some(toplevel_attrs) = self.gmlid_to_subfeature_inherited.get(toplevel_gml_id) else {
             return;
         };
+
+        // Track LOD4 -> ancestor type mapping for schema generation
+        if let Some(AttributeValue::String(ancestor_feature_type)) = toplevel_ancestor.get("feature_type") {
+            if let Some(package) = feature.get("package").and_then(|v| v.as_string()) {
+                let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
+                self.lod4_to_ancestor_type.insert(lookup_key.to_string(), ancestor_lookup_key);
+            }
+        }
 
         // Inherit attributes that the subfeature doesn't have
         for (key, value) in toplevel_attrs.iter() {
@@ -356,7 +342,7 @@ impl AttributeFlattener {
         strip_parent_info(&mut citygml_attributes);
 
         // For LOD4 subfeatures, inherit top-level ancestor's extracted attributes
-        self.inherit_lod4_attributes(feature, &mut ancestors);
+        self.inherit_lod4_attributes(feature, &mut ancestors, &lookup_key);
 
         if !ancestors.is_empty() {
             citygml_attributes.insert(
@@ -398,8 +384,6 @@ impl AttributeFlattener {
                     }
                     _ => new_attribute,
                 };
-                self.existing_flatten_attributes
-                    .insert(attribute.attribute.clone());
                 feature
                     .attributes
                     .insert(Attribute::new(attribute.attribute.clone()), new_attribute);
@@ -500,17 +484,16 @@ impl AttributeFlattener {
             }
         }
 
+        // For LOD4 features, use ancestor's feature_type_key for schema lookup
+        let schema_lookup_key = self.lod4_to_ancestor_type
+            .get(feature_type_key)
+            .map(|s| s.as_str())
+            .unwrap_or(feature_type_key);
+
         // Add attributes specific to this feature type that were actually used
-        if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key)
+        if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(schema_lookup_key)
         {
             for attribute in flatten_attributes {
-                if self.filter_existing_flatten_attributes
-                    && !self
-                        .existing_flatten_attributes
-                        .contains(&attribute.attribute)
-                {
-                    continue;
-                }
                 let data_type = match attribute.data_type.as_str() {
                     "string" | "date" | "buffer" => AttributeValue::default_string(),
                     "int" | "int16" => AttributeValue::default_number(),

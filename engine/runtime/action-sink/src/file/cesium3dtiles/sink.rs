@@ -227,8 +227,7 @@ impl Cesium3DTilesWriter {
             feature.attributes = feature
                 .attributes
                 .into_iter()
-                .filter(|(k, v)| {
-                    eprintln!("key: {:?} , value: {:?}", k, v);
+                .filter(|(k, _)| {
                     !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
                 })
                 .collect();

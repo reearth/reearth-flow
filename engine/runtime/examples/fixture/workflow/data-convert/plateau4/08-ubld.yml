@@ -365,68 +365,20 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: featureId
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: geometryName
-        method: remove
       - attribute: cityCode
         method: rename
         value: city_code
       - attribute: cityName
         method: rename
         value: city_name
-      - attribute: lod
-        method: rename
-        value: __lod
-      - attribute: gmlId
-        method: remove
-      - attribute: gmlPropertyName
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: cityGmlPath
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
-      - attribute: package
-        method: rename
-        value: __package
-      - attribute: extension
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: path
-        method: remove
-      - attribute: name
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: featureType
-        method: remove
-      - attribute: gmlName
-        method: remove
   - id: 1ad1a773-2954-4fbf-8556-8ad0079927ad
     name: FeatureSorter
     type: action
     action: FeatureSorter
     with:
       attributes:
-      - __package
-      - __lod
+      - package
+      - lod
       order: ascending
   - id: 1a042641-7a90-413e-adc8-2dfaf269de35
     name: Cesium3DTilesWriter
@@ -439,12 +391,12 @@ graphs:
       skipUnexposedAttributes: true
       dracoCompression: false
       output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
+        file::join_path(env.get("workerArtifactPath"), env.get("__value")["package"] + "_lod" + env.get("__value")["lod"])
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let pkg = env.get("__value").__package;
-        let lod = env.get("__value").__lod;
+        let pkg = env.get("__value")["package"];
+        let lod = env.get("__value")["lod"];
         let suffix = "_" + pkg;
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -506,3 +458,8 @@ graphs:
     to: 1a042641-7a90-413e-adc8-2dfaf269de35
     fromPort: default
     toPort: default
+  - id: 11223344-5566-7788-99aa-bbccddeeff00
+    from: efecfc20-41f0-4502-977b-5708157f6f71
+    to: 1a042641-7a90-413e-adc8-2dfaf269de35
+    fromPort: schema
+    toPort: schema
