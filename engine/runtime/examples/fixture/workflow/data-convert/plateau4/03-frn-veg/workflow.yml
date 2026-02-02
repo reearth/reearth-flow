@@ -392,7 +392,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_frn_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_frn_dm_geometric_attributes.zip")
           colonToUnderscore: true
 
       # veg_SolitaryVegetationObject nodes
@@ -654,7 +654,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
           colonToUnderscore: true
 
       # veg_PlantCover nodes
@@ -889,7 +889,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_veg_PlantCover_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_veg_PlantCover_dm_geometric_attributes.zip")
           colonToUnderscore: true
 
     edges:

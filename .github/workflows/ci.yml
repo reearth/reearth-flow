@@ -21,13 +21,12 @@ jobs:
         id: api
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
-            files: |
-              server/api/**
-              engine/schema/**
-              .github/workflows/ci.yml
-              .github/workflows/ci_api.yml
-              .github/workflows/build_deploy_api.yml
-              CHANGELOG.md
+          files: |
+            server/api/**
+            engine/schema/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_api.yml
+            .github/workflows/build_deploy_api.yml
       - name: changed files for engine
         id: engine
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -37,7 +36,7 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_engine.yml
             .github/workflows/build_docker_push_worker.yml
-            CHANGELOG.md
+
       - name: changed files for policies
         id: policies
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -47,17 +46,15 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_policies.yml
             .github/workflows/update_policies_and_deploy_cerbos.yml
-            CHANGELOG.md
       - name: changed files for subscriber
         id: subscriber
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
-            files: |
-              server/subscriber/**
-              .github/workflows/ci.yml
-              .github/workflows/ci_subscriber.yml
-              .github/workflows/build_deploy_subscriber.yml
-              CHANGELOG.md
+          files: |
+            server/subscriber/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_subscriber.yml
+            .github/workflows/build_deploy_subscriber.yml
       - name: changed files for ui
         id: ui
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -67,7 +64,6 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
             .github/workflows/build_deploy_ui.yml
-            CHANGELOG.md
       - name: changed files for websocket
         id: websocket
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -77,7 +73,6 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_websocket.yml
             .github/workflows/build_deploy_websocket.yml
-            CHANGELOG.md
 
   ci-api:
     needs: prepare
@@ -113,14 +108,14 @@ jobs:
       - ci-subscriber
       - ci-ui
       - ci-websocket
-    if: '!failure()'
+    if: "!failure()"
     steps:
       - run: echo OK
 
   ci-collect-info:
     name: Collect information
     needs: ci
-    if: '!failure()'
+    if: "!failure()"
     runs-on: ubuntu-latest
     outputs:
       name: ${{ steps.info.outputs.name || 'blank' }}
@@ -171,7 +166,7 @@ jobs:
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit  
+    secrets: inherit
   build-and-deploy-subscriber:
     needs:
       - ci
@@ -291,10 +286,10 @@ jobs:
       - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5 # main
         id: deploy
         with:
-            image: ghcr.io/reearth/reearth-flow/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
-            image_internal: '${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}'
-            region: ${{ secrets.GC_REGION }}
-            service: reearth-flow-web
-            service_account: ${{ secrets.GC_SA_EMAIL }}
-            tag: pr-${{ github.event.pull_request.number }}
-            workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+          image: ghcr.io/reearth/reearth-flow/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
+          image_internal: "${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}"
+          region: ${{ secrets.GC_REGION }}
+          service: reearth-flow-web
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          tag: pr-${{ github.event.pull_request.number }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}

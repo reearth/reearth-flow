@@ -91,6 +91,12 @@ pub(super) struct AttributeFlattener {
     // storing processed features' citygml attributes for ancestor lookup
     // does not include pending features in children_buffer
     gmlid_to_citygml_attributes: HashMap<String, AttributeMap>,
+    // storing processed features' citygml attributes for subfeature auto-inheriting toplevel attributes
+    // corresponding to two-round processing in FME:
+    // 1. PythonCaller produces toplevel attributes
+    // 2. The toplevel attributes are copied to all its subfeatures
+    // 3. These subfeatures are then processed by PythonCaller2 without toplevel as ancestor
+    gmlid_to_subfeature_inherited: HashMap<String, AttributeMap>,
     // blocking ancestor gml_id -> children features
     children_buffer: HashMap<String, Vec<Feature>>,
 }
@@ -195,6 +201,33 @@ impl AttributeFlattener {
         AttributeMap::new()
     }
 
+    // LOD4 subfeatures inherit top-level ancestor's extracted attributes
+    // They also do not have toplevel ancestor in their ancestors list (popped here)
+    fn inherit_lod4_attributes(&self, feature: &mut Feature, ancestors: &mut Vec<AttributeValue>) {
+        let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
+        if !is_lod4 {
+            return;
+        }
+
+        let Some(AttributeValue::Map(toplevel_ancestor)) = ancestors.pop() else {
+            return;
+        };
+        let Some(AttributeValue::String(toplevel_gml_id)) = toplevel_ancestor.get("gml:id") else {
+            return;
+        };
+        let Some(toplevel_attrs) = self.gmlid_to_subfeature_inherited.get(toplevel_gml_id) else {
+            return;
+        };
+
+        // Inherit attributes that the subfeature doesn't have
+        for (key, value) in toplevel_attrs.iter() {
+            let attr_key = Attribute::new(key.clone());
+            if !feature.attributes.contains_key(&attr_key) {
+                feature.attributes.insert(attr_key, value.clone());
+            }
+        }
+    }
+
     fn insert_common_attributes(
         feature: &Feature,
         citygml_attributes: &mut HashMap<String, AttributeValue>,
@@ -288,8 +321,14 @@ impl AttributeFlattener {
         };
         strip_parent_info(&mut citygml_attributes);
 
+        // For LOD4 subfeatures, inherit top-level ancestor's extracted attributes
+        self.inherit_lod4_attributes(feature, &mut ancestors);
+
         if !ancestors.is_empty() {
-            citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
+            citygml_attributes.insert(
+                "ancestors".to_string(),
+                AttributeValue::Array(ancestors.iter().rev().cloned().collect()),
+            );
         }
 
         // Extract bldg:address from core:Address nested structure if not present
@@ -335,6 +374,21 @@ impl AttributeFlattener {
 
         // Convert GYear string fields to numbers in citygml_attributes before serialization
         let citygml_attributes = convert_gyear_fields(citygml_attributes);
+
+        // Cache attributes only for top-level + LOD4 features (for LOD4 subfeature inheritance)
+        let is_toplevel = !citygml_attributes.contains_key("parentId");
+        let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
+        if let Some(feature_id) = feature.feature_id() {
+            if is_toplevel || is_lod4 {
+                let flattened_attrs: AttributeMap = feature
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect();
+                self.gmlid_to_subfeature_inherited
+                    .insert(feature_id, flattened_attrs);
+            }
+        }
 
         // save the whole `citygml_attributes` values as `attributes`
         let citygml_attributes_json = serde_json::to_string(&serde_json::Value::from(
@@ -419,8 +473,8 @@ impl AttributeFlattener {
                 }
                 let data_type = match attribute.data_type.as_str() {
                     "string" | "date" | "buffer" => AttributeValue::default_string(),
-                    "int" => AttributeValue::default_number(),
-                    "double" | "measure" => AttributeValue::default_float(),
+                    "int" | "int16" => AttributeValue::default_number(),
+                    "double" | "real64" | "measure" => AttributeValue::default_float(),
                     _ => continue,
                 };
                 feature
@@ -521,13 +575,17 @@ impl AttributeFlattener {
     /// always flattens gen:genericAttribute, so the actual implementation does not necessarily
     /// follow the definition strictly.
     ///
-    /// For now, the bldg package always flattens generic attributes.
+    /// For now, the bldg and gen packages always flattens generic attributes.
     /// Support for other packages needs to be added later.
     fn should_flatten_generic_attributes(&self, feature: &Feature) -> bool {
-        feature
+        let package = feature
             .get("package")
-            .map(|package| package.as_string().as_deref() == Some("bldg"))
-            .unwrap_or(false)
+            .and_then(|v| v.as_string())
+            .unwrap_or("".to_string());
+        if package == "bldg" || package == "gen" {
+            return true;
+        }
+        false
     }
 }
 

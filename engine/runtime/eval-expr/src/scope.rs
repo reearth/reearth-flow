@@ -2,6 +2,32 @@ use std::sync::{Arc, RwLock};
 
 use crate::{engine::Engine, error::Error, ShareLock, Value, Vars};
 
+/// Inner environment exposed to Rhai scripts as "env".
+/// This is separate from `Scope` to avoid a cyclic reference.
+#[derive(Debug, Clone)]
+pub(crate) struct ScopeEnv {
+    engine: Arc<Engine>,
+    vars: ShareLock<Vars>,
+}
+
+impl ScopeEnv {
+    pub fn get(&self, name: &str) -> Option<Value> {
+        let vars = self.vars.read().unwrap();
+        vars.get(name).cloned().or_else(|| self.engine.get(name))
+    }
+
+    pub fn set(&self, name: &str, value: Value) {
+        if self.engine.vars().contains_key(name) {
+            return self.engine.set(name, value);
+        }
+
+        let mut vars = self.vars.write().unwrap();
+        vars.entry(name.to_string())
+            .and_modify(|i| *i = value.clone())
+            .or_insert(value);
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Scope {
     engine: Arc<Engine>,
@@ -11,19 +37,22 @@ pub struct Scope {
 
 impl Scope {
     pub fn new(engine: &Engine) -> Self {
-        let scope = rhai::Scope::new();
+        let engine = Arc::new(engine.clone());
+        let vars = Arc::new(RwLock::new(Vars::new()));
 
-        let scope = Self {
-            engine: Arc::new(engine.clone()),
-            scope: Arc::new(RwLock::new(scope)),
-            vars: Arc::new(RwLock::new(Vars::new())),
+        let env = ScopeEnv {
+            engine: Arc::clone(&engine),
+            vars: Arc::clone(&vars),
         };
-        scope
-            .scope
-            .write()
-            .unwrap()
-            .set_or_push("env", scope.clone());
-        scope
+
+        let mut rhai_scope = rhai::Scope::new();
+        rhai_scope.set_or_push("env", env);
+
+        Self {
+            engine,
+            scope: Arc::new(RwLock::new(rhai_scope)),
+            vars,
+        }
     }
 
     pub fn vars(&self) -> Vars {

@@ -3416,7 +3416,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.2",
+ "windows-core",
 ]
 
 [[package]]
@@ -4186,7 +4186,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4726,7 +4726,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "ahash 0.8.12",
  "chrono",
@@ -4747,7 +4747,7 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4758,7 +4758,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4768,7 +4768,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -4779,7 +4779,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4797,7 +4797,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.17",
@@ -4806,7 +4806,7 @@ dependencies = [
 [[package]]
 name = "nusamai-shapefile"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.19#37fc38f42838877a430f9f8d5b1bb86560f6ad58"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.21#b4376355407c15794bde9af4d8a6179ac5e665e9"
 dependencies = [
  "flatgeom",
  "shapefile 0.6.0",
@@ -5476,7 +5476,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.233"
+version = "0.0.243"
 dependencies = [
  "directories",
  "log",
@@ -5505,7 +5505,7 @@ dependencies = [
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.1.41"
+version = "0.1.51"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
@@ -6260,7 +6260,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "futures",
  "once_cell",
@@ -6280,7 +6280,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "approx",
  "async-trait",
@@ -6325,7 +6325,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "Inflector",
  "approx",
@@ -6335,6 +6335,7 @@ dependencies = [
  "chrono",
  "csv",
  "flatgeom",
+ "image 0.25.9",
  "indexmap 2.12.1",
  "itertools 0.14.0",
  "num-traits",
@@ -6376,7 +6377,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "indexmap 2.12.1",
  "once_cell",
@@ -6397,7 +6398,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6407,6 +6408,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "cesiumtiles",
+ "chrono",
  "crossbeam",
  "crossbeam-channel",
  "crossbeam-utils",
@@ -6464,7 +6466,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6515,7 +6517,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "bytes",
  "clap",
@@ -6553,7 +6555,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6590,7 +6592,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "chrono",
  "futures",
@@ -6604,7 +6606,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6633,7 +6635,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "approx",
  "bvh",
@@ -6661,7 +6663,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -6695,7 +6697,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6704,7 +6706,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6734,7 +6736,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6767,7 +6769,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -6784,7 +6786,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -6796,9 +6798,10 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "bytes",
+ "futures",
  "reearth-flow-common",
  "reearth-flow-storage",
  "serde",
@@ -6812,7 +6815,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "bytes",
  "futures",
@@ -6830,7 +6833,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -6844,7 +6847,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "bytes",
  "directories",
@@ -6872,7 +6875,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -6909,7 +6912,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.258"
+version = "0.0.271"
 dependencies = [
  "async-trait",
  "backon",
@@ -10018,7 +10021,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9babd3a767a4c1aef6900409f85f5d53ce2544ccdfaa86dad48c91782c6d6893"
 dependencies = [
  "windows-collections",
- "windows-core 0.61.2",
+ "windows-core",
  "windows-future",
  "windows-link 0.1.3",
  "windows-numerics",
@@ -10052,7 +10055,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3beeceb5e5cfd9eb1d76b381630e82c4241ccd0d27f1a39ed41b2760b255c5e8"
 dependencies = [
- "windows-core 0.61.2",
+ "windows-core",
 ]
 
 [[package]]
@@ -10064,21 +10067,8 @@ dependencies = [
  "windows-implement 0.60.2",
  "windows-interface",
  "windows-link 0.1.3",
- "windows-result 0.3.4",
- "windows-strings 0.4.2",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.62.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8e83a14d34d0623b51dce9581199302a221863196a1dde71a7663a4c2be9deb"
-dependencies = [
- "windows-implement 0.60.2",
- "windows-interface",
- "windows-link 0.2.1",
- "windows-result 0.4.1",
- "windows-strings 0.5.1",
+ "windows-result",
+ "windows-strings",
 ]
 
 [[package]]
@@ -10087,7 +10077,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc6a41e98427b19fe4b73c550f060b59fa592d7d686537eebf9385621bfbad8e"
 dependencies = [
- "windows-core 0.61.2",
+ "windows-core",
  "windows-link 0.1.3",
  "windows-threading",
 ]
@@ -10148,7 +10138,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9150af68066c4c5c07ddc0ce30421554771e528bde427614c61038bc2c92c2b1"
 dependencies = [
- "windows-core 0.61.2",
+ "windows-core",
  "windows-link 0.1.3",
 ]
 
@@ -10162,30 +10152,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "windows-result"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7781fa89eaf60850ac3d2da7af8e5242a5ea78d1a11c49bf2910bb5a73853eb5"
-dependencies = [
- "windows-link 0.2.1",
-]
-
-[[package]]
 name = "windows-strings"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
 dependencies = [
  "windows-link 0.1.3",
-]
-
-[[package]]
-name = "windows-strings"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091"
-dependencies = [
- "windows-link 0.2.1",
 ]
 
 [[package]]
@@ -10608,7 +10580,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.136"
+version = "0.1.146"
 dependencies = [
  "anyhow",
  "csv",

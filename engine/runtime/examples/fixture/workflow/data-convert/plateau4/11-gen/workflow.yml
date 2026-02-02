@@ -1,0 +1,311 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3f2d7152-6ddb-46a0-a55b-209feacc6224
+name: "PLATEAU4-DataConvert-11-gen"
+entryGraphId: 33692bd1-f0e8-4764-a443-51b5167cfe86
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  codelists:
+  schemas:
+  targetPackages:
+    - gen
+  workerArtifactPath:
+graphs:
+  - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+
+  - id: 33692bd1-f0e8-4764-a443-51b5167cfe86
+    name: entry_point
+    nodes:
+      - id: 7b1af940-900f-4195-b2cc-ae37bfcf62fe
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+              },
+            ]
+
+      - id: a1bbd1f8-aa6e-44d7-b307-65b491def483
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          codelistsPath: env.get("__value").codelists
+          flatten: true
+          dataset: |
+            env.get("__value")["path"]
+
+      - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7
+        name: AttributeManagerPreFlattener
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: meshcode
+              method: create
+              value: |
+                let file = file::extract_filename(env.get("__value")["path"]);
+                file.split("_")[0]
+            - attribute: gml_id
+              method: create
+              value: |
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+            - attribute: feature_type
+              method: create
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
+
+      - id: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
+        name: AttributeFlattener
+        type: action
+        action: PLATEAU4.AttributeFlattener
+
+      # Dictionary writer branch
+      - id: 8f254c7d-fa35-416c-8093-dbaafd72d95a
+        name: AttributeManagerDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: code
+              method: create
+              value: |
+                env.get("__value")["gml:name_code"]
+            - attribute: description
+              method: create
+              value: |
+                env.get("__value")["gml:name"]
+
+      - id: abc6a99c-5730-423c-a449-38911ab4a4e7
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - code
+
+      - id: ea88ce7b-1525-419e-a869-d193d8318b71
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              gen: env.get("__features").map(|f| #{
+                code: f.code,
+                description: f.description
+              })
+            }
+
+      - id: 75faa932-e0a9-482c-a3f9-267817ed311c
+        name: LodSplitter
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: f63b1460-11eb-4000-a976-38f37a4e919b
+        name: AttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: rename
+              value: __lod
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: rename
+              value: __package
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+            - attribute: gml:name_code
+              method: rename
+              value: __gml_name_code
+
+      - id: 2469c61e-dbda-488e-af80-e3b4105197b7
+        name: TwoDimensionForcer
+        type: action
+        action: TwoDimensionForcer
+
+      - id: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
+        name: MVTWriter
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output: |
+            let gml_name_code = env.get("__value").__gml_name_code;
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_" + gml_name_code + "_lod" + env.get("__value").__lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value").__package;
+            let lod = env.get("__value").__lod;
+            let gml_name_code = env.get("__value").__gml_name_code;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + gml_name_code + "_mvt_lod" + lod + ".zip")
+          skipUnexposedAttributes: true
+          colonToUnderscore: true
+
+    edges:
+      # FeatureCreator -> FolderAndFilePathReader
+      - id: 07061a8e-abc1-4aef-b56d-a2d03c7a590c
+        from: 7b1af940-900f-4195-b2cc-ae37bfcf62fe
+        to: a1bbd1f8-aa6e-44d7-b307-65b491def483
+        fromPort: default
+        toPort: default
+      # FolderAndFilePathReader -> FeatureReaderByCityGml
+      - id: 82014fac-40eb-46f4-ae89-084d96143127
+        from: a1bbd1f8-aa6e-44d7-b307-65b491def483
+        to: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
+        fromPort: default
+        toPort: default
+      # FeatureReaderByCityGml -> AttributeManagerPreFlattener
+      - id: 4c54b0bc-2b17-4d59-b999-e45b015ab3ff
+        from: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
+        to: 7bd12def-bc00-4340-adf5-1a2d68995dd7
+        fromPort: default
+        toPort: default
+      # AttributeManagerPreFlattener -> AttributeFlattener
+      - id: ff02b5e8-8b5e-4b55-9060-3e6f1681043d
+        from: 7bd12def-bc00-4340-adf5-1a2d68995dd7
+        to: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
+        fromPort: default
+        toPort: default
+      # AttributeFlattener -> LodSplitter
+      - id: d22e994e-2ae9-47e2-9ddd-501492d864f1
+        from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
+        to: 75faa932-e0a9-482c-a3f9-267817ed311c
+        fromPort: default
+        toPort: default
+      # Dictionary writer branch edges
+      # AttributeFlattener -> AttributeManagerDict
+      - id: 6770737c-d1ed-4545-bc7d-8701a052fe6b
+        from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
+        to: 8f254c7d-fa35-416c-8093-dbaafd72d95a
+        fromPort: default
+        toPort: default
+      # AttributeManagerDict -> AttributeDuplicateFilterDict
+      - id: 20a9426e-e4be-411a-96fa-1f048def2ea1
+        from: 8f254c7d-fa35-416c-8093-dbaafd72d95a
+        to: abc6a99c-5730-423c-a449-38911ab4a4e7
+        fromPort: default
+        toPort: default
+      # AttributeDuplicateFilterDict -> JsonWriterDict
+      - id: b40ba70c-2298-4f1e-ab44-0b52694733a6
+        from: abc6a99c-5730-423c-a449-38911ab4a4e7
+        to: ea88ce7b-1525-419e-a869-d193d8318b71
+        fromPort: default
+        toPort: default
+      # LodSplitter (lod0) -> AttributeManager
+      - id: 81137235-61f1-4aec-b4d5-e10d16f92e84
+        from: 75faa932-e0a9-482c-a3f9-267817ed311c
+        to: f63b1460-11eb-4000-a976-38f37a4e919b
+        fromPort: lod0
+        toPort: default
+      # LodSplitter (lod1) -> AttributeManager
+      - id: 33f6429c-3e18-443e-a68c-a782a17ec1a7
+        from: 75faa932-e0a9-482c-a3f9-267817ed311c
+        to: f63b1460-11eb-4000-a976-38f37a4e919b
+        fromPort: lod1
+        toPort: default
+      # LodSplitter (lod2) -> AttributeManager
+      - id: 9ec7a84c-aab5-47c1-ba6d-495f5ce57360
+        from: 75faa932-e0a9-482c-a3f9-267817ed311c
+        to: f63b1460-11eb-4000-a976-38f37a4e919b
+        fromPort: lod2
+        toPort: default
+      # LodSplitter (lod3) -> AttributeManager
+      - id: 8bf23c4f-564d-47c9-bcaa-3a271832bddd
+        from: 75faa932-e0a9-482c-a3f9-267817ed311c
+        to: f63b1460-11eb-4000-a976-38f37a4e919b
+        fromPort: lod3
+        toPort: default
+      # LodSplitter (lod4) -> AttributeManager
+      - id: bd94975e-79f4-43b8-a8bc-fdab11236223
+        from: 75faa932-e0a9-482c-a3f9-267817ed311c
+        to: f63b1460-11eb-4000-a976-38f37a4e919b
+        fromPort: lod4
+        toPort: default
+      # AttributeManager -> TwoDimensionForcer
+      - id: 6637e8a3-8664-4f93-a622-effeabed4321
+        from: f63b1460-11eb-4000-a976-38f37a4e919b
+        to: 2469c61e-dbda-488e-af80-e3b4105197b7
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcer -> MVTWriter
+      - id: fee6abe9-144a-48b8-8cf8-c9f9126ac461
+        from: 2469c61e-dbda-488e-af80-e3b4105197b7
+        to: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
+        fromPort: default
+        toPort: default

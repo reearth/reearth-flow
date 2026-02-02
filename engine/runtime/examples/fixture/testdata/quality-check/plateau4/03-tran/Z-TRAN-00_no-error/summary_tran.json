@@ -1,9 +1,5 @@
 [
   {
-    "name": "L-TRAN-02 隣接面重複",
-    "count": 0
-  },
-  {
     "name": "L-TRAN-03 xlink参照エラー",
     "count": 0
   },

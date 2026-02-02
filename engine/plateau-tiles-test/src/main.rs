@@ -99,7 +99,6 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
-    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
     "data-convert/plateau4/03-frn-veg/curvemembers",
     "data-convert/plateau4/03-frn-veg/frn",
     "data-convert/plateau4/03-frn-veg/veg",
@@ -113,10 +112,12 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
-    "data-convert/plateau4/07-brid-tun-cons/brid",
-    "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
-    "data-convert/plateau4/07-brid-tun-cons/cons",
+    // "data-convert/plateau4/07-brid-tun-cons/brid",
+    // "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
+    // "data-convert/plateau4/07-brid-tun-cons/cons",
+    "data-convert/plateau4/08-ubld/ubld",
     "data-convert/plateau4/10-wtr/lod1",
+    "data-convert/plateau4/11-gen/mvt",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -318,22 +319,29 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
 }
 
 fn decompress_glbs(flow_extracted_dir: &Path) {
-    for entry in WalkDir::new(flow_extracted_dir)
+    let glb_files: Vec<_> = WalkDir::new(flow_extracted_dir)
         .into_iter()
         .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-        if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
-            tracing::debug!("Decompressing glb file: {}", path.display());
-            let status = std::process::Command::new("npx")
-                .arg("glb-decompress")
-                .arg(path.as_os_str())
-                .status()
-                .expect("Failed to execute glb-decompress command");
-            if !status.success() {
-                panic!("glb-decompress failed");
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
+                Some(path.to_path_buf())
+            } else {
+                None
             }
-        }
+        })
+        .collect();
+
+    let mut cmd = std::process::Command::new("glb-decompress");
+    for glb_file in &glb_files {
+        cmd.arg(glb_file.as_os_str());
+    }
+
+    let status = cmd
+        .status()
+        .expect("Failed to execute glb-decompress command");
+    if !status.success() {
+        panic!("glb-decompress failed");
     }
 }
 

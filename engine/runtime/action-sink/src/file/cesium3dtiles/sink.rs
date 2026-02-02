@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{Attribute, Expr, Feature};
+use reearth_flow_types::{Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -181,23 +181,6 @@ impl Sink for Cesium3DTilesWriter {
     }
 }
 
-/// Sanitizes attribute keys to comply with Cesium 3D Tiles 1.1 identifier requirements.
-/// Identifiers must start with a letter or underscore, and contain only alphanumeric characters or underscores.
-fn sanitize_attribute_key(identifier: &str) -> String {
-    let mut result = String::new();
-    for (i, c) in identifier.chars().enumerate() {
-        let is_valid_first = c == '_' || c.is_ascii_alphabetic();
-        let is_valid_rest = c.is_ascii_alphabetic() || c.is_ascii_digit();
-
-        if i == 0 {
-            result.push(if is_valid_first { c } else { '_' });
-        } else {
-            result.push(if is_valid_rest { c } else { '_' });
-        }
-    }
-    result
-}
-
 impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let Some(feature_type) = &ctx.feature.feature_type() else {
@@ -239,8 +222,6 @@ impl Cesium3DTilesWriter {
             None
         };
 
-        // Sanitize attribute keys according to Cesium 3D Tiles specification
-        // see: https://github.com/CesiumGS/3d-tiles/blob/1.1/specification/Metadata/README.adoc#identifiers
         let feature = {
             let mut feature = ctx.feature.clone();
             feature.attributes = feature
@@ -249,7 +230,6 @@ impl Cesium3DTilesWriter {
                 .filter(|(k, _)| {
                     !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
                 })
-                .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
                 .collect();
             feature
         };
@@ -270,7 +250,6 @@ impl Cesium3DTilesWriter {
             ));
         };
 
-        // Sanitize schema attribute keys to match the sanitized feature attribute keys
         let mut sanitized_feature = feature.clone();
         sanitized_feature.attributes = sanitized_feature
             .attributes
@@ -278,7 +257,6 @@ impl Cesium3DTilesWriter {
             .filter(|(k, _)| {
                 !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
             })
-            .map(|(k, v)| (Attribute::new(sanitize_attribute_key(k.as_ref())), v))
             .collect();
 
         let typedef: TypeDef = (&sanitized_feature).into();
@@ -495,23 +473,5 @@ impl Cesium3DTilesWriter {
             }
         });
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sanitize_attribute_key() {
-        // Valid identifiers remain unchanged
-        assert_eq!(sanitize_attribute_key("validName"), "validName");
-        assert_eq!(sanitize_attribute_key("_private"), "_private");
-
-        // Invalid first character gets replaced
-        assert_eq!(sanitize_attribute_key("123start"), "_23start");
-
-        // Special characters get replaced with underscores
-        assert_eq!(sanitize_attribute_key("my-key.name"), "my_key_name");
     }
 }
