@@ -436,7 +436,6 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      skipUnexposedAttributes: true
       dracoComporession: false
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3")

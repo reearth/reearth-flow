@@ -143,7 +143,6 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          skipUnexposedAttributes: true
           dracoCompression: false
           output: |
             let udx_dirs = env.get("__value")["udxDirs"];
