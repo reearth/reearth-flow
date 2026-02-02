@@ -301,6 +301,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             self.node_handle.id.as_ref(),
                         );
                     }
+                    self.channel_manager.read().wait_until_downstream_empty();
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
                 }
@@ -366,6 +367,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
+        channel_manager.wait_until_downstream_empty();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)

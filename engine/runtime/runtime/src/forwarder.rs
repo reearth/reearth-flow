@@ -40,6 +40,13 @@ impl ProcessorChannelForwarder {
             ProcessorChannelForwarder::Noop(_) => Ok(()),
         }
     }
+
+    pub fn wait_until_downstream_empty(&self) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.wait_until_downstream_empty(),
+            ProcessorChannelForwarder::Noop(_) => {}
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -189,6 +196,16 @@ impl ChannelManager {
             ),
         );
         Ok(())
+    }
+
+    pub fn are_downstream_channels_empty(&self) -> bool {
+        self.senders.iter().all(|s| s.sender.is_empty())
+    }
+
+    pub fn wait_until_downstream_empty(&self) {
+        while !self.are_downstream_channels_empty() {
+            std::thread::yield_now();
+        }
     }
 
     pub fn owner(&self) -> &NodeHandle {

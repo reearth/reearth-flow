@@ -284,6 +284,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 feature_id: Some(feature.id),
                             });
 
+                            source.channel_manager.wait_until_downstream_empty();
                             source.channel_manager.send_op(ExecutorContext::new(
                                 feature.clone(),
                                 port.clone(),
