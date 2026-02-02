@@ -267,6 +267,7 @@ impl CommonAttributeProcessor {
     pub(super) fn get_generic_schema(&self) -> HashMap<Attribute, AttributeValue> {
         let mut result = HashMap::new();
         for (key, value) in self.attribute_to_attribute_type.iter() {
+            eprintln!("generic attribute: {key} -> {value}");
             match value.as_str() {
                 "string" | "date" | "buffer" => {
                     result.insert(

@@ -211,6 +211,11 @@ fn parse_tree_reader<R: BufRead>(
             );
         }
         attributes.extend(base_attributes.clone());
+        // STEP 2: Check if entity.root contains bridDmAttribute BEFORE flatten decision
+        if let nusamai_citygml::Value::Object(ref obj) = entity.root {
+            let has_key = obj.attributes.contains_key("uro:bridDmAttribute");
+            eprintln!("[STEP2] Before flatten decision (flatten={}): has bridDmAttribute={}", flatten, has_key);
+        }
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
@@ -239,6 +244,11 @@ fn parse_tree_reader<R: BufRead>(
                 continue;
             }
             transformer.transform(&mut ent);
+            // STEP 3: Check if ent.root contains bridDmAttribute AFTER transformer
+            if let nusamai_citygml::Value::Object(ref obj) = ent.root {
+                let has_key = obj.attributes.contains_key("uro:bridDmAttribute");
+                eprintln!("[STEP3] After transformer.transform: has bridDmAttribute={}", has_key);
+            }
 
             // Use entity's own non-empty gml:id or None, toplevel id is stored in gmlId attribute
             let child_id = ent.id.clone();
@@ -269,6 +279,11 @@ fn parse_tree_reader<R: BufRead>(
                 }
             }
 
+            // STEP 1: Check if ent.root contains bridDmAttribute
+            if let nusamai_citygml::Value::Object(ref obj) = ent.root {
+                let has_key = obj.attributes.contains_key("uro:bridDmAttribute");
+                eprintln!("[STEP1] Before conversion: has bridDmAttribute={}", has_key);
+            }
             let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
             let citygml_attributes = AttributeValue::Map(citygml_attributes);
             let geometry: Geometry = ent.try_into().map_err(|e| {
