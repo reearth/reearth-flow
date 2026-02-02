@@ -177,6 +177,10 @@ enum Method {
 }
 
 impl Processor for AttributeAggregator {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn num_threads(&self) -> usize {
         2
     }

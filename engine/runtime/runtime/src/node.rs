@@ -320,6 +320,9 @@ impl Clone for Box<dyn ProcessorFactory> {
 }
 
 pub trait Processor: Send + Sync + Debug + ProcessorClone {
+    fn is_accumulating(&self) -> bool {
+        false
+    }
     fn initialize(&mut self, _ctx: NodeContext) -> Result<(), BoxedError> {
         Ok(())
     }

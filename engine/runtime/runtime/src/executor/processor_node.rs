@@ -360,10 +360,18 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
         let now = time::Instant::now();
 
+        let _accumulating_guard = if processor.read().is_accumulating() {
+            Some(super::accumulating_coordinator::acquire_permit())
+        } else {
+            None
+        };
+
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+
+        drop(_accumulating_guard);
 
         let span = self.span.clone();
         self.event_hub.info_log_with_node_info(

@@ -140,6 +140,10 @@ pub struct CSGBuilder {
 }
 
 impl Processor for CSGBuilder {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn num_threads(&self) -> usize {
         2
     }

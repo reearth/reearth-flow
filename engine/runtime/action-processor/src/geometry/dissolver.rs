@@ -130,6 +130,10 @@ pub struct Dissolver {
 }
 
 impl Processor for Dissolver {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,

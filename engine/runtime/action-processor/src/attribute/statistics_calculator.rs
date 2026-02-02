@@ -182,6 +182,10 @@ struct Calculation {
 }
 
 impl Processor for StatisticsCalculator {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,

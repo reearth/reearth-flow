@@ -9,20 +9,20 @@ use crate::types::{
 
 use super::{GeoFloat, GeoNum};
 
-pub trait BooleanOps: Sized {
+pub trait BooleanOps<Rhs = Self>: Sized {
     type Scalar: GeoNum;
 
-    fn boolean_op(&self, other: &Self, op: OpType) -> MultiPolygon2D<Self::Scalar>;
-    fn intersection(&self, other: &Self) -> MultiPolygon2D<Self::Scalar> {
+    fn boolean_op(&self, other: &Rhs, op: OpType) -> MultiPolygon2D<Self::Scalar>;
+    fn intersection(&self, other: &Rhs) -> MultiPolygon2D<Self::Scalar> {
         self.boolean_op(other, OpType::Intersection)
     }
-    fn union(&self, other: &Self) -> MultiPolygon2D<Self::Scalar> {
+    fn union(&self, other: &Rhs) -> MultiPolygon2D<Self::Scalar> {
         self.boolean_op(other, OpType::Union)
     }
-    fn xor(&self, other: &Self) -> MultiPolygon2D<Self::Scalar> {
+    fn xor(&self, other: &Rhs) -> MultiPolygon2D<Self::Scalar> {
         self.boolean_op(other, OpType::Xor)
     }
-    fn difference(&self, other: &Self) -> MultiPolygon2D<Self::Scalar> {
+    fn difference(&self, other: &Rhs) -> MultiPolygon2D<Self::Scalar> {
         self.boolean_op(other, OpType::Difference)
     }
 
@@ -74,6 +74,41 @@ impl<T: GeoFloat + FloatNumber> BooleanOps for MultiPolygon2D<T> {
         invert: bool,
     ) -> MultiLineString2D<Self::Scalar> {
         clip_multi_polygon(self, ls, invert)
+    }
+}
+
+// Cross-type implementations: Polygon2D <-> MultiPolygon2D
+// Note: clip() is intentionally not implemented for cross-type operations
+// to avoid ambiguity, as clip() doesn't depend on Rhs.
+impl<T: GeoFloat + FloatNumber> BooleanOps<MultiPolygon2D<T>> for Polygon2D<T> {
+    type Scalar = T;
+
+    fn boolean_op(&self, other: &MultiPolygon2D<T>, op: OpType) -> MultiPolygon2D<Self::Scalar> {
+        boolean_op_polygon_multi_polygon(self, other, op)
+    }
+
+    fn clip(
+        &self,
+        _ls: &MultiLineString2D<Self::Scalar>,
+        _invert: bool,
+    ) -> MultiLineString2D<Self::Scalar> {
+        unimplemented!("clip() is only available on same-type BooleanOps implementations")
+    }
+}
+
+impl<T: GeoFloat + FloatNumber> BooleanOps<Polygon2D<T>> for MultiPolygon2D<T> {
+    type Scalar = T;
+
+    fn boolean_op(&self, other: &Polygon2D<T>, op: OpType) -> MultiPolygon2D<Self::Scalar> {
+        boolean_op_multi_polygon_polygon(self, other, op)
+    }
+
+    fn clip(
+        &self,
+        _ls: &MultiLineString2D<Self::Scalar>,
+        _invert: bool,
+    ) -> MultiLineString2D<Self::Scalar> {
+        unimplemented!("clip() is only available on same-type BooleanOps implementations")
     }
 }
 

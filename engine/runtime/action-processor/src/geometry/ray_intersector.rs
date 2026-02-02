@@ -202,6 +202,10 @@ pub struct RayIntersector {
 }
 
 impl Processor for RayIntersector {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,

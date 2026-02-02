@@ -1,14 +1,18 @@
-use std::{collections::{HashMap, HashSet}, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::{BufRead, BufReader, BufWriter, Read as _, Seek, SeekFrom, Write as _},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reearth_flow_common::dir::project_temp_dir;
 use reearth_flow_geometry::{
-    algorithm::{
-        area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
-        tolerance::glue_vertices_closer_than,
-    },
-    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D, rect::Rect2D},
+    algorithm::{area2d::Area2D, bool_ops::BooleanOps},
+    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -17,8 +21,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
-use rstar::{RTree, RTreeObject, AABB};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use rstar::{RTree, AABB};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,10 +93,11 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
             output_attribute: param.output_attribute,
             generate_list: param.generate_list,
             accumulation_mode: param.accumulation_mode,
-            // Default tolerance to 0.0 if not specified.
-            // TODO: This default value is to not break existing behavior, but should be changed in the future once we have more unit tests.
             tolerance: param.tolerance.unwrap_or(0.0),
-            buffer: HashMap::new(),
+            group_map: HashMap::new(),
+            group_count: 0,
+            writers: HashMap::new(),
+            temp_dir: None,
         };
 
         Ok(Box::new(process))
@@ -126,14 +131,52 @@ struct AreaOnAreaOverlayerParam {
     tolerance: Option<f64>,
 }
 
-#[derive(Debug, Clone)]
+struct GroupWriters {
+    aabb_writer: BufWriter<File>,
+    feat_writer: BufWriter<File>,
+}
+
+impl std::fmt::Debug for GroupWriters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GroupWriters").finish_non_exhaustive()
+    }
+}
+
 struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     output_attribute: Option<String>,
     generate_list: Option<String>,
     accumulation_mode: AccumulationMode,
     tolerance: f64,
-    buffer: HashMap<AttributeValue, Vec<Feature>>,
+    // Disk-backed state: open file handles per group
+    group_map: HashMap<AttributeValue, usize>,
+    group_count: usize,
+    writers: HashMap<usize, GroupWriters>,
+    temp_dir: Option<PathBuf>,
+}
+
+impl std::fmt::Debug for AreaOnAreaOverlayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AreaOnAreaOverlayer")
+            .field("group_count", &self.group_count)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Clone for AreaOnAreaOverlayer {
+    fn clone(&self) -> Self {
+        Self {
+            group_by: self.group_by.clone(),
+            output_attribute: self.output_attribute.clone(),
+            generate_list: self.generate_list.clone(),
+            accumulation_mode: self.accumulation_mode.clone(),
+            tolerance: self.tolerance,
+            group_map: HashMap::new(),
+            group_count: 0,
+            writers: HashMap::new(),
+            temp_dir: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
@@ -144,7 +187,57 @@ pub enum AccumulationMode {
     DropIncomingAttributes,
 }
 
+impl AreaOnAreaOverlayer {
+    fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
+        if self.temp_dir.is_none() {
+            let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+            self.temp_dir = Some(dir);
+        }
+        Ok(self.temp_dir.as_ref().unwrap())
+    }
+
+    fn ensure_writers(&mut self, group_idx: usize) -> Result<&mut GroupWriters, BoxedError> {
+        if !self.writers.contains_key(&group_idx) {
+            let dir = self.ensure_temp_dir()?.clone();
+            let group_dir = dir.join(format!("group_{group_idx:06}"));
+            std::fs::create_dir_all(&group_dir)?;
+
+            let aabb_file = File::create(group_dir.join("aabbs.jsonl"))?;
+            let feat_file = File::create(group_dir.join("features.jsonl"))?;
+
+            self.writers.insert(
+                group_idx,
+                GroupWriters {
+                    aabb_writer: BufWriter::new(aabb_file),
+                    feat_writer: BufWriter::new(feat_file),
+                },
+            );
+        }
+        Ok(self.writers.get_mut(&group_idx).unwrap())
+    }
+
+    fn flush_all_writers(&mut self) -> Result<(), BoxedError> {
+        for writers in self.writers.values_mut() {
+            writers.aabb_writer.flush()?;
+            writers.feat_writer.flush()?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for AreaOnAreaOverlayer {
+    fn drop(&mut self) {
+        if let Some(ref dir) = self.temp_dir {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+}
+
 impl Processor for AreaOnAreaOverlayer {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -160,7 +253,7 @@ impl Processor for AreaOnAreaOverlayer {
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
-            GeometryValue::FlowGeometry2D(_) => {
+            GeometryValue::FlowGeometry2D(geom_2d) => {
                 let key = if let Some(group_by) = &self.group_by {
                     AttributeValue::Array(
                         group_by
@@ -172,7 +265,32 @@ impl Processor for AreaOnAreaOverlayer {
                     AttributeValue::Null
                 };
 
-                self.buffer.entry(key).or_default().push(feature.clone());
+                let group_idx = if let Some(&idx) = self.group_map.get(&key) {
+                    idx
+                } else {
+                    let idx = self.group_count;
+                    self.group_map.insert(key, idx);
+                    self.group_count += 1;
+                    idx
+                };
+
+                // Compute AABB from geometry
+                let aabb = match geom_2d {
+                    Geometry2D::Polygon(p) => p.bounding_box(),
+                    Geometry2D::MultiPolygon(mp) => mp.bounding_box(),
+                    _ => None,
+                };
+                let aabb = match aabb {
+                    Some(rect) => [rect.min().x, rect.min().y, rect.max().x, rect.max().y],
+                    None => [0.0, 0.0, 0.0, 0.0],
+                };
+
+                let feature_json = serde_json::to_string(&ctx.feature)?;
+                let writers = self.ensure_writers(group_idx)?;
+                serde_json::to_writer(&mut writers.aabb_writer, &aabb)?;
+                writers.aabb_writer.write_all(b"\n")?;
+                writers.feat_writer.write_all(feature_json.as_bytes())?;
+                writers.feat_writer.write_all(b"\n")?;
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -186,18 +304,68 @@ impl Processor for AreaOnAreaOverlayer {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let overlaid = self.overlay();
-        for feature in &overlaid.area {
+        self.flush_all_writers()?;
+        // Drop all file handles before reading
+        self.writers.clear();
+
+        let temp_dir = match &self.temp_dir {
+            Some(d) => d.clone(),
+            None => return Ok(()),
+        };
+
+        let mut overlaid = OverlaidFeatures::new();
+
+        for group_idx in 0..self.group_count {
+            let group_dir = temp_dir.join(format!("group_{group_idx:06}"));
+            let aabbs_path = group_dir.join("aabbs.jsonl");
+            let features_path = group_dir.join("features.jsonl");
+
+            // Load AABBs into memory (small: ~32 bytes each)
+            let aabbs: Vec<[f64; 4]> = {
+                let file = File::open(&aabbs_path)?;
+                let reader = BufReader::new(file);
+                let mut result = Vec::new();
+                for line in reader.lines() {
+                    let line = line?;
+                    if !line.is_empty() {
+                        let aabb: [f64; 4] = serde_json::from_str(&line)?;
+                        result.push(aabb);
+                    }
+                }
+                result
+            };
+
+            // Pre-scan features.jsonl to record byte offsets
+            let disk_geoms = DiskBackedFeatures::scan(&features_path)?;
+            let num_features = disk_geoms.offsets.len();
+
+            // Build geometries accessor for overlay_2d
+            let midpolygons = overlay_2d_disk(&aabbs, &disk_geoms, self.tolerance);
+
+            // Build OverlaidFeatures from midpolygons, reading attributes from disk
+            let overlaid_features = OverlaidFeatures::from_midpolygons_disk(
+                midpolygons,
+                &disk_geoms,
+                num_features,
+                &self.group_by,
+                &self.output_attribute,
+                &self.generate_list,
+                &self.accumulation_mode,
+            );
+            overlaid.extend(overlaid_features);
+        }
+
+        for feature in overlaid.area {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
-                feature.clone(),
+                feature,
                 AREA_PORT.clone(),
             ));
         }
-        for feature in &overlaid.remnant {
+        for feature in overlaid.remnant {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
-                feature.clone(),
+                feature,
                 REMNANTS_PORT.clone(),
             ));
         }
@@ -206,6 +374,61 @@ impl Processor for AreaOnAreaOverlayer {
 
     fn name(&self) -> &str {
         "AreaOnAreaOverlayer"
+    }
+}
+
+/// Provides random access to features stored on disk in a JSONL file.
+struct DiskBackedFeatures {
+    path: PathBuf,
+    offsets: Vec<u64>,
+    lengths: Vec<usize>,
+}
+
+impl DiskBackedFeatures {
+    /// Scan a JSONL file to record byte offsets and lengths for each line.
+    fn scan(path: &PathBuf) -> Result<Self, BoxedError> {
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+        let mut offsets = Vec::new();
+        let mut lengths = Vec::new();
+        let mut offset: u64 = 0;
+        let mut line = String::new();
+        loop {
+            line.clear();
+            let bytes_read = reader.read_line(&mut line)?;
+            if bytes_read == 0 {
+                break;
+            }
+            let trimmed_len = line.trim_end_matches('\n').len();
+            if trimmed_len > 0 {
+                offsets.push(offset);
+                lengths.push(trimmed_len);
+            }
+            offset += bytes_read as u64;
+        }
+        Ok(Self {
+            path: path.clone(),
+            offsets,
+            lengths,
+        })
+    }
+
+    /// Read and deserialize a feature at the given index.
+    /// Each call opens its own file handle, making it safe for parallel use.
+    fn read_feature(&self, i: usize) -> Feature {
+        let mut file = File::open(&self.path).expect("failed to open features file");
+        file.seek(SeekFrom::Start(self.offsets[i]))
+            .expect("failed to seek in features file");
+        let mut buf = vec![0u8; self.lengths[i]];
+        file.read_exact(&mut buf)
+            .expect("failed to read feature from disk");
+        serde_json::from_slice(&buf).expect("failed to deserialize feature")
+    }
+
+    /// Read and extract only the geometry from a feature at the given index.
+    fn read_geometry(&self, i: usize) -> Arc<Geometry> {
+        let feature = self.read_feature(i);
+        feature.geometry
     }
 }
 
@@ -233,76 +456,116 @@ impl MiddlePolygon {
     }
 }
 
-impl AreaOnAreaOverlayer {
-    fn overlay(&mut self) -> OverlaidFeatures {
-        let mut overlaid = OverlaidFeatures::new();
-        for buffer in std::mem::take(&mut self.buffer).into_values() {
-            let (attributes, mut polygons): (Vec<_>, Vec<_>) = buffer
-                .into_iter()
-                .filter_map(|f| {
-                    let Feature { attributes, geometry, .. } = f;
-
-                    let geometry = geometry.value.as_flow_geometry_2d()?;
-                    
-                    match geometry {
-                        Geometry2D::MultiPolygon(multi_polygon) => Some((attributes, multi_polygon.clone())),
-                        Geometry2D::Polygon(polygon) => {
-                            Some((attributes, MultiPolygon2D::new(vec![polygon.clone()])))
-                        },
-                        Geometry2D::LineString(linestring) => {
-                            // If it's a closed LineString, convert to Polygon
-                            let coords = linestring.coords().collect::<Vec<_>>();
-                            if coords.len() >= 4 && coords.first() == coords.last() {
-                                // Create polygon from closed linestring
-                                use reearth_flow_geometry::types::polygon::Polygon2D;
-                                let polygon = Polygon2D::new(linestring.clone(), vec![]);
-                                Some((attributes, MultiPolygon2D::new(vec![polygon.clone()])))
-                            } else {
-                                None
-                            }
-                        },
-                        _ => None,
-                    }
-                })
-                .unzip();
-
-            // glue vertices that are closer than the tolerance
-            let mut vertices = Vec::new();
-            for polygon in &mut polygons {
-                vertices.extend(polygon.get_vertices_mut());
-            }
-            glue_vertices_closer_than(self.tolerance, vertices);
-
-            let midpolygons = overlay_2d(polygons, self.tolerance);
-
-            let overlaid_features = OverlaidFeatures::from_midpolygons(
-                midpolygons,
-                attributes,
-                &self.group_by,
-                &self.output_attribute,
-                &self.generate_list,
-                &self.accumulation_mode,
-            );
-            overlaid.extend(overlaid_features);
-        }
-
-        overlaid
+/// Extract Geometry2D reference from Arc<Geometry>, or None if not FlowGeometry2D
+fn as_geometry_2d(geom: &Arc<Geometry>) -> Option<&Geometry2D<f64>> {
+    match &geom.value {
+        GeometryValue::FlowGeometry2D(flow_geom) => Some(flow_geom),
+        _ => None,
     }
 }
 
-fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>, tolerance: f64) -> Vec<MiddlePolygon> {
-    let overlay_graph = OverlayGraph::bulk_load(&polygons);
+/// Convert Geometry2D to MultiPolygon2D
+fn geom_to_multipolygon(geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
+    match geom {
+        Geometry2D::Polygon(poly) => MultiPolygon2D::new(vec![poly.clone()]),
+        Geometry2D::MultiPolygon(mp) => mp.clone(),
+        _ => MultiPolygon2D::new(vec![]),
+    }
+}
 
-    // all (devided) polygons to output
-    (0..polygons.len())
+/// Perform intersection between MultiPolygon2D and Geometry2D
+fn bool_op_intersection(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
+    match geom {
+        Geometry2D::Polygon(poly) => mp.intersection(poly),
+        Geometry2D::MultiPolygon(other_mp) => mp.intersection(other_mp),
+        _ => MultiPolygon2D::new(vec![]),
+    }
+}
+
+/// Perform difference between MultiPolygon2D and Geometry2D
+fn bool_op_difference(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
+    match geom {
+        Geometry2D::Polygon(poly) => mp.difference(poly),
+        Geometry2D::MultiPolygon(other_mp) => mp.difference(other_mp),
+        _ => MultiPolygon2D::new(vec![]),
+    }
+}
+
+/// An AABB entry for the RTree built from pre-computed bounding boxes stored on disk.
+struct AabbEntry {
+    index: usize,
+    aabb: AABB<[f64; 2]>,
+}
+
+impl rstar::RTreeObject for AabbEntry {
+    type Envelope = AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.aabb
+    }
+}
+
+/// Overlay graph that stores which polygons overlay which other polygons.
+struct OverlayGraph {
+    graph: Vec<HashSet<usize>>,
+}
+
+impl OverlayGraph {
+    fn bulk_load_from_aabbs(aabbs: &[[f64; 4]]) -> Self {
+        let entries: Vec<AabbEntry> = aabbs
+            .iter()
+            .enumerate()
+            .map(|(i, aabb)| AabbEntry {
+                index: i,
+                aabb: AABB::from_corners([aabb[0], aabb[1]], [aabb[2], aabb[3]]),
+            })
+            .collect();
+
+        let tree = RTree::bulk_load(entries);
+
+        let mut graph = vec![HashSet::new(); aabbs.len()];
+
+        for i in 0..aabbs.len() {
+            let aabb_i = AABB::from_corners([aabbs[i][0], aabbs[i][1]], [aabbs[i][2], aabbs[i][3]]);
+            for entry in tree.locate_in_envelope_intersecting(&aabb_i) {
+                if entry.index != i {
+                    graph[i].insert(entry.index);
+                }
+            }
+        }
+
+        Self { graph }
+    }
+
+    fn overlaid_iter(&self, i: usize) -> impl Iterator<Item = &usize> {
+        self.graph[i].iter()
+    }
+}
+
+/// Disk-backed version of overlay_2d that reads geometries from disk on demand.
+fn overlay_2d_disk(
+    aabbs: &[[f64; 4]],
+    disk_feats: &DiskBackedFeatures,
+    tolerance: f64,
+) -> Vec<MiddlePolygon> {
+    let overlay_graph = OverlayGraph::bulk_load_from_aabbs(aabbs);
+    let num = disk_feats.offsets.len();
+
+    (0..num)
         .into_par_iter()
-        .map(|i| {
-            let mut polygon_target = polygons[i].clone();
+        .filter_map(|i| {
+            let geom_i = disk_feats.read_geometry(i);
+            let geom_i_2d = as_geometry_2d(&geom_i)?;
+
+            let mut polygon_target = geom_to_multipolygon(geom_i_2d);
 
             // cut off the target polygon by upper polygons
             for j in overlay_graph.overlaid_iter(i).copied() {
                 if i < j {
-                    polygon_target = polygon_target.difference(&polygons[j]);
+                    let geom_j = disk_feats.read_geometry(j);
+                    if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
+                        polygon_target = bool_op_difference(&polygon_target, geom_j_2d);
+                    }
                 }
             }
 
@@ -314,111 +577,47 @@ fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>, tolerance: f64) -> Vec<MiddleP
             // divide the target polygon by lower polygons
             for j in overlay_graph.overlaid_iter(i).copied() {
                 if i > j {
-                    let mut new_queue = Vec::new();
-                    for subpolygon in queue {
-                        let intersection = subpolygon.polygon.intersection(&polygons[j]);
+                    let geom_j = disk_feats.read_geometry(j);
+                    if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
+                        let mut new_queue = Vec::new();
+                        for subpolygon in queue {
+                            let intersection =
+                                bool_op_intersection(&subpolygon.polygon, geom_j_2d);
 
-                        // Filter out tiny intersections that are numerical noise
-                        // Since we are identifying vertices with distance less than `tolerance`,
-                        // the minimum significant area should be that of the square with side-length `tolerance`.
-                        let min_area = tolerance * tolerance;
-                        let intersection_area = intersection.unsigned_area2d();
-                        let is_significant_intersection = intersection_area > min_area;
+                            let min_area = tolerance * tolerance;
+                            let intersection_area = intersection.unsigned_area2d();
+                            let is_significant_intersection = intersection_area > min_area;
 
-                        if !intersection.is_empty() && is_significant_intersection {
-                            new_queue.push(MiddlePolygon {
-                                polygon: intersection,
-                                parents: subpolygon
-                                    .parents
-                                    .clone()
-                                    .into_iter()
-                                    .chain(vec![j])
-                                    .collect(),
-                            });
+                            if !intersection.is_empty() && is_significant_intersection {
+                                new_queue.push(MiddlePolygon {
+                                    polygon: intersection,
+                                    parents: subpolygon
+                                        .parents
+                                        .clone()
+                                        .into_iter()
+                                        .chain(vec![j])
+                                        .collect(),
+                                });
+                            }
+
+                            let difference =
+                                bool_op_difference(&subpolygon.polygon, geom_j_2d);
+                            if !difference.is_empty() {
+                                new_queue.push(MiddlePolygon {
+                                    polygon: difference,
+                                    parents: subpolygon.parents.clone(),
+                                });
+                            }
                         }
-
-                        let difference = subpolygon.polygon.difference(&polygons[j]);
-                        if !difference.is_empty() {
-                            new_queue.push(MiddlePolygon {
-                                polygon: difference,
-                                parents: subpolygon.parents.clone(),
-                            });
-                        }
+                        queue = new_queue;
                     }
-                    queue = new_queue;
                 }
             }
 
-            queue
+            Some(queue)
         })
         .flatten()
         .collect::<Vec<_>>()
-}
-
-struct PolygonWithMbr2D {
-    index: usize,
-    mbr: Rect2D<f64>,
-}
-
-impl PolygonWithMbr2D {
-    fn new(mbr: Rect2D<f64>, index: usize) -> Option<Self> {
-        Some(Self { index, mbr })
-    }
-}
-
-impl rstar::RTreeObject for PolygonWithMbr2D {
-    type Envelope = AABB<[f64; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        self.mbr.envelope()
-    }
-}
-
-/// Overlay graph that stores which polygons overlay which other polygons.
-struct OverlayGraph {
-    /// Adjacency list representation of the overlay graph.
-    /// Each index corresponds to a polygon, and the set contains indices of polygons whose AABB intersects with the polygon at that index.
-    graph: Vec<HashSet<usize>>,
-}
-
-impl OverlayGraph {
-    fn bulk_load(polygons: &[MultiPolygon2D<f64>]) -> Self {
-        let polygon_mbrs = polygons
-            .iter()
-            .map(|p| p.bounding_box())
-            .collect::<Vec<_>>();
-
-        let polygon_tree = RTree::bulk_load(
-            polygon_mbrs
-                .iter()
-                .enumerate()
-                .filter_map(|(i, mbr)| mbr.as_ref().and_then(|mbr| PolygonWithMbr2D::new(*mbr, i)))
-                .collect::<Vec<_>>(),
-        );
-
-        let mut graph = vec![HashSet::new(); polygons.len()];
-
-        for i in 0..polygons.len() {
-            let mbr_i = if let Some(polygon_mbr) = &polygon_mbrs[i] {
-                polygon_mbr
-            } else {
-                continue;
-            };
-
-            let overlaids =
-                polygon_tree.locate_in_envelope_intersecting(&mbr_i.bounding_rect().envelope());
-
-            for overlaid in overlaids {
-                graph[i].insert(overlaid.index);
-            }
-        }
-
-        Self { graph }
-    }
-
-    fn overlaid_iter(&self, i: usize) -> impl Iterator<Item = &usize> {
-        self.graph[i].iter()
-    }
 }
 
 /// Features that are created as the result of the overlay process.
@@ -436,14 +635,31 @@ impl OverlaidFeatures {
         }
     }
 
-    fn from_midpolygons(
+    fn from_midpolygons_disk(
         midpolygons: Vec<MiddlePolygon>,
-        base_attributes: Vec<Arc<IndexMap<Attribute, AttributeValue>>>,
+        disk_feats: &DiskBackedFeatures,
+        _num_features: usize,
         _group_by: &Option<Vec<Attribute>>,
         output_attribute: &Option<String>,
         generate_list: &Option<String>,
         accumulation_mode: &AccumulationMode,
     ) -> Self {
+        // Collect which feature indices we need to load attributes from
+        let mut needed_indices: HashSet<usize> = HashSet::new();
+        for mp in &midpolygons {
+            for &p in &mp.parents {
+                needed_indices.insert(p);
+            }
+        }
+
+        // Load only the needed features' attributes
+        let mut attributes_cache: HashMap<usize, Arc<IndexMap<Attribute, AttributeValue>>> =
+            HashMap::new();
+        for &idx in &needed_indices {
+            let feature = disk_feats.read_feature(idx);
+            attributes_cache.insert(idx, feature.attributes);
+        }
+
         let mut area = Vec::new();
         let mut remnant = Vec::new();
         for subpolygon in midpolygons {
@@ -453,13 +669,12 @@ impl OverlaidFeatures {
                     let attrs = match accumulation_mode {
                         AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
-                            let first_feature = &base_attributes[parents[0]];
-                            (&**first_feature).clone()
+                            let first_feature = &attributes_cache[&parents[0]];
+                            (**first_feature).clone()
                         }
                     };
                     let mut feature = Feature::new_with_attributes(attrs);
 
-                    // Add overlap count attribute if specified
                     if let Some(attr_name) = output_attribute {
                         let overlap_count = parents.len();
                         feature.attributes_mut().insert(
@@ -468,13 +683,12 @@ impl OverlaidFeatures {
                         );
                     }
 
-                    // Add generate list attribute if specified
                     if let Some(list_name) = generate_list {
                         let list_items: Vec<AttributeValue> = parents
                             .iter()
                             .map(|&parent_index| {
                                 let mut map = HashMap::new();
-                                for (attr, value) in &*base_attributes[parent_index] {
+                                for (attr, value) in &*attributes_cache[&parent_index] {
                                     map.insert(attr.as_ref().to_string(), value.clone());
                                 }
                                 AttributeValue::Map(map)
@@ -483,7 +697,7 @@ impl OverlaidFeatures {
 
                         feature.attributes_mut().insert(
                             Attribute::new(list_name.clone()),
-                            AttributeValue::Array(list_items.clone()),
+                            AttributeValue::Array(list_items),
                         );
                     }
 
@@ -495,12 +709,11 @@ impl OverlaidFeatures {
                     let attrs = match accumulation_mode {
                         AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
-                            (*base_attributes[parent]).clone()
+                            (*attributes_cache[&parent]).clone()
                         }
                     };
                     let mut feature = Feature::new_with_attributes(attrs);
 
-                    // Add overlap count attribute if specified (remnants have overlap count of 1)
                     if let Some(attr_name) = output_attribute {
                         feature.attributes_mut().insert(
                             Attribute::new(attr_name.clone()),
@@ -508,10 +721,9 @@ impl OverlaidFeatures {
                         );
                     }
 
-                    // Add generate list attribute if specified (single item for remnants)
                     if let Some(list_name) = generate_list {
                         let mut map = HashMap::new();
-                        for (attr, value) in &*base_attributes[parent] {
+                        for (attr, value) in &*attributes_cache[&parent] {
                             map.insert(attr.as_ref().to_string(), value.clone());
                         }
                         let list_items = vec![AttributeValue::Map(map)];
@@ -545,59 +757,85 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_overlay_two_squares() {
-        let polygons = vec![
-            MultiPolygon2D::new(vec![Polygon2D::new(
-                LineString2D::new(vec![
-                    Coordinate2D::new_(0.0, 0.0),
-                    Coordinate2D::new_(2.0, 0.0),
-                    Coordinate2D::new_(2.0, 2.0),
-                    Coordinate2D::new_(0.0, 2.0),
-                    Coordinate2D::new_(0.0, 0.0),
-                ]),
-                vec![],
-            )]),
-            MultiPolygon2D::new(vec![Polygon2D::new(
-                LineString2D::new(vec![
-                    Coordinate2D::new_(1.0, 1.0),
-                    Coordinate2D::new_(3.0, 1.0),
-                    Coordinate2D::new_(3.0, 3.0),
-                    Coordinate2D::new_(1.0, 3.0),
-                    Coordinate2D::new_(1.0, 1.0),
-                ]),
-                vec![],
-            )]),
-        ];
+    fn make_geom(coords: Vec<(f64, f64)>) -> Arc<Geometry> {
+        let ls = LineString2D::new(coords.into_iter().map(|(x, y)| Coordinate2D::new_(x, y)).collect());
+        Arc::new(Geometry::with_value(GeometryValue::FlowGeometry2D(
+            Geometry2D::MultiPolygon(MultiPolygon2D::new(vec![Polygon2D::new(ls, vec![])])),
+        )))
+    }
 
-        let midpolygons = overlay_2d(polygons, 0.01);
-        assert_eq!(midpolygons.len(), 3);
+    fn make_feature(coords: Vec<(f64, f64)>) -> Feature {
+        let geom = make_geom(coords);
+        let mut f = Feature::new_with_attributes(IndexMap::new());
+        *f.geometry_mut() = (*geom).clone();
+        f
     }
 
     #[test]
-    fn test_overlay_triangles_sharing_an_edge() {
-        let polygons = vec![
-            MultiPolygon2D::new(vec![Polygon2D::new(
-                LineString2D::new(vec![
-                    Coordinate2D::new_(0.0, 0.0),
-                    Coordinate2D::new_(2.0, 0.0),
-                    Coordinate2D::new_(1.0, 2.0),
-                    Coordinate2D::new_(0.0, 0.0),
-                ]),
-                vec![],
-            )]),
-            MultiPolygon2D::new(vec![Polygon2D::new(
-                LineString2D::new(vec![
-                    Coordinate2D::new_(0.0, 0.0),
-                    Coordinate2D::new_(2.0, 0.0),
-                    Coordinate2D::new_(1.0, 1.0),
-                    Coordinate2D::new_(0.0, 0.0),
-                ]),
-                vec![],
-            )]),
+    fn test_overlay_two_squares_disk() {
+        // Create temp dir and write features to disk
+        let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).unwrap();
+        let group_dir = dir.join("group_000000");
+        std::fs::create_dir_all(&group_dir).unwrap();
+
+        let features = vec![
+            make_feature(vec![(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0), (0.0, 0.0)]),
+            make_feature(vec![(1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0), (1.0, 1.0)]),
         ];
 
-        let midpolygons = overlay_2d(polygons, 0.01);
+        let aabbs: Vec<[f64; 4]> = vec![
+            [0.0, 0.0, 2.0, 2.0],
+            [1.0, 1.0, 3.0, 3.0],
+        ];
+
+        // Write features.jsonl
+        let features_path = group_dir.join("features.jsonl");
+        {
+            let mut writer = BufWriter::new(File::create(&features_path).unwrap());
+            for f in &features {
+                serde_json::to_writer(&mut writer, f).unwrap();
+                writer.write_all(b"\n").unwrap();
+            }
+            writer.flush().unwrap();
+        }
+
+        let disk_feats = DiskBackedFeatures::scan(&features_path).unwrap();
+        let midpolygons = overlay_2d_disk(&aabbs, &disk_feats, 0.01);
+        assert_eq!(midpolygons.len(), 3);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_overlay_triangles_sharing_an_edge_disk() {
+        let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).unwrap();
+        let group_dir = dir.join("group_000000");
+        std::fs::create_dir_all(&group_dir).unwrap();
+
+        let features = vec![
+            make_feature(vec![(0.0, 0.0), (2.0, 0.0), (1.0, 2.0), (0.0, 0.0)]),
+            make_feature(vec![(0.0, 0.0), (2.0, 0.0), (1.0, 1.0), (0.0, 0.0)]),
+        ];
+
+        let aabbs: Vec<[f64; 4]> = vec![
+            [0.0, 0.0, 2.0, 2.0],
+            [0.0, 0.0, 2.0, 1.0],
+        ];
+
+        let features_path = group_dir.join("features.jsonl");
+        {
+            let mut writer = BufWriter::new(File::create(&features_path).unwrap());
+            for f in &features {
+                serde_json::to_writer(&mut writer, f).unwrap();
+                writer.write_all(b"\n").unwrap();
+            }
+            writer.flush().unwrap();
+        }
+
+        let disk_feats = DiskBackedFeatures::scan(&features_path).unwrap();
+        let midpolygons = overlay_2d_disk(&aabbs, &disk_feats, 0.01);
         assert_eq!(midpolygons.len(), 2);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

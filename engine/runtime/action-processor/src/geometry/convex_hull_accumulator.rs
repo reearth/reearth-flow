@@ -78,7 +78,6 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
         let process = ConvexHullAccumulator {
             group_by: param.group_by,
             buffer: HashMap::new(),
-            first_attributes: None,
         };
 
         Ok(Box::new(process))
@@ -98,7 +97,6 @@ pub struct ConvexHullAccumulatorParam {
 pub struct ConvexHullAccumulator {
     group_by: Option<Vec<Attribute>>,
     buffer: HashMap<AttributeValue, GroupBuffer>,
-    first_attributes: Option<Arc<IndexMap<Attribute, AttributeValue>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +115,10 @@ impl GroupBuffer {
 }
 
 impl Processor for ConvexHullAccumulator {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -136,9 +138,7 @@ impl Processor for ConvexHullAccumulator {
                         .iter()
                         .filter_map(|attr| ctx.feature.attributes.get(attr).cloned())
                         .collect();
-                    AttributeValue::Array(
-                        attrs,
-                    )
+                    AttributeValue::Array(attrs)
                 } else {
                     AttributeValue::Null
                 };
@@ -151,18 +151,17 @@ impl Processor for ConvexHullAccumulator {
 
                     let common_attr = if let Some(group_by) = &self.group_by {
                         let vals = key.as_vec().unwrap();
-                        group_by
-                            .iter()
-                            .cloned()
-                            .zip(vals.into_iter())
-                            .collect()
+                        group_by.iter().cloned().zip(vals).collect()
                     } else {
                         IndexMap::new()
                     };
-                    self.buffer.insert(key.clone(), GroupBuffer::new(common_attr));
+                    self.buffer
+                        .insert(key.clone(), GroupBuffer::new(common_attr));
                 }
 
-                self.buffer.entry(key).and_modify(|b| b.geometries.push(ctx.feature.geometry));
+                self.buffer
+                    .entry(key)
+                    .and_modify(|b| b.geometries.push(ctx.feature.geometry));
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
@@ -201,12 +200,17 @@ impl ConvexHullAccumulator {
         hulls
     }
 
-    fn create_hull_2d(
-        buffer: GroupBuffer,
-    ) -> Feature {
-        let mut collection = buffer.geometries
+    fn create_hull_2d(buffer: GroupBuffer) -> Feature {
+        let mut collection = buffer
+            .geometries
             .into_iter()
-            .flat_map(|g| g.value.as_flow_geometry_2d().unwrap().coords_iter().collect::<Vec<_>>())
+            .flat_map(|g| {
+                g.value
+                    .as_flow_geometry_2d()
+                    .unwrap()
+                    .coords_iter()
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
 
         let convex_hull = quick_hull_2d(&mut collection);

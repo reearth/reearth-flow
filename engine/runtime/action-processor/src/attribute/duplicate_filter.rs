@@ -91,6 +91,10 @@ struct AttributeDuplicateFilterParam {
 }
 
 impl Processor for AttributeDuplicateFilter {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
