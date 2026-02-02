@@ -4,11 +4,9 @@ citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg.zip"
 
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
-
-[tests.cesium_attributes.values]
-".uro:BuildingDetailAttribute_uro:surveyYear" = 2022
-".信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間" = 20
-".meshcode" = 56381634
+".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
+".信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間" = "int"
+".meshcode" = "int"
 
 [tests.json_attributes.tilesets_lod1]
 path = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg_3dtiles_lod1/tileset.json"

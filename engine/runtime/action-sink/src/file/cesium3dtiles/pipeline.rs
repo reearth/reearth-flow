@@ -276,7 +276,7 @@ impl PropertyMetadata {
 
 /// Collect property statistics from features based on schema type information
 fn collect_property_stats(
-    features: &[GltfFeature],
+    features: &[&GltfFeature],
     typename: &str,
     schema: &Schema,
 ) -> HashMap<String, PropertyMetadata> {

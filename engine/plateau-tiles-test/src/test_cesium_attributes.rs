@@ -9,7 +9,6 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 pub struct CesiumAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
-    pub values: Option<HashMap<String, Value>>,
 }
 
 /// Load all GLB attributes from a directory using the GeometryCollector
@@ -56,8 +55,6 @@ pub fn test_cesium_attributes(
         HashMap::new()
     };
 
-    let values = config.values.clone().unwrap_or_default();
-
     // Find top-level 3D Tiles directories
     let fme_dirs = find_cesium_tile_directories(fme_path)?;
     let flow_dirs = find_cesium_tile_directories(flow_path)?;
@@ -81,7 +78,7 @@ pub fn test_cesium_attributes(
 
         // Compare GLB attributes
         for (ident, attr1, attr2) in align_glb_attr(&fme_dir, &flow_dir)? {
-            analyze_attributes(&ident, &attr1, &attr2, casts.clone(), values.clone())?;
+            analyze_attributes(&ident, &attr1, &attr2, casts.clone(), Default::default())?;
         }
     }
 

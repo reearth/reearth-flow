@@ -4,9 +4,7 @@ citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_wtr.zip"
 
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
-
-[tests.cesium_attributes.values]
-".meshcode" = 493034
+".meshcode" = "int"
 
 [tests.json_attributes.tilesets_lod1]
 path = "43206_tamana-shi_city_2024_citygml_2_op_wtr_3dtiles_lod1/tileset.json"

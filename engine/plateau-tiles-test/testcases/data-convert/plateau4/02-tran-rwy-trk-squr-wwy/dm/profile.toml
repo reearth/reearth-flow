@@ -16,9 +16,7 @@ threshold = 0.01
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
-
-[tests.cesium_attributes.values]
-".meshcode" = 54401008
+".meshcode" = "int"
 
 [tests.cesium_statistics]
 

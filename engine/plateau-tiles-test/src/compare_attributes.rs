@@ -77,6 +77,7 @@ pub struct AttributeComparer {
 pub enum CastConfig {
     String,
     Float { epsilon: Option<f64> },
+    Int,
     Json,
     ListToDict { key: String },
     IgnoreBoth,
@@ -182,6 +183,30 @@ impl AttributeComparer {
                         Value::String(s) => {
                             if let Ok(f) = s.parse::<f64>() {
                                 serde_json::json!(f)
+                            } else {
+                                value
+                            }
+                        }
+                        _ => value,
+                    }
+                }
+                CastConfig::Int => {
+                    // Convert to integer if possible
+                    match &value {
+                        Value::Number(n) => {
+                            if let Some(i) = n.as_i64() {
+                                serde_json::json!(i)
+                            } else if let Some(f) = n.as_f64() {
+                                serde_json::json!(f.round() as i64)
+                            } else {
+                                value
+                            }
+                        }
+                        Value::String(s) => {
+                            if let Ok(i) = s.parse::<i64>() {
+                                serde_json::json!(i)
+                            } else if let Ok(f) = s.parse::<f64>() {
+                                serde_json::json!(f.round() as i64)
                             } else {
                                 value
                             }

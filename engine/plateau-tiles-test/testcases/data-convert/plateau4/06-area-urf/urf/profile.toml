@@ -2,6 +2,8 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_urf.zip"
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.urf:notificationNumber" = "string"
+".attributes.urf:finalNotificationNumber" = "string"
 
 [tests.mvt_polygons]
 threshold = 0.001
