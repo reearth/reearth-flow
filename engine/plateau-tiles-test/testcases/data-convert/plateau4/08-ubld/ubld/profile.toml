@@ -5,6 +5,8 @@ citygml_zip_name = "13102_chuo-ku_pref_2023_citygml_2_op_ubld.zip"
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+".attributes.ancestors[1].meshcode" = "string"
 
 [tests.json_attributes.tilesets_lod1]
 path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod1/tileset.json"
