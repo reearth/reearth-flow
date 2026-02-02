@@ -1022,9 +1022,9 @@ mod tests {
             Some(AttributeValue::String(json_str)) => {
                 let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
                 let meshcode = &parsed["meshcode"];
-                assert_eq!(meshcode.as_str().unwrap(), "51393186");
+                assert_eq!(meshcode.as_i64().unwrap(), 51393186);
             }
-            _ => panic!("attributes should be String, got {:?}", attributes_json),
+            _ => panic!("attributes should be Integer, got {:?}", attributes_json),
         }
     }
 
