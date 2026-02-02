@@ -6306,7 +6306,11 @@
       "name": "PLATEAU4.AttributeFlattener",
       "type": "processor",
       "description": "PLATEAU4属性展平器",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeFlattener Parameters",
+        "type": "object"
+      },
       "builtin": false,
       "inputPorts": [
         "default"

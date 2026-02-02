@@ -215,7 +215,12 @@ impl AttributeFlattener {
 
     // LOD4 subfeatures inherit top-level ancestor's extracted attributes
     // They also do not have toplevel ancestor in their ancestors list (popped here)
-    fn inherit_lod4_attributes(&mut self, feature: &mut Feature, ancestors: &mut Vec<AttributeValue>, lookup_key: &str) {
+    fn inherit_lod4_attributes(
+        &mut self,
+        feature: &mut Feature,
+        ancestors: &mut Vec<AttributeValue>,
+        lookup_key: &str,
+    ) {
         let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
         if !is_lod4 {
             return;
@@ -232,10 +237,13 @@ impl AttributeFlattener {
         };
 
         // Track LOD4 -> ancestor type mapping for schema generation
-        if let Some(AttributeValue::String(ancestor_feature_type)) = toplevel_ancestor.get("feature_type") {
+        if let Some(AttributeValue::String(ancestor_feature_type)) =
+            toplevel_ancestor.get("feature_type")
+        {
             if let Some(package) = feature.get("package").and_then(|v| v.as_string()) {
                 let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
-                self.lod4_to_ancestor_type.insert(lookup_key.to_string(), ancestor_lookup_key);
+                self.lod4_to_ancestor_type
+                    .insert(lookup_key.to_string(), ancestor_lookup_key);
             }
         }
 
@@ -342,7 +350,7 @@ impl AttributeFlattener {
         strip_parent_info(&mut citygml_attributes);
 
         // For LOD4 subfeatures, inherit top-level ancestor's extracted attributes
-        self.inherit_lod4_attributes(feature, &mut ancestors, &lookup_key);
+        self.inherit_lod4_attributes(feature, &mut ancestors, lookup_key);
 
         if !ancestors.is_empty() {
             citygml_attributes.insert(
@@ -485,13 +493,15 @@ impl AttributeFlattener {
         }
 
         // For LOD4 features, use ancestor's feature_type_key for schema lookup
-        let schema_lookup_key = self.lod4_to_ancestor_type
+        let schema_lookup_key = self
+            .lod4_to_ancestor_type
             .get(feature_type_key)
             .map(|s| s.as_str())
             .unwrap_or(feature_type_key);
 
         // Add attributes specific to this feature type that were actually used
-        if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(schema_lookup_key)
+        if let Some(flatten_attributes) =
+            super::constants::FLATTEN_ATTRIBUTES.get(schema_lookup_key)
         {
             for attribute in flatten_attributes {
                 let data_type = match attribute.data_type.as_str() {

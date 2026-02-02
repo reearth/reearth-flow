@@ -305,19 +305,21 @@ fn collect_property_stats(
             let numeric_value: Option<serde_json::Number> = match attr_def.type_ref {
                 TypeRef::Integer => match value {
                     AttributeValue::Number(n) => n.as_i64().map(serde_json::Number::from),
-                    AttributeValue::String(s) => s.parse::<i64>().ok().map(serde_json::Number::from),
+                    AttributeValue::String(s) => {
+                        s.parse::<i64>().ok().map(serde_json::Number::from)
+                    }
                     _ => None,
                 },
                 TypeRef::NonNegativeInteger => match value {
                     AttributeValue::Number(n) => n.as_u64().map(serde_json::Number::from),
-                    AttributeValue::String(s) => s.parse::<u64>().ok().map(serde_json::Number::from),
+                    AttributeValue::String(s) => {
+                        s.parse::<u64>().ok().map(serde_json::Number::from)
+                    }
                     _ => None,
                 },
                 TypeRef::Double | TypeRef::Measure => match value {
                     AttributeValue::Number(n) => Some(n.clone()),
-                    AttributeValue::String(s) => {
-                        serde_json::from_str::<serde_json::Number>(s).ok()
-                    }
+                    AttributeValue::String(s) => serde_json::from_str::<serde_json::Number>(s).ok(),
                     _ => None,
                 },
                 _ => None,
@@ -488,15 +490,21 @@ pub(super) fn tile_writing_stage(
         } else {
             let props: HashMap<String, serde_json::Value> = stats
                 .iter()
-                .filter_map(|(key, meta)| {
+                .map(|(key, meta)| {
                     let mut obj = serde_json::Map::new();
                     if let Some(min) = &meta.minimum {
-                        obj.insert("minimum".to_string(), serde_json::Value::Number(min.clone()));
+                        obj.insert(
+                            "minimum".to_string(),
+                            serde_json::Value::Number(min.clone()),
+                        );
                     }
                     if let Some(max) = &meta.maximum {
-                        obj.insert("maximum".to_string(), serde_json::Value::Number(max.clone()));
+                        obj.insert(
+                            "maximum".to_string(),
+                            serde_json::Value::Number(max.clone()),
+                        );
                     }
-                    Some((key.clone(), serde_json::Value::Object(obj)))
+                    (key.clone(), serde_json::Value::Object(obj))
                 })
                 .collect();
             if props.is_empty() {

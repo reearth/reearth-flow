@@ -6285,7 +6285,13 @@ Extracts attributes from XML fragments based on a schema definition
 ### Description
 Flatten attributes for building feature
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeFlattener Parameters",
+  "type": "object"
+}
+```
 ### Input Ports
 * default
 ### Output Ports

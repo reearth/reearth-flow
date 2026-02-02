@@ -211,7 +211,7 @@ impl AttributeComparer {
                         value
                     }
                 }
-                CastConfig::Null => Value::Null
+                CastConfig::Null => Value::Null,
             }
         } else {
             value
