@@ -12,7 +12,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_common::dir::project_temp_dir;
 use reearth_flow_geometry::{
     algorithm::{area2d::Area2D, bool_ops::BooleanOps},
-    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D},
+    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -274,12 +274,9 @@ impl Processor for AreaOnAreaOverlayer {
                     idx
                 };
 
-                // Compute AABB from geometry
-                let aabb = match geom_2d {
-                    Geometry2D::Polygon(p) => p.bounding_box(),
-                    Geometry2D::MultiPolygon(mp) => mp.bounding_box(),
-                    _ => None,
-                };
+                // Compute AABB from geometry (convert closed LineStrings to Polygon first)
+                let mp = geom_to_multipolygon(geom_2d);
+                let aabb = mp.bounding_box();
                 let aabb = match aabb {
                     Some(rect) => [rect.min().x, rect.min().y, rect.max().x, rect.max().y],
                     None => [0.0, 0.0, 0.0, 0.0],
@@ -464,31 +461,41 @@ fn as_geometry_2d(geom: &Arc<Geometry>) -> Option<&Geometry2D<f64>> {
     }
 }
 
-/// Convert Geometry2D to MultiPolygon2D
+/// Convert Geometry2D to MultiPolygon2D.
+/// Handles Polygon, MultiPolygon, and closed LineStrings (converted to Polygon).
 fn geom_to_multipolygon(geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
     match geom {
         Geometry2D::Polygon(poly) => MultiPolygon2D::new(vec![poly.clone()]),
         Geometry2D::MultiPolygon(mp) => mp.clone(),
+        Geometry2D::LineString(ls) => {
+            let coords: Vec<_> = ls.coords().collect();
+            if coords.len() >= 4 && coords.first() == coords.last() {
+                let polygon = Polygon2D::new(ls.clone(), vec![]);
+                MultiPolygon2D::new(vec![polygon])
+            } else {
+                MultiPolygon2D::new(vec![])
+            }
+        }
         _ => MultiPolygon2D::new(vec![]),
     }
 }
 
 /// Perform intersection between MultiPolygon2D and Geometry2D
 fn bool_op_intersection(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
-    match geom {
-        Geometry2D::Polygon(poly) => mp.intersection(poly),
-        Geometry2D::MultiPolygon(other_mp) => mp.intersection(other_mp),
-        _ => MultiPolygon2D::new(vec![]),
+    let other = geom_to_multipolygon(geom);
+    if other.0.is_empty() {
+        return MultiPolygon2D::new(vec![]);
     }
+    mp.intersection(&other)
 }
 
 /// Perform difference between MultiPolygon2D and Geometry2D
 fn bool_op_difference(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
-    match geom {
-        Geometry2D::Polygon(poly) => mp.difference(poly),
-        Geometry2D::MultiPolygon(other_mp) => mp.difference(other_mp),
-        _ => MultiPolygon2D::new(vec![]),
+    let other = geom_to_multipolygon(geom);
+    if other.0.is_empty() {
+        return mp.clone();
     }
+    mp.difference(&other)
 }
 
 /// An AABB entry for the RTree built from pre-computed bounding boxes stored on disk.
