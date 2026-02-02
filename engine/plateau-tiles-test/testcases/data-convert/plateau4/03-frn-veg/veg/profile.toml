@@ -17,6 +17,7 @@ key = ".name"
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
+".attributes.meshcode" = "string"
 
 [tests.mvt_lines]
 zoom = [12, 16]
