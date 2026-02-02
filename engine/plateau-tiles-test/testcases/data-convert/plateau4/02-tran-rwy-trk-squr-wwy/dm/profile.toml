@@ -16,7 +16,7 @@ threshold = 0.01
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
-".meshcode" = "int"
+".attributes.meshcode" = "string"
 
 [tests.cesium_statistics]
 
@@ -27,9 +27,6 @@ extracted = true
 [tests.json_attributes.tilesets_lod3.casts]
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
-
-[tests.json_attributes.tilesets_lod3.values]
-".properties.meshcode" = { "minimum" = 54401008, "maximum" = 54401008 }
 
 [filter.tree]
 "udx/trk/54401008_trk_6697_op.gml" = ["trk_c2138494-83e0-41b4-bfc1-609ca229aba2"]

@@ -4,7 +4,7 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_frn.zip"
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
-".meshcode" = "int"
+".attributes.meshcode" = "string"
 
 [tests.cesium_statistics]
 
@@ -28,9 +28,6 @@ extracted = true
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
 
-[tests.json_attributes.tilesets_lod1.values]
-".properties.meshcode" = { "minimum" = 54400098, "maximum" = 54400098 }
-
 [tests.json_attributes.tilesets_lod2]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod2/tileset.json"
 extracted = true
@@ -39,9 +36,6 @@ extracted = true
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
 
-[tests.json_attributes.tilesets_lod2.values]
-".properties.meshcode" = { "minimum" = 54400098, "maximum" = 54400098 }
-
 [tests.json_attributes.tilesets_lod3]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod3/tileset.json"
 extracted = true
@@ -49,9 +43,6 @@ extracted = true
 [tests.json_attributes.tilesets_lod3.casts]
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
-
-[tests.json_attributes.tilesets_lod3.values]
-".properties.meshcode" = { "minimum" = 54400098, "maximum" = 54400098 }
 
 [filter.tree]
 # Warn: some other features in this dataset contains NaN and are excluded.

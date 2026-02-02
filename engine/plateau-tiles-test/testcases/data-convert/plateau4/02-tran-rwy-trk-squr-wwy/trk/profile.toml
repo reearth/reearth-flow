@@ -11,7 +11,7 @@ zoom = [13, 16] # test from 13 to avoid thin polygons excluded by flow
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
-".meshcode" = "int"
+".attributes.meshcode" = "string"
 
 [tests.cesium_statistics]
 

@@ -19,7 +19,7 @@ use crate::plateau4::errors::PlateauProcessorError;
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
-        ("meshcode".to_string(), AttributeValue::default_number()),
+        ("meshcode".to_string(), AttributeValue::default_string()),
         ("feature_type".to_string(), AttributeValue::default_string()),
         ("city_code".to_string(), AttributeValue::default_string()),
         ("city_name".to_string(), AttributeValue::default_string()),
@@ -303,12 +303,10 @@ impl AttributeFlattener {
             if let Some(AttributeValue::String(path)) = feature.get("path") {
                 if let Some(filename) = path.rsplit('/').next() {
                     if let Some(meshcode_str) = filename.split('_').next() {
-                        if let Ok(meshcode) = meshcode_str.parse::<i64>() {
-                            citygml_attributes.insert(
-                                "meshcode".to_string(),
-                                AttributeValue::Number(serde_json::Number::from(meshcode)),
-                            );
-                        }
+                        citygml_attributes.insert(
+                            "meshcode".to_string(),
+                            AttributeValue::String(meshcode_str.to_string()),
+                        );
                     }
                 }
             }
@@ -1022,9 +1020,9 @@ mod tests {
             Some(AttributeValue::String(json_str)) => {
                 let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
                 let meshcode = &parsed["meshcode"];
-                assert_eq!(meshcode.as_i64().unwrap(), 51393186);
+                assert_eq!(meshcode.as_str().unwrap(), "51393186");
             }
-            _ => panic!("attributes should be Integer, got {:?}", attributes_json),
+            _ => panic!("attributes should be String, got {:?}", attributes_json),
         }
     }
 
