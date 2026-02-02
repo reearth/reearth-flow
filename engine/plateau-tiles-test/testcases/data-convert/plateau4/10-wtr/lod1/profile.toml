@@ -5,5 +5,13 @@ citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_wtr.zip"
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 
+[tests.json_attributes.tilesets_lod1]
+path = "43206_tamana-shi_city_2024_citygml_2_op_wtr_3dtiles_lod1/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod1.casts]
+".geometricError" = "null"
+".root" = "null"
+
 [filter.tree]
 "udx/wtr/" = ["493034_wtr_6697_op.gml"]
