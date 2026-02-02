@@ -11,6 +11,7 @@ threshold = 0.01
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
 ".dm_attributes" = "json"
 
 # Note: DM geometric attributes output MVT only, no 3D Tiles

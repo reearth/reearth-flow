@@ -2,6 +2,7 @@ citygml_zip_name = "36201_tokushima-shi_city_2023_citygml_2_op_urf.zip"
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
 ".attributes.urf:notificationNumber" = "string"
 ".attributes.urf:finalNotificationNumber" = "string"
 

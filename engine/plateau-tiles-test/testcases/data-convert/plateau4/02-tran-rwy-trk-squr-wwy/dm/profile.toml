@@ -11,12 +11,15 @@ threshold = 0.01
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
 ".dm_attributes" = "json"
 
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
 ".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
 
 [tests.cesium_statistics]
 
