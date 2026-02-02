@@ -6289,7 +6289,14 @@ Flatten attributes for building feature
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AttributeFlattener Parameters",
-  "type": "object"
+  "type": "object",
+  "properties": {
+    "existingFlattenAttributes": {
+      "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
+      "default": false,
+      "type": "boolean"
+    }
+  }
 }
 ```
 ### Input Ports
