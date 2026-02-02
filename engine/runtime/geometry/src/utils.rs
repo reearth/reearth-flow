@@ -262,30 +262,89 @@ pub fn check_too_few_points<T: CoordFloat + FromPrimitive, Z: CoordFloat + FromP
 
 /// Check for self-intersection with 3D-aware analysis
 /// This function first checks if the LineString is planar, and if so, rotates it to XY plane for accurate intersection testing
+/// If tolerance is Some(t) where t > 0.0, intersections where the lines are within tolerance distance are ignored.
 pub fn linestring_has_self_intersection_3d<
     T: GeoNum + num_traits::FromPrimitive + num_traits::ToPrimitive,
     Z: GeoNum + num_traits::FromPrimitive + num_traits::ToPrimitive,
 >(
     geom: &LineString<T, Z>,
+    tolerance: Option<f64>,
 ) -> bool {
     if let Some(planarity_info) = is_linestring_planar(geom, 1e-6) {
         if let Some(rotated_geom) = rotate_linestring_to_xy_plane(geom, &planarity_info) {
-            return linestring_has_self_intersection(&rotated_geom);
+            return linestring_has_self_intersection(&rotated_geom, tolerance);
         }
     }
 
     // If not planar or rotation failed, use 2D projection method (fallback)
-    linestring_has_self_intersection(geom)
+    linestring_has_self_intersection(geom, tolerance)
 }
 
-pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<T, Z>) -> bool {
-    for (i, line) in geom.lines().enumerate() {
-        for (j, other_line) in geom.lines().enumerate() {
-            if i != j
-                && line.intersects(&other_line)
-                && line.start != other_line.end
-                && line.end != other_line.start
-            {
+/// Check for self-intersection in a LineString with optional tolerance.
+/// If tolerance is Some(t) where t > 0.0, intersections caused by segments that are
+/// "nearly adjacent" (endpoints within tolerance) or numerical precision issues are ignored.
+pub fn linestring_has_self_intersection<
+    T: GeoNum + num_traits::ToPrimitive,
+    Z: GeoNum + num_traits::ToPrimitive,
+>(
+    geom: &LineString<T, Z>,
+    tolerance: Option<f64>,
+) -> bool {
+    let tol = tolerance.unwrap_or(0.0);
+    let lines: Vec<_> = geom.lines().collect();
+    let n = lines.len();
+
+    for (i, line) in lines.iter().enumerate() {
+        for (j, other_line) in lines.iter().enumerate() {
+            // Skip same segment
+            if i == j {
+                continue;
+            }
+
+            // Skip truly adjacent segments (share an exact endpoint)
+            if line.start == other_line.end || line.end == other_line.start {
+                continue;
+            }
+
+            // For closed rings, skip the first and last segments (they share the closing point)
+            if n > 2 && ((i == 0 && j == n - 1) || (i == n - 1 && j == 0)) {
+                continue;
+            }
+
+            // Check if lines intersect
+            if line.intersects(other_line) {
+                // If tolerance is set, check if the intersection should be ignored
+                if tol > 0.0 {
+                    // Check if segments are "nearly adjacent" - any connecting endpoints within tolerance
+                    let near_adjacent = [
+                        // line.end near other_line.start (would be adjacent if exact)
+                        line_euclidean_length(Line::new_(line.end, other_line.start)),
+                        // line.start near other_line.end (would be adjacent if exact)
+                        line_euclidean_length(Line::new_(line.start, other_line.end)),
+                    ]
+                    .into_iter()
+                    .filter_map(|d| d.to_f64())
+                    .any(|d| d < tol);
+
+                    if near_adjacent {
+                        continue;
+                    }
+
+                    // Also check if ANY pair of endpoints is very close (indicates near-duplicate or near-adjacent)
+                    let endpoints_close = [
+                        line_euclidean_length(Line::new_(line.start, other_line.start)),
+                        line_euclidean_length(Line::new_(line.start, other_line.end)),
+                        line_euclidean_length(Line::new_(line.end, other_line.start)),
+                        line_euclidean_length(Line::new_(line.end, other_line.end)),
+                    ]
+                    .into_iter()
+                    .filter_map(|d| d.to_f64())
+                    .any(|d| d < tol);
+
+                    if endpoints_close {
+                        continue;
+                    }
+                }
                 return true;
             }
         }
@@ -559,23 +618,26 @@ mod tests {
 
     #[test]
     fn test_self_intersection_3d_ok() {
-        assert!(!linestring_has_self_intersection_3d(&floor_surface()));
-        assert!(!linestring_has_self_intersection_3d(&roof_surface()));
-        assert!(!linestring_has_self_intersection_3d(&wall_surface()));
+        assert!(!linestring_has_self_intersection_3d(&floor_surface(), None));
+        assert!(!linestring_has_self_intersection_3d(&roof_surface(), None));
+        assert!(!linestring_has_self_intersection_3d(&wall_surface(), None));
     }
 
     #[test]
     fn test_self_intersection_3d_error() {
         assert!(linestring_has_self_intersection_3d(
-            &floor_surface_with_self_intersection()
+            &floor_surface_with_self_intersection(),
+            None
         ));
 
         assert!(linestring_has_self_intersection_3d(
-            &roof_surface_with_self_intersection()
+            &roof_surface_with_self_intersection(),
+            None
         ));
 
         assert!(linestring_has_self_intersection_3d(
-            &wall_surface_with_self_intersection()
+            &wall_surface_with_self_intersection(),
+            None
         ));
     }
 
