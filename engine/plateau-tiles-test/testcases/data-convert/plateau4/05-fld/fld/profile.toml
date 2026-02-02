@@ -4,6 +4,7 @@ citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op_fld.zip"
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
+".uro:rank_code" = "string"
 
 [tests.cesium_statistics]
 
@@ -18,11 +19,11 @@ path = "16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3d
 extracted = true
 
 [tests.json_attributes.tilesets_l2.casts]
-".geometricError" = "null"
-".root" = "null"
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
 
 [tests.json_attributes.tilesets_l2.values]
-".properties.uro:rank_code" = {} # FME silently convert this to number type, causing min/max values to appear
+".properties.uro:rank_code" = {}
 
 [filter.tree]
 "udx/fld/pref/oyabegawa_gandogawa/55360704_fld_6697_l2.gml" = [

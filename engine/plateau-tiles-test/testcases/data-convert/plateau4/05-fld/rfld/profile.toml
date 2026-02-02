@@ -4,6 +4,7 @@ citygml_zip_name = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld.zip"
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
+".uro:rank_code" = "string"
 
 [tests.cesium_statistics]
 
@@ -18,8 +19,8 @@ path = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld_12_4_3dtiles_no_texture/t
 extracted = true
 
 [tests.json_attributes.tilesets.casts]
-".geometricError" = "null"
-".root" = "null"
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
 
 [tests.json_attributes.tilesets.values]
 ".properties.uro:rank_code" = {} # FME silently convert this to number type, causing min/max values to appear

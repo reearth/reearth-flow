@@ -79,7 +79,7 @@ pub enum CastConfig {
     Float { epsilon: Option<f64> },
     Json,
     ListToDict { key: String },
-    Null,
+    IgnoreBoth,
 }
 
 impl AttributeComparer {
@@ -211,38 +211,38 @@ impl AttributeComparer {
                         value
                     }
                 }
-                CastConfig::Null => Value::Null,
+                CastConfig::IgnoreBoth => Value::Null,
             }
         } else {
             value
         }
     }
 
-    fn compare_recurse(&mut self, key: &str, v1: Value, v2: Value) {
-        // If key matches in values, replace v1 completely and skip casts
-        let v1 = if let Some(replacement) = self.values.get(key) {
-            replacement.clone()
-        } else {
-            self.cast_attr(key, v1)
+    fn compare_recurse(&mut self, key: &str, mut v1: Value, mut v2: Value) {
+        if let Some(cast) = self.casts.get(key) {
+            match cast {
+                CastConfig::IgnoreBoth => {
+                    return;
+                }
+                CastConfig::ListToDict { .. } | CastConfig::Json => {
+                    v1 = self.cast_attr(key, v1);
+                    v2 = self.cast_attr(key, v2);
+                }
+                _ => {
+                    // apply cast only to v1
+                    v1 = self.cast_attr(key, v1);
+                }
+            }
         };
-        let v2 = self.cast_attr(key, v2);
+        // If key matches in values, replace v1 completely
+        if let Some(replacement) = self.values.get(key) {
+            v1 = replacement.clone();
+        }
 
         // Type checking with tolerance
         if !self.types_match(&v1, &v2) {
             if let Some(v2_bool) = v2.as_bool() {
                 if self.value_as_bool(&v1) == Some(v2_bool) {
-                    return;
-                }
-            }
-            // FME unpredictably does implicit string conversion
-            if let Some(v2_str) = v2.as_str() {
-                if v1.to_string().trim_matches('"') == v2_str {
-                    return;
-                }
-            }
-            // let NULL match empty string due to the limitation of 3d-tiles-tools upgrade
-            if let Some(v1_str) = v1.as_str() {
-                if v1_str.is_empty() && v2.is_null() {
                     return;
                 }
             }

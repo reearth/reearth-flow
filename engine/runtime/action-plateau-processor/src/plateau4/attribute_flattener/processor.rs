@@ -19,7 +19,7 @@ use crate::plateau4::errors::PlateauProcessorError;
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
-        ("meshcode".to_string(), AttributeValue::default_string()),
+        ("meshcode".to_string(), AttributeValue::default_number()),
         ("feature_type".to_string(), AttributeValue::default_string()),
         ("city_code".to_string(), AttributeValue::default_string()),
         ("city_name".to_string(), AttributeValue::default_string()),
@@ -153,6 +153,9 @@ static GYEAR_FIELDS: &[&str] = &[
     "uro:enactmentFiscalYear",
     "uro:expirationFiscalYear",
     "uro:fiscalYearOfPublication",
+    "uro:assessmentFiscalYear",
+    "uro:installationYear",
+    "urf:enactmentFiscalYear",
 ];
 
 /// Convert GYear string fields to numbers recursively in the attribute map
@@ -300,10 +303,12 @@ impl AttributeFlattener {
             if let Some(AttributeValue::String(path)) = feature.get("path") {
                 if let Some(filename) = path.rsplit('/').next() {
                     if let Some(meshcode_str) = filename.split('_').next() {
-                        citygml_attributes.insert(
-                            "meshcode".to_string(),
-                            AttributeValue::String(meshcode_str.to_string()),
-                        );
+                        if let Ok(meshcode) = meshcode_str.parse::<i64>() {
+                            citygml_attributes.insert(
+                                "meshcode".to_string(),
+                                AttributeValue::Number(serde_json::Number::from(meshcode)),
+                            );
+                        }
                     }
                 }
             }
