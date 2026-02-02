@@ -69,6 +69,7 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
 pub struct AttributeComparer {
     identifier: String,
     casts: HashMap<String, CastConfig>,
+    values: HashMap<String, Value>,
     mismatches: Vec<(String, String, Value, Value)>,
 }
 
@@ -76,15 +77,22 @@ pub struct AttributeComparer {
 pub enum CastConfig {
     String,
     Float { epsilon: Option<f64> },
+    Int,
     Json,
     ListToDict { key: String },
+    IgnoreBoth,
 }
 
 impl AttributeComparer {
-    pub fn new(identifier: String, casts: HashMap<String, CastConfig>) -> Self {
+    pub fn new(
+        identifier: String,
+        casts: HashMap<String, CastConfig>,
+        values: HashMap<String, Value>,
+    ) -> Self {
         Self {
             identifier,
             casts,
+            values,
             mismatches: Vec::new(),
         }
     }
@@ -182,6 +190,30 @@ impl AttributeComparer {
                         _ => value,
                     }
                 }
+                CastConfig::Int => {
+                    // Convert to integer if possible
+                    match &value {
+                        Value::Number(n) => {
+                            if let Some(i) = n.as_i64() {
+                                serde_json::json!(i)
+                            } else if let Some(f) = n.as_f64() {
+                                serde_json::json!(f.round() as i64)
+                            } else {
+                                value
+                            }
+                        }
+                        Value::String(s) => {
+                            if let Ok(i) = s.parse::<i64>() {
+                                serde_json::json!(i)
+                            } else if let Ok(f) = s.parse::<f64>() {
+                                serde_json::json!(f.round() as i64)
+                            } else {
+                                value
+                            }
+                        }
+                        _ => value,
+                    }
+                }
                 CastConfig::Json => {
                     if let Some(s) = value.as_str() {
                         serde_json::from_str(s).unwrap_or(value)
@@ -204,32 +236,38 @@ impl AttributeComparer {
                         value
                     }
                 }
+                CastConfig::IgnoreBoth => Value::Null,
             }
         } else {
             value
         }
     }
 
-    fn compare_recurse(&mut self, key: &str, v1: Value, v2: Value) {
-        let v1 = self.cast_attr(key, v1);
-        let v2 = self.cast_attr(key, v2);
+    fn compare_recurse(&mut self, key: &str, mut v1: Value, mut v2: Value) {
+        if let Some(cast) = self.casts.get(key) {
+            match cast {
+                CastConfig::IgnoreBoth => {
+                    return;
+                }
+                CastConfig::ListToDict { .. } | CastConfig::Json => {
+                    v1 = self.cast_attr(key, v1);
+                    v2 = self.cast_attr(key, v2);
+                }
+                _ => {
+                    // apply cast only to v1
+                    v1 = self.cast_attr(key, v1);
+                }
+            }
+        };
+        // If key matches in values, replace v1 completely
+        if let Some(replacement) = self.values.get(key) {
+            v1 = replacement.clone();
+        }
 
         // Type checking with tolerance
         if !self.types_match(&v1, &v2) {
             if let Some(v2_bool) = v2.as_bool() {
                 if self.value_as_bool(&v1) == Some(v2_bool) {
-                    return;
-                }
-            }
-            // FME unpredictably does implicit string conversion
-            if let Some(v2_str) = v2.as_str() {
-                if v1.to_string().trim_matches('"') == v2_str {
-                    return;
-                }
-            }
-            // let NULL match empty string due to the limitation of 3d-tiles-tools upgrade
-            if let Some(v1_str) = v1.as_str() {
-                if v1_str.is_empty() && v2.is_null() {
                     return;
                 }
             }
@@ -361,8 +399,9 @@ pub fn analyze_attributes(
     attr1: &Value,
     attr2: &Value,
     casts: HashMap<String, CastConfig>,
+    values: HashMap<String, Value>,
 ) -> Result<(), String> {
-    let mut comparer = AttributeComparer::new(ident.to_string(), casts);
+    let mut comparer = AttributeComparer::new(ident.to_string(), casts, values);
     comparer.compare(attr1, attr2)
 }
 
@@ -379,7 +418,7 @@ mod tests {
         let v1 = json!({"value": 123});
         let v2 = json!({"value": "123"});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_ok());
     }
 
@@ -391,7 +430,7 @@ mod tests {
         let v1 = json!({"value": 123});
         let v2 = json!({"value": "456"});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_err());
     }
 
@@ -403,7 +442,7 @@ mod tests {
         let v1 = json!({"data": "{\"key\": \"value\"}"});
         let v2 = json!({"data": {"key": "value"}});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_ok());
     }
 
@@ -415,7 +454,7 @@ mod tests {
         let v1 = json!({"data": "{\"key\": \"value1\"}"});
         let v2 = json!({"data": {"key": "value2"}});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_err());
     }
 
@@ -438,7 +477,7 @@ mod tests {
             "b": {"id": "b", "value": 2}
         }});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_ok());
     }
 
@@ -461,7 +500,7 @@ mod tests {
             "b": {"id": "b", "value": 2}
         }});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_err());
     }
 
@@ -472,7 +511,7 @@ mod tests {
         let v1 = json!({"x": 1, "y": "test"});
         let v2 = json!({"x": 1, "y": "test"});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_ok());
     }
 
@@ -483,7 +522,7 @@ mod tests {
         let v1 = json!({"x": 1, "y": "test"});
         let v2 = json!({"x": 2, "y": "test"});
 
-        let result = analyze_attributes("test", &v1, &v2, casts);
+        let result = analyze_attributes("test", &v1, &v2, casts, HashMap::new());
         assert!(result.is_err());
     }
 
@@ -495,17 +534,17 @@ mod tests {
         // Exact match - should pass
         let v1 = json!({"value": 1.5});
         let v2 = json!({"value": 1.5});
-        assert!(analyze_attributes("test", &v1, &v2, casts.clone()).is_ok());
+        assert!(analyze_attributes("test", &v1, &v2, casts.clone(), HashMap::new()).is_ok());
 
         // String to float conversion - should pass
         let v1 = json!({"value": "1.5"});
         let v2 = json!({"value": 1.5});
-        assert!(analyze_attributes("test", &v1, &v2, casts.clone()).is_ok());
+        assert!(analyze_attributes("test", &v1, &v2, casts.clone(), HashMap::new()).is_ok());
 
         // Different values with no epsilon - should fail
         let v1 = json!({"value": 1.5});
         let v2 = json!({"value": 1.500001});
-        assert!(analyze_attributes("test", &v1, &v2, casts).is_err());
+        assert!(analyze_attributes("test", &v1, &v2, casts, HashMap::new()).is_err());
 
         // With epsilon tolerance - should pass
         let mut casts_eps = HashMap::new();
@@ -517,6 +556,6 @@ mod tests {
         );
         let v1 = json!({"value": 1.5});
         let v2 = json!({"value": 1.500001});
-        assert!(analyze_attributes("test", &v1, &v2, casts_eps).is_ok());
+        assert!(analyze_attributes("test", &v1, &v2, casts_eps, HashMap::new()).is_ok());
     }
 }

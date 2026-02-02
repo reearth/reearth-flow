@@ -4,12 +4,14 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_frn.zip"
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
+".attributes.meshcode" = "string"
 
 [tests.cesium_statistics]
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
+".attributes.meshcode" = "string"
 
 [tests.mvt_lines]
 zoom = [12, 16]
@@ -18,6 +20,30 @@ threshold = 0.01
 [tests.mvt_points]
 zoom = [12, 16]
 threshold = 0.001
+
+[tests.json_attributes.tilesets_lod1]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod1/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod1.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
+
+[tests.json_attributes.tilesets_lod2]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod2/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod2.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
+
+[tests.json_attributes.tilesets_lod3]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod3/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod3.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
 
 [filter.tree]
 # Warn: some other features in this dataset contains NaN and are excluded.

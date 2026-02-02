@@ -355,59 +355,12 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: featureId
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: geometryName
-        method: remove
       - attribute: cityCode
         method: rename
         value: city_code
       - attribute: cityName
         method: rename
         value: city_name
-      - attribute: lod
-        method: remove
-      - attribute: gmlId
-        method: remove
-      - attribute: gmlPropertyName
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: cityGmlPath
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
-      - attribute: package
-        method: rename
-        value: __package
-      - attribute: extension
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: path
-        method: remove
-      - attribute: name
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: featureType
-        method: remove
-      - attribute: gmlName
-        method: remove
   - id: 123e1a65-7cad-4412-9336-91f37694aa08
     name: FeatureSorter
     type: action
@@ -431,7 +384,7 @@ graphs:
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let pkg = env.get("__value").__package;
+        let pkg = env.get("__value")["package"];
         let suffix = "_" + pkg;
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -483,3 +436,8 @@ graphs:
     to: 674b22f7-ffb7-4594-b569-4c4f780326ce
     fromPort: default
     toPort: default
+  - id: 12345678-90ab-cdef-1234-567890abcdef
+    from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+    to: 674b22f7-ffb7-4594-b569-4c4f780326ce
+    fromPort: schema
+    toPort: schema

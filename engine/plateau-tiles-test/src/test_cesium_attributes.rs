@@ -76,8 +76,9 @@ pub fn test_cesium_attributes(
 
         tracing::debug!("Comparing Cesium attributes in directory: {}", dir_name);
 
+        // Compare GLB attributes
         for (ident, attr1, attr2) in align_glb_attr(&fme_dir, &flow_dir)? {
-            analyze_attributes(&ident, &attr1, &attr2, casts.clone())?;
+            analyze_attributes(&ident, &attr1, &attr2, casts.clone(), Default::default())?;
         }
     }
 

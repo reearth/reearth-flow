@@ -13,6 +13,8 @@ pub(super) enum PlateauProcessorError {
     MaxLodExtractor(String),
     #[error("AttributeFlattener error: {0}")]
     AttributeFlattener(String),
+    #[error("AttributeFlattener Factory error: {0}")]
+    AttributeFlattenerFactory(String),
     #[error("CityCode Extractor Factory error: {0}")]
     CityCodeExtractorFactory(String),
     #[error("CityCode Extractor error: {0}")]
