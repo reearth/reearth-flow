@@ -1,0 +1,12 @@
+citygml_zip_name = "12347_tako-machi_city_2025_citygml_1_op_bldg.zip"
+
+[tests.json_attributes.tilesets]
+path = "12347_tako-machi_city_2025_citygml_1_op_bldg_3dtiles/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
+
+[filter.tree]
+"udx/bldg" = ["53404336_bldg_6697.gml"]
