@@ -231,8 +231,8 @@ fn compare_detail_level(
     result.bounding_box_error = error_min.max(error_max);
     if result.bounding_box_error > 1.0 {
         return Err(format!(
-            "ident '{}': bounding box mismatch exceeds max error: {}: min:({}, {}, {}), max:({}, {}, {})",
-            ident, bbox_error,
+            "ident '{}': bounding box mismatch exceeds max error: {}/{}: min:({}, {}, {}), max:({}, {}, {})",
+            ident, fme_error, flow_error,
             fme_bbox.0.x - flow_bbox.0.x,
             fme_bbox.0.y - flow_bbox.0.y,
             fme_bbox.0.z - flow_bbox.0.z,
