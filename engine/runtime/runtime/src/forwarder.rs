@@ -34,6 +34,14 @@ impl ProcessorChannelForwarder {
         }
     }
 
+    /// Sends a file-backed operation to downstream processors.
+    ///
+    /// **Important**: The file at `path` will be **moved** (renamed) to a shared cache
+    /// directory. This ensures the file survives even if the caller's temp directory
+    /// is deleted (e.g., by a `Drop` implementation). The move operation is O(1) on
+    /// the same filesystem.
+    ///
+    /// The downstream processor is responsible for deleting the file after reading it.
     pub fn send_file(&self, path: PathBuf, port: Port, context: Context) {
         match self {
             ProcessorChannelForwarder::ChannelManager(channel_manager) => {
@@ -267,32 +275,65 @@ impl ChannelManager {
     }
 }
 
+/// Directory for channel buffer files that are moved from processor temp directories.
+/// Files are moved here to prevent deletion when the source processor's temp directory
+/// is cleaned up by its Drop implementation.
+const CHANNEL_BUFFER_DIR: &str = "/tmp/reearth-flow-engine-cache/channel-buffers";
+
 impl ChannelManager {
     fn node_id(&self) -> String {
         self.owner.id.clone().into_inner()
     }
 
+    /// Sends a file-backed operation to downstream processors.
+    ///
+    /// **Important**: The file at `path` will be **moved** (renamed) to a shared cache
+    /// directory (`/tmp/reearth-flow-engine-cache/channel-buffers/`) before being sent.
+    /// This ensures the file survives even if the caller's temp directory is deleted
+    /// (e.g., by a `Drop` implementation). The move operation is O(1) on the same filesystem.
+    ///
+    /// The downstream processor is responsible for deleting the file after reading it.
     fn send_file(&self, path: PathBuf, port: Port, context: Context) {
         // Write features to FeatureWriter for observability
         self.write_file_features_to_store(&path, &port);
 
-        // Send FileBackedOp through channels
+        // Move the file to shared cache directory to prevent deletion when
+        // the source processor's temp directory is cleaned up by Drop
+        let cache_dir = PathBuf::from(CHANNEL_BUFFER_DIR);
+        std::fs::create_dir_all(&cache_dir).unwrap_or_else(|e| {
+            panic!("Failed to create channel buffer directory {cache_dir:?}: {e}")
+        });
+
+        let file_name = format!(
+            "{}-{}.jsonl",
+            uuid::Uuid::new_v4(),
+            path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("output")
+        );
+        let new_path = cache_dir.join(file_name);
+
+        std::fs::rename(&path, &new_path).unwrap_or_else(|e| {
+            panic!("Failed to move file from {:?} to {:?}: {e}", path, new_path)
+        });
+
+        // Send FileBackedOp through channels with the new path
         let node_id = self.owner.id.clone().into_inner();
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
                 sender
-                    .send_file_backed_op(&path, &port, &context)
+                    .send_file_backed_op(&new_path, &port, &context)
                     .unwrap_or_else(|e| {
                         panic!(
-                            "Failed to send file-backed operation: node_id = {node_id:?}, path = {path:?}, error = {e:?}",
+                            "Failed to send file-backed operation: node_id = {node_id:?}, path = {new_path:?}, error = {e:?}",
                         )
                     });
             }
             last_sender
-                .send_file_backed_op(&path, &port, &context)
+                .send_file_backed_op(&new_path, &port, &context)
                 .unwrap_or_else(|e| {
                     panic!(
-                        "Failed to send file-backed operation: node_id = {node_id:?}, path = {path:?}, error = {e:?}",
+                        "Failed to send file-backed operation: node_id = {node_id:?}, path = {new_path:?}, error = {e:?}",
                     )
                 });
         }

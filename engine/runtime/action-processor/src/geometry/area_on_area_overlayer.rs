@@ -568,80 +568,82 @@ fn overlay_2d_disk(
     let overlay_graph = OverlayGraph::bulk_load_from_aabbs(aabbs);
     let num = disk_feats.offsets.len();
 
-    (0..num)
-        .into_par_iter()
-        .for_each(|i| {
-            let geom_i = disk_feats.read_geometry(i);
-            let geom_i_2d = match as_geometry_2d(&geom_i) {
-                Some(g) => g,
-                None => return,
-            };
+    (0..num).into_par_iter().for_each(|i| {
+        let geom_i = disk_feats.read_geometry(i);
+        let geom_i_2d = match as_geometry_2d(&geom_i) {
+            Some(g) => g,
+            None => return,
+        };
 
-            let mut polygon_target = geom_to_multipolygon(geom_i_2d);
+        let mut polygon_target = geom_to_multipolygon(geom_i_2d);
 
-            // cut off the target polygon by upper polygons
-            for j in overlay_graph.overlaid_iter(i).copied() {
-                if i < j {
-                    let geom_j = disk_feats.read_geometry(j);
-                    if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
-                        polygon_target = bool_op_difference(&polygon_target, geom_j_2d);
-                    }
+        // cut off the target polygon by upper polygons
+        for j in overlay_graph.overlaid_iter(i).copied() {
+            if i < j {
+                let geom_j = disk_feats.read_geometry(j);
+                if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
+                    polygon_target = bool_op_difference(&polygon_target, geom_j_2d);
                 }
             }
+        }
 
-            let mut queue = vec![MiddlePolygon {
-                polygon: polygon_target,
-                parents: vec![i],
-            }];
+        let mut queue = vec![MiddlePolygon {
+            polygon: polygon_target,
+            parents: vec![i],
+        }];
 
-            // divide the target polygon by lower polygons
-            for j in overlay_graph.overlaid_iter(i).copied() {
-                if i > j {
-                    let geom_j = disk_feats.read_geometry(j);
-                    if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
-                        let mut new_queue = Vec::new();
-                        for subpolygon in queue {
-                            let intersection = bool_op_intersection(&subpolygon.polygon, geom_j_2d);
+        // divide the target polygon by lower polygons
+        for j in overlay_graph.overlaid_iter(i).copied() {
+            if i > j {
+                let geom_j = disk_feats.read_geometry(j);
+                if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
+                    let mut new_queue = Vec::new();
+                    for subpolygon in queue {
+                        let intersection = bool_op_intersection(&subpolygon.polygon, geom_j_2d);
 
-                            let min_area = tolerance * tolerance;
-                            let intersection_area = intersection.unsigned_area2d();
-                            let is_significant_intersection = intersection_area > min_area;
+                        let min_area = tolerance * tolerance;
+                        let intersection_area = intersection.unsigned_area2d();
+                        let is_significant_intersection = intersection_area > min_area;
 
-                            if !intersection.is_empty() && is_significant_intersection {
-                                new_queue.push(MiddlePolygon {
-                                    polygon: intersection,
-                                    parents: subpolygon
-                                        .parents
-                                        .clone()
-                                        .into_iter()
-                                        .chain(vec![j])
-                                        .collect(),
-                                });
-                            }
-
-                            let difference = bool_op_difference(&subpolygon.polygon, geom_j_2d);
-                            if !difference.is_empty() {
-                                new_queue.push(MiddlePolygon {
-                                    polygon: difference,
-                                    parents: subpolygon.parents.clone(),
-                                });
-                            }
+                        if !intersection.is_empty() && is_significant_intersection {
+                            new_queue.push(MiddlePolygon {
+                                polygon: intersection,
+                                parents: subpolygon
+                                    .parents
+                                    .clone()
+                                    .into_iter()
+                                    .chain(vec![j])
+                                    .collect(),
+                            });
                         }
-                        queue = new_queue;
+
+                        let difference = bool_op_difference(&subpolygon.polygon, geom_j_2d);
+                        if !difference.is_empty() {
+                            new_queue.push(MiddlePolygon {
+                                polygon: difference,
+                                parents: subpolygon.parents.clone(),
+                            });
+                        }
                     }
+                    queue = new_queue;
                 }
             }
+        }
 
-            // Serialize each MiddlePolygon and write to disk
-            for mp in queue {
-                let line = serde_json::to_string(&mp).expect("failed to serialize MiddlePolygon");
-                let mut w = writer.lock().expect("failed to lock writer");
-                w.write_all(line.as_bytes()).expect("failed to write MiddlePolygon");
-                w.write_all(b"\n").expect("failed to write newline");
-            }
-        });
+        // Serialize each MiddlePolygon and write to disk
+        for mp in queue {
+            let line = serde_json::to_string(&mp).expect("failed to serialize MiddlePolygon");
+            let mut w = writer.lock().expect("failed to lock writer");
+            w.write_all(line.as_bytes())
+                .expect("failed to write MiddlePolygon");
+            w.write_all(b"\n").expect("failed to write newline");
+        }
+    });
 
-    writer.into_inner().expect("failed to unwrap mutex").flush()?;
+    writer
+        .into_inner()
+        .expect("failed to unwrap mutex")
+        .flush()?;
     Ok(())
 }
 

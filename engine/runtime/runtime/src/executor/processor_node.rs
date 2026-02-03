@@ -71,8 +71,14 @@ pub struct ProcessorNode<F> {
     runtime: Arc<Handle>,
     span: tracing::Span,
     thread_pool: rayon::ThreadPool,
+    /// Number of threads in the thread pool (used for backpressure).
+    num_threads: usize,
     thread_counter: Arc<AtomicU32>,
     features_processed: Arc<AtomicU64>,
+    /// Cumulative process() duration in microseconds.
+    process_duration_us: Arc<AtomicU64>,
+    /// Sum of squared process() durations in microseconds (for std dev).
+    process_duration_sq_us: Arc<AtomicU64>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
@@ -147,8 +153,11 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
                 .num_threads(num_threads)
                 .build()
                 .unwrap(),
+            num_threads,
             thread_counter: Arc::new(AtomicU32::new(0)),
             features_processed: Arc::new(AtomicU64::new(0)),
+            process_duration_us: Arc::new(AtomicU64::new(0)),
+            process_duration_sq_us: Arc::new(AtomicU64::new(0)),
             expr_engine,
             storage_resolver,
             kv_store,
@@ -161,6 +170,19 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
 
     pub fn handle(&self) -> &NodeHandle {
         &self.node_handle
+    }
+
+    /// Wait until the thread pool has capacity to accept a new task.
+    /// This ensures no tasks are waiting in the rayon queue, providing
+    /// backpressure based on actual processing capacity.
+    fn wait_until_pool_has_capacity(&self) {
+        while self
+            .thread_counter
+            .load(std::sync::atomic::Ordering::SeqCst)
+            >= self.num_threads as u32
+        {
+            std::thread::yield_now();
+        }
     }
 }
 
@@ -226,11 +248,34 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         .load(std::sync::atomic::Ordering::Relaxed);
                     let is_failed = has_failed.load(std::sync::atomic::Ordering::SeqCst);
 
+                    let total_us = self
+                        .process_duration_us
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                    let total_duration = Duration::from_micros(total_us);
+
+                    let stats_suffix = if features_count > 1 {
+                        let avg_us = total_us as f64 / features_count as f64;
+                        let sq_us = self
+                            .process_duration_sq_us
+                            .load(std::sync::atomic::Ordering::Relaxed);
+                        let variance = (sq_us as f64 / features_count as f64) - (avg_us * avg_us);
+                        let stddev = if variance > 0.0 { variance.sqrt() } else { 0.0 };
+                        format!(
+                            ", avg = {:.3}ms, stddev = {:.3}ms",
+                            avg_us / 1000.0,
+                            stddev / 1000.0,
+                        )
+                    } else {
+                        String::new()
+                    };
+
                     let message = if features_count > 0 && !is_failed {
                         format!(
-                            "{} process finish. elapsed = {:?}",
+                            "{} process finish. elapsed = {:?}, features = {}{}",
                             self.processor.read().name(),
-                            now.elapsed()
+                            total_duration,
+                            features_count,
+                            stats_suffix,
                         )
                     } else {
                         format!(
@@ -303,6 +348,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         );
                     }
                     self.channel_manager.read().wait_until_downstream_empty();
+                    self.wait_until_pool_has_capacity();
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
                 }
@@ -339,6 +385,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             port.clone(),
                         );
                         self.channel_manager.read().wait_until_downstream_empty();
+                        self.wait_until_pool_has_capacity();
                         self.on_op_with_failure_tracking(ctx, has_failed.clone())?;
                     }
                     let _ = std::fs::remove_file(&path);
@@ -368,6 +415,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let node_name = self.node_name.clone();
         let counter = Arc::clone(&self.thread_counter);
         let features_processed = Arc::clone(&self.features_processed);
+        let process_duration_us = Arc::clone(&self.process_duration_us);
+        let process_duration_sq_us = Arc::clone(&self.process_duration_sq_us);
         let event_hub = self.event_hub.clone();
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.thread_pool.spawn(move || {
@@ -381,6 +430,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 processor,
                 has_failed,
                 features_processed,
+                process_duration_us,
+                process_duration_sq_us,
             );
             counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         });
@@ -446,6 +497,8 @@ fn process(
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
     has_failed: Arc<std::sync::atomic::AtomicBool>,
     features_processed: Arc<AtomicU64>,
+    process_duration_us: Arc<AtomicU64>,
+    process_duration_sq_us: Arc<AtomicU64>,
 ) {
     let feature_id = ctx.feature.id;
     let channel_manager_guard = channel_manager.read();
@@ -455,6 +508,9 @@ fn process(
     let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
+    let us = elapsed.as_micros() as u64;
+    process_duration_us.fetch_add(us, std::sync::atomic::Ordering::Relaxed);
+    process_duration_sq_us.fetch_add(us.saturating_mul(us), std::sync::atomic::Ordering::Relaxed);
     let name = processor.name();
 
     if elapsed >= *SLOW_ACTION_THRESHOLD {
