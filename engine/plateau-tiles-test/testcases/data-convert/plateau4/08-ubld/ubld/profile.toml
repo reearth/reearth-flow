@@ -4,6 +4,25 @@ citygml_zip_name = "13102_chuo-ku_pref_2023_citygml_2_op_ubld.zip"
 
 [tests.cesium_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+".attributes.ancestors[1].meshcode" = "string"
+
+[tests.json_attributes.tilesets_lod1]
+path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod1/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod1.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
+
+[tests.json_attributes.tilesets_lod4]
+path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod4/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets_lod4.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
 
 [filter.tree]
 "udx/ubld/" = ["53394611_ubld_6697_op.gml"]

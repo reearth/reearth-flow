@@ -25,7 +25,9 @@ pub fn convert_casts(
             CastConfigValue::Simple(s) => match s.as_str() {
                 "string" => CastConfig::String,
                 "float" => CastConfig::Float { epsilon: None },
+                "int" => CastConfig::Int,
                 "json" => CastConfig::Json,
+                "ignore_both" => CastConfig::IgnoreBoth,
                 _ => return Err(format!("Unknown cast type: {}", s)),
             },
             CastConfigValue::ComplexListToDict {

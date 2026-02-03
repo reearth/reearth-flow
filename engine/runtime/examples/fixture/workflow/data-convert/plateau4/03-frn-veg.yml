@@ -416,6 +416,39 @@ graphs:
     name: LodSplitterWithDM
     type: subGraph
     subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+  - id: aabbccdd-1111-2222-3333-444455556666
+    name: SchemaFeatureFilterForFrn
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__feature_type") == "frn:CityFurniture"
+        outputPort: frn_CityFurniture_schema
+  - id: bbccddee-2222-3333-4444-555566667777
+    name: SchemaAttributeMapperForFrn
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: city_code
+      - attribute: city_name
+        valueAttribute: city_name
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro:lodType
+        valueAttribute: uro:lodType
   - id: 35953fd4-5359-43cc-be03-a396259a4c8e
     name: GeometryFilterForFrn
     type: action
@@ -434,60 +467,12 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: featureId
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: geometryName
-        method: remove
       - attribute: cityCode
         method: rename
         value: city_code
       - attribute: cityName
         method: rename
         value: city_name
-      - attribute: lod
-        method: rename
-        value: __lod
-      - attribute: gmlId
-        method: remove
-      - attribute: gmlPropertyName
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: cityGmlPath
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
-      - attribute: package
-        method: rename
-        value: __package
-      - attribute: extension
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: path
-        method: remove
-      - attribute: name
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: featureType
-        method: remove
-      - attribute: gmlName
-        method: remove
   - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
     name: Reprojector
     type: action
@@ -502,14 +487,13 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      skipUnexposedAttributes: true
       dracoCompression: false
       output: |
-        file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").__lod)
+        file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").lod)
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").__lod;
+        let lod = env.get("__value").lod;
         let suffix = "_frn";
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -637,72 +621,69 @@ graphs:
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
-        file::join_path(artifact, city_gml + "_frn_geometric_attributes.zip")
+        file::join_path(artifact, city_gml + "_frn_dm_geometric_attributes.zip")
       colonToUnderscore: true
   - id: bd4ff879-8448-434d-9c47-ef85722b40cb
     name: LodSplitterWithDMVeg1
     type: subGraph
     subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+  - id: 11aa22bb-3333-4444-5555-666677778888
+    name: SchemaFeatureFilterForVeg1
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__feature_type") == "veg:SolitaryVegetationObject"
+        outputPort: veg_SolitaryVegetationObject_schema
+  - id: 22bb33cc-4444-5555-6666-777788889999
+    name: SchemaAttributeMapperForVeg1
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: city_code
+      - attribute: city_name
+        valueAttribute: city_name
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: gml:name
+        valueAttribute: gml:name
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: veg:class
+        valueAttribute: veg:class
+      - attribute: veg:function
+        valueAttribute: veg:function
+      - attribute: veg:height
+        valueAttribute: veg:height
+      - attribute: veg:trunkDiameter
+        valueAttribute: veg:trunkDiameter
+      - attribute: veg:crownDiameter
+        valueAttribute: veg:crownDiameter
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro:lodType
+        valueAttribute: uro:lodType
   - id: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
     name: AttributeManagerByLodVeg1
     type: action
     action: AttributeManager
     with:
       operations:
-      - attribute: featureId
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: geometryName
-        method: remove
       - attribute: cityCode
         method: rename
         value: city_code
       - attribute: cityName
         method: rename
         value: city_name
-      - attribute: lod
-        method: rename
-        value: __lod
-      - attribute: gmlId
-        method: remove
-      - attribute: gmlPropertyName
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: cityGmlPath
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
-      - attribute: package
-        method: rename
-        value: __package
-      - attribute: extension
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: path
-        method: remove
-      - attribute: name
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: featureType
-        method: remove
-      - attribute: gmlName
-        method: remove
   - id: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
     name: ReprojectorVeg1
     type: action
@@ -735,14 +716,13 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      skipUnexposedAttributes: true
       dracoCompression: false
       output: |
-        file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").__lod)
+        file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").lod)
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").__lod;
+        let lod = env.get("__value").lod;
         let suffix = "_veg";
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -888,72 +868,61 @@ graphs:
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
-        file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_geometric_attributes.zip")
+        file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
       colonToUnderscore: true
   - id: 2233fddd-fdc3-44a1-93e2-86805de13a3a
     name: LodSplitterWithDMVeg2
     type: subGraph
     subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+  - id: 33cc44dd-5555-6666-7777-888899990000
+    name: SchemaFeatureFilterForVeg2
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__feature_type") == "veg:PlantCover"
+        outputPort: veg_PlantCover_schema
+  - id: 44dd55ee-6666-7777-8888-999900001111
+    name: SchemaAttributeMapperForVeg2
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: city_code
+      - attribute: city_name
+        valueAttribute: city_name
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: veg:class
+        valueAttribute: veg:class
+      - attribute: veg:averageHeight
+        valueAttribute: veg:averageHeight
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro:lodType
+        valueAttribute: uro:lodType
   - id: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
     name: AttributeManagerByLodVeg2
     type: action
     action: AttributeManager
     with:
       operations:
-      - attribute: featureId
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: geometryName
-        method: remove
       - attribute: cityCode
         method: rename
         value: city_code
       - attribute: cityName
         method: rename
         value: city_name
-      - attribute: lod
-        method: rename
-        value: __lod
-      - attribute: gmlId
-        method: remove
-      - attribute: gmlPropertyName
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: cityGmlPath
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
-      - attribute: package
-        method: rename
-        value: __package
-      - attribute: extension
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: path
-        method: remove
-      - attribute: name
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: featureType
-        method: remove
-      - attribute: gmlName
-        method: remove
   - id: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
     name: ReprojectorVeg2
     type: action
@@ -968,14 +937,13 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      skipUnexposedAttributes: true
       dracoCompression: false
       output: |
-        file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").__lod)
+        file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").lod)
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").__lod;
+        let lod = env.get("__value").lod;
         let suffix = "_veg";
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -1113,7 +1081,7 @@ graphs:
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
-        file::join_path(artifact, city_gml + "_veg_PlantCover_geometric_attributes.zip")
+        file::join_path(artifact, city_gml + "_veg_PlantCover_dm_geometric_attributes.zip")
       colonToUnderscore: true
   edges:
   - id: 315405f0-0c40-41c7-989b-85ab55935795
@@ -1211,6 +1179,21 @@ graphs:
     to: 782c6a8d-a772-4238-a32e-32caadbbb91f
     fromPort: default
     toPort: default
+  - id: ccddee11-2222-3333-4444-555566667788
+    from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    to: aabbccdd-1111-2222-3333-444455556666
+    fromPort: schema
+    toPort: default
+  - id: ddeeff22-3333-4444-5555-666677778899
+    from: aabbccdd-1111-2222-3333-444455556666
+    to: bbccddee-2222-3333-4444-555566667777
+    fromPort: frn_CityFurniture_schema
+    toPort: default
+  - id: eeffaa33-4444-5555-6666-77778888999a
+    from: bbccddee-2222-3333-4444-555566667777
+    to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+    fromPort: default
+    toPort: schema
   - id: 9bef0954-f6a8-4a02-8d41-8f1f24a72881
     from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     to: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
@@ -1271,6 +1254,21 @@ graphs:
     to: b5222fc2-f67b-4e89-8b8a-029181748511
     fromPort: default
     toPort: default
+  - id: 11223344-5555-6666-7777-888899990000
+    from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    to: 11aa22bb-3333-4444-5555-666677778888
+    fromPort: schema
+    toPort: default
+  - id: 22334455-6666-7777-8888-999900001111
+    from: 11aa22bb-3333-4444-5555-666677778888
+    to: 22bb33cc-4444-5555-6666-777788889999
+    fromPort: veg_SolitaryVegetationObject_schema
+    toPort: default
+  - id: 33445566-7777-8888-9999-000011112222
+    from: 22bb33cc-4444-5555-6666-777788889999
+    to: b5222fc2-f67b-4e89-8b8a-029181748511
+    fromPort: default
+    toPort: schema
   - id: 760fb777-b306-4512-a3ba-7be1d08fbd7e
     from: bd4ff879-8448-434d-9c47-ef85722b40cb
     to: 591050d4-8284-4708-a3e3-0bcb99bbd83c
@@ -1326,6 +1324,21 @@ graphs:
     to: 53ab03e0-8b30-4eae-86a3-e17916e32d87
     fromPort: default
     toPort: default
+  - id: 44556677-8888-9999-0000-111122223333
+    from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    to: 33cc44dd-5555-6666-7777-888899990000
+    fromPort: schema
+    toPort: default
+  - id: 55667788-9999-0000-1111-222233334444
+    from: 33cc44dd-5555-6666-7777-888899990000
+    to: 44dd55ee-6666-7777-8888-999900001111
+    fromPort: veg_PlantCover_schema
+    toPort: default
+  - id: 66778899-0000-1111-2222-333344445555
+    from: 44dd55ee-6666-7777-8888-999900001111
+    to: 53ab03e0-8b30-4eae-86a3-e17916e32d87
+    fromPort: default
+    toPort: schema
   - id: 26e22070-212d-4afa-875c-5b427f44d556
     from: 2233fddd-fdc3-44a1-93e2-86805de13a3a
     to: aa9b681b-0cc1-4445-bff6-be41bb9c764f

@@ -41,6 +41,7 @@ bytemuck.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 cesiumtiles.workspace = true
+chrono.workspace = true
 crossbeam.workspace = true
 crossbeam-channel.workspace = true
 crossbeam-utils.workspace = true

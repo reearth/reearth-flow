@@ -23,24 +23,32 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   detectedGeometryType,
 }) => {
   const t = useT();
-
   // Process feature properties for display
   const processedFeature = useMemo(() => {
     if (!feature) return null;
-    // Separate geometry and properties for better organization
-    const { geometry, ...properties } = feature;
+
+    const { ...properties } = feature;
 
     // Filter out internal properties that aren't user-relevant
     const filteredProperties = Object.fromEntries(
       Object.entries(properties).filter(
-        ([key]) => !key.startsWith("_") && key !== "id",
+        ([key]) =>
+          !key.startsWith("_") && !key.startsWith("geometry") && key !== "id",
+      ),
+    );
+
+    // Filter out geometry properties
+    const filteredGeometry = Object.fromEntries(
+      Object.entries(properties).filter(
+        ([key]) =>
+          !key.startsWith("_") && key.startsWith("geometry") && key !== "id",
       ),
     );
 
     return {
       id: feature.id,
-      properties: filteredProperties,
-      geometry,
+      attributes: filteredProperties,
+      geometry: filteredGeometry,
     };
   }, [feature]);
 
@@ -137,20 +145,81 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               </div>
             </div>
           )}
+          {/* Geometry */}
+          {Object.keys(processedFeature.geometry).length > 0 && (
+            <div>
+              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
+                {t("Geometry")}
+              </h4>
+              <div className="space-y-3">
+                {Object.entries(processedFeature.geometry).map(
+                  ([key, value]) => {
+                    const valueType = getValueType(value);
+                    const geometryKey = key.replace(/^geometry/, "");
 
-          {/* Properties */}
-          {Object.keys(processedFeature.properties).length > 0 && (
+                    return (
+                      <div key={key} className="space-y-1">
+                        {valueType === "object" || valueType === "array" ? (
+                          <Collapsible defaultOpen={true}>
+                            <CollapsibleTrigger asChild className="w-full">
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                                aria-expanded="true">
+                                <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                                  {geometryKey}
+                                  <CaretDownIcon
+                                    size={12}
+                                    className="ml-1 transition-transform group-data-[state=open]:rotate-180"
+                                  />
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {valueType}
+                                </span>
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mt-1 rounded-md bg-muted/30 p-2">
+                                <pre className="text-xs break-all whitespace-pre-wrap">
+                                  {formatValue(value)}
+                                </pre>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {geometryKey}
+                              </span>
+                            </div>
+                            <div className="rounded-md bg-muted/30 p-2">
+                              <pre className="text-xs break-all whitespace-pre-wrap">
+                                {formatValue(value)}
+                              </pre>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          )}
+          {/* Attributes */}
+          {Object.keys(processedFeature.attributes).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Attributes")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.properties).map(
+                {Object.entries(processedFeature.attributes).map(
                   ([key, value]) => {
                     const valueType = getValueType(value);
-                    const attributeKey = key
-                      .replace(/^attributes/, "")
-                      .replace(/^geometry/, "");
+
+                    const attributeKey = key.replace(/^attributes/, "");
                     return (
                       <div key={key} className="space-y-1">
                         {valueType === "object" || valueType === "array" ? (
@@ -202,65 +271,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               </div>
             </div>
           )}
-
-          {/* Geometry */}
-          {processedFeature.geometry && (
-            <div>
-              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-                {t("Geometry")}
-              </h4>
-              <div className="space-y-3">
-                {Object.entries(processedFeature.geometry).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    return (
-                      <div key={key} className="space-y-1">
-                        {valueType === "object" || valueType === "array" ? (
-                          <Collapsible defaultOpen={true}>
-                            <CollapsibleTrigger asChild className="w-full">
-                              <Button
-                                variant="ghost"
-                                type="button"
-                                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
-                                aria-expanded="true">
-                                <span className="group flex items-center text-xs font-medium text-muted-foreground">
-                                  {key}
-                                  <CaretDownIcon
-                                    size={12}
-                                    className="ml-1 transition-transform group-data-[state=open]:rotate-180"
-                                  />
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {valueType}
-                                </span>
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <div className="mt-1 rounded-md bg-muted/30 p-2">
-                                <pre className="text-xs break-all whitespace-pre-wrap">
-                                  {formatValue(value)}
-                                </pre>
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ) : (
-                          <div className="rounded-md bg-muted/30 p-2">
-                            <pre className="text-xs break-all whitespace-pre-wrap">
-                              {formatValue(value)}
-                            </pre>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-            </div>
-          )}
-
           {/* No data message */}
-          {Object.keys(processedFeature.properties).length === 0 &&
-            !processedFeature.geometry && (
+          {Object.keys(processedFeature.attributes).length === 0 &&
+            Object.keys(processedFeature.geometry).length === 0 && (
               <div className="text-center text-muted-foreground">
                 <p className="text-sm">
                   {t("No additional details available")}

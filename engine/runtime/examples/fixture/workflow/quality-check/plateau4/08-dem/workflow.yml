@@ -402,6 +402,8 @@ graphs:
             file::join_path(env.get("workerArtifactPath"), "08_地形_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
+      # Note: "不正な穴" is excluded from JSON summary and totalErrorCount to match FME behavior
+      # (FME does not count small holes as errors, only outputs them to shapefile for reference)
       - id: 9fad8d36-c64d-47c2-9221-43e86524c8e5
         name: StatisticsCalculatorJSON
         type: action
@@ -420,13 +422,10 @@ graphs:
             - newAttribute: "潰れた三角形"
               expr: |
                 env.get("__value")["潰れた三角形"] ?? 0
-            - newAttribute: "不正な穴"
-              expr: |
-                env.get("__value")["不正な穴"] ?? 0
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
-                let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形", "不正な穴"];
+                let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
                 }

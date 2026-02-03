@@ -8,6 +8,7 @@ threshold = 0.01
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
 
 [filter.tree]
 "udx/squr/533912_squr_6697_op.gml" = [

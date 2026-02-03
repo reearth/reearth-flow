@@ -60,30 +60,32 @@ const CollaborationCard: React.FC<Props> = ({
           </span>
         )}
       </div>
-      {isHovered && onSpotlightUserSelect && !isSpotlighted && !self && (
-        <IconButton
-          className="h-8"
-          tooltipText={t("Spotlight User")}
-          icon={<TargetIcon size={14} />}
-          onClick={() => onSpotlightUserSelect(clientId)}
-        />
-      )}
-      {isSpotlighted && onSpotlightUserDeselect && !self && (
-        <IconButton
-          className="h-8"
-          tooltipText={t("Remove Spotlight")}
-          icon={<ProhibitIcon size={14} />}
-          onClick={onSpotlightUserDeselect}
-        />
-      )}
-      {isHovered && onDebugRunJoin && !self && (
-        <IconButton
-          className="h-8"
-          tooltipText={t("View Debug Run")}
-          icon={<BinocularsIcon size={14} />}
-          onClick={onDebugRunJoin}
-        />
-      )}
+      <div className="ml-auto">
+        {isHovered && onSpotlightUserSelect && !isSpotlighted && !self && (
+          <IconButton
+            className="h-8"
+            tooltipText={t("Spotlight User")}
+            icon={<TargetIcon size={14} />}
+            onClick={() => onSpotlightUserSelect(clientId)}
+          />
+        )}
+        {isSpotlighted && onSpotlightUserDeselect && !self && (
+          <IconButton
+            className="h-8"
+            tooltipText={t("Remove Spotlight")}
+            icon={<ProhibitIcon size={14} />}
+            onClick={onSpotlightUserDeselect}
+          />
+        )}
+        {isHovered && onDebugRunJoin && !self && (
+          <IconButton
+            className="h-8"
+            tooltipText={t("View Debug Run")}
+            icon={<BinocularsIcon size={14} />}
+            onClick={onDebugRunJoin}
+          />
+        )}
+      </div>
     </div>
   );
 };

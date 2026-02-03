@@ -78,11 +78,11 @@
     },
     {
       "name": "CzmlReader",
-      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization"
+      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data"
     },
     {
       "name": "CzmlWriter",
-      "description": "Writes features to a CZML file"
+      "description": "Export features as CZML for Cesium visualization, with support for time-dynamic entities and timeseries positions"
     },
     {
       "name": "DimensionFilter",

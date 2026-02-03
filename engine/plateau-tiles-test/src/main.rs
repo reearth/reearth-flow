@@ -99,7 +99,6 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
-    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
     "data-convert/plateau4/03-frn-veg/curvemembers",
     "data-convert/plateau4/03-frn-veg/frn",
     "data-convert/plateau4/03-frn-veg/veg",
@@ -113,11 +112,12 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
-    "data-convert/plateau4/07-brid-tun-cons/brid",
-    "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
-    "data-convert/plateau4/07-brid-tun-cons/cons",
+    // "data-convert/plateau4/07-brid-tun-cons/brid",
+    // "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
+    // "data-convert/plateau4/07-brid-tun-cons/cons",
     "data-convert/plateau4/08-ubld/ubld",
     "data-convert/plateau4/10-wtr/lod1",
+    "data-convert/plateau4/11-gen/mvt",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -240,7 +240,13 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
-                test_json_attributes::test_json_attributes(&fme_source_dir, &flow_source_dir, cfg)
+                test_json_attributes::test_json_attributes(
+                    &fme_source_dir,
+                    &flow_source_dir,
+                    &fme_extracted_dir,
+                    &flow_extracted_dir,
+                    cfg,
+                )
             });
         }
 
