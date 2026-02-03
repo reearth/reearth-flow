@@ -16,6 +16,15 @@ use serde_json::Value;
 
 use crate::plateau4::errors::PlateauProcessorError;
 
+/// Attribute keys to skip during attribute filtering.
+/// Based on FME reference implementation's SKIPPABLE_TAGS (usually the inner tag of the FME skippable tag)
+static SKIPPABLE_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    HashSet::from([
+        "brid:BridgeInstallation",
+        // TODO: add other tags
+    ])
+});
+
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
@@ -185,6 +194,44 @@ fn convert_gyear_value(key: &str, value: AttributeValue) -> AttributeValue {
         AttributeValue::Map(inner_map) => AttributeValue::Map(convert_gyear_fields(inner_map)),
         other => other,
     }
+}
+
+/// Recursively filters skippable keys from citygml attributes.
+/// Skippable keys are PLATEAU-specific sub-features and geometry boundaries
+/// that shouldn't be included as simple attributes.
+fn filter_skippable_keys(
+    mut map: HashMap<String, AttributeValue>,
+) -> HashMap<String, AttributeValue> {
+    map.retain(|key, value| {
+        // Skip known skippable keys
+        if SKIPPABLE_KEYS.contains(key.as_str()) {
+            return false;
+        }
+
+        // Recursively filter nested structures
+        match value {
+            AttributeValue::Map(nested_map) => {
+                let filtered = filter_skippable_keys(std::mem::take(nested_map));
+                *value = AttributeValue::Map(filtered);
+                true
+            }
+            AttributeValue::Array(arr) => {
+                let filtered_arr: Vec<AttributeValue> = std::mem::take(arr)
+                    .into_iter()
+                    .map(|item| match item {
+                        AttributeValue::Map(nested_map) => {
+                            AttributeValue::Map(filter_skippable_keys(nested_map))
+                        }
+                        other => other,
+                    })
+                    .collect();
+                *value = AttributeValue::Array(filtered_arr);
+                true
+            }
+            _ => true,
+        }
+    });
+    map
 }
 
 impl AttributeFlattener {
@@ -590,6 +637,9 @@ impl AttributeFlattener {
             ))
             .into());
         };
+
+        // Filter out PLATEAU-specific skippable keys (sub-features, geometry boundaries)
+        let citygml_attributes = filter_skippable_keys(citygml_attributes);
 
         // Build lookup key from package and attribute feature type
         // for example dmGeometricAttribute should find attributes from their parent feature type
