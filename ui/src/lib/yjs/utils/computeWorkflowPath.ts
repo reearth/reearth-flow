@@ -8,8 +8,7 @@ export function computeWorkflowPath(
   const pathParts: string[] = [];
 
   let workflowId = currentWorkflowId;
-  while (workflowId) {
-    if (workflowId === DEFAULT_ENTRY_GRAPH_ID) break;
+  while (workflowId && workflowId !== DEFAULT_ENTRY_GRAPH_ID) {
     pathParts.unshift(workflowId);
 
     const parentWorkflow = rawWorkflows.find((w) => {

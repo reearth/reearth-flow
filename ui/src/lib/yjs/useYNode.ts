@@ -95,14 +95,13 @@ export default ({
               routingPort: uniquePortName,
             };
           }
-          const currentWorkflowId = currentYWorkflow
-            ?.get("id")
-            ?.toJSON() as string;
-
-          newNode.data.workflowPath = computeWorkflowPath(
-            rawWorkflows,
-            currentWorkflowId,
-          );
+          const currentWorkflowId = currentYWorkflow?.get("id")?.toString();
+          if (currentWorkflowId) {
+            newNode.data.workflowPath = computeWorkflowPath(
+              rawWorkflows,
+              currentWorkflowId,
+            );
+          }
 
           yNodes.set(newNode.id, yNodeConstructor(newNode));
 
