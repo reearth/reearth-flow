@@ -3,7 +3,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, BufWriter, Read as _, Seek, SeekFrom, Write as _},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use indexmap::IndexMap;
@@ -97,6 +97,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
             group_map: HashMap::new(),
             group_count: 0,
             temp_dir: None,
+            group_writers: HashMap::new(),
         };
 
         Ok(Box::new(process))
@@ -140,6 +141,8 @@ struct AreaOnAreaOverlayer {
     group_map: HashMap<AttributeValue, usize>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
+    /// Per-group persistent writers: (aabbs_writer, features_writer)
+    group_writers: HashMap<usize, (BufWriter<File>, BufWriter<File>)>,
 }
 
 impl std::fmt::Debug for AreaOnAreaOverlayer {
@@ -161,6 +164,7 @@ impl Clone for AreaOnAreaOverlayer {
             group_map: HashMap::new(),
             group_count: 0,
             temp_dir: None,
+            group_writers: HashMap::new(),
         }
     }
 }
@@ -190,24 +194,33 @@ impl AreaOnAreaOverlayer {
     }
 
     fn append_to_group(
-        group_dir: &Path,
+        &mut self,
+        group_idx: usize,
         aabb: &[f64; 4],
         feature_json: &str,
     ) -> Result<(), BoxedError> {
-        {
-            let file = File::options().create(true).append(true).open(group_dir.join("aabbs.jsonl"))?;
-            let mut w = BufWriter::new(file);
-            serde_json::to_writer(&mut w, aabb)?;
-            w.write_all(b"\n")?;
-            w.flush()?;
+        if !self.group_writers.contains_key(&group_idx) {
+            let group_dir = self.ensure_group_dir(group_idx)?;
+            let aabbs_file = File::options()
+                .create(true)
+                .append(true)
+                .open(group_dir.join("aabbs.jsonl"))?;
+            let feats_file = File::options()
+                .create(true)
+                .append(true)
+                .open(group_dir.join("features.jsonl"))?;
+            self.group_writers.insert(
+                group_idx,
+                (BufWriter::new(aabbs_file), BufWriter::new(feats_file)),
+            );
         }
-        {
-            let file = File::options().create(true).append(true).open(group_dir.join("features.jsonl"))?;
-            let mut w = BufWriter::new(file);
-            w.write_all(feature_json.as_bytes())?;
-            w.write_all(b"\n")?;
-            w.flush()?;
-        }
+        let (aabb_w, feat_w) = self.group_writers.get_mut(&group_idx).unwrap();
+        serde_json::to_writer(&mut *aabb_w, aabb)?;
+        aabb_w.write_all(b"\n")?;
+        aabb_w.flush()?;
+        feat_w.write_all(feature_json.as_bytes())?;
+        feat_w.write_all(b"\n")?;
+        feat_w.flush()?;
         Ok(())
     }
 }
@@ -270,8 +283,7 @@ impl Processor for AreaOnAreaOverlayer {
                 };
 
                 let feature_json = serde_json::to_string(&ctx.feature)?;
-                let group_dir = self.ensure_group_dir(group_idx)?;
-                Self::append_to_group(&group_dir, &aabb, &feature_json)?;
+                self.append_to_group(group_idx, &aabb, &feature_json)?;
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -290,7 +302,18 @@ impl Processor for AreaOnAreaOverlayer {
             None => return Ok(()),
         };
 
-        let mut overlaid = OverlaidFeatures::new();
+        // Drop all group writers before reading their files
+        self.group_writers.clear();
+
+        // Place output files outside temp_dir so Drop doesn't delete them
+        // before the downstream receiver reads them (receiver deletes after reading).
+        let output_id = uuid::Uuid::new_v4();
+        let area_path = std::env::temp_dir().join(format!("aoa-area-{output_id}.jsonl"));
+        let remnants_path = std::env::temp_dir().join(format!("aoa-remnants-{output_id}.jsonl"));
+        let mut area_writer = BufWriter::new(File::create(&area_path)?);
+        let mut remnants_writer = BufWriter::new(File::create(&remnants_path)?);
+        let mut area_count: usize = 0;
+        let mut remnants_count: usize = 0;
 
         for group_idx in 0..self.group_count {
             let group_dir = temp_dir.join(format!("group_{group_idx:06}"));
@@ -313,39 +336,40 @@ impl Processor for AreaOnAreaOverlayer {
             };
 
             // Pre-scan features.jsonl to record byte offsets
-            let disk_geoms = DiskBackedFeatures::scan(&features_path)?;
-            let num_features = disk_geoms.offsets.len();
+            let disk_feats = DiskBackedFeatures::scan(&features_path)?;
 
-            // Build geometries accessor for overlay_2d
-            let midpolygons = overlay_2d_disk(&aabbs, &disk_geoms, self.tolerance);
+            // Compute midpolygons and write to disk
+            let midpolygons_path = group_dir.join("midpolygons.jsonl");
+            overlay_2d_disk(&aabbs, &disk_feats, self.tolerance, &midpolygons_path)?;
 
-            // Build OverlaidFeatures from midpolygons, reading attributes from disk
-            let overlaid_features = OverlaidFeatures::from_midpolygons_disk(
-                midpolygons,
-                &disk_geoms,
-                num_features,
-                &self.group_by,
+            // Stream midpolygons from disk, build features, write directly to output files
+            let (ac, rc) = from_midpolygons_disk(
+                &midpolygons_path,
+                &disk_feats,
                 &self.output_attribute,
                 &self.generate_list,
                 &self.accumulation_mode,
-            );
-            overlaid.extend(overlaid_features);
+                &mut area_writer,
+                &mut remnants_writer,
+            )?;
+            area_count += ac;
+            remnants_count += rc;
         }
 
-        for feature in overlaid.area {
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                AREA_PORT.clone(),
-            ));
+        area_writer.flush()?;
+        remnants_writer.flush()?;
+        drop(area_writer);
+        drop(remnants_writer);
+
+        let context = ctx.as_context();
+
+        if area_count > 0 {
+            fw.send_file(area_path, AREA_PORT.clone(), context.clone());
         }
-        for feature in overlaid.remnant {
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                REMNANTS_PORT.clone(),
-            ));
+        if remnants_count > 0 {
+            fw.send_file(remnants_path, REMNANTS_PORT.clone(), context);
         }
+
         Ok(())
     }
 
@@ -410,7 +434,7 @@ impl DiskBackedFeatures {
 }
 
 /// Polygon that is created in the middle of the overlay process.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct MiddlePolygon {
     polygon: MultiPolygon2D<f64>,
     parents: Vec<usize>,
@@ -529,20 +553,29 @@ impl OverlayGraph {
     }
 }
 
-/// Disk-backed version of overlay_2d that reads geometries from disk on demand.
+/// Disk-backed version of overlay_2d that reads geometries from disk on demand
+/// and writes MiddlePolygons to a JSONL file instead of collecting in memory.
 fn overlay_2d_disk(
     aabbs: &[[f64; 4]],
     disk_feats: &DiskBackedFeatures,
     tolerance: f64,
-) -> Vec<MiddlePolygon> {
+    output_path: &Path,
+) -> Result<(), BoxedError> {
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let writer = Mutex::new(BufWriter::new(File::create(output_path)?));
     let overlay_graph = OverlayGraph::bulk_load_from_aabbs(aabbs);
     let num = disk_feats.offsets.len();
 
     (0..num)
         .into_par_iter()
-        .filter_map(|i| {
+        .for_each(|i| {
             let geom_i = disk_feats.read_geometry(i);
-            let geom_i_2d = as_geometry_2d(&geom_i)?;
+            let geom_i_2d = match as_geometry_2d(&geom_i) {
+                Some(g) => g,
+                None => return,
+            };
 
             let mut polygon_target = geom_to_multipolygon(geom_i_2d);
 
@@ -599,139 +632,144 @@ fn overlay_2d_disk(
                 }
             }
 
-            Some(queue)
-        })
-        .flatten()
-        .collect::<Vec<_>>()
+            // Serialize each MiddlePolygon and write to disk
+            for mp in queue {
+                let line = serde_json::to_string(&mp).expect("failed to serialize MiddlePolygon");
+                let mut w = writer.lock().expect("failed to lock writer");
+                w.write_all(line.as_bytes()).expect("failed to write MiddlePolygon");
+                w.write_all(b"\n").expect("failed to write newline");
+            }
+        });
+
+    writer.into_inner().expect("failed to unwrap mutex").flush()?;
+    Ok(())
 }
 
-/// Features that are created as the result of the overlay process.
-#[derive(Debug)]
-struct OverlaidFeatures {
-    area: Vec<Feature>,
-    remnant: Vec<Feature>,
-}
+/// Stream MiddlePolygons from a JSONL file, convert to Features, and write
+/// directly to area/remnants output files without collecting in memory.
+/// Returns (area_count, remnants_count).
+fn from_midpolygons_disk(
+    midpolygons_path: &Path,
+    disk_feats: &DiskBackedFeatures,
+    output_attribute: &Option<String>,
+    generate_list: &Option<String>,
+    accumulation_mode: &AccumulationMode,
+    area_writer: &mut BufWriter<File>,
+    remnants_writer: &mut BufWriter<File>,
+) -> Result<(usize, usize), BoxedError> {
+    let file = File::open(midpolygons_path)?;
+    let reader = BufReader::new(file);
 
-impl OverlaidFeatures {
-    fn new() -> Self {
-        Self {
-            area: Vec::new(),
-            remnant: Vec::new(),
+    // Cache attributes loaded from disk to avoid re-reading the same feature
+    let mut attributes_cache: HashMap<usize, Arc<IndexMap<Attribute, AttributeValue>>> =
+        HashMap::new();
+
+    let mut area_count = 0usize;
+    let mut remnants_count = 0usize;
+
+    for line in reader.lines() {
+        let line = line?;
+        if line.is_empty() {
+            continue;
         }
-    }
+        let subpolygon: MiddlePolygon = serde_json::from_str(&line)?;
 
-    fn from_midpolygons_disk(
-        midpolygons: Vec<MiddlePolygon>,
-        disk_feats: &DiskBackedFeatures,
-        _num_features: usize,
-        _group_by: &Option<Vec<Attribute>>,
-        output_attribute: &Option<String>,
-        generate_list: &Option<String>,
-        accumulation_mode: &AccumulationMode,
-    ) -> Self {
-        // Collect which feature indices we need to load attributes from
-        let mut needed_indices: HashSet<usize> = HashSet::new();
-        for mp in &midpolygons {
-            for &p in &mp.parents {
-                needed_indices.insert(p);
+        match subpolygon.get_type() {
+            MiddlePolygonType::None => {}
+            MiddlePolygonType::Area(parents) => {
+                // Ensure all parent attributes are cached
+                for &p in &parents {
+                    attributes_cache.entry(p).or_insert_with(|| {
+                        let feature = disk_feats.read_feature(p);
+                        feature.attributes
+                    });
+                }
+
+                let attrs = match accumulation_mode {
+                    AccumulationMode::DropIncomingAttributes => IndexMap::new(),
+                    AccumulationMode::UseAttributesFromOneFeature => {
+                        let first_feature = &attributes_cache[&parents[0]];
+                        (**first_feature).clone()
+                    }
+                };
+                let mut feature = Feature::new_with_attributes(attrs);
+
+                if let Some(attr_name) = output_attribute {
+                    let overlap_count = parents.len();
+                    feature.attributes_mut().insert(
+                        Attribute::new(attr_name.clone()),
+                        AttributeValue::Number(overlap_count.into()),
+                    );
+                }
+
+                if let Some(list_name) = generate_list {
+                    let list_items: Vec<AttributeValue> = parents
+                        .iter()
+                        .map(|&parent_index| {
+                            let mut map = HashMap::new();
+                            for (attr, value) in &*attributes_cache[&parent_index] {
+                                map.insert(attr.as_ref().to_string(), value.clone());
+                            }
+                            AttributeValue::Map(map)
+                        })
+                        .collect();
+
+                    feature.attributes_mut().insert(
+                        Attribute::new(list_name.clone()),
+                        AttributeValue::Array(list_items),
+                    );
+                }
+
+                feature.geometry_mut().value =
+                    GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
+                serde_json::to_writer(&mut *area_writer, &feature)?;
+                area_writer.write_all(b"\n")?;
+                area_count += 1;
+            }
+            MiddlePolygonType::Remnant(parent) => {
+                attributes_cache.entry(parent).or_insert_with(|| {
+                    let feature = disk_feats.read_feature(parent);
+                    feature.attributes
+                });
+
+                let attrs = match accumulation_mode {
+                    AccumulationMode::DropIncomingAttributes => IndexMap::new(),
+                    AccumulationMode::UseAttributesFromOneFeature => {
+                        (*attributes_cache[&parent]).clone()
+                    }
+                };
+                let mut feature = Feature::new_with_attributes(attrs);
+
+                if let Some(attr_name) = output_attribute {
+                    feature.attributes_mut().insert(
+                        Attribute::new(attr_name.clone()),
+                        AttributeValue::Number(1.into()),
+                    );
+                }
+
+                if let Some(list_name) = generate_list {
+                    let mut map = HashMap::new();
+                    for (attr, value) in &*attributes_cache[&parent] {
+                        map.insert(attr.as_ref().to_string(), value.clone());
+                    }
+                    let list_items = vec![AttributeValue::Map(map)];
+
+                    feature.attributes_mut().insert(
+                        Attribute::new(list_name.clone()),
+                        AttributeValue::Array(list_items),
+                    );
+                }
+
+                feature.geometry_mut().value =
+                    GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
+                serde_json::to_writer(&mut *remnants_writer, &feature)?;
+                remnants_writer.write_all(b"\n")?;
+                remnants_count += 1;
             }
         }
-
-        // Load only the needed features' attributes
-        let mut attributes_cache: HashMap<usize, Arc<IndexMap<Attribute, AttributeValue>>> =
-            HashMap::new();
-        for &idx in &needed_indices {
-            let feature = disk_feats.read_feature(idx);
-            attributes_cache.insert(idx, feature.attributes);
-        }
-
-        let mut area = Vec::new();
-        let mut remnant = Vec::new();
-        for subpolygon in midpolygons {
-            match subpolygon.get_type() {
-                MiddlePolygonType::None => {}
-                MiddlePolygonType::Area(parents) => {
-                    let attrs = match accumulation_mode {
-                        AccumulationMode::DropIncomingAttributes => IndexMap::new(),
-                        AccumulationMode::UseAttributesFromOneFeature => {
-                            let first_feature = &attributes_cache[&parents[0]];
-                            (**first_feature).clone()
-                        }
-                    };
-                    let mut feature = Feature::new_with_attributes(attrs);
-
-                    if let Some(attr_name) = output_attribute {
-                        let overlap_count = parents.len();
-                        feature.attributes_mut().insert(
-                            Attribute::new(attr_name.clone()),
-                            AttributeValue::Number(overlap_count.into()),
-                        );
-                    }
-
-                    if let Some(list_name) = generate_list {
-                        let list_items: Vec<AttributeValue> = parents
-                            .iter()
-                            .map(|&parent_index| {
-                                let mut map = HashMap::new();
-                                for (attr, value) in &*attributes_cache[&parent_index] {
-                                    map.insert(attr.as_ref().to_string(), value.clone());
-                                }
-                                AttributeValue::Map(map)
-                            })
-                            .collect();
-
-                        feature.attributes_mut().insert(
-                            Attribute::new(list_name.clone()),
-                            AttributeValue::Array(list_items),
-                        );
-                    }
-
-                    feature.geometry_mut().value =
-                        GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
-                    area.push(feature);
-                }
-                MiddlePolygonType::Remnant(parent) => {
-                    let attrs = match accumulation_mode {
-                        AccumulationMode::DropIncomingAttributes => IndexMap::new(),
-                        AccumulationMode::UseAttributesFromOneFeature => {
-                            (*attributes_cache[&parent]).clone()
-                        }
-                    };
-                    let mut feature = Feature::new_with_attributes(attrs);
-
-                    if let Some(attr_name) = output_attribute {
-                        feature.attributes_mut().insert(
-                            Attribute::new(attr_name.clone()),
-                            AttributeValue::Number(1.into()),
-                        );
-                    }
-
-                    if let Some(list_name) = generate_list {
-                        let mut map = HashMap::new();
-                        for (attr, value) in &*attributes_cache[&parent] {
-                            map.insert(attr.as_ref().to_string(), value.clone());
-                        }
-                        let list_items = vec![AttributeValue::Map(map)];
-
-                        feature.attributes_mut().insert(
-                            Attribute::new(list_name.clone()),
-                            AttributeValue::Array(list_items),
-                        );
-                    }
-
-                    feature.geometry_mut().value =
-                        GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
-                    remnant.push(feature);
-                }
-            }
-        }
-        Self { area, remnant }
     }
 
-    fn extend(&mut self, other: Self) {
-        self.area.extend(other.area);
-        self.remnant.extend(other.remnant);
-    }
+    Ok((area_count, remnants_count))
 }
 
 #[cfg(test)]
@@ -799,8 +837,13 @@ mod tests {
         }
 
         let disk_feats = DiskBackedFeatures::scan(&features_path).unwrap();
-        let midpolygons = overlay_2d_disk(&aabbs, &disk_feats, 0.01);
-        assert_eq!(midpolygons.len(), 3);
+        let midpolygons_path = group_dir.join("midpolygons.jsonl");
+        overlay_2d_disk(&aabbs, &disk_feats, 0.01, &midpolygons_path).unwrap();
+        let count = BufReader::new(File::open(&midpolygons_path).unwrap())
+            .lines()
+            .filter(|l| l.as_ref().map(|s| !s.is_empty()).unwrap_or(false))
+            .count();
+        assert_eq!(count, 3);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -829,8 +872,13 @@ mod tests {
         }
 
         let disk_feats = DiskBackedFeatures::scan(&features_path).unwrap();
-        let midpolygons = overlay_2d_disk(&aabbs, &disk_feats, 0.01);
-        assert_eq!(midpolygons.len(), 2);
+        let midpolygons_path = group_dir.join("midpolygons.jsonl");
+        overlay_2d_disk(&aabbs, &disk_feats, 0.01, &midpolygons_path).unwrap();
+        let count = BufReader::new(File::open(&midpolygons_path).unwrap())
+            .lines()
+            .filter(|l| l.as_ref().map(|s| !s.is_empty()).unwrap_or(false))
+            .count();
+        assert_eq!(count, 2);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

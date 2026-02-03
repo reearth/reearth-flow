@@ -452,16 +452,26 @@ impl Processor for FeatureMerger {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        let temp_dir = match &self.temp_dir {
+            Some(d) => d.clone(),
+            None => return Ok(()),
+        };
+
+        let merged_path = temp_dir.join("output_merged.jsonl");
+        let unmerged_path = temp_dir.join("output_unmerged.jsonl");
+        let mut merged_writer = BufWriter::new(File::create(&merged_path)?);
+        let mut unmerged_writer = BufWriter::new(File::create(&unmerged_path)?);
+        let mut merged_count: usize = 0;
+        let mut unmerged_count: usize = 0;
+
         for (request_value, &req_idx) in self.requestor_key_map.iter() {
             let requestor_features = read_features_from_file(&self.requestor_file_path(req_idx))?;
 
             let Some(&sup_idx) = self.supplier_key_map.get(request_value) else {
                 for request_feature in requestor_features.iter() {
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        request_feature.clone(),
-                        UNMERGED_PORT.clone(),
-                    ));
+                    serde_json::to_writer(&mut unmerged_writer, request_feature)?;
+                    unmerged_writer.write_all(b"\n")?;
+                    unmerged_count += 1;
                 }
                 continue;
             };
@@ -475,13 +485,26 @@ impl Processor for FeatureMerger {
                         .attributes_mut()
                         .extend((*supplier_feature.attributes).clone());
                 }
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    merged_feature,
-                    MERGED_PORT.clone(),
-                ));
+                serde_json::to_writer(&mut merged_writer, &merged_feature)?;
+                merged_writer.write_all(b"\n")?;
+                merged_count += 1;
             }
         }
+
+        merged_writer.flush()?;
+        unmerged_writer.flush()?;
+        drop(merged_writer);
+        drop(unmerged_writer);
+
+        let context = ctx.as_context();
+
+        if merged_count > 0 {
+            fw.send_file(merged_path, MERGED_PORT.clone(), context.clone());
+        }
+        if unmerged_count > 0 {
+            fw.send_file(unmerged_path, UNMERGED_PORT.clone(), context);
+        }
+
         Ok(())
     }
 

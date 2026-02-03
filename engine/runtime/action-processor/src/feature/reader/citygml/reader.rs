@@ -90,12 +90,11 @@ fn parse_tree_reader<R: BufRead>(
     // Phase 1: Parse CityGML, build features, write them to a temp JSONL file.
     // This lets us drop all parsed entities/appearances/geometry before sending,
     // so backpressure on fw.send() doesn't trap large parsing data in memory.
-    let temp_dir = reearth_flow_common::dir::project_temp_dir(
-        uuid::Uuid::new_v4().to_string().as_str(),
-    )
-    .map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
+    let temp_dir =
+        reearth_flow_common::dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())
+            .map_err(|e| {
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+            })?;
     let temp_path = temp_dir.join("features.jsonl");
 
     let feature_count = {
@@ -103,13 +102,7 @@ fn parse_tree_reader<R: BufRead>(
             crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
         })?;
         let mut writer = BufWriter::new(file);
-        let count = parse_and_write_features(
-            st,
-            base_attributes,
-            flatten,
-            base_url,
-            &mut writer,
-        )?;
+        let count = parse_and_write_features(st, base_attributes, flatten, base_url, &mut writer)?;
         writer.flush().map_err(|e| {
             crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
         })?;

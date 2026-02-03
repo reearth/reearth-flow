@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     env,
     fmt::Debug,
+    io::{BufRead, BufReader},
     mem::swap,
     sync::{atomic::AtomicU64, Arc},
     time::{self, Duration},
@@ -237,13 +238,79 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                         if first_error.is_none() {
                             first_error = Some(e);
                         }
-
-                        // For sink errors, we want to continue processing to emit terminate log
-                        // So we don't propagate the error here
                     } else {
                         self.features_written
                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     }
+                }
+                ExecutorOperation::FileBackedOp {
+                    path,
+                    port,
+                    context,
+                } => {
+                    let file = match std::fs::File::open(&path) {
+                        Ok(f) => f,
+                        Err(e) => {
+                            has_failed = true;
+                            let err = ExecutionError::CannotReceiveFromChannel(format!(
+                                "Failed to open file-backed op file {}: {e}",
+                                path.display()
+                            ));
+                            if first_error.is_none() {
+                                first_error = Some(err);
+                            }
+                            continue;
+                        }
+                    };
+                    let reader = BufReader::new(file);
+                    for line in reader.lines() {
+                        let line = match line {
+                            Ok(l) => l,
+                            Err(e) => {
+                                has_failed = true;
+                                let err = ExecutionError::CannotReceiveFromChannel(format!(
+                                    "Failed to read line from file-backed op: {e}"
+                                ));
+                                if first_error.is_none() {
+                                    first_error = Some(err);
+                                }
+                                break;
+                            }
+                        };
+                        if line.is_empty() {
+                            continue;
+                        }
+                        let feature: reearth_flow_types::Feature = match serde_json::from_str(&line)
+                        {
+                            Ok(f) => f,
+                            Err(e) => {
+                                has_failed = true;
+                                let err = ExecutionError::CannotReceiveFromChannel(format!(
+                                    "Failed to deserialize feature from file-backed op: {e}"
+                                ));
+                                if first_error.is_none() {
+                                    first_error = Some(err);
+                                }
+                                break;
+                            }
+                        };
+                        let ctx = ExecutorContext::new_with_context_feature_and_port(
+                            &context,
+                            feature,
+                            port.clone(),
+                        );
+                        let result = self.on_op(ctx);
+                        if let Err(e) = result {
+                            has_failed = true;
+                            if first_error.is_none() {
+                                first_error = Some(e);
+                            }
+                        } else {
+                            self.features_written
+                                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        }
+                    }
+                    let _ = std::fs::remove_file(&path);
                 }
                 ExecutorOperation::Terminate { ctx } => {
                     is_terminated[index] = true;

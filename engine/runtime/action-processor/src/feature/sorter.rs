@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -324,35 +324,39 @@ impl Processor for FeatureSorter {
             chunk_paths = next_paths;
         }
 
-        // Final merge: stream directly to forwarder
-        let mut readers: Vec<BufReader<File>> = chunk_paths
-            .iter()
-            .map(|p| {
-                let file = File::open(p).expect("failed to open chunk file");
-                BufReader::new(file)
-            })
-            .collect();
+        // Final merge: write to output JSONL file for file-backed sending
+        let output_path = dir.join("output.jsonl");
+        {
+            let mut readers: Vec<BufReader<File>> = chunk_paths
+                .iter()
+                .map(|p| {
+                    let file = File::open(p).expect("failed to open chunk file");
+                    BufReader::new(file)
+                })
+                .collect();
 
-        let mut heap = BinaryHeap::new();
-        for (i, reader) in readers.iter_mut().enumerate() {
-            if let Some(entry) = read_entry(reader, i, descending) {
-                heap.push(entry);
+            let mut heap = BinaryHeap::new();
+            for (i, reader) in readers.iter_mut().enumerate() {
+                if let Some(entry) = read_entry(reader, i, descending) {
+                    heap.push(entry);
+                }
             }
+
+            let out_file = File::create(&output_path)?;
+            let mut writer = BufWriter::new(out_file);
+            while let Some(entry) = heap.pop() {
+                writer.write_all(entry.feature_json.as_bytes())?;
+                writer.write_all(b"\n")?;
+                if let Some(next) =
+                    read_entry(&mut readers[entry.chunk_idx], entry.chunk_idx, descending)
+                {
+                    heap.push(next);
+                }
+            }
+            writer.flush()?;
         }
 
-        while let Some(entry) = heap.pop() {
-            let feature: Feature = serde_json::from_str(&entry.feature_json)?;
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
-            if let Some(next) =
-                read_entry(&mut readers[entry.chunk_idx], entry.chunk_idx, descending)
-            {
-                heap.push(next);
-            }
-        }
+        fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
 
         Ok(())
     }

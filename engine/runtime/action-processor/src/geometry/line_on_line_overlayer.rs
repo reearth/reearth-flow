@@ -410,6 +410,18 @@ impl Processor for LineOnLineOverlayer {
         // Close current writer
         self.close_current_writer()?;
 
+        let temp_dir = match &self.temp_dir {
+            Some(d) => d.clone(),
+            None => return Ok(()),
+        };
+
+        let line_path = temp_dir.join("output_line.jsonl");
+        let point_path = temp_dir.join("output_point.jsonl");
+        let mut line_writer = BufWriter::new(File::create(&line_path)?);
+        let mut point_writer = BufWriter::new(File::create(&point_path)?);
+        let mut line_count: usize = 0;
+        let mut point_count: usize = 0;
+
         // Process each group one at a time to minimize memory usage
         for group_idx in 0..self.group_count {
             let features = self.read_features_for_group(group_idx)?;
@@ -420,20 +432,30 @@ impl Processor for LineOnLineOverlayer {
             let overlaid = self.overlay_group(&features)?;
 
             for feature in overlaid.line {
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    LINE_PORT.clone(),
-                ));
+                serde_json::to_writer(&mut line_writer, &feature)?;
+                line_writer.write_all(b"\n")?;
+                line_count += 1;
             }
             for feature in overlaid.point {
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    POINT_PORT.clone(),
-                ));
+                serde_json::to_writer(&mut point_writer, &feature)?;
+                point_writer.write_all(b"\n")?;
+                point_count += 1;
             }
             // Features for this group are dropped here, freeing memory before next group
+        }
+
+        line_writer.flush()?;
+        point_writer.flush()?;
+        drop(line_writer);
+        drop(point_writer);
+
+        let context = ctx.as_context();
+
+        if line_count > 0 {
+            fw.send_file(line_path, LINE_PORT.clone(), context.clone());
+        }
+        if point_count > 0 {
+            fw.send_file(point_path, POINT_PORT.clone(), context);
         }
 
         Ok(())

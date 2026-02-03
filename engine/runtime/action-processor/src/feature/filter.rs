@@ -171,4 +171,8 @@ impl Processor for FeatureFilter {
     fn name(&self) -> &str {
         "FeatureFilter"
     }
+
+    fn num_threads(&self) -> usize {
+        5
+    }
 }

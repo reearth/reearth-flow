@@ -1,5 +1,6 @@
 use std::env;
 use std::fmt::Debug;
+use std::io::{BufRead, BufReader};
 use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::Arc;
 use std::time::{self, Duration};
@@ -304,6 +305,43 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     self.channel_manager.read().wait_until_downstream_empty();
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
+                }
+                ExecutorOperation::FileBackedOp {
+                    path,
+                    port,
+                    context,
+                } => {
+                    let file = std::fs::File::open(&path).map_err(|e| {
+                        ExecutionError::CannotReceiveFromChannel(format!(
+                            "Failed to open file-backed op file {}: {e}",
+                            path.display()
+                        ))
+                    })?;
+                    let reader = BufReader::new(file);
+                    for line in reader.lines() {
+                        let line = line.map_err(|e| {
+                            ExecutionError::CannotReceiveFromChannel(format!(
+                                "Failed to read line from file-backed op: {e}"
+                            ))
+                        })?;
+                        if line.is_empty() {
+                            continue;
+                        }
+                        let feature: reearth_flow_types::Feature = serde_json::from_str(&line)
+                            .map_err(|e| {
+                                ExecutionError::CannotReceiveFromChannel(format!(
+                                    "Failed to deserialize feature from file-backed op: {e}"
+                                ))
+                            })?;
+                        let ctx = ExecutorContext::new_with_context_feature_and_port(
+                            &context,
+                            feature,
+                            port.clone(),
+                        );
+                        self.channel_manager.read().wait_until_downstream_empty();
+                        self.on_op_with_failure_tracking(ctx, has_failed.clone())?;
+                    }
+                    let _ = std::fs::remove_file(&path);
                 }
                 ExecutorOperation::Terminate { ctx: _ctx } => {
                     is_terminated[index] = true;

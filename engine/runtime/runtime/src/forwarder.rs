@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crossbeam::channel::Sender;
@@ -7,7 +9,7 @@ use tokio::runtime::Handle;
 
 use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
-use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
+use crate::executor_operation::{Context, ExecutorContext, ExecutorOperation, NodeContext};
 use crate::feature_store::{FeatureWriter, FeatureWriterKey};
 
 use crate::node::{NodeHandle, Port};
@@ -29,6 +31,15 @@ impl ProcessorChannelForwarder {
         match self {
             ProcessorChannelForwarder::ChannelManager(channel_manager) => channel_manager.send(ctx),
             ProcessorChannelForwarder::Noop(noop) => noop.send(ctx),
+        }
+    }
+
+    pub fn send_file(&self, path: PathBuf, port: Port, context: Context) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(channel_manager) => {
+                channel_manager.send_file(path, port, context)
+            }
+            ProcessorChannelForwarder::Noop(noop) => noop.send_file(path, port),
         }
     }
 
@@ -70,6 +81,33 @@ impl SenderWithPortMapping {
             }
             ctx.port = last_port.clone();
             self.sender.send(ExecutorOperation::Op { ctx })?;
+        }
+        Ok(())
+    }
+
+    pub fn send_file_backed_op(
+        &self,
+        path: &Path,
+        port: &Port,
+        context: &Context,
+    ) -> Result<(), ExecutionError> {
+        let Some(ports) = self.port_mapping.get(port) else {
+            return Ok(());
+        };
+
+        if let Some((last_port, rest_ports)) = ports.split_last() {
+            for p in rest_ports {
+                self.sender.send(ExecutorOperation::FileBackedOp {
+                    path: path.to_path_buf(),
+                    port: p.clone(),
+                    context: context.clone(),
+                })?;
+            }
+            self.sender.send(ExecutorOperation::FileBackedOp {
+                path: path.to_path_buf(),
+                port: last_port.clone(),
+                context: context.clone(),
+            })?;
         }
         Ok(())
     }
@@ -234,6 +272,107 @@ impl ChannelManager {
         self.owner.id.clone().into_inner()
     }
 
+    fn send_file(&self, path: PathBuf, port: Port, context: Context) {
+        // Write features to FeatureWriter for observability
+        self.write_file_features_to_store(&path, &port);
+
+        // Send FileBackedOp through channels
+        let node_id = self.owner.id.clone().into_inner();
+        if let Some((last_sender, senders)) = self.senders.split_last() {
+            for sender in senders {
+                sender
+                    .send_file_backed_op(&path, &port, &context)
+                    .unwrap_or_else(|e| {
+                        panic!(
+                            "Failed to send file-backed operation: node_id = {node_id:?}, path = {path:?}, error = {e:?}",
+                        )
+                    });
+            }
+            last_sender
+                .send_file_backed_op(&path, &port, &context)
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "Failed to send file-backed operation: node_id = {node_id:?}, path = {path:?}, error = {e:?}",
+                    )
+                });
+        }
+    }
+
+    fn write_file_features_to_store(&self, path: &Path, port: &Port) {
+        let file = match std::fs::File::open(path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            if line.is_empty() {
+                continue;
+            }
+            let feature: Feature = match serde_json::from_str(&line) {
+                Ok(f) => f,
+                Err(_) => continue,
+            };
+
+            let sender_ports: HashMap<Port, Vec<Port>> = {
+                let mut sender_port = HashMap::new();
+                for sender in &self.senders {
+                    for (p, ports) in &sender.port_mapping {
+                        let entry = sender_port.entry(p.clone()).or_insert_with(Vec::new);
+                        for port_item in ports {
+                            if !entry.contains(port_item) {
+                                entry.push(port_item.clone());
+                            }
+                        }
+                    }
+                }
+                sender_port
+            };
+
+            if let Some(sender_ports) = sender_ports.get(port) {
+                for mapped_port in sender_ports {
+                    if let Some(writers) = self
+                        .feature_writers
+                        .get(&FeatureWriterKey(port.clone(), mapped_port.clone()))
+                    {
+                        for writer in writers {
+                            let edge_id = writer.edge_id();
+                            let feature_id = feature.id;
+                            let mut writer = writer.clone();
+                            let feature = feature.clone();
+                            let event_hub = self.event_hub.clone();
+                            let node_handle = self.owner.clone();
+
+                            self.event_hub.send(Event::EdgePassThrough {
+                                feature_id,
+                                edge_id: edge_id.clone(),
+                            });
+
+                            self.runtime.block_on(async move {
+                                let result = writer.write(&feature).await;
+                                if let Err(e) = result {
+                                    event_hub.error_log_with_node_handle(
+                                        None,
+                                        node_handle,
+                                        format!("Failed to write feature: {e}"),
+                                    );
+                                } else {
+                                    event_hub.send(Event::EdgeCompleted {
+                                        feature_id,
+                                        edge_id,
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn send(&self, ctx: ExecutorContext) {
         let feature_id = ctx.feature.id;
         let port = ctx.port.clone();
@@ -271,5 +410,30 @@ impl NoopChannelForwarder {
         send_features.push(ctx.feature.clone());
         let mut send_ports = self.send_ports.lock().unwrap();
         send_ports.push(ctx.port.clone());
+    }
+
+    pub fn send_file(&self, path: PathBuf, port: Port) {
+        let file = match std::fs::File::open(&path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let reader = BufReader::new(file);
+        let mut send_features = self.send_features.lock().unwrap();
+        let mut send_ports = self.send_ports.lock().unwrap();
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            if line.is_empty() {
+                continue;
+            }
+            let feature: Feature = match serde_json::from_str(&line) {
+                Ok(f) => f,
+                Err(_) => continue,
+            };
+            send_features.push(feature);
+            send_ports.push(port.clone());
+        }
     }
 }
