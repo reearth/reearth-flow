@@ -108,7 +108,6 @@ fn parse_tree_reader<R: BufRead>(
                 let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
                 let id = cityobj.id();
                 let typename = cityobj.name();
-                let bounded_by = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
                         id: Some(id.to_string()),
@@ -117,19 +116,34 @@ fn parse_tree_reader<R: BufRead>(
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(),
-                        bounded_by,
                     };
                     entities.push(entity);
                 }
                 Ok(())
             }
             b"app:appearanceMember" => {
-                let mut app: models::appearance::AppearanceProperty = Default::default();
-                app.parse(st)?;
-                let models::appearance::AppearanceProperty::Appearance(app) = app else {
-                    unreachable!();
-                };
-                global_appearances.update(app);
+                let mut appearance_prop: models::appearance::AppearanceProperty =
+                    Default::default();
+                match appearance_prop.parse(st) {
+                    Ok(()) => {
+                        let models::appearance::AppearanceProperty::Appearance(appearance) =
+                            appearance_prop
+                        else {
+                            unreachable!();
+                        };
+                        global_appearances.update(appearance);
+                    }
+                    Err(e) => {
+                        // Log warning for appearance parsing errors (e.g., invalid UV coordinates)
+                        // but continue processing the file - this allows QC to complete
+                        // even when there are texture coordinate issues in the data
+                        tracing::warn!(
+                            "Skipping appearance due to parse error (file: {}): {:?}",
+                            base_url,
+                            e
+                        );
+                    }
+                }
                 Ok(())
             }
             other => Err(ParseError::SchemaViolation(format!(

@@ -436,8 +436,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      skipUnexposedAttributes: true
-      dracoComporession: false
+      dracoCompression: false
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3")
       compressOutput: |
@@ -657,7 +656,7 @@ graphs:
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
-        file::join_path(artifact, city_gml + "_" + pkg + "_geometric_attributes.zip")
+        file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:
@@ -781,3 +780,8 @@ graphs:
     to: d4e5f6a7-b8c9-0123-def1-234567890123
     fromPort: default
     toPort: default
+  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    to: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    fromPort: schema
+    toPort: schema

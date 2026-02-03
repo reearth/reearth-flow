@@ -1,6 +1,7 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::analyze_attributes;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -8,18 +9,28 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 pub struct JsonFileConfig {
     pub path: String,
+    #[serde(default)]
+    pub extracted: bool,
     pub casts: Option<HashMap<String, CastConfigValue>>,
+    pub values: Option<HashMap<String, Value>>,
 }
 
 pub fn test_json_attributes(
-    fme_path: &Path,
-    flow_path: &Path,
+    fme_source_path: &Path,
+    flow_source_path: &Path,
+    fme_extracted_path: &Path,
+    flow_extracted_path: &Path,
     config: &HashMap<String, JsonFileConfig>,
 ) -> Result<(), String> {
     for (name, file_cfg) in config {
         let file_path = &file_cfg.path;
-        let fme_file = fme_path.join(file_path);
-        let flow_file = flow_path.join(file_path);
+        let (fme_base, flow_base) = if file_cfg.extracted {
+            (fme_extracted_path, flow_extracted_path)
+        } else {
+            (fme_source_path, flow_source_path)
+        };
+        let fme_file = fme_base.join(file_path);
+        let flow_file = flow_base.join(file_path);
 
         // Read FME file or treat as empty if doesn't exist
         let fme_data: serde_json::Value = if fme_file.exists() {
@@ -50,8 +61,10 @@ pub fn test_json_attributes(
             HashMap::new()
         };
 
+        let values = file_cfg.values.clone().unwrap_or_default();
+
         tracing::debug!("Comparing JSON file: {} ({})", name, file_path);
-        analyze_attributes(name, &fme_data, &flow_data, casts)?;
+        analyze_attributes(name, &fme_data, &flow_data, casts, values)?;
     }
 
     Ok(())

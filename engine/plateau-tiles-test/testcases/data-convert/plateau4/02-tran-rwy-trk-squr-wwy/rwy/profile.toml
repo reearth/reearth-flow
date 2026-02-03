@@ -9,6 +9,7 @@ threshold = 0.001
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
 
 [filter.tree]
 "udx/rwy/" = [

@@ -1,0 +1,34 @@
+id: "a0a0a0a0-0001-4000-8000-000000000001"
+name: "CZML Timeseries Reader Test"
+entryGraphId: "a0a0a0a0-0001-4000-8000-000000000010"
+with:
+  outputFilePath: "/tmp/czml-timeseries-reader-output.json"
+
+graphs:
+  - id: "a0a0a0a0-0001-4000-8000-000000000010"
+    name: "Read CZML Timeseries"
+    nodes:
+      - id: "a0a0a0a0-0001-4000-8000-000000000100"
+        name: "Read CZML (AllSamples)"
+        type: "action"
+        action: "CzmlReader"
+        with:
+          dataset: "runtime/tests/fixture/testdata/file/reader/czml/timeseries.czml"
+          force2d: false
+          skipDocumentPacket: true
+          timeSampling: "allSamples"
+
+      - id: "a0a0a0a0-0001-4000-8000-000000000200"
+        name: "Write Features"
+        type: "action"
+        action: "FeatureWriter"
+        with:
+          output: "env.get(\"outputFilePath\")"
+          format: "json"
+
+    edges:
+      - id: "a0a0a0a0-0001-4000-8000-000000001000"
+        from: "a0a0a0a0-0001-4000-8000-000000000100"
+        to: "a0a0a0a0-0001-4000-8000-000000000200"
+        fromPort: "default"
+        toPort: "default"

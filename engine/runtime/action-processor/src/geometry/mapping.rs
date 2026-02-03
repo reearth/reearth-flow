@@ -27,6 +27,7 @@ use super::{
     hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory,
     horizontal_reprojector::HorizontalReprojectorFactory,
+    image_rasterizer::ImageRasterizerFactory,
     jp_standard_grid_accumulator::JPStandardGridAccumulatorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory,
     offsetter::OffsetterFactory,
@@ -102,6 +103,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<SpatialFilterFactory>::default(),
         Box::<PolygonNormalExtractorFactory>::default(),
         Box::<RayIntersectorFactory>::default(),
+        Box::<ImageRasterizerFactory>::default(),
     ];
     factories
         .into_iter()

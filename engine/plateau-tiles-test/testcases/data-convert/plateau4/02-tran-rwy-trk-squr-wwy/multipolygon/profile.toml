@@ -12,6 +12,8 @@ threshold = 0.001
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
 
 [filter.tree]
 "udx/tran/53394503_tran_6697_op.gml" = ["traf_e5ea50ce-7198-4879-a380-9d99f1c6491f"]

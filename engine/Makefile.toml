@@ -190,6 +190,7 @@ WORKFLOW_CONV=(
   "07-brid-tun-cons"
   "08-ubld"
   "10-wtr"
+  "11-gen"
 )
 
 BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/

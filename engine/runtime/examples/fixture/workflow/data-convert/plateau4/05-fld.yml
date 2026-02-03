@@ -179,16 +179,28 @@ graphs:
     name: AttributeFlattener
     type: action
     action: PLATEAU4.AttributeFlattener
+  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    name: AttributeManagerRename
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: cityName
+        method: rename
+        value: city_name
+      - attribute: cityCode
+        method: rename
+        value: city_code
   - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    name: AttributeMapper
+    name: AttributeMapperSchema
     type: action
     action: AttributeMapper
     with:
       mappers:
       - attribute: city_code
-        valueAttribute: cityCode
+        valueAttribute: city_code
       - attribute: city_name
-        valueAttribute: cityName
+        valueAttribute: city_name
       - attribute: feature_type
         valueAttribute: feature_type
       - attribute: attributes
@@ -217,12 +229,6 @@ graphs:
         valueAttribute: uro:scale
       - attribute: uro:geometrySrcDescLod1
         valueAttribute: uro:geometrySrcDescLod1
-      - attribute: __package
-        valueAttribute: package
-      - attribute: __name
-        valueAttribute: name
-      - attribute: __udxDirs
-        valueAttribute: udxDirs
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojector
     type: action
@@ -241,24 +247,23 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
-      skipUnexposedAttributes: true
       dracoCompression: false
       output: |
-        let udx_dirs = env.get("__value")["__udxDirs"];
+        let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
         file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let citygml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let parts = citygml.split("_op_");
-        let pkg = env.get("__value")["__package"];
+        let pkg = env.get("__value")["package"];
         citygml = parts[0];
-        let udx_dirs = env.get("__value")["__udxDirs"];
+        let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
         let scale = "";
         if pkg == "fld" {
-          let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
-          scale = "_" + name.split("_").pop();
+          let file_name = file::extract_filename_without_ext(env.get("__value")["name"]);
+          scale = "_" + file_name.split("_").pop();
         }
         file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
@@ -270,12 +275,12 @@ graphs:
       - attribute: dict_name
         method: create
         value: |
-          let udx_dirs = env.get("__value")["__udxDirs"];
+          let udx_dirs = env.get("__value")["udxDirs"];
           let parts = udx_dirs.split("/");
           let last_segment = parts[parts.len() - 1];
-          let pkg = env.get("__value")["__package"];
+          let pkg = env.get("__value")["package"];
           if pkg == "fld" {
-            let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
+            let name = file::extract_filename_without_ext(env.get("__value")["name"]);
             let scale = name.split("_").pop();
             last_segment + "_" + scale
           } else {
@@ -287,7 +292,7 @@ graphs:
     action: AttributeDuplicateFilter
     with:
       filterBy:
-      - __package
+      - package
       - dict_name
   - id: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
     name: JsonWriterDict
@@ -299,7 +304,7 @@ graphs:
       converter: |
         let packages = #{};
         for feature in env.get("__features") {
-          let pkg = feature["__package"];
+          let pkg = feature["package"];
           if pkg == () { continue; }
           if packages[pkg] == () {
             packages[pkg] = [];
@@ -342,15 +347,20 @@ graphs:
     to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     fromPort: default
     toPort: default
+  - id: e862f11a-88a6-4c1b-a743-ba80253039df
+    from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+    to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    fromPort: default
+    toPort: default
+  - id: f2e3d4c5-b6a7-8901-cdef-234567890abc
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+    fromPort: default
+    toPort: default
   - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
     from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     to: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    fromPort: default
-    toPort: default
-  - id: e862f11a-88a6-4c1b-a743-ba80253039df
-    from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
-    fromPort: default
+    fromPort: schema
     toPort: default
   - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
     from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
@@ -362,8 +372,13 @@ graphs:
     to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     fromPort: default
     toPort: default
-  - id: 48893ceb-2d37-4ca2-b5c0-184ea4128409
+  - id: f1e2d3c4-b5a6-9788-0fed-cba987654321
     from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+    to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+    fromPort: default
+    toPort: schema
+  - id: 48893ceb-2d37-4ca2-b5c0-184ea4128409
+    from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     to: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     fromPort: default
     toPort: default
