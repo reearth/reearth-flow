@@ -802,7 +802,7 @@ fn count_lod_geometries(
     if package == "dem" {
         // Special handling for DEM package
         // Note: Using prefix 'dem:' instead of local-name() since fastxml doesn't support local-name()
-        let xpath = ".//dem:lod";
+        let xpath = "./dem:lod";
         let nodes = xml::find_readonly_nodes_by_xpath(xml_ctx, xpath, root_node).map_err(|e| {
             PlateauProcessorError::MissingAttributeDetector(format!(
                 "Failed to find DEM LOD node: {e}"
@@ -871,7 +871,7 @@ fn validate_data_quality_attributes(
             if count > 0 {
                 // C07: Check for geometrySrcDescLod{N}
                 // Note: Using prefix 'uro:' instead of local-name() since fastxml doesn't support local-name()
-                let geom_src_desc_xpath = format!(".//uro:geometrySrcDescLod{lod}");
+                let geom_src_desc_xpath = format!("./uro:geometrySrcDescLod{lod}");
                 let geom_nodes = xml::find_readonly_nodes_by_xpath(
                     xml_ctx,
                     &geom_src_desc_xpath,
@@ -895,7 +895,7 @@ fn validate_data_quality_attributes(
                     if !text.is_empty() && text.trim() == "000" {
                         // C08: Check PublicSurveyDataQualityAttribute sub-elements
                         let public_survey_base_xpath =
-                            ".//uro:publicSurveyDataQualityAttribute/uro:PublicSurveyDataQualityAttribute";
+                            "./uro:publicSurveyDataQualityAttribute/uro:PublicSurveyDataQualityAttribute";
 
                         // Check srcScaleLod{N}
                         let src_scale_xpath =

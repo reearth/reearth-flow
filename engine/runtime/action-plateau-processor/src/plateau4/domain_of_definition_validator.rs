@@ -621,7 +621,7 @@ fn process_feature(
     let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
     let xlink_ns = "http://www.w3.org/1999/xlink";
     for member in members.iter() {
-        let feture_type = member.get_name();
+        let feature_type = member.get_name();
         let gml_id = member.get_attribute_ns("id", gml_ns).unwrap_or_default();
         let xlinks = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
             .map_err(|e| {
@@ -647,7 +647,7 @@ fn process_feature(
                     "xpath",
                     AttributeValue::String(get_xpath(&xlink, Some(member), None)),
                 );
-                result_feature.insert("featureType", AttributeValue::String(feture_type.clone()));
+                result_feature.insert("featureType", AttributeValue::String(feature_type.clone()));
                 result_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
                 fw.send(
                     ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
