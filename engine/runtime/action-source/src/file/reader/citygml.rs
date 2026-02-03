@@ -170,6 +170,8 @@ async fn parse_tree_reader<R: BufRead>(
         };
 
         for mut ent in entities {
+            println!("==> entity appearance_store: {:?}", ent.appearance_store);
+
             transformer.transform(&mut ent);
             let geometry: Geometry = ent
                 .try_into()
