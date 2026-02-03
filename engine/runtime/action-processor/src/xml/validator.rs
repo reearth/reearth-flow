@@ -2,7 +2,7 @@ use core::fmt;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Formatter},
-    path::Path,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
@@ -22,37 +22,13 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde_json::Value;
 
-use super::cache::{create_filesystem_cache, SchemaCache};
 use super::errors::{Result, XmlProcessorError};
 use super::namespace::recursive_check_namespace;
-use super::schema_composer::{
-    generate_catalog, generate_catalog_cache_key, generate_composite_cache_key,
-    generate_wrapper_schema,
-};
-use super::schema_fetcher::{HttpSchemaFetcher, HttpSchemaFetcherWithFallback, SchemaFetcher};
-use super::schema_resolver::XmlSchemaResolver;
-use super::schema_rewriter::SchemaRewriter;
 use super::types::{
     SchemaStore, ValidationResult, ValidationType, XmlInputType, XmlValidatorParam,
 };
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
-
-/// Create schema fetcher based on environment configuration
-///
-/// If `FLOW_XML_SCHEMA_FETCHER_FALLBACK` is set to "true", returns a fetcher with
-/// bundled schema fallback. Otherwise, returns a standard fetcher that only does HTTP requests.
-fn create_schema_fetcher() -> Arc<dyn SchemaFetcher> {
-    let use_fallback = std::env::var("FLOW_XML_SCHEMA_FETCHER_FALLBACK")
-        .map(|v| v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
-
-    if use_fallback {
-        Arc::new(HttpSchemaFetcherWithFallback::new())
-    } else {
-        Arc::new(HttpSchemaFetcher::new())
-    }
-}
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
 #[derive(Debug, Clone, Default)]
@@ -108,19 +84,9 @@ impl ProcessorFactory for XmlValidatorFactory {
             .into());
         };
 
-        let schema_fetcher = create_schema_fetcher();
-
-        // TODO: replace it with node_cache in ctx
-        // let schema_cache = create_schema_cache(ctx.node_cache());
-        let cache_dir = std::env::temp_dir().join("reearth-flow-xmlvalidator-schema");
-        let schema_cache = create_filesystem_cache(cache_dir)?;
-        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
         let process = XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-            schema_fetcher,
-            schema_cache,
-            schema_rewriter,
         };
         Ok(Box::new(process))
     }
@@ -130,9 +96,6 @@ impl ProcessorFactory for XmlValidatorFactory {
 pub struct XmlValidator {
     params: XmlValidatorParam,
     schema_store: Arc<parking_lot::RwLock<SchemaStore>>,
-    schema_fetcher: Arc<dyn SchemaFetcher>,
-    schema_cache: Arc<dyn SchemaCache>,
-    schema_rewriter: SchemaRewriter,
 }
 
 impl Debug for XmlValidator {
@@ -368,18 +331,22 @@ impl XmlValidator {
         feature: &Feature,
         document: &XmlDocument,
     ) -> Result<Vec<ValidationResult>> {
-        // Skip schema validation entirely if no cache is available
-        if !self.schema_cache.is_available() {
-            return Ok(Vec::new());
-        }
-
         let schema_locations = xml::parse_schema_locations(document)
             .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
 
+        #[cfg(test)]
+        println!(
+            "[check_schema] Parsed schema locations: {:?}",
+            schema_locations
+        );
         tracing::debug!("Parsed schema locations: {:?}", schema_locations);
 
+        if schema_locations.is_empty() {
+            return Ok(Vec::new());
+        }
+
         if !self.schema_store.read().contains_key(&schema_locations) {
-            // Get or create validation context
+            // Get or create validation context using fastxml's built-in resolver
             let schema_context = self.get_or_create_schema_context(&schema_locations, feature)?;
 
             // Cache the schema context for future use
@@ -395,6 +362,13 @@ impl XmlValidator {
         // Validate document
         let result = xml::validate_document_by_schema_context(document, schema_context)
             .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
+
+        #[cfg(test)]
+        println!("[check_schema] Validation result: {} errors", result.len());
+        #[cfg(test)]
+        for err in &result {
+            println!("[check_schema]   Error: {:?}", err);
+        }
 
         // Convert validation errors
         let validation_results = result
@@ -419,96 +393,70 @@ impl XmlValidator {
         schema_locations: &[(String, String)],
         feature: &Feature,
     ) -> Result<xml::XmlSchemaValidationContext> {
-        let resolver = XmlSchemaResolver::new(self.schema_fetcher.clone());
-        let mut cached_paths = HashMap::new();
-        let mut all_mappings = HashMap::new();
+        // Resolve schema locations to actual URLs/paths
+        let resolved_locations: Vec<(String, String)> = schema_locations
+            .iter()
+            .filter_map(|(ns, location)| {
+                self.resolve_schema_target(location, feature)
+                    .filter(|t| !t.is_empty())
+                    .map(|target| (ns.clone(), target))
+            })
+            .collect();
 
-        // Process and cache all schemas
-        for (_ns, location) in schema_locations {
-            let target = match self.resolve_schema_target(location, feature) {
-                Some(t) if !t.is_empty() => t,
-                _ => continue,
-            };
-
-            if target.starts_with("http://") || target.starts_with("https://") {
-                if !self.schema_cache.is_available() {
-                    continue;
-                }
-
-                // First resolve the schema and its dependencies
-                match resolver.resolve_schema_dependencies(&target) {
-                    Ok(resolution) => {
-                        // Then process and cache all resolved schemas
-                        match self
-                            .schema_rewriter
-                            .process_and_cache_schemas(&target, &resolution)
-                        {
-                            Ok(cached_path) => {
-                                cached_paths.insert(location.clone(), cached_path.clone());
-                                all_mappings.insert(target.clone(), cached_path);
-                            }
-                            Err(e) => {
-                                tracing::warn!("Failed to cache schema {}: {}", target, e);
-                                continue;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to resolve schema {}: {}", target, e);
-                        continue;
-                    }
-                }
-            } else {
-                // Local file
-                if let Ok(path) = std::path::PathBuf::from(&target).canonicalize() {
-                    cached_paths.insert(location.clone(), path.clone());
-                    all_mappings.insert(target.clone(), path);
-                }
-            }
+        if resolved_locations.is_empty() {
+            return Err(XmlProcessorError::Validator(format!(
+                "Failed to resolve any schema locations from: {:?}",
+                schema_locations
+            )));
         }
 
-        // Generate and save catalog
-        if !all_mappings.is_empty() {
-            let catalog_content = generate_catalog(&all_mappings);
-            let catalog_cache_key = generate_catalog_cache_key(&all_mappings);
-
-            match self
-                .schema_cache
-                .put_schema(&catalog_cache_key, catalog_content.as_bytes())
-            {
-                Ok(()) => {
-                    if let Ok(catalog_path) = self.schema_cache.get_schema_path(&catalog_cache_key)
-                    {
-                        tracing::debug!("Created XML catalog at: {:?}", catalog_path);
-                        std::env::set_var("XML_CATALOG_FILES", &catalog_path);
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to create catalog: {}", e);
-                }
-            }
-        }
-
-        // Generate wrapper schema
-        let wrapper_content = generate_wrapper_schema(schema_locations, &cached_paths);
-
-        // Save wrapper schema and create context
-        let wrapper_cache_key = generate_composite_cache_key(schema_locations);
-        self.schema_cache
-            .put_schema(&wrapper_cache_key, wrapper_content.as_bytes())?;
-        let wrapper_path = self.schema_cache.get_schema_path(&wrapper_cache_key)?;
-
-        let wrapper_path_str = wrapper_path
-            .to_str()
-            .ok_or_else(|| XmlProcessorError::Validator("Invalid wrapper path".to_string()))?;
-
-        tracing::debug!(
-            "Creating validation context from wrapper schema: {}",
-            wrapper_path_str
+        #[cfg(test)]
+        println!(
+            "[get_or_create_schema_context] resolved_locations: {:?}",
+            resolved_locations
         );
+        tracing::debug!("Resolved schema locations: {:?}", resolved_locations);
 
-        xml::create_xml_schema_validation_context(wrapper_path_str.to_string()).map_err(|e| {
+        // Get base directory for relative schema resolution (from dirSchemas or XML file location)
+        let base_dir = self.get_schema_base_dir(feature);
+
+        #[cfg(test)]
+        println!("[get_or_create_schema_context] base_dir: {:?}", base_dir);
+
+        // Use fastxml's built-in schema fetcher and resolver
+        xml::create_validation_context_for_schema_locations(
+            &resolved_locations,
+            base_dir.as_deref(),
+        )
+        .map_err(|e| {
             XmlProcessorError::Validator(format!("Failed to create validation context: {e:?}"))
+        })
+    }
+
+    /// Get the base directory for schema resolution.
+    /// This is used by fastxml's DefaultFetcher to resolve relative schema paths.
+    fn get_schema_base_dir(&self, feature: &Feature) -> Option<PathBuf> {
+        // First try dirSchemas attribute (for PLATEAU CityGML)
+        if let Some(dir_schemas) = Self::get_dir_schemas(feature) {
+            if let Some(path) = dir_schemas.path().to_str() {
+                let path_buf = PathBuf::from(path);
+                if path_buf.exists() {
+                    return Some(path_buf);
+                }
+            }
+        }
+
+        // Fall back to XML file's parent directory
+        self.get_xml_base_url(feature).and_then(|uri| {
+            uri.path().to_str().map(PathBuf::from).and_then(
+                |p| {
+                    if p.exists() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                },
+            )
         })
     }
 
@@ -589,12 +537,9 @@ impl XmlValidator {
 mod tests {
     use super::*;
     use crate::tests::utils;
-    use crate::xml::cache::{create_filesystem_cache, NoOpSchemaCache};
-    use crate::xml::schema_fetcher::MockSchemaFetcher;
     use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
     use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry};
-    use std::env;
 
     fn create_xml_validator(validation_type: ValidationType) -> XmlValidator {
         let params = XmlValidatorParam {
@@ -603,55 +548,9 @@ mod tests {
             validation_type,
         };
 
-        let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
-
-        // Use filesystem cache for schema validation tests
-        let schema_cache = match validation_type {
-            ValidationType::SyntaxAndSchema => {
-                let temp_dir =
-                    env::temp_dir().join(format!("xml_validator_test_{}", uuid::Uuid::new_v4()));
-                create_filesystem_cache(temp_dir).unwrap()
-            }
-            _ => Arc::new(NoOpSchemaCache),
-        };
-        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
-
         XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-            schema_fetcher,
-            schema_cache,
-            schema_rewriter,
-        }
-    }
-
-    fn create_xml_validator_with_mock_fetcher(
-        validation_type: ValidationType,
-        fetcher: Arc<dyn SchemaFetcher>,
-    ) -> XmlValidator {
-        let params = XmlValidatorParam {
-            attribute: Attribute::new("xml_content"),
-            input_type: XmlInputType::Text,
-            validation_type,
-        };
-
-        // Use filesystem cache for schema validation tests
-        let schema_cache = match validation_type {
-            ValidationType::SyntaxAndSchema => {
-                let temp_dir =
-                    env::temp_dir().join(format!("xml_validator_test_{}", uuid::Uuid::new_v4()));
-                create_filesystem_cache(temp_dir).unwrap()
-            }
-            _ => Arc::new(NoOpSchemaCache),
-        };
-        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
-
-        XmlValidator {
-            params,
-            schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-            schema_fetcher: fetcher,
-            schema_cache,
-            schema_rewriter,
         }
     }
 
@@ -786,7 +685,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "fastxml 0.4.0 schema validation behavior changed - needs investigation"]
     fn test_xml_validator_missing_local_schema() {
         let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -812,450 +710,6 @@ mod tests {
             }
             _ => panic!("Should have xmlError attribute with validation errors"),
         }
-    }
-
-    #[test]
-    #[ignore = "fastxml 0.4.0 schema validation behavior changed - needs investigation"]
-    fn test_xml_validator_https_schema_validation() {
-        // Consolidated test that combines multiple HTTPS schema validation scenarios:
-        // 1. Valid XML with HTTPS schema
-        // 2. Invalid XML that violates HTTPS schema
-        // 3. Network/fetch error handling
-
-        // Test 1: Valid XML with HTTPS schema
-        // Using a mock fetcher to simulate successful HTTPS schema fetch
-        let valid_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           elementFormDefault="qualified">
-    <xs:element name="book">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element name="title" type="xs:string"/>
-                <xs:element name="author" type="xs:string"/>
-                <xs:element name="year" type="xs:integer" minOccurs="0"/>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-</xs:schema>"#;
-
-        let valid_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-<book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:noNamespaceSchemaLocation="https://example.com/book.xsd">
-    <title>The Great Gatsby</title>
-    <author>F. Scott Fitzgerald</author>
-    <year>1925</year>
-</book>"#;
-
-        let mock_fetcher = MockSchemaFetcher::new()
-            .with_response("https://example.com/book.xsd", Ok(valid_schema.to_string()));
-
-        let feature = create_feature_with_xml(valid_xml);
-        let mut validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            Arc::new(mock_fetcher.clone()),
-        );
-
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "Valid XML validation should succeed");
-
-        match fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-
-                // The test may succeed or fail depending on exact schema validation rules
-                // Both outcomes are acceptable as long as the process completes without errors
-                match send_ports[0] {
-                    ref p if p == &*SUCCESS_PORT => {
-                        // Valid XML validated successfully
-                    }
-                    ref p if p == &*FAILED_PORT => {
-                        // Schema validation detected issues - verify proper error handling
-                        match send_features[0].attributes.get(&Attribute::new("xmlError")) {
-                            Some(AttributeValue::Array(errors)) => {
-                                assert!(!errors.is_empty(), "Should have validation errors");
-                            }
-                            _ => panic!("Should have xmlError attribute when validation fails"),
-                        }
-                    }
-                    _ => panic!("Unexpected port returned"),
-                }
-            }
-            _ => panic!("Expected Noop forwarder"),
-        }
-
-        // Test 2: Invalid XML that violates HTTPS schema
-        let invalid_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-<book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:noNamespaceSchemaLocation="https://example.com/book.xsd">
-    <title>Missing Author</title>
-    <invalidElement>This is not allowed</invalidElement>
-    <year>not-a-number</year>
-</book>"#;
-
-        let invalid_feature = create_feature_with_xml(invalid_xml);
-        let invalid_ctx = utils::create_default_execute_context(&invalid_feature);
-        let invalid_fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let invalid_result = validator.process(invalid_ctx, &invalid_fw);
-        assert!(
-            invalid_result.is_ok(),
-            "Invalid XML processing should complete"
-        );
-
-        match invalid_fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-                assert_eq!(
-                    send_ports[0], *FAILED_PORT,
-                    "Invalid XML should fail validation"
-                );
-
-                // Verify error details
-                match send_features[0].attributes.get(&Attribute::new("xmlError")) {
-                    Some(AttributeValue::Array(errors)) => {
-                        assert!(!errors.is_empty(), "Should have validation errors");
-                        if let Some(AttributeValue::Map(error_map)) = errors.first() {
-                            assert_eq!(
-                                error_map.get("errorType"),
-                                Some(&AttributeValue::String("SchemaError".to_string())),
-                                "Should be schema validation error"
-                            );
-                        }
-                    }
-                    _ => panic!("Should have xmlError attribute"),
-                }
-            }
-            _ => panic!("Expected Noop forwarder"),
-        }
-
-        // Test 3: Network/fetch error handling
-        let network_error_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-<book xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:noNamespaceSchemaLocation="https://unreachable.example.com/schema.xsd">
-    <title>Network Error Test</title>
-</book>"#;
-
-        let error_fetcher = MockSchemaFetcher::new().with_response(
-            "https://unreachable.example.com/schema.xsd",
-            Err(XmlProcessorError::Validator("Network timeout".to_string())),
-        );
-
-        let error_feature = create_feature_with_xml(network_error_xml);
-        let mut error_validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            Arc::new(error_fetcher),
-        );
-
-        let error_ctx = utils::create_default_execute_context(&error_feature);
-        let error_fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let error_result = error_validator.process(error_ctx, &error_fw);
-        assert!(
-            error_result.is_ok(),
-            "Network error handling should complete"
-        );
-
-        match error_fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-                assert_eq!(
-                    send_ports[0], *FAILED_PORT,
-                    "Network error should result in failed validation"
-                );
-
-                // Verify error is reported properly
-                assert!(
-                    send_features[0]
-                        .attributes
-                        .contains_key(&Attribute::new("xmlError")),
-                    "Should have error information for network failure"
-                );
-            }
-            _ => panic!("Expected Noop forwarder"),
-        }
-
-        // Note: The schema fetcher call count may vary depending on caching implementation
-        // The important thing is that all validation scenarios work correctly
-    }
-
-    #[test]
-    fn test_xml_validator_mock_schema_success() {
-        // Test with mock schema fetcher that returns valid XSD schema
-        let valid_xsd = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           elementFormDefault="qualified">
-    <xs:element name="note">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element name="to" type="xs:string"/>
-                <xs:element name="from" type="xs:string"/>
-                <xs:element name="heading" type="xs:string"/>
-                <xs:element name="body" type="xs:string"/>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-</xs:schema>"#;
-
-        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
-<note xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:noNamespaceSchemaLocation="https://example.com/note.xsd">
-    <to>Tove</to>
-    <from>Jani</from>
-    <heading>Reminder</heading>
-    <body>Don't forget me this weekend!</body>
-</note>"#;
-
-        let mock_fetcher = MockSchemaFetcher::new()
-            .with_response("https://example.com/note.xsd", Ok(valid_xsd.to_string()));
-
-        let feature = create_feature_with_xml(xml_content);
-        let mut validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            Arc::new(mock_fetcher),
-        );
-
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "XML validation processing should succeed");
-
-        match fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-                assert!(!send_ports.is_empty(), "Should have sent output");
-
-                // Check if validation succeeded or failed with proper error handling
-                match send_ports[0] {
-                    ref p if p == &*SUCCESS_PORT => {
-                        println!("Mock schema validation succeeded as expected");
-                    }
-                    ref p if p == &*FAILED_PORT => {
-                        // It's also acceptable if the schema validation detects issues
-                        // The important thing is that HTTPS fetching worked
-                        if let Some(AttributeValue::Array(errors)) =
-                            send_features[0].attributes.get(&Attribute::new("xmlError"))
-                        {
-                            println!(
-                                "Mock schema validation failed (which may be correct): {errors:?}"
-                            );
-                            // Verify we have proper schema error handling
-                            assert!(
-                                !errors.is_empty(),
-                                "Should have validation error information"
-                            );
-                        } else {
-                            panic!("Should have xmlError attribute when validation fails");
-                        }
-                    }
-                    _ => panic!("Unexpected port returned"),
-                }
-            }
-            _ => panic!("Expected Noop forwarder for testing"),
-        }
-    }
-
-    #[test]
-    #[ignore = "fastxml 0.4.0 schema validation behavior changed - needs investigation"]
-    fn test_xml_validator_mock_schema_violation() {
-        // Test with mock schema that will cause validation failure
-        let strict_xsd = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-    <xs:element name="note">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element name="to" type="xs:string"/>
-                <xs:element name="from" type="xs:string"/>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-</xs:schema>"#;
-
-        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
-<note xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:noNamespaceSchemaLocation="https://example.com/strict.xsd">
-    <to>Tove</to>
-    <from>Jani</from>
-    <heading>This element is not allowed by schema</heading>
-    <body>This element is also not allowed</body>
-</note>"#;
-
-        let mock_fetcher = MockSchemaFetcher::new()
-            .with_response("https://example.com/strict.xsd", Ok(strict_xsd.to_string()));
-
-        let feature = create_feature_with_xml(xml_content);
-        let mut validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            Arc::new(mock_fetcher),
-        );
-
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "XML validation processing should succeed");
-
-        match fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-                assert!(!send_ports.is_empty(), "Should have sent output");
-                assert_eq!(
-                    send_ports[0], *FAILED_PORT,
-                    "Should output to failed port for schema violation"
-                );
-
-                // Verify schema error information
-                match send_features[0].attributes.get(&Attribute::new("xmlError")) {
-                    Some(AttributeValue::Array(errors)) => {
-                        assert!(!errors.is_empty(), "Should have schema validation errors");
-                        match errors.first() {
-                            Some(AttributeValue::Map(error_map)) => {
-                                match error_map.get("errorType") {
-                                    Some(AttributeValue::String(error_type)) => {
-                                        assert_eq!(
-                                            error_type, "SchemaError",
-                                            "Should be schema validation error"
-                                        );
-                                    }
-                                    _ => panic!("Expected errorType to be SchemaError"),
-                                }
-                            }
-                            _ => panic!("Expected error map in first array element"),
-                        }
-                    }
-                    _ => panic!("Should have xmlError attribute with validation errors"),
-                }
-            }
-            _ => panic!("Expected Noop forwarder for testing"),
-        }
-    }
-
-    #[test]
-    #[ignore = "fastxml 0.4.0 schema validation behavior changed - needs investigation"]
-    fn test_xml_validator_mock_schema_fetch_error() {
-        // Test with mock fetcher that returns an error
-        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
-<note xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:noNamespaceSchemaLocation="https://example.com/nonexistent.xsd">
-    <to>Tove</to>
-</note>"#;
-
-        let mock_fetcher = MockSchemaFetcher::new().with_response(
-            "https://example.com/nonexistent.xsd",
-            Err(XmlProcessorError::Validator("Network error".to_string())),
-        );
-
-        let feature = create_feature_with_xml(xml_content);
-        let mut validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            Arc::new(mock_fetcher),
-        );
-
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "XML validation processing should succeed");
-
-        match fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-                assert!(!send_ports.is_empty(), "Should have sent output");
-                assert_eq!(
-                    send_ports[0], *FAILED_PORT,
-                    "Should output to failed port for fetch error"
-                );
-
-                // Verify error information
-                match send_features[0].attributes.get(&Attribute::new("xmlError")) {
-                    Some(AttributeValue::Array(errors)) => {
-                        assert!(
-                            !errors.is_empty(),
-                            "Should have validation error information"
-                        );
-                    }
-                    _ => panic!("Should have xmlError attribute with validation errors"),
-                }
-            }
-            _ => panic!("Expected Noop forwarder for testing"),
-        }
-    }
-
-    #[test]
-    fn test_xml_validator_http_schema_support() {
-        // Test HTTP schema support (not just HTTPS)
-        let valid_xsd = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="http://example.com/note"
-           elementFormDefault="qualified">
-    <xs:element name="note">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element name="to" type="xs:string"/>
-                <xs:element name="from" type="xs:string"/>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-</xs:schema>"#;
-
-        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
-<note xmlns="http://example.com/note"
-      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="http://example.com/note http://example.com/note.xsd">
-    <to>Tove</to>
-    <from>Jani</from>
-</note>"#;
-
-        let mock_fetcher = MockSchemaFetcher::new()
-            .with_response("http://example.com/note.xsd", Ok(valid_xsd.to_string()));
-
-        let feature = create_feature_with_xml(xml_content);
-        let mut validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            Arc::new(mock_fetcher.clone()),
-        );
-
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "HTTP schema validation should succeed");
-
-        // Verify HTTP schema was fetched
-        assert_eq!(
-            mock_fetcher.get_call_count("http://example.com/note.xsd"),
-            1,
-            "HTTP schema should be fetched once"
-        );
-
-        // Test caching for HTTP schemas too
-        let feature2 = create_feature_with_xml(xml_content);
-        let ctx2 = utils::create_default_execute_context(&feature2);
-        let fw2 = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result2 = validator.process(ctx2, &fw2);
-        assert!(
-            result2.is_ok(),
-            "Second HTTP schema validation should succeed"
-        );
-
-        // Verify HTTP schema was cached (still only 1 call)
-        assert_eq!(
-            mock_fetcher.get_call_count("http://example.com/note.xsd"),
-            1,
-            "HTTP schema should be cached and not fetched again"
-        );
-
-        // HTTP schema support verified: fetched and cached correctly
     }
 
     #[test]
@@ -1372,165 +826,5 @@ mod tests {
                 _ => panic!("Expected Noop forwarder for testing"),
             }
         });
-    }
-
-    #[test]
-    fn test_xml_validator_plateau_citygml() {
-        // Comprehensive test for complex schema handling including:
-        // 1. PLATEAU CityGML with multiple namespaces
-        // 2. Deep schema dependencies with relative paths
-        // 3. Real-world schema fetching simulation
-
-        // Part 1: Test with mock schemas for controlled testing
-        let mut fetcher = MockSchemaFetcher::new();
-
-        // Setup mock schemas with dependencies
-        let citygml_base = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:gml="http://www.opengis.net/gml"
-           targetNamespace="http://www.opengis.net/citygml/2.0"
-           elementFormDefault="qualified">
-    <xs:import namespace="http://www.opengis.net/gml" schemaLocation="gml.xsd"/>
-    <xs:element name="CityModel" type="xs:anyType"/>
-</xs:schema>"#;
-
-        let gml_simplified = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="http://www.opengis.net/gml"
-           elementFormDefault="qualified">
-    <xs:element name="boundedBy" type="xs:anyType"/>
-    <xs:element name="Envelope" type="xs:anyType"/>
-</xs:schema>"#;
-
-        // Mock responses for controlled testing
-        fetcher.responses.insert(
-            "http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd".to_string(),
-            Ok(citygml_base.to_string()),
-        );
-        fetcher.responses.insert(
-            "http://schemas.opengis.net/citygml/2.0/gml.xsd".to_string(),
-            Ok(gml_simplified.to_string()),
-        );
-
-        // Test complex XML with multiple namespaces (similar to PLATEAU)
-        let complex_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0"
-                xmlns:gml="http://www.opengis.net/gml"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd">
-    <gml:boundedBy>
-        <gml:Envelope>Test</gml:Envelope>
-    </gml:boundedBy>
-</core:CityModel>"#;
-
-        let mock_fetcher = Arc::new(fetcher);
-        let mut validator =
-            create_xml_validator_with_mock_fetcher(ValidationType::SyntaxAndSchema, mock_fetcher);
-
-        let feature = create_feature_with_xml(complex_xml);
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "Processing should succeed");
-
-        match &fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                assert!(!send_ports.is_empty(), "Should have sent output");
-
-                // Should successfully validate with mocked schemas
-                assert_eq!(
-                    send_ports[0], *SUCCESS_PORT,
-                    "Should validate successfully with proper schema dependency resolution"
-                );
-            }
-            _ => panic!("Expected Noop forwarder"),
-        }
-
-        // Part 2: Test deep schema dependencies (A->B->C pattern)
-        let mut deep_fetcher = MockSchemaFetcher::new();
-
-        let schema_a = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="http://example.com/a"
-           xmlns:b="http://example.com/b"
-           elementFormDefault="qualified">
-    <xs:import namespace="http://example.com/b" schemaLocation="schemas/b.xsd"/>
-    <xs:element name="RootA">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element ref="b:ElementB"/>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-</xs:schema>"#;
-
-        let schema_b = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="http://example.com/b"
-           xmlns:c="http://example.com/c"
-           elementFormDefault="qualified">
-    <xs:import namespace="http://example.com/c" schemaLocation="c.xsd"/>
-    <xs:element name="ElementB" type="c:TypeC"/>
-</xs:schema>"#;
-
-        let schema_c = r#"<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="http://example.com/c">
-    <xs:simpleType name="TypeC">
-        <xs:restriction base="xs:string">
-            <xs:pattern value="[A-Z]+"/>
-        </xs:restriction>
-    </xs:simpleType>
-</xs:schema>"#;
-
-        deep_fetcher.responses.insert(
-            "http://example.com/a.xsd".to_string(),
-            Ok(schema_a.to_string()),
-        );
-        deep_fetcher.responses.insert(
-            "http://example.com/schemas/b.xsd".to_string(),
-            Ok(schema_b.to_string()),
-        );
-        deep_fetcher.responses.insert(
-            "http://example.com/schemas/c.xsd".to_string(),
-            Ok(schema_c.to_string()),
-        );
-
-        let deep_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-<a:RootA xmlns:a="http://example.com/a"
-         xmlns:b="http://example.com/b"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://example.com/a http://example.com/a.xsd">
-    <b:ElementB>VALID</b:ElementB>
-</a:RootA>"#;
-
-        let deep_mock_fetcher = Arc::new(deep_fetcher);
-        let mut deep_validator = create_xml_validator_with_mock_fetcher(
-            ValidationType::SyntaxAndSchema,
-            deep_mock_fetcher,
-        );
-
-        let deep_feature = create_feature_with_xml(deep_xml);
-        let deep_ctx = utils::create_default_execute_context(&deep_feature);
-        let deep_fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let deep_result = deep_validator.process(deep_ctx, &deep_fw);
-        assert!(
-            deep_result.is_ok(),
-            "Deep dependency processing should succeed"
-        );
-
-        match &deep_fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                assert_eq!(
-                    send_ports[0], *SUCCESS_PORT,
-                    "Should validate successfully with deep schema dependencies"
-                );
-            }
-            _ => panic!("Expected Noop forwarder"),
-        }
     }
 }
