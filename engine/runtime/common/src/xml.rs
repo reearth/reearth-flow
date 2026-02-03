@@ -159,7 +159,15 @@ pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
 pub fn xpath_value_to_json(value: &XmlXpathValue) -> serde_json::Value {
     match value {
         XmlXpathValue::Boolean(b) => serde_json::Value::Bool(*b),
-        XmlXpathValue::Number(n) => serde_json::json!(*n),
+        XmlXpathValue::Number(n) => {
+            // Use serde_json::Number::from_f64 to avoid panicking on non-finite floats (NaN/±inf).
+            // Fall back to Null when the number cannot be represented in JSON.
+            if let Some(num) = serde_json::Number::from_f64(*n) {
+                serde_json::Value::Number(num)
+            } else {
+                serde_json::Value::Null
+            }
+        }
         XmlXpathValue::String(s) => serde_json::Value::String(s.clone()),
         XmlXpathValue::Nodes(nodes) => {
             let values: Vec<serde_json::Value> = nodes
@@ -509,17 +517,6 @@ pub fn validate_document_by_schema_context(
         Ok(errors) => Ok(errors),
         Err(e) => Err(crate::Error::Xml(format!("Validation error: {e:?}"))),
     }
-}
-
-pub fn validate_node_by_schema_context(
-    node: &XmlNode,
-    xsd_validator: &XmlSchemaValidationContext,
-) -> crate::Result<Vec<StructuredError>> {
-    // fastxml validates documents, not individual nodes
-    // Create a temporary document for the node if needed
-    // For now, we'll skip individual node validation as fastxml works on documents
-    let _ = (node, xsd_validator);
-    Ok(vec![])
 }
 
 pub fn find_nodes_by_xpath(
