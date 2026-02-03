@@ -7,7 +7,10 @@ use std::{
 
 use indexmap::IndexMap;
 use nutype::nutype;
-use reearth_flow_common::{str, xml::XmlXpathValue};
+use reearth_flow_common::{
+    str,
+    xml::{xpath_value_to_json, XmlXpathValue},
+};
 use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -105,7 +108,7 @@ impl From<Geometry> for Feature {
 
 impl From<XmlXpathValue> for Feature {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<Feature>::into(value.to_string().parse::<serde_json::Value>().unwrap())
+        std::convert::Into::<Feature>::into(xpath_value_to_json(&value))
     }
 }
 

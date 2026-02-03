@@ -569,7 +569,7 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let envelopes = xml::find_readonly_nodes_by_xpath(
         &xml_ctx,
-        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
+        ".//gml:Envelope",
         &root_node,
     )
     .map_err(|e| {
@@ -583,7 +583,7 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     let members =
-        xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[namespace-uri()='http://www.opengis.net/citygml/2.0' and local-name()='cityObjectMember']/*", &root_node)
+        xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
             .map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidator(format!(
                     "Failed to evaluate xpath at {}:{}: {e:?}", file!(), line!()
@@ -610,7 +610,7 @@ fn process_feature(
 
     let members = xml::find_readonly_nodes_by_xpath(
         &xml_ctx,
-        ".//*[namespace-uri()='http://www.opengis.net/citygml/2.0' and local-name()='cityObjectMember']/*[namespace-uri()='http://www.opengis.net/citygml/cityobjectgroup/2.0' and local-name()='CityObjectGroup']",
+        ".//core:cityObjectMember/grp:CityObjectGroup",
         &root_node,
     )
     .map_err(|e| {
@@ -618,14 +618,16 @@ fn process_feature(
             "Failed to evaluate xpath at {}:{}: {e:?}", file!(), line!()
         ))
     })?;
+    let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
+    let xlink_ns = "http://www.w3.org/1999/xlink";
     for member in members.iter() {
         let feture_type = member.get_name();
         let gml_id = member
-            .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+            .get_attribute_ns("id", gml_ns)
             .unwrap_or_default();
         let xlinks = xml::find_readonly_nodes_by_xpath(
             &xml_ctx,
-            ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
+            ".//*[@xlink:href]",
             &root_node,
         )
         .map_err(|e| {
@@ -637,7 +639,7 @@ fn process_feature(
         })?;
         for xlink in xlinks {
             let xlink_href = xlink
-                .get_attribute_ns("href", "http://www.w3.org/1999/xlink")
+                .get_attribute_ns("href", xlink_ns)
                 .unwrap_or_default();
             if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
                 let mut result_feature = feature.clone();
@@ -762,10 +764,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
             .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
                 "Failed to get envelop node".to_string(),
             ))?;
-    let srs_name = envelop_node
-        .get_attribute_node("srsName")
-        .map(|n| n.get_content())
-        .unwrap_or_default();
+    let srs_name = envelop_node.get_attribute("srsName").unwrap_or_default();
     let children = envelop_node.get_child_nodes();
     let lower_corner = children
         .iter()
@@ -784,7 +783,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
         ..Default::default()
     };
     {
-        let content = lower_corner.get_content();
+        let content = lower_corner.get_content().unwrap_or_default();
         let lower_corder_value = content.split_whitespace().collect::<Vec<_>>();
         response.lower_x = lower_corder_value[0]
             .parse()
@@ -797,7 +796,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     }
     {
-        let content = upper_corner.get_content();
+        let content = upper_corner.get_content().unwrap_or_default();
         let upper_corder_value = content.split_whitespace().collect::<Vec<_>>();
         response.upper_x = upper_corder_value[0]
             .parse()
@@ -829,9 +828,9 @@ fn process_member_node(
 ) -> super::errors::Result<Vec<Feature>> {
     let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
-    let Some(gml_id) =
-        member.get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
-    else {
+    let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
+    let xlink_ns = "http://www.w3.org/1999/xlink";
+    let Some(gml_id) = member.get_attribute_ns("id", gml_ns) else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get gml id".to_string(),
         ));
@@ -910,7 +909,7 @@ fn process_member_node(
     // 2. gml:id collection of lower-level elements
     let gml_id_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
-        ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
+        ".//*[@gml:id]",
         member,
     )
     .map_err(|e| {
@@ -922,7 +921,7 @@ fn process_member_node(
     })?;
     for gml_id_child in gml_id_children {
         let gml_id = gml_id_child
-            .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+            .get_attribute_ns("id", gml_ns)
             .unwrap_or_default();
         let tag = xml::get_readonly_node_tag(&gml_id_child);
         gml_ids.insert(
@@ -988,8 +987,7 @@ fn process_member_node(
         ))?;
     for code_space_member in code_space_children {
         let code_space = code_space_member
-            .get_attribute_node("codeSpace")
-            .map(|n| n.get_content())
+            .get_attribute("codeSpace")
             .unwrap_or_default();
 
         // First, try to resolve using dirCodelists if codeSpace contains "codelists/"
@@ -1062,7 +1060,7 @@ fn process_member_node(
             }
         }
 
-        let code_value = code_space_member.get_content();
+        let code_value = code_space_member.get_content().unwrap_or_default();
 
         if let Some(code) = code {
             if code.contains_key(code_value.as_str()) {
@@ -1100,7 +1098,7 @@ fn process_member_node(
     // L06: Geographical coverage verification
     let mut pos_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
-        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='pos']",
+        ".//gml:pos",
         member,
     )
     .map_err(|e| {
@@ -1112,7 +1110,7 @@ fn process_member_node(
     })?;
     let pos_list_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
-        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='posList']",
+        ".//gml:posList",
         member,
     )
     .map_err(|e| {
@@ -1125,7 +1123,7 @@ fn process_member_node(
     let mut positions = Vec::<f64>::new();
     pos_children.extend(pos_list_children);
     for child in pos_children {
-        let content = child.get_content();
+        let content = child.get_content().unwrap_or_default();
         let values = content.split_whitespace().collect::<Vec<_>>();
         positions.extend(
             values
@@ -1245,7 +1243,7 @@ fn process_member_node(
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
     let xlink_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
-        ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
+        ".//*[@xlink:href]",
         member,
     )
     .map_err(|e| {
@@ -1259,8 +1257,7 @@ fn process_member_node(
         .iter()
         .filter(|&child| xml::get_readonly_node_tag(child) != "core:CityObjectGroup")
     {
-        let Some(xlink_href) = child.get_attribute_ns("href", "http://www.w3.org/1999/xlink")
-        else {
+        let Some(xlink_href) = child.get_attribute_ns("href", xlink_ns) else {
             continue;
         };
         if let Some(caps) = GML_LINK_PATTERN.captures(xlink_href.as_str()) {
@@ -1289,7 +1286,7 @@ fn process_member_node(
                 })?;
                 let gml_id_children = xml::find_readonly_nodes_by_xpath(
                     &xml_ctx,
-                    ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
+                    ".//*[@gml:id]",
                     &root_node,
                 )
                 .map_err(|e| {
@@ -1300,10 +1297,7 @@ fn process_member_node(
                     ))
                 })?;
                 gml_id_children.iter().for_each(|gml_id_node| {
-                    let Some(gml_id) = gml_id_node.get_attribute_ns(
-                        "id",
-                        std::str::from_utf8(GML31_NS.into_inner()).unwrap(),
-                    ) else {
+                    let Some(gml_id) = gml_id_node.get_attribute_ns("id", gml_ns) else {
                         return;
                     };
                     if response.external_file_to_gml_ids.contains_key(gml_path) {
@@ -1471,9 +1465,7 @@ fn process_member_node(
                     AttributeValue::String("InvalidLodXGeometry".to_string()),
                 );
                 result_feature.insert("parentTag", AttributeValue::String(parent_tag));
-                if let Some(gml_id) = parent
-                    .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
-                {
+                if let Some(gml_id) = parent.get_attribute_ns("id", gml_ns) {
                     result_feature.insert("gmlId", AttributeValue::String(gml_id));
                 } else {
                     result_feature.insert("gmlId", AttributeValue::String("".to_string()));
@@ -1654,7 +1646,7 @@ fn create_detail_codelist(
             let description = nodes
                 .iter()
                 .find(|n| xml::get_readonly_node_tag(n) == "gml:description")?;
-            Some((name.get_content(), description.get_content()))
+            Some((name.get_content()?, description.get_content()?))
         })
         .collect::<HashMap<String, String>>();
     Ok(result)
