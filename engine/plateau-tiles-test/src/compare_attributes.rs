@@ -271,18 +271,6 @@ impl AttributeComparer {
                     return;
                 }
             }
-            // FME unpredictably does implicit string conversion
-            if let Some(v2_str) = v2.as_str() {
-                if v1.to_string().trim_matches('"') == v2_str {
-                    return;
-                }
-            }
-            // let NULL match empty string due to the limitation of 3d-tiles-tools upgrade
-            if let Some(v1_str) = v1.as_str() {
-                if v1_str.is_empty() && v2.is_null() {
-                    return;
-                }
-            }
             self.mismatches
                 .push((self.identifier.clone(), key.to_string(), v1, v2));
             return;
