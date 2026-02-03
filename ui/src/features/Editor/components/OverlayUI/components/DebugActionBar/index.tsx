@@ -6,7 +6,7 @@ import {
   PlayIcon,
   StopIcon,
 } from "@phosphor-icons/react";
-import { useReactFlow } from "@xyflow/react";
+import { getConnectedEdges, useReactFlow } from "@xyflow/react";
 import { memo, useMemo, useState } from "react";
 
 import {
@@ -22,8 +22,8 @@ import {
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable, AwarenessUser, Node } from "@flow/types";
+import { JobState, useCurrentProject } from "@flow/stores";
+import { AnyWorkflowVariable, AwarenessUser, Edge, Node } from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
@@ -38,6 +38,7 @@ const tooltipOffset = 6;
 type Props = {
   activeUsersDebugRuns?: AwarenessUser[];
   selectedNodeIds: string[];
+  edges?: Edge[];
   isSaving: boolean;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
@@ -53,6 +54,7 @@ type Props = {
 const DebugActionBar: React.FC<Props> = ({
   activeUsersDebugRuns,
   selectedNodeIds,
+  edges,
   isSaving,
   customDebugRunWorkflowVariables,
   onDebugRunJoin,
@@ -85,6 +87,7 @@ const DebugActionBar: React.FC<Props> = ({
       <StartButton
         debugRunStarted={debugRunStarted}
         selectedNodeIds={selectedNodeIds}
+        edges={edges}
         isSaving={isSaving}
         onShowDebugStartPopover={handleShowDebugStartPopover}
         onShowDebugWorkflowVariablesDialog={
@@ -140,6 +143,7 @@ export default memo(DebugActionBar);
 const StartButton: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
+  edges?: Edge[];
   isSaving: boolean;
   showPopover: string | undefined;
   onShowDebugStartPopover: () => void;
@@ -153,6 +157,7 @@ const StartButton: React.FC<{
 }> = ({
   debugRunStarted,
   selectedNodeIds,
+  edges,
   isSaving,
   showPopover,
   onDebugRunStart,
@@ -165,17 +170,16 @@ const StartButton: React.FC<{
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
-  const debugJobId = useMemo(
+  const debugJob = useMemo(
     () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
 
   const { data: jobStatus } = useSubscription(
     "GetSubscribedJobStatus",
-    debugJobId,
-    !debugJobId,
+    debugJob?.jobId,
+    !debugJob,
   );
 
   return (
@@ -231,9 +235,10 @@ const StartButton: React.FC<{
             <DebugRunDropDownMenu
               debugRunStarted={debugRunStarted}
               selectedNodeIds={selectedNodeIds}
+              edges={edges}
               isSaving={isSaving}
               jobStatus={jobStatus}
-              debugJobId={debugJobId}
+              debugJob={debugJob}
               showPopover={showPopover}
               onShowDebugStartPopover={onShowDebugStartPopover}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
@@ -302,10 +307,12 @@ const StopButton: React.FC<{
 const DebugRunDropDownMenu: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
+  edges?: Edge[];
+
   showPopover: string | undefined;
   isSaving: boolean;
   jobStatus: string | undefined;
-  debugJobId: string | undefined;
+  debugJob: JobState | undefined;
   onDebugRunStartFromSelectedNode?: (
     node?: Node,
     nodes?: Node[],
@@ -315,9 +322,10 @@ const DebugRunDropDownMenu: React.FC<{
 }> = ({
   debugRunStarted,
   selectedNodeIds,
+  edges,
   isSaving,
   jobStatus,
-  debugJobId,
+  debugJob,
   onDebugRunStartFromSelectedNode,
   onShowDebugStartPopover,
 }) => {
@@ -376,9 +384,12 @@ const DebugRunDropDownMenu: React.FC<{
             !selectedNode ||
             selectedNode.type === "batch" ||
             selectedNode.type === "note" ||
+            selectedNode.type === "writer" ||
             selectedNode.type === "subworkflow" ||
+            getConnectedEdges([selectedNode], edges ?? []).length === 0 ||
             selectedNodeIds.length > 1 ||
-            !debugJobId
+            !debugJob?.jobId ||
+            debugJob.status !== "completed"
           }
           onClick={() => {
             setTimeout(() => {

@@ -122,6 +122,7 @@ export default function Editor({
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
             selectedNodeIds={selectedNodeIds}
+            edges={edges}
             project={currentProject}
             yDoc={yDoc}
             self={self}
