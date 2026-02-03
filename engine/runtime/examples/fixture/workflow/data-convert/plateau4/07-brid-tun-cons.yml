@@ -327,8 +327,6 @@ graphs:
     name: AttributeFlattener
     type: action
     action: PLATEAU4.AttributeFlattener
-    with:
-      existingFlattenAttributes: true
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
     name: AttributeMapperForMerger
     type: action
@@ -346,7 +344,7 @@ graphs:
     with:
       codelistsPath: env.get("__value").codelists
       format: citygml
-      flatten: false
+      flatten: true
       dataset: |
         env.get("__value")["path"]
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6f
