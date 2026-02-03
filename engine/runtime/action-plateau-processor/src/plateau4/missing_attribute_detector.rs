@@ -382,13 +382,9 @@ impl MissingAttributeDetector {
                 )));
             }
         };
+        let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
         let gml_id = root_node
-            .get_attribute_ns(
-                "id",
-                String::from_utf8(GML31_NS.into_inner().to_vec())
-                    .map_err(|e| PlateauProcessorError::MissingAttributeDetector(format!("{e:?}")))?
-                    .as_str(),
-            )
+            .get_attribute_ns("id", gml_ns)
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
                 "Failed to get gml id".to_string(),
             ))?;
@@ -768,31 +764,10 @@ impl MissingAttributeDetector {
 }
 
 fn convert_xpath_prefixes_to_local_name(xpath: &str) -> String {
-    // Handle special prefixes like .// and preserve them
-    if let Some(remaining) = xpath.strip_prefix(".//") {
-        let converted_remaining = convert_xpath_prefixes_to_local_name(remaining);
-        return format!(".//{converted_remaining}");
-    }
-
-    // Split the path by '/' and convert each prefixed element separately
-    let parts: Vec<&str> = xpath.split('/').collect();
-    let converted_parts: Vec<String> = parts
-        .iter()
-        .map(|part| {
-            if part.is_empty() {
-                // Preserve empty parts (like double slashes)
-                part.to_string()
-            } else if let Some((_prefix, element)) = part.split_once(':') {
-                // Use only local-name() to avoid version dependency issues
-                // This works for any namespace version (e.g., uro/3.0, uro/3.1, etc.)
-                format!("*[local-name()='{element}']")
-            } else {
-                part.to_string()
-            }
-        })
-        .collect();
-
-    converted_parts.join("/")
+    // Note: fastxml doesn't support local-name() XPath function like libxml does.
+    // Instead of converting to local-name() based matching, we keep the original
+    // prefixed XPath. The namespace prefixes should be registered from the document.
+    xpath.to_string()
 }
 
 fn replace_namespace_with_prefix(tag: &str) -> String {
@@ -828,7 +803,8 @@ fn count_lod_geometries(
 
     if package == "dem" {
         // Special handling for DEM package
-        let xpath = "./*[local-name()='lod']";
+        // Note: Using prefix 'dem:' instead of local-name() since fastxml doesn't support local-name()
+        let xpath = ".//dem:lod";
         let nodes = xml::find_readonly_nodes_by_xpath(xml_ctx, xpath, root_node).map_err(|e| {
             PlateauProcessorError::MissingAttributeDetector(format!(
                 "Failed to find DEM LOD node: {e}"
@@ -836,7 +812,7 @@ fn count_lod_geometries(
         })?;
 
         if let Some(node) = nodes.first() {
-            let text = node.get_content();
+            let text = node.get_content().unwrap_or_default();
             if let Ok(lod) = text.trim().parse::<usize>() {
                 if lod <= 4 {
                     lod_count[lod] += 1;
@@ -882,7 +858,8 @@ fn validate_data_quality_attributes(
     let mut c08_errors = Vec::new();
 
     // Find DataQualityAttribute section (nested under bldgDataQualityAttribute)
-    let data_quality_xpath = ".//*[local-name()='DataQualityAttribute']";
+    // Note: Using prefix 'uro:' instead of local-name() since fastxml doesn't support local-name()
+    let data_quality_xpath = ".//uro:DataQualityAttribute";
     let data_quality_nodes =
         xml::find_readonly_nodes_by_xpath(xml_ctx, data_quality_xpath, root_node).map_err(|e| {
             PlateauProcessorError::MissingAttributeDetector(format!(
@@ -895,7 +872,8 @@ fn validate_data_quality_attributes(
         for (lod, &count) in lod_count.iter().enumerate() {
             if count > 0 {
                 // C07: Check for geometrySrcDescLod{N}
-                let geom_src_desc_xpath = format!("./*[local-name()='geometrySrcDescLod{lod}']");
+                // Note: Using prefix 'uro:' instead of local-name() since fastxml doesn't support local-name()
+                let geom_src_desc_xpath = format!(".//uro:geometrySrcDescLod{lod}");
                 let geom_nodes = xml::find_readonly_nodes_by_xpath(
                     xml_ctx,
                     &geom_src_desc_xpath,
@@ -915,15 +893,15 @@ fn validate_data_quality_attributes(
                     ));
                 } else if geom_nodes.len() == 1 {
                     // Check if value is "000" for C08 validation
-                    let text = geom_nodes[0].get_content();
+                    let text = geom_nodes[0].get_content().unwrap_or_default();
                     if !text.is_empty() && text.trim() == "000" {
                         // C08: Check PublicSurveyDataQualityAttribute sub-elements
-                        let public_survey_base_xpath = "./*[local-name()='publicSurveyDataQualityAttribute']/*[local-name()='PublicSurveyDataQualityAttribute']";
+                        let public_survey_base_xpath =
+                            ".//uro:publicSurveyDataQualityAttribute/uro:PublicSurveyDataQualityAttribute";
 
                         // Check srcScaleLod{N}
-                        let src_scale_xpath = format!(
-                            "{public_survey_base_xpath}/*[local-name()='srcScaleLod{lod}']"
-                        );
+                        let src_scale_xpath =
+                            format!("{public_survey_base_xpath}/uro:srcScaleLod{lod}");
                         let src_scale_nodes = xml::find_readonly_nodes_by_xpath(
                             xml_ctx,
                             &src_scale_xpath,
@@ -945,7 +923,8 @@ fn validate_data_quality_attributes(
                         }
 
                         // Check publicSurveySrcDescLod{N}
-                        let public_survey_src_desc_xpath = format!("{public_survey_base_xpath}/*[local-name()='publicSurveySrcDescLod{lod}']");
+                        let public_survey_src_desc_xpath =
+                            format!("{public_survey_base_xpath}/uro:publicSurveySrcDescLod{lod}");
                         let public_survey_nodes = xml::find_readonly_nodes_by_xpath(
                             xml_ctx,
                             &public_survey_src_desc_xpath,

@@ -356,7 +356,7 @@ impl FaceExtractor {
 
             for pos_list_node in pos_lists {
                 // Get posList text content
-                let pos_text = pos_list_node.get_content();
+                let pos_text = pos_list_node.get_content().unwrap_or_default();
 
                 // Parse coordinates
                 let coords = self.parse_pos_list(&pos_text)?;

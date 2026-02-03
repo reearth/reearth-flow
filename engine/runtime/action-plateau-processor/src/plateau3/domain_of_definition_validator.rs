@@ -649,10 +649,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
             .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
                 "Failed to get envelop node".to_string(),
             ))?;
-    let srs_name = envelop_node
-        .get_attribute_node("srsName")
-        .map(|n| n.get_content())
-        .unwrap_or_default();
+    let srs_name = envelop_node.get_attribute("srsName").unwrap_or_default();
     let children = envelop_node.get_child_nodes();
     let lower_corner = children
         .iter()
@@ -671,7 +668,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
         ..Default::default()
     };
     {
-        let content = lower_corner.get_content();
+        let content = lower_corner.get_content().unwrap_or_default();
         let lower_corder_value = content.split_whitespace().collect::<Vec<_>>();
         response.lower_x = lower_corder_value[0]
             .parse()
@@ -684,7 +681,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     }
     {
-        let content = upper_corner.get_content();
+        let content = upper_corner.get_content().unwrap_or_default();
         let upper_corder_value = content.split_whitespace().collect::<Vec<_>>();
         response.upper_x = upper_corder_value[0]
             .parse()
@@ -825,14 +822,13 @@ fn process_member_node(
         ))?;
     for code_space_member in code_space_children {
         let code_space = code_space_member
-            .get_attribute_node("codeSpace")
-            .map(|n| n.get_content())
+            .get_attribute("codeSpace")
             .unwrap_or_default();
         let code_space_path = base_dir
             .join(Path::new(code_space.as_str()))
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
         let code = codelists.get(&code_space_path.to_string());
-        let code_value = code_space_member.get_content();
+        let code_value = code_space_member.get_content().unwrap_or_default();
         let mut valid = false;
         let mut exists_code_list = false;
         if let Some(code) = code {
@@ -884,7 +880,7 @@ fn process_member_node(
     let mut positions = Vec::<f64>::new();
     pos_children.extend(pos_list_children);
     for child in pos_children {
-        let content = child.get_content();
+        let content = child.get_content().unwrap_or_default();
         let values = content.split_whitespace().collect::<Vec<_>>();
         positions.extend(
             values
@@ -1330,7 +1326,7 @@ fn create_detail_codelist(
             let description = nodes
                 .iter()
                 .find(|n| xml::get_readonly_node_tag(n) == "gml:description")?;
-            Some((name.get_content(), description.get_content()))
+            Some((name.get_content()?, description.get_content()?))
         })
         .collect::<HashMap<String, String>>();
     Ok(result)

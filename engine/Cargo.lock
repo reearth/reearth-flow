@@ -566,24 +566,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bindgen"
-version = "0.72.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
-dependencies = [
- "bitflags 2.10.0",
- "cexpr",
- "clang-sys",
- "itertools 0.13.0",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 2.1.1",
- "shlex",
- "syn 2.0.111",
-]
-
-[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -885,6 +867,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "castaway"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dec551ab6e7578819132c713a93c022a05d60159dc86e7a7050223577484c55a"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "cbc"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1146,6 +1137,20 @@ checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "compact_str"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b79c4069c6cad78e2e0cdfcbd26275770669fb39fd308a752dc110e83b9af32"
+dependencies = [
+ "castaway",
+ "cfg-if",
+ "itoa 1.0.15",
+ "rustversion",
+ "ryu",
+ "static_assertions",
 ]
 
 [[package]]
@@ -1456,6 +1461,20 @@ dependencies = [
  "darling_core",
  "quote",
  "syn 2.0.111",
+]
+
+[[package]]
+name = "dashmap"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1945,6 +1964,26 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+
+[[package]]
+name = "fastxml"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d17896d246d4502e70f584e1e9ff1f25a60d8bfe8d6ad66397f2c11ed4b9d20"
+dependencies = [
+ "compact_str",
+ "dashmap",
+ "indexmap 2.12.1",
+ "parking_lot",
+ "quick-xml 0.37.5",
+ "regex",
+ "smallvec",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+ "url",
+ "xxhash-rust",
+]
 
 [[package]]
 name = "fax"
@@ -3115,6 +3154,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
+version = "0.14.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+
+[[package]]
+name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
@@ -3775,15 +3820,6 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
@@ -4090,18 +4126,6 @@ checksum = "54cd30df7c7165ce74a456e4ca9732c603e8dc5e60784558c1c6dc047f876733"
 dependencies = [
  "cc",
  "glob",
-]
-
-[[package]]
-name = "libxml"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74a5e46b8bcd6b70cb485ca086e43aa020af841e29fb0aba88ce02cd1cb52cc7"
-dependencies = [
- "bindgen 0.72.1",
- "libc",
- "pkg-config",
- "vcpkg",
 ]
 
 [[package]]
@@ -4944,7 +4968,7 @@ dependencies = [
  "futures",
  "http 1.4.0",
  "humantime",
- "itertools 0.14.0",
+ "itertools",
  "parking_lot",
  "percent-encoding",
  "thiserror 2.0.17",
@@ -5819,7 +5843,7 @@ version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "601bf4fa1e17fde1a56d303f7bed5c65969cf1822c6baf5d6c2c12c593638fec"
 dependencies = [
- "bindgen 0.66.1",
+ "bindgen",
  "cmake",
  "flate2",
  "pkg-config",
@@ -5843,7 +5867,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
  "heck 0.5.0",
- "itertools 0.14.0",
+ "itertools",
  "log",
  "multimap",
  "once_cell",
@@ -5863,7 +5887,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 2.0.111",
@@ -6212,7 +6236,7 @@ dependencies = [
  "built",
  "cfg-if",
  "interpolate_name",
- "itertools 0.14.0",
+ "itertools",
  "libc",
  "libfuzzer-sys",
  "log",
@@ -6354,7 +6378,7 @@ dependencies = [
  "calamine",
  "chrono",
  "indexmap 2.12.1",
- "itertools 0.14.0",
+ "itertools",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
@@ -6403,7 +6427,7 @@ dependencies = [
  "flatgeom",
  "image 0.25.9",
  "indexmap 2.12.1",
- "itertools 0.14.0",
+ "itertools",
  "num-traits",
  "num_cpus",
  "nusamai-citygml",
@@ -6489,7 +6513,7 @@ dependencies = [
  "hex",
  "image 0.25.9",
  "indexmap 2.12.1",
- "itertools 0.14.0",
+ "itertools",
  "kv-extsort",
  "nusamai-citygml",
  "nusamai-czml",
@@ -6631,11 +6655,11 @@ dependencies = [
  "chrono",
  "colorsys",
  "directories",
+ "fastxml",
  "futures",
  "home",
  "image 0.25.9",
  "jsonpath_lib",
- "libxml",
  "once_cell",
  "parking_lot",
  "rayon",
@@ -6740,7 +6764,7 @@ dependencies = [
  "draco-oxide",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "indexmap 2.12.1",
- "itertools 0.14.0",
+ "itertools",
  "nalgebra",
  "nusamai-citygml",
  "nusamai-gltf",
@@ -6954,7 +6978,7 @@ dependencies = [
  "hashbrown 0.15.5",
  "image 0.25.9",
  "indexmap 2.12.1",
- "itertools 0.14.0",
+ "itertools",
  "nusamai-citygml",
  "nusamai-gltf",
  "nusamai-plateau",

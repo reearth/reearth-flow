@@ -161,10 +161,9 @@ impl XmlSchemaResolver {
         // Process child nodes
         let children = node.get_child_nodes();
         for child in children {
-            if let Some(node_type) = child.get_type() {
-                if node_type == xml::XmlNodeType::ElementNode {
-                    self.collect_dependencies_recursive(&child, base_url, dependencies)?;
-                }
+            let node_type = child.get_type();
+            if node_type == xml::XmlNodeType::Element {
+                self.collect_dependencies_recursive(&child, base_url, dependencies)?;
             }
         }
 
