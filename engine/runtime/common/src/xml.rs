@@ -305,6 +305,9 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(Stri
     for (key, value) in root.get_attributes().iter() {
         if key == "schemaLocation" {
             schema_locations = value.split_whitespace().map(|s| s.to_string()).collect();
+        } else if key == "noNamespaceSchemaLocation" {
+            // Handle xsi:noNamespaceSchemaLocation - use empty string for namespace
+            return Ok(vec![("".to_string(), value.to_string())]);
         }
     }
 
@@ -336,6 +339,154 @@ pub fn create_xml_schema_validation_context_from_buffer(
 ) -> crate::Result<XmlSchemaValidationContext> {
     let ctx = fastxml::create_xml_schema_validation_context_from_buffer(schema)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
+}
+
+/// Create schema validation context from multiple schema sources.
+/// This is useful when you have a wrapper schema that includes/imports other schemas.
+#[allow(dead_code)]
+pub fn create_xml_schema_validation_context_from_multiple(
+    schemas: &[(&str, &[u8])],
+) -> crate::Result<XmlSchemaValidationContext> {
+    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
+    use fastxml::schema::xsd::parse_xsd_multiple;
+
+    let compiled = parse_xsd_multiple(schemas)
+        .map_err(|e| crate::Error::Xml(format!("Failed to parse schemas: {e:?}")))?;
+    let ctx = FastXmlValidationContext::new(compiled);
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
+}
+
+/// Create schema validation context with automatic import resolution.
+///
+/// This function uses fastxml's built-in schema fetcher and resolver to:
+/// 1. Fetch the schema from the given URI (HTTP or local file)
+/// 2. Recursively resolve all xs:import and xs:include dependencies
+/// 3. Compile all schemas into a single validation context
+///
+/// # Arguments
+/// * `schema_uri` - The URI of the main schema (HTTP URL or local file path)
+/// * `base_dir` - Optional base directory for resolving relative paths
+///
+/// # Returns
+/// A compiled schema validation context with all dependencies resolved
+pub fn create_validation_context_with_imports(
+    schema_uri: &str,
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<XmlSchemaValidationContext> {
+    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+    use fastxml::schema::memory::InMemoryStore;
+    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
+    use fastxml::schema::xsd::parse_xsd_with_imports;
+
+    // Create fetcher with optional base directory
+    let fetcher = match base_dir {
+        Some(dir) => DefaultFetcher::with_base_dir(dir),
+        None => DefaultFetcher::new(),
+    };
+
+    // Fetch the main schema
+    let fetch_result = fetcher
+        .fetch(schema_uri)
+        .map_err(|e| crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", schema_uri)))?;
+
+    // Use the final URL (after redirects) as the base URI
+    let base_uri = &fetch_result.final_url;
+
+    // Create in-memory store for caching resolved schemas
+    let store = InMemoryStore::new();
+
+    // Parse with import resolution
+    let compiled = parse_xsd_with_imports(&fetch_result.content, base_uri, &fetcher, &store)
+        .map_err(|e| {
+            crate::Error::Xml(format!(
+                "Failed to parse schema with imports {}: {e:?}",
+                schema_uri
+            ))
+        })?;
+
+    let ctx = FastXmlValidationContext::new(compiled);
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
+}
+
+/// Create schema validation context for multiple schemas with automatic import resolution.
+///
+/// This function processes multiple schema locations and combines them into a single
+/// validation context. Each schema and its dependencies are resolved automatically.
+///
+/// # Arguments
+/// * `schema_locations` - List of (namespace, location) pairs from xsi:schemaLocation
+/// * `base_dir` - Optional base directory for resolving relative paths
+///
+/// # Returns
+/// A compiled schema validation context with all schemas and dependencies resolved
+pub fn create_validation_context_for_schema_locations(
+    schema_locations: &[(String, String)],
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<XmlSchemaValidationContext> {
+    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+    use fastxml::schema::memory::InMemoryStore;
+    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
+    use fastxml::schema::xsd::{
+        compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
+    };
+
+    if schema_locations.is_empty() {
+        return Err(crate::Error::Xml(
+            "No schema locations provided".to_string(),
+        ));
+    }
+
+    // Create fetcher with optional base directory
+    let fetcher = match base_dir {
+        Some(dir) => DefaultFetcher::with_base_dir(dir),
+        None => DefaultFetcher::new(),
+    };
+
+    // Create shared store for caching resolved schemas across all schema locations
+    let store = InMemoryStore::new();
+
+    // Collect all resolved schemas
+    let mut all_schemas: Vec<XsdSchema> = Vec::new();
+
+    for (_namespace, location) in schema_locations {
+        // Fetch the schema
+        let fetch_result = fetcher.fetch(location).map_err(|e| {
+            crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", location))
+        })?;
+
+        // Use the final URL (after redirects) as the base URI
+        let base_uri = &fetch_result.final_url;
+
+        // Parse with import resolution using a resolver
+        let mut resolver = SchemaResolver::new(&fetcher, &store);
+        let schemas = resolver
+            .resolve_all(&fetch_result.content, base_uri)
+            .map_err(|e| {
+                crate::Error::Xml(format!(
+                    "Failed to resolve schema imports for {}: {e:?}",
+                    location
+                ))
+            })?;
+
+        all_schemas.extend(schemas);
+    }
+
+    // Compile all schemas together
+    let mut compiled = compile_schemas(all_schemas)
+        .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
+    register_builtin_types(&mut compiled);
+
+    let ctx = FastXmlValidationContext::new(compiled);
     Ok(XmlSchemaValidationContext {
         inner: parking_lot::RwLock::new(ctx),
         _marker: PhantomData,
@@ -639,10 +790,19 @@ mod tests {
         // Test using the prefixed version (fastxml doesn't support namespace-uri() like libxml)
         let result = find_readonly_nodes_by_xpath(&ctx, ".//gml:Envelope", &root);
         println!("Result for prefixed query: {:?}", result);
-        assert!(result.is_ok(), "Prefixed XPath query failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Prefixed XPath query failed: {:?}",
+            result.err()
+        );
         let nodes = result.unwrap();
         println!("Found {} nodes with prefixed query", nodes.len());
-        assert_eq!(nodes.len(), 1, "Expected 1 Envelope node with prefix, found {}", nodes.len());
+        assert_eq!(
+            nodes.len(),
+            1,
+            "Expected 1 Envelope node with prefix, found {}",
+            nodes.len()
+        );
 
         // Test get_child_nodes and get_readonly_node_tag
         let envelope = &nodes[0];
@@ -651,15 +811,23 @@ mod tests {
         for child in children.iter() {
             let tag = get_readonly_node_tag(child);
             let node_type = child.get_type();
-            let ns_info = child.get_namespace().map(|n| format!("{}={}", n.get_prefix(), n.get_href()));
-            println!("  Child: tag='{}', type={:?}, namespace={:?}", tag, node_type, ns_info);
+            let ns_info = child
+                .get_namespace()
+                .map(|n| format!("{}={}", n.get_prefix(), n.get_href()));
+            println!(
+                "  Child: tag='{}', type={:?}, namespace={:?}",
+                tag, node_type, ns_info
+            );
         }
 
         // In fastxml 0.4.0, get_namespace() works correctly for child elements
         let lower_corner = children
             .iter()
             .find(|&n| get_readonly_node_tag(n) == "gml:lowerCorner");
-        assert!(lower_corner.is_some(), "Should find gml:lowerCorner in Envelope children");
+        assert!(
+            lower_corner.is_some(),
+            "Should find gml:lowerCorner in Envelope children"
+        );
 
         // Test get_attribute_ns for namespaced attributes
         let building = find_readonly_nodes_by_xpath(&ctx, ".//bldg:Building", &root).unwrap();
@@ -669,12 +837,19 @@ mod tests {
         // Test gml:id attribute - should work in fastxml 0.4.0
         let gml_id = building_node.get_attribute_ns("id", "http://www.opengis.net/gml");
         println!("gml:id via get_attribute_ns: {:?}", gml_id);
-        assert_eq!(gml_id, Some("bldg_test".to_string()), "get_attribute_ns should return gml:id value");
+        assert_eq!(
+            gml_id,
+            Some("bldg_test".to_string()),
+            "get_attribute_ns should return gml:id value"
+        );
 
         // Also try regular get_attribute - returns local name as key in fastxml 0.4.0
         let attrs = building_node.get_attributes();
         println!("All attributes: {:?}", attrs);
-        assert!(attrs.contains_key("id"), "Attributes should contain 'id' key");
+        assert!(
+            attrs.contains_key("id"),
+            "Attributes should contain 'id' key"
+        );
 
         // Test that root node has proper namespace
         let root_name = root.get_name();
@@ -682,11 +857,19 @@ mod tests {
         println!("Root name (get_name): {}", root_name);
         println!("Root tag (get_readonly_node_tag): {}", root_tag);
         let root_ns = root.get_namespace();
-        println!("Root namespace: {:?}", root_ns.as_ref().map(|n| format!("{}={}", n.get_prefix(), n.get_href())));
+        println!(
+            "Root namespace: {:?}",
+            root_ns
+                .as_ref()
+                .map(|n| format!("{}={}", n.get_prefix(), n.get_href()))
+        );
 
         // In fastxml 0.4.0, get_namespace() returns correct namespace,
         // so get_readonly_node_tag returns tag with prefix
-        assert_eq!(root_tag, "core:CityModel", "Root tag should have namespace prefix in fastxml 0.4.0");
+        assert_eq!(
+            root_tag, "core:CityModel",
+            "Root tag should have namespace prefix in fastxml 0.4.0"
+        );
         assert!(root_ns.is_some(), "Root should have namespace");
 
         // Test building node namespace
@@ -695,8 +878,16 @@ mod tests {
         println!("Building name (get_name): {}", building_name);
         println!("Building tag (get_readonly_node_tag): {}", building_tag);
         let building_ns = building_node.get_namespace();
-        println!("Building namespace: {:?}", building_ns.as_ref().map(|n| format!("{}={}", n.get_prefix(), n.get_href())));
-        assert_eq!(building_tag, "bldg:Building", "Building tag should have namespace prefix in fastxml 0.4.0");
+        println!(
+            "Building namespace: {:?}",
+            building_ns
+                .as_ref()
+                .map(|n| format!("{}={}", n.get_prefix(), n.get_href()))
+        );
+        assert_eq!(
+            building_tag, "bldg:Building",
+            "Building tag should have namespace prefix in fastxml 0.4.0"
+        );
         assert!(building_ns.is_some(), "Building should have namespace");
     }
 }

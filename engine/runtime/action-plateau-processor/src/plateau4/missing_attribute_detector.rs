@@ -383,11 +383,9 @@ impl MissingAttributeDetector {
             }
         };
         let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
-        let gml_id = root_node
-            .get_attribute_ns("id", gml_ns)
-            .ok_or(PlateauProcessorError::MissingAttributeDetector(
-                "Failed to get gml id".to_string(),
-            ))?;
+        let gml_id = root_node.get_attribute_ns("id", gml_ns).ok_or(
+            PlateauProcessorError::MissingAttributeDetector("Failed to get gml id".to_string()),
+        )?;
         let feature_type = xml::get_readonly_node_tag(&root_node);
         if !buffer
             .feature_types_to_target_attributes
