@@ -1,4 +1,4 @@
-import { NodeChange, type XYPosition } from "@xyflow/react";
+import { Edge, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
@@ -33,6 +33,7 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   selectedNodeIds: string[];
+  edges?: Edge[];
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
@@ -89,6 +90,7 @@ type OverlayUIProps = {
 const OverlayUI: React.FC<OverlayUIProps> = ({
   nodePickerOpen,
   selectedNodeIds,
+  edges,
   canUndo,
   canRedo,
   isMainWorkflow,
@@ -175,6 +177,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             <DebugActionBar
               activeUsersDebugRuns={activeUsersDebugRuns}
               selectedNodeIds={selectedNodeIds}
+              edges={edges}
               isSaving={isSaving}
               onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}

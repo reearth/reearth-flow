@@ -10,7 +10,7 @@ import {
   ScissorsIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { Edge, EdgeChange, XYPosition } from "@xyflow/react";
+import { Edge, EdgeChange, getConnectedEdges, XYPosition } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -74,10 +74,9 @@ const CanvasContextMenu: React.FC<Props> = ({
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
-  const debugJobId = useMemo(
+  const debugRunJob = useMemo(
     () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
 
@@ -168,9 +167,13 @@ const CanvasContextMenu: React.FC<Props> = ({
                   onDebugRunStartFromSelectedNode?.(node, nodes),
                 ),
                 disabled:
-                  !debugJobId ||
+                  !debugRunJob ||
+                  debugRunJob.status !== "completed" ||
                   (nodes?.length ?? 0) > 1 ||
+                  !node ||
+                  getConnectedEdges([node], edges).length === 0 ||
                   node?.type === "batch" ||
+                  node?.type === "writer" ||
                   node?.type === "note" ||
                   node?.type === "subworkflow",
               },
@@ -330,8 +333,9 @@ const CanvasContextMenu: React.FC<Props> = ({
     nodes,
     clipboardHasReadersOrWriters,
     containsReadersOrWriters,
-    debugJobId,
+    debugRunJob,
     onCopy,
+    edges,
     onCut,
     onPaste,
     onClose,

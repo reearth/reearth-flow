@@ -8,6 +8,7 @@ import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
+import { computeWorkflowPath } from "./utils/computeWorkflowPath";
 
 export default ({
   currentYWorkflow,
@@ -93,6 +94,13 @@ export default ({
               ...newNode.data.params,
               routingPort: uniquePortName,
             };
+          }
+          const currentWorkflowId = currentYWorkflow?.get("id")?.toString();
+          if (currentWorkflowId) {
+            newNode.data.workflowPath = computeWorkflowPath(
+              rawWorkflows,
+              currentWorkflowId,
+            );
           }
 
           yNodes.set(newNode.id, yNodeConstructor(newNode));
