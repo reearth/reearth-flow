@@ -6,7 +6,10 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
+use nusamai_citygml::{
+    object::{Object, ObjectStereotype},
+    CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader, Value,
+};
 use nusamai_plateau::{
     appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
 };
@@ -22,6 +25,44 @@ use reearth_flow_types::{
     geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
 };
 use url::Url;
+
+/// Attribute keys to skip during attribute filtering.
+/// These are sub-features or geometry boundaries that shouldn't be included as simple attributes.
+/// Based on FME reference implementation's SKIPPABLE_TAGS.
+const SKIPPABLE_KEYS: &[&str] = &[
+    // Building
+    "bldg:boundedBy",
+    "bldg:opening",
+    "bldg:interiorRoom",
+    "bldg:interiorFurniture",
+    "bldg:outerBuildingInstallation",
+    "bldg:interiorBuildingInstallation",
+    "bldg:roomInstallation",
+    "bldg:consistsOfBuildingPart",
+    // Bridge
+    "brid:boundedBy",
+    "brid:opening",
+    "brid:interiorBridgeRoom",
+    "brid:interiorFurniture",
+    "brid:outerBridgeInstallation",
+    "brid:interiorBridgeInstallation",
+    "brid:bridgeRoomInstallation",
+    "brid:consistsOfBridgePart",
+    // Tunnel
+    "tun:boundedBy",
+    "tun:opening",
+    "tun:interiorHollowSpace",
+    "tun:interiorFurniture",
+    "tun:outerTunnelInstallation",
+    "tun:interiorTunnelInstallation",
+    "tun:hollowSpaceInstallation",
+    "tun:consistsOfTunnelPart",
+    // Transportation
+    "tran:trafficArea",
+    "tran:auxiliaryTrafficArea",
+    // WaterBody
+    "wtr:boundedBy",
+];
 
 #[allow(clippy::uninlined_format_args, clippy::too_many_arguments)]
 pub(super) fn read_citygml(
@@ -211,27 +252,20 @@ fn parse_tree_reader<R: BufRead>(
             );
         }
         attributes.extend(base_attributes.clone());
-        // STEP 2: Check if entity.root contains bridDmAttribute BEFORE flatten decision
-        if let nusamai_citygml::Value::Object(ref obj) = entity.root {
-            let has_key = obj.attributes.contains_key("uro:bridDmAttribute");
-            eprintln!("[STEP2] Before flatten decision (flatten={}): has bridDmAttribute={}", flatten, has_key);
-        }
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
             vec![entity]
         };
         for mut ent in entities {
-            let nusamai_citygml::Value::Object(obj) = &ent.root else {
+            let Value::Object(obj) = &ent.root else {
                 continue;
             };
             // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
             // Also extract geom feature_id from GeometryRef if child doesn't have gml:id
             let mut child_lod = LodMask::default();
             let mut geom_feature_id: Option<String> = None;
-            if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
-                &obj.stereotype
-            {
+            if let ObjectStereotype::Feature { geometries, .. } = &obj.stereotype {
                 for geom in geometries {
                     child_lod.add_lod(geom.lod);
                     // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
@@ -244,11 +278,7 @@ fn parse_tree_reader<R: BufRead>(
                 continue;
             }
             transformer.transform(&mut ent);
-            // STEP 3: Check if ent.root contains bridDmAttribute AFTER transformer
-            if let nusamai_citygml::Value::Object(ref obj) = ent.root {
-                let has_key = obj.attributes.contains_key("uro:bridDmAttribute");
-                eprintln!("[STEP3] After transformer.transform: has bridDmAttribute={}", has_key);
-            }
+            filter_attributes(&mut ent);
 
             // Use entity's own non-empty gml:id or None, toplevel id is stored in gmlId attribute
             let child_id = ent.id.clone();
@@ -279,11 +309,6 @@ fn parse_tree_reader<R: BufRead>(
                 }
             }
 
-            // STEP 1: Check if ent.root contains bridDmAttribute
-            if let nusamai_citygml::Value::Object(ref obj) = ent.root {
-                let has_key = obj.attributes.contains_key("uro:bridDmAttribute");
-                eprintln!("[STEP1] Before conversion: has bridDmAttribute={}", has_key);
-            }
             let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
             let citygml_attributes = AttributeValue::Map(citygml_attributes);
             let geometry: Geometry = ent.try_into().map_err(|e| {
@@ -316,4 +341,51 @@ fn parse_tree_reader<R: BufRead>(
         }
     }
     Ok(())
+}
+
+/// Filters attributes from a CityGML entity:
+/// - Removes skippable keys (sub-features, geometry boundaries)
+/// - Removes empty objects (objects with no attributes and no geometries)
+fn filter_attributes(entity: &mut Entity) {
+    if let Value::Object(obj) = &mut entity.root {
+        filter_object_attributes(obj);
+    }
+}
+
+fn filter_object_attributes(obj: &mut Object) {
+    obj.attributes.retain(|key, value| {
+        // Skip known skippable keys
+        if SKIPPABLE_KEYS.contains(&key.as_str()) {
+            return false;
+        }
+
+        match value {
+            Value::Object(nested_obj) => {
+                filter_object_attributes(nested_obj);
+                !is_empty_object(nested_obj)
+            }
+            Value::Array(arr) => {
+                arr.retain_mut(|item| {
+                    if let Value::Object(nested_obj) = item {
+                        filter_object_attributes(nested_obj);
+                        !is_empty_object(nested_obj)
+                    } else {
+                        true
+                    }
+                });
+                !arr.is_empty()
+            }
+            _ => true,
+        }
+    });
+}
+
+fn is_empty_object(obj: &Object) -> bool {
+    if !obj.attributes.is_empty() {
+        return false;
+    }
+    match &obj.stereotype {
+        ObjectStereotype::Feature { geometries, .. } => geometries.is_empty(),
+        _ => true,
+    }
 }

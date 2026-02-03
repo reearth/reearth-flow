@@ -68,12 +68,12 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"], branch = "fix/boundedby" }
-nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/boundedby" }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/boundedby" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"], branch = "fix/boundedby" }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/boundedby" }
-nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/boundedby" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"], branch = "fix/gmt" }
+nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/gmt" }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/gmt" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"], branch = "fix/gmt" }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/gmt" }
+nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", branch = "fix/gmt" }
 
 Inflector = "0.11.4"
 ahash = "0.8.12"
