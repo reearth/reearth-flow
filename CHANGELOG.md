@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.4 - 2026-02-03
+
+### ci
+
+#### 🔧 Bug Fixes
+
+- Remove CHANGELOG.md from CI workflow file checks ([#1873](https://github.com/reearth/reearth-flow/pull/1873)) [`292f1f`](https://github.com/reearth/reearth-flow/commit/292f1f)
+
+### engine
+
+#### 🚀 Features
+
+- Implement properties in &#x60;tileset.json&#x60; with schemas fixes ([#1879](https://github.com/reearth/reearth-flow/pull/1879)) [`9c168d`](https://github.com/reearth/reearth-flow/commit/9c168d)
+- Add CZML timeseries support for reader and writer ([#1875](https://github.com/reearth/reearth-flow/pull/1875)) [`07cd3c`](https://github.com/reearth/reearth-flow/commit/07cd3c)
+- Implement &#x60;gen&#x60; data-convert workflow and test ([#1869](https://github.com/reearth/reearth-flow/pull/1869)) [`c88bf6`](https://github.com/reearth/reearth-flow/commit/c88bf6)
+- Added action ImageRasterizer ([#1866](https://github.com/reearth/reearth-flow/pull/1866)) [`fa4aaf`](https://github.com/reearth/reearth-flow/commit/fa4aaf)
+
+#### 🔧 Bug Fixes
+
+- Fix incorrect zip filenames &#x60;_geometric_attributes&#x60; -&gt; &#x60;_dm_geometric_attributes&#x60; ([#1880](https://github.com/reearth/reearth-flow/pull/1880)) [`d1803d`](https://github.com/reearth/reearth-flow/commit/d1803d)
+- Fix incremental run edge collection for subworkflow nodes ([#1845](https://github.com/reearth/reearth-flow/pull/1845)) [`05f3fa`](https://github.com/reearth/reearth-flow/commit/05f3fa)
+- Remove attribute key sanitization in 3D tiles writer ([#1874](https://github.com/reearth/reearth-flow/pull/1874)) [`c8ddd6`](https://github.com/reearth/reearth-flow/commit/c8ddd6)
+- Exclude invalid holes from DEM QC error count to match FME behavior ([#1872](https://github.com/reearth/reearth-flow/pull/1872)) [`9bb3fd`](https://github.com/reearth/reearth-flow/commit/9bb3fd)
+- Exclude L-TRAN-02 adjacent surface overlap from error count in tran QC                                                                                ([#1871](https://github.com/reearth/reearth-flow/pull/1871)) [`d22cee`](https://github.com/reearth/reearth-flow/commit/d22cee)
+
+#### 🧪 Testing
+
+- Fix flaky tests ([#1868](https://github.com/reearth/reearth-flow/pull/1868)) [`e96353`](https://github.com/reearth/reearth-flow/commit/e96353)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Tabular View DoubleClick Index jumping, Search Filters Truncation, Spotlight Icon Alignment ([#1870](https://github.com/reearth/reearth-flow/pull/1870)) [`ba7087`](https://github.com/reearth/reearth-flow/commit/ba7087)
+
 ## 0.1.0-alpha.3 - 2026-01-28
 
 ### Misc
