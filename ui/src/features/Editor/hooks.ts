@@ -204,6 +204,7 @@ export default ({
     nodes,
     edges,
     rawWorkflows,
+    currentWorkflowId,
     isMainWorkflow,
     handleWorkflowUpdate: handleYWorkflowUpdate,
     handleNodesAdd: handleYNodesAdd,
