@@ -217,7 +217,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               <div className="space-y-3">
                 {Object.entries(processedFeature.attributes).map(
                   ([key, value]) => {
-                    console.log("KEY VALUE", key, value);
                     const valueType = getValueType(value);
 
                     const attributeKey = key.replace(/^attributes/, "");
