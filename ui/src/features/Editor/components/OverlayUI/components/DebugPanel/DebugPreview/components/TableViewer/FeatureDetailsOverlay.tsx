@@ -146,7 +146,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             </div>
           )}
           {/* Geometry */}
-          {processedFeature.geometry && (
+          {Object.keys(processedFeature.geometry).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Geometry")}
@@ -217,6 +217,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               <div className="space-y-3">
                 {Object.entries(processedFeature.attributes).map(
                   ([key, value]) => {
+                    console.log("KEY VALUE", key, value);
                     const valueType = getValueType(value);
 
                     const attributeKey = key.replace(/^attributes/, "");
@@ -272,8 +273,8 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             </div>
           )}
           {/* No data message */}
-          {Object.entries(processedFeature.attributes).length === 0 &&
-            Object.entries(processedFeature.geometry).length === 0 && (
+          {Object.keys(processedFeature.attributes).length === 0 &&
+            Object.keys(processedFeature.geometry).length === 0 && (
               <div className="text-center text-muted-foreground">
                 <p className="text-sm">
                   {t("No additional details available")}
