@@ -565,6 +565,58 @@
 			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
 	],
+	"tun/tun:Tunnel": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "tun:class",
+			"data_type": "string",
+			"json_path": "tun:class"
+		},
+		{
+			"attribute": "tun:function",
+			"data_type": "string",
+			"json_path": "tun:function"
+		},
+		{
+			"attribute": "tun:yearOfConstruction",
+			"data_type": "int",
+			"json_path": "tun:yearOfConstruction"
+		},
+		{
+			"attribute": "uro:surveyYear",
+			"data_type": "int",
+			"json_path": "uro:TunnelStructureAttribute uro:surveyYear"
+		},
+		{
+			"attribute": "uro:riskType",
+			"data_type": "string",
+			"json_path": "uro:TunnelStructureAttribute uro:riskType"
+		},
+		{
+			"attribute": "uro:status",
+			"data_type": "string",
+			"json_path": "uro:TunnelStructureAttribute uro:status"
+		},
+		{
+			"attribute": "uro:referenceDate",
+			"data_type": "date",
+			"json_path": "uro:TunnelStructureAttribute uro:referenceDate"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "string",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
 	"cons/uro:OtherConstruction": [
 		{
 			"attribute": "core:creationDate",

@@ -9,6 +9,7 @@ with:
   schemas: null
   targetPackages:
   - brid
+  - tun
   - cons
   workerArtifactPath: null
 graphs:

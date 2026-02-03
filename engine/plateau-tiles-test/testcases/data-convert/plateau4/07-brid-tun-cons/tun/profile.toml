@@ -1,0 +1,10 @@
+citygml_zip_name = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[filter.tree]
+"udx/tun/" = ["53393690_tun_6697_40_op.gml", "53393690_tun_6697_40_appearance/"]
