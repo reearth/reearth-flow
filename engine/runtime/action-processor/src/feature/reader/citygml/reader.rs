@@ -6,10 +6,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use nusamai_citygml::{
-    object::ObjectStereotype, CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader,
-    Value,
-};
+use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
 use nusamai_plateau::{
     appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
 };
@@ -220,14 +217,16 @@ fn parse_tree_reader<R: BufRead>(
             vec![entity]
         };
         for mut ent in entities {
-            let Value::Object(obj) = &ent.root else {
+            let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
             // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
             // Also extract geom feature_id from GeometryRef if child doesn't have gml:id
             let mut child_lod = LodMask::default();
             let mut geom_feature_id: Option<String> = None;
-            if let ObjectStereotype::Feature { geometries, .. } = &obj.stereotype {
+            if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
+                &obj.stereotype
+            {
                 for geom in geometries {
                     child_lod.add_lod(geom.lod);
                     // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
