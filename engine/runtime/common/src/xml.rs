@@ -250,10 +250,9 @@ pub fn get_readonly_node_prefix(node: &XmlRoNode) -> String {
 }
 
 pub fn get_node_tag(node: &XmlNode) -> String {
-    match node.get_namespace() {
-        Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()),
-        None => node.get_name().to_string(),
-    }
+    // Use qname() to get the full qualified name including prefix,
+    // which preserves the original prefix even for undeclared namespaces.
+    node.qname().to_string()
 }
 
 pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
@@ -273,10 +272,9 @@ pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
 }
 
 pub fn get_readonly_node_tag(node: &XmlRoNode) -> String {
-    match node.get_namespace() {
-        Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()),
-        None => node.get_name().to_string(),
-    }
+    // Use qname() to get the full qualified name including prefix,
+    // which preserves the original prefix even for undeclared namespaces.
+    node.qname().to_string()
 }
 
 pub fn get_root_node(document: &XmlDocument) -> crate::Result<XmlNode> {
@@ -784,21 +782,34 @@ mod tests {
         let ctx = create_context(&document).unwrap();
         let root = get_root_readonly_node(&document).unwrap();
 
-        // Test using the prefixed version (fastxml doesn't support namespace-uri() like libxml)
-        let result = find_readonly_nodes_by_xpath(&ctx, ".//gml:Envelope", &root);
-        println!("Result for prefixed query: {:?}", result);
+        // Test using namespace-uri() and local-name() XPath functions (supported in fastxml 0.4.0)
+        let result = find_readonly_nodes_by_xpath(
+            &ctx,
+            ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
+            &root,
+        );
+        println!("Result for namespace-uri() query: {:?}", result);
         assert!(
             result.is_ok(),
-            "Prefixed XPath query failed: {:?}",
+            "namespace-uri() XPath query failed: {:?}",
             result.err()
         );
         let nodes = result.unwrap();
-        println!("Found {} nodes with prefixed query", nodes.len());
+        println!("Found {} nodes with namespace-uri() query", nodes.len());
         assert_eq!(
             nodes.len(),
             1,
-            "Expected 1 Envelope node with prefix, found {}",
+            "Expected 1 Envelope node with namespace-uri(), found {}",
             nodes.len()
+        );
+
+        // Also test the prefixed version for comparison
+        let result_prefixed = find_readonly_nodes_by_xpath(&ctx, ".//gml:Envelope", &root);
+        assert!(result_prefixed.is_ok(), "Prefixed XPath query failed");
+        assert_eq!(
+            result_prefixed.unwrap().len(),
+            1,
+            "Expected 1 Envelope node with prefix"
         );
 
         // Test get_child_nodes and get_readonly_node_tag
