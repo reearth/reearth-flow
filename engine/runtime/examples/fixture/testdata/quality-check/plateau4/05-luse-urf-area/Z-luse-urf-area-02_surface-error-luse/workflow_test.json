@@ -16,7 +16,7 @@
     },
     {
       "name": "objectListsPath",
-      "value": "../../../../plateau-citymodel/13101_chiyoda-ku_pref_2025_citygml_1_op/13101_pref_2025_objectlist_op.xlsx"
+      "value": "./13101_pref_2025_objectlist_op_test.xlsx"
     },
     {
       "name": "prcs",
