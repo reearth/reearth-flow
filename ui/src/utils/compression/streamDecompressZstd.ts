@@ -1,4 +1,5 @@
 import { Decompress } from "fzstd";
+
 /**
  * Streams and decompresses a Zstandard-compressed JSONL file from a URL,
  * parsing features progressively in batches.
@@ -7,6 +8,7 @@ import { Decompress } from "fzstd";
  * @param options - Streaming options
  * @returns AsyncGenerator yielding batches of parsed features
  */
+
 export async function* streamDecompressZstdJsonl<T = any>(
   url: string,
   options: {
