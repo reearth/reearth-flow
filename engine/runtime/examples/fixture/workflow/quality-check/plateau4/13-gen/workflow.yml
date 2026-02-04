@@ -273,7 +273,7 @@ graphs:
             - attribute: 立体のエラー
               expr: |
                 env.get("__value")._num_solid_errors ?? 0
-            - attribute: コード化されていないgml_nameあり
+            - attribute: コード化されていないgml:name
               expr: |
                 env.get("__value")._num_uncoded_gml_name ?? 0
 
@@ -307,11 +307,11 @@ graphs:
                 env.get("__value")["立体のエラー"] ?? 0
             - newAttribute: コード化されていないgml_nameあり
               expr: |
-                env.get("__value")["コード化されていないgml_nameあり"] ?? 0
+                if (env.get("__value")["コード化されていないgml:name"] ?? 0) > 0 { 1 } else { 0 }
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
-                let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml_nameあり"];
+                let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml:name"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
                 }
@@ -526,7 +526,7 @@ graphs:
         fromPort: errorCountSolidErrors
         toPort: default
 
-      # Uncoded GML Name (コード化されていないgml_nameあり)
+      # Uncoded GML Name (コード化されていないgml:name)
       - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5e
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9f
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b

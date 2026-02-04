@@ -1,4 +1,8 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+    sync::Arc,
+};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -104,6 +108,7 @@ impl ProcessorFactory for GmlNameCodeSpaceValidatorFactory {
             city_gml_path_expr,
             global_params,
             processed_files: HashMap::new(),
+            processed_paths: HashSet::new(),
         };
         Ok(Box::new(process))
     }
@@ -129,6 +134,8 @@ pub struct GmlNameCodeSpaceValidator {
     global_params: Option<HashMap<String, serde_json::Value>>,
     /// Map from filename to error count for statistics output
     processed_files: HashMap<String, FileStats>,
+    /// Tracks which file paths have already been validated to avoid duplicate processing
+    processed_paths: HashSet<String>,
 }
 
 impl Processor for GmlNameCodeSpaceValidator {
@@ -199,35 +206,43 @@ impl Processor for GmlNameCodeSpaceValidator {
                     .to_string()
             });
 
-        // Parse XML and find uncoded gml:name elements
-        let errors = self.validate_gml_names(&ctx, &city_gml_path)?;
+        // Only validate if this file path hasn't been processed yet.
+        // This prevents duplicate error output and re-reading the same file
+        // when multiple features come from the same CityGML file.
+        if !self.processed_paths.contains(&city_gml_path) {
+            // Mark this path as processed
+            self.processed_paths.insert(city_gml_path.clone());
 
-        // Track statistics for this file
-        let stats = self
-            .processed_files
-            .entry(filename.clone())
-            .or_insert_with(|| FileStats {
-                filename: filename.clone(),
-                error_count: 0,
-            });
-        stats.error_count += errors.len();
+            // Parse XML and find uncoded gml:name elements
+            let errors = self.validate_gml_names(&ctx, &city_gml_path)?;
 
-        // Output error details for each uncoded gml:name
-        for error in errors {
-            let mut error_feature = Feature::new_with_attributes(Attributes::new());
-            error_feature.insert("Folder", AttributeValue::String(folder.clone()));
-            error_feature.insert("Index", AttributeValue::Number(Number::from(file_index)));
-            error_feature.insert("Filename", AttributeValue::String(filename.clone()));
-            error_feature.insert("gml_id", AttributeValue::String(error.gml_id));
-            error_feature.insert(
-                "コード化されていないgml_name",
-                AttributeValue::String(error.gml_name),
-            );
+            // Track statistics for this file
+            let stats = self
+                .processed_files
+                .entry(filename.clone())
+                .or_insert_with(|| FileStats {
+                    filename: filename.clone(),
+                    error_count: 0,
+                });
+            stats.error_count += errors.len();
 
-            fw.send(ctx.new_with_feature_and_port(error_feature, GML_NAME_ERRORS_PORT.clone()));
+            // Output error details for each uncoded gml:name
+            for error in errors {
+                let mut error_feature = Feature::new_with_attributes(Attributes::new());
+                error_feature.insert("Folder", AttributeValue::String(folder.clone()));
+                error_feature.insert("Index", AttributeValue::Number(Number::from(file_index)));
+                error_feature.insert("Filename", AttributeValue::String(filename.clone()));
+                error_feature.insert("gml_id", AttributeValue::String(error.gml_id));
+                error_feature.insert(
+                    "コード化されていないgml:name",
+                    AttributeValue::String(error.gml_name),
+                );
+
+                fw.send(ctx.new_with_feature_and_port(error_feature, GML_NAME_ERRORS_PORT.clone()));
+            }
         }
 
-        // Forward original feature
+        // Forward original feature (always, regardless of whether validation was performed)
         fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
 
         Ok(())
@@ -364,6 +379,7 @@ mod tests {
             city_gml_path_expr: None,
             global_params: None,
             processed_files: HashMap::new(),
+            processed_paths: HashSet::new(),
         };
 
         // XML with uncoded gml:name (no codeSpace attribute)
@@ -385,6 +401,7 @@ mod tests {
             city_gml_path_expr: None,
             global_params: None,
             processed_files: HashMap::new(),
+            processed_paths: HashSet::new(),
         };
 
         // XML with coded gml:name (HAS codeSpace attribute)
@@ -408,6 +425,7 @@ mod tests {
             city_gml_path_expr: None,
             global_params: None,
             processed_files: HashMap::new(),
+            processed_paths: HashSet::new(),
         };
 
         // XML with both coded and uncoded gml:name

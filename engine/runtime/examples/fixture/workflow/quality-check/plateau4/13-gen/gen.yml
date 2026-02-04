@@ -382,7 +382,7 @@ nodes:
     with:
       routingPort: errorCountSolidErrors
 
-  # ===== Uncoded gml:name validation (コード化されていないgml_nameあり) =====
+  # ===== Uncoded gml:name validation (コード化されていないgml:name) =====
   # GmlNameCodeSpaceValidator - check if gml:name has codeSpace attribute
   - id: 19a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d1
     name: GmlNameCodeSpaceValidator

@@ -45,4 +45,43 @@
 			</gen:lod1Geometry>
 		</gen:GenericCityObject>
 	</core:cityObjectMember>
+	<!-- 2つ目の地物: 同様にcodeSpace属性がないgml:nameエラー -->
+	<core:cityObjectMember>
+		<gen:GenericCityObject gml:id="gen_a1b2c3d4-e5f6-7890-abcd-ef1234567890">
+			<!-- 不正なgml:name: codeSpace属性がない（コード化されていない） -->
+			<gml:name>30</gml:name>
+			<core:creationDate>2025-03-31</core:creationDate>
+			<gen:stringAttribute name="告示番号">
+				<gen:value>福岡県告示第999号</gen:value>
+			</gen:stringAttribute>
+			<gen:dateAttribute name="告示年月日">
+				<gen:value>2020-01-15</gen:value>
+			</gen:dateAttribute>
+			<gen:stringAttribute name="名称">
+				<gen:value>テスト指定区域2（コード化されていないgml:name）</gen:value>
+			</gen:stringAttribute>
+			<gen:stringAttribute name="区域の所在">
+				<gen:value>古賀市テスト町2丁目</gen:value>
+			</gen:stringAttribute>
+			<gen:stringAttribute name="区域の面積">
+				<gen:value>2000</gen:value>
+			</gen:stringAttribute>
+			<gen:stringAttribute name="備考">
+				<gen:value>テスト用データ2 - codeSpace属性なしのgml:name</gen:value>
+			</gen:stringAttribute>
+			<gen:lod1Geometry>
+				<gml:MultiSurface>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>33.71650000000000 130.48400000000000 0 33.71650000000000 130.48600000000000 0 33.71750000000000 130.48600000000000 0 33.71750000000000 130.48400000000000 0 33.71650000000000 130.48400000000000 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</gen:lod1Geometry>
+		</gen:GenericCityObject>
+	</core:cityObjectMember>
 </core:CityModel>
