@@ -2,14 +2,14 @@ use core::fmt;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Formatter},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
-    sync::Arc,
 };
 
+use fastxml::schema::fetcher::{DefaultFetcher, FetchResult, SchemaFetcher};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
-    uri::{Uri, PROTOCOL_SEPARATOR},
+    uri::Uri,
     xml::{self, XmlDocument, XmlRoNamespace},
 };
 use reearth_flow_runtime::{
@@ -19,14 +19,12 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Value;
 
 use super::errors::{Result, XmlProcessorError};
 use super::namespace::recursive_check_namespace;
-use super::types::{
-    SchemaStore, ValidationResult, ValidationType, XmlInputType, XmlValidatorParam,
-};
+use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorParam};
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
@@ -84,18 +82,67 @@ impl ProcessorFactory for XmlValidatorFactory {
             .into());
         };
 
-        let process = XmlValidator {
-            params,
-            schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        };
+        let process = XmlValidator { params };
         Ok(Box::new(process))
+    }
+}
+
+/// A schema fetcher that caches HTTP fetch results to a temp directory on disk.
+/// This allows schema cache sharing across different XmlValidator instances
+/// and even across different test processes running in parallel.
+struct TempDirCachingFetcher {
+    inner: DefaultFetcher,
+    cache_dir: PathBuf,
+}
+
+impl TempDirCachingFetcher {
+    fn new(inner: DefaultFetcher) -> Self {
+        let cache_dir = std::env::temp_dir().join("fastxml-schema-cache");
+        std::fs::create_dir_all(&cache_dir).ok();
+        Self { inner, cache_dir }
+    }
+
+    fn url_to_cache_path(&self, url: &str) -> PathBuf {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        url.hash(&mut hasher);
+        self.cache_dir.join(format!("{:016x}", hasher.finish()))
+    }
+}
+
+impl SchemaFetcher for TempDirCachingFetcher {
+    fn fetch(&self, url: &str) -> fastxml::error::Result<FetchResult> {
+        let cache_path = self.url_to_cache_path(url);
+        let meta_path = cache_path.with_extension("url");
+
+        // Try to read from disk cache
+        if let (Ok(content), Ok(final_url)) = (
+            std::fs::read(&cache_path),
+            std::fs::read_to_string(&meta_path),
+        ) {
+            return Ok(FetchResult {
+                content,
+                final_url,
+                redirected: false,
+            });
+        }
+
+        // Fetch from network/filesystem
+        let result = self.inner.fetch(url)?;
+
+        // Cache HTTP results to disk for cross-process sharing
+        if url.starts_with("http://") || url.starts_with("https://") {
+            std::fs::write(&cache_path, &result.content).ok();
+            std::fs::write(&meta_path, &result.final_url).ok();
+        }
+
+        Ok(result)
     }
 }
 
 #[derive(Clone)]
 pub struct XmlValidator {
     params: XmlValidatorParam,
-    schema_store: Arc<parking_lot::RwLock<SchemaStore>>,
 }
 
 impl Debug for XmlValidator {
@@ -366,59 +413,45 @@ impl XmlValidator {
         Ok(recursive_check_namespace(root_node, &namespaces))
     }
 
-    /// Streaming schema validation using StreamValidator
-    /// Memory efficient - does NOT load the entire DOM tree
+    /// Streaming schema validation using fastxml's high-level API.
+    /// Handles schema location extraction, fetching, resolution, compilation,
+    /// and validation in a single call. Uses a caching fetcher to avoid
+    /// redundant HTTP requests across multiple XML files.
     fn check_schema_streaming(
         &self,
         feature: &Feature,
         xml_bytes: &[u8],
     ) -> Result<Vec<ValidationResult>> {
-        // Parse schema locations from XML (minimal parsing)
-        let doc = xml::parse(xml_bytes)
-            .map_err(|e| XmlProcessorError::Validator(format!("XML parse error: {e:?}")))?;
-        let schema_locations = xml::parse_schema_locations(&doc)
-            .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
+        use std::io::{BufReader, Cursor};
 
-        #[cfg(test)]
-        println!(
-            "[check_schema_streaming] Parsed schema locations: {:?}",
-            schema_locations
-        );
-        tracing::debug!("Parsed schema locations: {:?}", schema_locations);
+        // Determine base directory for relative schema resolution
+        let base_dir = self.get_xml_base_url(feature).and_then(|uri| {
+            uri.path()
+                .to_str()
+                .map(PathBuf::from)
+                .filter(|p| p.exists())
+        });
 
-        if schema_locations.is_empty() {
-            return Ok(Vec::new());
-        }
+        // Create a caching fetcher that stores HTTP schemas in a temp directory,
+        // enabling cache sharing across different validator instances and test processes
+        let inner = match &base_dir {
+            Some(dir) => DefaultFetcher::with_base_dir(dir),
+            None => DefaultFetcher::new(),
+        };
+        let fetcher = TempDirCachingFetcher::new(inner);
 
-        // Get or compile schema (cached for reuse)
-        if !self.schema_store.read().contains_key(&schema_locations) {
-            let compiled_schema =
-                self.get_or_compile_schema_streaming(&schema_locations, feature)?;
-            self.schema_store
-                .write()
-                .insert(schema_locations.clone(), compiled_schema);
-        }
+        // Create reader for streaming validation
+        let reader = BufReader::new(Cursor::new(xml_bytes));
 
-        // Use cached compiled schema for streaming validation
-        let store = self.schema_store.read();
-        let compiled_schema = store.get(&schema_locations).unwrap();
+        // Use the high-level API that handles schema location extraction,
+        // fetching, resolution, compilation, and validation in one call
+        let errors = fastxml::streaming_validate_with_schema_location_and_fetcher(reader, fetcher)
+            .map_err(|e| {
+                XmlProcessorError::Validator(format!("Schema validation failed: {e:?}"))
+            })?;
 
-        // Perform streaming validation using StreamValidator
-        let result = xml::validate_xml_streaming(xml_bytes, compiled_schema, 100)
-            .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
-
-        #[cfg(test)]
-        println!(
-            "[check_schema_streaming] Validation result: {} errors",
-            result.len()
-        );
-        #[cfg(test)]
-        for err in &result {
-            println!("[check_schema_streaming]   Error: {:?}", err);
-        }
-
-        // Convert validation errors
-        let validation_results = result
+        // Convert errors to ValidationResult and deduplicate
+        let validation_results: HashSet<_> = errors
             .into_iter()
             .map(|err| {
                 ValidationResult::new_with_line_and_col(
@@ -428,126 +461,9 @@ impl XmlValidator {
                     err.column().map(|c| c as i32),
                 )
             })
-            .collect::<Vec<_>>();
-
-        // Remove duplicates
-        let set: HashSet<_> = validation_results.into_iter().collect();
-        Ok(set.into_iter().collect())
-    }
-
-    /// Compile schema for streaming validation (StreamValidator)
-    fn get_or_compile_schema_streaming(
-        &self,
-        schema_locations: &[(String, String)],
-        feature: &Feature,
-    ) -> Result<Arc<xml::CompiledSchema>> {
-        // Resolve schema locations to actual URLs/paths
-        let resolved_locations: Vec<(String, String)> = schema_locations
-            .iter()
-            .filter_map(|(ns, location)| {
-                self.resolve_schema_target(location, feature)
-                    .filter(|t| !t.is_empty())
-                    .map(|target| (ns.clone(), target))
-            })
             .collect();
 
-        if resolved_locations.is_empty() {
-            return Err(XmlProcessorError::Validator(format!(
-                "Failed to resolve any schema locations from: {:?}",
-                schema_locations
-            )));
-        }
-
-        #[cfg(test)]
-        println!(
-            "[get_or_compile_schema_streaming] resolved_locations: {:?}",
-            resolved_locations
-        );
-        tracing::debug!("Resolved schema locations: {:?}", resolved_locations);
-
-        // Get base directory for relative schema resolution
-        let base_dir = self.get_schema_base_dir(feature);
-
-        #[cfg(test)]
-        println!("[get_or_compile_schema_streaming] base_dir: {:?}", base_dir);
-
-        // Compile schema for streaming validation
-        xml::compile_schema_for_streaming(&resolved_locations, base_dir.as_deref())
-            .map_err(|e| XmlProcessorError::Validator(format!("Failed to compile schema: {e:?}")))
-    }
-
-    /// Get the base directory for schema resolution.
-    /// This is used by fastxml's DefaultFetcher to resolve relative schema paths.
-    fn get_schema_base_dir(&self, feature: &Feature) -> Option<PathBuf> {
-        // First try dirSchemas attribute (for PLATEAU CityGML)
-        if let Some(dir_schemas) = Self::get_dir_schemas(feature) {
-            if let Some(path) = dir_schemas.path().to_str() {
-                let path_buf = PathBuf::from(path);
-                if path_buf.exists() {
-                    return Some(path_buf);
-                }
-            }
-        }
-
-        // Fall back to XML file's parent directory
-        self.get_xml_base_url(feature).and_then(|uri| {
-            uri.path().to_str().map(PathBuf::from).and_then(
-                |p| {
-                    if p.exists() {
-                        Some(p)
-                    } else {
-                        None
-                    }
-                },
-            )
-        })
-    }
-
-    fn resolve_schema_target(&self, location: &str, feature: &Feature) -> Option<String> {
-        if !location.contains(PROTOCOL_SEPARATOR) && !location.starts_with('/') {
-            // location is relative
-
-            // Check if the location contains "schemas/" and we have dir_schemas attribute
-            // This handles PLATEAU CityGML files where schemas are in a separate directory
-            if let Some(schemas_relative) = Self::extract_schemas_relative_path(location) {
-                if let Some(dir_schemas) = Self::get_dir_schemas(feature) {
-                    let joined = dir_schemas.join(&schemas_relative).ok()?;
-                    return Some(joined.path().to_str()?.to_string());
-                }
-            }
-
-            // Fallback: resolve against the XML base URL
-            let base_path = self.get_xml_base_url(feature)?;
-            let joined = base_path.join(Path::new(location)).ok()?;
-            Some(joined.path().to_str().unwrap().to_string())
-        } else {
-            // location is absolute or has a protocol, use it as is
-            Some(location.to_string())
-        }
-    }
-
-    /// Extract the relative path after "schemas/" from a schema location
-    /// e.g., "../../schemas/iur/uro/3.1/urbanObject.xsd" -> "iur/uro/3.1/urbanObject.xsd"
-    fn extract_schemas_relative_path(location: &str) -> Option<String> {
-        const SCHEMAS_DIR: &str = "schemas/";
-        location
-            .find(SCHEMAS_DIR)
-            .map(|idx| location[idx + SCHEMAS_DIR.len()..].to_string())
-    }
-
-    /// Get the dirSchemas attribute from a feature if it exists
-    /// Note: UDXFolderExtractor uses camelCase for attribute names
-    fn get_dir_schemas(feature: &Feature) -> Option<Uri> {
-        feature
-            .attributes
-            .get(&Attribute::new("dirSchemas"))
-            .and_then(|v| {
-                if let AttributeValue::String(s) = v {
-                    Uri::from_str(s).ok()
-                } else {
-                    None
-                }
-            })
+        Ok(validation_results.into_iter().collect())
     }
 
     fn get_xml_base_url(&self, feature: &Feature) -> Option<Uri> {
@@ -578,6 +494,8 @@ impl XmlValidator {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::tests::utils;
     use indexmap::IndexMap;
@@ -591,10 +509,7 @@ mod tests {
             validation_type,
         };
 
-        XmlValidator {
-            params,
-            schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        }
+        XmlValidator { params }
     }
 
     fn create_feature_with_xml(xml_content: &str) -> Feature {
