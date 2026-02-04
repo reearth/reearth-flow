@@ -201,7 +201,7 @@ const DebugPreview: React.FC<Props> = ({
           </div>
           <div className="h-[calc(100%-55px)]" id="cesiumContainer">
             <ThreeDViewer
-              fileContent={selectedOutputData}
+              fileContent={processedOutputData}
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
               onSelectedFeature={onSelectedFeature}

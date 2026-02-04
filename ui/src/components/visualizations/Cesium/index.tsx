@@ -1,6 +1,6 @@
 // import { Viewer as CesiumViewerType } from "cesium";
 import { defined, SceneMode, ScreenSpaceEventType } from "cesium";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
@@ -57,9 +57,10 @@ const CesiumViewer: React.FC<Props> = ({
 
       if (defined(pickedObject) && defined(pickedObject.id)) {
         const entity = pickedObject.id;
-        if (entity.id) {
+        const properties = entity.properties?.getValue?.();
+        if (properties?._originalId) {
           try {
-            onSelectedFeature(entity.id);
+            onSelectedFeature(properties?._originalId);
           } catch (e) {
             console.error("Cesium viewer error:", e);
           }
@@ -72,15 +73,28 @@ const CesiumViewer: React.FC<Props> = ({
   );
 
   // Separate features by geometry type
-  const geoJsonFeatures =
-    fileContent?.features?.filter(
-      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
-    ) || [];
+  const { geoJsonData, cityGmlData } = useMemo(() => {
+    const features = fileContent?.features || [];
 
-  const cityGmlFeatures =
-    fileContent?.features?.filter(
+    const geoJsonFeatures = features.filter(
+      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
+    );
+
+    const cityGmlFeatures = features.filter(
       (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
-    ) || [];
+    );
+
+    return {
+      geoJsonData:
+        geoJsonFeatures.length > 0
+          ? { type: "FeatureCollection" as const, features: geoJsonFeatures }
+          : null,
+      cityGmlData:
+        cityGmlFeatures.length > 0
+          ? { type: "FeatureCollection" as const, features: cityGmlFeatures }
+          : null,
+    };
+  }, [fileContent]);
 
   return (
     <Viewer ref={viewerRef} full {...defaultCesiumProps}>
@@ -96,24 +110,10 @@ const CesiumViewer: React.FC<Props> = ({
       {isLoaded && fileType === "geojson" && (
         <>
           {/* Standard GeoJSON features */}
-          {geoJsonFeatures.length > 0 && (
-            <GeoJsonData
-              geoJsonData={{
-                type: "FeatureCollection",
-                features: geoJsonFeatures,
-              }}
-            />
-          )}
+          {geoJsonData && <GeoJsonData geoJsonData={geoJsonData} />}
 
           {/* CityGML features */}
-          {cityGmlFeatures.length > 0 && (
-            <CityGmlData
-              cityGmlData={{
-                type: "FeatureCollection",
-                features: cityGmlFeatures,
-              }}
-            />
-          )}
+          {cityGmlData && <CityGmlData cityGmlData={cityGmlData} />}
         </>
       )}
     </Viewer>
