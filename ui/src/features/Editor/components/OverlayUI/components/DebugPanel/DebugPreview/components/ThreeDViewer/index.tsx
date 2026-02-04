@@ -9,6 +9,7 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   cesiumViewerRef: React.RefObject<any>;
+  selectedFeaturedId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
 };
 
@@ -17,6 +18,7 @@ const ThreeDViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   cesiumViewerRef,
+  selectedFeaturedId,
   onSelectedFeature,
 }) => {
   const t = useT();
@@ -29,6 +31,7 @@ const ThreeDViewer: React.FC<Props> = ({
           fileContent={fileContent}
           fileType={fileType}
           viewerRef={cesiumViewerRef}
+          selectedFeatureId={selectedFeaturedId}
           onSelectedFeature={onSelectedFeature}
         />
       </div>

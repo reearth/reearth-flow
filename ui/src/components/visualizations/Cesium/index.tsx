@@ -32,6 +32,7 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
+  selectedFeatureId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
 };
 
@@ -39,6 +40,7 @@ const CesiumViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   viewerRef,
+  selectedFeatureId,
   onSelectedFeature,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -110,7 +112,12 @@ const CesiumViewer: React.FC<Props> = ({
       {isLoaded && fileType === "geojson" && (
         <>
           {/* Standard GeoJSON features */}
-          {geoJsonData && <GeoJsonData geoJsonData={geoJsonData} />}
+          {geoJsonData && (
+            <GeoJsonData
+              geoJsonData={geoJsonData}
+              selectedFeatureId={selectedFeatureId}
+            />
+          )}
 
           {/* CityGML features */}
           {cityGmlData && <CityGmlData cityGmlData={cityGmlData} />}

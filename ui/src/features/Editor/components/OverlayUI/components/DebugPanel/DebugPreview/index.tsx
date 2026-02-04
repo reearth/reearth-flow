@@ -61,13 +61,6 @@ const DebugPreview: React.FC<Props> = ({
     threeJSViewerRef.current?.resetCamera();
   }, []);
 
-  // Determine if we should show the viewer based on data availability
-
-  const { handleMapLoad } = useHooks({
-    mapRef,
-    selectedOutputData,
-  });
-
   const { featureMap, processedOutputData } = useMemo(() => {
     if (!selectedOutputData?.features) {
       return { featureMap: null, processedOutputData: selectedOutputData };
@@ -99,6 +92,7 @@ const DebugPreview: React.FC<Props> = ({
     };
   }, [selectedOutputData]);
 
+  // Determine if we should show the viewer based on data availability
   const convertFeature = useCallback(
     (featureId: string | null) => {
       if (!featureId || !featureMap) return null;
@@ -124,6 +118,12 @@ const DebugPreview: React.FC<Props> = ({
     onConvertedSelectedFeature(converted);
     return converted;
   }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
+
+  const { handleMapLoad } = useHooks({
+    mapRef,
+    selectedOutputData,
+    convertedSelectedFeature,
+  });
 
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
@@ -204,6 +204,7 @@ const DebugPreview: React.FC<Props> = ({
               fileContent={processedOutputData}
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
+              selectedFeaturedId={selectedFeatureId}
               onSelectedFeature={onSelectedFeature}
             />
           </div>
