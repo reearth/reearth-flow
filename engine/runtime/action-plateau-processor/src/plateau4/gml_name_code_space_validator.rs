@@ -27,6 +27,23 @@ static GML_NAME_ERRORS_PORT: once_cell::sync::Lazy<Port> =
 /// Output port for per-file statistics
 static STATS_PORT: once_cell::sync::Lazy<Port> = once_cell::sync::Lazy::new(|| Port::new("stats"));
 
+/// Regex to match GenericCityObject elements with their gml:id
+/// Pattern: <gen:GenericCityObject gml:id="...">...</gen:GenericCityObject>
+static GENERIC_CITY_OBJECT_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
+    Regex::new(
+        r#"<gen:GenericCityObject[^>]*gml:id="([^"]*)"[^>]*>([\s\S]*?)</gen:GenericCityObject>"#,
+    )
+    .expect("Failed to compile GENERIC_CITY_OBJECT_RE regex")
+});
+
+/// Regex to match ONLY uncoded gml:name elements (no attributes at all)
+/// This pattern matches: <gml:name>value</gml:name>
+/// But NOT: <gml:name codeSpace="...">value</gml:name>
+static UNCODED_GML_NAME_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
+    Regex::new(r#"<gml:name>([^<]*)</gml:name>"#)
+        .expect("Failed to compile UNCODED_GML_NAME_RE regex")
+});
+
 /// # GmlNameCodeSpaceValidator Parameters
 ///
 /// Configuration for validating gml:name elements to ensure they have codeSpace attributes.
@@ -315,31 +332,13 @@ impl GmlNameCodeSpaceValidator {
     ) -> super::errors::Result<Vec<UncodedGmlNameError>> {
         let mut errors = Vec::new();
 
-        // Regex to match GenericCityObject elements with their gml:id
-        // Pattern: <gen:GenericCityObject gml:id="...">...</gen:GenericCityObject>
-        let generic_city_object_re = Regex::new(
-            r#"<gen:GenericCityObject[^>]*gml:id="([^"]*)"[^>]*>([\s\S]*?)</gen:GenericCityObject>"#,
-        )
-        .map_err(|e| {
-            PlateauProcessorError::GmlNameCodeSpaceValidator(format!("Failed to compile regex: {e}"))
-        })?;
-
-        // Regex to match ONLY uncoded gml:name elements (no attributes at all)
-        // This pattern matches: <gml:name>value</gml:name>
-        // But NOT: <gml:name codeSpace="...">value</gml:name>
-        let uncoded_gml_name_re = Regex::new(r#"<gml:name>([^<]*)</gml:name>"#).map_err(|e| {
-            PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
-                "Failed to compile regex: {e}"
-            ))
-        })?;
-
         // Find all GenericCityObject elements
-        for cap in generic_city_object_re.captures_iter(xml_str) {
+        for cap in GENERIC_CITY_OBJECT_RE.captures_iter(xml_str) {
             let gml_id = cap.get(1).map(|m| m.as_str()).unwrap_or_default();
             let inner_content = cap.get(2).map(|m| m.as_str()).unwrap_or_default();
 
             // Find ONLY uncoded gml:name elements within this GenericCityObject
-            for name_cap in uncoded_gml_name_re.captures_iter(inner_content) {
+            for name_cap in UNCODED_GML_NAME_RE.captures_iter(inner_content) {
                 let gml_name_value = name_cap.get(1).map(|m| m.as_str()).unwrap_or_default();
 
                 errors.push(UncodedGmlNameError {
