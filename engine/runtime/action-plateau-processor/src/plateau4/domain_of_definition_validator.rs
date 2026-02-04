@@ -594,7 +594,7 @@ fn process_feature(
         })?;
 
     transformer
-        .on(&members_xpath, |node| {
+        .on(members_xpath, |node| {
             if stream_error.is_some() {
                 return;
             }
