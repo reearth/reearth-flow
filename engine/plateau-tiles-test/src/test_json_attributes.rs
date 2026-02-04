@@ -11,6 +11,8 @@ pub struct JsonFileConfig {
     pub path: String,
     #[serde(default)]
     pub extracted: bool,
+    #[serde(default)]
+    pub must_not_exist: bool,
     pub casts: Option<HashMap<String, CastConfigValue>>,
     pub values: Option<HashMap<String, Value>>,
 }
@@ -32,28 +34,26 @@ pub fn test_json_attributes(
         let fme_file = fme_base.join(file_path);
         let flow_file = flow_base.join(file_path);
 
-        // Read FME file or treat as empty if doesn't exist
-        let fme_data: serde_json::Value = if fme_file.exists() {
-            let fme_content = fs::read(&fme_file).map_err(|e| e.to_string())?;
-            let fme_content = if fme_content.starts_with(&[0xEF, 0xBB, 0xBF]) {
-                &fme_content[3..]
-            } else {
-                &fme_content
-            };
-            serde_json::from_slice(fme_content)
-                .map_err(|e| format!("Failed to parse FME JSON: {}", e))?
-        } else {
-            serde_json::json!({})
-        };
+        if file_cfg.must_not_exist {
+            assert!(!flow_file.exists(), "flow file should not exist: {:?}", flow_file);
+            tracing::debug!("Verified files do not exist: {} ({})", name, file_path);
+            continue;
+        }
 
-        // Read Flow file or treat as empty if doesn't exist
-        let flow_data: serde_json::Value = if flow_file.exists() {
-            let flow_content = fs::read(&flow_file).map_err(|e| e.to_string())?;
-            serde_json::from_slice(&flow_content)
-                .map_err(|e| format!("Failed to parse Flow JSON: {}", e))?
+        assert!(fme_file.exists(), "missing fme file {:?}", fme_file);
+        assert!(flow_file.exists(), "missing flow file {:?}", flow_file);
+
+        let fme_content = fs::read(&fme_file).map_err(|e| e.to_string())?;
+        let fme_content = if fme_content.starts_with(&[0xEF, 0xBB, 0xBF]) {
+            &fme_content[3..]
         } else {
-            serde_json::json!({})
+            &fme_content
         };
+        let fme_data: serde_json::Value = serde_json::from_slice(fme_content)
+            .map_err(|e| format!("Failed to parse FME JSON: {}", e))?;
+        let flow_content = fs::read(&flow_file).map_err(|e| e.to_string())?;
+        let flow_data: serde_json::Value = serde_json::from_slice(&flow_content)
+                .map_err(|e| format!("Failed to parse Flow JSON: {}", e))?;
 
         let casts = if let Some(casts_cfg) = &file_cfg.casts {
             convert_casts(casts_cfg)?

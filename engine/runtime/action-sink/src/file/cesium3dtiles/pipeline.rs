@@ -515,16 +515,16 @@ pub(super) fn tile_writing_stage(
         }
     };
 
-    let mut tileset = cesiumtiles::tileset::Tileset {
+    let tileset = cesiumtiles::tileset::Tileset {
         asset: cesiumtiles::tileset::Asset {
             version: "1.1".to_string(),
             ..Default::default()
         },
         root: tree.into_tileset_root(),
         geometric_error: 1e+100,
+        properties: properties,
         ..Default::default()
     };
-    tileset.properties = properties;
 
     let storage = ctx
         .storage_resolver
