@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use reearth_flow_geometry::algorithm::{
     area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
@@ -23,6 +23,17 @@ use serde_json::Number;
 use serde_json::Value;
 
 use crate::plateau4::errors::PlateauProcessorError;
+
+// Thread-local cache for PROJ transformations.
+// Stores both forward (6697 -> target) and inverse (target -> 6697) projections.
+// Each thread maintains its own cache to ensure thread-safety without requiring
+// unsafe Send/Sync implementations on types containing proj::Proj.
+thread_local! {
+    // Cache for forward projections: 6697 -> target EPSG
+    static PROJ_TO_CACHE: RefCell<HashMap<String, proj::Proj>> = RefCell::new(HashMap::new());
+    // Cache for inverse projections: target EPSG -> 6697
+    static PROJ_FROM_CACHE: RefCell<HashMap<String, proj::Proj>> = RefCell::new(HashMap::new());
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct DestinationMeshCodeExtractorFactory;
@@ -89,9 +100,6 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
             mesh_type,
             meshcode_attr: params.meshcode_attr,
             epsg_code_ast,
-            cached_epsg_code: None,
-            proj_to_epsg: None,
-            proj_from_epsg: None,
         }))
     }
 }
@@ -139,45 +147,52 @@ fn default_epsg_code() -> Expr {
     Expr::new("6691".to_string()) // JGD2011 / UTM Zone 54N - PLATEAU standard coordinate system
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DestinationMeshCodeExtractor {
     global_params: Option<HashMap<String, Value>>,
     mesh_type: JPMeshType,
     meshcode_attr: String,
     epsg_code_ast: AST,
-    // Cached projection instances for reuse
-    cached_epsg_code: Option<String>,
-    proj_to_epsg: Option<proj::Proj>,   // 6697 -> target_epsg
-    proj_from_epsg: Option<proj::Proj>, // target_epsg -> 6697
 }
 
-impl Clone for DestinationMeshCodeExtractor {
-    fn clone(&self) -> Self {
-        DestinationMeshCodeExtractor {
-            global_params: self.global_params.clone(),
-            mesh_type: self.mesh_type,
-            meshcode_attr: self.meshcode_attr.clone(),
-            epsg_code_ast: self.epsg_code_ast.clone(),
-            // Proj instances are not cloned - they will be recreated on first use
-            // This is safe because the engine only clones processors at build time
-            cached_epsg_code: None,
-            proj_to_epsg: None,
-            proj_from_epsg: None,
+/// Helper function to ensure proj instances exist in thread-local cache for the given EPSG code.
+fn ensure_proj_cached(epsg_code: &str) -> Result<(), BoxedError> {
+    use std::collections::hash_map::Entry;
+
+    PROJ_TO_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Entry::Vacant(e) = cache.entry(epsg_code.to_string()) {
+            let proj = proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", epsg_code), None)
+                .map_err(|e| {
+                    PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                        "Failed to create PROJ transformation from 6697 to {epsg_code}: {e}"
+                    ))
+                })?;
+            e.insert(proj);
         }
-    }
-}
+        Ok::<_, BoxedError>(())
+    })?;
 
-// SAFETY: `proj::Proj` wraps the PROJ C library which uses raw pointers and doesn't implement
-// Send/Sync. However, this is safe because:
-// 1. `num_threads()` returns 1, guaranteeing single-threaded execution of this processor
-// 2. The processor owns the `Proj` instances exclusively; they're never shared across threads
-unsafe impl Send for DestinationMeshCodeExtractor {}
-unsafe impl Sync for DestinationMeshCodeExtractor {}
+    PROJ_FROM_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Entry::Vacant(e) = cache.entry(epsg_code.to_string()) {
+            let proj = proj::Proj::new_known_crs(&format!("EPSG:{}", epsg_code), "EPSG:6697", None)
+                .map_err(|e| {
+                    PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                        "Failed to create PROJ transformation from {epsg_code} to 6697: {e}"
+                    ))
+                })?;
+            e.insert(proj);
+        }
+        Ok::<_, BoxedError>(())
+    })
+}
 
 impl Processor for DestinationMeshCodeExtractor {
     fn num_threads(&self) -> usize {
-        // DO NOT change this value. The unsafe Send/Sync impls rely on single-threaded execution.
-        1
+        // Thread-local cache ensures each thread has its own Proj instances,
+        // so we can safely use multiple threads.
+        16
     }
 
     fn process(
@@ -191,26 +206,8 @@ impl Processor for DestinationMeshCodeExtractor {
         // Evaluate EPSG code expression at runtime with feature context
         let epsg_code = self.evaluate_epsg_code(feature, &ctx)?;
 
-        // Update cached proj instances if EPSG code changed
-        if self.cached_epsg_code.as_ref() != Some(&epsg_code) {
-            self.proj_to_epsg = Some(
-                proj::Proj::new_known_crs("EPSG:6697", &format!("EPSG:{}", epsg_code), None)
-                    .map_err(|e| {
-                        PlateauProcessorError::DestinationMeshCodeExtractor(format!(
-                            "Failed to create PROJ transformation from 6697 to {epsg_code}: {e}"
-                        ))
-                    })?,
-            );
-            self.proj_from_epsg = Some(
-                proj::Proj::new_known_crs(&format!("EPSG:{}", epsg_code), "EPSG:6697", None)
-                    .map_err(|e| {
-                        PlateauProcessorError::DestinationMeshCodeExtractor(format!(
-                            "Failed to create PROJ transformation from {epsg_code} to 6697: {e}"
-                        ))
-                    })?,
-            );
-            self.cached_epsg_code = Some(epsg_code.clone());
-        }
+        // Ensure proj instances are cached for this EPSG code
+        ensure_proj_cached(&epsg_code)?;
 
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
@@ -223,7 +220,9 @@ impl Processor for DestinationMeshCodeExtractor {
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 // Calculate mesh code using PLATEAU specification compliant area-based method
-                let mesh_result = if let Some(result) = self.calculate_mesh_with_details(geometry) {
+                let mesh_result = if let Some(result) =
+                    self.calculate_mesh_with_details(geometry, &epsg_code)
+                {
                     result
                 } else {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -322,17 +321,18 @@ impl DestinationMeshCodeExtractor {
 
     /// Calculate mesh code with detailed information for all required attributes
     /// Returns comprehensive mesh calculation result including count, areas, and mapping
-    /// Uses cached proj instances for coordinate transformations
+    /// Uses thread-local cached proj instances for coordinate transformations
     fn calculate_mesh_with_details(
         &self,
         geometry: &Geometry2D<f64>,
+        epsg_code: &str,
     ) -> Option<MeshCalculationResult> {
         // Convert geometry to polygon for area calculation
         let polygon = self.geometry_to_polygon(geometry)?;
 
         // Get bounding box of the feature (in WGS84 for mesh lookup)
         let bounds = geometry.bounding_rect()?;
-        let bounds = self.transform_bounds_to_epsg_inverse(&bounds)?;
+        let bounds = Self::transform_bounds_to_epsg_inverse(&bounds, epsg_code)?;
 
         // Get all mesh codes that intersect with the feature bounds
         let candidate_meshes = JPMeshCode::from_inside_bounds(bounds, self.mesh_type);
@@ -348,7 +348,7 @@ impl DestinationMeshCodeExtractor {
             let mesh_bounds = mesh_code.bounds();
             let mesh_polygon = mesh_bounds.to_polygon();
 
-            let mesh_polygon = self.transform_polygon_to_epsg(&mesh_polygon)?;
+            let mesh_polygon = Self::transform_polygon_to_epsg(&mesh_polygon, epsg_code)?;
 
             // Calculate intersection area in meters
             let intersection = polygon.intersection(&mesh_polygon);
@@ -386,25 +386,43 @@ impl DestinationMeshCodeExtractor {
         })
     }
 
-    /// Transform a coordinate using a cached proj instance
-    fn transform_coord_with_proj(
+    /// Transform a coordinate using a proj instance from thread-local cache
+    fn transform_coord_to_epsg(
         coord: Coordinate2D<f64>,
-        proj: &proj::Proj,
+        epsg_code: &str,
     ) -> Option<Coordinate2D<f64>> {
-        let transformed = proj.convert((coord.x, coord.y)).ok()?;
-        Some(Coordinate2D::new_(transformed.0, transformed.1))
+        PROJ_TO_CACHE.with(|cache| {
+            let cache = cache.borrow();
+            let proj = cache.get(epsg_code)?;
+            let transformed = proj.convert((coord.x, coord.y)).ok()?;
+            Some(Coordinate2D::new_(transformed.0, transformed.1))
+        })
+    }
+
+    /// Transform a coordinate using the inverse proj instance from thread-local cache
+    fn transform_coord_from_epsg(
+        coord: Coordinate2D<f64>,
+        epsg_code: &str,
+    ) -> Option<Coordinate2D<f64>> {
+        PROJ_FROM_CACHE.with(|cache| {
+            let cache = cache.borrow();
+            let proj = cache.get(epsg_code)?;
+            let transformed = proj.convert((coord.x, coord.y)).ok()?;
+            Some(Coordinate2D::new_(transformed.0, transformed.1))
+        })
     }
 
     /// Transform a polygon to the configured Japanese Plane Rectangular Coordinate System
-    /// Uses the cached proj_to_epsg instance (6697 -> target EPSG)
-    fn transform_polygon_to_epsg(&self, polygon: &Polygon2D<f64>) -> Option<Polygon2D<f64>> {
-        let proj = self.proj_to_epsg.as_ref()?;
-
+    /// Uses the thread-local cached proj_to_epsg instance (6697 -> target EPSG)
+    fn transform_polygon_to_epsg(
+        polygon: &Polygon2D<f64>,
+        epsg_code: &str,
+    ) -> Option<Polygon2D<f64>> {
         let exterior_coords: Result<Vec<Coordinate2D<f64>>, ()> = polygon
             .exterior()
             .0
             .iter()
-            .map(|coord| Self::transform_coord_with_proj(*coord, proj).ok_or(()))
+            .map(|coord| Self::transform_coord_to_epsg(*coord, epsg_code).ok_or(()))
             .collect();
         let exterior_coords = exterior_coords.ok()?;
 
@@ -418,7 +436,7 @@ impl DestinationMeshCodeExtractor {
                 let interior_coords: Result<Vec<Coordinate2D<f64>>, ()> = interior
                     .0
                     .iter()
-                    .map(|coord| Self::transform_coord_with_proj(*coord, proj).ok_or(()))
+                    .map(|coord| Self::transform_coord_to_epsg(*coord, epsg_code).ok_or(()))
                     .collect();
                 interior_coords.map(|coords| coords.into())
             })
@@ -429,11 +447,13 @@ impl DestinationMeshCodeExtractor {
     }
 
     /// Transform bounds from target EPSG back to 6697 (WGS84)
-    /// Uses the cached proj_from_epsg instance (target EPSG -> 6697)
-    fn transform_bounds_to_epsg_inverse(&self, rect: &Rect2D<f64>) -> Option<Rect2D<f64>> {
-        let proj = self.proj_from_epsg.as_ref()?;
-        let min = Self::transform_coord_with_proj(rect.min(), proj)?;
-        let max = Self::transform_coord_with_proj(rect.max(), proj)?;
+    /// Uses the thread-local cached proj_from_epsg instance (target EPSG -> 6697)
+    fn transform_bounds_to_epsg_inverse(
+        rect: &Rect2D<f64>,
+        epsg_code: &str,
+    ) -> Option<Rect2D<f64>> {
+        let min = Self::transform_coord_from_epsg(rect.min(), epsg_code)?;
+        let max = Self::transform_coord_from_epsg(rect.max(), epsg_code)?;
         Some(Rect2D::new(min, max))
     }
 
@@ -456,7 +476,7 @@ impl DestinationMeshCodeExtractor {
             }
             Geometry2D::LineString(ls) => {
                 // Convert closed LineString to Polygon
-                if self.is_closed_linestring(ls) {
+                if Self::is_closed_linestring(ls) {
                     Some(Polygon2D::new(ls.clone(), vec![]))
                 } else {
                     None
@@ -469,7 +489,6 @@ impl DestinationMeshCodeExtractor {
 
     /// Check if a LineString is closed
     fn is_closed_linestring(
-        &self,
         linestring: &reearth_flow_geometry::types::line_string::LineString2D<f64>,
     ) -> bool {
         if linestring.0.len() < 4 {
@@ -490,12 +509,10 @@ impl DestinationMeshCodeExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_eval_expr::engine::Engine;
 
     #[test]
     fn test_real_gml_coordinates_area_calculation() {
         use reearth_flow_geometry::types::{coordinate::Coordinate2D, polygon::Polygon2D};
-        use reearth_flow_types::jpmesh::JPMeshType;
 
         // Value actually obtained from FME
         const EXPECTED_AREA: f64 = 9.14;
@@ -514,28 +531,15 @@ mod tests {
             vec![],
         );
 
-        // Create a dummy AST for testing (the actual value doesn't matter for this test)
-        let engine = Engine::new();
-        let epsg_code_ast = engine.compile("\"6675\"").unwrap();
+        let epsg_code = "6675";
 
-        // Create proj instance for 6697 -> 6675 transformation
-        let proj_to_epsg = proj::Proj::new_known_crs("EPSG:6697", "EPSG:6675", None)
-            .expect("Failed to create Proj");
+        // Ensure proj is cached for this test
+        ensure_proj_cached(epsg_code).expect("Failed to cache Proj");
 
-        let extractor = DestinationMeshCodeExtractor {
-            global_params: None,
-            mesh_type: JPMeshType::Mesh1km,
-            meshcode_attr: "_meshcode".to_string(),
-            epsg_code_ast,
-            cached_epsg_code: Some("6675".to_string()),
-            proj_to_epsg: Some(proj_to_epsg),
-            proj_from_epsg: None, // Not needed for this test
-        };
-
-        // Transform to EPSG:6675 using cached proj instance
-        let polygon_jpr = extractor
-            .transform_polygon_to_epsg(&polygon_wgs84)
-            .expect("Polygon transformation failed");
+        // Transform to EPSG:6675 using thread-local cached proj instance
+        let polygon_jpr =
+            DestinationMeshCodeExtractor::transform_polygon_to_epsg(&polygon_wgs84, epsg_code)
+                .expect("Polygon transformation failed");
         let area_jpr = polygon_jpr.unsigned_area2d();
         let rounded_area = (area_jpr * 100.0).round() / 100.0;
 

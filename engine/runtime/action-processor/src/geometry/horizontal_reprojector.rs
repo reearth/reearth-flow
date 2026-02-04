@@ -1,7 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use nusamai_projection::crs::EpsgCode;
 use proj::Proj;
+
+// Thread-local cache for PROJ transformations.
+// Each thread maintains its own cache to ensure thread-safety without requiring
+// unsafe Send/Sync implementations on types containing proj::Proj.
+thread_local! {
+    static PROJ_CACHE: RefCell<HashMap<(String, String), Proj>> = RefCell::new(HashMap::new());
+}
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
     line::Line,
@@ -346,9 +353,6 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
             global_params: with,
             source_epsg_ast,
             target_epsg_ast,
-            from_crs: None,
-            to_crs: None,
-            proj: None,
         }))
     }
 }
@@ -372,40 +376,51 @@ pub struct HorizontalReprojectorParam {
     target_epsg_code: Expr,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HorizontalReprojector {
     global_params: Option<HashMap<String, serde_json::Value>>,
     source_epsg_ast: Option<rhai::AST>,
     target_epsg_ast: rhai::AST,
-    from_crs: Option<String>,
-    to_crs: Option<String>,
-    proj: Option<proj::Proj>,
 }
 
-impl Clone for HorizontalReprojector {
-    fn clone(&self) -> Self {
-        HorizontalReprojector {
-            global_params: self.global_params.clone(),
-            source_epsg_ast: self.source_epsg_ast.clone(),
-            target_epsg_ast: self.target_epsg_ast.clone(),
-            from_crs: self.from_crs.clone(),
-            to_crs: self.to_crs.clone(),
-            proj: None, // This does not really satisfy what a clone needs to satisfy, but the engine clones the processor only at the build time, so there is practical issue.
+/// Helper function to get or create a cached Proj transformation.
+/// Uses thread-local storage to ensure thread-safety.
+fn get_or_create_proj(from_crs: &str, to_crs: &str) -> Result<(), BoxedError> {
+    use std::collections::hash_map::Entry;
+    PROJ_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let key = (from_crs.to_string(), to_crs.to_string());
+        if let Entry::Vacant(e) = cache.entry(key) {
+            let proj = Proj::new_known_crs(from_crs, to_crs, None)?;
+            e.insert(proj);
         }
-    }
+        Ok(())
+    })
 }
 
-// SAFETY: `proj::Proj` wraps the PROJ C library which uses raw pointers and doesn't implement
-// Send/Sync. However, this is safe because:
-// 1. `num_threads()` returns 1, guaranteeing single-threaded execution of this processor
-// 2. The processor owns the `Proj` instance exclusively; it's never shared across threads or nodes
-unsafe impl Send for HorizontalReprojector {}
-unsafe impl Sync for HorizontalReprojector {}
+/// Helper function to use a cached Proj transformation.
+/// The callback receives a reference to the Proj instance.
+fn with_proj<F, R>(from_crs: &str, to_crs: &str, f: F) -> Result<R, BoxedError>
+where
+    F: FnOnce(&Proj) -> Result<R, BoxedError>,
+{
+    PROJ_CACHE.with(|cache| {
+        let cache = cache.borrow();
+        let key = (from_crs.to_string(), to_crs.to_string());
+        let proj = cache.get(&key).ok_or_else(|| {
+            GeometryProcessorError::HorizontalReprojector(
+                "Proj not found in cache - this should not happen".to_string(),
+            )
+        })?;
+        f(proj)
+    })
+}
 
 impl Processor for HorizontalReprojector {
     fn num_threads(&self) -> usize {
-        // DO NOT change this value. The unsafe Send/Sync impls rely on single-threaded execution.
-        1
+        // Thread-local cache ensures each thread has its own Proj instances,
+        // so we can safely use multiple threads.
+        16
     }
 
     fn process(
@@ -447,32 +462,25 @@ impl Processor for HorizontalReprojector {
         })?;
         let target_epsg = target_epsg as EpsgCode;
 
-        // Create projection for this transformation
+        // Get or create the projection in thread-local cache
         let from_crs = format!("EPSG:{source_epsg}");
         let to_crs = format!("EPSG:{target_epsg}");
-        if self.from_crs.as_ref() != Some(&from_crs) || self.to_crs.as_ref() != Some(&to_crs) {
-            self.from_crs = Some(from_crs);
-            self.to_crs = Some(to_crs);
-            self.proj = Some(Proj::new_known_crs(
-                self.from_crs.as_ref().unwrap(),
-                self.to_crs.as_ref().unwrap(),
-                None,
-            )?)
-        }
-
-        let proj_transform = self.proj.as_ref().unwrap();
+        get_or_create_proj(&from_crs, &to_crs)?;
 
         match &geometry.value {
             GeometryValue::FlowGeometry2D(geom) => {
+                let transformed =
+                    with_proj(&from_crs, &to_crs, |proj| transform_geometry_2d(geom, proj))?;
                 let mut feature = feature.clone();
-                let transformed = transform_geometry_2d(geom, &proj_transform)?;
+
                 feature.geometry_mut().value = GeometryValue::FlowGeometry2D(transformed);
                 feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geom) => {
+                let transformed =
+                    with_proj(&from_crs, &to_crs, |proj| transform_geometry_3d(geom, proj))?;
                 let mut feature = feature.clone();
-                let transformed = transform_geometry_3d(geom, &proj_transform)?;
                 feature.geometry_mut().value = GeometryValue::FlowGeometry3D(transformed);
                 feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -480,13 +488,15 @@ impl Processor for HorizontalReprojector {
             GeometryValue::CityGmlGeometry(ref geos) => {
                 let mut feature = feature.clone();
                 let mut transformed_geos = geos.clone();
-                transformed_geos
-                    .transform_horizontal(|x, y| {
-                        proj_transform.convert((x, y)).map_err(|e| {
-                            GeometryProcessorError::HorizontalReprojector(e.to_string())
+                with_proj(&from_crs, &to_crs, |proj| {
+                    transformed_geos
+                        .transform_horizontal(|x, y| {
+                            proj.convert((x, y)).map_err(|e| {
+                                GeometryProcessorError::HorizontalReprojector(e.to_string())
+                            })
                         })
-                    })
-                    .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })?;
+                        .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })
+                })?;
                 feature.geometry_mut().value = GeometryValue::CityGmlGeometry(transformed_geos);
                 feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
