@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use fastxml::schema::fetcher::{DefaultFetcher, FetchResult, SchemaFetcher};
+use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -84,59 +84,6 @@ impl ProcessorFactory for XmlValidatorFactory {
 
         let process = XmlValidator { params };
         Ok(Box::new(process))
-    }
-}
-
-/// A schema fetcher that caches HTTP fetch results to a temp directory on disk.
-/// This allows schema cache sharing across different XmlValidator instances
-/// and even across different test processes running in parallel.
-struct TempDirCachingFetcher {
-    inner: DefaultFetcher,
-    cache_dir: PathBuf,
-}
-
-impl TempDirCachingFetcher {
-    fn new(inner: DefaultFetcher) -> Self {
-        let cache_dir = std::env::temp_dir().join("fastxml-schema-cache");
-        std::fs::create_dir_all(&cache_dir).ok();
-        Self { inner, cache_dir }
-    }
-
-    fn url_to_cache_path(&self, url: &str) -> PathBuf {
-        use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        url.hash(&mut hasher);
-        self.cache_dir.join(format!("{:016x}", hasher.finish()))
-    }
-}
-
-impl SchemaFetcher for TempDirCachingFetcher {
-    fn fetch(&self, url: &str) -> fastxml::error::Result<FetchResult> {
-        let cache_path = self.url_to_cache_path(url);
-        let meta_path = cache_path.with_extension("url");
-
-        // Try to read from disk cache
-        if let (Ok(content), Ok(final_url)) = (
-            std::fs::read(&cache_path),
-            std::fs::read_to_string(&meta_path),
-        ) {
-            return Ok(FetchResult {
-                content,
-                final_url,
-                redirected: false,
-            });
-        }
-
-        // Fetch from network/filesystem
-        let result = self.inner.fetch(url)?;
-
-        // Cache HTTP results to disk for cross-process sharing
-        if url.starts_with("http://") || url.starts_with("https://") {
-            std::fs::write(&cache_path, &result.content).ok();
-            std::fs::write(&meta_path, &result.final_url).ok();
-        }
-
-        Ok(result)
     }
 }
 
@@ -438,7 +385,9 @@ impl XmlValidator {
             Some(dir) => DefaultFetcher::with_base_dir(dir),
             None => DefaultFetcher::new(),
         };
-        let fetcher = TempDirCachingFetcher::new(inner);
+        let fetcher = FileCachingFetcher::new(inner).map_err(|e| {
+            XmlProcessorError::Validator(format!("Failed to create caching fetcher: {e:?}"))
+        })?;
 
         // Create reader for streaming validation
         let reader = BufReader::new(Cursor::new(xml_bytes));
