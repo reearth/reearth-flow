@@ -204,6 +204,8 @@ WORKFLOW_QC=(
   "07-lsld"
   "08-dem"
   "09-brid-tun-ubld"
+  "11-wtr"
+  "13-gen"
 )
 
 process_workflows() {
