@@ -85,4 +85,6 @@ pub struct XmlValidatorParam {
     pub validation_type: ValidationType,
 }
 
-pub type SchemaStore = HashMap<Vec<(String, String)>, xml::XmlSchemaValidationContext>;
+/// Schema store for streaming validation (StreamValidator)
+/// Stores compiled schemas that can be reused for multiple validations
+pub type SchemaStore = HashMap<Vec<(String, String)>, std::sync::Arc<xml::CompiledSchema>>;

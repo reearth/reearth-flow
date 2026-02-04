@@ -517,6 +517,117 @@ pub fn validate_document_by_schema_context(
     }
 }
 
+// =============================================================================
+// Streaming Validation (StreamValidator) - Memory efficient
+// =============================================================================
+
+pub use fastxml::schema::types::CompiledSchema;
+
+/// Compile schemas for streaming validation using StreamValidator.
+/// This returns an Arc<CompiledSchema> that can be reused across multiple validations.
+pub fn compile_schema_for_streaming(
+    schema_locations: &[(String, String)],
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<std::sync::Arc<CompiledSchema>> {
+    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+    use fastxml::schema::memory::InMemoryStore;
+    use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
+
+    if schema_locations.is_empty() {
+        return Err(crate::Error::Xml(
+            "No schema locations provided".to_string(),
+        ));
+    }
+
+    let fetcher = match base_dir {
+        Some(dir) => DefaultFetcher::with_base_dir(dir),
+        None => DefaultFetcher::new(),
+    };
+
+    let store = InMemoryStore::new();
+    let mut all_schemas: Vec<XsdSchema> = Vec::new();
+
+    for (_namespace, location) in schema_locations {
+        let fetch_result = fetcher.fetch(location).map_err(|e| {
+            crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", location))
+        })?;
+
+        let base_uri = &fetch_result.final_url;
+        let mut resolver = SchemaResolver::new(&fetcher, &store);
+        let schemas = resolver
+            .resolve_all(&fetch_result.content, base_uri)
+            .map_err(|e| {
+                crate::Error::Xml(format!(
+                    "Failed to resolve schema imports for {}: {e:?}",
+                    location
+                ))
+            })?;
+
+        all_schemas.extend(schemas);
+    }
+
+    let mut compiled = compile_schemas(all_schemas)
+        .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
+    register_builtin_types(&mut compiled);
+
+    Ok(std::sync::Arc::new(compiled))
+}
+
+/// Validate XML using StreamValidator (streaming, memory-efficient).
+/// This function does NOT parse the XML into a DOM tree, significantly reducing memory usage.
+///
+/// # Arguments
+/// * `xml_bytes` - The XML content as bytes
+/// * `schema` - Compiled schema to validate against
+/// * `max_errors` - Maximum number of errors to collect (0 for unlimited)
+///
+/// # Returns
+/// Vector of validation errors, or error if validation setup failed
+pub fn validate_xml_streaming(
+    xml_bytes: &[u8],
+    schema: &std::sync::Arc<CompiledSchema>,
+    max_errors: usize,
+) -> crate::Result<Vec<StructuredError>> {
+    use fastxml::schema::validator::StreamValidator;
+    use std::io::{BufReader, Cursor};
+
+    let reader = BufReader::new(Cursor::new(xml_bytes));
+    let mut validator = StreamValidator::new(std::sync::Arc::clone(schema));
+
+    if max_errors > 0 {
+        validator = validator.with_max_errors(max_errors);
+    }
+
+    validator
+        .validate(reader)
+        .map_err(|e| crate::Error::Xml(format!("Streaming validation failed: {e:?}")))
+}
+
+/// Validate XML by automatically extracting schema location from the document.
+/// This is a convenience function that combines schema extraction and streaming validation.
+///
+/// # Arguments
+/// * `xml_bytes` - The XML content as bytes
+/// * `base_dir` - Optional base directory for resolving relative schema paths
+/// * `max_errors` - Maximum number of errors to collect (0 for unlimited)
+pub fn validate_xml_streaming_from_schema_location(
+    xml_bytes: &[u8],
+    base_dir: Option<&std::path::Path>,
+    max_errors: usize,
+) -> crate::Result<Vec<StructuredError>> {
+    // First, parse just enough to get schema locations (quick-xml based, not full DOM)
+    let doc = fastxml_parse(xml_bytes).map_err(|e| crate::Error::Xml(format!("{e}")))?;
+    let locations = parse_schema_locations(&doc)?;
+
+    if locations.is_empty() {
+        // No schema location - return empty (valid)
+        return Ok(Vec::new());
+    }
+
+    let schema = compile_schema_for_streaming(&locations, base_dir)?;
+    validate_xml_streaming(xml_bytes, &schema, max_errors)
+}
+
 pub fn find_nodes_by_xpath(
     ctx: &XmlContext,
     xpath: &str,
@@ -782,7 +893,7 @@ mod tests {
         let ctx = create_context(&document).unwrap();
         let root = get_root_readonly_node(&document).unwrap();
 
-        // Test using namespace-uri() and local-name() XPath functions (supported in fastxml 0.4.0)
+        // Test using namespace-uri() and local-name() XPath functions (supported in fastxml 0.5.0)
         let result = find_readonly_nodes_by_xpath(
             &ctx,
             ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
@@ -828,7 +939,7 @@ mod tests {
             );
         }
 
-        // In fastxml 0.4.0, get_namespace() works correctly for child elements
+        // In fastxml 0.5.0, get_namespace() works correctly for child elements
         let lower_corner = children
             .iter()
             .find(|&n| get_readonly_node_tag(n) == "gml:lowerCorner");
@@ -842,7 +953,7 @@ mod tests {
         assert_eq!(building.len(), 1, "Should find bldg:Building");
         let building_node = &building[0];
 
-        // Test gml:id attribute - should work in fastxml 0.4.0
+        // Test gml:id attribute - should work in fastxml 0.5.0
         let gml_id = building_node.get_attribute_ns("id", "http://www.opengis.net/gml");
         println!("gml:id via get_attribute_ns: {:?}", gml_id);
         assert_eq!(
@@ -851,7 +962,7 @@ mod tests {
             "get_attribute_ns should return gml:id value"
         );
 
-        // Also try regular get_attribute - returns local name as key in fastxml 0.4.0
+        // Also try regular get_attribute - returns local name as key in fastxml 0.5.0
         let attrs = building_node.get_attributes();
         println!("All attributes: {:?}", attrs);
         assert!(
@@ -872,11 +983,11 @@ mod tests {
                 .map(|n| format!("{}={}", n.get_prefix(), n.get_href()))
         );
 
-        // In fastxml 0.4.0, get_namespace() returns correct namespace,
+        // In fastxml 0.5.0, get_namespace() returns correct namespace,
         // so get_readonly_node_tag returns tag with prefix
         assert_eq!(
             root_tag, "core:CityModel",
-            "Root tag should have namespace prefix in fastxml 0.4.0"
+            "Root tag should have namespace prefix in fastxml 0.5.0"
         );
         assert!(root_ns.is_some(), "Root should have namespace");
 
@@ -894,7 +1005,7 @@ mod tests {
         );
         assert_eq!(
             building_tag, "bldg:Building",
-            "Building tag should have namespace prefix in fastxml 0.4.0"
+            "Building tag should have namespace prefix in fastxml 0.5.0"
         );
         assert!(building_ns.is_some(), "Building should have namespace");
     }

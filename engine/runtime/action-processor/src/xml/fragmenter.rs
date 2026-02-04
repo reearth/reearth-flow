@@ -1,9 +1,13 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
-
-use reearth_flow_common::{
-    uri::Uri,
-    xml::{self, XmlDocument},
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    str::FromStr,
+    sync::Arc,
 };
+
+use fastxml::transform::{EditableNode, StreamTransformer};
+use quick_xml::{events::Event, Reader};
+use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -249,93 +253,224 @@ fn send_xml_fragment(
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
     let raw_xml = String::from_utf8(bytes.to_vec())
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let document = xml::parse(raw_xml.as_str())
+    if elements_to_match.is_empty() {
+        return Ok(());
+    }
+
+    let excluded: HashSet<String> = elements_to_exclude.into_iter().collect();
+    let mut match_tags = Vec::new();
+    let mut seen = HashSet::new();
+    for tag in elements_to_match {
+        if excluded.contains(&tag) || !seen.insert(tag.clone()) {
+            continue;
+        }
+        match_tags.push(tag);
+    }
+    if match_tags.is_empty() {
+        return Ok(());
+    }
+
+    let parent_map = build_parent_id_map(&raw_xml, &url, &match_tags)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
 
-    generate_fragment(
+    generate_fragment_streaming(
         ctx,
         fw,
         feature,
         &url,
-        &document,
-        &elements_to_match,
-        &elements_to_exclude,
+        &raw_xml,
+        &parent_map,
+        &match_tags,
     )
 }
 
-fn generate_fragment(
+fn generate_fragment_streaming(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     feature: &Feature,
     uri: &Uri,
-    document: &XmlDocument,
-    elements_to_match: &[String],
-    elements_to_exclude: &[String],
+    raw_xml: &str,
+    parent_map: &HashMap<String, Option<String>>,
+    match_tags: &[String],
 ) -> Result<()> {
-    let elements_to_match = elements_to_match
-        .iter()
-        .map(|element| format!("name()='{element}'"))
-        .collect::<Vec<_>>();
-    let elements_to_match_query = elements_to_match.join(" or ");
-    let elements_to_match_query = format!("({elements_to_match_query})");
-    let elements_to_exclude_query = {
-        if elements_to_exclude.is_empty() {
-            "".to_string()
-        } else {
-            let elements_to_exclude = elements_to_exclude
-                .iter()
-                .map(|element| format!("name()='{element}'"))
-                .collect::<Vec<_>>();
-            let elements_to_exclude_query = elements_to_exclude.join(" or ");
-            format!("({elements_to_exclude_query})")
-        }
-    };
-    let xpath = {
-        if elements_to_exclude_query.is_empty() {
-            format!("//*[{elements_to_match_query}]")
-        } else {
-            format!("//*[{elements_to_match_query} and not({elements_to_exclude_query})]")
-        }
-    };
-    let xctx = xml::create_context(document)
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let root = xml::get_root_node(document)
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let mut nodes = xml::find_nodes_by_xpath(&xctx, &xpath, &root)
-        .map_err(|_| XmlProcessorError::Fragmenter("Failed to evaluate xpath".to_string()))?;
-    for node in nodes.iter_mut() {
-        let node_type = node.get_type();
-        if node_type == xml::XmlNodeType::Element {
-            let xml_id = xml::get_node_id(uri, node);
-            let tag = xml::get_node_tag(node);
-            let fragment = {
-                for ns in root.get_namespace_declarations().iter() {
-                    node.set_attribute(
-                        format!("xmlns:{}", ns.get_prefix()).as_str(),
-                        ns.get_href(),
-                    );
-                }
-                xml::node_to_xml_string(document, node)
-                    .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?
-            };
-            let xml_parent_id = node
-                .get_parent()
-                .map(|parent| xml::get_node_id(uri, &parent));
+    let stream_error: std::rc::Rc<RefCell<Option<XmlProcessorError>>> =
+        std::rc::Rc::new(RefCell::new(None));
 
-            let fragment = XmlFragment {
-                xml_id,
-                fragment,
-                matched_tag: tag,
-                xml_parent_id,
-            };
-            let mut value = Feature::new_with_attributes(feature.attributes.as_ref().clone());
-            XmlFragment::to_hashmap(fragment)
-                .into_iter()
-                .for_each(|(k, v)| {
-                    value.attributes_mut().insert(k, v);
-                });
-            fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
-        }
+    let mut transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+
+    for tag in match_tags {
+        let xpath = format!("//{tag}");
+        let ctx = ctx.clone();
+        let fw = fw.clone();
+        let feature = feature.clone();
+        let uri = uri.clone();
+        let tag = tag.clone();
+        let parent_map = parent_map;
+        let stream_error = std::rc::Rc::clone(&stream_error);
+
+        transformer = transformer.on(&xpath, move |node| {
+            if node.qname() != tag {
+                return;
+            }
+            if stream_error.borrow().is_some() {
+                return;
+            }
+
+            match build_fragment_from_node(node, &uri, parent_map) {
+                Ok(fragment) => {
+                    let mut value =
+                        Feature::new_with_attributes(feature.attributes.as_ref().clone());
+                    XmlFragment::to_hashmap(fragment)
+                        .into_iter()
+                        .for_each(|(k, v)| {
+                            value.attributes_mut().insert(k, v);
+                        });
+                    fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
+                }
+                Err(err) => {
+                    *stream_error.borrow_mut() = Some(err);
+                }
+            }
+        });
     }
+
+    let result = transformer.for_each();
+    if let Err(err) = result {
+        return Err(XmlProcessorError::Fragmenter(format!("{err:?}")));
+    }
+
+    if let Some(err) = stream_error.borrow_mut().take() {
+        return Err(err);
+    }
+
     Ok(())
+}
+
+fn build_fragment_from_node(
+    node: &mut EditableNode,
+    uri: &Uri,
+    parent_map: &HashMap<String, Option<String>>,
+) -> Result<XmlFragment> {
+    let xml_id = compute_xml_id_from_editable_node(uri, node);
+    let matched_tag = node.qname();
+    let fragment = node
+        .to_xml_with_namespaces()
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+
+    let xml_parent_id = parent_map.get(&xml_id).cloned().flatten();
+
+    Ok(XmlFragment {
+        xml_id,
+        fragment,
+        matched_tag,
+        xml_parent_id,
+    })
+}
+
+fn build_parent_id_map(
+    raw_xml: &str,
+    uri: &Uri,
+    match_tags: &[String],
+) -> Result<HashMap<String, Option<String>>, XmlProcessorError> {
+    let match_tags: HashSet<String> = match_tags.iter().cloned().collect();
+    let mut reader = Reader::from_str(raw_xml);
+    reader.config_mut().trim_text(false);
+    reader.config_mut().expand_empty_elements = true;
+
+    let mut buf = Vec::new();
+    let mut stack: Vec<String> = Vec::new();
+    let mut map = HashMap::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) => {
+                let qname = event_qname(&e)?;
+                let attrs = event_attributes_local(&e)?;
+                let xml_id = compute_xml_id_from_parts(uri, &qname, &attrs);
+                let parent_id = stack.last().cloned();
+                if match_tags.contains(&qname) {
+                    map.insert(xml_id.clone(), parent_id);
+                }
+                stack.push(xml_id);
+            }
+            Ok(Event::Empty(e)) => {
+                let qname = event_qname(&e)?;
+                let attrs = event_attributes_local(&e)?;
+                let xml_id = compute_xml_id_from_parts(uri, &qname, &attrs);
+                let parent_id = stack.last().cloned();
+                if match_tags.contains(&qname) {
+                    map.insert(xml_id, parent_id);
+                }
+            }
+            Ok(Event::End(_)) => {
+                stack.pop();
+            }
+            Ok(Event::Eof) => break,
+            Err(err) => {
+                return Err(XmlProcessorError::Fragmenter(format!(
+                    "Failed to parse XML for parent IDs: {err:?}"
+                )))
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(map)
+}
+
+fn event_qname(e: &quick_xml::events::BytesStart<'_>) -> Result<String, XmlProcessorError> {
+    let binding = e.name();
+    let name = binding.as_ref();
+    let qname = std::str::from_utf8(name)
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+    Ok(qname.to_string())
+}
+
+fn event_attributes_local(
+    e: &quick_xml::events::BytesStart<'_>,
+) -> Result<Vec<(String, String)>, XmlProcessorError> {
+    let mut attrs = Vec::new();
+    for attr in e.attributes().filter_map(|a| a.ok()) {
+        let key = std::str::from_utf8(attr.key.as_ref())
+            .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+        if key == "xmlns" || key.starts_with("xmlns:") {
+            continue;
+        }
+        let value = attr
+            .unescape_value()
+            .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+        let local_name = key.split_once(':').map(|(_, local)| local).unwrap_or(key);
+        attrs.push((local_name.to_string(), value.to_string()));
+    }
+    Ok(attrs)
+}
+
+fn compute_xml_id_from_parts(uri: &Uri, qname: &str, attrs: &[(String, String)]) -> String {
+    if let Some((_, value)) = attrs.iter().find(|(k, _)| k == "id") {
+        return value.to_string();
+    }
+
+    let mut key_values = attrs
+        .iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>();
+    key_values.sort();
+    to_hash(format!("{}:{}[{}]", uri, qname, key_values.join(",")).as_str())
+}
+
+fn compute_xml_id_from_editable_node(uri: &Uri, node: &EditableNode) -> String {
+    if let Some(id) = node.get_attribute("id") {
+        return id;
+    }
+    let tag = node.qname();
+    let mut key_values = node
+        .get_attributes()
+        .iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>();
+    key_values.sort();
+    to_hash(format!("{}:{}[{}]", uri, tag, key_values.join(",")).as_str())
 }
