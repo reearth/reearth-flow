@@ -1,8 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use nusamai_projection::crs::EpsgCode;
+use proj::Proj;
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
+    line::Line,
     line_string::{LineString2D, LineString3D},
     multi_line_string::{MultiLineString2D, MultiLineString3D},
     multi_point::{MultiPoint2D, MultiPoint3D},
@@ -45,6 +47,11 @@ fn transform_geometry_2d(
 ) -> Result<Geometry2D<f64>, BoxedError> {
     match geom {
         Geometry2D::Point(p) => Ok(Geometry2D::Point(transform_point_2d(p, proj)?)),
+        Geometry2D::Line(line) => {
+            let start = transform_point_2d(&line.start_point(), proj)?;
+            let end = transform_point_2d(&line.end_point(), proj)?;
+            Ok(Geometry2D::Line(Line::new(start.0, end.0)))
+        }
         Geometry2D::LineString(ls) => {
             let coords: Result<Vec<_>, BoxedError> = ls
                 .coords()
@@ -154,6 +161,11 @@ fn transform_geometry_3d(
 ) -> Result<Geometry3D<f64>, BoxedError> {
     match geom {
         Geometry3D::Point(p) => Ok(Geometry3D::Point(transform_point_3d(p, proj)?)),
+        Geometry3D::Line(line) => {
+            let start = transform_point_3d(&line.start_point(), proj)?;
+            let end = transform_point_3d(&line.end_point(), proj)?;
+            Ok(Geometry3D::Line(Line::new_(start.0, end.0)))
+        }
         Geometry3D::LineString(ls) => {
             let coords: Result<Vec<_>, BoxedError> = ls
                 .coords()
@@ -334,6 +346,9 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
             global_params: with,
             source_epsg_ast,
             target_epsg_ast,
+            from_crs: None,
+            to_crs: None,
+            proj: None,
         }))
     }
 }
@@ -357,16 +372,40 @@ pub struct HorizontalReprojectorParam {
     target_epsg_code: Expr,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HorizontalReprojector {
     global_params: Option<HashMap<String, serde_json::Value>>,
     source_epsg_ast: Option<rhai::AST>,
     target_epsg_ast: rhai::AST,
+    from_crs: Option<String>,
+    to_crs: Option<String>,
+    proj: Option<proj::Proj>,
 }
+
+impl Clone for HorizontalReprojector {
+    fn clone(&self) -> Self {
+        HorizontalReprojector {
+            global_params: self.global_params.clone(),
+            source_epsg_ast: self.source_epsg_ast.clone(),
+            target_epsg_ast: self.target_epsg_ast.clone(),
+            from_crs: self.from_crs.clone(),
+            to_crs: self.to_crs.clone(),
+            proj: None, // This does not really satisfy what a clone needs to satisfy, but the engine clones the processor only at the build time, so there is practical issue.
+        }
+    }
+}
+
+// SAFETY: `proj::Proj` wraps the PROJ C library which uses raw pointers and doesn't implement
+// Send/Sync. However, this is safe because:
+// 1. `num_threads()` returns 1, guaranteeing single-threaded execution of this processor
+// 2. The processor owns the `Proj` instance exclusively; it's never shared across threads or nodes
+unsafe impl Send for HorizontalReprojector {}
+unsafe impl Sync for HorizontalReprojector {}
 
 impl Processor for HorizontalReprojector {
     fn num_threads(&self) -> usize {
-        2
+        // DO NOT change this value. The unsafe Send/Sync impls rely on single-threaded execution.
+        1
     }
 
     fn process(
@@ -411,12 +450,17 @@ impl Processor for HorizontalReprojector {
         // Create projection for this transformation
         let from_crs = format!("EPSG:{source_epsg}");
         let to_crs = format!("EPSG:{target_epsg}");
+        if self.from_crs.as_ref() != Some(&from_crs) || self.to_crs.as_ref() != Some(&to_crs) {
+            self.from_crs = Some(from_crs);
+            self.to_crs = Some(to_crs);
+            self.proj = Some(Proj::new_known_crs(
+                self.from_crs.as_ref().unwrap(),
+                self.to_crs.as_ref().unwrap(),
+                None,
+            )?)
+        }
 
-        let proj_transform = proj::Proj::new_known_crs(&from_crs, &to_crs, None).map_err(|e| {
-            GeometryProcessorError::HorizontalReprojector(format!(
-                "Failed to create PROJ transformation from {from_crs} to {to_crs}: {e}"
-            ))
-        })?;
+        let proj_transform = self.proj.as_ref().unwrap();
 
         match &geometry.value {
             GeometryValue::FlowGeometry2D(geom) => {
