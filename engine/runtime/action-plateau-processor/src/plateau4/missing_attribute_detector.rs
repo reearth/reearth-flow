@@ -365,9 +365,11 @@ impl MissingAttributeDetector {
         };
 
         let root_info = parse_root_info(xml_content)?;
-        let gml_id = root_info.gml_id.ok_or(PlateauProcessorError::MissingAttributeDetector(
-            "Failed to get gml id".to_string(),
-        ))?;
+        let gml_id = root_info
+            .gml_id
+            .ok_or(PlateauProcessorError::MissingAttributeDetector(
+                "Failed to get gml id".to_string(),
+            ))?;
         let feature_type = root_info.qname;
         if !buffer
             .feature_types_to_target_attributes
@@ -448,7 +450,7 @@ impl MissingAttributeDetector {
         {
             for xpath in target_attributes.clone().iter() {
                 let xpath_with_prefix = format!("//{xpath}");
-                            let exists = stream_exists(xml_content, &xpath_with_prefix)?;
+                let exists = stream_exists(xml_content, &xpath_with_prefix)?;
                 if exists {
                     target_attributes.remove(xpath);
                 }
@@ -645,10 +647,7 @@ impl MissingAttributeDetector {
     }
 }
 
-fn count_lod_geometries(
-    raw_xml: &str,
-    package: &str,
-) -> Result<[usize; 5], PlateauProcessorError> {
+fn count_lod_geometries(raw_xml: &str, package: &str) -> Result<[usize; 5], PlateauProcessorError> {
     let mut lod_count = [0; 5];
 
     if package == "dem" {
@@ -775,10 +774,7 @@ fn parse_root_info(raw_xml: &str) -> Result<RootInfo, PlateauProcessorError> {
         .on("/*", |node| {
             let qname = node.qname();
             let attrs = node.get_attributes();
-            let gml_id = attrs
-                .get("id")
-                .or_else(|| attrs.get("gml:id"))
-                .cloned();
+            let gml_id = attrs.get("id").or_else(|| attrs.get("gml:id")).cloned();
 
             *root_info.borrow_mut() = Some(RootInfo { qname, gml_id });
         })
@@ -836,10 +832,7 @@ fn stream_collect_texts(raw_xml: &str, xpath: &str) -> Result<Vec<String>, Plate
         })
 }
 
-fn stream_collect_names(
-    raw_xml: &str,
-    xpath: &str,
-) -> Result<Vec<String>, PlateauProcessorError> {
+fn stream_collect_names(raw_xml: &str, xpath: &str) -> Result<Vec<String>, PlateauProcessorError> {
     let transformer = StreamTransformer::new(raw_xml)
         .with_root_namespaces()
         .map_err(|e| {
@@ -847,13 +840,11 @@ fn stream_collect_names(
                 "Failed to parse root namespaces: {e:?}"
             ))
         })?;
-    transformer
-        .collect(xpath, |node| node.name())
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to evaluate xpath '{xpath}': {e:?}"
-            ))
-        })
+    transformer.collect(xpath, |node| node.name()).map_err(|e| {
+        PlateauProcessorError::MissingAttributeDetector(format!(
+            "Failed to evaluate xpath '{xpath}': {e:?}"
+        ))
+    })
 }
 
 #[cfg(test)]
