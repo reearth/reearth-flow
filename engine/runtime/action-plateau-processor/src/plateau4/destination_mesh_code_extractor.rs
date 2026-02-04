@@ -446,7 +446,7 @@ impl DestinationMeshCodeExtractor {
         Some(Polygon2D::new(exterior_coords.into(), interior_rings))
     }
 
-    /// Transform bounds from target EPSG back to 6697 (WGS84)
+    /// Transform bounds from target EPSG back to EPSG:6697
     /// Uses the thread-local cached proj_from_epsg instance (target EPSG -> 6697)
     fn transform_bounds_to_epsg_inverse(
         rect: &Rect2D<f64>,
