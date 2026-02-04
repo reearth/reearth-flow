@@ -208,14 +208,10 @@ impl XmlValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<()> {
         let feature = &ctx.feature;
-        let xml_content = self.get_xml_content(&ctx, feature)?;
+        // Get XML as bytes for streaming validation (more memory efficient)
+        let xml_bytes = self.get_xml_content_bytes(&ctx, feature)?;
 
-        let Ok(document) = xml::parse(xml_content) else {
-            Self::send_syntax_error(&ctx, fw, feature);
-            return Ok(());
-        };
-
-        match self.check_schema(feature, &document) {
+        match self.check_schema_streaming(feature, &xml_bytes) {
             Ok(result) => {
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
@@ -296,6 +292,50 @@ impl XmlValidator {
         }
     }
 
+    /// Get XML content as bytes for streaming validation (more memory efficient)
+    fn get_xml_content_bytes(&self, ctx: &ExecutorContext, feature: &Feature) -> Result<Vec<u8>> {
+        match self.params.input_type {
+            XmlInputType::File => {
+                let uri = feature
+                    .attributes
+                    .get(&self.params.attribute)
+                    .ok_or(XmlProcessorError::Validator("Required Uri".to_string()))?;
+                let uri = match uri {
+                    AttributeValue::String(s) => Uri::from_str(s)
+                        .map_err(|_| XmlProcessorError::Validator("Invalid URI".to_string()))?,
+                    _ => {
+                        return Err(XmlProcessorError::Validator(
+                            "Invalid Attribute".to_string(),
+                        ))
+                    }
+                };
+                let storage = ctx
+                    .storage_resolver
+                    .resolve(&uri)
+                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
+                let content = storage
+                    .get_sync(uri.path().as_path())
+                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
+                Ok(content.to_vec())
+            }
+            XmlInputType::Text => {
+                let content = feature
+                    .attributes
+                    .get(&self.params.attribute)
+                    .ok_or(XmlProcessorError::Validator("No Attribute".to_string()))?;
+                let content = match content {
+                    AttributeValue::String(s) => s,
+                    _ => {
+                        return Err(XmlProcessorError::Validator(
+                            "Invalid Attribute".to_string(),
+                        ))
+                    }
+                };
+                Ok(content.as_bytes().to_vec())
+            }
+        }
+    }
+
     fn send_syntax_error(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, feature: &Feature) {
         let mut feature = feature.clone();
         feature.insert(
@@ -326,17 +366,22 @@ impl XmlValidator {
         Ok(recursive_check_namespace(root_node, &namespaces))
     }
 
-    fn check_schema(
+    /// Streaming schema validation using StreamValidator
+    /// Memory efficient - does NOT load the entire DOM tree
+    fn check_schema_streaming(
         &self,
         feature: &Feature,
-        document: &XmlDocument,
+        xml_bytes: &[u8],
     ) -> Result<Vec<ValidationResult>> {
-        let schema_locations = xml::parse_schema_locations(document)
+        // Parse schema locations from XML (minimal parsing)
+        let doc = xml::parse(xml_bytes)
+            .map_err(|e| XmlProcessorError::Validator(format!("XML parse error: {e:?}")))?;
+        let schema_locations = xml::parse_schema_locations(&doc)
             .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
 
         #[cfg(test)]
         println!(
-            "[check_schema] Parsed schema locations: {:?}",
+            "[check_schema_streaming] Parsed schema locations: {:?}",
             schema_locations
         );
         tracing::debug!("Parsed schema locations: {:?}", schema_locations);
@@ -345,29 +390,31 @@ impl XmlValidator {
             return Ok(Vec::new());
         }
 
+        // Get or compile schema (cached for reuse)
         if !self.schema_store.read().contains_key(&schema_locations) {
-            // Get or create validation context using fastxml's built-in resolver
-            let schema_context = self.get_or_create_schema_context(&schema_locations, feature)?;
-
-            // Cache the schema context for future use
+            let compiled_schema =
+                self.get_or_compile_schema_streaming(&schema_locations, feature)?;
             self.schema_store
                 .write()
-                .insert(schema_locations.clone(), schema_context);
+                .insert(schema_locations.clone(), compiled_schema);
         }
 
-        // Use cached schema context
+        // Use cached compiled schema for streaming validation
         let store = self.schema_store.read();
-        let schema_context = store.get(&schema_locations).unwrap();
+        let compiled_schema = store.get(&schema_locations).unwrap();
 
-        // Validate document
-        let result = xml::validate_document_by_schema_context(document, schema_context)
+        // Perform streaming validation using StreamValidator
+        let result = xml::validate_xml_streaming(xml_bytes, compiled_schema, 100)
             .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
 
         #[cfg(test)]
-        println!("[check_schema] Validation result: {} errors", result.len());
+        println!(
+            "[check_schema_streaming] Validation result: {} errors",
+            result.len()
+        );
         #[cfg(test)]
         for err in &result {
-            println!("[check_schema]   Error: {:?}", err);
+            println!("[check_schema_streaming]   Error: {:?}", err);
         }
 
         // Convert validation errors
@@ -377,8 +424,8 @@ impl XmlValidator {
                 ValidationResult::new_with_line_and_col(
                     "SchemaError",
                     &err.message,
-                    err.line.map(|l| l as i32),
-                    err.column.map(|c| c as i32),
+                    err.line().map(|l| l as i32),
+                    err.column().map(|c| c as i32),
                 )
             })
             .collect::<Vec<_>>();
@@ -388,11 +435,12 @@ impl XmlValidator {
         Ok(set.into_iter().collect())
     }
 
-    fn get_or_create_schema_context(
+    /// Compile schema for streaming validation (StreamValidator)
+    fn get_or_compile_schema_streaming(
         &self,
         schema_locations: &[(String, String)],
         feature: &Feature,
-    ) -> Result<xml::XmlSchemaValidationContext> {
+    ) -> Result<Arc<xml::CompiledSchema>> {
         // Resolve schema locations to actual URLs/paths
         let resolved_locations: Vec<(String, String)> = schema_locations
             .iter()
@@ -412,24 +460,23 @@ impl XmlValidator {
 
         #[cfg(test)]
         println!(
-            "[get_or_create_schema_context] resolved_locations: {:?}",
+            "[get_or_compile_schema_streaming] resolved_locations: {:?}",
             resolved_locations
         );
         tracing::debug!("Resolved schema locations: {:?}", resolved_locations);
 
-        // Get base directory for relative schema resolution (from dirSchemas or XML file location)
+        // Get base directory for relative schema resolution
         let base_dir = self.get_schema_base_dir(feature);
 
         #[cfg(test)]
-        println!("[get_or_create_schema_context] base_dir: {:?}", base_dir);
+        println!(
+            "[get_or_compile_schema_streaming] base_dir: {:?}",
+            base_dir
+        );
 
-        // Use fastxml's built-in schema fetcher and resolver
-        xml::create_validation_context_for_schema_locations(
-            &resolved_locations,
-            base_dir.as_deref(),
-        )
-        .map_err(|e| {
-            XmlProcessorError::Validator(format!("Failed to create validation context: {e:?}"))
+        // Compile schema for streaming validation
+        xml::compile_schema_for_streaming(&resolved_locations, base_dir.as_deref()).map_err(|e| {
+            XmlProcessorError::Validator(format!("Failed to compile schema: {e:?}"))
         })
     }
 

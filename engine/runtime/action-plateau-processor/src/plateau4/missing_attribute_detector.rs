@@ -1,9 +1,8 @@
 use crate::object_list::ObjectListMap;
 
 use super::errors::PlateauProcessorError;
-use nusamai_citygml::GML31_NS;
+use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
-use reearth_flow_common::xml;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -12,10 +11,12 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use quick_xml::{events::Event, Reader};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
@@ -34,7 +35,7 @@ static FEATURE_TYPE_TO_PART_XPATH: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 });
 
 static LOD_TAG_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r".+:lod([0-4]).+").expect("Failed to compile LOD tag pattern"));
+    Lazy::new(|| Regex::new(r"lod([0-4])").expect("Failed to compile LOD tag pattern"));
 
 #[derive(Debug, Clone, Default)]
 pub struct MissingAttributeDetectorFactory;
@@ -364,29 +365,11 @@ impl MissingAttributeDetector {
             ));
         };
 
-        let Ok(document) = xml::parse(xml_content) else {
-            return Err(PlateauProcessorError::MissingAttributeDetector(
-                "Failed to parse XML".to_string(),
-            ));
-        };
-        let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to create xml context: {e}"
-            ))
-        })?;
-        let root_node = match xml::get_root_readonly_node(&document) {
-            Ok(node) => node,
-            Err(e) => {
-                return Err(PlateauProcessorError::MissingAttributeDetector(format!(
-                    "Failed to get root node: {e}"
-                )));
-            }
-        };
-        let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
-        let gml_id = root_node.get_attribute_ns("id", gml_ns).ok_or(
-            PlateauProcessorError::MissingAttributeDetector("Failed to get gml id".to_string()),
-        )?;
-        let feature_type = xml::get_readonly_node_tag(&root_node);
+        let root_info = parse_root_info(xml_content)?;
+        let gml_id = root_info.gml_id.ok_or(PlateauProcessorError::MissingAttributeDetector(
+            "Failed to get gml id".to_string(),
+        ))?;
+        let feature_type = root_info.qname;
         if !buffer
             .feature_types_to_target_attributes
             .contains_key(&feature_type)
@@ -465,19 +448,9 @@ impl MissingAttributeDetector {
             .get_mut(&feature_type)
         {
             for xpath in target_attributes.clone().iter() {
-                let xpath_with_prefix = format!(".//{xpath}");
-                let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath_with_prefix);
-                let node =
-                    xml::find_readonly_nodes_by_xpath(&xml_ctx, &converted_xpath, &root_node)
-                        .map_err(|e| {
-                            PlateauProcessorError::MissingAttributeDetector(format!(
-                                "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                xpath,
-                                file!(),
-                                line!()
-                            ))
-                        })?;
-                if !node.is_empty() {
+                let xpath_with_prefix = format!("//{xpath}");
+                            let exists = stream_exists(xml_content, &xpath_with_prefix)?;
+                if exists {
                     target_attributes.remove(xpath);
                 }
             }
@@ -493,66 +466,26 @@ impl MissingAttributeDetector {
                     match paths.len() {
                         0 => {}
                         1 => {
-                            let xpath = format!(".//{}", paths[0]);
-                            let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath);
-                            let node = xml::find_readonly_nodes_by_xpath(
-                                &xml_ctx,
-                                &converted_xpath,
-                                &root_node,
-                            )
-                            .map_err(|e| {
-                                PlateauProcessorError::MissingAttributeDetector(format!(
-                                    "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                    xpath,
-                                    file!(),
-                                    line!()
-                                ))
-                            })?;
-
-                            if node.is_empty() {
+                            let xpath = format!("//{}", paths[0]);
+                            let exists = stream_exists(xml_content, &xpath)?;
+                            if !exists {
                                 missing_required.push(paths[0].clone());
                             }
                         }
                         2.. => {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
-                                let xpath = format!(".//{p}");
-                                let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath);
-                                let node = xml::find_readonly_nodes_by_xpath(
-                                    &xml_ctx,
-                                    &converted_xpath,
-                                    &root_node,
-                                )
-                                .map_err(|e| {
-                                    PlateauProcessorError::MissingAttributeDetector(format!(
-                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                        xpath,
-                                        file!(),
-                                        line!()
-                                    ))
-                                })?;
-                                if node.is_empty() {
+                                let xpath = format!("//{p}");
+                                let exists = stream_exists(xml_content, &xpath)?;
+                                if !exists {
                                     hit = false;
                                     break;
                                 }
                             }
                             if hit {
-                                let xpath = format!(".//{}", paths[paths.len() - 1]);
-                                let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath);
-                                let node = xml::find_readonly_nodes_by_xpath(
-                                    &xml_ctx,
-                                    &converted_xpath,
-                                    &root_node,
-                                )
-                                .map_err(|e| {
-                                    PlateauProcessorError::MissingAttributeDetector(format!(
-                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                        xpath,
-                                        file!(),
-                                        line!()
-                                    ))
-                                })?;
-                                if node.is_empty() {
+                                let xpath = format!("//{}", paths[paths.len() - 1]);
+                                let exists = stream_exists(xml_content, &xpath)?;
+                                if !exists {
                                     let joined = paths.join("/");
                                     missing_required.push(joined);
                                 }
@@ -574,66 +507,26 @@ impl MissingAttributeDetector {
                     match paths.len() {
                         0 => {}
                         1 => {
-                            let xpath = format!(".//{}", paths[0]);
-                            let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath);
-                            let node = xml::find_readonly_nodes_by_xpath(
-                                &xml_ctx,
-                                &converted_xpath,
-                                &root_node,
-                            )
-                            .map_err(|e| {
-                                PlateauProcessorError::MissingAttributeDetector(format!(
-                                    "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                    xpath,
-                                    file!(),
-                                    line!()
-                                ))
-                            })?;
-
-                            if node.is_empty() {
+                            let xpath = format!("//{}", paths[0]);
+                            let exists = stream_exists(xml_content, &xpath)?;
+                            if !exists {
                                 missing_conditional.push(paths[0].clone());
                             }
                         }
                         2.. => {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
-                                let xpath = format!(".//{p}");
-                                let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath);
-                                let node = xml::find_readonly_nodes_by_xpath(
-                                    &xml_ctx,
-                                    &converted_xpath,
-                                    &root_node,
-                                )
-                                .map_err(|e| {
-                                    PlateauProcessorError::MissingAttributeDetector(format!(
-                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                        xpath,
-                                        file!(),
-                                        line!()
-                                    ))
-                                })?;
-                                if node.is_empty() {
+                                let xpath = format!("//{p}");
+                                let exists = stream_exists(xml_content, &xpath)?;
+                                if !exists {
                                     hit = false;
                                     break;
                                 }
                             }
                             if hit {
-                                let xpath = format!(".//{}", paths[paths.len() - 1]);
-                                let converted_xpath = convert_xpath_prefixes_to_local_name(&xpath);
-                                let node = xml::find_readonly_nodes_by_xpath(
-                                    &xml_ctx,
-                                    &converted_xpath,
-                                    &root_node,
-                                )
-                                .map_err(|e| {
-                                    PlateauProcessorError::MissingAttributeDetector(format!(
-                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
-                                        xpath,
-                                        file!(),
-                                        line!()
-                                    ))
-                                })?;
-                                if node.is_empty() {
+                                let xpath = format!("//{}", paths[paths.len() - 1]);
+                                let exists = stream_exists(xml_content, &xpath)?;
+                                if !exists {
                                     let joined = paths.join("/");
                                     missing_conditional.push(joined);
                                 }
@@ -646,17 +539,9 @@ impl MissingAttributeDetector {
         let xpath = FEATURE_TYPE_TO_PART_XPATH.get(feature_type.as_str());
 
         let severity = if let Some(xpath) = xpath {
-            let converted_xpath = convert_xpath_prefixes_to_local_name(xpath);
-            let node = xml::find_readonly_nodes_by_xpath(&xml_ctx, &converted_xpath, &root_node)
-                .map_err(|e| {
-                    PlateauProcessorError::MissingAttributeDetector(format!(
-                        "Failed to find node by xpath '{}' at {}:{}: {e}",
-                        xpath,
-                        file!(),
-                        line!()
-                    ))
-                })?;
-            if node.is_empty() {
+            let xpath = format!("/*/{xpath}");
+            let exists = stream_exists(xml_content, &xpath)?;
+            if !exists {
                 "Error"
             } else {
                 "Warn"
@@ -666,9 +551,9 @@ impl MissingAttributeDetector {
         };
 
         // C07/C08 Data Quality Attribute validation
-        let lod_count = count_lod_geometries(&xml_ctx, &root_node, package)?;
+        let lod_count = count_lod_geometries(xml_content, package)?;
         let (c07_errors, c08_errors) =
-            validate_data_quality_attributes(&xml_ctx, &root_node, &lod_count, package)?;
+            validate_data_quality_attributes(xml_content, &lod_count, package)?;
 
         // Update counters
         buffer.c07_counter += c07_errors.len();
@@ -761,56 +646,17 @@ impl MissingAttributeDetector {
     }
 }
 
-fn convert_xpath_prefixes_to_local_name(xpath: &str) -> String {
-    // Note: fastxml doesn't support local-name() XPath function like libxml does.
-    // Instead of converting to local-name() based matching, we keep the original
-    // prefixed XPath. The namespace prefixes should be registered from the document.
-    xpath.to_string()
-}
-
-fn replace_namespace_with_prefix(tag: &str) -> String {
-    // Simple implementation to convert namespace to prefix
-    // e.g., "{http://www.geospatial.jp/iur/uro/3.1}geometrySrcDescLod1" -> "uro:geometrySrcDescLod1"
-    if let Some(start) = tag.find('}') {
-        let namespace = &tag[1..start];
-        let local_name = &tag[start + 1..];
-
-        let prefix = match namespace {
-            "https://www.geospatial.jp/iur/uro/2.0"
-            | "https://www.geospatial.jp/iur/uro/3.0"
-            | "https://www.geospatial.jp/iur/uro/3.1" => "uro",
-            "http://www.opengis.net/citygml/relief/2.0" => "dem",
-            "http://www.opengis.net/citygml/building/2.0" => "bldg",
-            "http://www.opengis.net/citygml/bridge/2.0" => "brid",
-            "http://www.opengis.net/citygml/tunnel/2.0" => "tun",
-            _ => return tag.to_string(),
-        };
-
-        format!("{prefix}:{local_name}")
-    } else {
-        tag.to_string()
-    }
-}
-
 fn count_lod_geometries(
-    xml_ctx: &xml::XmlContext,
-    root_node: &xml::XmlRoNode,
+    raw_xml: &str,
     package: &str,
 ) -> Result<[usize; 5], PlateauProcessorError> {
     let mut lod_count = [0; 5];
 
     if package == "dem" {
         // Special handling for DEM package
-        // Note: Using prefix 'dem:' instead of local-name() since fastxml doesn't support local-name()
-        let xpath = "./dem:lod";
-        let nodes = xml::find_readonly_nodes_by_xpath(xml_ctx, xpath, root_node).map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to find DEM LOD node: {e}"
-            ))
-        })?;
-
-        if let Some(node) = nodes.first() {
-            let text = node.get_content().unwrap_or_default();
+        let xpath = "/*/dem:lod";
+        let texts = stream_collect_texts(raw_xml, xpath)?;
+        if let Some(text) = texts.first() {
             if let Ok(lod) = text.trim().parse::<usize>() {
                 if lod <= 4 {
                     lod_count[lod] += 1;
@@ -819,18 +665,10 @@ fn count_lod_geometries(
         }
     } else {
         // General LOD pattern matching for other packages
-        let xpath = "./*";
-        let nodes = xml::find_readonly_nodes_by_xpath(xml_ctx, xpath, root_node).map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to find child nodes: {e}"
-            ))
-        })?;
-
-        for node in nodes {
-            let tag = xml::get_readonly_node_tag(&node);
-            let prefixed_tag = replace_namespace_with_prefix(&tag);
-
-            if let Some(captures) = LOD_TAG_PATTERN.captures(&prefixed_tag) {
+        let xpath = "/*/*";
+        let tags = stream_collect_names(raw_xml, xpath)?;
+        for tag in tags {
+            if let Some(captures) = LOD_TAG_PATTERN.captures(&tag) {
                 if let Some(lod_match) = captures.get(1) {
                     if let Ok(lod) = lod_match.as_str().parse::<usize>() {
                         if lod <= 4 {
@@ -845,10 +683,13 @@ fn count_lod_geometries(
     Ok(lod_count)
 }
 
+fn uro_xpath(local_name: &str) -> String {
+    format!("//*[local-name()='{local_name}']")
+}
+
 #[allow(clippy::type_complexity)]
 fn validate_data_quality_attributes(
-    xml_ctx: &xml::XmlContext,
-    root_node: &xml::XmlRoNode,
+    raw_xml: &str,
     lod_count: &[usize; 5],
     _package: &str,
 ) -> Result<(Vec<(usize, String)>, Vec<(usize, String)>), PlateauProcessorError> {
@@ -856,62 +697,31 @@ fn validate_data_quality_attributes(
     let mut c08_errors = Vec::new();
 
     // Find DataQualityAttribute section (nested under bldgDataQualityAttribute)
-    // Note: Using prefix 'uro:' instead of local-name() since fastxml doesn't support local-name()
-    let data_quality_xpath = ".//uro:DataQualityAttribute";
-    let data_quality_nodes =
-        xml::find_readonly_nodes_by_xpath(xml_ctx, data_quality_xpath, root_node).map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to find DataQualityAttribute: {e}"
-            ))
-        })?;
-
-    if let Some(data_quality_attr) = data_quality_nodes.first() {
+    let data_quality_xpath = uro_xpath("DataQualityAttribute");
+    if stream_exists(raw_xml, &data_quality_xpath)? {
         // Check each LOD that has geometry elements
         for (lod, &count) in lod_count.iter().enumerate() {
             if count > 0 {
                 // C07: Check for geometrySrcDescLod{N}
-                // Note: Using prefix 'uro:' instead of local-name() since fastxml doesn't support local-name()
-                let geom_src_desc_xpath = format!("./uro:geometrySrcDescLod{lod}");
-                let geom_nodes = xml::find_readonly_nodes_by_xpath(
-                    xml_ctx,
-                    &geom_src_desc_xpath,
-                    data_quality_attr,
-                )
-                .map_err(|e| {
-                    PlateauProcessorError::MissingAttributeDetector(format!(
-                        "Failed to find geometrySrcDescLod{lod}: {e}"
-                    ))
-                })?;
+                let geom_src_desc_xpath = uro_xpath(&format!("geometrySrcDescLod{lod}"));
+                let geom_texts = stream_collect_texts(raw_xml, &geom_src_desc_xpath)?;
 
-                if geom_nodes.is_empty() {
+                if geom_texts.is_empty() {
                     // Missing geometrySrcDescLod{N} - C07 error
                     c07_errors.push((
                         lod,
                         format!("uro:DataQualityAttribute/uro:geometrySrcDescLod{lod}"),
                     ));
-                } else if geom_nodes.len() == 1 {
+                } else {
                     // Check if value is "000" for C08 validation
-                    let text = geom_nodes[0].get_content().unwrap_or_default();
+                    let text = geom_texts.first().cloned().unwrap_or_default();
                     if !text.is_empty() && text.trim() == "000" {
                         // C08: Check PublicSurveyDataQualityAttribute sub-elements
-                        let public_survey_base_xpath =
-                            "./uro:publicSurveyDataQualityAttribute/uro:PublicSurveyDataQualityAttribute";
-
                         // Check srcScaleLod{N}
-                        let src_scale_xpath =
-                            format!("{public_survey_base_xpath}/uro:srcScaleLod{lod}");
-                        let src_scale_nodes = xml::find_readonly_nodes_by_xpath(
-                            xml_ctx,
-                            &src_scale_xpath,
-                            data_quality_attr,
-                        )
-                        .map_err(|e| {
-                            PlateauProcessorError::MissingAttributeDetector(format!(
-                                "Failed to find srcScaleLod{lod}: {e}"
-                            ))
-                        })?;
+                        let src_scale_xpath = uro_xpath(&format!("srcScaleLod{lod}"));
+                        let src_scale_exists = stream_exists(raw_xml, &src_scale_xpath)?;
 
-                        if src_scale_nodes.is_empty() {
+                        if !src_scale_exists {
                             c08_errors.push((
                                 lod,
                                 format!(
@@ -922,20 +732,17 @@ fn validate_data_quality_attributes(
 
                         // Check publicSurveySrcDescLod{N}
                         let public_survey_src_desc_xpath =
-                            format!("{public_survey_base_xpath}/uro:publicSurveySrcDescLod{lod}");
-                        let public_survey_nodes = xml::find_readonly_nodes_by_xpath(
-                            xml_ctx,
-                            &public_survey_src_desc_xpath,
-                            data_quality_attr,
-                        )
-                        .map_err(|e| {
-                            PlateauProcessorError::MissingAttributeDetector(format!(
-                                "Failed to find publicSurveySrcDescLod{lod}: {e}"
-                            ))
-                        })?;
+                            uro_xpath(&format!("publicSurveySrcDescLod{lod}"));
+                        let public_survey_exists =
+                            stream_exists(raw_xml, &public_survey_src_desc_xpath)?;
 
-                        if public_survey_nodes.is_empty() {
-                            c08_errors.push((lod, format!("uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod{lod}")));
+                        if !public_survey_exists {
+                            c08_errors.push((
+                                lod,
+                                format!(
+                                    "uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod{lod}"
+                                ),
+                            ));
                         }
                     }
                 }
@@ -944,6 +751,120 @@ fn validate_data_quality_attributes(
     }
 
     Ok((c07_errors, c08_errors))
+}
+
+#[derive(Clone, Debug)]
+struct RootInfo {
+    qname: String,
+    gml_id: Option<String>,
+}
+
+fn parse_root_info(raw_xml: &str) -> Result<RootInfo, PlateauProcessorError> {
+    let mut reader = Reader::from_str(raw_xml);
+    reader.config_mut().trim_text(false);
+    reader.config_mut().expand_empty_elements = true;
+
+    let mut buf = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+                let name = e.name();
+                let qname = std::str::from_utf8(name.as_ref()).map_err(|e| {
+                    PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
+                })?;
+                let mut gml_id = None;
+
+                for attr in e.attributes().filter_map(|a| a.ok()) {
+                    let key = std::str::from_utf8(attr.key.as_ref()).map_err(|e| {
+                        PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
+                    })?;
+                    let value = attr.unescape_value().map_err(|e| {
+                        PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
+                    })?;
+
+                    if key == "id" || key == "gml:id" {
+                        gml_id = Some(value.to_string());
+                    }
+                }
+
+                return Ok(RootInfo {
+                    qname: qname.to_string(),
+                    gml_id,
+                });
+            }
+            Ok(Event::Eof) => {
+                return Err(PlateauProcessorError::MissingAttributeDetector(
+                    "Failed to parse XML root element".to_string(),
+                ))
+            }
+            Err(err) => {
+                return Err(PlateauProcessorError::MissingAttributeDetector(format!(
+                    "Failed to parse XML root element: {err:?}"
+                )))
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+}
+
+fn stream_exists(raw_xml: &str, xpath: &str) -> Result<bool, PlateauProcessorError> {
+    let found = Cell::new(false);
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
+        })?;
+    transformer
+        .on(xpath, |_| {
+            found.set(true);
+        })
+        .for_each()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to evaluate xpath '{xpath}': {e:?}"
+            ))
+        })?;
+    Ok(found.get())
+}
+
+fn stream_collect_texts(raw_xml: &str, xpath: &str) -> Result<Vec<String>, PlateauProcessorError> {
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
+        })?;
+    transformer
+        .collect(xpath, |node| node.get_content().unwrap_or_default())
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to evaluate xpath '{xpath}': {e:?}"
+            ))
+        })
+}
+
+fn stream_collect_names(
+    raw_xml: &str,
+    xpath: &str,
+) -> Result<Vec<String>, PlateauProcessorError> {
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
+        })?;
+    transformer
+        .collect(xpath, |node| node.name())
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to evaluate xpath '{xpath}': {e:?}"
+            ))
+        })
 }
 
 #[cfg(test)]
