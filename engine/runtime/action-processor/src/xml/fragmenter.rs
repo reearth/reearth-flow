@@ -332,11 +332,11 @@ fn generate_fragment(
                 matched_tag: tag,
                 xml_parent_id,
             };
-            let mut value = Feature::new_with_attributes(feature.attributes.clone());
+            let mut value = Feature::new_with_attributes(feature.attributes.as_ref().clone());
             XmlFragment::to_hashmap(fragment)
                 .into_iter()
                 .for_each(|(k, v)| {
-                    value.attributes.insert(k, v);
+                    value.attributes_mut().insert(k, v);
                 });
             fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
         }

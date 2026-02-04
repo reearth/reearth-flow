@@ -169,9 +169,14 @@ impl Processor for UDXFolderExtractor {
             REJECTED_PORT.clone()
         };
         let mut attributes: IndexMap<Attribute, AttributeValue> = res.into();
-        attributes.extend(feature.attributes.clone());
+        attributes.extend(
+            feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
         let feature = Feature {
-            attributes,
+            attributes: Arc::new(attributes),
             ..feature.clone()
         };
         fw.send(ctx.new_with_feature_and_port(feature, port));

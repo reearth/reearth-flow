@@ -548,16 +548,16 @@ impl Processor for AttributeFlattener {
             new_city_gml_attribute.extend(new_value);
         }
         let mut feature = feature.clone();
-        feature.attributes.extend(
+        feature.attributes_mut().extend(
             new_city_gml_attribute
                 .iter()
                 .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
                 .collect::<IndexMap<Attribute, AttributeValue>>(),
         );
         feature.remove("cityGmlAttributes");
-        feature.attributes.extend(flattened);
+        feature.extend(flattened);
         let keys = feature.attributes.keys().cloned().collect_vec();
-        let attributes = &mut feature.attributes;
+        let attributes = feature.attributes_mut();
         for key in keys.iter() {
             if (key.to_string().starts_with("uro:") || key.to_string().starts_with("bldg:"))
                 && key.to_string().ends_with("_type")

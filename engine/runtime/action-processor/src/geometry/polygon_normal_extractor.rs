@@ -252,7 +252,7 @@ impl PolygonNormalExtractor {
         suffix: Option<&str>,
     ) -> Result<(), BoxedError> {
         // Add calculated attributes to the feature
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new(format!("normalX{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.normal_x).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(
@@ -260,7 +260,7 @@ impl PolygonNormalExtractor {
                 )
             })?),
         );
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new(format!("normalY{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.normal_y).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(
@@ -268,7 +268,7 @@ impl PolygonNormalExtractor {
                 )
             })?),
         );
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new(format!("normalZ{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.normal_z).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(
@@ -276,7 +276,7 @@ impl PolygonNormalExtractor {
                 )
             })?),
         );
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new(format!("signedArea2D{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.signed_area_2d).ok_or_else(
                 || {
@@ -286,7 +286,7 @@ impl PolygonNormalExtractor {
                 },
             )?),
         );
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new(format!("Slope{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.slope).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(
@@ -295,7 +295,7 @@ impl PolygonNormalExtractor {
             })?),
         );
 
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new(format!("Azimuth{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.azimuth).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(

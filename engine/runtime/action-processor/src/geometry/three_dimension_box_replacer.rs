@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_geometry::types::{
     coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, rect::Rect,
@@ -118,7 +119,7 @@ impl Processor for ThreeDimensionBoxReplacer {
             FlowGeometry3D::MultiPolygon(rectangle.to_multi_polygon()),
         ));
         let mut feature = ctx.feature.clone();
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

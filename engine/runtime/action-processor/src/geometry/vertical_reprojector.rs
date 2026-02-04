@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_runtime::{
@@ -111,17 +112,17 @@ impl Processor for VerticalReprojector {
         match geometry_value {
             GeometryValue::CityGmlGeometry(mut geos) => {
                 geos.transform_inplace(&self.reprojector);
-                feature.geometry = Geometry {
+                feature.geometry = Arc::new(Geometry {
                     epsg,
                     value: GeometryValue::CityGmlGeometry(geos),
-                };
+                });
             }
             GeometryValue::FlowGeometry3D(mut geos) => {
                 geos.transform_inplace(&self.reprojector);
-                feature.geometry = Geometry {
+                feature.geometry = Arc::new(Geometry {
                     epsg,
                     value: GeometryValue::FlowGeometry3D(geos),
-                };
+                });
             }
             GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
         }

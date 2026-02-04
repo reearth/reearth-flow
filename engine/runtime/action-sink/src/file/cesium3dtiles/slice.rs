@@ -152,13 +152,12 @@ pub fn slice_to_tiles<E>(
                                             polygons: MultiPolygon::new(),
                                             attributes: feature
                                                 .attributes
-                                                .clone()
-                                                .into_iter()
+                                                .iter()
                                                 .filter(|(_, v)| v.convertible_nusamai_type_ref())
                                                 .filter(|(k, _)| {
                                                     feature_schema.fields().contains(&k.to_string())
                                                 })
-                                                .map(|(k, v)| (k.to_string(), v))
+                                                .map(|(k, v)| (k.to_string(), v.clone()))
                                                 .collect(),
                                             polygon_material_ids: Default::default(),
                                             materials: Default::default(), // set later
@@ -176,8 +175,7 @@ pub fn slice_to_tiles<E>(
                                         polygons: MultiPolygon::new(),
                                         attributes: feature
                                             .attributes
-                                            .clone()
-                                            .into_iter()
+                                            .iter()
                                             .filter(|(_, v)| v.convertible_nusamai_type_ref())
                                             .filter(|(k, _)| {
                                                 feature_schema.fields().contains(&k.to_string())
@@ -187,7 +185,7 @@ pub fn slice_to_tiles<E>(
                                                     k.to_string(),
                                                     AttributeValue::String(value.to_string()),
                                                 ),
-                                                _ => (k.to_string(), v),
+                                                _ => (k.to_string(), v.clone()),
                                             })
                                             .collect(),
                                         polygon_material_ids: Default::default(),

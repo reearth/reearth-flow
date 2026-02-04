@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Feature;
+use reearth_flow_types::{Attributes, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -196,7 +196,7 @@ impl Processor for ImageRasterizer {
                     format!("ImageRasterizer saved image to: {:?}", saved_path),
                 );
 
-                let mut feature = Feature::new();
+                let mut feature = Feature::new_with_attributes(Attributes::new());
                 feature.insert(
                     "png_image",
                     reearth_flow_types::AttributeValue::String(saved_path),

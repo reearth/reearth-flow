@@ -130,7 +130,7 @@ impl Processor for GeometryValueFilter {
 mod tests {
     use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::{Feature, Geometry};
+    use reearth_flow_types::{feature::Attributes, Feature, Geometry};
 
     use crate::tests::utils::create_default_execute_context;
 
@@ -140,7 +140,7 @@ mod tests {
     fn test_filter_geometry_null() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
         if let ProcessorChannelForwarder::Noop(noop) = fw {
@@ -156,7 +156,7 @@ mod tests {
     fn test_filter_geometry_none() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
         if let ProcessorChannelForwarder::Noop(noop) = fw {
@@ -172,13 +172,14 @@ mod tests {
     fn test_filter_geometry_2d() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Default::default())),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
         if let ProcessorChannelForwarder::Noop(noop) = fw {
@@ -194,13 +195,14 @@ mod tests {
     fn test_filter_geometry_3d() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
 
@@ -217,13 +219,14 @@ mod tests {
     fn test_filter_geometry_citygml() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::CityGmlGeometry(Default::default()),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
         if let ProcessorChannelForwarder::Noop(noop) = fw {

@@ -163,8 +163,8 @@ impl Processor for GeometrySplitter {
                     return Ok(());
                 }
                 for split_feature in city_gml_geometry.split_feature() {
-                    let mut geometry = geometry.clone();
-                    let mut attributes = feature.attributes.clone();
+                    let mut geometry = (**geometry).clone();
+                    let mut attributes = (*feature.attributes).clone();
                     let Some(geometry_feature) = split_feature.gml_geometries.first() else {
                         continue;
                     };
@@ -301,7 +301,7 @@ impl GeometrySplitter {
                         Attribute::new("_split_index"),
                         AttributeValue::Number((index + 1).into()),
                     );
-                    new_feature.geometry.value =
+                    new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
@@ -316,7 +316,7 @@ impl GeometrySplitter {
                         Attribute::new("_split_index"),
                         AttributeValue::Number((index + 1).into()),
                     );
-                    new_feature.geometry.value =
+                    new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string));
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
@@ -346,7 +346,7 @@ impl GeometrySplitter {
                         Attribute::new("_split_index"),
                         AttributeValue::Number((index + 1).into()),
                     );
-                    new_feature.geometry.value =
+                    new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
@@ -361,7 +361,7 @@ impl GeometrySplitter {
                         Attribute::new("_split_index"),
                         AttributeValue::Number((index + 1).into()),
                     );
-                    new_feature.geometry.value =
+                    new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry3D(Geometry3D::LineString(line_string));
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }

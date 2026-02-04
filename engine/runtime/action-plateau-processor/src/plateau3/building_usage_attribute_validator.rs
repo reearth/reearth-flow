@@ -14,6 +14,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::Arc;
 
 use super::errors::PlateauProcessorError;
 
@@ -267,7 +268,7 @@ impl Processor for BuildingUsageAttributeValidator {
         } else {
             Some("<未設定>".to_string())
         };
-        let mut attributes = feature.attributes.clone();
+        let mut attributes = (*feature.attributes).clone();
         let mut ports = Vec::<Port>::new();
         if !error_messages.is_empty() {
             attributes.insert(
@@ -296,7 +297,7 @@ impl Processor for BuildingUsageAttributeValidator {
         for port in ports {
             fw.send(ctx.new_with_feature_and_port(
                 Feature {
-                    attributes: attributes.clone(),
+                    attributes: Arc::new(attributes.clone()),
                     ..feature.clone()
                 },
                 port,

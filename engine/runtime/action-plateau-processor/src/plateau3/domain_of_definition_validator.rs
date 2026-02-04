@@ -20,7 +20,7 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use serde_json::{Number, Value};
 
 use super::errors::PlateauProcessorError;
@@ -375,7 +375,7 @@ impl Processor for DomainOfDefinitionValidator {
                 continue;
             }
             for attribute in attributes.iter() {
-                let mut result_feature = Feature::new();
+                let mut result_feature = Feature::new_with_attributes(Attributes::new());
                 result_feature.insert(
                     "flag",
                     AttributeValue::String("GMLID_NotUnique".to_string()),

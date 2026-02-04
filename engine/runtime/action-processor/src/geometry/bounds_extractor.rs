@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue};
 use reearth_flow_types::{CityGmlGeometry, GeometryValue};
 
 use num_traits::NumCast;
@@ -154,38 +154,34 @@ impl Processor for BoundsExtractor {
             GeometryValue::FlowGeometry3D(flow_3d) => Self::calc_3d(&flow_3d),
         };
         if let Some(bounds) = bounds {
-            let mut attributes = feature.attributes.clone();
+            let mut new_feature = feature.clone();
 
-            attributes.insert(
+            new_feature.insert(
                 self.params.xmin.clone().unwrap_or(Attribute::new("xmin")),
                 bounds.min_x_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.xmax.clone().unwrap_or(Attribute::new("xmax")),
                 bounds.max_x_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.ymin.clone().unwrap_or(Attribute::new("ymin")),
                 bounds.min_y_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.ymax.clone().unwrap_or(Attribute::new("ymax")),
                 bounds.max_y_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
                 bounds.min_z_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
                 bounds.max_z_value(),
             );
 
-            let feature = Feature {
-                attributes,
-                ..feature.clone()
-            };
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
         };

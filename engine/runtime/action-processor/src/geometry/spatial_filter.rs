@@ -244,7 +244,7 @@ fn forward_result(
 
     // Add match count attribute if configured
     if let Some(ref attr_name) = params.output_match_count_attribute {
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             attr_name.clone(),
             AttributeValue::Number(serde_json::Number::from(result.match_count)),
         );
@@ -503,6 +503,7 @@ mod tests {
     use reearth_flow_geometry::types::polygon::Polygon2D;
     use reearth_flow_runtime::executor_operation::NodeContext;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::feature::Attributes;
     use reearth_flow_types::Geometry;
 
     use crate::tests::utils::create_default_execute_context;
@@ -552,23 +553,25 @@ mod tests {
             candidates: Vec::new(),
         };
 
-        let filter_feature = Feature {
-            geometry: Geometry {
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                     create_filter_polygon_2d(),
                 )),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
-        let candidate_feature = Feature {
-            geometry: Geometry {
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
         // Process filter
         let noop = NoopChannelForwarder::default();
@@ -601,25 +604,27 @@ mod tests {
             candidates: Vec::new(),
         };
 
-        let filter_feature = Feature {
-            geometry: Geometry {
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                     create_filter_polygon_2d(),
                 )),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
-        let candidate_feature = Feature {
-            geometry: Geometry {
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                     create_disjoint_polygon_2d(),
                 )),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
         // Process filter
         let noop = NoopChannelForwarder::default();
@@ -655,7 +660,7 @@ mod tests {
         let filter = SpatialFilter {
             params: SpatialFilterParams::default(),
             filters: Vec::new(),
-            candidates: vec![Feature::default()],
+            candidates: vec![Feature::new_with_attributes(Attributes::new())],
         };
 
         let noop = NoopChannelForwarder::default();

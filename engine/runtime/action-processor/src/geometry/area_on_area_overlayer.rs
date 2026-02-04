@@ -279,7 +279,7 @@ impl AreaOnAreaOverlayer {
                 midpolygons,
                 buffered_features_2d
                     .iter()
-                    .map(|f| f.attributes.clone())
+                    .map(|f| (*f.attributes).clone())
                     .collect(),
                 &self.group_by,
                 &self.output_attribute,
@@ -453,23 +453,19 @@ impl OverlaidFeatures {
             match subpolygon.get_type() {
                 MiddlePolygonType::None => {}
                 MiddlePolygonType::Area(parents) => {
-                    let mut feature = Feature::new();
-
-                    // Handle attributes based on accumulation mode
-                    match accumulation_mode {
-                        AccumulationMode::DropIncomingAttributes => {
-                            feature.attributes = IndexMap::new();
-                        }
+                    let attrs = match accumulation_mode {
+                        AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
                             let first_feature = &base_attributes[parents[0]];
-                            feature.attributes = first_feature.clone();
+                            first_feature.clone()
                         }
-                    }
+                    };
+                    let mut feature = Feature::new_with_attributes(attrs);
 
                     // Add overlap count attribute if specified
                     if let Some(attr_name) = output_attribute {
                         let overlap_count = parents.len();
-                        feature.attributes.insert(
+                        feature.attributes_mut().insert(
                             Attribute::new(attr_name.clone()),
                             AttributeValue::Number(overlap_count.into()),
                         );
@@ -488,32 +484,28 @@ impl OverlaidFeatures {
                             })
                             .collect();
 
-                        feature.attributes.insert(
+                        feature.attributes_mut().insert(
                             Attribute::new(list_name.clone()),
                             AttributeValue::Array(list_items.clone()),
                         );
                     }
 
-                    feature.geometry.value =
+                    feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
                     area.push(feature);
                 }
                 MiddlePolygonType::Remnant(parent) => {
-                    let mut feature = Feature::new();
-
-                    // Handle attributes based on accumulation mode
-                    match accumulation_mode {
-                        AccumulationMode::DropIncomingAttributes => {
-                            feature.attributes = IndexMap::new();
-                        }
+                    let attrs = match accumulation_mode {
+                        AccumulationMode::DropIncomingAttributes => IndexMap::new(),
                         AccumulationMode::UseAttributesFromOneFeature => {
-                            feature.attributes = base_attributes[parent].clone();
+                            base_attributes[parent].clone()
                         }
-                    }
+                    };
+                    let mut feature = Feature::new_with_attributes(attrs);
 
                     // Add overlap count attribute if specified (remnants have overlap count of 1)
                     if let Some(attr_name) = output_attribute {
-                        feature.attributes.insert(
+                        feature.attributes_mut().insert(
                             Attribute::new(attr_name.clone()),
                             AttributeValue::Number(1.into()),
                         );
@@ -527,13 +519,13 @@ impl OverlaidFeatures {
                         }
                         let list_items = vec![AttributeValue::Map(map)];
 
-                        feature.attributes.insert(
+                        feature.attributes_mut().insert(
                             Attribute::new(list_name.clone()),
                             AttributeValue::Array(list_items),
                         );
                     }
 
-                    feature.geometry.value =
+                    feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
                     remnant.push(feature);
                 }

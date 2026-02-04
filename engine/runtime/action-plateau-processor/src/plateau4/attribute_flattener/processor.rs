@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{metadata::Metadata, Attribute, AttributeValue, Feature};
+use reearth_flow_types::{metadata::Metadata, Attribute, AttributeValue, Attributes, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -253,23 +253,23 @@ impl AttributeFlattener {
         }
 
         if self.should_flatten_generic_attributes(feature) {
-            feature.attributes.extend(
+            feature.extend(
                 self.common_attribute_processor
                     .flatten_generic_attributes(&edit_citygml_attributes),
             );
         }
 
-        feature.attributes.extend(
+        feature.extend(
             self.flattener
                 .extract_fld_risk_attribute(&edit_citygml_attributes),
         );
 
-        feature.attributes.extend(
+        feature.extend(
             self.flattener
                 .extract_tnm_htd_ifld_risk_attribute(&edit_citygml_attributes),
         );
 
-        feature.attributes.extend(
+        feature.extend(
             self.flattener
                 .extract_lsld_risk_attribute(&edit_citygml_attributes),
         );
@@ -325,7 +325,7 @@ impl AttributeFlattener {
         for (key, value) in toplevel_attrs.iter() {
             let attr_key = Attribute::new(key.clone());
             if !feature.attributes.contains_key(&attr_key) {
-                feature.attributes.insert(attr_key, value.clone());
+                feature.insert(key.clone(), value.clone());
             }
         }
     }
@@ -380,20 +380,18 @@ impl AttributeFlattener {
             // extract attributes to toplevel
             for (key, value) in citygml_attributes.iter() {
                 let key = key.replace("uro:", "dm_");
-                feature
-                    .attributes
-                    .insert(Attribute::new(key.clone()), value.clone());
+                feature.insert(key.clone(), value.clone());
             }
             let dm_attributes_value = AttributeValue::Map(citygml_attributes);
             let json_string =
                 serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
-            feature.attributes.insert(
-                Attribute::new("dm_attributes".to_string()),
+            feature.insert(
+                "dm_attributes".to_string(),
                 AttributeValue::String(json_string),
             );
             if let Some(feature_type) = feature.metadata.feature_type.as_ref() {
-                feature.attributes.insert(
-                    Attribute::new("dm_feature_type".to_string()),
+                feature.insert(
+                    "dm_feature_type".to_string(),
                     AttributeValue::String(
                         feature_type
                             .strip_prefix("uro:")
@@ -468,9 +466,7 @@ impl AttributeFlattener {
                 };
                 self.existing_flatten_attributes
                     .insert(attribute.attribute.clone());
-                feature
-                    .attributes
-                    .insert(Attribute::new(attribute.attribute.clone()), new_attribute);
+                feature.insert(attribute.attribute.clone(), new_attribute);
             }
         }
 
@@ -498,8 +494,8 @@ impl AttributeFlattener {
         ))
         .unwrap();
 
-        feature.attributes.insert(
-            Attribute::new("attributes".to_string()),
+        feature.insert(
+            "attributes".to_string(),
             AttributeValue::String(citygml_attributes_json),
         );
     }
@@ -558,15 +554,16 @@ impl AttributeFlattener {
     }
 
     fn generate_schema_feature(&self, feature_type_key: &str) -> Feature {
-        let mut feature = Feature::new();
+        let mut attributes = Attributes::new();
         for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
-            feature.attributes.insert(Attribute::new(key), value);
+            attributes.insert(Attribute::new(key), value);
         }
         if feature_type_key.starts_with("bldg/") {
             for (key, value) in BLDG_SCHEMA_KEYS.clone().into_iter() {
-                feature.attributes.insert(Attribute::new(key), value);
+                attributes.insert(Attribute::new(key), value);
             }
         }
+        let mut feature = Feature::new_with_attributes(attributes);
 
         // For LOD4 features, use ancestor's feature_type_key for schema lookup
         let schema_lookup_key = self
@@ -593,9 +590,7 @@ impl AttributeFlattener {
                     "double" | "real64" | "measure" => AttributeValue::default_float(),
                     _ => continue,
                 };
-                feature
-                    .attributes
-                    .insert(Attribute::new(attribute.attribute.clone()), data_type);
+                feature.insert(attribute.attribute.clone(), data_type);
             }
         }
         let generic_schema = self.common_attribute_processor.get_generic_schema();
@@ -669,7 +664,7 @@ impl AttributeFlattener {
         self.process_inner_attributes(&mut feature, citygml_attributes, &lookup_key);
 
         let keys = feature.attributes.keys().cloned().collect_vec();
-        let attributes = &mut feature.attributes;
+        let attributes = feature.attributes_mut();
         for key in keys.iter() {
             if (key.to_string().starts_with("uro:") || key.to_string().starts_with("bldg:"))
                 && key.to_string().ends_with("_type")
@@ -812,7 +807,7 @@ mod tests {
         citygml_attributes: HashMap<String, AttributeValue>,
         path: &str,
     ) -> Feature {
-        let mut feature = Feature::new();
+        let mut feature = Feature::new_with_attributes(Attributes::new());
         feature.id = uuid::Uuid::new_v4();
         feature.insert("gmlId", AttributeValue::String(gml_id.to_string()));
         feature.insert(

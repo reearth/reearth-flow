@@ -208,7 +208,7 @@ impl Processor for UnsharedEdgeDetector {
 
         // Output each unshared edge as a LineString feature
         for edge in unshared_edges {
-            let mut edge_feature = Feature::new();
+            let mut edge_feature = Feature::new_with_attributes(Default::default());
             // Convert fixed-point back to floating point
             let start_x = edge.start.x as f64 / FIXED_POINT_SCALE;
             let start_y = edge.start.y as f64 / FIXED_POINT_SCALE;
@@ -220,13 +220,15 @@ impl Processor for UnsharedEdgeDetector {
                 Coordinate::new_(end_x, end_y),
             ];
             let line = LineString2D::new(line_coords);
-            edge_feature.geometry.value =
+            edge_feature.geometry_mut().value =
                 GeometryValue::FlowGeometry2D(Geometry2D::LineString(line));
 
             // Copy source feature attributes (like udxDirs, _file_index)
             if let Some(source_feature) = self.features.first() {
-                for (key, value) in &source_feature.attributes {
-                    edge_feature.attributes.insert(key.clone(), value.clone());
+                for (key, value) in source_feature.attributes.iter() {
+                    edge_feature
+                        .attributes_mut()
+                        .insert(key.clone(), value.clone());
                 }
             }
 
