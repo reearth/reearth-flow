@@ -27,6 +27,13 @@ pub struct DetailLevel {
     pub(crate) triangles: Vec<[usize; 3]>,
 }
 
+/// Per-feature data collected across primitives within a single GLB file
+struct FeatureData {
+    triangles: Vec<[usize; 3]>,
+    has_texture: bool,
+    texture_name: Option<String>,
+}
+
 /// Find top-level 3D Tiles directories (directories containing tileset.json)
 pub fn find_cesium_tile_directories(base_path: &Path) -> Result<Vec<String>, String> {
     let mut dirs = HashSet::new();
@@ -229,19 +236,21 @@ impl GeometryCollector {
             .ok_or_else(|| format!("GLB file {:?} has no binary blob", glb_path))?
             .clone()];
 
+        // Collect per-feature data across all primitives in this GLB file
+        let mut file_feature_data: HashMap<u32, FeatureData> = HashMap::new();
+
         // Process scene graph to capture node transforms
         for scene in gltf.scenes() {
             traverse_scene(&scene, |node, world_transform| -> Result<(), String> {
                 // Process mesh if attached to this node
                 if let Some(mesh) = node.mesh() {
                     for primitive in mesh.primitives() {
-                        self.process_primitive(
+                        self.process_primitive_collect(
                             &primitive,
                             &buffer_data,
-                            &feature_list,
                             glb_path,
-                            geometric_error,
                             world_transform,
+                            &mut file_feature_data,
                         )?;
                     }
                 }
@@ -249,17 +258,38 @@ impl GeometryCollector {
             })?;
         }
 
+        // Now create one DetailLevel per feature for this GLB file
+        for (feature_id, data) in file_feature_data {
+            let ident = Self::lookup_ident(feature_id, &feature_list, glb_path)?;
+            let (source_idx, texture_name) = if data.has_texture {
+                (Some(0), data.texture_name) // source_idx value doesn't matter, just needs to be Some
+            } else {
+                (None, None)
+            };
+
+            let detail_level = DetailLevel {
+                geometric_error,
+                source_idx,
+                texture_name,
+                triangles: data.triangles,
+            };
+            self.detail_levels
+                .entry(ident)
+                .or_default()
+                .push(detail_level);
+        }
+
         Ok(())
     }
 
-    fn process_primitive(
+    /// Process a primitive and collect feature data without creating DetailLevels yet
+    fn process_primitive_collect(
         &mut self,
         primitive: &::gltf::Primitive,
         buffer_data: &[Vec<u8>],
-        feature_list: &[(String, serde_json::Map<String, Value>)],
         glb_path: &Path,
-        geometric_error: f64,
         transform: &Transform,
+        file_feature_data: &mut HashMap<u32, FeatureData>,
     ) -> Result<(), String> {
         let feature_ids = read_mesh_features(primitive, buffer_data)
             .map_err(|e| format!("Failed to read mesh features from {:?}: {}", glb_path, e))?
@@ -325,18 +355,18 @@ impl GeometryCollector {
             .base_color_texture()
             .map(|tex_info| {
                 let texture = tex_info.texture();
-                let source_idx = texture.source().index() as u32;
                 let texture_name = texture
                     .source()
                     .name()
                     .map(|s| s.to_string())
-                    .or_else(|| Some(format!("texture_{}", source_idx)));
-                (source_idx, texture_name)
+                    .or_else(|| Some(format!("texture_{}", texture.source().index())));
+                texture_name
             });
 
-        // Group triangles by feature ID, offsetting indices by vertex_offset
-        let mut feature_triangles: HashMap<u32, Vec<[usize; 3]>> = HashMap::new();
+        let has_texture = texture_info.is_some();
+        let texture_name = texture_info.flatten();
 
+        // Group triangles by feature ID, offsetting indices by vertex_offset
         if !indices.len().is_multiple_of(3) {
             return Err(format!(
                 "Invalid index count {} (not divisible by 3) in {:?}",
@@ -359,30 +389,27 @@ impl GeometryCollector {
             );
 
             // Offset indices to account for previously appended vertices
-            feature_triangles.entry(fid0).or_default().push([
+            let triangle = [
                 idx0 + vertex_offset,
                 idx1 + vertex_offset,
                 idx2 + vertex_offset,
-            ]);
-        }
+            ];
 
-        for (feature_id, triangles) in feature_triangles {
-            let ident = Self::lookup_ident(feature_id, feature_list, glb_path)?;
-            let (source_idx, texture_name) = match texture_info.clone() {
-                Some((idx, name)) => (Some(idx), name),
-                None => (None, None),
-            };
-
-            let detail_level = DetailLevel {
-                geometric_error,
-                source_idx,
-                texture_name,
-                triangles,
-            };
-            self.detail_levels
-                .entry(ident)
-                .or_default()
-                .push(detail_level);
+            let entry = file_feature_data
+                .entry(fid0)
+                .or_insert_with(|| FeatureData {
+                    triangles: Vec::new(),
+                    has_texture: false,
+                    texture_name: None,
+                });
+            entry.triangles.push(triangle);
+            // If any primitive has texture, the feature has texture
+            if has_texture {
+                entry.has_texture = true;
+                if entry.texture_name.is_none() {
+                    entry.texture_name = texture_name.clone();
+                }
+            }
         }
 
         Ok(())
