@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"testing"
 
+	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
+	workspacemockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace/mockrepo"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -22,21 +23,21 @@ func TestCreateWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {
 		b.Name("test")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().Create(gomock.Any(), "test").Return(w, nil),
+		mockWorkspaceRepo.EXPECT().CreateWorkspace(gomock.Any(), "test").Return(w, nil),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
@@ -70,22 +71,22 @@ func TestDeleteWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	wid2 := pkgworkspace.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	wid2 := accountsworkspace.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().Delete(gomock.Any(), wid).Return(nil),
+		mockWorkspaceRepo.EXPECT().DeleteWorkspace(gomock.Any(), wid).Return(nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().Delete(gomock.Any(), wid2).Return(interfaces.ErrOperationDenied),
+		mockWorkspaceRepo.EXPECT().DeleteWorkspace(gomock.Any(), wid2).Return(interfaces.ErrOperationDenied),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
@@ -134,25 +135,31 @@ func TestUpdateWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	wid2 := pkgworkspace.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	wid2 := accountsworkspace.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {
 		b.Name("updated")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().Update(gomock.Any(), wid, "updated").Return(w, nil),
+		mockWorkspaceRepo.EXPECT().UpdateWorkspace(gomock.Any(), workspace.UpdateWorkspaceInput{
+			WorkspaceID: wid.String(),
+			Name:        "updated",
+		}).Return(w, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().Update(gomock.Any(), wid2, "updated").Return(nil, errors.New("not found")),
+		mockWorkspaceRepo.EXPECT().UpdateWorkspace(gomock.Any(), workspace.UpdateWorkspaceInput{
+			WorkspaceID: wid2.String(),
+			Name:        "updated",
+		}).Return(nil, errors.New("not found")),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
@@ -203,23 +210,23 @@ func TestAddMemberToWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	uid := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	uid := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().AddUserMember(gomock.Any(), gomock.Any(), gomock.Any()).Return(w, nil),
+		mockWorkspaceRepo.EXPECT().AddUsersToWorkspace(gomock.Any(), gomock.Any()).Return(w, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().AddUserMember(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("user already joined")),
+		mockWorkspaceRepo.EXPECT().AddUsersToWorkspace(gomock.Any(), gomock.Any()).Return(nil, errors.New("user already joined")),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
@@ -269,23 +276,23 @@ func TestRemoveMemberFromWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	uid := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	uid := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().RemoveUserMember(gomock.Any(), gomock.Any(), gomock.Any()).Return(w, nil),
+		mockWorkspaceRepo.EXPECT().RemoveUserFromWorkspace(gomock.Any(), gomock.Any(), gomock.Any()).Return(w, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().RemoveUserMember(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("target user does not exist in the workspace")),
+		mockWorkspaceRepo.EXPECT().RemoveUserFromWorkspace(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("target user does not exist in the workspace")),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
@@ -326,25 +333,25 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	wid2 := pkgworkspace.NewID()
-	uid := pkguser.NewID()
-	uid2 := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	wid2 := accountsworkspace.NewID()
+	uid := accountsuser.NewID()
+	uid2 := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().UpdateUserMember(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(w, nil),
+		mockWorkspaceRepo.EXPECT().UpdateUserOfWorkspace(gomock.Any(), gomock.Any()).Return(w, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().UpdateUserMember(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("operation denied")),
+		mockWorkspaceRepo.EXPECT().UpdateUserOfWorkspace(gomock.Any(), gomock.Any()).Return(nil, errors.New("operation denied")),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,

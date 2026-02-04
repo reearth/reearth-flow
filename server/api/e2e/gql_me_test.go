@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"testing"
 
+	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
+	"github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
 	"go.uber.org/mock/gomock"
 )
 
@@ -17,12 +18,15 @@ func TestMe(t *testing.T) {
 
 	workspace := factory.NewWorkspace()
 	testUserSubject := "auth0|test-user"
-	userEntity := factory.NewUser(func(b *user.Builder) {
-		b.MyWorkspaceID(workspace.ID())
-		b.Auths([]string{testUserSubject})
+	auths := []user.Auth{
+		{Provider: "auth0", Sub: testUserSubject},
+	}
+	userEntity := factory.NewUser(func(b *accountsuser.Builder) {
+		b.Workspace(workspace.ID())
+		b.Auths(auths)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(userEntity, nil)
 
 	mock := &TestMocks{

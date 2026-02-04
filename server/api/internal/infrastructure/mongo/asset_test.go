@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
-	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
@@ -30,8 +30,8 @@ func TestFindByID(t *testing.T) {
 				Asset: asset.New().
 					NewID().
 					CreatedAt(time.Now()).
-					Workspace(id.NewWorkspaceID()).
-					CreatedByUser(id.NewUserID()).
+					Workspace(accountsid.NewWorkspaceID()).
+					CreatedByUser(accountsid.NewUserID()).
 					FileName("file.json").
 					Name("name").
 					Size(10).
@@ -130,8 +130,8 @@ func TestFindByWorkspace(t *testing.T) {
 			repoAsset := NewAsset(mongox.NewClientWithDatabase(client))
 			ctx := context.Background()
 
-			wid := id.NewWorkspaceID()
-			uid := id.NewUserID()
+			wid := accountsid.NewWorkspaceID()
+			uid := accountsid.NewUserID()
 
 			aAaa := asset.New().
 				NewID().

@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
@@ -10,16 +11,16 @@ import (
 
 type Project interface {
 	Filtered(WorkspaceFilter) Project
-	CountByWorkspace(context.Context, id.WorkspaceID) (int, error)
-	CountPublicByWorkspace(context.Context, id.WorkspaceID) (int, error)
+	CountByWorkspace(context.Context, accountsid.WorkspaceID) (int, error)
+	CountPublicByWorkspace(context.Context, accountsid.WorkspaceID) (int, error)
 	FindByID(context.Context, id.ProjectID) (*project.Project, error)
 	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam, *string, *bool) ([]*project.Project, *interfaces.PageBasedInfo, error)
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string, *bool) ([]*project.Project, *interfaces.PageBasedInfo, error)
 	Remove(context.Context, id.ProjectID) error
 	Save(context.Context, *project.Project) error
 }
 
-func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid id.WorkspaceID, batch int64, callback func([]*project.Project) error) error {
+func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid accountsid.WorkspaceID, batch int64, callback func([]*project.Project) error) error {
 	page := 1
 	for {
 		pagination := &interfaces.PaginationParam{
