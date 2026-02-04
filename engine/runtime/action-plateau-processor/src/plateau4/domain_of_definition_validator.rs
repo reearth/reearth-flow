@@ -7,7 +7,6 @@ use std::sync::Arc;
 use fastxml::transform::{EditableNode, StreamTransformer};
 use nusamai_citygml::GML31_NS;
 use once_cell::sync::Lazy;
-use quick_xml::{events::Event, Reader};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::XmlContext;
 use reearth_flow_common::xml::{self, XmlRoNode};
@@ -941,76 +940,8 @@ fn collect_xlinks(
     raw_xml: &str,
     xlink_prefixes: &[String],
 ) -> super::errors::Result<Vec<XlinkInfo>> {
-    let mut reader = Reader::from_str(raw_xml);
-    reader.config_mut().trim_text(false);
-    reader.config_mut().expand_empty_elements = true;
+    let xlinks: RefCell<Vec<XlinkInfo>> = RefCell::new(Vec::new());
 
-    let mut buf = Vec::new();
-    let mut stack: Vec<String> = Vec::new();
-    let mut xlinks = Vec::new();
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) => {
-                let qname = event_qname(&e)?;
-                if let Some(href) = event_xlink_href(&e, xlink_prefixes)? {
-                    let xpath = if stack.is_empty() {
-                        qname.clone()
-                    } else {
-                        format!("{}/{}", stack.join("/"), qname)
-                    };
-                    xlinks.push(XlinkInfo {
-                        href,
-                        tag: qname.clone(),
-                        xpath,
-                    });
-                }
-                stack.push(qname);
-            }
-            Ok(Event::Empty(e)) => {
-                let qname = event_qname(&e)?;
-                if let Some(href) = event_xlink_href(&e, xlink_prefixes)? {
-                    let xpath = if stack.is_empty() {
-                        qname.clone()
-                    } else {
-                        format!("{}/{}", stack.join("/"), qname)
-                    };
-                    xlinks.push(XlinkInfo {
-                        href,
-                        tag: qname,
-                        xpath,
-                    });
-                }
-            }
-            Ok(Event::End(_)) => {
-                stack.pop();
-            }
-            Ok(Event::Eof) => break,
-            Err(err) => {
-                return Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                    "Failed to parse XML for xlink: {err:?}"
-                )))
-            }
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    Ok(xlinks)
-}
-
-fn event_qname(e: &quick_xml::events::BytesStart<'_>) -> super::errors::Result<String> {
-    let name = e.name();
-    let qname = std::str::from_utf8(name.as_ref()).map_err(|e| {
-        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-    })?;
-    Ok(qname.to_string())
-}
-
-fn event_xlink_href(
-    e: &quick_xml::events::BytesStart<'_>,
-    xlink_prefixes: &[String],
-) -> super::errors::Result<Option<String>> {
     let mut expected_keys = Vec::new();
     for prefix in xlink_prefixes {
         if prefix.is_empty() {
@@ -1023,19 +954,44 @@ fn event_xlink_href(
         expected_keys.push("xlink:href".to_string());
     }
 
-    for attr in e.attributes().filter_map(|a| a.ok()) {
-        let key = std::str::from_utf8(attr.key.as_ref()).map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
         })?;
-        if expected_keys.iter().any(|expected| expected == key) {
-            let value = attr.unescape_value().map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-            })?;
-            return Ok(Some(value.to_string()));
-        }
-    }
 
-    Ok(None)
+    transformer
+        .on_with_context("//*", |node, ctx| {
+            let attrs = node.get_attributes();
+            let href = expected_keys
+                .iter()
+                .find_map(|key| attrs.get(key.as_str()).cloned());
+
+            if let Some(href) = href {
+                let qname = node.qname();
+                let path_id = ctx.path_id();
+                let xpath = if path_id.is_empty() {
+                    qname.clone()
+                } else {
+                    format!("{}/{}", path_id, qname)
+                };
+                xlinks.borrow_mut().push(XlinkInfo {
+                    href,
+                    tag: qname,
+                    xpath,
+                });
+            }
+        })
+        .for_each()
+        .map_err(|e| {
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                "Failed to collect xlinks: {e:?}"
+            ))
+        })?;
+
+    Ok(xlinks.into_inner())
 }
 
 #[allow(clippy::too_many_arguments)]

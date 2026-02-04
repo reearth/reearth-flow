@@ -6,7 +6,6 @@ use std::{
 };
 
 use fastxml::transform::{EditableNode, StreamTransformer};
-use quick_xml::{events::Event, Reader};
 use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -375,90 +374,61 @@ fn build_parent_id_map(
     match_tags: &[String],
 ) -> Result<HashMap<String, Option<String>>, XmlProcessorError> {
     let match_tags: HashSet<String> = match_tags.iter().cloned().collect();
-    let mut reader = Reader::from_str(raw_xml);
-    reader.config_mut().trim_text(false);
-    reader.config_mut().expand_empty_elements = true;
+    let map: RefCell<HashMap<String, Option<String>>> = RefCell::new(HashMap::new());
+    let uri = uri.clone();
 
-    let mut buf = Vec::new();
-    let mut stack: Vec<String> = Vec::new();
-    let mut map = HashMap::new();
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) => {
-                let qname = event_qname(&e)?;
-                let attrs = event_attributes_local(&e)?;
-                let xml_id = compute_xml_id_from_parts(uri, &qname, &attrs);
-                let parent_id = stack.last().cloned();
-                if match_tags.contains(&qname) {
-                    map.insert(xml_id.clone(), parent_id);
-                }
-                stack.push(xml_id);
-            }
-            Ok(Event::Empty(e)) => {
-                let qname = event_qname(&e)?;
-                let attrs = event_attributes_local(&e)?;
-                let xml_id = compute_xml_id_from_parts(uri, &qname, &attrs);
-                let parent_id = stack.last().cloned();
-                if match_tags.contains(&qname) {
-                    map.insert(xml_id, parent_id);
-                }
-            }
-            Ok(Event::End(_)) => {
-                stack.pop();
-            }
-            Ok(Event::Eof) => break,
-            Err(err) => {
-                return Err(XmlProcessorError::Fragmenter(format!(
-                    "Failed to parse XML for parent IDs: {err:?}"
-                )))
-            }
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    Ok(map)
-}
-
-fn event_qname(e: &quick_xml::events::BytesStart<'_>) -> Result<String, XmlProcessorError> {
-    let binding = e.name();
-    let name = binding.as_ref();
-    let qname = std::str::from_utf8(name)
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    Ok(qname.to_string())
+
+    transformer
+        .on_with_context("//*", |node, ctx| {
+            let qname = node.qname();
+            if !match_tags.contains(&qname) {
+                return;
+            }
+
+            let xml_id = compute_xml_id_from_editable_node(&uri, node);
+            let parent_id = compute_parent_xml_id(&uri, ctx);
+
+            map.borrow_mut().insert(xml_id, parent_id);
+        })
+        .for_each()
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+
+    Ok(map.into_inner())
 }
 
-fn event_attributes_local(
-    e: &quick_xml::events::BytesStart<'_>,
-) -> Result<Vec<(String, String)>, XmlProcessorError> {
-    let mut attrs = Vec::new();
-    for attr in e.attributes().filter_map(|a| a.ok()) {
-        let key = std::str::from_utf8(attr.key.as_ref())
-            .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-        if key == "xmlns" || key.starts_with("xmlns:") {
-            continue;
-        }
-        let value = attr
-            .unescape_value()
-            .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-        let local_name = key.split_once(':').map(|(_, local)| local).unwrap_or(key);
-        attrs.push((local_name.to_string(), value.to_string()));
-    }
-    Ok(attrs)
-}
+fn compute_parent_xml_id(
+    uri: &Uri,
+    ctx: &fastxml::transform::TransformContext,
+) -> Option<String> {
+    let parent = ctx.parent()?;
 
-fn compute_xml_id_from_parts(uri: &Uri, qname: &str, attrs: &[(String, String)]) -> String {
-    if let Some((_, value)) = attrs.iter().find(|(k, _)| k == "id") {
-        return value.to_string();
+    // Check for 'id' attribute (handles both 'id' and 'gml:id')
+    if let Some(id) = parent.attributes.get("id") {
+        return Some(id.clone());
+    }
+    if let Some(id) = parent.attributes.get("gml:id") {
+        return Some(id.clone());
     }
 
-    let mut key_values = attrs
+    // Build hash from attributes (excluding xmlns)
+    let mut attrs: Vec<(String, String)> = parent
+        .attributes
         .iter()
-        .map(|(k, v)| format!("{k}={v}"))
-        .collect::<Vec<_>>();
-    key_values.sort();
-    to_hash(format!("{}:{}[{}]", uri, qname, key_values.join(",")).as_str())
+        .filter(|(k, _)| *k != "xmlns" && !k.starts_with("xmlns:"))
+        .map(|(k, v)| {
+            let local_name = k.split_once(':').map(|(_, local)| local).unwrap_or(k);
+            (local_name.to_string(), v.clone())
+        })
+        .collect();
+    attrs.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let key_values: Vec<String> = attrs.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    Some(to_hash(
+        format!("{}:{}[{}]", uri, parent.qname, key_values.join(",")).as_str(),
+    ))
 }
 
 fn compute_xml_id_from_editable_node(uri: &Uri, node: &EditableNode) -> String {

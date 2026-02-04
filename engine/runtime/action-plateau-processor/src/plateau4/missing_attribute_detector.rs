@@ -11,7 +11,6 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
-use quick_xml::{events::Event, Reader};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -760,52 +759,42 @@ struct RootInfo {
 }
 
 fn parse_root_info(raw_xml: &str) -> Result<RootInfo, PlateauProcessorError> {
-    let mut reader = Reader::from_str(raw_xml);
-    reader.config_mut().trim_text(false);
-    reader.config_mut().expand_empty_elements = true;
+    use std::cell::RefCell;
 
-    let mut buf = Vec::new();
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                let name = e.name();
-                let qname = std::str::from_utf8(name.as_ref()).map_err(|e| {
-                    PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
-                })?;
-                let mut gml_id = None;
+    let root_info: RefCell<Option<RootInfo>> = RefCell::new(None);
 
-                for attr in e.attributes().filter_map(|a| a.ok()) {
-                    let key = std::str::from_utf8(attr.key.as_ref()).map_err(|e| {
-                        PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
-                    })?;
-                    let value = attr.unescape_value().map_err(|e| {
-                        PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
-                    })?;
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
+        })?;
 
-                    if key == "id" || key == "gml:id" {
-                        gml_id = Some(value.to_string());
-                    }
-                }
+    transformer
+        .on("/*", |node| {
+            let qname = node.qname();
+            let attrs = node.get_attributes();
+            let gml_id = attrs
+                .get("id")
+                .or_else(|| attrs.get("gml:id"))
+                .cloned();
 
-                return Ok(RootInfo {
-                    qname: qname.to_string(),
-                    gml_id,
-                });
-            }
-            Ok(Event::Eof) => {
-                return Err(PlateauProcessorError::MissingAttributeDetector(
-                    "Failed to parse XML root element".to_string(),
-                ))
-            }
-            Err(err) => {
-                return Err(PlateauProcessorError::MissingAttributeDetector(format!(
-                    "Failed to parse XML root element: {err:?}"
-                )))
-            }
-            _ => {}
-        }
-        buf.clear();
-    }
+            *root_info.borrow_mut() = Some(RootInfo { qname, gml_id });
+        })
+        .for_each()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to parse root element: {e:?}"
+            ))
+        })?;
+
+    let result = root_info.borrow_mut().take();
+    result.ok_or_else(|| {
+        PlateauProcessorError::MissingAttributeDetector(
+            "Failed to parse XML root element".to_string(),
+        )
+    })
 }
 
 fn stream_exists(raw_xml: &str, xpath: &str) -> Result<bool, PlateauProcessorError> {
