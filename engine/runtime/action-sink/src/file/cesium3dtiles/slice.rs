@@ -1,7 +1,6 @@
 //! Polygon slicing algorithm based on [geojson-vt](https://github.com/mapbox/geojson-vt).
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use flatgeom::{MultiPolygon, Polygon, Polygon2, Polygon3};
 use indexmap::IndexSet;
@@ -151,7 +150,8 @@ pub fn slice_to_tiles<E>(
                                     sliced_tiles.entry((z, x, y)).or_insert_with(|| {
                                         GltfFeature {
                                             polygons: MultiPolygon::new(),
-                                            attributes: Arc::clone(&feature.attributes)
+                                            attributes: feature
+                                                .attributes
                                                 .iter()
                                                 .filter(|(_, v)| v.convertible_nusamai_type_ref())
                                                 .filter(|(k, _)| {
@@ -173,7 +173,8 @@ pub fn slice_to_tiles<E>(
                                     .entry((z, x, y))
                                     .or_insert_with(|| GltfFeature {
                                         polygons: MultiPolygon::new(),
-                                        attributes: Arc::clone(&feature.attributes)
+                                        attributes: feature
+                                            .attributes
                                             .iter()
                                             .filter(|(_, v)| v.convertible_nusamai_type_ref())
                                             .filter(|(k, _)| {

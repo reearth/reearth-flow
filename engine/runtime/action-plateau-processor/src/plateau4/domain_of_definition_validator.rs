@@ -1771,9 +1771,7 @@ mod tests {
             AttributeValue::String(file_path.to_string()),
         );
 
-        let mut feature = Feature::new_with_attributes(Attributes::new());
-        feature.attributes = Arc::new(attributes);
-        feature
+        Feature::new_with_attributes(attributes)
     }
 
     // Helper function to extract file_stats outputs from ProcessorChannelForwarder
