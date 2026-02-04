@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use reearth_flow_common::xml;
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -84,7 +83,3 @@ pub struct XmlValidatorParam {
     pub input_type: XmlInputType,
     pub validation_type: ValidationType,
 }
-
-/// Schema store for streaming validation (StreamValidator)
-/// Stores compiled schemas that can be reused for multiple validations
-pub type SchemaStore = HashMap<Vec<(String, String)>, std::sync::Arc<xml::CompiledSchema>>;
