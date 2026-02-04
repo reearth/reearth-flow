@@ -112,26 +112,6 @@ nodes:
     with:
       routingPort: errorCountSurfaceErrors
 
-  # ===== Dummy statistics for other error types (not yet implemented) =====
-  # Invalid spatial attribute type - dummy statistics
-  - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    name: DummyStatisticsInvalidSpatialAttr
-    type: action
-    action: StatisticsCalculator
-    with:
-      groupBy:
-        - gmlFilename
-      calculations:
-        - newAttribute: _num_invalid_spatial_attr
-          expr: '0'
-
-  - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
-    name: OutputRouterInvalidSpatialAttr
-    type: action
-    action: OutputRouter
-    with:
-      routingPort: errorCountInvalidSpatialAttr
-
   # ===== Solid Boundary Validation (非水密立体検出) =====
   # SolidBoundaryValidator for LOD1,2,3
   - id: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
@@ -269,44 +249,6 @@ nodes:
       calculations:
         - newAttribute: _num_solid_errors
           expr: "1"
-
-  # Other solid errors - dummy statistics
-  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a80
-    name: DummyStatisticsOtherSolidErrors
-    type: action
-    action: StatisticsCalculator
-    with:
-      groupBy:
-        - gmlFilename
-      calculations:
-        - newAttribute: _num_other_solid_errors
-          expr: '0'
-
-  - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
-    name: OutputRouterOtherSolidErrors
-    type: action
-    action: OutputRouter
-    with:
-      routingPort: errorCountOtherSolidErrors
-
-  # Boundary surface errors - dummy statistics
-  - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b80
-    name: DummyStatisticsBoundarySurfaceErrors
-    type: action
-    action: StatisticsCalculator
-    with:
-      groupBy:
-        - gmlFilename
-      calculations:
-        - newAttribute: _num_boundary_surface_errors
-          expr: '0'
-
-  - id: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
-    name: OutputRouterBoundarySurfaceErrors
-    type: action
-    action: OutputRouter
-    with:
-      routingPort: errorCountBoundarySurfaceErrors
 
   # Orientation errors (面の向き不正) - LOD0 only
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
@@ -523,43 +465,6 @@ edges:
     fromPort: default
     toPort: default
 
-  # ===== LOD outputs → Dummy statistics for other error types =====
-  # LOD0 → DummyStatisticsInvalidSpatialAttr (for feature count through validation)
-  - id: 31a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d0
-    from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
-    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    fromPort: default
-    toPort: default
-
-  # LOD1 → DummyStatisticsInvalidSpatialAttr
-  - id: 32b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d1
-    from: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    fromPort: default
-    toPort: default
-
-  # LOD2 → DummyStatisticsInvalidSpatialAttr
-  - id: 33c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e2
-    from: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    fromPort: default
-    toPort: default
-
-  # LOD3 → DummyStatisticsInvalidSpatialAttr
-  - id: 34d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f3
-    from: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
-    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    fromPort: default
-    toPort: default
-
-  # ===== Dummy statistics → Output routers =====
-  # DummyStatisticsInvalidSpatialAttr → OutputRouter
-  - id: 06f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b2
-    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    to: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
-    fromPort: default
-    toPort: default
-
   # ===== SolidBoundaryValidator edges =====
   # LOD1 → SolidBoundaryValidator
   - id: a110a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
@@ -667,32 +572,6 @@ edges:
     fromPort: default
     toPort: default
 
-  # DummyStatisticsOtherSolidErrors (maintain chain for other error types)
-  - id: 09c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e5
-    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e80
-    to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a80
-    fromPort: default
-    toPort: default
-
-  - id: 10d1e2f3-a4b5-c6d7-e8f9-a0b1c2d3e4f6
-    from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a80
-    to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
-    fromPort: default
-    toPort: default
-
-  # DummyStatisticsBoundarySurfaceErrors → OutputRouter
-  - id: 11e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a7
-    from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a80
-    to: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b80
-    fromPort: default
-    toPort: default
-
-  - id: 12f3a4b5-c6d7-e8f9-a0b1-c2d3e4f5a6b8
-    from: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b80
-    to: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
-    fromPort: default
-    toPort: default
-
   # ===== Orientation errors (面の向き不正) - LOD0 only =====
   # SurfaceValidator3D_LOD0 inCorrectOrientation → AttributeMapperOrientationErrors
   - id: 25a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c0
@@ -753,17 +632,8 @@ edges:
 
 ports:
   outputs:
-    - id: errorCountInvalidSpatialAttr
-      nodeId: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
-      port: default
     - id: errorCountNotClosedSolid
       nodeId: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
-      port: default
-    - id: errorCountOtherSolidErrors
-      nodeId: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
-      port: default
-    - id: errorCountBoundarySurfaceErrors
-      nodeId: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
       port: default
     - id: errorCountSurfaceErrors
       nodeId: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
