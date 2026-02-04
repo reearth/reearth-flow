@@ -387,7 +387,6 @@ pub fn create_validation_context_with_imports(
     base_dir: Option<&std::path::Path>,
 ) -> crate::Result<XmlSchemaValidationContext> {
     use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-    use fastxml::schema::memory::InMemoryStore;
     use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
     use fastxml::schema::xsd::parse_xsd_with_imports;
 
@@ -405,12 +404,9 @@ pub fn create_validation_context_with_imports(
     // Use the final URL (after redirects) as the base URI
     let base_uri = &fetch_result.final_url;
 
-    // Create in-memory store for caching resolved schemas
-    let store = InMemoryStore::new();
-
     // Parse with import resolution
-    let compiled = parse_xsd_with_imports(&fetch_result.content, base_uri, &fetcher, &store)
-        .map_err(|e| {
+    let compiled =
+        parse_xsd_with_imports(&fetch_result.content, base_uri, &fetcher).map_err(|e| {
             crate::Error::Xml(format!(
                 "Failed to parse schema with imports {}: {e:?}",
                 schema_uri
@@ -440,7 +436,6 @@ pub fn create_validation_context_for_schema_locations(
     base_dir: Option<&std::path::Path>,
 ) -> crate::Result<XmlSchemaValidationContext> {
     use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-    use fastxml::schema::memory::InMemoryStore;
     use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
     use fastxml::schema::xsd::{
         compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
@@ -458,9 +453,6 @@ pub fn create_validation_context_for_schema_locations(
         None => DefaultFetcher::new(),
     };
 
-    // Create shared store for caching resolved schemas across all schema locations
-    let store = InMemoryStore::new();
-
     // Collect all resolved schemas
     let mut all_schemas: Vec<XsdSchema> = Vec::new();
 
@@ -474,7 +466,7 @@ pub fn create_validation_context_for_schema_locations(
         let base_uri = &fetch_result.final_url;
 
         // Parse with import resolution using a resolver
-        let mut resolver = SchemaResolver::new(&fetcher, &store);
+        let mut resolver = SchemaResolver::new(&fetcher);
         let schemas = resolver
             .resolve_all(&fetch_result.content, base_uri)
             .map_err(|e| {
@@ -530,7 +522,6 @@ pub fn compile_schema_for_streaming(
     base_dir: Option<&std::path::Path>,
 ) -> crate::Result<std::sync::Arc<CompiledSchema>> {
     use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-    use fastxml::schema::memory::InMemoryStore;
     use fastxml::schema::xsd::{
         compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
     };
@@ -546,7 +537,6 @@ pub fn compile_schema_for_streaming(
         None => DefaultFetcher::new(),
     };
 
-    let store = InMemoryStore::new();
     let mut all_schemas: Vec<XsdSchema> = Vec::new();
 
     for (_namespace, location) in schema_locations {
@@ -555,7 +545,7 @@ pub fn compile_schema_for_streaming(
         })?;
 
         let base_uri = &fetch_result.final_url;
-        let mut resolver = SchemaResolver::new(&fetcher, &store);
+        let mut resolver = SchemaResolver::new(&fetcher);
         let schemas = resolver
             .resolve_all(&fetch_result.content, base_uri)
             .map_err(|e| {

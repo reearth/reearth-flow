@@ -124,7 +124,7 @@ geo-types = "0.7.17"
 geojson = "0.24.2"
 glam = "0.30.9"
 # gltf = { version = "1.4", features = ["extensions", "extras"] }
-fastxml = { version = "0.6.6", features = ["ureq"] }
+fastxml = { version = "0.7.0", features = ["ureq"] }
 gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238179ea5a6152c5cf22", features = [
   "EXT_texture_webp",
   "extensions",
