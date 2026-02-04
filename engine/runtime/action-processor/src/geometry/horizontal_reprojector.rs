@@ -417,12 +417,6 @@ where
 }
 
 impl Processor for HorizontalReprojector {
-    fn num_threads(&self) -> usize {
-        // Thread-local cache ensures each thread has its own Proj instances,
-        // so we can safely use multiple threads.
-        16
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
