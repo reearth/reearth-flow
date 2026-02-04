@@ -298,7 +298,6 @@ fn generate_fragment_streaming(
         let feature = feature.clone();
         let uri = uri.clone();
         let tag = tag.clone();
-        let parent_map = parent_map;
         let stream_error = std::rc::Rc::clone(&stream_error);
 
         transformer = transformer.on(&xpath, move |node| {
