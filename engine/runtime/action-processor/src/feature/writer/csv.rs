@@ -20,7 +20,17 @@ pub(super) fn write_csv(
         .delimiter(delimiter.into())
         .quote_style(csv::QuoteStyle::NonNumeric)
         .from_writer(vec![]);
-    let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
+    let rows: Vec<AttributeValue> = features
+        .iter()
+        .map(|f| {
+            AttributeValue::Map(
+                f.attributes
+                    .iter()
+                    .map(|(k, v)| (k.clone().into_inner(), v.clone()))
+                    .collect(),
+            )
+        })
+        .collect();
     let mut fields = if let Some(first_row) = rows.first() {
         get_fields(first_row)
     } else {

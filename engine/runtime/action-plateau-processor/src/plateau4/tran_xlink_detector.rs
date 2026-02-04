@@ -175,18 +175,18 @@ impl TransportationXlinkDetector {
                     feature.refresh_id();
 
                     // Set attributes according to expected output format
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("gmlId"),
                         AttributeValue::String(unreferenced_surfaces.road_id.clone()),
                     );
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("featureType"),
                         AttributeValue::String("Road".to_string()),
                     );
                     feature
-                        .attributes
+                        .attributes_mut()
                         .insert(Attribute::new("lod"), AttributeValue::String(lod));
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("unreferenced"),
                         AttributeValue::String(surface_id),
                     );

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use indexmap::IndexMap;
@@ -826,7 +827,7 @@ print(json.dumps(output))
                                 (Attribute::new(k.clone()), AttributeValue::from(v.clone()))
                             })
                             .collect();
-                        output_feature.attributes = updated_attributes;
+                        output_feature.attributes = Arc::new(updated_attributes);
                     }
 
                     // Update geometry if present and successfully converted
@@ -834,7 +835,7 @@ print(json.dumps(output))
                         if let Ok(new_geometry) = geojson_to_geometry(geometry_json) {
                             // Only update if it's not an empty geometry (truly unsupported type)
                             if !matches!(new_geometry.value, GeometryValue::None) {
-                                output_feature.geometry = new_geometry;
+                                output_feature.geometry = Arc::new(new_geometry);
                             }
                             // Otherwise preserve original geometry
                         }
@@ -852,13 +853,13 @@ print(json.dumps(output))
                     .iter()
                     .map(|(k, v)| (Attribute::new(k.clone()), AttributeValue::from(v.clone())))
                     .collect();
-                feature.attributes = updated_attributes;
+                feature.attributes = Arc::new(updated_attributes);
             }
 
             if let Some(geometry_json) = geojson_response.get("geometry") {
                 if let Ok(new_geometry) = geojson_to_geometry(geometry_json) {
                     if !matches!(new_geometry.value, GeometryValue::None) {
-                        feature.geometry = new_geometry;
+                        feature.geometry = Arc::new(new_geometry);
                     }
                 }
             }

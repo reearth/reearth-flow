@@ -236,7 +236,7 @@ fn create_footprint_from_polygons(
             })?;
 
     let mut result_feature = feature.clone();
-    result_feature.geometry.value =
+    result_feature.geometry_mut().value =
         GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(combined_polygons));
 
     Some(result_feature)

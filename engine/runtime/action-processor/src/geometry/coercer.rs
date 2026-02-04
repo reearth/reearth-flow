@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::multi_line_string::{MultiLineString2D, MultiLineString3D};
@@ -155,7 +157,7 @@ impl GeometryCoercer {
                             let mut geometry = geometry.clone();
                             geometry.value =
                                 GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
-                            feature.geometry = geometry;
+                            feature.geometry = Arc::new(geometry);
                         } else {
                             return Err(
                                 "Cannot convert to Polygon: LineString is not closed".to_string()
@@ -182,7 +184,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry2D(geo);
-                        feature.geometry = geometry;
+                        feature.geometry = Arc::new(geometry);
                     }
                     CoerceTarget::Polygon => {
                         // Already a polygon, no conversion needed
@@ -221,7 +223,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry2D(geo);
-                        feature.geometry = geometry;
+                        feature.geometry = Arc::new(geometry);
                     }
                     CoerceTarget::Polygon => {
                         // Already MultiPolygon, no direct conversion to single Polygon
@@ -261,7 +263,7 @@ impl GeometryCoercer {
                             let mut geometry = geometry.clone();
                             geometry.value =
                                 GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-                            feature.geometry = geometry;
+                            feature.geometry = Arc::new(geometry);
                         } else {
                             return Err(
                                 "Cannot convert to Polygon: LineString is not closed".to_string()
@@ -290,7 +292,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(geo);
-                        feature.geometry = geometry;
+                        feature.geometry = Arc::new(geometry);
                     }
                     CoerceTarget::Polygon => {
                         // Already a polygon, no conversion needed
@@ -303,7 +305,7 @@ impl GeometryCoercer {
                         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
                             triangular_mesh,
                         ));
-                        feature.geometry = geometry;
+                        feature.geometry = Arc::new(geometry);
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -337,7 +339,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(geo);
-                        feature.geometry = geometry;
+                        feature.geometry = Arc::new(geometry);
                     }
                     CoerceTarget::Polygon => {
                         // Already MultiPolygon, no direct conversion to single Polygon
@@ -349,7 +351,7 @@ impl GeometryCoercer {
                         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
                             triangular_mesh,
                         ));
-                        feature.geometry = geometry;
+                        feature.geometry = Arc::new(geometry);
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -395,7 +397,7 @@ impl GeometryCoercer {
                     geometry.value = GeometryValue::FlowGeometry3D(geo);
                     let mut feature = feature.clone();
                     feature.refresh_id();
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 CoerceTarget::Polygon => {
@@ -416,7 +418,7 @@ impl GeometryCoercer {
                     geometry.value = GeometryValue::FlowGeometry3D(geo);
                     let mut feature = feature.clone();
                     feature.refresh_id();
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 CoerceTarget::TriangularMesh => {
@@ -439,7 +441,7 @@ impl GeometryCoercer {
                     geometry.value = GeometryValue::FlowGeometry3D(geo);
                     let mut feature = feature.clone();
                     feature.refresh_id();
-                    feature.geometry = geometry;
+                    feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             }

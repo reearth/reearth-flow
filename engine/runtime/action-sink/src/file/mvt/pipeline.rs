@@ -75,7 +75,7 @@ pub(super) fn geometry_slicing_stage(
                         multi_polygons: mpoly,
                         multi_line_strings: MultiLineString2::new(),
                         multi_points: MultiPoint2::new(),
-                        properties: feature.attributes.clone(),
+                        properties: (*feature.attributes).clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
@@ -94,7 +94,7 @@ pub(super) fn geometry_slicing_stage(
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: line_strings,
                         multi_points: MultiPoint2::new(),
-                        properties: feature.attributes.clone(),
+                        properties: (*feature.attributes).clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
@@ -113,7 +113,7 @@ pub(super) fn geometry_slicing_stage(
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: MultiLineString2::new(),
                         multi_points: points,
-                        properties: feature.attributes.clone(),
+                        properties: (*feature.attributes).clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(

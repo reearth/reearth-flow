@@ -224,13 +224,16 @@ impl Cesium3DTilesWriter {
 
         let feature = {
             let mut feature = ctx.feature.clone();
-            feature.attributes = feature
-                .attributes
-                .into_iter()
-                .filter(|(k, _)| {
-                    !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
-                })
-                .collect();
+            feature.attributes = Arc::new(
+                feature
+                    .attributes
+                    .iter()
+                    .filter(|(k, _)| {
+                        !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+                    })
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
+            );
             feature
         };
 
@@ -251,13 +254,16 @@ impl Cesium3DTilesWriter {
         };
 
         let mut sanitized_feature = feature.clone();
-        sanitized_feature.attributes = sanitized_feature
-            .attributes
-            .into_iter()
-            .filter(|(k, _)| {
-                !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
-            })
-            .collect();
+        sanitized_feature.attributes = Arc::new(
+            sanitized_feature
+                .attributes
+                .iter()
+                .filter(|(k, _)| {
+                    !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+                })
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+        );
 
         let typedef: TypeDef = (&sanitized_feature).into();
         self.schema.types.insert(feature_type.clone(), typedef);

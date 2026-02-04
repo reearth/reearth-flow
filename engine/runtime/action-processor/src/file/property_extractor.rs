@@ -177,7 +177,7 @@ impl Processor for FilePropertyExtractor {
             };
             let mut feature = ctx.feature.clone();
             let attributes: HashMap<Attribute, AttributeValue> = file_property.into();
-            feature.attributes.extend(attributes);
+            feature.extend(attributes);
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

@@ -41,9 +41,8 @@ pub(super) fn write_json(
                     serde_json::Value::Object(
                         feature
                             .attributes
-                            .clone()
-                            .into_iter()
-                            .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                            .iter()
+                            .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone().into()))
                             .collect::<serde_json::Map<_, _>>(),
                     )
                 })
@@ -60,9 +59,8 @@ pub(super) fn write_json(
             .map(|f| {
                 serde_json::Value::Object(
                     f.attributes
-                        .clone()
-                        .into_iter()
-                        .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                        .iter()
+                        .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone().into()))
                         .collect::<serde_json::Map<_, _>>(),
                 )
             })

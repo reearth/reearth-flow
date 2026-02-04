@@ -172,7 +172,7 @@ impl BuildingInstallationGeometryTypeChecker {
                             AttributeValue::String(tag.clone()),
                         ),
                     ]);
-                    feature.attributes.extend(attributes);
+                    feature.attributes_mut().extend(attributes);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             }

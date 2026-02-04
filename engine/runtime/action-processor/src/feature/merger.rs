@@ -281,8 +281,8 @@ impl Processor for FeatureMerger {
                 let mut merged_feature = request_feature.clone();
                 for supplier_feature in supplier_features.iter() {
                     merged_feature
-                        .attributes
-                        .extend(supplier_feature.attributes.clone());
+                        .attributes_mut()
+                        .extend((*supplier_feature.attributes).clone());
                 }
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
@@ -334,8 +334,8 @@ impl FeatureMerger {
                 let mut merged_feature = request_feature.clone();
                 for supplier_feature in supplier_features.iter() {
                     merged_feature
-                        .attributes
-                        .extend(supplier_feature.attributes.clone());
+                        .attributes_mut()
+                        .extend((*supplier_feature.attributes).clone());
                 }
                 fw.send(ctx.as_executor_context(merged_feature, MERGED_PORT.clone()));
             }

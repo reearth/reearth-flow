@@ -105,7 +105,7 @@ impl Processor for HoleCounter {
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.hole_count().into()),
                 );
@@ -113,7 +113,7 @@ impl Processor for HoleCounter {
             }
             GeometryValue::FlowGeometry3D(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.hole_count().into()),
                 );
@@ -121,7 +121,7 @@ impl Processor for HoleCounter {
             }
             GeometryValue::CityGmlGeometry(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.hole_count().into()),
                 );

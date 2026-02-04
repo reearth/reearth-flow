@@ -83,13 +83,13 @@ impl Processor for ThreeDimensionPlanarityRotator {
                     match rotated_geometry {
                         RotatedGeometry::Success(rotated_geometry) => {
                             let mut feature = feature.clone();
-                            feature.geometry.value =
+                            feature.geometry_mut().value =
                                 GeometryValue::FlowGeometry3D(rotated_geometry);
                             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                         }
                         RotatedGeometry::Failure(geometry) => {
                             let mut feature = feature.clone();
-                            feature.geometry.value = GeometryValue::FlowGeometry3D(geometry);
+                            feature.geometry_mut().value = GeometryValue::FlowGeometry3D(geometry);
                             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
                         }
                     }

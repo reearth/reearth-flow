@@ -117,8 +117,89 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+// CancelJob godoc
+// @Summary      Cancel a running job
+// @Description  Cancel a job that was started via an API trigger. Requires the same Bearer token used to trigger the job.
+// @Tags         jobs
+// @Accept       json
+// @Produce      json
+// @Param        jobId    path      string  true  "Job ID (runId returned from trigger execution)"
+// @Param        request  body      object  false "Optional request body with triggerId"
+// @Success      200      {object}  object  "Cancellation response with runID, deploymentID, and status"
+// @Failure      400      {object}  object  "Invalid job ID"
+// @Failure      401      {object}  object  "Missing or invalid authentication token"
+// @Failure      404      {object}  object  "Job not found"
+// @Failure      500      {object}  object  "Internal server error"
+// @Router       /api/jobs/{jobId}/cancel [post]
+// @Security     BearerAuth
+func (h *TriggerHandler) CancelJob(c echo.Context) error {
+	jobID, err := id.JobIDFrom(c.Param("jobId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid job ID"})
+	}
+
+	var token string
+	authHeader := c.Request().Header.Get("Authorization")
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	}
+
+	if token == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing authentication token"})
+	}
+
+	var req struct {
+		TriggerID string `json:"triggerId"`
+	}
+	_ = c.Bind(&req)
+
+	if req.TriggerID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "triggerId is required in the request body"})
+	}
+
+	triggerID, err := id.TriggerIDFrom(req.TriggerID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid trigger ID"})
+	}
+
+	ctx := c.Request().Context()
+	usecases := adapter.Usecases(ctx)
+
+	t, err := usecases.Trigger.FindByID(ctx, triggerID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "trigger not found"})
+	}
+
+	if t.AuthToken() == nil || *t.AuthToken() != token {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid authentication token"})
+	}
+
+	j, err := usecases.Job.FindByID(ctx, jobID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "job not found"})
+	}
+
+	if j.Deployment() != t.Deployment() {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "job does not belong to this trigger's deployment"})
+	}
+
+	cancelledJob, err := usecases.Job.Cancel(ctx, jobID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	resp := trigger.ExecutionResponse{
+		RunID:        cancelledJob.ID().String(),
+		DeploymentID: cancelledJob.Deployment().String(),
+		Status:       string(cancelledJob.Status()),
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 func SetupTriggerRoutes(e *echo.Echo) {
 	h := NewTriggerHandler()
 	e.POST("/api/triggers/:triggerId/run", h.ExecuteTrigger)
 	e.POST("/api/triggers/:triggerId/execute-scheduled", h.ExecuteScheduledTrigger)
+	e.POST("/api/jobs/:jobId/cancel", h.CancelJob)
 }

@@ -211,7 +211,7 @@ impl Processor for SolidBoundaryValidator {
         let Ok(mesh) = TriangularMesh::from_faces(&faces, Some(tolerance)) else {
             // If triangulation fails, then it is a surface issue.
             let mut feature = feature.clone();
-            feature.attributes.insert(
+            feature.attributes_mut().insert(
                 Attribute::new("solid_boundary_issues"),
                 AttributeValue::from(
                     serde_json::to_value(&ValidationResult {
@@ -284,7 +284,7 @@ impl Processor for SolidBoundaryValidator {
 
         // Add validation results to feature attributes if there are issues
         let mut feature: reearth_flow_types::Feature = feature.clone();
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new("solid_boundary_issues"),
             AttributeValue::from(serde_json::to_value(&result).unwrap()),
         );

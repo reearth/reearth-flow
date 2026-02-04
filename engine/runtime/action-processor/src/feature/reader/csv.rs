@@ -69,7 +69,7 @@ pub(crate) fn read_csv(
             })
             .collect::<HashMap<Attribute, AttributeValue>>();
         let mut feature = feature.clone();
-        feature.attributes.extend(row);
+        feature.extend(row);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }
     Ok(())

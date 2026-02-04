@@ -110,7 +110,7 @@ impl Processor for OrientationExtractor {
         let geometry = &feature.geometry;
         if geometry.is_empty() {
             let mut feature = feature.clone();
-            feature.attributes.insert(
+            feature.attributes_mut().insert(
                 self.output_attribute.clone(),
                 AttributeValue::String(NO_ORIENTATION.to_string()),
             );
@@ -120,7 +120,7 @@ impl Processor for OrientationExtractor {
         match &geometry.value {
             GeometryValue::None => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::String(NO_ORIENTATION.to_string()),
                 );
@@ -135,7 +135,7 @@ impl Processor for OrientationExtractor {
                         .map(|ring| ring.winding_order())
                         .collect::<Vec<_>>();
                     let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
@@ -154,7 +154,7 @@ impl Processor for OrientationExtractor {
                         })
                         .collect::<Vec<_>>();
                     let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
@@ -171,7 +171,7 @@ impl Processor for OrientationExtractor {
                         .map(|ring| ring.winding_order())
                         .collect::<Vec<_>>();
                     let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
@@ -190,7 +190,7 @@ impl Processor for OrientationExtractor {
                         })
                         .collect::<Vec<_>>();
                     let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
@@ -218,7 +218,7 @@ impl Processor for OrientationExtractor {
                 }
 
                 let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::String(result.to_string()),
                 );

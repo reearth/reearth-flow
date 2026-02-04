@@ -124,11 +124,11 @@ impl Processor for RhaiCaller {
         if let Ok(new_value) = new_value {
             if new_value.is::<rhai::Map>() {
                 if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                    let mut feature = feature.clone();
-                    feature.attributes = new_value
+                    let attrs = new_value
                         .iter()
                         .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
                         .collect();
+                    let feature = feature.clone().into_with_attributes(attrs);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     return Ok(());
                 }
@@ -136,12 +136,13 @@ impl Processor for RhaiCaller {
                 let array_values = new_value.clone().into_array().unwrap();
                 for new_value in array_values {
                     if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                        let mut feature = feature.clone();
-                        feature.refresh_id();
-                        feature.attributes = new_value
+                        let attrs = new_value
                             .iter()
                             .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
                             .collect();
+                        let mut feature = feature.clone();
+                        feature.refresh_id();
+                        feature.attributes = Arc::new(attrs);
                         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     }
                 }

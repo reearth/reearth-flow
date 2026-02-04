@@ -166,10 +166,10 @@ impl Processor for CSGEvaluator {
                     fw.send(ctx.new_with_feature_and_port(feature, NULL_PORT.clone()));
                 } else {
                     // Update the feature with the evaluated solid geometry
-                    feature.geometry = Geometry {
+                    feature.geometry = Arc::new(Geometry {
                         epsg: feature.geometry.epsg,
                         value: GeometryValue::FlowGeometry3D(FlowGeometry3D::Solid(solid)),
-                    };
+                    });
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             }

@@ -431,14 +431,14 @@ fn build_embedded_packet(feature: &Feature) -> Result<Value, BoxedError> {
         "czml.interpolationAlgorithm",
         "czml.interpolationDegree",
     ];
-    for (attr, value) in &feature.attributes {
+    for (attr, value) in feature.attributes.iter() {
         let key = attr.to_string();
         if let Some(czml_key) = key.strip_prefix("czml.") {
             if skip_czml_keys.contains(&key.as_str()) {
                 continue;
             }
             if let AttributeValue::String(json_str) = value {
-                if let Ok(parsed) = serde_json::from_str::<Value>(json_str) {
+                if let Ok(parsed) = serde_json::from_str::<Value>(json_str.as_str()) {
                     packet.insert(czml_key.to_string(), parsed);
                 }
             }
@@ -837,15 +837,16 @@ mod tests {
     use reearth_flow_types::Geometry;
 
     fn make_feature_3d(lon: f64, lat: f64, height: f64) -> Feature {
-        Feature {
-            geometry: Geometry {
+        Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            Geometry {
                 epsg: Some(4326),
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::new(
                     lon, lat, height,
                 ))),
             },
-            ..Default::default()
-        }
+            Default::default(),
+        )
     }
 
     fn make_timeseries_params() -> CzmlWriterParam {

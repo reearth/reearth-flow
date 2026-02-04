@@ -224,7 +224,7 @@ impl Processor for FloodingAreaSurfaceGenerator {
             if let Ok(mut buffer) = self.buffer.lock() {
                 let entry = buffer.entry(key).or_insert_with(|| GroupData {
                     polygons: Vec::new(),
-                    attributes: feature.attributes.clone(),
+                    attributes: (*feature.attributes).clone(),
                 });
                 entry.polygons.extend(polygons);
             }
@@ -242,12 +242,12 @@ impl Processor for FloodingAreaSurfaceGenerator {
         }
 
         if !all_triangles.is_empty() {
-            out_feature.geometry = Geometry {
+            out_feature.geometry = Arc::new(Geometry {
                 epsg,
                 value: GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(
                     MultiPolygon3D::new(all_triangles),
                 )),
-            };
+            });
         }
 
         fw.send(ctx.new_with_feature_and_port(out_feature, DEFAULT_PORT.clone()));
@@ -291,14 +291,13 @@ impl Processor for FloodingAreaSurfaceGenerator {
             }
 
             // Create output feature
-            let mut feature = Feature::new();
-            feature.attributes = group_data.attributes;
-            feature.geometry = Geometry {
+            let mut feature = Feature::new_with_attributes(group_data.attributes);
+            feature.geometry = Arc::new(Geometry {
                 epsg,
                 value: GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(
                     MultiPolygon3D::new(all_triangles),
                 )),
-            };
+            });
 
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

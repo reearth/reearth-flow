@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Expr, Feature, Geometry, GeometryType, GeometryValue,
+    Attribute, AttributeValue, Attributes, Expr, Feature, Geometry, GeometryType, GeometryValue,
 };
 use rhai::Dynamic;
 use schemars::JsonSchema;
@@ -351,16 +351,16 @@ impl CSGBuilder {
             right_csg_child.clone(),
             CSGOperation::Intersection,
         );
-        let mut intersection_feature = Feature::new();
-        intersection_feature.geometry = Geometry {
+        let mut intersection_feature = Feature::new_with_attributes(Attributes::new());
+        intersection_feature.geometry = Arc::new(Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(intersection_csg))),
-        };
+        });
 
         // Add list attribute if created
         if let Some((attr_key, attr_value)) = &list_attribute {
             intersection_feature
-                .attributes
+                .attributes_mut()
                 .insert(attr_key.clone(), attr_value.clone());
         }
 
@@ -372,16 +372,16 @@ impl CSGBuilder {
             right_csg_child.clone(),
             CSGOperation::Union,
         );
-        let mut union_feature = Feature::new();
-        union_feature.geometry = Geometry {
+        let mut union_feature = Feature::new_with_attributes(Attributes::new());
+        union_feature.geometry = Arc::new(Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(union_csg))),
-        };
+        });
 
         // Add list attribute if created
         if let Some((attr_key, attr_value)) = &list_attribute {
             union_feature
-                .attributes
+                .attributes_mut()
                 .insert(attr_key.clone(), attr_value.clone());
         }
 
@@ -389,16 +389,16 @@ impl CSGBuilder {
 
         // Create and send difference CSG (left - right)
         let difference_csg = CSG::new(left_csg_child, right_csg_child, CSGOperation::Difference);
-        let mut difference_feature = Feature::new();
-        difference_feature.geometry = Geometry {
+        let mut difference_feature = Feature::new_with_attributes(Attributes::new());
+        difference_feature.geometry = Arc::new(Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(difference_csg))),
-        };
+        });
 
         // Add list attribute if created
         if let Some((attr_key, attr_value)) = &list_attribute {
             difference_feature
-                .attributes
+                .attributes_mut()
                 .insert(attr_key.clone(), attr_value.clone());
         }
 

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -59,7 +60,7 @@ impl Processor for GeometryRemover {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        feature.geometry = Geometry::default();
+        feature.geometry = Arc::new(Geometry::default());
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

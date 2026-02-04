@@ -233,10 +233,8 @@ impl Dissolver {
             return None;
         }
 
-        let mut feature = Feature::new();
-
         // Apply attribute accumulation strategy
-        feature.attributes = match self.attribute_accumulation {
+        let attrs: IndexMap<_, _> = match self.attribute_accumulation {
             AttributeAccumulationStrategy::DropAttributes => {
                 // Only keep group_by attributes if specified
                 if let (Some(group_by), Some(last_feature)) =
@@ -258,7 +256,7 @@ impl Dissolver {
                 let mut merged_attributes = IndexMap::new();
 
                 for feature in &buffered_features_2d {
-                    for (key, value) in &feature.attributes {
+                    for (key, value) in feature.attributes.iter() {
                         merged_attributes
                             .entry(key.clone())
                             .and_modify(|existing: &mut Vec<AttributeValue>| {
@@ -287,14 +285,15 @@ impl Dissolver {
             AttributeAccumulationStrategy::UseOneFeature => {
                 // Use attributes from the last feature
                 if let Some(last_feature) = buffered_features_2d.last() {
-                    last_feature.attributes.clone()
+                    (*last_feature.attributes).clone()
                 } else {
                     IndexMap::new()
                 }
             }
         };
 
-        feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
+        let mut feature = Feature::new_with_attributes(attrs);
+        feature.geometry_mut().value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
         Some(feature)
     }
 }

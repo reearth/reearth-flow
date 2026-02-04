@@ -161,19 +161,19 @@ impl Processor for ThreeDimensionForcer {
                     // Convert to 2D then back to 3D with the new elevation
                     let value_2d: Geometry2D = geos.clone().into();
                     let value_3d = convert_2d_to_3d(value_2d, elevation_value);
-                    let mut new_geometry = geometry.clone();
+                    let mut new_geometry = (**geometry).clone();
                     new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                     let mut new_feature = feature.clone();
-                    new_feature.geometry = new_geometry;
+                    new_feature.geometry = Arc::new(new_geometry);
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
             }
             GeometryValue::FlowGeometry2D(geos) => {
                 let value_3d = convert_2d_to_3d(geos.clone(), elevation_value);
-                let mut new_geometry = geometry.clone();
+                let mut new_geometry = (**geometry).clone();
                 new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                 let mut new_feature = feature.clone();
-                new_feature.geometry = new_geometry;
+                new_feature.geometry = Arc::new(new_geometry);
                 fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(gml) => {
@@ -184,10 +184,10 @@ impl Processor for ThreeDimensionForcer {
                     // Convert to 2D then back to 3D with the new elevation
                     let value_2d: Geometry2D = gml.clone().into();
                     let value_3d = convert_2d_to_3d(value_2d, elevation_value);
-                    let mut new_geometry = geometry.clone();
+                    let mut new_geometry = (**geometry).clone();
                     new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                     let mut new_feature = feature.clone();
-                    new_feature.geometry = new_geometry;
+                    new_feature.geometry = Arc::new(new_geometry);
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
             }
