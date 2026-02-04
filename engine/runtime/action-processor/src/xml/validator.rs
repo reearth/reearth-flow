@@ -469,15 +469,11 @@ impl XmlValidator {
         let base_dir = self.get_schema_base_dir(feature);
 
         #[cfg(test)]
-        println!(
-            "[get_or_compile_schema_streaming] base_dir: {:?}",
-            base_dir
-        );
+        println!("[get_or_compile_schema_streaming] base_dir: {:?}", base_dir);
 
         // Compile schema for streaming validation
-        xml::compile_schema_for_streaming(&resolved_locations, base_dir.as_deref()).map_err(|e| {
-            XmlProcessorError::Validator(format!("Failed to compile schema: {e:?}"))
-        })
+        xml::compile_schema_for_streaming(&resolved_locations, base_dir.as_deref())
+            .map_err(|e| XmlProcessorError::Validator(format!("Failed to compile schema: {e:?}")))
     }
 
     /// Get the base directory for schema resolution.

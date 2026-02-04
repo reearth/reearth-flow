@@ -272,15 +272,7 @@ fn send_xml_fragment(
     let parent_map = build_parent_id_map(&raw_xml, &url, &match_tags)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
 
-    generate_fragment_streaming(
-        ctx,
-        fw,
-        feature,
-        &url,
-        &raw_xml,
-        &parent_map,
-        &match_tags,
-    )
+    generate_fragment_streaming(ctx, fw, feature, &url, &raw_xml, &parent_map, &match_tags)
 }
 
 fn generate_fragment_streaming(
@@ -399,10 +391,7 @@ fn build_parent_id_map(
     Ok(map.into_inner())
 }
 
-fn compute_parent_xml_id(
-    uri: &Uri,
-    ctx: &fastxml::transform::TransformContext,
-) -> Option<String> {
+fn compute_parent_xml_id(uri: &Uri, ctx: &fastxml::transform::TransformContext) -> Option<String> {
     let parent = ctx.parent()?;
 
     // Check for 'id' attribute (handles both 'id' and 'gml:id')

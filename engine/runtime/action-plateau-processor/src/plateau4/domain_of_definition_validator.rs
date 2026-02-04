@@ -610,27 +610,27 @@ fn process_feature(
             let xml_document = match xml::parse(fragment.as_bytes()) {
                 Ok(doc) => doc,
                 Err(e) => {
-                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "{e:?}"
-                    )));
+                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
+                        format!("{e:?}"),
+                    ));
                     return;
                 }
             };
             let xml_ctx = match xml::create_context(&xml_document) {
                 Ok(ctx) => ctx,
                 Err(e) => {
-                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "{e:?}"
-                    )));
+                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
+                        format!("{e:?}"),
+                    ));
                     return;
                 }
             };
             let root_node = match xml::get_root_readonly_node(&xml_document) {
                 Ok(node) => node,
                 Err(e) => {
-                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "{e:?}"
-                    )));
+                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
+                        format!("{e:?}"),
+                    ));
                     return;
                 }
             };
@@ -638,9 +638,9 @@ fn process_feature(
             {
                 Ok(nodes) => nodes,
                 Err(e) => {
-                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "{e:?}"
-                    )));
+                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
+                        format!("{e:?}"),
+                    ));
                     return;
                 }
             };
@@ -888,10 +888,7 @@ struct XlinkInfo {
     xpath: String,
 }
 
-fn stream_extract_envelope(
-    raw_xml: &str,
-    xpath: &str,
-) -> super::errors::Result<Envelope> {
+fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<Envelope> {
     let envelope = RefCell::new(None);
     let error = RefCell::new(None);
 

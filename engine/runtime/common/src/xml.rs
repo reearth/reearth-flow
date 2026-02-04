@@ -531,7 +531,9 @@ pub fn compile_schema_for_streaming(
 ) -> crate::Result<std::sync::Arc<CompiledSchema>> {
     use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
     use fastxml::schema::memory::InMemoryStore;
-    use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
+    use fastxml::schema::xsd::{
+        compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
+    };
 
     if schema_locations.is_empty() {
         return Err(crate::Error::Xml(
