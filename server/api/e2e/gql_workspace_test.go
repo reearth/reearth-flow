@@ -39,7 +39,8 @@ func TestCreateWorkspace(t *testing.T) {
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockWorkspaceRepo.EXPECT().
 			CreateWorkspace(gomock.Any(), workspace.CreateWorkspaceInput{
-				Name: "test",
+				Alias: "test",
+				Name:  "test",
 			}).
 			Return(w, nil),
 	)
@@ -88,9 +89,9 @@ func TestDeleteWorkspace(t *testing.T) {
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().DeleteWorkspace(gomock.Any(), wid).Return(nil),
+		mockWorkspaceRepo.EXPECT().DeleteWorkspace(gomock.Any(), wid.String()).Return(nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().DeleteWorkspace(gomock.Any(), wid2).Return(interfaces.ErrOperationDenied),
+		mockWorkspaceRepo.EXPECT().DeleteWorkspace(gomock.Any(), wid2.String()).Return(interfaces.ErrOperationDenied),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
