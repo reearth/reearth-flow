@@ -4,7 +4,8 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 
 use super::converter::{
-    format_pos_list, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSurface,
+    format_pos_list, AppearanceData, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement,
+    GmlSurface,
 };
 use crate::errors::SinkError;
 
@@ -107,6 +108,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         city_type: CityObjectType,
         geometries: &[GeometryEntry],
         gml_id: Option<&str>,
+        appearance_data: Option<&AppearanceData>,
     ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
@@ -126,11 +128,105 @@ impl<W: Write> CityGmlXmlWriter<W> {
             self.write_lod_geometry(city_type, entry)?;
         }
 
+        // Write appearance data if available
+        if let Some(appearances) = appearance_data {
+            self.write_appearance_members(appearances)?;
+        }
+
         self.writer
             .write_event(Event::End(BytesEnd::new(element_name)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         self.writer
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_appearance_members(
+        &mut self,
+        appearance_data: &AppearanceData,
+    ) -> Result<(), SinkError> {
+        // Only write appearance members if there are textures
+        if !appearance_data.textures.is_empty() {
+            // Start appearance member
+            self.writer
+                .write_event(Event::Start(BytesStart::new("app:appearanceMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Start Appearance
+            self.writer
+                .write_event(Event::Start(BytesStart::new("app:Appearance")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Write theme if available
+            for theme_name in &appearance_data.themes {
+                self.write_text_element("app:theme", theme_name)?;
+            }
+
+            // Write each texture as a surface data member
+            for texture_uri in &appearance_data.textures {
+                self.write_surface_data_member(texture_uri)?;
+            }
+
+            // Close Appearance
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:Appearance")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Close appearanceMember
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:appearanceMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    fn write_surface_data_member(&mut self, texture_uri: &str) -> Result<(), SinkError> {
+        // Extract just the directory and filename part from the full URI
+        let path_parts: Vec<&str> = texture_uri.split('/').collect();
+        let simplified_path = if path_parts.len() >= 2 {
+            // Take the last two parts: directory and filename
+            format!(
+                "{}/{}",
+                path_parts[path_parts.len() - 2],
+                path_parts[path_parts.len() - 1]
+            )
+        } else {
+            // If there are less than 2 parts, just use the original
+            texture_uri.to_string()
+        };
+
+        // Write surface data member with ParameterizedTexture
+        self.writer
+            .write_event(Event::Start(BytesStart::new("app:surfaceDataMember")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new("app:ParameterizedTexture")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write image URI with just the directory and filename
+        self.write_text_element("app:imageURI", &simplified_path)?;
+
+        // Write mime type (assuming jpg for now, could be extracted from URI extension)
+        let mime_type = if simplified_path.ends_with(".png") {
+            "image/png"
+        } else if simplified_path.ends_with(".gif") {
+            "image/gif"
+        } else {
+            "image/jpg"
+        };
+        self.write_text_element("app:mimeType", mime_type)?;
+
+        // Close ParameterizedTexture
+        self.writer
+            .write_event(Event::End(BytesEnd::new("app:ParameterizedTexture")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Close surfaceDataMember
+        self.writer
+            .write_event(Event::End(BytesEnd::new("app:surfaceDataMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
