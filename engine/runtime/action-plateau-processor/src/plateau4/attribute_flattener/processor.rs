@@ -453,8 +453,11 @@ impl AttributeFlattener {
                 // Attribute value 9999/-9999 will be filtered to match FME implementation
                 let is_unknown_value = match &new_attribute {
                     AttributeValue::Number(n) => {
-                        n.as_i64() == Some(9999) || n.as_i64() == Some(-9999)
-                            || n.as_f64().map(|f| f == 9999.0 || f == -9999.0).unwrap_or(false)
+                        n.as_i64() == Some(9999)
+                            || n.as_i64() == Some(-9999)
+                            || n.as_f64()
+                                .map(|f| f == 9999.0 || f == -9999.0)
+                                .unwrap_or(false)
                     }
                     _ => false,
                 };
@@ -638,8 +641,7 @@ impl AttributeFlattener {
         // Extract bldg:address from core:Address nested structure and remove core:Address
         // This mirrors FME's behavior where bldg:address is extracted but core:Address is not included
         if !citygml_attributes.contains_key("bldg:address") {
-            if let Some(address) =
-                super::flattener::Flattener::extract_address(&citygml_attributes)
+            if let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
             {
                 citygml_attributes.insert("bldg:address".to_string(), address);
             }

@@ -35,7 +35,11 @@ pub fn test_json_attributes(
         let flow_file = flow_base.join(file_path);
 
         if file_cfg.must_not_exist {
-            assert!(!flow_file.exists(), "flow file should not exist: {:?}", flow_file);
+            assert!(
+                !flow_file.exists(),
+                "flow file should not exist: {:?}",
+                flow_file
+            );
             tracing::debug!("Verified files do not exist: {} ({})", name, file_path);
             continue;
         }
@@ -53,7 +57,7 @@ pub fn test_json_attributes(
             .map_err(|e| format!("Failed to parse FME JSON: {}", e))?;
         let flow_content = fs::read(&flow_file).map_err(|e| e.to_string())?;
         let flow_data: serde_json::Value = serde_json::from_slice(&flow_content)
-                .map_err(|e| format!("Failed to parse Flow JSON: {}", e))?;
+            .map_err(|e| format!("Failed to parse Flow JSON: {}", e))?;
 
         let casts = if let Some(casts_cfg) = &file_cfg.casts {
             convert_casts(casts_cfg)?

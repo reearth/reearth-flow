@@ -291,7 +291,9 @@ impl Class {
                             serde_json::Number::from_f64(FLOAT_NO_DATA).unwrap(),
                         )),
                         (PropertyType::SignedInt, false) => Some(selected_signed.no_data_json()),
-                        (PropertyType::UnsignedInt, false) => Some(selected_unsigned.no_data_json()),
+                        (PropertyType::UnsignedInt, false) => {
+                            Some(selected_unsigned.no_data_json())
+                        }
                     },
                     ..Default::default()
                 },
