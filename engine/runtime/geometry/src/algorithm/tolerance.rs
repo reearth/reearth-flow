@@ -1,3 +1,5 @@
+use kiddo::{KdTree, SquaredEuclidean};
+
 use crate::types::{coordinate::Coordinate, coordnum::CoordFloat};
 
 /// Glue vertices that are closer than the given tolerance.
@@ -7,24 +9,41 @@ pub fn glue_vertices_closer_than<T: CoordFloat + From<Z>, Z: CoordFloat>(
     tolerance: T,
     mut vertices: Vec<&mut Coordinate<T, Z>>,
 ) {
-    let mut updated = vec![false; vertices.len()];
-    for i in 0..vertices.len() {
+    let n = vertices.len();
+    if n <= 1 {
+        return;
+    }
+
+    let tol_f64 = tolerance.to_f64().unwrap();
+    let sq_tol = tol_f64 * tol_f64;
+
+    // Build a k-d tree over the vertex positions (2D: x, y)
+    let mut tree: KdTree<f64, 2> = KdTree::new();
+    for (i, v) in vertices.iter().enumerate() {
+        let pt = [v.x.to_f64().unwrap(), v.y.to_f64().unwrap()];
+        tree.add(&pt, i as u64);
+    }
+
+    let mut updated = vec![false; n];
+
+    for i in 0..n {
         if updated[i] {
-            // `vi` is already glued. If some other vertex is glued to the old value of `vi` but not to the vertex which `vi` is glued to,
-            // then it will be at least `tolerance` away from the new value of `vi`, so we can skip this.
             continue;
         }
         let vi = *vertices[i];
-        for j in (i + 1)..vertices.len() {
-            if updated[j] {
-                // `vj` is already glued to some vertex `vi`. If 'vj' can be glued to some other vertex, say `vk`, then
-                // `vi==vj` implies that `vi` and `vk` must be at most `tolerance` away, which in turn implies that `vi`
-                // must have been glued to `vk` already in an earlier iteration, a contradiction. So we can safely skip this.
+        let query = [vi.x.to_f64().unwrap(), vi.y.to_f64().unwrap()];
+
+        // Find all points within tolerance (squared euclidean distance < sq_tol)
+        let neighbors = tree.within::<SquaredEuclidean>(&query, sq_tol);
+
+        for nb in neighbors {
+            let j = nb.item as usize;
+            if j <= i || updated[j] {
                 continue;
             }
+            // Verify with full norm (includes z) to match original semantics
             let vj = *vertices[j];
             if (vi - vj).norm() < tolerance {
-                // Glue vj to vi
                 *vertices[j] = vi;
                 updated[j] = true;
             }
