@@ -16,7 +16,6 @@ export default ({
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
-
   const [showOverlayElement, setshowOverlayElement] = useState<
     | "debugStart"
     | "debugStop"
@@ -46,7 +45,9 @@ export default ({
     [debugRunState, currentProject],
   );
 
-  const debugJob = useGetJob(debugJobId).job;
+  const { job, refetch } = useGetJob(debugJobId);
+
+  const debugJob = job;
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
@@ -62,6 +63,7 @@ export default ({
     [realTimeJobStatus, debugJob],
   );
 
+  console.log("realTimeJobStatus", jobStatus);
   useEffect(() => {
     if (
       debugRunStarted &&
@@ -101,6 +103,17 @@ export default ({
     if (!jobState) return;
     await updateDebugRunState({ jobs: jobState });
   };
+
+  useEffect(() => {
+    if (
+      realTimeJobStatus === "completed" ||
+      realTimeJobStatus === "failed" ||
+      realTimeJobStatus === "cancelled"
+    ) {
+      console.log("Refetching job data after status change");
+      refetch();
+    }
+  }, [realTimeJobStatus, refetch]);
 
   return {
     showOverlayElement,
