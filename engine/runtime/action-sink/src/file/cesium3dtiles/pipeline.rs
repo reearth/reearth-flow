@@ -522,7 +522,7 @@ pub(super) fn tile_writing_stage(
         },
         root: tree.into_tileset_root(),
         geometric_error: 1e+100,
-        properties: properties,
+        properties,
         ..Default::default()
     };
 
