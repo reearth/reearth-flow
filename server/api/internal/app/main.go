@@ -68,7 +68,7 @@ func Start(debug bool, version string) {
 	}
 
 	// AccountGQLClient
-	const accountsTimeoutSec = 10
+	const accountsTimeoutSec = 30
 	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, authserver.NewDynamicAuthTransport())
 
 	serverCfg := &ServerConfig{
