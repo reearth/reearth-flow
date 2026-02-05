@@ -266,6 +266,7 @@ impl Processor for RayIntersector {
                         fw.send(
                             ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
                         );
+                        return Ok(());
                     }
 
                     let polygons = &geo.gml_geometries[0].polygons;
