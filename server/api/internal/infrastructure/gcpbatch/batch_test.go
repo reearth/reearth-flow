@@ -97,10 +97,10 @@ func TestBatchRepo_SubmitJob_SpotVM(t *testing.T) {
 
 	tests := []struct {
 		name                    string
-		useSpotVMs              bool
 		maxRetryCount           int
-		expectSpot              bool
 		expectMaxRetryCount     int32
+		useSpotVMs              bool
+		expectSpot              bool
 		expectLifecyclePolicies bool
 	}{
 		{
@@ -228,17 +228,17 @@ func TestBatchRepo_Close(t *testing.T) {
 func TestConvertGCPStatusToGatewayStatus(t *testing.T) {
 	testCases := []struct {
 		name         string
-		gcpStatus    batchpb.JobStatus_State
 		expectStatus gateway.JobStatus
+		gcpStatus    batchpb.JobStatus_State
 	}{
-		{"Unspecified", batchpb.JobStatus_STATE_UNSPECIFIED, gateway.JobStatusUnknown},
-		{"Queued", batchpb.JobStatus_QUEUED, gateway.JobStatusPending},
-		{"Scheduled", batchpb.JobStatus_SCHEDULED, gateway.JobStatusPending},
-		{"Running", batchpb.JobStatus_RUNNING, gateway.JobStatusRunning},
-		{"Succeeded", batchpb.JobStatus_SUCCEEDED, gateway.JobStatusCompleted},
-		{"Failed", batchpb.JobStatus_FAILED, gateway.JobStatusFailed},
-		{"DeletionInProgress", batchpb.JobStatus_DELETION_IN_PROGRESS, gateway.JobStatusCancelled},
-		{"Unknown", batchpb.JobStatus_State(999), gateway.JobStatusUnknown},
+		{"Unspecified", gateway.JobStatusUnknown, batchpb.JobStatus_STATE_UNSPECIFIED},
+		{"Queued", gateway.JobStatusPending, batchpb.JobStatus_QUEUED},
+		{"Scheduled", gateway.JobStatusPending, batchpb.JobStatus_SCHEDULED},
+		{"Running", gateway.JobStatusRunning, batchpb.JobStatus_RUNNING},
+		{"Succeeded", gateway.JobStatusCompleted, batchpb.JobStatus_SUCCEEDED},
+		{"Failed", gateway.JobStatusFailed, batchpb.JobStatus_FAILED},
+		{"DeletionInProgress", gateway.JobStatusCancelled, batchpb.JobStatus_DELETION_IN_PROGRESS},
+		{"Unknown", gateway.JobStatusUnknown, batchpb.JobStatus_State(999)},
 	}
 
 	for _, tc := range testCases {
