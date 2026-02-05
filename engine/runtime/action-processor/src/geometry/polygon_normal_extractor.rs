@@ -249,7 +249,6 @@ impl PolygonNormalExtractor {
 
         // Calculate azimuth (angle in horizontal plane)
         // Convention: 0° = South (matches SunPositionCalculator), clockwise positive
-        // atan2(x, -y) gives: South=0°, East=90°, North=180°, West=270°
         let azimuth = normalized_normal_x.atan2(-normalized_normal_y).to_degrees();
 
         // Ensure azimuth is in the range [0, 360)
@@ -368,8 +367,6 @@ mod tests {
 
         let result = PolygonNormalExtractor::calculate_normal_properties_3d(&polygon);
 
-        // With 0°=South convention:
-        // atan2(normalX, -normalY) = atan2(-0.00716..., 0.2125...) ≈ -1.93° → 358.07°
         let expected_polygon_normal = NormalResult {
             normal_x: -0.0071632345554907256,
             normal_y: -0.21250690309836642,

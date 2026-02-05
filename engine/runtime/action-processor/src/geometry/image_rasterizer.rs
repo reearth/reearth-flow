@@ -936,11 +936,6 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
 }
 
 /// Assigns texture coordinates to a feature's CityGmlGeometry based on the rasterized image boundary.
-///
-/// For each polygon vertex at position (x, y), computes UV coordinates as:
-///   u = (x - min_x) / (max_x - min_x)
-///   v = 1.0 - (y - min_y) / (max_y - min_y)  (flipped for image coordinate system)
-///
 /// Also sets the texture reference on each polygon to point to the generated image.
 fn assign_texture_coordinates(
     feature: &Feature,
@@ -965,7 +960,6 @@ fn assign_texture_coordinates(
     let width = max_x - min_x;
     let height = max_y - min_y;
 
-    // Avoid division by zero
     if width.abs() < f64::EPSILON || height.abs() < f64::EPSILON {
         return Err(GeometryProcessorError::ImageRasterizer(
             "Boundary has zero width or height".to_string(),
@@ -1013,18 +1007,15 @@ fn assign_texture_coordinates(
                 })
                 .collect();
 
-            // Add UV polygon
             updated_citygml.polygon_uvs.0.push(Polygon2D::new(
                 LineString2D::new(exterior_uvs),
                 interior_uvs,
             ));
 
-            // All polygons reference texture index 0 (the single generated texture)
             updated_citygml.polygon_textures.push(Some(0));
         }
     }
 
-    // Create a new feature with the updated geometry
     let new_geometry = Geometry {
         epsg: feature.geometry.epsg,
         value: GeometryValue::CityGmlGeometry(updated_citygml),
