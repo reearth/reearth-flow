@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{material::Texture, Expr, Feature, GeometryValue};
+use reearth_flow_types::{material::Texture, Attributes, Expr, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -290,7 +290,7 @@ impl Processor for ImageRasterizer {
                     }
                 } else {
                     // No texture coordinate features, output image path as before
-                    let mut feature = Feature::new();
+                    let mut feature = Feature::new_with_attributes(Attributes::default());
                     feature.insert(
                         "png_image",
                         reearth_flow_types::AttributeValue::String(saved_path),
@@ -947,8 +947,6 @@ fn assign_texture_coordinates(
     boundary: &CoordinatesBoundary,
     texture_url: &Url,
 ) -> Result<Feature, GeometryProcessorError> {
-    let mut updated_feature = feature.clone();
-
     // Get the geometry - must be CityGmlGeometry
     let GeometryValue::CityGmlGeometry(citygml) = &feature.geometry.value else {
         return Err(GeometryProcessorError::ImageRasterizer(
@@ -1026,8 +1024,16 @@ fn assign_texture_coordinates(
         }
     }
 
-    // Update the feature's geometry
-    updated_feature.geometry.value = GeometryValue::CityGmlGeometry(updated_citygml);
+    // Create a new feature with the updated geometry
+    let new_geometry = Geometry {
+        epsg: feature.geometry.epsg,
+        value: GeometryValue::CityGmlGeometry(updated_citygml),
+    };
+    let updated_feature = Feature::new_with_attributes_and_geometry(
+        (*feature.attributes).clone(),
+        new_geometry,
+        feature.metadata.clone(),
+    );
 
     Ok(updated_feature)
 }

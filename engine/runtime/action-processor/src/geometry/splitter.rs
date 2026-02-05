@@ -294,7 +294,7 @@ impl GeometrySplitter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut new_geometry = geometry.clone();
-        let mut attributes = feature.attributes.clone();
+        let mut attributes = (*feature.attributes).clone();
 
         Self::set_gml_attributes(&mut attributes, geometry_feature, feature);
 
@@ -338,7 +338,7 @@ impl GeometrySplitter {
         // Emit one feature per polygon
         for (index, polygon) in polygons.into_iter().enumerate() {
             let mut new_geometry = geometry.clone();
-            let mut attributes = feature.attributes.clone();
+            let mut attributes = (*feature.attributes).clone();
 
             Self::set_gml_attributes(&mut attributes, geometry_feature, feature);
 

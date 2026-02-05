@@ -221,6 +221,9 @@ process_workflows() {
 
 process_workflows "$BASEPATH_CONV" "${WORKFLOW_CONV[@]}"
 process_workflows "$BASEPATH_QC" "${WORKFLOW_QC[@]}"
+
+# Solar radiation workflow
+yaml-include ./runtime/examples/fixture/workflow/solar-radiation/workflow.yml > ./runtime/examples/fixture/workflow/solar-radiation/solar-radiation.yml
 ''']
 
 [tasks.check-generate-examples-cms-workflow]

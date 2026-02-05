@@ -549,6 +549,7 @@ impl RayIntersector {
             value: geometry_value,
             ..Default::default()
         };
+        output_feature.geometry = Arc::new(geometry);
 
         output_feature.attributes_mut().insert(
             Attribute::new("ray_intersection_t"),

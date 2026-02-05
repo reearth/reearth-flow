@@ -190,7 +190,11 @@ impl Processor for GridDivider {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Collect results from parallel processing
         let results: Vec<(Feature, Port)> = self
             .buffer
@@ -1008,26 +1012,26 @@ fn create_output_feature(
     cell: &GridCell,
     _group_by: &Option<Vec<Attribute>>,
 ) -> Feature {
-    let mut new_feature = Feature::new();
-    new_feature.id = uuid::Uuid::new_v4();
-    new_feature.geometry = Geometry {
+    let new_geometry = Geometry {
         epsg: original.geometry.epsg,
         value: clipped_geometry,
     };
-
-    // Keep all original attributes
-    new_feature.attributes = original.attributes.clone();
+    let mut new_feature = Feature::new_with_attributes_and_geometry(
+        (*original.attributes).clone(),
+        new_geometry,
+        original.metadata.clone(),
+    );
 
     // Preserve metadata (feature_type, feature_id, lod)
     new_feature.metadata = original.metadata.clone();
 
     // Add grid cell metadata
-    new_feature.attributes.insert(
-        Attribute::new("_grid_row"),
+    new_feature.insert(
+        "_grid_row",
         AttributeValue::Number(serde_json::Number::from(cell.row as i64)),
     );
-    new_feature.attributes.insert(
-        Attribute::new("_grid_col"),
+    new_feature.insert(
+        "_grid_col",
         AttributeValue::Number(serde_json::Number::from(cell.col as i64)),
     );
 
@@ -1037,6 +1041,7 @@ fn create_output_feature(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_types::Attributes;
 
     fn create_test_polygon_2d() -> Polygon2D<f64> {
         let exterior = LineString2D::new(vec![
@@ -1311,13 +1316,10 @@ mod tests {
 
     #[test]
     fn test_create_output_feature() {
-        let mut original = Feature::new();
-        original.attributes.insert(
-            Attribute::new("group_attr"),
-            AttributeValue::String("test".to_string()),
-        );
-        original.attributes.insert(
-            Attribute::new("other_attr"),
+        let mut original = Feature::new_with_attributes(Attributes::default());
+        original.insert("group_attr", AttributeValue::String("test".to_string()));
+        original.insert(
+            "other_attr",
             AttributeValue::String("also_kept".to_string()),
         );
 
