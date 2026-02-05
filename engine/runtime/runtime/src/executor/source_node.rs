@@ -375,6 +375,7 @@ pub async fn create_source_node<F>(
             senders,
             runtime.clone(),
             dag.event_hub().clone(),
+            dag.executor_id(),
         );
         let features_produced = Arc::new(AtomicU64::new(0));
         sources.push(RunningSource {

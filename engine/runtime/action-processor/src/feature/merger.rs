@@ -7,8 +7,8 @@ use std::{
 };
 
 use once_cell::sync::Lazy;
-use reearth_flow_common::dir::project_temp_dir;
 use reearth_flow_runtime::{
+    cache::executor_cache_subdir,
     errors::{BoxedError, ExecutionError},
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::{self, FeatureProcessorError};
+use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
 static REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("requestor"));
 static SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("supplier"));
@@ -138,6 +139,10 @@ impl ProcessorFactory for FeatureMergerFactory {
             requestor_before_value: None,
             supplier_before_value: None,
             temp_dir: None,
+            requestor_buffer: HashMap::new(),
+            supplier_buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: None,
         };
         Ok(Box::new(process))
     }
@@ -174,6 +179,12 @@ pub struct FeatureMerger {
     requestor_before_value: Option<String>,
     supplier_before_value: Option<String>,
     temp_dir: Option<PathBuf>,
+    // In-memory buffers: idx -> Vec<feature_json>
+    requestor_buffer: HashMap<usize, Vec<String>>,
+    supplier_buffer: HashMap<usize, Vec<String>>,
+    buffer_bytes: usize,
+    /// Executor ID for cache isolation, set on first process() call
+    executor_id: Option<uuid::Uuid>,
 }
 
 impl std::fmt::Debug for FeatureMerger {
@@ -199,6 +210,10 @@ impl Clone for FeatureMerger {
             requestor_before_value: None,
             supplier_before_value: None,
             temp_dir: None,
+            requestor_buffer: HashMap::new(),
+            supplier_buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: self.executor_id,
         }
     }
 }
@@ -233,10 +248,17 @@ fn read_features_from_file(path: &Path) -> Result<Vec<Feature>, BoxedError> {
     Ok(features)
 }
 
+/// Executor-specific engine cache folder for accumulating processors
+fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "processors")
+}
+
 impl FeatureMerger {
     fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
         if self.temp_dir.is_none() {
-            let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+            let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
+            let dir = engine_cache_dir(executor_id).join(format!("merger-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&dir)?;
             std::fs::create_dir_all(dir.join("requestor"))?;
             std::fs::create_dir_all(dir.join("supplier"))?;
             self.temp_dir = Some(dir);
@@ -258,21 +280,22 @@ impl FeatureMerger {
             .join(format!("supplier/{idx:06}.jsonl"))
     }
 
-    fn append_feature_to_file(path: &Path, feature: &Feature) -> Result<(), BoxedError> {
-        let file = File::options().create(true).append(true).open(path)?;
-        let mut writer = BufWriter::new(file);
-        serde_json::to_writer(&mut writer, feature)?;
-        writer.write_all(b"\n")?;
-        writer.flush()?;
-        Ok(())
-    }
-
     fn write_feature_to_requestor(
         &mut self,
         idx: usize,
         feature: &Feature,
     ) -> Result<(), BoxedError> {
-        Self::append_feature_to_file(&self.requestor_file_path(idx), feature)
+        let feature_json = serde_json::to_string(feature)?;
+        self.buffer_bytes += feature_json.len();
+        self.requestor_buffer
+            .entry(idx)
+            .or_default()
+            .push(feature_json);
+
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            self.flush_buffer()?;
+        }
+        Ok(())
     }
 
     fn write_feature_to_supplier(
@@ -280,13 +303,61 @@ impl FeatureMerger {
         idx: usize,
         feature: &Feature,
     ) -> Result<(), BoxedError> {
-        Self::append_feature_to_file(&self.supplier_file_path(idx), feature)
+        let feature_json = serde_json::to_string(feature)?;
+        self.buffer_bytes += feature_json.len();
+        self.supplier_buffer
+            .entry(idx)
+            .or_default()
+            .push(feature_json);
+
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            self.flush_buffer()?;
+        }
+        Ok(())
+    }
+
+    fn flush_buffer(&mut self) -> Result<(), BoxedError> {
+        if self.requestor_buffer.is_empty() && self.supplier_buffer.is_empty() {
+            return Ok(());
+        }
+
+        self.ensure_temp_dir()?;
+
+        // Flush requestor buffer
+        for (idx, entries) in std::mem::take(&mut self.requestor_buffer) {
+            let path = self.requestor_file_path(idx);
+            let file = File::options().create(true).append(true).open(path)?;
+            let mut writer = BufWriter::new(file);
+            for feature_json in entries {
+                writer.write_all(feature_json.as_bytes())?;
+                writer.write_all(b"\n")?;
+            }
+            writer.flush()?;
+        }
+
+        // Flush supplier buffer
+        for (idx, entries) in std::mem::take(&mut self.supplier_buffer) {
+            let path = self.supplier_file_path(idx);
+            let file = File::options().create(true).append(true).open(path)?;
+            let mut writer = BufWriter::new(file);
+            for feature_json in entries {
+                writer.write_all(feature_json.as_bytes())?;
+                writer.write_all(b"\n")?;
+            }
+            writer.flush()?;
+        }
+
+        self.buffer_bytes = 0;
+        Ok(())
     }
 
     fn change_group(&mut self, ctx: Context, fw: &ProcessorChannelForwarder) -> errors::Result<()> {
         if !self.params.complete_grouped {
             return Ok(());
         }
+        // Flush buffer before reading files
+        self.flush_buffer()
+            .map_err(|e| FeatureProcessorError::Merger(format!("Failed to flush buffer: {e}")))?;
         let mut complete_keys = Vec::new();
         for (attribute, complete) in self.requestor_complete.iter() {
             if !complete {
@@ -356,6 +427,11 @@ impl Processor for FeatureMerger {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // Capture executor_id on first process call for cache isolation
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
         self.ensure_temp_dir()?;
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
@@ -452,6 +528,9 @@ impl Processor for FeatureMerger {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // Flush any remaining buffered data to disk
+        self.flush_buffer()?;
+
         let temp_dir = match &self.temp_dir {
             Some(d) => d.clone(),
             None => return Ok(()),

@@ -1,12 +1,7 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::path::PathBuf;
-
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
+use quick_xml::events::attributes;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_common::dir::project_temp_dir;
 use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
 use reearth_flow_geometry::algorithm::line_string_ops::{
     LineStringOps, LineStringSplitResult, LineStringWithTree2D,
@@ -25,10 +20,12 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::metadata::Metadata;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
+use std::collections::HashMap;
 
 use super::errors::GeometryProcessorError;
 
@@ -93,10 +90,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
             overlaid_lists_attr_name: params
                 .overlaid_lists_attr_name
                 .unwrap_or_else(|| "overlaidLists".to_string()),
-            group_map: HashMap::new(),
-            group_count: 0,
-            current_writer: None,
-            temp_dir: None,
+            buffer: HashMap::new(),
         }))
     }
 }
@@ -114,118 +108,124 @@ pub struct LineOnLineOverlayerParam {
 }
 
 #[allow(clippy::type_complexity)]
+#[derive(Debug, Clone)]
 pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
     overlaid_lists_attr_name: String,
-    // Disk-backed state
-    group_map: HashMap<AttributeValue, usize>,
-    group_count: usize,
-    current_writer: Option<(usize, BufWriter<File>)>, // (group_idx, writer) - only ONE open at a time
-    temp_dir: Option<PathBuf>,
+    buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-impl std::fmt::Debug for LineOnLineOverlayer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LineOnLineOverlayer")
-            .field("group_count", &self.group_count)
-            .finish_non_exhaustive()
+impl Processor for LineOnLineOverlayer {
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let feature = &ctx.feature;
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+            return Ok(());
+        }
+        match &geometry.value {
+            GeometryValue::None => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry2D(_) => {
+                let key = if let Some(group_by) = &self.group_by {
+                    AttributeValue::Array(
+                        group_by
+                            .iter()
+                            .filter_map(|attr| feature.attributes.get(attr).cloned())
+                            .collect(),
+                    )
+                } else {
+                    AttributeValue::Null
+                };
+
+                if !self.buffer.contains_key(&key) {
+                    let overlaid = self.overlay()?;
+                    for feature in &overlaid.line {
+                        fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
+                    }
+                    for feature in &overlaid.point {
+                        fw.send(ctx.new_with_feature_and_port(feature.clone(), POINT_PORT.clone()));
+                    }
+                    self.buffer.clear();
+                }
+                self.buffer
+                    .entry(key.clone())
+                    .or_default()
+                    .push(feature.clone());
+            }
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let overlaid = self.overlay()?;
+        for feature in &overlaid.line {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                LINE_PORT.clone(),
+            ));
+        }
+        for feature in &overlaid.point {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                POINT_PORT.clone(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "LineOnLineOverlayer"
     }
 }
 
-impl Clone for LineOnLineOverlayer {
-    fn clone(&self) -> Self {
+struct OverlayedFeatures {
+    point: Vec<Feature>,
+    line: Vec<Feature>,
+}
+
+impl OverlayedFeatures {
+    fn new() -> Self {
         Self {
-            group_by: self.group_by.clone(),
-            tolerance: self.tolerance,
-            overlaid_lists_attr_name: self.overlaid_lists_attr_name.clone(),
-            group_map: HashMap::new(),
-            group_count: 0,
-            current_writer: None,
-            temp_dir: None,
+            point: Vec::new(),
+            line: Vec::new(),
         }
     }
-}
 
-impl Drop for LineOnLineOverlayer {
-    fn drop(&mut self) {
-        if let Some(ref dir) = self.temp_dir {
-            let _ = std::fs::remove_dir_all(dir);
-        }
+    fn extend(&mut self, other: Self) {
+        self.point.extend(other.point);
+        self.line.extend(other.line);
     }
 }
 
 impl LineOnLineOverlayer {
-    fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
-        if self.temp_dir.is_none() {
-            let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
-            self.temp_dir = Some(dir);
-        }
-        Ok(self.temp_dir.as_ref().unwrap())
-    }
-
-    fn group_file_path(&self, group_idx: usize) -> PathBuf {
-        self.temp_dir
-            .as_ref()
-            .unwrap()
-            .join(format!("group_{group_idx:06}.jsonl"))
-    }
-
-    fn close_current_writer(&mut self) -> Result<(), BoxedError> {
-        if let Some((_, mut writer)) = self.current_writer.take() {
-            writer.flush()?;
-        }
-        Ok(())
-    }
-
-    fn ensure_writer_for_group(&mut self, group_idx: usize) -> Result<(), BoxedError> {
-        // If we already have this group's writer open, nothing to do
-        if let Some((current_idx, _)) = &self.current_writer {
-            if *current_idx == group_idx {
-                return Ok(());
-            }
+    fn overlay(&self) -> Result<OverlayedFeatures, BoxedError> {
+        let mut overlaid = OverlayedFeatures::new();
+        for buffer in self.buffer.values() {
+            let buffered_features_2d = buffer
+                .iter()
+                .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
+                .collect::<Vec<_>>();
+            overlaid.extend(self.overlay_2d(buffered_features_2d)?);
         }
 
-        // Close current writer before opening new one
-        self.close_current_writer()?;
-
-        // Open new writer (append mode)
-        let path = self.group_file_path(group_idx);
-        let file = File::options().create(true).append(true).open(path)?;
-        self.current_writer = Some((group_idx, BufWriter::new(file)));
-        Ok(())
-    }
-
-    fn write_feature(&mut self, group_idx: usize, feature: &Feature) -> Result<(), BoxedError> {
-        self.ensure_writer_for_group(group_idx)?;
-        if let Some((_, ref mut writer)) = self.current_writer {
-            serde_json::to_writer(&mut *writer, feature)?;
-            writer.write_all(b"\n")?;
-            writer.flush()?;
-        }
-        Ok(())
-    }
-
-    fn read_features_for_group(&self, group_idx: usize) -> Result<Vec<Feature>, BoxedError> {
-        let path = self.group_file_path(group_idx);
-        let file = File::open(&path)?;
-        let reader = BufReader::new(file);
-        let mut features = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if !line.is_empty() {
-                features.push(serde_json::from_str(&line)?);
-            }
-        }
-        Ok(features)
-    }
-
-    fn overlay_group(&self, features: &[Feature]) -> Result<OverlayedFeatures, BoxedError> {
-        let buffered_features_2d: Vec<&Feature> = features
-            .iter()
-            .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
-            .collect();
-        self.overlay_2d(buffered_features_2d)
+        Ok(overlaid)
     }
 
     fn overlay_2d(&self, features_2d: Vec<&Feature>) -> Result<OverlayedFeatures, BoxedError> {
@@ -280,12 +280,12 @@ impl LineOnLineOverlayer {
                 overlay_count,
                 overlay_ids,
             } = ls;
-            let mut feature = Feature::new_with_attributes(Attributes::new());
-            feature.attributes_mut().insert(
+            let mut attributes = Attributes::new();
+            attributes.insert(
                 Attribute::new("overlayCount"),
                 AttributeValue::Number(Number::from(*overlay_count)),
             );
-            feature.attributes_mut().insert(
+            attributes.insert(
                 Attribute::new(&self.overlaid_lists_attr_name),
                 AttributeValue::Array(
                     overlay_ids
@@ -294,8 +294,10 @@ impl LineOnLineOverlayer {
                             AttributeValue::Map(
                                 features_2d[map_ls_to_features[id]]
                                     .attributes
-                                    .iter()
-                                    .map(|(k, v)| (k.inner(), v.clone()))
+                                    .as_ref()
+                                    .clone()
+                                    .into_iter()
+                                    .map(|(k, v)| (k.inner(), v))
                                     .collect::<HashMap<_, _>>(),
                             )
                         })
@@ -308,9 +310,7 @@ impl LineOnLineOverlayer {
                 let attr = &features_2d[map_ls_to_features[overlay_ids[0]]].attributes;
                 for group_by in group_by {
                     if let Some(value) = attr.get(group_by) {
-                        feature
-                            .attributes_mut()
-                            .insert(group_by.clone(), value.clone());
+                        attributes.insert(group_by.clone(), value.clone());
                     } else {
                         return Err(Box::new(
                             GeometryProcessorError::LineOnLineOverlayerFactory(
@@ -320,163 +320,42 @@ impl LineOnLineOverlayer {
                     }
                 }
             };
-            feature.geometry_mut().value =
-                GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone()));
+            let geometry = reearth_flow_types::Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone())),
+                ..Default::default()
+            };
+            let mut feature =
+                Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::new());
             overlaid.line.push(feature);
         }
 
         let last_feature = features_2d.last().unwrap();
 
         for result_coords in line_string_intersection_result.split_coords {
-            let attrs = if let Some(group_by) = &self.group_by {
-                group_by
+            let mut attributes = Attributes::new();
+
+            if let Some(group_by) = &self.group_by {
+                attributes = group_by
                     .iter()
                     .filter_map(|attr| {
                         let value = last_feature.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
-                    .collect::<IndexMap<_, _>>()
+                    .collect::<IndexMap<_, _>>();
             } else {
-                IndexMap::new()
-            };
-            let mut feature = Feature::new_with_attributes(attrs);
+                attributes = IndexMap::new();
+            }
 
-            feature.geometry_mut().value =
-                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords)));
+            let geometry = reearth_flow_types::Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords))),
+                ..Default::default()
+            };
+            let feature =
+                Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::new());
             overlaid.point.push(feature);
         }
 
         Ok(overlaid)
-    }
-}
-
-impl Processor for LineOnLineOverlayer {
-    fn is_accumulating(&self) -> bool {
-        true
-    }
-
-    fn process(
-        &mut self,
-        ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
-            return Ok(());
-        }
-        match &geometry.value {
-            GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
-            GeometryValue::FlowGeometry2D(_) => {
-                self.ensure_temp_dir()?;
-
-                let key = if let Some(group_by) = &self.group_by {
-                    AttributeValue::Array(
-                        group_by
-                            .iter()
-                            .filter_map(|attr| feature.attributes.get(attr).cloned())
-                            .collect(),
-                    )
-                } else {
-                    AttributeValue::Null
-                };
-
-                let group_idx = if let Some(&idx) = self.group_map.get(&key) {
-                    idx
-                } else {
-                    let idx = self.group_count;
-                    self.group_map.insert(key, idx);
-                    self.group_count += 1;
-                    idx
-                };
-
-                self.write_feature(group_idx, feature)?;
-            }
-            _ => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
-        }
-        Ok(())
-    }
-
-    fn finish(
-        &mut self,
-        ctx: NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        // Close current writer
-        self.close_current_writer()?;
-
-        let temp_dir = match &self.temp_dir {
-            Some(d) => d.clone(),
-            None => return Ok(()),
-        };
-
-        let line_path = temp_dir.join("output_line.jsonl");
-        let point_path = temp_dir.join("output_point.jsonl");
-        let mut line_writer = BufWriter::new(File::create(&line_path)?);
-        let mut point_writer = BufWriter::new(File::create(&point_path)?);
-        let mut line_count: usize = 0;
-        let mut point_count: usize = 0;
-
-        // Process each group one at a time to minimize memory usage
-        for group_idx in 0..self.group_count {
-            let features = self.read_features_for_group(group_idx)?;
-            if features.is_empty() {
-                continue;
-            }
-
-            let overlaid = self.overlay_group(&features)?;
-
-            for feature in overlaid.line {
-                serde_json::to_writer(&mut line_writer, &feature)?;
-                line_writer.write_all(b"\n")?;
-                line_count += 1;
-            }
-            for feature in overlaid.point {
-                serde_json::to_writer(&mut point_writer, &feature)?;
-                point_writer.write_all(b"\n")?;
-                point_count += 1;
-            }
-            // Features for this group are dropped here, freeing memory before next group
-        }
-
-        line_writer.flush()?;
-        point_writer.flush()?;
-        drop(line_writer);
-        drop(point_writer);
-
-        let context = ctx.as_context();
-
-        if line_count > 0 {
-            fw.send_file(line_path, LINE_PORT.clone(), context.clone());
-        }
-        if point_count > 0 {
-            fw.send_file(point_path, POINT_PORT.clone(), context);
-        }
-
-        Ok(())
-    }
-
-    fn name(&self) -> &str {
-        "LineOnLineOverlayer"
-    }
-}
-
-struct OverlayedFeatures {
-    point: Vec<Feature>,
-    line: Vec<Feature>,
-}
-
-impl OverlayedFeatures {
-    fn new() -> Self {
-        Self {
-            point: Vec::new(),
-            line: Vec::new(),
-        }
     }
 }
 

@@ -1,20 +1,20 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader, BufWriter, Read as _, Seek, SeekFrom, Write as _},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reearth_flow_common::dir::project_temp_dir;
 use reearth_flow_geometry::{
     algorithm::{area2d::Area2D, bool_ops::BooleanOps},
     types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D},
 };
 use reearth_flow_runtime::{
+    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
 static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
@@ -97,7 +98,9 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
             group_map: HashMap::new(),
             group_count: 0,
             temp_dir: None,
-            group_writers: HashMap::new(),
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: None,
         };
 
         Ok(Box::new(process))
@@ -141,8 +144,11 @@ struct AreaOnAreaOverlayer {
     group_map: HashMap<AttributeValue, usize>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
-    /// Per-group persistent writers: (aabbs_writer, features_writer)
-    group_writers: HashMap<usize, (BufWriter<File>, BufWriter<File>)>,
+    // In-memory buffer: group_idx -> Vec<(aabb_json, feature_json)>
+    buffer: HashMap<usize, Vec<(String, String)>>,
+    buffer_bytes: usize,
+    /// Executor ID for cache isolation, set on first process() call
+    executor_id: Option<uuid::Uuid>,
 }
 
 impl std::fmt::Debug for AreaOnAreaOverlayer {
@@ -164,7 +170,9 @@ impl Clone for AreaOnAreaOverlayer {
             group_map: HashMap::new(),
             group_count: 0,
             temp_dir: None,
-            group_writers: HashMap::new(),
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: self.executor_id,
         }
     }
 }
@@ -177,10 +185,17 @@ pub enum AccumulationMode {
     DropIncomingAttributes,
 }
 
+/// Executor-specific engine cache folder for accumulating processors
+fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "processors")
+}
+
 impl AreaOnAreaOverlayer {
     fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
         if self.temp_dir.is_none() {
-            let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+            let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
+            let dir = engine_cache_dir(executor_id).join(format!("aoa-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&dir)?;
             self.temp_dir = Some(dir);
         }
         Ok(self.temp_dir.as_ref().unwrap())
@@ -199,28 +214,57 @@ impl AreaOnAreaOverlayer {
         aabb: &[f64; 4],
         feature_json: &str,
     ) -> Result<(), BoxedError> {
-        if !self.group_writers.contains_key(&group_idx) {
-            let group_dir = self.ensure_group_dir(group_idx)?;
-            let aabbs_file = File::options()
-                .create(true)
-                .append(true)
-                .open(group_dir.join("aabbs.jsonl"))?;
-            let feats_file = File::options()
-                .create(true)
-                .append(true)
-                .open(group_dir.join("features.jsonl"))?;
-            self.group_writers.insert(
-                group_idx,
-                (BufWriter::new(aabbs_file), BufWriter::new(feats_file)),
-            );
+        let aabb_json = serde_json::to_string(aabb)?;
+        self.buffer_bytes += aabb_json.len() + feature_json.len();
+        self.buffer
+            .entry(group_idx)
+            .or_default()
+            .push((aabb_json, feature_json.to_string()));
+
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            self.flush_buffer()?;
         }
-        let (aabb_w, feat_w) = self.group_writers.get_mut(&group_idx).unwrap();
-        serde_json::to_writer(&mut *aabb_w, aabb)?;
-        aabb_w.write_all(b"\n")?;
-        aabb_w.flush()?;
-        feat_w.write_all(feature_json.as_bytes())?;
-        feat_w.write_all(b"\n")?;
-        feat_w.flush()?;
+        Ok(())
+    }
+
+    fn flush_buffer(&mut self) -> Result<(), BoxedError> {
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+
+        for (group_idx, entries) in std::mem::take(&mut self.buffer) {
+            let group_dir = self.ensure_group_dir(group_idx)?;
+
+            // Write aabbs
+            {
+                let aabbs_file = File::options()
+                    .create(true)
+                    .append(true)
+                    .open(group_dir.join("aabbs.jsonl"))?;
+                let mut aabb_w = BufWriter::new(aabbs_file);
+                for (aabb_json, _) in &entries {
+                    aabb_w.write_all(aabb_json.as_bytes())?;
+                    aabb_w.write_all(b"\n")?;
+                }
+                aabb_w.flush()?;
+            }
+
+            // Write features
+            {
+                let feats_file = File::options()
+                    .create(true)
+                    .append(true)
+                    .open(group_dir.join("features.jsonl"))?;
+                let mut feat_w = BufWriter::new(feats_file);
+                for (_, feature_json) in &entries {
+                    feat_w.write_all(feature_json.as_bytes())?;
+                    feat_w.write_all(b"\n")?;
+                }
+                feat_w.flush()?;
+            }
+        }
+
+        self.buffer_bytes = 0;
         Ok(())
     }
 }
@@ -243,6 +287,11 @@ impl Processor for AreaOnAreaOverlayer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // Capture executor_id on first process call for cache isolation
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
@@ -297,19 +346,19 @@ impl Processor for AreaOnAreaOverlayer {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // Flush any remaining buffered data to disk
+        self.flush_buffer()?;
+
         let temp_dir = match &self.temp_dir {
             Some(d) => d.clone(),
             None => return Ok(()),
         };
 
-        // Drop all group writers before reading their files
-        self.group_writers.clear();
-
-        // Place output files outside temp_dir so Drop doesn't delete them
-        // before the downstream receiver reads them (receiver deletes after reading).
+        // Output files are placed in temp_dir. send_file() will move them to the
+        // channel buffer directory before this processor's Drop cleans up temp_dir.
         let output_id = uuid::Uuid::new_v4();
-        let area_path = std::env::temp_dir().join(format!("aoa-area-{output_id}.jsonl"));
-        let remnants_path = std::env::temp_dir().join(format!("aoa-remnants-{output_id}.jsonl"));
+        let area_path = temp_dir.join(format!("aoa-area-{output_id}.jsonl"));
+        let remnants_path = temp_dir.join(format!("aoa-remnants-{output_id}.jsonl"));
         let mut area_writer = BufWriter::new(File::create(&area_path)?);
         let mut remnants_writer = BufWriter::new(File::create(&remnants_path)?);
         let mut area_count: usize = 0;
@@ -503,6 +552,7 @@ fn bool_op_difference(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> Multi
 }
 
 /// An AABB entry for the RTree built from pre-computed bounding boxes stored on disk.
+#[derive(Clone)]
 struct AabbEntry {
     index: usize,
     aabb: AABB<[f64; 2]>,
@@ -516,13 +566,15 @@ impl rstar::RTreeObject for AabbEntry {
     }
 }
 
-/// Overlay graph that stores which polygons overlay which other polygons.
-struct OverlayGraph {
-    graph: Vec<HashSet<usize>>,
+/// Spatial index for finding overlapping AABBs on-the-fly.
+/// Instead of precomputing O(n²) adjacency, we query the RTree as needed.
+struct AabbIndex {
+    tree: RTree<AabbEntry>,
+    aabbs: Vec<[f64; 4]>,
 }
 
-impl OverlayGraph {
-    fn bulk_load_from_aabbs(aabbs: &[[f64; 4]]) -> Self {
+impl AabbIndex {
+    fn build(aabbs: &[[f64; 4]]) -> Self {
         let entries: Vec<AabbEntry> = aabbs
             .iter()
             .enumerate()
@@ -532,24 +584,25 @@ impl OverlayGraph {
             })
             .collect();
 
-        let tree = RTree::bulk_load(entries);
-
-        let mut graph = vec![HashSet::new(); aabbs.len()];
-
-        for i in 0..aabbs.len() {
-            let aabb_i = AABB::from_corners([aabbs[i][0], aabbs[i][1]], [aabbs[i][2], aabbs[i][3]]);
-            for entry in tree.locate_in_envelope_intersecting(&aabb_i) {
-                if entry.index != i {
-                    graph[i].insert(entry.index);
-                }
-            }
+        Self {
+            tree: RTree::bulk_load(entries),
+            aabbs: aabbs.to_vec(),
         }
-
-        Self { graph }
     }
 
-    fn overlaid_iter(&self, i: usize) -> impl Iterator<Item = &usize> {
-        self.graph[i].iter()
+    /// Returns indices of AABBs that intersect with AABB at index `i`, excluding `i` itself.
+    fn overlapping_indices(&self, i: usize) -> impl Iterator<Item = usize> + '_ {
+        let aabb = &self.aabbs[i];
+        let envelope = AABB::from_corners([aabb[0], aabb[1]], [aabb[2], aabb[3]]);
+        self.tree
+            .locate_in_envelope_intersecting(&envelope)
+            .filter_map(move |entry| {
+                if entry.index != i {
+                    Some(entry.index)
+                } else {
+                    None
+                }
+            })
     }
 }
 
@@ -564,86 +617,93 @@ fn overlay_2d_disk(
     if let Some(parent) = output_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let writer = Mutex::new(BufWriter::new(File::create(output_path)?));
-    let overlay_graph = OverlayGraph::bulk_load_from_aabbs(aabbs);
+    let aabb_index = AabbIndex::build(aabbs);
     let num = disk_feats.offsets.len();
 
-    (0..num).into_par_iter().for_each(|i| {
-        let geom_i = disk_feats.read_geometry(i);
-        let geom_i_2d = match as_geometry_2d(&geom_i) {
-            Some(g) => g,
-            None => return,
-        };
+    // Load all geometries upfront to avoid disk I/O inside parallel iteration
+    let geometries: Vec<Arc<Geometry>> = (0..num).map(|i| disk_feats.read_geometry(i)).collect();
 
-        let mut polygon_target = geom_to_multipolygon(geom_i_2d);
+    // Parallel iteration with flat_map to collect all results
+    let results: Vec<MiddlePolygon> = (0..num)
+        .into_par_iter()
+        .flat_map(|i| {
+            let geom_i = &geometries[i];
+            let geom_i_2d = match as_geometry_2d(geom_i) {
+                Some(g) => g,
+                None => return Vec::new(),
+            };
 
-        // cut off the target polygon by upper polygons
-        for j in overlay_graph.overlaid_iter(i).copied() {
-            if i < j {
-                let geom_j = disk_feats.read_geometry(j);
-                if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
-                    polygon_target = bool_op_difference(&polygon_target, geom_j_2d);
-                }
-            }
-        }
+            let mut polygon_target = geom_to_multipolygon(geom_i_2d);
 
-        let mut queue = vec![MiddlePolygon {
-            polygon: polygon_target,
-            parents: vec![i],
-        }];
+            // Collect overlapping indices once (the iterator is consumed on use)
+            let overlapping: Vec<usize> = aabb_index.overlapping_indices(i).collect();
 
-        // divide the target polygon by lower polygons
-        for j in overlay_graph.overlaid_iter(i).copied() {
-            if i > j {
-                let geom_j = disk_feats.read_geometry(j);
-                if let Some(geom_j_2d) = as_geometry_2d(&geom_j) {
-                    let mut new_queue = Vec::new();
-                    for subpolygon in queue {
-                        let intersection = bool_op_intersection(&subpolygon.polygon, geom_j_2d);
-
-                        let min_area = tolerance * tolerance;
-                        let intersection_area = intersection.unsigned_area2d();
-                        let is_significant_intersection = intersection_area > min_area;
-
-                        if !intersection.is_empty() && is_significant_intersection {
-                            new_queue.push(MiddlePolygon {
-                                polygon: intersection,
-                                parents: subpolygon
-                                    .parents
-                                    .clone()
-                                    .into_iter()
-                                    .chain(vec![j])
-                                    .collect(),
-                            });
-                        }
-
-                        let difference = bool_op_difference(&subpolygon.polygon, geom_j_2d);
-                        if !difference.is_empty() {
-                            new_queue.push(MiddlePolygon {
-                                polygon: difference,
-                                parents: subpolygon.parents.clone(),
-                            });
-                        }
+            // cut off the target polygon by upper polygons
+            for &j in &overlapping {
+                if i < j {
+                    let geom_j = &geometries[j];
+                    if let Some(geom_j_2d) = as_geometry_2d(geom_j) {
+                        polygon_target = bool_op_difference(&polygon_target, geom_j_2d);
                     }
-                    queue = new_queue;
                 }
             }
-        }
 
-        // Serialize each MiddlePolygon and write to disk
-        for mp in queue {
-            let line = serde_json::to_string(&mp).expect("failed to serialize MiddlePolygon");
-            let mut w = writer.lock().expect("failed to lock writer");
-            w.write_all(line.as_bytes())
-                .expect("failed to write MiddlePolygon");
-            w.write_all(b"\n").expect("failed to write newline");
-        }
-    });
+            let mut queue = vec![MiddlePolygon {
+                polygon: polygon_target,
+                parents: vec![i],
+            }];
 
-    writer
-        .into_inner()
-        .expect("failed to unwrap mutex")
-        .flush()?;
+            // divide the target polygon by lower polygons
+            for &j in &overlapping {
+                if i > j {
+                    let geom_j = &geometries[j];
+                    if let Some(geom_j_2d) = as_geometry_2d(geom_j) {
+                        let mut new_queue = Vec::new();
+                        for subpolygon in queue {
+                            let intersection = bool_op_intersection(&subpolygon.polygon, geom_j_2d);
+
+                            let min_area = tolerance * tolerance;
+                            let intersection_area = intersection.unsigned_area2d();
+                            let is_significant_intersection = intersection_area > min_area;
+
+                            if !intersection.is_empty() && is_significant_intersection {
+                                new_queue.push(MiddlePolygon {
+                                    polygon: intersection,
+                                    parents: subpolygon
+                                        .parents
+                                        .clone()
+                                        .into_iter()
+                                        .chain(vec![j])
+                                        .collect(),
+                                });
+                            }
+
+                            let difference = bool_op_difference(&subpolygon.polygon, geom_j_2d);
+                            if !difference.is_empty() {
+                                new_queue.push(MiddlePolygon {
+                                    polygon: difference,
+                                    parents: subpolygon.parents.clone(),
+                                });
+                            }
+                        }
+                        queue = new_queue;
+                    }
+                }
+            }
+
+            queue
+        })
+        .collect();
+
+    // Write all results from a single thread
+    let mut writer = BufWriter::new(File::create(output_path)?);
+    for mp in results {
+        let line = serde_json::to_string(&mp)?;
+        writer.write_all(line.as_bytes())?;
+        writer.write_all(b"\n")?;
+    }
+    writer.flush()?;
+
     Ok(())
 }
 
@@ -804,7 +864,8 @@ mod tests {
     #[test]
     fn test_overlay_two_squares_disk() {
         // Create temp dir and write features to disk
-        let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).unwrap();
+        let dir = engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
         let group_dir = dir.join("group_000000");
         std::fs::create_dir_all(&group_dir).unwrap();
 
@@ -852,7 +913,8 @@ mod tests {
 
     #[test]
     fn test_overlay_triangles_sharing_an_edge_disk() {
-        let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).unwrap();
+        let dir = engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
         let group_dir = dir.join("group_000000");
         std::fs::create_dir_all(&group_dir).unwrap();
 

@@ -1,10 +1,5 @@
-use std::collections::{BinaryHeap, HashMap};
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::path::PathBuf;
-
-use reearth_flow_common::dir::project_temp_dir;
 use reearth_flow_runtime::{
+    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
@@ -15,10 +10,14 @@ use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::{BinaryHeap, HashMap};
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
 
 use super::errors::FeatureProcessorError;
+use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
-const BUFFER_BYTE_THRESHOLD: usize = 1_048_576; // 1 MB
 const MERGE_FAN_IN: usize = 64;
 
 struct HeapEntry {
@@ -168,6 +167,7 @@ impl ProcessorFactory for FeatureSorterFactory {
             buffer_bytes: 0,
             temp_dir: None,
             chunk_count: 0,
+            executor_id: None,
         };
         Ok(Box::new(process))
     }
@@ -180,6 +180,8 @@ struct FeatureSorter {
     buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
     chunk_count: usize,
+    /// Executor ID for cache isolation, set on first process() call
+    executor_id: Option<uuid::Uuid>,
 }
 
 /// # FeatureSorter Parameters
@@ -202,10 +204,17 @@ enum Order {
     Desc,
 }
 
+/// Executor-specific engine cache folder for accumulating processors
+fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "processors")
+}
+
 impl FeatureSorter {
     fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
         if self.temp_dir.is_none() {
-            let dir = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+            let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
+            let dir = engine_cache_dir(executor_id).join(format!("sorter-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&dir)?;
             self.temp_dir = Some(dir);
         }
         Ok(self.temp_dir.as_ref().unwrap())
@@ -258,8 +267,13 @@ impl Processor for FeatureSorter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // Capture executor_id on first process call for cache isolation
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
         let feature = ctx.feature;
         let key: Vec<AttributeValue> = self
             .params
@@ -275,7 +289,7 @@ impl Processor for FeatureSorter {
         self.buffer_bytes += key_json.len() + feature_json.len();
         self.buffer.push((key, key_json, feature_json));
 
-        if self.buffer_bytes >= BUFFER_BYTE_THRESHOLD {
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
         }
         Ok(())

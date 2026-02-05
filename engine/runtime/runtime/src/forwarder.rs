@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam::channel::Sender;
+
+use crate::cache::executor_cache_subdir;
 use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
 
@@ -66,6 +69,30 @@ impl ProcessorChannelForwarder {
             ProcessorChannelForwarder::Noop(_) => {}
         }
     }
+
+    /// Reset the finish send counter (call before finish())
+    pub fn reset_finish_count(&self) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.reset_finish_count(),
+            ProcessorChannelForwarder::Noop(_) => {}
+        }
+    }
+
+    /// Get the current finish send count
+    pub fn get_finish_count(&self) -> u64 {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.get_finish_count(),
+            ProcessorChannelForwarder::Noop(_) => 0,
+        }
+    }
+
+    /// Get the executor ID for cache isolation
+    pub fn executor_id(&self) -> uuid::Uuid {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.executor_id(),
+            ProcessorChannelForwarder::Noop(_) => uuid::Uuid::nil(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -121,13 +148,31 @@ impl SenderWithPortMapping {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ChannelManager {
     owner: NodeHandle,
     feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
+    /// Counter for features sent during finish() - used for debugging
+    finish_send_count: Arc<AtomicU64>,
+    /// Unique identifier for this workflow execution, used for cache isolation
+    executor_id: uuid::Uuid,
+}
+
+impl Clone for ChannelManager {
+    fn clone(&self) -> Self {
+        Self {
+            owner: self.owner.clone(),
+            feature_writers: self.feature_writers.clone(),
+            senders: self.senders.clone(),
+            runtime: self.runtime.clone(),
+            event_hub: self.event_hub.clone(),
+            finish_send_count: self.finish_send_count.clone(),
+            executor_id: self.executor_id,
+        }
+    }
 }
 
 impl ChannelManager {
@@ -264,6 +309,7 @@ impl ChannelManager {
         senders: Vec<SenderWithPortMapping>,
         runtime: Arc<Handle>,
         event_hub: EventHub,
+        executor_id: uuid::Uuid,
     ) -> Self {
         Self {
             owner,
@@ -271,14 +317,36 @@ impl ChannelManager {
             senders,
             runtime,
             event_hub,
+            finish_send_count: Arc::new(AtomicU64::new(0)),
+            executor_id,
         }
+    }
+
+    /// Reset the finish send counter (call before finish())
+    pub fn reset_finish_count(&self) {
+        self.finish_send_count.store(0, Ordering::SeqCst);
+    }
+
+    /// Get the current finish send count
+    pub fn get_finish_count(&self) -> u64 {
+        self.finish_send_count.load(Ordering::SeqCst)
+    }
+
+    /// Increment the finish send counter
+    fn increment_finish_count(&self, count: u64) {
+        self.finish_send_count.fetch_add(count, Ordering::SeqCst);
+    }
+
+    /// Get the executor ID for cache isolation
+    pub fn executor_id(&self) -> uuid::Uuid {
+        self.executor_id
     }
 }
 
-/// Directory for channel buffer files that are moved from processor temp directories.
-/// Files are moved here to prevent deletion when the source processor's temp directory
-/// is cleaned up by its Drop implementation.
-const CHANNEL_BUFFER_DIR: &str = "/tmp/reearth-flow-engine-cache/channel-buffers";
+/// Returns the channel buffer directory path within the executor-specific cache.
+fn channel_buffer_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "channel-buffers")
+}
 
 impl ChannelManager {
     fn node_id(&self) -> String {
@@ -287,19 +355,31 @@ impl ChannelManager {
 
     /// Sends a file-backed operation to downstream processors.
     ///
-    /// **Important**: The file at `path` will be **moved** (renamed) to a shared cache
-    /// directory (`/tmp/reearth-flow-engine-cache/channel-buffers/`) before being sent.
-    /// This ensures the file survives even if the caller's temp directory is deleted
-    /// (e.g., by a `Drop` implementation). The move operation is O(1) on the same filesystem.
+    /// **Important**: The file at `path` will be **moved** (renamed) to an executor-specific
+    /// cache directory (`<temp_dir>/reearth-flow-engine-cache/{executor_id}/channel-buffers/`)
+    /// before being sent. This ensures the file survives even if the caller's temp directory
+    /// is deleted (e.g., by a `Drop` implementation). The move operation is O(1) on the same
+    /// filesystem.
     ///
     /// The downstream processor is responsible for deleting the file after reading it.
     fn send_file(&self, path: PathBuf, port: Port, context: Context) {
+        // Count features in the file for debugging
+        let feature_count = std::fs::File::open(&path)
+            .map(|f| {
+                BufReader::new(f)
+                    .lines()
+                    .filter(|l| l.as_ref().map(|s| !s.is_empty()).unwrap_or(false))
+                    .count()
+            })
+            .unwrap_or(0);
+        self.increment_finish_count(feature_count as u64);
+
         // Write features to FeatureWriter for observability
         self.write_file_features_to_store(&path, &port);
 
-        // Move the file to shared cache directory to prevent deletion when
+        // Move the file to executor-specific cache directory to prevent deletion when
         // the source processor's temp directory is cleaned up by Drop
-        let cache_dir = PathBuf::from(CHANNEL_BUFFER_DIR);
+        let cache_dir = channel_buffer_dir(self.executor_id);
         std::fs::create_dir_all(&cache_dir).unwrap_or_else(|e| {
             panic!("Failed to create channel buffer directory {cache_dir:?}: {e}")
         });
@@ -422,7 +502,8 @@ impl ChannelManager {
             panic!(
                 "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
             )
-        })
+        });
+        self.increment_finish_count(1);
     }
 }
 

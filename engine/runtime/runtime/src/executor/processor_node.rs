@@ -118,6 +118,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             senders,
             runtime.clone(),
             dag.event_hub().clone(),
+            dag.executor_id(),
         ));
         let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
@@ -457,10 +458,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         };
 
         channel_manager.wait_until_downstream_empty();
+        channel_manager.reset_finish_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+        let finish_feature_count = channel_manager.get_finish_count();
 
         drop(_accumulating_guard);
 
@@ -470,9 +473,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             self.node_handle.clone(),
             self.node_name.clone(),
             format!(
-                "{} finish process complete. elapsed = {:?}",
+                "{} finish process complete. elapsed = {:?}, features = {}",
                 self.processor.read().name(),
-                now.elapsed()
+                now.elapsed(),
+                finish_feature_count
             ),
         );
 
