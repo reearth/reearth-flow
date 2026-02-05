@@ -3,14 +3,15 @@ id: 6a8c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 name: SolarRadiationWorkflow
 entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
-  cityGmlPath:
+  bldgCityGmlPath:
+  demCityGmlPath:
   codelistsPath:
   schemasPath:
   codelists:
   schemas:
   prcs:
-  startTime: "2022/01/21/16/00/00"
-  endTime: "2022/01/21/16/00/00"
+  startTime: "2025/01/21/16/00/00"
+  endTime: "2025/01/21/16/00/00"
   outputPath:
   dailySunDataPath:
   monthlyWeatherDataPath:
@@ -21,16 +22,16 @@ graphs:
     name: main
     nodes:
       - id: 00000001-0000-0000-0000-000000000001
-        name: FeatureCreator
+        name: BldgFeatureCreator
         type: action
         action: FeatureCreator
         with:
           creator: |
             [
               #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                cityGmlPath: env.get("bldgCityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
               },
@@ -40,6 +41,79 @@ graphs:
         name: FolderAndFilePathReader
         type: subGraph
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      # ========================================
+      # DEM Import Pipeline
+      # ========================================
+
+      - id: 00000002-0000-0000-0000-000000000001
+        name: DEMFeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("demCityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+              },
+            ]
+
+      - id: 00000002-0000-0000-0000-000000000002
+        name: DEMDirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: 00000002-0000-0000-0000-000000000003
+        name: DEMFeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          sourceDataset: |
+            env.get("__value")["cityGmlPath"]
+          extractArchive: true
+          destPrefix: udx
+
+      - id: 00000002-0000-0000-0000-000000000004
+        name: DEMFeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: 00000002-0000-0000-0000-000000000005
+        name: DEMPLATEAU4UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: codelists
+          schemasPath: schemas
+
+      - id: 00000002-0000-0000-0000-000000000006
+        name: DEMPLATEAU4CityGmlMeshBuilder
+        type: action
+        action: PLATEAU4.CityGmlMeshBuilder
+        with:
+          errorAttribute: _validation_error
+          epsgCode: |
+            env.get("prcs")
+
+      - id: 00000002-0000-0000-0000-000000000007
+        name: DEMMeshNoopSink
+        type: action
+        action: NoopSink
 
       - id: 00000001-0000-0000-0000-000000000002
         name: CityGmlReader
@@ -59,7 +133,8 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("__value").lod == 2
+                let lod = env.get("__value").lod;
+                lod == 2 || lod == "2";
               outputPort: default
 
       # Keep only featureType attribute to reduce memory footprint
@@ -269,15 +344,14 @@ graphs:
               method: create
               value: |
                 let dt = env.get("__value")["solar_time"];
-                let parts = dt.split("/");
-                if parts.len() > 0 { parts[0] } else { "" }
+                dt.split("/")[0] ?? ""
             # Extract month from solar_time
             - attribute: month
               method: create
               value: |
                 let dt = env.get("__value")["solar_time"];
-                let parts = dt.split("/");
-                if parts.len() > 1 { parts[1] } else { "" }
+                let month = dt.split("/")[1] ?? "";
+                if month[0] == "0" { month[1..] } else { month }
             - attribute: DTSunny
               method: create
               value: |
@@ -359,9 +433,9 @@ graphs:
             - attribute: DTperMonth
               method: create
               value: |
-                let sunny_ratio = env.get("__value")["sunnyRatio"];
-                let dt_sunny = env.get("__value")["DTSunnySum"];
-                let dt_cloudy = env.get("__value")["DTCloudySum"];
+                let sunny_ratio = env.get("__value")["sunnyRatio"] ?? 0.5;
+                let dt_sunny = env.get("__value")["DTSunnySum"] ?? 0.0;
+                let dt_cloudy = env.get("__value")["DTCloudySum"] ?? 0.0;
                 sunny_ratio * dt_sunny + (1.0 - sunny_ratio) * dt_cloudy
 
       # Write monthly radiation results
@@ -396,7 +470,7 @@ graphs:
             - attribute: color_r
               method: create
               value: |
-                let dt = env.get("__value")["DTperMonth"];
+                let dt = env.get("__value")["DTperMonth"] ?? 0.0;
                 let max_dt = 500000.0;
                 let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
                 let r = if normalized < 0.5 { 0.0 } else { (normalized - 0.5) * 2.0 * 255.0 };
@@ -404,7 +478,7 @@ graphs:
             - attribute: color_g
               method: create
               value: |
-                let dt = env.get("__value")["DTperMonth"];
+                let dt = env.get("__value")["DTperMonth"] ?? 0.0;
                 let max_dt = 500000.0;
                 let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
                 let g = if normalized < 0.5 { normalized * 2.0 * 255.0 } else { (1.0 - normalized) * 2.0 * 255.0 };
@@ -412,11 +486,23 @@ graphs:
             - attribute: color_b
               method: create
               value: |
-                let dt = env.get("__value")["DTperMonth"];
+                let dt = env.get("__value")["DTperMonth"] ?? 0.0;
                 let max_dt = 500000.0;
                 let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
                 let b = if normalized < 0.5 { (1.0 - normalized * 2.0) * 255.0 } else { 0.0 };
                 math::floor(b)
+
+      # Merge colors back to original cell polygons (which have geometry)
+      # The aggregation pipeline loses geometry, so we need to restore it from CellIdCounter
+      - id: 00000001-0000-0000-0000-000000000068
+        name: CellGeometryMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute:
+            - cell_id
+          supplierAttribute:
+            - cell_id
 
       # ImageRasterizer: creates texture from colored cells and assigns UV to roof geometry
       - id: 00000001-0000-0000-0000-000000000061
@@ -949,39 +1035,53 @@ graphs:
       # Section 6c: Textured 3D Tiles Output edges
       # ========================================
 
-      # CalcDTperMonth → CellTwoDimensionForcer
+      # CalcDTperMonth → DTtoColorMapper (add colors, no geometry yet)
       - id: e0000001-0000-0000-0000-00000000005f
         from: 00000001-0000-0000-0000-000000000053
-        to: 00000001-0000-0000-0000-00000000005f
-        fromPort: default
-        toPort: default
-
-      # CellTwoDimensionForcer → DTtoColorMapper
-      - id: e0000001-0000-0000-0000-000000000060
-        from: 00000001-0000-0000-0000-00000000005f
         to: 00000001-0000-0000-0000-000000000060
         fromPort: default
         toPort: default
 
-      # DTtoColorMapper → ImageRasterizer (default port - cells to rasterize)
-      - id: e0000001-0000-0000-0000-000000000061
+      # CellIdCounter → CellGeometryMerger (requestor - original cell polygons with geometry)
+      - id: e0000001-0000-0000-0000-000000000068
+        from: 00000001-0000-0000-0000-000000000030
+        to: 00000001-0000-0000-0000-000000000068
+        fromPort: default
+        toPort: requestor
+
+      # DTtoColorMapper → CellGeometryMerger (supplier - colors by cell_id)
+      - id: e0000001-0000-0000-0000-000000000069
         from: 00000001-0000-0000-0000-000000000060
+        to: 00000001-0000-0000-0000-000000000068
+        fromPort: default
+        toPort: supplier
+
+      # CellGeometryMerger → CellTwoDimensionForcer (merged polygons with colors)
+      - id: e0000001-0000-0000-0000-000000000060
+        from: 00000001-0000-0000-0000-000000000068
+        to: 00000001-0000-0000-0000-00000000005f
+        fromPort: merged
+        toPort: default
+
+      # CellTwoDimensionForcer → ImageRasterizer (2D polygons with colors)
+      - id: e0000001-0000-0000-0000-000000000061
+        from: 00000001-0000-0000-0000-00000000005f
         to: 00000001-0000-0000-0000-000000000061
         fromPort: default
         toPort: default
 
-      # HorizontalReprojector → ImageRasterizer (attachTextureCoordinates port - roof geometry)
+      # HorizontalReprojector → ImageRasterizer (textureCoordinates port - roof geometry)
       - id: e0000001-0000-0000-0000-000000000062
         from: 00000001-0000-0000-0000-000000000005
         to: 00000001-0000-0000-0000-000000000061
         fromPort: default
-        toPort: attachTextureCoordinates
+        toPort: textureCoordinates
 
-      # ImageRasterizer → TexturedHorizontalReprojector
+      # ImageRasterizer → TexturedHorizontalReprojector (textured features with UV coordinates)
       - id: e0000001-0000-0000-0000-000000000063
         from: 00000001-0000-0000-0000-000000000061
         to: 00000001-0000-0000-0000-000000000062
-        fromPort: default
+        fromPort: textured
         toPort: default
 
       # TexturedHorizontalReprojector → TexturedBoundsExtractor
@@ -1009,5 +1109,51 @@ graphs:
       - id: e0000001-0000-0000-0000-000000000067
         from: 00000001-0000-0000-0000-000000000065
         to: 00000001-0000-0000-0000-000000000066
+        fromPort: default
+        toPort: default
+
+      # ========================================
+      # DEM Import Pipeline Edges
+      # ========================================
+
+      # DEMFeatureCreator → DEMDirectoryDecompressor
+      - id: e0000002-0000-0000-0000-000000000001
+        from: 00000002-0000-0000-0000-000000000001
+        to: 00000002-0000-0000-0000-000000000002
+        fromPort: default
+        toPort: default
+
+      # DEMDirectoryDecompressor → DEMFeatureFilePathExtractor
+      - id: e0000002-0000-0000-0000-000000000002
+        from: 00000002-0000-0000-0000-000000000002
+        to: 00000002-0000-0000-0000-000000000003
+        fromPort: default
+        toPort: default
+
+      # DEMFeatureFilePathExtractor → DEMFeatureFilterByGml
+      - id: e0000002-0000-0000-0000-000000000003
+        from: 00000002-0000-0000-0000-000000000003
+        to: 00000002-0000-0000-0000-000000000004
+        fromPort: default
+        toPort: default
+
+      # DEMFeatureFilterByGml → DEMPLATEAU4UDXFolderExtractor
+      - id: e0000002-0000-0000-0000-000000000004
+        from: 00000002-0000-0000-0000-000000000004
+        to: 00000002-0000-0000-0000-000000000005
+        fromPort: default
+        toPort: default
+
+      # DEMPLATEAU4UDXFolderExtractor → DEMPLATEAU4CityGmlMeshBuilder
+      - id: e0000002-0000-0000-0000-000000000005
+        from: 00000002-0000-0000-0000-000000000005
+        to: 00000002-0000-0000-0000-000000000006
+        fromPort: default
+        toPort: default
+
+      # DEMPLATEAU4CityGmlMeshBuilder (default output - valid meshes) → DEMMeshNoopSink
+      - id: e0000002-0000-0000-0000-000000000006
+        from: 00000002-0000-0000-0000-000000000006
+        to: 00000002-0000-0000-0000-000000000007
         fromPort: default
         toPort: default

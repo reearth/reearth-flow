@@ -24,7 +24,7 @@ nodes:
     action: CsvReader
     with:
       format: csv
-      inline: |
+      dataset: |
         env.get("dailySunDataPath")
 
   # ========================================
@@ -39,18 +39,17 @@ nodes:
         # Parse year from 年月日 (format "YYYY/MM/DD")
         - attribute: year
           expr: |
-            let date_parts = env.get("__value")["年月日"].split("/");
-            if date_parts.len() > 0 { date_parts[0] } else { "" }
+            env.get("__value")["年月日"].split("/")[0]
         # Parse month from 年月日
         - attribute: month
           expr: |
-            let date_parts = env.get("__value")["年月日"].split("/");
-            if date_parts.len() > 1 { date_parts[1] } else { "" }
+            let month = env.get("__value")["年月日"].split("/")[1];
+            if month[0] == "0" { month[1..] } else { month }
         # Parse day from 年月日
         - attribute: day
           expr: |
-            let date_parts = env.get("__value")["年月日"].split("/");
-            if date_parts.len() > 2 { date_parts[2] } else { "" }
+            let day = env.get("__value")["年月日"].split("/")[2];
+            if day[0] == "0" { day[1..] } else { day }
         # Calculate dayTime (sunset - sunrise in hours)
         # 出 (sunrise) format: "HH:MM"
         # 入り (sunset) format: "HH:MM"
@@ -93,7 +92,7 @@ nodes:
     action: CsvReader
     with:
       format: csv
-      inline: |
+      dataset: |
         env.get("monthlyWeatherDataPath")
 
   # ========================================
@@ -107,13 +106,16 @@ nodes:
       mappers:
         # Copy 年 to year for merge compatibility
         - attribute: year
-          valueAttribute: 年
+          expr: |
+            env.get("__value")["年月"].split("/")[0]
         # Copy 月 to month for merge compatibility
         - attribute: month
-          valueAttribute: 月
+          expr: |
+            env.get("__value")["年月"].split("/")[1]
         # Preserve 日照時間(時間) - actual sunshine hours
         - attribute: 日照時間(時間)
-          valueAttribute: 日照時間(時間)
+          expr: |
+            env.get("__value")["日照時間(時間)"]
 
   # ========================================
   # Node 6: Merge Daily Aggregates with Monthly Weather
@@ -142,7 +144,7 @@ nodes:
         - attribute: sunnyRatio
           method: create
           value: |
-            let actual_sunshine = env.get("__value")["日照時間(時間)"];
+            let actual_sunshine = parse_float(env.get("__value")["日照時間(時間)"]);
             let potential_daylight = env.get("__value")["monthlyDayTimeSumInHours"];
             if potential_daylight > 0.0 {
               actual_sunshine / potential_daylight

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
@@ -12,7 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{material::Texture, Feature, GeometryValue};
+use reearth_flow_types::{material::Texture, Expr, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,7 +21,8 @@ use url::Url;
 
 use super::errors::GeometryProcessorError;
 
-static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoords"));
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
+static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ImageRasterizerFactory;
@@ -47,7 +49,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), TEXTURED_PORT.clone()]
     }
 
     fn build(
@@ -78,6 +80,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
         let process = ImageRasterizer {
             width: params.image_width,
             save_to: params.save_to,
+            evaluated_save_path: None,
             geometry_polygons: GeometryPolygons::new(),
             texture_coord_features: Vec::new(),
         };
@@ -95,21 +98,32 @@ struct ImageRasterizerParam {
     image_width: u32,
 
     /// # Save To
-    /// Optional path to save the generated image. If not provided, uses default cache directory.
+    /// Optional path expression to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
-    save_to: Option<String>,
+    save_to: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    save_to: Option<String>,
+    save_to: Option<Expr>,
+    evaluated_save_path: Option<String>,
     geometry_polygons: GeometryPolygons,
     texture_coord_features: Vec<Feature>,
 }
 
 fn default_image_width() -> u32 {
     1000
+}
+
+// Helper function to convert a path string (which may be a file:// URL) to a filesystem path
+fn path_string_to_filesystem_path(path_str: &str) -> String {
+    // Handle file:// URL format
+    if let Some(stripped) = path_str.strip_prefix("file://") {
+        stripped.to_string()
+    } else {
+        path_str.to_string()
+    }
 }
 
 // Helper function to save image to a path, either custom or default cache location
@@ -119,8 +133,9 @@ fn save_image_with_path_option(
 ) -> Result<String, Box<dyn std::error::Error>> {
     match custom_path {
         Some(path_str) => {
-            // Use the provided custom path
-            let path = std::path::Path::new(&path_str);
+            // Convert URL-style path to filesystem path
+            let fs_path_str = path_string_to_filesystem_path(&path_str);
+            let path = std::path::Path::new(&fs_path_str);
 
             // Create parent directories if they don't exist
             if let Some(parent) = path.parent() {
@@ -129,7 +144,8 @@ fn save_image_with_path_option(
 
             // Save the image to the custom path
             img.save(path)?;
-            Ok(path_str)
+            // Return the filesystem path (not the URL)
+            Ok(fs_path_str)
         }
         None => {
             // Use the default cache directory
@@ -170,6 +186,18 @@ impl Processor for ImageRasterizer {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
+        // Evaluate save_to expression on first feature if not already done
+        if self.evaluated_save_path.is_none() {
+            if let Some(ref save_to_expr) = self.save_to {
+                let expr_engine = Arc::clone(&ctx.expr_engine);
+                let scope = expr_engine.new_scope();
+                let path = scope
+                    .eval::<String>(save_to_expr.as_ref())
+                    .unwrap_or_else(|_| save_to_expr.as_ref().to_string());
+                self.evaluated_save_path = Some(path);
+            }
+        }
+
         // Check which port the feature came from
         if ctx.port == *TEXTURE_COORDS_PORT {
             // Features from textureCoords port are collected for UV assignment
@@ -205,8 +233,8 @@ impl Processor for ImageRasterizer {
         // Draw the accumulated polygons to an image
         let img = self.geometry_polygons.draw(width, height, true); // fill_area = true
 
-        // Save the image using the helper function with the save_to path from parameters
-        match save_image_with_path_option(&img, self.save_to.clone()) {
+        // Save the image using the helper function with the evaluated save_to path
+        match save_image_with_path_option(&img, self.evaluated_save_path.clone()) {
             Ok(saved_path) => {
                 ctx.event_hub.info_log(
                     None,
@@ -233,12 +261,20 @@ impl Processor for ImageRasterizer {
 
                     // Process each feature that needs texture coordinates
                     for feature in &self.texture_coord_features {
+                        // Pass through the original feature unchanged to default port
+                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                            &ctx,
+                            feature.clone(),
+                            DEFAULT_PORT.clone(),
+                        ));
+
+                        // Send textured feature to textured port
                         match assign_texture_coordinates(feature, &boundary, &texture_url) {
                             Ok(updated_feature) => {
                                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                                     &ctx,
                                     updated_feature,
-                                    DEFAULT_PORT.clone(),
+                                    TEXTURED_PORT.clone(),
                                 ));
                             }
                             Err(e) => {
@@ -249,12 +285,6 @@ impl Processor for ImageRasterizer {
                                         e
                                     ),
                                 );
-                                // Forward the original feature unchanged
-                                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                                    &ctx,
-                                    feature.clone(),
-                                    DEFAULT_PORT.clone(),
-                                ));
                             }
                         }
                     }
