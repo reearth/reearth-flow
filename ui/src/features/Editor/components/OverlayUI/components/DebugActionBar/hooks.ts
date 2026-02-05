@@ -63,7 +63,6 @@ export default ({
     [realTimeJobStatus, debugJob],
   );
 
-  console.log("realTimeJobStatus", jobStatus);
   useEffect(() => {
     if (
       debugRunStarted &&
@@ -110,7 +109,6 @@ export default ({
       realTimeJobStatus === "failed" ||
       realTimeJobStatus === "cancelled"
     ) {
-      console.log("Refetching job data after status change");
       refetch();
     }
   }, [realTimeJobStatus, refetch]);
