@@ -92,7 +92,7 @@ func TestBatchRepo_SubmitJob_SpotVM(t *testing.T) {
 
 	jobID, _ := id.JobIDFrom("test-job-id")
 	projectID, _ := id.ProjectIDFrom("test-project-id")
-	workspaceID, _ := id.WorkspaceIDFrom("test-workspace-id")
+	workspaceID, _ := accountsid.WorkspaceIDFrom("test-workspace-id")
 	workflowURL := "gs://test-bucket/test-workflow.yaml"
 	metadataURL := "gs://test-bucket/test-metadata.json"
 
