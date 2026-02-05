@@ -1,5 +1,11 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
+use once_cell::sync::Lazy;
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
+use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -7,12 +13,16 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attributes, Feature};
+use reearth_flow_types::{material::Texture, Attributes, Expr, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use url::Url;
 
 use super::errors::GeometryProcessorError;
+
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
+static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ImageRasterizerFactory;
@@ -35,11 +45,11 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), TEXTURED_PORT.clone()]
     }
 
     fn build(
@@ -70,7 +80,9 @@ impl ProcessorFactory for ImageRasterizerFactory {
         let process = ImageRasterizer {
             width: params.image_width,
             save_to: params.save_to,
+            evaluated_save_path: None,
             geometry_polygons: GeometryPolygons::new(),
+            texture_coord_features: Vec::new(),
         };
         Ok(Box::new(process))
     }
@@ -86,20 +98,32 @@ struct ImageRasterizerParam {
     image_width: u32,
 
     /// # Save To
-    /// Optional path to save the generated image. If not provided, uses default cache directory.
+    /// Optional path expression to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
-    save_to: Option<String>,
+    save_to: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    save_to: Option<String>,
+    save_to: Option<Expr>,
+    evaluated_save_path: Option<String>,
     geometry_polygons: GeometryPolygons,
+    texture_coord_features: Vec<Feature>,
 }
 
 fn default_image_width() -> u32 {
     1000
+}
+
+// Helper function to convert a path string (which may be a file:// URL) to a filesystem path
+fn path_string_to_filesystem_path(path_str: &str) -> String {
+    // Handle file:// URL format
+    if let Some(stripped) = path_str.strip_prefix("file://") {
+        stripped.to_string()
+    } else {
+        path_str.to_string()
+    }
 }
 
 // Helper function to save image to a path, either custom or default cache location
@@ -109,8 +133,9 @@ fn save_image_with_path_option(
 ) -> Result<String, Box<dyn std::error::Error>> {
     match custom_path {
         Some(path_str) => {
-            // Use the provided custom path
-            let path = std::path::Path::new(&path_str);
+            // Convert URL-style path to filesystem path
+            let fs_path_str = path_string_to_filesystem_path(&path_str);
+            let path = std::path::Path::new(&fs_path_str);
 
             // Create parent directories if they don't exist
             if let Some(parent) = path.parent() {
@@ -119,7 +144,8 @@ fn save_image_with_path_option(
 
             // Save the image to the custom path
             img.save(path)?;
-            Ok(path_str)
+            // Return the filesystem path (not the URL)
+            Ok(fs_path_str)
         }
         None => {
             // Use the default cache directory
@@ -158,15 +184,30 @@ impl Processor for ImageRasterizer {
         ctx: ExecutorContext,
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // During process
-        // 1. extract color related features, color_r, color_g, color_b
-        // 2. from feature.geometry, get coordinates
-        // 3. each processed feature should get a GeometryPolygon, accumulate it in GeometryPolygons
         let feature = &ctx.feature;
 
-        if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
-            // Accumulate the polygon in the collection
-            self.geometry_polygons.add_polygon(polygon);
+        // Evaluate save_to expression on first feature if not already done
+        if self.evaluated_save_path.is_none() {
+            if let Some(ref save_to_expr) = self.save_to {
+                let expr_engine = Arc::clone(&ctx.expr_engine);
+                let scope = expr_engine.new_scope();
+                let path = scope
+                    .eval::<String>(save_to_expr.as_ref())
+                    .unwrap_or_else(|_| save_to_expr.as_ref().to_string());
+                self.evaluated_save_path = Some(path);
+            }
+        }
+
+        // Check which port the feature came from
+        if ctx.port == *TEXTURE_COORDS_PORT {
+            // Features from textureCoords port are collected for UV assignment
+            self.texture_coord_features.push(feature.clone());
+        } else {
+            // Features from default port are used to build the rasterized image
+            // Extract color and geometry to accumulate in GeometryPolygons
+            if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
+                self.geometry_polygons.add_polygon(polygon);
+            }
         }
 
         Ok(())
@@ -192,24 +233,74 @@ impl Processor for ImageRasterizer {
         // Draw the accumulated polygons to an image
         let img = self.geometry_polygons.draw(width, height, true); // fill_area = true
 
-        // Save the image using the helper function with the save_to path from parameters
-        match save_image_with_path_option(&img, self.save_to.clone()) {
+        // Save the image using the helper function with the evaluated save_to path
+        match save_image_with_path_option(&img, self.evaluated_save_path.clone()) {
             Ok(saved_path) => {
                 ctx.event_hub.info_log(
                     None,
                     format!("ImageRasterizer saved image to: {:?}", saved_path),
                 );
 
-                let mut feature = Feature::new_with_attributes(Attributes::new());
-                feature.insert(
-                    "png_image",
-                    reearth_flow_types::AttributeValue::String(saved_path),
-                );
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    DEFAULT_PORT.clone(),
-                ));
+                // If we have features waiting for texture coordinates, process them
+                if !self.texture_coord_features.is_empty() {
+                    // Create texture URL from the saved path
+                    let texture_url = Url::from_file_path(&saved_path).map_err(|_| {
+                        GeometryProcessorError::ImageRasterizer(format!(
+                            "Failed to create URL from path: {}",
+                            saved_path
+                        ))
+                    })?;
+
+                    ctx.event_hub.info_log(
+                        None,
+                        format!(
+                            "ImageRasterizer assigning texture coordinates to {} features",
+                            self.texture_coord_features.len()
+                        ),
+                    );
+
+                    // Process each feature that needs texture coordinates
+                    for feature in &self.texture_coord_features {
+                        // Pass through the original feature unchanged to default port
+                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                            &ctx,
+                            feature.clone(),
+                            DEFAULT_PORT.clone(),
+                        ));
+
+                        // Send textured feature to textured port
+                        match assign_texture_coordinates(feature, &boundary, &texture_url) {
+                            Ok(updated_feature) => {
+                                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                                    &ctx,
+                                    updated_feature,
+                                    TEXTURED_PORT.clone(),
+                                ));
+                            }
+                            Err(e) => {
+                                ctx.event_hub.warn_log(
+                                    None,
+                                    format!(
+                                        "Failed to assign texture coordinates to feature: {}",
+                                        e
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    // No texture coordinate features, output image path as before
+                    let mut feature = Feature::new_with_attributes(Attributes::default());
+                    feature.insert(
+                        "png_image",
+                        reearth_flow_types::AttributeValue::String(saved_path),
+                    );
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        feature,
+                        DEFAULT_PORT.clone(),
+                    ));
+                }
             }
             Err(e) => {
                 ctx.event_hub
@@ -842,6 +933,100 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
         }
         _ => None, // Handle other geometry value types as needed
     }
+}
+
+/// Assigns texture coordinates to a feature's CityGmlGeometry based on the rasterized image boundary.
+/// Also sets the texture reference on each polygon to point to the generated image.
+fn assign_texture_coordinates(
+    feature: &Feature,
+    boundary: &CoordinatesBoundary,
+    texture_url: &Url,
+) -> Result<Feature, GeometryProcessorError> {
+    // Get the geometry - must be CityGmlGeometry
+    let GeometryValue::CityGmlGeometry(citygml) = &feature.geometry.value else {
+        return Err(GeometryProcessorError::ImageRasterizer(
+            "Feature does not have CityGmlGeometry".to_string(),
+        ));
+    };
+
+    let mut updated_citygml = citygml.clone();
+
+    // Calculate boundary dimensions
+    let min_x = boundary.left_down.x;
+    let max_x = boundary.right_down.x;
+    let min_y = boundary.left_down.y;
+    let max_y = boundary.left_up.y;
+
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+
+    if width.abs() < f64::EPSILON || height.abs() < f64::EPSILON {
+        return Err(GeometryProcessorError::ImageRasterizer(
+            "Boundary has zero width or height".to_string(),
+        ));
+    }
+
+    // Clear existing texture data and set up for single texture
+    updated_citygml.textures = vec![Texture {
+        uri: texture_url.clone(),
+    }];
+    updated_citygml.polygon_textures.clear();
+    updated_citygml.polygon_uvs = MultiPolygon2D::new(Vec::new());
+
+    // Process each GmlGeometry entry
+    for gml in &updated_citygml.gml_geometries {
+        for polygon in &gml.polygons {
+            // Compute UV for exterior ring
+            let exterior_uvs: Vec<Coordinate2D<f64>> = polygon
+                .exterior()
+                .0
+                .iter()
+                .map(|v| {
+                    let u = (v.x - min_x) / width;
+                    // Flip v coordinate: image origin is top-left, but geometry Y increases upward
+                    let v_coord = 1.0 - (v.y - min_y) / height;
+                    Coordinate2D::new_(u.clamp(0.0, 1.0), v_coord.clamp(0.0, 1.0))
+                })
+                .collect();
+
+            // Compute UV for interior rings (holes)
+            let interior_uvs: Vec<LineString2D<f64>> = polygon
+                .interiors()
+                .iter()
+                .map(|ring| {
+                    let uvs: Vec<Coordinate2D<f64>> = ring
+                        .0
+                        .iter()
+                        .map(|v| {
+                            let u = (v.x - min_x) / width;
+                            let v_coord = 1.0 - (v.y - min_y) / height;
+                            Coordinate2D::new_(u.clamp(0.0, 1.0), v_coord.clamp(0.0, 1.0))
+                        })
+                        .collect();
+                    LineString2D::new(uvs)
+                })
+                .collect();
+
+            updated_citygml.polygon_uvs.0.push(Polygon2D::new(
+                LineString2D::new(exterior_uvs),
+                interior_uvs,
+            ));
+
+            updated_citygml.polygon_textures.push(Some(0));
+        }
+    }
+
+    let new_geometry = Geometry {
+        epsg: feature.geometry.epsg,
+        value: GeometryValue::CityGmlGeometry(updated_citygml),
+    };
+    let updated_feature = Feature::new_with_attributes_and_geometry(
+        (*feature.attributes).clone(),
+        new_geometry,
+        feature.metadata.clone(),
+    );
+
+    Ok(updated_feature)
 }
 
 #[cfg(test)]

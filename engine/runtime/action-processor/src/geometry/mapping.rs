@@ -24,6 +24,7 @@ use super::{
     filter::GeometryFilterFactory,
     footprint_replacer::FootprintReplacerFactory,
     geometry_part_extractor::GeometryPartExtractorFactory,
+    grid_divider::GridDividerFactory,
     hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory,
     horizontal_reprojector::HorizontalReprojectorFactory,
@@ -104,6 +105,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<PolygonNormalExtractorFactory>::default(),
         Box::<RayIntersectorFactory>::default(),
         Box::<ImageRasterizerFactory>::default(),
+        Box::<GridDividerFactory>::default(),
     ];
     factories
         .into_iter()
