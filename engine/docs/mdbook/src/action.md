@@ -6722,6 +6722,47 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
 ### Category
 * PLATEAU
 
+## PLATEAU4.GmlNameCodeSpaceValidator
+### Type
+* processor
+### Description
+Validates that gml:name elements have codeSpace attributes (coded values)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GmlNameCodeSpaceValidator Parameters",
+  "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "description": "Expression to get the path to the CityGML file",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* gmlNameErrors
+* stats
+### Category
+* PLATEAU
+
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor

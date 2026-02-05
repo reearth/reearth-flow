@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
@@ -17,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type BatchConfig struct {
@@ -41,6 +43,7 @@ type BatchConfig struct {
 	BootDiskSizeGB                  int
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
+	MaxRunDurationSeconds           int
 	TaskCount                       int
 	CompressIntermediateData        bool
 	FeatureWriterDisable            bool
@@ -165,8 +168,14 @@ func (b *BatchRepo) SubmitJob(
 		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
+	maxRunDuration := b.config.MaxRunDurationSeconds
+	if maxRunDuration <= 0 {
+		maxRunDuration = 21600 // default 6 hours
+	}
+
 	taskSpec := &batchpb.TaskSpec{
 		ComputeResource: computeResource,
+		MaxRunDuration:  durationpb.New(time.Duration(maxRunDuration) * time.Second),
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},

@@ -148,6 +148,11 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatalf("invalid task count: %v", err)
 	}
 
+	maxRunDurationSeconds, err := strconv.Atoi(conf.Worker_MaxRunDurationSeconds)
+	if err != nil {
+		log.Fatalf("invalid max run duration seconds: %v", err)
+	}
+
 	config := gcpbatch.BatchConfig{
 		AllowedLocations:                conf.Worker_AllowedLocations,
 		BinaryPath:                      conf.Worker_BinaryPath,
@@ -169,6 +174,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		Region:                          conf.GCPRegion,
 		RustLog:                         conf.Worker_RustLog,
 		SAEmail:                         conf.Worker_BatchSAEmail,
+		MaxRunDurationSeconds:           maxRunDurationSeconds,
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
