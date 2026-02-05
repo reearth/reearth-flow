@@ -1,0 +1,1165 @@
+id: 6a8c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
+name: SolarRadiationWorkflow
+entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
+with:
+  bldgCityGmlPath: null
+  demCityGmlPath: null
+  codelistsPath: null
+  schemasPath: null
+  codelists: null
+  schemas: null
+  prcs: null
+  startTime: 2025/01/21/16/00/00
+  endTime: 2025/01/21/16/00/00
+  outputPath: null
+  dailySunDataPath: null
+  monthlyWeatherDataPath: null
+graphs:
+- id: c6863b71-953b-4d15-af56-396fc93fc617
+  name: FolderAndfilePathReader
+  nodes:
+  - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+  - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      sourceDataset: |
+        env.get("__value").cityGmlPath
+      extractArchive: true
+      destPrefix: udx
+  - id: 9d04983e-e84e-4622-b0c6-827d7afad720
+    name: FeatureFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").extension == "gml"
+        outputPort: default
+  - id: 712e4c72-950d-466d-9598-19f299668e7e
+    name: PLATEAU4.UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    name: FeatureFilterByPackage
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
+  - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    name: FeatureCounterByUdxDirs
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      groupBy:
+      - udxDirs
+      outputAttribute: fileIndex
+  - id: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    name: CityCodeExtractor
+    type: action
+    action: PLATEAU4.CityCodeExtractor
+    with:
+      codelistsPathAttribute: dirCodelists
+      cityCodeAttribute: cityCode
+  - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+    name: OutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+  edges:
+  - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
+    from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    fromPort: default
+    toPort: default
+  - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
+    from: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    to: 9d04983e-e84e-4622-b0c6-827d7afad720
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
+    from: 9d04983e-e84e-4622-b0c6-827d7afad720
+    to: 712e4c72-950d-466d-9598-19f299668e7e
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
+    from: 712e4c72-950d-466d-9598-19f299668e7e
+    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
+    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    to: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    fromPort: default
+    toPort: default
+  - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
+    from: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    fromPort: default
+    toPort: default
+  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+    from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+    fromPort: default
+    toPort: default
+- id: b2f4a1c8-7e3d-4b9a-8c5f-1a2e3b4c5d6e
+  name: CloudFactorCalculator
+  nodes:
+  - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    name: DailySunDataReader
+    type: action
+    action: CsvReader
+    with:
+      format: csv
+      dataset: |
+        env.get("dailySunDataPath")
+  - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+    name: ParseDateAndCalcDayTime
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: year
+        expr: |
+          env.get("__value")["年月日"].split("/")[0]
+      - attribute: month
+        expr: |
+          let month = env.get("__value")["年月日"].split("/")[1];
+          if month[0] == "0" { month[1..] } else { month }
+      - attribute: day
+        expr: |
+          let day = env.get("__value")["年月日"].split("/")[2];
+          if day[0] == "0" { day[1..] } else { day }
+      - attribute: dayTime
+        expr: |
+          let sunrise_str = env.get("__value")["出"];
+          let sunset_str = env.get("__value")["入り"];
+          let sunrise_parts = sunrise_str.split(":");
+          let sunset_parts = sunset_str.split(":");
+          let sunrise_hour = if sunrise_parts.len() > 0 { parse_float(sunrise_parts[0]) } else { 0.0 };
+          let sunrise_min = if sunrise_parts.len() > 1 { parse_float(sunrise_parts[1]) } else { 0.0 };
+          let sunset_hour = if sunset_parts.len() > 0 { parse_float(sunset_parts[0]) } else { 0.0 };
+          let sunset_min = if sunset_parts.len() > 1 { parse_float(sunset_parts[1]) } else { 0.0 };
+          let sunrise_hours = sunrise_hour + sunrise_min / 60.0;
+          let sunset_hours = sunset_hour + sunset_min / 60.0;
+          sunset_hours - sunrise_hours
+  - id: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+    name: MonthlyDayTimeAggregator
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+      - year
+      - month
+      calculations:
+      - newAttribute: monthlyDayTimeSumInHours
+        expr: |
+          env.get("__value")["dayTime"]
+  - id: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
+    name: MonthlyWeatherDataReader
+    type: action
+    action: CsvReader
+    with:
+      format: csv
+      dataset: |
+        env.get("monthlyWeatherDataPath")
+  - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+    name: PrepareWeatherDataForMerge
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: year
+        expr: |
+          env.get("__value")["年月"].split("/")[0]
+      - attribute: month
+        expr: |
+          env.get("__value")["年月"].split("/")[1]
+      - attribute: 日照時間(時間)
+        expr: |
+          env.get("__value")["日照時間(時間)"]
+  - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    name: MergeMonthlyData
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - year
+      - month
+      supplierAttribute:
+      - year
+      - month
+  - id: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    name: CalcSunnyRatio
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: sunnyRatio
+        method: create
+        value: |
+          let actual_sunshine = parse_float(env.get("__value")["日照時間(時間)"]);
+          let potential_daylight = env.get("__value")["monthlyDayTimeSumInHours"];
+          if potential_daylight > 0.0 {
+            actual_sunshine / potential_daylight
+          } else {
+            0.0
+          }
+  - id: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    name: CloudFactorOutput
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+  edges:
+  - id: e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    from: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    to: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+    fromPort: default
+    toPort: default
+  - id: e2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    from: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+    to: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+    fromPort: default
+    toPort: default
+  - id: e3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    from: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+    to: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    fromPort: default
+    toPort: requestor
+  - id: e4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    from: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
+    to: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+    fromPort: default
+    toPort: default
+  - id: e5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    from: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+    to: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    fromPort: default
+    toPort: supplier
+  - id: e6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    from: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    to: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    fromPort: merged
+    toPort: default
+  - id: e7a8b9c0-d1e2-4f3a-4b5c-6d7e8f9a0b1c
+    from: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    to: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    fromPort: default
+    toPort: default
+- id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+  name: main
+  nodes:
+  - id: 00000001-0000-0000-0000-000000000001
+    name: BldgFeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("bldgCityGmlPath"),
+            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
+            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
+          },
+        ]
+  - id: 00000001-0000-0000-0000-000000000111
+    name: FolderAndFilePathReader
+    type: subGraph
+    subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+  - id: 00000002-0000-0000-0000-000000000001
+    name: DEMFeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("demCityGmlPath"),
+            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
+            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
+          },
+        ]
+  - id: 00000002-0000-0000-0000-000000000002
+    name: DEMDirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+  - id: 00000002-0000-0000-0000-000000000003
+    name: DEMFeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      sourceDataset: |
+        env.get("__value")["cityGmlPath"]
+      extractArchive: true
+      destPrefix: udx
+  - id: 00000002-0000-0000-0000-000000000004
+    name: DEMFeatureFilterByGml
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").extension == "gml"
+        outputPort: default
+  - id: 00000002-0000-0000-0000-000000000005
+    name: DEMPLATEAU4UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+  - id: 00000002-0000-0000-0000-000000000006
+    name: DEMPLATEAU4CityGmlMeshBuilder
+    type: action
+    action: PLATEAU4.CityGmlMeshBuilder
+    with:
+      errorAttribute: _validation_error
+      epsgCode: |
+        env.get("prcs")
+  - id: 00000002-0000-0000-0000-000000000007
+    name: DEMMeshNoopSink
+    type: action
+    action: NoopSink
+  - id: 00000001-0000-0000-0000-000000000002
+    name: CityGmlReader
+    type: action
+    action: FeatureCityGmlReader
+    with:
+      format: citygml
+      flatten: true
+      dataset: |
+        env.get("__value")["cityGmlPath"]
+  - id: 00000001-0000-0000-0000-00000000003a
+    name: LodFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          let lod = env.get("__value").lod;
+          lod == 2 || lod == "2";
+        outputPort: default
+  - id: 00000001-0000-0000-0000-00000000003b
+    name: KeepFeatureType
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: featureType
+        expr: env.get("__value").featureType
+  - id: 00000001-0000-0000-0000-000000000004
+    name: GeometryPartExtractor
+    type: action
+    action: GeometryPartExtractor
+  - id: 00000001-0000-0000-0000-000000000005
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+  - id: 00000001-0000-0000-0000-000000000006
+    name: GeometrySplitter
+    type: action
+    action: GeometrySplitter
+    with:
+      splitLevel: polygon
+  - id: 00000001-0000-0000-0000-000000000008
+    name: PolygonNormalExtractor
+    type: action
+    action: PolygonNormalExtractor
+  - id: 00000001-0000-0000-0000-000000000009
+    name: GridDivider
+    type: action
+    action: GridDivider
+    with:
+      unitSquareSize: 1.0
+      keepSquareOnly: true
+  - id: 00000001-0000-0000-0000-00000000000a
+    name: FilterRoofSurfaces
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:RoofSurface";
+        outputPort: default
+  - id: 00000001-0000-0000-0000-00000000000b
+    name: SunPositionCalculator
+    type: action
+    action: PLATEAU4.SolarPositionCalculator
+    with:
+      type: duration
+      start: |
+        env.get("startTime")
+      end: |
+        env.get("endTime")
+      step: '1'
+      stepUnit: hour
+      sourceEpsg: |
+        env.get("prcs")
+      outputType: both
+  - id: 00000001-0000-0000-0000-00000000000c
+    name: AreaCalculator
+    type: action
+    action: AreaCalculator
+    with:
+      areaType: slopedArea
+      outputAttribute: cell_area
+      multiplier: 1.0
+  - id: 00000001-0000-0000-0000-000000000030
+    name: CellIdCounter
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 0
+      outputAttribute: cell_id
+  - id: 00000001-0000-0000-0000-000000000010
+    name: RayIntersectorShadow
+    type: action
+    action: RayIntersector
+    with:
+      pairId: "\"all\" \n"
+      closestIntersectionOnly: 'true'
+      includeRayOrigin: 'false'
+      tolerance: '0.01'
+      outputGeometryType: lineSegmentToIntersection
+      ray:
+        posX: ray_origin_x
+        posY: ray_origin_y
+        posZ: ray_origin_z
+        dirX: solar_direction_x
+        dirY: solar_direction_y
+        dirZ: solar_direction_z
+  - id: 00000001-0000-0000-0000-000000000031
+    name: MarkShadowed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _is_shadow
+        method: create
+        value: |
+          1
+  - id: 00000001-0000-0000-0000-000000000032
+    name: MarkNotShadowed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _is_shadow
+        method: create
+        value: |
+          0
+  - id: 00000001-0000-0000-0000-000000000033
+    name: ShadowMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - cell_id
+      supplierAttribute:
+      - cell_id
+  - id: 00000001-0000-0000-0000-000000000011
+    name: ComputeCosTheta
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: cos_theta
+        method: create
+        value: |
+          let sdx = env.get("__value")["solar_direction_x"];
+          let sdy = env.get("__value")["solar_direction_y"];
+          let sdz = env.get("__value")["solar_direction_z"];
+          let nx = env.get("__value")["normalX"];
+          let ny = env.get("__value")["normalY"];
+          let nz = env.get("__value")["normalZ"];
+          let cos_th = sdx * nx + sdy * ny + sdz * nz;
+          if cos_th < 0.0 { 0.0 } else { cos_th }
+      - attribute: ray_end_x
+        method: create
+        value: |
+          env.get("__value")["ray_origin_x"] + 100.0 * env.get("__value")["solar_direction_x"]
+      - attribute: ray_end_y
+        method: create
+        value: |
+          env.get("__value")["ray_origin_y"] + 100.0 * env.get("__value")["solar_direction_y"]
+      - attribute: ray_end_z
+        method: create
+        value: |
+          env.get("__value")["ray_origin_z"] + 100.0 * env.get("__value")["solar_direction_z"]
+  - id: 00000001-0000-0000-0000-00000000001c
+    name: ComputeDTSunny
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: year
+        method: create
+        value: |
+          let dt = env.get("__value")["solar_time"];
+          dt.split("/")[0] ?? ""
+      - attribute: month
+        method: create
+        value: |
+          let dt = env.get("__value")["solar_time"];
+          let month = dt.split("/")[1] ?? "";
+          if month[0] == "0" { month[1..] } else { month }
+      - attribute: DTSunny
+        method: create
+        value: |
+          let S_const = 1367.0;
+          let p = 0.75;
+          let h_deg = env.get("__value")["solar_altitude"];
+          let h_rad = h_deg * 3.14159265358979 / 180.0;
+          let sin_h = math::sin(h_rad);
+          let m = 1.0 / sin_h;
+          let beta_m = math::pow(p, m);
+          let DN = S_const * beta_m;
+          let cos_theta = env.get("__value")["cos_theta"];
+          let cell_area = env.get("__value")["cell_area"];
+          DN * cos_theta * cell_area
+      - attribute: DTCloudy
+        method: create
+        value: |
+          let S_const = 1367.0;
+          let p = 0.25;
+          let h_deg = env.get("__value")["solar_altitude"];
+          let h_rad = h_deg * 3.14159265358979 / 180.0;
+          let sin_h = math::sin(h_rad);
+          let m = 1.0 / sin_h;
+          let beta_m = math::pow(p, m);
+          let DN = S_const * beta_m;
+          let cos_theta = env.get("__value")["cos_theta"];
+          let cell_area = env.get("__value")["cell_area"];
+          DN * cos_theta * cell_area
+  - id: 00000001-0000-0000-0000-000000000050
+    name: CloudFactorCalculator
+    type: subGraph
+    subGraphId: b2f4a1c8-7e3d-4b9a-8c5f-1a2e3b4c5d6e
+  - id: 00000001-0000-0000-0000-000000000051
+    name: MonthlyDTAggregator
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+      - year
+      - month
+      - cell_id
+      calculations:
+      - newAttribute: DTSunnySum
+        expr: |
+          env.get("__value")["DTSunny"]
+      - newAttribute: DTCloudySum
+        expr: |
+          env.get("__value")["DTCloudy"]
+  - id: 00000001-0000-0000-0000-000000000052
+    name: CloudFactorDTMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - year
+      - month
+      supplierAttribute:
+      - year
+      - month
+  - id: 00000001-0000-0000-0000-000000000053
+    name: CalcDTperMonth
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: DTperMonth
+        method: create
+        value: |
+          let sunny_ratio = env.get("__value")["sunnyRatio"] ?? 0.5;
+          let dt_sunny = env.get("__value")["DTSunnySum"] ?? 0.0;
+          let dt_cloudy = env.get("__value")["DTCloudySum"] ?? 0.0;
+          sunny_ratio * dt_sunny + (1.0 - sunny_ratio) * dt_cloudy
+  - id: 00000001-0000-0000-0000-000000000054
+    name: MonthlyRadiationWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("outputPath"), "monthly_radiation.csv")
+  - id: 00000001-0000-0000-0000-00000000005f
+    name: CellTwoDimensionForcer
+    type: action
+    action: TwoDimensionForcer
+  - id: 00000001-0000-0000-0000-000000000060
+    name: DTtoColorMapper
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: color_r
+        method: create
+        value: |
+          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
+          let max_dt = 500000.0;
+          let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
+          let r = if normalized < 0.5 { 0.0 } else { (normalized - 0.5) * 2.0 * 255.0 };
+          math::floor(r)
+      - attribute: color_g
+        method: create
+        value: |
+          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
+          let max_dt = 500000.0;
+          let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
+          let g = if normalized < 0.5 { normalized * 2.0 * 255.0 } else { (1.0 - normalized) * 2.0 * 255.0 };
+          math::floor(g)
+      - attribute: color_b
+        method: create
+        value: |
+          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
+          let max_dt = 500000.0;
+          let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
+          let b = if normalized < 0.5 { (1.0 - normalized * 2.0) * 255.0 } else { 0.0 };
+          math::floor(b)
+  - id: 00000001-0000-0000-0000-000000000068
+    name: CellGeometryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - cell_id
+      supplierAttribute:
+      - cell_id
+  - id: 00000001-0000-0000-0000-000000000061
+    name: ImageRasterizer
+    type: action
+    action: ImageRasterizer
+    with:
+      imageWidth: 2048
+      saveTo: |
+        file::join_path(env.get("outputPath"), "roof_radiation_texture.png")
+  - id: 00000001-0000-0000-0000-000000000062
+    name: TexturedHorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      sourceEpsgCode: |
+        env.get("prcs")
+      targetEpsgCode: |
+        6697
+  - id: 00000001-0000-0000-0000-000000000063
+    name: TexturedBoundsExtractor
+    type: action
+    action: BoundsExtractor
+    with:
+      xmin: _xmin
+      xmax: _xmax
+      ymin: _ymin
+      ymax: _ymax
+      zmin: _zmin
+      zmax: _zmax
+  - id: 00000001-0000-0000-0000-000000000064
+    name: TexturedCenterCoords
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _x
+        method: create
+        value: |
+          (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+      - attribute: _y
+        method: create
+        value: |
+          (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+  - id: 00000001-0000-0000-0000-000000000065
+    name: TexturedVerticalReprojector
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToWgs84
+  - id: 00000001-0000-0000-0000-000000000066
+    name: Textured3DTilesWriter
+    type: action
+    action: Cesium3DTilesWriter
+    with:
+      minZoom: 15
+      maxZoom: 18
+      attachTexture: true
+      dracoCompression: false
+      output: |
+        file::join_path(env.get("outputPath"), "textured_roof_3dtiles")
+  - id: 00000001-0000-0000-0000-000000000012
+    name: DirectRadiationWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("outputPath"), "direct_radiation.csv")
+  - id: 00000001-0000-0000-0000-000000000013
+    name: ComputeReflection
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: reflect_dir_x
+        method: create
+        value: |
+          let ix = -env.get("__value")["solar_direction_x"];
+          let iy = -env.get("__value")["solar_direction_y"];
+          let iz = -env.get("__value")["solar_direction_z"];
+          let nx = env.get("__value")["normalX"];
+          let ny = env.get("__value")["normalY"];
+          let nz = env.get("__value")["normalZ"];
+          let dot = ix * nx + iy * ny + iz * nz;
+          ix - 2.0 * dot * nx
+      - attribute: reflect_dir_y
+        method: create
+        value: |
+          let ix = -env.get("__value")["solar_direction_x"];
+          let iy = -env.get("__value")["solar_direction_y"];
+          let iz = -env.get("__value")["solar_direction_z"];
+          let nx = env.get("__value")["normalX"];
+          let ny = env.get("__value")["normalY"];
+          let nz = env.get("__value")["normalZ"];
+          let dot = ix * nx + iy * ny + iz * nz;
+          iy - 2.0 * dot * ny
+      - attribute: reflect_dir_z
+        method: create
+        value: |
+          let ix = -env.get("__value")["solar_direction_x"];
+          let iy = -env.get("__value")["solar_direction_y"];
+          let iz = -env.get("__value")["solar_direction_z"];
+          let nx = env.get("__value")["normalX"];
+          let ny = env.get("__value")["normalY"];
+          let nz = env.get("__value")["normalZ"];
+          let dot = ix * nx + iy * ny + iz * nz;
+          iz - 2.0 * dot * nz
+  - id: 00000001-0000-0000-0000-000000000014
+    name: RayIntersectorReflect
+    type: action
+    action: RayIntersector
+    with:
+      pairId: |
+        "all"
+      closestIntersectionOnly: 'true'
+      includeRayOrigin: 'false'
+      tolerance: '0.01'
+      ray:
+        posX: ray_origin_x
+        posY: ray_origin_y
+        posZ: ray_origin_z
+        dirX: reflect_dir_x
+        dirY: reflect_dir_y
+        dirZ: reflect_dir_z
+  - id: 00000001-0000-0000-0000-00000000001b
+    name: ReflectionBoundsExtractor
+    type: action
+    action: BoundsExtractor
+    with:
+      xmin: reflect_hit_x
+      ymin: reflect_hit_y
+      zmin: reflect_hit_z
+      xmax: _reflect_xmax
+      ymax: _reflect_ymax
+      zmax: _reflect_zmax
+  - id: 00000001-0000-0000-0000-000000000015
+    name: FormatReflection
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: dummy_passthrough
+        method: create
+        value: |
+          1
+  - id: 00000001-0000-0000-0000-000000000016
+    name: ReflectionWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("outputPath"), "reflection.csv")
+  - id: 00000001-0000-0000-0000-00000000001e
+    name: DebugHorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      sourceEpsgCode: |
+        env.get("prcs")
+      targetEpsgCode: |
+        6697
+  - id: 00000001-0000-0000-0000-000000000020
+    name: DebugBoundsExtractor
+    type: action
+    action: BoundsExtractor
+    with:
+      xmin: _xmin
+      xmax: _xmax
+      ymin: _ymin
+      ymax: _ymax
+      zmin: _zmin
+      zmax: _zmax
+  - id: 00000001-0000-0000-0000-000000000021
+    name: DebugCenterCoords
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _x
+        method: create
+        value: |
+          (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+      - attribute: _y
+        method: create
+        value: |
+          (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+  - id: 00000001-0000-0000-0000-000000000022
+    name: DebugVerticalReprojector
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToWgs84
+  - id: 00000001-0000-0000-0000-000000000023
+    name: Debug3DTilesWriter
+    type: action
+    action: Cesium3DTilesWriter
+    with:
+      minZoom: 15
+      maxZoom: 18
+      attachTexture: false
+      dracoCompression: false
+      output: |
+        file::join_path(env.get("outputPath"), "debug_grid_3dtiles")
+  edges:
+  - id: e0000001-0000-0000-0000-000000000001
+    from: 00000001-0000-0000-0000-000000000001
+    to: 00000001-0000-0000-0000-000000000111
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000101
+    from: 00000001-0000-0000-0000-000000000111
+    to: 00000001-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000002
+    from: 00000001-0000-0000-0000-000000000002
+    to: 00000001-0000-0000-0000-00000000003a
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000003a
+    from: 00000001-0000-0000-0000-00000000003a
+    to: 00000001-0000-0000-0000-00000000003b
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000003b
+    from: 00000001-0000-0000-0000-00000000003b
+    to: 00000001-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000004
+    from: 00000001-0000-0000-0000-000000000004
+    to: 00000001-0000-0000-0000-000000000005
+    fromPort: extracted
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000005
+    from: 00000001-0000-0000-0000-000000000005
+    to: 00000001-0000-0000-0000-000000000006
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000006
+    from: 00000001-0000-0000-0000-000000000006
+    to: 00000001-0000-0000-0000-000000000008
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000008
+    from: 00000001-0000-0000-0000-000000000008
+    to: 00000001-0000-0000-0000-00000000000a
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000009
+    from: 00000001-0000-0000-0000-00000000000a
+    to: 00000001-0000-0000-0000-000000000009
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000000a
+    from: 00000001-0000-0000-0000-000000000009
+    to: 00000001-0000-0000-0000-00000000000b
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000000b
+    from: 00000001-0000-0000-0000-00000000000b
+    to: 00000001-0000-0000-0000-00000000000c
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000000c
+    from: 00000001-0000-0000-0000-00000000000c
+    to: 00000001-0000-0000-0000-000000000030
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000031
+    from: 00000001-0000-0000-0000-000000000030
+    to: 00000001-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: requestor
+  - id: e0000001-0000-0000-0000-00000000000f
+    from: 00000001-0000-0000-0000-000000000005
+    to: 00000001-0000-0000-0000-000000000010
+    fromPort: default
+    toPort: geom
+  - id: e0000001-0000-0000-0000-000000000010
+    from: 00000001-0000-0000-0000-000000000030
+    to: 00000001-0000-0000-0000-000000000010
+    fromPort: default
+    toPort: ray
+  - id: e0000001-0000-0000-0000-000000000032
+    from: 00000001-0000-0000-0000-000000000010
+    to: 00000001-0000-0000-0000-000000000031
+    fromPort: intersection
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000011
+    from: 00000001-0000-0000-0000-000000000010
+    to: 00000001-0000-0000-0000-000000000032
+    fromPort: no_intersection
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000033
+    from: 00000001-0000-0000-0000-000000000031
+    to: 00000001-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: supplier
+  - id: e0000001-0000-0000-0000-000000000034
+    from: 00000001-0000-0000-0000-000000000032
+    to: 00000001-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: supplier
+  - id: e0000001-0000-0000-0000-000000000035
+    from: 00000001-0000-0000-0000-000000000010
+    to: 00000001-0000-0000-0000-000000000011
+    fromPort: no_intersection
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000001c
+    from: 00000001-0000-0000-0000-000000000011
+    to: 00000001-0000-0000-0000-00000000001c
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000012
+    from: 00000001-0000-0000-0000-00000000001c
+    to: 00000001-0000-0000-0000-000000000012
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000050
+    from: 00000001-0000-0000-0000-00000000001c
+    to: 00000001-0000-0000-0000-000000000051
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000051
+    from: 00000001-0000-0000-0000-000000000051
+    to: 00000001-0000-0000-0000-000000000052
+    fromPort: default
+    toPort: requestor
+  - id: e0000001-0000-0000-0000-000000000052
+    from: 00000001-0000-0000-0000-000000000050
+    to: 00000001-0000-0000-0000-000000000052
+    fromPort: default
+    toPort: supplier
+  - id: e0000001-0000-0000-0000-000000000053
+    from: 00000001-0000-0000-0000-000000000052
+    to: 00000001-0000-0000-0000-000000000053
+    fromPort: merged
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000054
+    from: 00000001-0000-0000-0000-000000000053
+    to: 00000001-0000-0000-0000-000000000054
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000013
+    from: 00000001-0000-0000-0000-000000000011
+    to: 00000001-0000-0000-0000-000000000013
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000014
+    from: 00000001-0000-0000-0000-000000000005
+    to: 00000001-0000-0000-0000-000000000014
+    fromPort: default
+    toPort: geom
+  - id: e0000001-0000-0000-0000-000000000015
+    from: 00000001-0000-0000-0000-000000000013
+    to: 00000001-0000-0000-0000-000000000014
+    fromPort: default
+    toPort: ray
+  - id: e0000001-0000-0000-0000-000000000016
+    from: 00000001-0000-0000-0000-000000000014
+    to: 00000001-0000-0000-0000-00000000001b
+    fromPort: intersection
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000001b
+    from: 00000001-0000-0000-0000-00000000001b
+    to: 00000001-0000-0000-0000-000000000015
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000017
+    from: 00000001-0000-0000-0000-000000000015
+    to: 00000001-0000-0000-0000-000000000016
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000001e
+    from: 00000001-0000-0000-0000-000000000033
+    to: 00000001-0000-0000-0000-00000000001e
+    fromPort: merged
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000039
+    from: 00000001-0000-0000-0000-000000000033
+    to: 00000001-0000-0000-0000-000000000023
+    fromPort: merged
+    toPort: schema
+  - id: e0000001-0000-0000-0000-00000000001d
+    from: 00000001-0000-0000-0000-00000000000a
+    to: 00000001-0000-0000-0000-00000000001e
+    fromPort: unfiltered
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000020
+    from: 00000001-0000-0000-0000-00000000001e
+    to: 00000001-0000-0000-0000-000000000020
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000021
+    from: 00000001-0000-0000-0000-000000000020
+    to: 00000001-0000-0000-0000-000000000021
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000022
+    from: 00000001-0000-0000-0000-000000000021
+    to: 00000001-0000-0000-0000-000000000022
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000023
+    from: 00000001-0000-0000-0000-000000000022
+    to: 00000001-0000-0000-0000-000000000023
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000005f
+    from: 00000001-0000-0000-0000-000000000053
+    to: 00000001-0000-0000-0000-000000000060
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000068
+    from: 00000001-0000-0000-0000-000000000030
+    to: 00000001-0000-0000-0000-000000000068
+    fromPort: default
+    toPort: requestor
+  - id: e0000001-0000-0000-0000-000000000069
+    from: 00000001-0000-0000-0000-000000000060
+    to: 00000001-0000-0000-0000-000000000068
+    fromPort: default
+    toPort: supplier
+  - id: e0000001-0000-0000-0000-000000000060
+    from: 00000001-0000-0000-0000-000000000068
+    to: 00000001-0000-0000-0000-00000000005f
+    fromPort: merged
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000061
+    from: 00000001-0000-0000-0000-00000000005f
+    to: 00000001-0000-0000-0000-000000000061
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000062
+    from: 00000001-0000-0000-0000-000000000005
+    to: 00000001-0000-0000-0000-000000000061
+    fromPort: default
+    toPort: textureCoordinates
+  - id: e0000001-0000-0000-0000-000000000063
+    from: 00000001-0000-0000-0000-000000000061
+    to: 00000001-0000-0000-0000-000000000062
+    fromPort: textured
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000064
+    from: 00000001-0000-0000-0000-000000000062
+    to: 00000001-0000-0000-0000-000000000063
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000065
+    from: 00000001-0000-0000-0000-000000000063
+    to: 00000001-0000-0000-0000-000000000064
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000066
+    from: 00000001-0000-0000-0000-000000000064
+    to: 00000001-0000-0000-0000-000000000065
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000067
+    from: 00000001-0000-0000-0000-000000000065
+    to: 00000001-0000-0000-0000-000000000066
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000001
+    from: 00000002-0000-0000-0000-000000000001
+    to: 00000002-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000002
+    from: 00000002-0000-0000-0000-000000000002
+    to: 00000002-0000-0000-0000-000000000003
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000003
+    from: 00000002-0000-0000-0000-000000000003
+    to: 00000002-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000004
+    from: 00000002-0000-0000-0000-000000000004
+    to: 00000002-0000-0000-0000-000000000005
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000005
+    from: 00000002-0000-0000-0000-000000000005
+    to: 00000002-0000-0000-0000-000000000006
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000006
+    from: 00000002-0000-0000-0000-000000000006
+    to: 00000002-0000-0000-0000-000000000007
+    fromPort: default
+    toPort: default
