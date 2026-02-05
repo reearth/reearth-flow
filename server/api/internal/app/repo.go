@@ -157,6 +157,9 @@ func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
 	if err != nil {
 		log.Fatalf("invalid max retries: %v", err)
 	}
+	if maxRetryCount < 0 {
+		log.Fatalf("invalid max retries: must be non-negative, got %d", maxRetryCount)
+	}
 
 	config := gcpbatch.BatchConfig{
 		AllowedLocations:                conf.Worker_AllowedLocations,

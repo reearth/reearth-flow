@@ -175,8 +175,16 @@ func (b *BatchRepo) SubmitJob(
 		maxRunDuration = 21600 // default 6 hours
 	}
 
+	// Configure task retry for spot VM preemption.
+	// MaxRetryCount and LifecyclePolicies are only set when using spot VMs to avoid
+	// unintended retries on standard VMs. Without lifecycle policies, GCP Batch retries
+	// on any non-zero exit code, which is not desired for standard VM failures.
+	var maxRetryCount int32
 	var lifecyclePolicies []*batchpb.LifecyclePolicy
 	if b.config.UseSpotVMs && b.config.MaxRetryCount > 0 {
+		maxRetryCount = int32(b.config.MaxRetryCount)
+		// Exit code 50001 is emitted by GCP Batch when a spot VM is preempted.
+		// See: https://cloud.google.com/batch/docs/automate-task-retries
 		lifecyclePolicies = []*batchpb.LifecyclePolicy{{
 			Action: batchpb.LifecyclePolicy_RETRY_TASK,
 			ActionCondition: &batchpb.LifecyclePolicy_ActionCondition{
@@ -187,7 +195,7 @@ func (b *BatchRepo) SubmitJob(
 
 	taskSpec := &batchpb.TaskSpec{
 		ComputeResource:   computeResource,
-		MaxRetryCount:     int32(b.config.MaxRetryCount),
+		MaxRetryCount:     maxRetryCount,
 		LifecyclePolicies: lifecyclePolicies,
 		MaxRunDuration:    durationpb.New(time.Duration(maxRunDuration) * time.Second),
 		Runnables: []*batchpb.Runnable{
