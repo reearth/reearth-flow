@@ -240,17 +240,10 @@ impl AttributeFlattener {
         feature: &mut Feature,
         citygml_attributes: &HashMap<String, AttributeValue>,
     ) {
-        let mut edit_citygml_attributes = citygml_attributes
+        let edit_citygml_attributes = citygml_attributes
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
             .collect::<HashMap<String, AttributeValue>>();
-
-        // Extract bldg:address from core:Address nested structure
-        if let Some(address) =
-            super::flattener::Flattener::extract_address(&edit_citygml_attributes)
-        {
-            edit_citygml_attributes.insert("bldg:address".to_string(), address);
-        }
 
         if self.should_flatten_generic_attributes(feature) {
             feature.extend(
@@ -431,14 +424,6 @@ impl AttributeFlattener {
             );
         }
 
-        // Extract bldg:address from core:Address nested structure if not present
-        if !citygml_attributes.contains_key("bldg:address") {
-            if let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
-            {
-                citygml_attributes.insert("bldg:address".to_string(), address);
-            }
-        }
-
         // json path must be extracted AFTER building ancestors attribute
         if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(lookup_key) {
             for attribute in flatten_attributes {
@@ -464,6 +449,23 @@ impl AttributeFlattener {
                     }
                     _ => new_attribute,
                 };
+
+                // Attribute value 9999/-9999 will be filtered to match FME implementation
+                let is_unknown_value = match &new_attribute {
+                    AttributeValue::Number(n) => {
+                        n.as_i64() == Some(9999)
+                            || n.as_i64() == Some(-9999)
+                            || n.as_f64()
+                                .map(|f| f == 9999.0 || f == -9999.0)
+                                .unwrap_or(false)
+                    }
+                    _ => false,
+                };
+
+                if is_unknown_value {
+                    continue;
+                }
+
                 self.existing_flatten_attributes
                     .insert(attribute.attribute.clone());
                 feature.insert(attribute.attribute.clone(), new_attribute);
@@ -634,7 +636,17 @@ impl AttributeFlattener {
         };
 
         // Filter out PLATEAU-specific skippable keys (sub-features, geometry boundaries)
-        let citygml_attributes = filter_skippable_keys(citygml_attributes);
+        let mut citygml_attributes = filter_skippable_keys(citygml_attributes);
+
+        // Extract bldg:address from core:Address nested structure and remove core:Address
+        // This mirrors FME's behavior where bldg:address is extracted but core:Address is not included
+        if !citygml_attributes.contains_key("bldg:address") {
+            if let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
+            {
+                citygml_attributes.insert("bldg:address".to_string(), address);
+            }
+        }
+        citygml_attributes.remove("core:Address");
 
         // Build lookup key from package and attribute feature type
         // for example dmGeometricAttribute should find attributes from their parent feature type
@@ -1262,5 +1274,63 @@ mod tests {
             result.get("大字・町コード"),
             Some(&AttributeValue::String("2".to_string()))
         );
+    }
+
+    /// Test that sentinel values 9999 and -9999 are filtered out
+    /// These values represent unknown/undefined data in PLATEAU and should not be set as attributes
+    #[test]
+    fn test_sentinel_values_filtered() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "uro:BuildingDetailAttribute": [{
+                "uro:specifiedBuildingCoverageRate": -9999,
+                "uro:specifiedFloorAreaRate": -9999,
+                "uro:buildingStructureType": "鉄筋コンクリート造",
+                "uro:buildingStructureType_code": "610",
+                "uro:surveyYear": "2022"
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-010",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "53404336_bldg_6697.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        // Verify that -9999 sentinel values are NOT present in the output
+        assert_eq!(
+            result.get("uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate"),
+            None,
+            "Sentinel value -9999 for specifiedBuildingCoverageRate should be filtered out"
+        );
+        assert_eq!(
+            result.get("uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate"),
+            None,
+            "Sentinel value -9999 for specifiedFloorAreaRate should be filtered out"
+        );
+
+        // Verify that valid values are still present
+        assert_eq!(
+            result.get("uro:BuildingDetailAttribute_uro:buildingStructureType"),
+            Some(&AttributeValue::String("鉄筋コンクリート造".to_string())),
+            "Valid string attributes should still be present"
+        );
+
+        let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
+        match survey_year {
+            Some(AttributeValue::Number(n)) => {
+                assert_eq!(n.as_i64().unwrap(), 2022);
+            }
+            _ => panic!(
+                "Valid numeric attributes should still be present, got {:?}",
+                survey_year
+            ),
+        }
     }
 }

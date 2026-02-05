@@ -14,7 +14,10 @@ use nusamai_gltf::nusamai_gltf_json::{
 use reearth_flow_types::AttributeValue;
 use tracing::warn;
 
-use super::{ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA, INT64_NO_DATA, UINT64_NO_DATA};
+use super::{
+    int_type_selector::{SignedIntCollector, UnsignedIntCollector},
+    ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA,
+};
 
 pub struct MetadataEncoder<'a> {
     /// The original city model schema
@@ -199,8 +202,12 @@ impl Class {
                 }
             } else {
                 match prop.type_ {
-                    PropertyType::Int64 => prop.value_buffer.extend(INT64_NO_DATA.to_le_bytes()),
-                    PropertyType::Uint64 => prop.value_buffer.extend(UINT64_NO_DATA.to_le_bytes()),
+                    PropertyType::SignedInt => {
+                        prop.signed_collector.push_no_data();
+                    }
+                    PropertyType::UnsignedInt => {
+                        prop.unsigned_collector.push_no_data();
+                    }
                     PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
                     PropertyType::String => {
                         let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {
@@ -242,20 +249,24 @@ impl Class {
                 continue;
             }
 
+            // Finalize collectors to select optimal integer types
+            let finalized_signed = prop.signed_collector.finalize();
+            let finalized_unsigned = prop.unsigned_collector.finalize();
+
             class_properties.insert(
                 name.to_string(),
                 ext_structural_metadata::ClassProperty {
                     type_: match prop.type_ {
-                        PropertyType::Int64 => ClassPropertyType::Scalar,
-                        PropertyType::Uint64 => ClassPropertyType::Scalar,
+                        PropertyType::SignedInt => ClassPropertyType::Scalar,
+                        PropertyType::UnsignedInt => ClassPropertyType::Scalar,
                         PropertyType::Float64 => ClassPropertyType::Scalar,
                         PropertyType::String => ClassPropertyType::String,
                         // PropertyType::Boolean => ClassPropertyType::Boolean,
                         PropertyType::Enum => ClassPropertyType::Enum,
                     },
                     component_type: match prop.type_ {
-                        PropertyType::Int64 => Some(ClassPropertyComponentType::Int64),
-                        PropertyType::Uint64 => Some(ClassPropertyComponentType::Uint64),
+                        PropertyType::SignedInt => Some(finalized_signed.component_type()),
+                        PropertyType::UnsignedInt => Some(finalized_unsigned.component_type()),
                         PropertyType::Float64 => Some(ClassPropertyComponentType::Float64),
                         PropertyType::String => None,
                         PropertyType::Enum => None,
@@ -277,28 +288,40 @@ impl Class {
                         (PropertyType::Float64, false) => Some(serde_json::Value::Number(
                             serde_json::Number::from_f64(FLOAT_NO_DATA).unwrap(),
                         )),
-                        (PropertyType::Int64, false) => Some(serde_json::Value::Number(
-                            serde_json::Number::from(INT64_NO_DATA),
-                        )),
-                        (PropertyType::Uint64, false) => Some(serde_json::Value::Number(
-                            serde_json::Number::from(UINT64_NO_DATA),
-                        )),
+                        (PropertyType::SignedInt, false) => Some(finalized_signed.no_data_json()),
+                        (PropertyType::UnsignedInt, false) => {
+                            Some(finalized_unsigned.no_data_json())
+                        }
                     },
                     ..Default::default()
                 },
             );
 
             // values
-            // Align based on property type: 8-byte alignment for INT64/UINT64/FLOAT64
+            // Align based on property type and selected integer size
             let alignment = match prop.type_ {
-                PropertyType::Int64 | PropertyType::Uint64 | PropertyType::Float64 => 8,
+                PropertyType::SignedInt => finalized_signed.byte_size(),
+                PropertyType::UnsignedInt => finalized_unsigned.byte_size(),
+                PropertyType::Float64 => 8,
                 PropertyType::Enum => 4,   // Enum uses u32
                 PropertyType::String => 1, // String values are raw bytes
             };
             add_padding(buffer, alignment);
 
             let start = buffer.len();
-            buffer.extend(prop.value_buffer);
+
+            // Encode values based on property type
+            match prop.type_ {
+                PropertyType::SignedInt => {
+                    finalized_signed.encode_all(buffer);
+                }
+                PropertyType::UnsignedInt => {
+                    finalized_unsigned.encode_all(buffer);
+                }
+                _ => {
+                    buffer.extend(prop.value_buffer);
+                }
+            }
 
             // Check for overflow when creating buffer view
             let Some(byte_offset) = u32::try_from(start).ok() else {
@@ -516,30 +539,30 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
             };
             prop.count = new_count;
         }
-        PropertyType::Int64 => {
+        PropertyType::SignedInt => {
             let val: i64 = match value {
-                AttributeValue::Number(n) => n.as_i64().unwrap_or(INT64_NO_DATA),
-                AttributeValue::String(s) => s.parse().unwrap_or(INT64_NO_DATA),
+                AttributeValue::Number(n) => n.as_i64().unwrap_or(0),
+                AttributeValue::String(s) => s.parse().unwrap_or(0),
                 AttributeValue::Bool(b) => *b as i64,
-                _ => INT64_NO_DATA,
+                _ => 0,
             };
-            prop.value_buffer.extend(val.to_le_bytes());
+            prop.signed_collector.push(val);
             let Some(new_count) = prop.count.checked_add(1) else {
-                warn!("Skipping Int64 encoding: property count would overflow u32");
+                warn!("Skipping SignedInt encoding: property count would overflow u32");
                 return;
             };
             prop.count = new_count;
         }
-        PropertyType::Uint64 => {
+        PropertyType::UnsignedInt => {
             let val: u64 = match value {
-                AttributeValue::Number(n) => n.as_u64().unwrap_or(UINT64_NO_DATA),
-                AttributeValue::String(s) => s.parse().unwrap_or(UINT64_NO_DATA),
+                AttributeValue::Number(n) => n.as_u64().unwrap_or(0),
+                AttributeValue::String(s) => s.parse().unwrap_or(0),
                 AttributeValue::Bool(b) => *b as u64,
-                _ => UINT64_NO_DATA,
+                _ => 0,
             };
-            prop.value_buffer.extend(val.to_le_bytes());
+            prop.unsigned_collector.push(val);
             let Some(new_count) = prop.count.checked_add(1) else {
-                warn!("Skipping Uint64 encoding: property count would overflow u32");
+                warn!("Skipping UnsignedInt encoding: property count would overflow u32");
                 return;
             };
             prop.count = new_count;
@@ -681,6 +704,10 @@ struct Property {
     used: bool,
     array_offsets: Vec<u32>,
     string_offsets: Vec<u32>,
+    /// Collector for signed integer values (handles min/max tracking and type selection)
+    signed_collector: SignedIntCollector,
+    /// Collector for unsigned integer values (handles max tracking and type selection)
+    unsigned_collector: UnsignedIntCollector,
 }
 
 impl Property {
@@ -701,6 +728,8 @@ impl Property {
             used: false,
             string_offsets,
             array_offsets,
+            signed_collector: SignedIntCollector::new(),
+            unsigned_collector: UnsignedIntCollector::new(),
         }
     }
 }
@@ -711,10 +740,10 @@ impl From<&Attribute> for Property {
         let type_ = match attr.type_ref {
             TypeRef::String => PropertyType::String,
             TypeRef::Code => PropertyType::Enum,
-            TypeRef::Integer => PropertyType::Int64,
-            TypeRef::NonNegativeInteger => PropertyType::Uint64,
+            TypeRef::Integer => PropertyType::SignedInt,
+            TypeRef::NonNegativeInteger => PropertyType::UnsignedInt,
             TypeRef::Double => PropertyType::Float64,
-            TypeRef::Boolean => PropertyType::Int64, // TODO: Boolean bitstream
+            TypeRef::Boolean => PropertyType::SignedInt, // TODO: Boolean bitstream
             TypeRef::JsonString(_) => PropertyType::String,
             TypeRef::URI => PropertyType::String,
             TypeRef::Date => PropertyType::String,
@@ -731,8 +760,8 @@ impl From<&Attribute> for Property {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PropertyType {
-    Int64,
-    Uint64,
+    SignedInt,
+    UnsignedInt,
     Float64,
     String,
     // Boolean,
