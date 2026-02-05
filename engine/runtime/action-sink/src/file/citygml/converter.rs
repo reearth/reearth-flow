@@ -3,12 +3,59 @@ use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
+use reearth_flow_types::{AttributeValue, Feature};
 
 #[derive(Debug, Clone)]
 pub struct GeometryEntry {
     pub lod: u8,
     pub property: Option<PropertyType>,
     pub element: GmlElement,
+}
+
+#[derive(Debug, Clone)]
+pub struct AppearanceData {
+    pub textures: Vec<String>,
+    pub themes: Vec<String>,
+}
+
+use reearth_flow_types::Attribute;
+
+/// Extract appearance data from feature attributes
+pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
+    let appearance_attr = Attribute::new("appearanceMember");
+    let appearance_member = feature.attributes.get(&appearance_attr)?;
+
+    match appearance_member {
+        AttributeValue::Map(map) => {
+            let mut textures = Vec::new();
+            let mut themes = Vec::new();
+
+            // Extract textures
+            if let Some(AttributeValue::Array(tex_array)) = map.get("textures") {
+                for tex in tex_array {
+                    if let AttributeValue::Map(tex_map) = tex {
+                        if let Some(AttributeValue::String(uri)) = tex_map.get("uri") {
+                            textures.push(uri.clone());
+                        }
+                    }
+                }
+            }
+
+            // Extract themes
+            if let Some(AttributeValue::Array(theme_array)) = map.get("themes") {
+                for theme in theme_array {
+                    if let AttributeValue::Map(theme_map) = theme {
+                        if let Some(AttributeValue::String(name)) = theme_map.get("name") {
+                            themes.push(name.clone());
+                        }
+                    }
+                }
+            }
+
+            Some(AppearanceData { textures, themes })
+        }
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone)]
