@@ -44,9 +44,11 @@ type BatchConfig struct {
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
 	MaxRunDurationSeconds           int
+	MaxRetryCount                   int
 	TaskCount                       int
 	CompressIntermediateData        bool
 	FeatureWriterDisable            bool
+	UseSpotVMs                      bool
 }
 
 type BatchClient interface {
@@ -173,9 +175,21 @@ func (b *BatchRepo) SubmitJob(
 		maxRunDuration = 21600 // default 6 hours
 	}
 
+	var lifecyclePolicies []*batchpb.LifecyclePolicy
+	if b.config.UseSpotVMs && b.config.MaxRetryCount > 0 {
+		lifecyclePolicies = []*batchpb.LifecyclePolicy{{
+			Action: batchpb.LifecyclePolicy_RETRY_TASK,
+			ActionCondition: &batchpb.LifecyclePolicy_ActionCondition{
+				ExitCodes: []int32{50001},
+			},
+		}}
+	}
+
 	taskSpec := &batchpb.TaskSpec{
-		ComputeResource: computeResource,
-		MaxRunDuration:  durationpb.New(time.Duration(maxRunDuration) * time.Second),
+		ComputeResource:   computeResource,
+		MaxRetryCount:     int32(b.config.MaxRetryCount),
+		LifecyclePolicies: lifecyclePolicies,
+		MaxRunDuration:    durationpb.New(time.Duration(maxRunDuration) * time.Second),
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},
@@ -231,8 +245,13 @@ func (b *BatchRepo) SubmitJob(
 		SizeGb: int64(b.config.BootDiskSizeGB),
 	}
 
+	provisioningModel := batchpb.AllocationPolicy_STANDARD
+	if b.config.UseSpotVMs {
+		provisioningModel = batchpb.AllocationPolicy_SPOT
+	}
+
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
-		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
+		ProvisioningModel: provisioningModel,
 		MachineType:       b.config.MachineType,
 		BootDisk:          bootDisk,
 	}
