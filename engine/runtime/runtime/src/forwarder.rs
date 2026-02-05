@@ -39,12 +39,7 @@ impl ProcessorChannelForwarder {
 
     /// Sends a file-backed operation to downstream processors.
     ///
-    /// **Important**: The file at `path` will be **moved** (renamed) to a shared cache
-    /// directory. This ensures the file survives even if the caller's temp directory
-    /// is deleted (e.g., by a `Drop` implementation). The move operation is O(1) on
-    /// the same filesystem.
-    ///
-    /// The downstream processor is responsible for deleting the file after reading it.
+    /// The file at `path` will be moved and cleaned up by the engine core.
     pub fn send_file(&self, path: PathBuf, port: Port, context: Context) {
         match self {
             ProcessorChannelForwarder::ChannelManager(channel_manager) => {
@@ -357,13 +352,7 @@ impl ChannelManager {
 
     /// Sends a file-backed operation to downstream processors.
     ///
-    /// **Important**: The file at `path` will be **moved** (renamed) to an executor-specific
-    /// cache directory (`<temp_dir>/reearth-flow-engine-cache/{executor_id}/channel-buffers/`)
-    /// before being sent. This ensures the file survives even if the caller's temp directory
-    /// is deleted (e.g., by a `Drop` implementation). The move operation is O(1) on the same
-    /// filesystem.
-    ///
-    /// The downstream processor is responsible for deleting the file after reading it.
+    /// The file at `path` will be moved and cleaned up by the engine core.
     fn send_file(&self, path: PathBuf, port: Port, context: Context) {
         // Count features in the file for debugging
         let feature_count = std::fs::File::open(&path)
