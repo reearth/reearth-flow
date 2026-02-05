@@ -240,17 +240,10 @@ impl AttributeFlattener {
         feature: &mut Feature,
         citygml_attributes: &HashMap<String, AttributeValue>,
     ) {
-        let mut edit_citygml_attributes = citygml_attributes
+        let edit_citygml_attributes = citygml_attributes
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
             .collect::<HashMap<String, AttributeValue>>();
-
-        // Extract bldg:address from core:Address nested structure
-        if let Some(address) =
-            super::flattener::Flattener::extract_address(&edit_citygml_attributes)
-        {
-            edit_citygml_attributes.insert("bldg:address".to_string(), address);
-        }
 
         if self.should_flatten_generic_attributes(feature) {
             feature.extend(
@@ -429,14 +422,6 @@ impl AttributeFlattener {
                 "ancestors".to_string(),
                 AttributeValue::Array(ancestors.iter().rev().cloned().collect()),
             );
-        }
-
-        // Extract bldg:address from core:Address nested structure if not present
-        if !citygml_attributes.contains_key("bldg:address") {
-            if let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
-            {
-                citygml_attributes.insert("bldg:address".to_string(), address);
-            }
         }
 
         // json path must be extracted AFTER building ancestors attribute
@@ -648,7 +633,18 @@ impl AttributeFlattener {
         };
 
         // Filter out PLATEAU-specific skippable keys (sub-features, geometry boundaries)
-        let citygml_attributes = filter_skippable_keys(citygml_attributes);
+        let mut citygml_attributes = filter_skippable_keys(citygml_attributes);
+
+        // Extract bldg:address from core:Address nested structure and remove core:Address
+        // This mirrors FME's behavior where bldg:address is extracted but core:Address is not included
+        if !citygml_attributes.contains_key("bldg:address") {
+            if let Some(address) =
+                super::flattener::Flattener::extract_address(&citygml_attributes)
+            {
+                citygml_attributes.insert("bldg:address".to_string(), address);
+            }
+        }
+        citygml_attributes.remove("core:Address");
 
         // Build lookup key from package and attribute feature type
         // for example dmGeometricAttribute should find attributes from their parent feature type

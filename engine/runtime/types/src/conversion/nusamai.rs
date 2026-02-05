@@ -340,7 +340,11 @@ impl AttributeValue {
                     nusamai_citygml::Value::Code(code) => {
                         // Unzip Code types: collect values and codes separately
                         values.push(AttributeValue::String(code.value().to_owned()));
-                        codes.push(AttributeValue::String(code.code().unwrap().to_owned()));
+                        let code = match code.code() {
+                            Some(c) => AttributeValue::String(c.to_owned()),
+                            None => AttributeValue::Null,
+                        };
+                        codes.push(code);
                         has_codes = true;
                     }
                     nusamai_citygml::Value::Object(obj) => {
