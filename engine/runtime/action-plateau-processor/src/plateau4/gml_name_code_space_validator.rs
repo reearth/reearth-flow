@@ -265,7 +265,11 @@ impl Processor for GmlNameCodeSpaceValidator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Output per-file statistics
         for stats in self.processed_files.values() {
             let mut stats_feature = Feature::new_with_attributes(Attributes::new());

@@ -1,6 +1,5 @@
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
-use quick_xml::events::attributes;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
 use reearth_flow_geometry::algorithm::line_string_ops::{
@@ -324,7 +323,7 @@ impl LineOnLineOverlayer {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone())),
                 ..Default::default()
             };
-            let mut feature =
+            let feature =
                 Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::new());
             overlaid.line.push(feature);
         }
@@ -332,19 +331,17 @@ impl LineOnLineOverlayer {
         let last_feature = features_2d.last().unwrap();
 
         for result_coords in line_string_intersection_result.split_coords {
-            let mut attributes = Attributes::new();
-
-            if let Some(group_by) = &self.group_by {
-                attributes = group_by
+            let attributes = if let Some(group_by) = &self.group_by {
+                group_by
                     .iter()
                     .filter_map(|attr| {
                         let value = last_feature.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
-                    .collect::<IndexMap<_, _>>();
+                    .collect::<IndexMap<_, _>>()
             } else {
-                attributes = IndexMap::new();
-            }
+                IndexMap::new()
+            };
 
             let geometry = reearth_flow_types::Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords))),

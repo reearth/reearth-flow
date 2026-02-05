@@ -213,7 +213,8 @@ impl FeatureSorter {
     fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
         if self.temp_dir.is_none() {
             let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
-            let dir = engine_cache_dir(executor_id).join(format!("sorter-{}", uuid::Uuid::new_v4()));
+            let dir =
+                engine_cache_dir(executor_id).join(format!("sorter-{}", uuid::Uuid::new_v4()));
             std::fs::create_dir_all(&dir)?;
             self.temp_dir = Some(dir);
         }

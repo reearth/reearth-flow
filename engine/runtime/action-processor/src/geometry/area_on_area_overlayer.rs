@@ -864,7 +864,8 @@ mod tests {
     #[test]
     fn test_overlay_two_squares_disk() {
         // Create temp dir and write features to disk
-        let dir = engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
+        let dir =
+            engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let group_dir = dir.join("group_000000");
         std::fs::create_dir_all(&group_dir).unwrap();
@@ -913,7 +914,8 @@ mod tests {
 
     #[test]
     fn test_overlay_triangles_sharing_an_edge_disk() {
-        let dir = engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
+        let dir =
+            engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let group_dir = dir.join("group_000000");
         std::fs::create_dir_all(&group_dir).unwrap();
