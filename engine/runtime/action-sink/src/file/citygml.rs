@@ -20,7 +20,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
-use converter::{compute_envelope, convert_citygml_geometry, BoundingEnvelope, CityObjectType};
+use converter::{
+    compute_envelope, convert_citygml_geometry, extract_appearance_data, BoundingEnvelope,
+    CityObjectType,
+};
 use writer::CityGmlXmlWriter;
 
 #[derive(Debug, Clone, Default)]
@@ -203,8 +206,16 @@ impl Sink for CityGmlWriterSink {
                     continue;
                 }
 
+                // Extract appearance data from feature attributes
+                let appearance_data = extract_appearance_data(feature);
+
                 let gml_id_str = feature.id.to_string();
-                xml_writer.write_city_object(city_type, &geometries, Some(gml_id_str.as_str()))?;
+                xml_writer.write_city_object(
+                    city_type,
+                    &geometries,
+                    Some(gml_id_str.as_str()),
+                    appearance_data.as_ref(),
+                )?;
             }
 
             xml_writer.write_footer()?;
