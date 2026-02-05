@@ -131,7 +131,7 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
         }
     }
 
-    pub fn as_geometry_collection(&self) -> Option<&Vec<Geometry<T, Z>>> {
+    pub fn as_geometry_collection(&self) -> Option<&[Geometry<T, Z>]> {
         match self {
             Geometry::GeometryCollection(gc) => Some(gc),
             _ => None,

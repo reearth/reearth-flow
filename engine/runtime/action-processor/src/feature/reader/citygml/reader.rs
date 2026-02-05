@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, BufWriter, Cursor, Write},
+    path::PathBuf,
     str::FromStr,
     sync::{Arc, RwLock},
 };
@@ -14,6 +15,7 @@ use quick_xml::NsReader;
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
+    cache::executor_cache_subdir,
     executor_operation::{Context, ExecutorContext},
     forwarder::ProcessorChannelForwarder,
     node::DEFAULT_PORT,
@@ -22,6 +24,23 @@ use reearth_flow_types::{
     geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
 };
 use url::Url;
+
+/// RAII guard that ensures the cache directory is cleaned up when dropped.
+struct CacheGuard {
+    path: PathBuf,
+}
+
+impl CacheGuard {
+    fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl Drop for CacheGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
 
 #[allow(clippy::uninlined_format_args, clippy::too_many_arguments)]
 pub(super) fn read_citygml(
@@ -90,12 +109,17 @@ fn parse_tree_reader<R: BufRead>(
     // Phase 1: Parse CityGML, build features, write them to a temp JSONL file.
     // This lets us drop all parsed entities/appearances/geometry before sending,
     // so backpressure on fw.send() doesn't trap large parsing data in memory.
-    let temp_dir =
-        reearth_flow_common::dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())
-            .map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
-    let temp_path = temp_dir.join("features.jsonl");
+    //
+    // Use executor-specific cache directory for isolation between concurrent workflows.
+    let executor_id = fw.executor_id();
+    let cache_dir =
+        executor_cache_subdir(executor_id, "citygml-reader").join(uuid::Uuid::new_v4().to_string());
+    std::fs::create_dir_all(&cache_dir).map_err(|e| {
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+    })?;
+    // RAII guard ensures cleanup even if we return early due to error
+    let _cache_guard = CacheGuard::new(cache_dir.clone());
+    let temp_path = cache_dir.join("features.jsonl");
 
     let feature_count = {
         let file = std::fs::File::create(&temp_path).map_err(|e| {
@@ -134,8 +158,7 @@ fn parse_tree_reader<R: BufRead>(
         }
     }
 
-    // Cleanup temp directory
-    let _ = std::fs::remove_dir_all(&temp_dir);
+    // Cache cleanup is handled by _cache_guard's Drop implementation
     Ok(())
 }
 

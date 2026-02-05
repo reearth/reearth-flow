@@ -458,12 +458,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         };
 
         channel_manager.wait_until_downstream_empty();
-        channel_manager.reset_finish_count();
+        channel_manager.reset_send_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
-        let finish_feature_count = channel_manager.get_finish_count();
+        let finish_feature_count = channel_manager.get_send_count();
 
         drop(_accumulating_guard);
 

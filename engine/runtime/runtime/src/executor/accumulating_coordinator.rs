@@ -1,3 +1,14 @@
+//! Coordinates concurrent execution of accumulating processor `finish()` calls.
+//!
+//! Accumulating processors (e.g., aggregators, sorters) buffer data during processing
+//! and emit all results during their `finish()` phase. Running multiple `finish()` calls
+//! simultaneously can cause high peak memory usage.
+//!
+//! This module provides a global permit system to limit concurrency. Configure via:
+//! - `FLOW_RUNTIME_ACCUMULATING_FINISH_CONCURRENCY` - Maximum concurrent finish calls (default: 1)
+//!
+//! Setting to 1 serializes finish operations, reducing memory pressure at the cost of throughput.
+
 use std::sync::{Condvar, LazyLock, Mutex};
 
 struct AccumulatingFinishLimiter {

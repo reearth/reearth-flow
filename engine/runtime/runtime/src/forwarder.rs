@@ -70,18 +70,19 @@ impl ProcessorChannelForwarder {
         }
     }
 
-    /// Reset the finish send counter (call before finish())
-    pub fn reset_finish_count(&self) {
+    /// Reset the send counter to zero.
+    /// Call this before a section where you want to measure sends (e.g., before finish()).
+    pub fn reset_send_count(&self) {
         match self {
-            ProcessorChannelForwarder::ChannelManager(cm) => cm.reset_finish_count(),
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.reset_send_count(),
             ProcessorChannelForwarder::Noop(_) => {}
         }
     }
 
-    /// Get the current finish send count
-    pub fn get_finish_count(&self) -> u64 {
+    /// Get the number of features sent since the last reset.
+    pub fn get_send_count(&self) -> u64 {
         match self {
-            ProcessorChannelForwarder::ChannelManager(cm) => cm.get_finish_count(),
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.get_send_count(),
             ProcessorChannelForwarder::Noop(_) => 0,
         }
     }
@@ -155,8 +156,8 @@ pub struct ChannelManager {
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
-    /// Counter for features sent during finish() - used for debugging
-    finish_send_count: Arc<AtomicU64>,
+    /// Counter for features sent since the last reset - used for measuring sends in a specific phase
+    send_count: Arc<AtomicU64>,
     /// Unique identifier for this workflow execution, used for cache isolation
     executor_id: uuid::Uuid,
 }
@@ -169,7 +170,7 @@ impl Clone for ChannelManager {
             senders: self.senders.clone(),
             runtime: self.runtime.clone(),
             event_hub: self.event_hub.clone(),
-            finish_send_count: self.finish_send_count.clone(),
+            send_count: self.send_count.clone(),
             executor_id: self.executor_id,
         }
     }
@@ -317,24 +318,25 @@ impl ChannelManager {
             senders,
             runtime,
             event_hub,
-            finish_send_count: Arc::new(AtomicU64::new(0)),
+            send_count: Arc::new(AtomicU64::new(0)),
             executor_id,
         }
     }
 
-    /// Reset the finish send counter (call before finish())
-    pub fn reset_finish_count(&self) {
-        self.finish_send_count.store(0, Ordering::SeqCst);
+    /// Reset the send counter to zero.
+    /// Call this before a section where you want to measure sends (e.g., before finish()).
+    pub fn reset_send_count(&self) {
+        self.send_count.store(0, Ordering::SeqCst);
     }
 
-    /// Get the current finish send count
-    pub fn get_finish_count(&self) -> u64 {
-        self.finish_send_count.load(Ordering::SeqCst)
+    /// Get the number of features sent since the last reset.
+    pub fn get_send_count(&self) -> u64 {
+        self.send_count.load(Ordering::SeqCst)
     }
 
-    /// Increment the finish send counter
-    fn increment_finish_count(&self, count: u64) {
-        self.finish_send_count.fetch_add(count, Ordering::SeqCst);
+    /// Increment the send counter.
+    fn increment_send_count(&self, count: u64) {
+        self.send_count.fetch_add(count, Ordering::SeqCst);
     }
 
     /// Get the executor ID for cache isolation
@@ -372,7 +374,7 @@ impl ChannelManager {
                     .count()
             })
             .unwrap_or(0);
-        self.increment_finish_count(feature_count as u64);
+        self.increment_send_count(feature_count as u64);
 
         // Write features to FeatureWriter for observability
         self.write_file_features_to_store(&path, &port);
@@ -503,7 +505,7 @@ impl ChannelManager {
                 "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
             )
         });
-        self.increment_finish_count(1);
+        self.increment_send_count(1);
     }
 }
 
