@@ -1,6 +1,13 @@
 import bbox from "@turf/bbox";
 import { Cartesian3, GeoJsonDataSource } from "cesium";
-import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
@@ -420,6 +427,13 @@ export default () => {
     if (!detailsOverlayOpen || !selectedFeature) return null;
     return selectedFeature;
   }, [detailsOverlayOpen, selectedFeature]);
+
+  useEffect(() => {
+    if (!selectedFeatureId || !featureIdMap) return;
+    if (!featureIdMap.has(selectedFeatureId)) {
+      setSelectedFeatureId(null);
+    }
+  }, [selectedFeatureId, featureIdMap]);
 
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {
