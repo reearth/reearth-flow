@@ -1982,9 +1982,9 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fastxml"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be5eea591589b4c0a6c9012c6c65c8af1e6e93cf74fc40654e524e2ba4591239"
+checksum = "a1ec6791af8c604b988d1283460b6ca27bd2985de9fc68cce3cca251aadf2700"
 dependencies = [
  "clap",
  "compact_str",
