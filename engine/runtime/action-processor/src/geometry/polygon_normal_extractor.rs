@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::Feature;
-use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, CityGmlGeometry, GeometryValue};
 use serde_json::{Number, Value};
 
 #[derive(Debug, Clone, Default)]
@@ -115,17 +115,19 @@ impl Processor for PolygonNormalExtractor {
                     }
                 }
             }
-            GeometryValue::CityGmlGeometry(_) => {
-                return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                    "Only support simple 3D Polygon normal extraction for now.".to_string(),
-                )));
+            GeometryValue::CityGmlGeometry(citygml) => {
+                self.handle_citygml_geometry(citygml, &mut feature, &ctx, fw)?;
             }
         }
 
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -146,6 +148,40 @@ struct NormalResult {
 }
 
 impl PolygonNormalExtractor {
+    fn handle_citygml_geometry(
+        &self,
+        citygml: &CityGmlGeometry,
+        feature: &mut Feature,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        // Collect all polygons from all gml_geometries
+        let polygons: Vec<&Polygon3D<f64>> = citygml
+            .gml_geometries
+            .iter()
+            .flat_map(|gml| gml.polygons.iter())
+            .collect();
+
+        if polygons.is_empty() {
+            return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
+                "CityGmlGeometry contains no polygons".to_string(),
+            )));
+        }
+
+        if polygons.len() > 1 {
+            return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
+                "CityGmlGeometry with multiple polygons is not supported yet".to_string(),
+            )));
+        }
+
+        // Single polygon - calculate normal
+        let normal_result = Self::calculate_normal_properties_3d(polygons[0]);
+        Self::set_normal_features(normal_result, feature, None)?;
+
+        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        Ok(())
+    }
+
     fn calculate_normal_properties_3d(polygon: &Polygon3D<f64>) -> NormalResult {
         // Get the exterior ring of the polygon
         let exterior = polygon.exterior();
@@ -212,9 +248,8 @@ impl PolygonNormalExtractor {
             (normal_v.x, normal_v.y, normal_v.z);
 
         // Calculate azimuth (angle in horizontal plane)
-        let azimuth = (-normalized_normal_x)
-            .atan2(-normalized_normal_y)
-            .to_degrees();
+        // Convention: 0° = South (matches SunPositionCalculator), clockwise positive
+        let azimuth = normalized_normal_x.atan2(-normalized_normal_y).to_degrees();
 
         // Ensure azimuth is in the range [0, 360)
         let azimuth = if azimuth < 0.0 {
@@ -338,7 +373,7 @@ mod tests {
             normal_z: 0.9771333093320709,
             slope: 12.282607611747856,
             signed_area_2d: 214.02499108342454,
-            azimuth: 1.9306091257916358,
+            azimuth: 358.0693908742084,
         };
 
         assert_eq!(expected_polygon_normal.normal_x, result.normal_x);
@@ -348,7 +383,7 @@ mod tests {
             expected_polygon_normal.signed_area_2d,
             result.signed_area_2d
         );
-        assert_eq!(expected_polygon_normal.azimuth, result.azimuth);
+        assert!((result.azimuth - expected_polygon_normal.azimuth).abs() < 1e-10);
         assert!((result.slope - expected_polygon_normal.slope).abs() < 1e-2);
     }
 }

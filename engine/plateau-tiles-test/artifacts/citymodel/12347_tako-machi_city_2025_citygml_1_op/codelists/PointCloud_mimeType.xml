@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_604709a4-2ff3-4b82-aff4-9ea9a2b0467e">
+<gml:name>PointCloud_mimeType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloud_mimeType_1">
+<gml:description>*.las PointCloudData</gml:description>
+<gml:name>application/vnd.las</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloud_mimeType_2">
+<gml:description>*.laz PointCloudData</gml:description>
+<gml:name>application/vnd.laszip</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

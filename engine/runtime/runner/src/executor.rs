@@ -59,6 +59,7 @@ pub fn run_dag_executor(
     feature_state: Arc<State>,
     incremental_run_config: Option<IncrementalRunConfig>,
     event_handlers: Vec<Arc<dyn EventHandler>>,
+    executor_id: uuid::Uuid,
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 
@@ -72,6 +73,7 @@ pub fn run_dag_executor(
         feature_state,
         incremental_run_config,
         event_handlers,
+        executor_id,
     ))?;
     let result = join_handle
         .join((*runtime).clone())

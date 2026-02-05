@@ -10,9 +10,10 @@ threshold = 0.001
 [tests.mvt_lines]
 threshold = 0.01
 
-# both should not exist (no urf in area data)
+# should not exist (no urf in area data)
 [tests.json_attributes.dictionary]
 path = "dictionary.json"
+must_not_exist = true
 
 [filter.tree]
 "udx/area/" = ["523856_area_6697_op.gml"]

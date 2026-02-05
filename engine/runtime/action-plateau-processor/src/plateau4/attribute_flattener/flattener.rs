@@ -137,7 +137,7 @@ impl Flattener {
                         rank_code_opt,
                         AttributeValue::default_number(),
                     ),
-                    ("浸水深", depth_opt, AttributeValue::default_number()),
+                    ("浸水深", depth_opt, AttributeValue::default_float()),
                 ];
 
                 for (label, value_str_opt, value_type) in attribs {

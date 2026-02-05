@@ -107,8 +107,10 @@ type (
 		SkipPermissionCheck             bool          `default:"false"`
 		Web_App_Disabled                bool          `pp:",omitempty"`
 		Web_Disabled                    bool          `pp:",omitempty"`
+		Worker_MaxRetries               string        `envconfig:"WORKER_MAX_RETRIES" default:"3" pp:",omitempty"`
 		Worker_CompressIntermediateData bool          `envconfig:"WORKER_COMPRESS_INTERMEDIATE_DATA" default:"false" pp:",omitempty"`
 		Worker_FeatureWriterDisable     bool          `envconfig:"WORKER_FEATURE_WRITER_DISABLE" default:"false" pp:",omitempty"`
+		Worker_UseSpotVMs               bool          `envconfig:"WORKER_USE_SPOT_VMS" default:"false" pp:",omitempty"`
 		CMS_UseTLS                      bool          `envconfig:"REEARTH_FLOW_GRPC_USETLS" default:"true" pp:",omitempty"`
 
 		// health check

@@ -31,6 +31,7 @@ use crate::node::{EdgeId, NodeId, Port};
 
 use super::execution_dag::ExecutionDag;
 use super::source_node::{create_source_node, SourceNode};
+use crate::cache::cleanup_executor_cache;
 
 pub struct DagExecutor {
     builder_dag: BuilderDag,
@@ -41,6 +42,7 @@ pub struct DagExecutorJoinHandle {
     event_hub: EventHub,
     join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
     notify: Arc<Notify>,
+    executor_id: uuid::Uuid,
 }
 
 impl DagExecutor {
@@ -77,6 +79,7 @@ impl DagExecutor {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
+        executor_id: uuid::Uuid,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
@@ -85,6 +88,7 @@ impl DagExecutor {
             self.options.feature_flush_threshold,
             Arc::clone(&ingress_state),
             Arc::clone(&feature_state),
+            executor_id,
         )?;
         let execute_node_ids: HashSet<NodeId> = if let Some(cfg) = &incremental_run_config {
             collect_executable_node_ids(&execution_dag, cfg)?
@@ -230,6 +234,7 @@ impl DagExecutor {
             event_hub,
             join_handles,
             notify: notify_publish.clone(),
+            executor_id,
         })
     }
 }
@@ -264,6 +269,9 @@ impl DagExecutorJoinHandle {
 
                 // Enhanced delay approach - use improved flush with dynamic waiting
                 runtime.block_on(self.event_hub.enhanced_flush(5000));
+
+                // Cleanup executor cache directory (includes channel buffers and processor temp files)
+                cleanup_executor_cache(self.executor_id);
 
                 tracing::info!("Proceeding with workflow termination");
 

@@ -185,7 +185,11 @@ impl Processor for MissingAttributeDetector {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let features = self.sumary_features(None);
         for (port, features) in features {
             for feature in features {

@@ -119,7 +119,11 @@ impl Processor for JPStandardGridAccumulator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -162,7 +166,11 @@ impl JPStandardGridAccumulator {
                         line_string.clone(),
                     ]);
 
-                let clipped = bounds_polygon.clip(&multi_line_string, false);
+                let clipped = <Polygon2D<f64> as BooleanOps>::clip(
+                    &bounds_polygon,
+                    &multi_line_string,
+                    false,
+                );
 
                 if clipped.0.is_empty() {
                     return None;
@@ -173,7 +181,8 @@ impl JPStandardGridAccumulator {
                 }
             }
             Geometry::MultiLineString(multi_line_string) => {
-                let clipped = bounds_polygon.clip(multi_line_string, false);
+                let clipped =
+                    <Polygon2D<f64> as BooleanOps>::clip(&bounds_polygon, multi_line_string, false);
 
                 if clipped.0.is_empty() {
                     return None;
