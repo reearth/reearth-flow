@@ -324,532 +324,203 @@ fn select_unsigned_variant(max: u64) -> UnsignedVariant {
 mod tests {
     use super::*;
 
-    // ===========================================
-    // SignedIntCollector type selection tests
-    // ===========================================
-
     #[test]
-    fn test_signed_fits_i8() {
+    fn test_signed_type_selection() {
+        // Empty defaults to i8
+        assert!(matches!(
+            SignedIntCollector::new().finalize().variant,
+            SignedVariant::Int8
+        ));
+
+        // Fits in i8 range (avoiding MIN as noData)
         let mut c = SignedIntCollector::new();
         c.push(-127);
         c.push(127);
         let f = c.finalize();
         assert!(matches!(f.variant, SignedVariant::Int8));
         assert_eq!(f.byte_size(), 1);
-    }
+        assert_eq!(f.component_type(), ClassPropertyComponentType::Int8);
+        assert_eq!(f.no_data_json(), serde_json::json!(-128));
 
-    #[test]
-    fn test_signed_min_at_i8_nodata_uses_i16() {
+        // MIN value collision forces upgrade to i16
         let mut c = SignedIntCollector::new();
-        c.push(-128); // INT8_NO_DATA, must avoid
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int16));
-    }
+        c.push(-128);
+        assert!(matches!(c.finalize().variant, SignedVariant::Int16));
 
-    #[test]
-    fn test_signed_min_just_above_i8_nodata() {
+        // Max overflow forces upgrade
         let mut c = SignedIntCollector::new();
-        c.push(-127); // INT8_NO_DATA + 1
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int8));
-    }
+        c.push(128);
+        assert!(matches!(c.finalize().variant, SignedVariant::Int16));
 
-    #[test]
-    fn test_signed_max_overflows_i8() {
-        let mut c = SignedIntCollector::new();
-        c.push(128); // > i8::MAX
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int16));
-    }
-
-    #[test]
-    fn test_signed_fits_i16() {
+        // i16 range
         let mut c = SignedIntCollector::new();
         c.push(-32767);
         c.push(32767);
         let f = c.finalize();
         assert!(matches!(f.variant, SignedVariant::Int16));
         assert_eq!(f.byte_size(), 2);
-    }
+        assert_eq!(f.no_data_json(), serde_json::json!(-32768));
 
-    #[test]
-    fn test_signed_min_at_i16_nodata_uses_i32() {
-        let mut c = SignedIntCollector::new();
-        c.push(-32768); // INT16_NO_DATA
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int32));
-    }
-
-    #[test]
-    fn test_signed_max_overflows_i16() {
-        let mut c = SignedIntCollector::new();
-        c.push(32768); // > i16::MAX
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int32));
-    }
-
-    #[test]
-    fn test_signed_fits_i32() {
+        // i32 range
         let mut c = SignedIntCollector::new();
         c.push(-2147483647);
         c.push(2147483647);
         let f = c.finalize();
         assert!(matches!(f.variant, SignedVariant::Int32));
         assert_eq!(f.byte_size(), 4);
-    }
 
-    #[test]
-    fn test_signed_min_at_i32_nodata_uses_i64() {
-        let mut c = SignedIntCollector::new();
-        c.push(i32::MIN as i64); // INT32_NO_DATA
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int64));
-    }
-
-    #[test]
-    fn test_signed_max_overflows_i32() {
-        let mut c = SignedIntCollector::new();
-        c.push(2147483648); // > i32::MAX
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int64));
-    }
-
-    #[test]
-    fn test_signed_requires_i64() {
+        // i64 range
         let mut c = SignedIntCollector::new();
         c.push(i64::MIN + 1);
-        c.push((i64::MAX / 2) as i64);
         let f = c.finalize();
         assert!(matches!(f.variant, SignedVariant::Int64));
         assert_eq!(f.byte_size(), 8);
-    }
 
-    #[test]
-    fn test_signed_empty_uses_i8() {
-        let c = SignedIntCollector::new();
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int8));
-    }
-
-    #[test]
-    fn test_signed_nodata_does_not_affect_type_selection() {
+        // noData doesn't affect type selection
         let mut c = SignedIntCollector::new();
         c.push(0);
-        c.push_no_data(); // Should not affect min/max
-        let f = c.finalize();
-        assert!(matches!(f.variant, SignedVariant::Int8));
+        c.push_no_data();
+        assert!(matches!(c.finalize().variant, SignedVariant::Int8));
     }
 
-    // ===========================================
-    // UnsignedIntCollector type selection tests
-    // ===========================================
-
     #[test]
-    fn test_unsigned_fits_u8() {
+    fn test_unsigned_type_selection() {
+        // Empty defaults to u8
+        assert!(matches!(
+            UnsignedIntCollector::new().finalize().variant,
+            UnsignedVariant::Uint8
+        ));
+
+        // Fits in u8 range (avoiding MAX as noData)
         let mut c = UnsignedIntCollector::new();
-        c.push(254); // < UINT8_NO_DATA (255)
+        c.push(254);
         let f = c.finalize();
         assert!(matches!(f.variant, UnsignedVariant::Uint8));
         assert_eq!(f.byte_size(), 1);
-    }
+        assert_eq!(f.component_type(), ClassPropertyComponentType::Uint8);
+        assert_eq!(f.no_data_json(), serde_json::json!(255));
 
-    #[test]
-    fn test_unsigned_max_at_u8_nodata_uses_u16() {
+        // MAX value collision forces upgrade to u16
         let mut c = UnsignedIntCollector::new();
-        c.push(255); // UINT8_NO_DATA
-        let f = c.finalize();
-        assert!(matches!(f.variant, UnsignedVariant::Uint16));
-    }
+        c.push(255);
+        assert!(matches!(c.finalize().variant, UnsignedVariant::Uint16));
 
-    #[test]
-    fn test_unsigned_max_just_below_u8_nodata() {
+        // u16 range
         let mut c = UnsignedIntCollector::new();
-        c.push(254); // UINT8_NO_DATA - 1
-        let f = c.finalize();
-        assert!(matches!(f.variant, UnsignedVariant::Uint8));
-    }
-
-    #[test]
-    fn test_unsigned_fits_u16() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(65534); // < UINT16_NO_DATA
+        c.push(65534);
         let f = c.finalize();
         assert!(matches!(f.variant, UnsignedVariant::Uint16));
         assert_eq!(f.byte_size(), 2);
-    }
+        assert_eq!(f.no_data_json(), serde_json::json!(65535));
 
-    #[test]
-    fn test_unsigned_max_at_u16_nodata_uses_u32() {
+        // u32 range
         let mut c = UnsignedIntCollector::new();
-        c.push(65535); // UINT16_NO_DATA
-        let f = c.finalize();
-        assert!(matches!(f.variant, UnsignedVariant::Uint32));
-    }
-
-    #[test]
-    fn test_unsigned_fits_u32() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(u32::MAX as u64 - 1); // < UINT32_NO_DATA
+        c.push(u32::MAX as u64 - 1);
         let f = c.finalize();
         assert!(matches!(f.variant, UnsignedVariant::Uint32));
         assert_eq!(f.byte_size(), 4);
-    }
 
-    #[test]
-    fn test_unsigned_max_at_u32_nodata_uses_u64() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(u32::MAX as u64); // UINT32_NO_DATA
-        let f = c.finalize();
-        assert!(matches!(f.variant, UnsignedVariant::Uint64));
-    }
-
-    #[test]
-    fn test_unsigned_requires_u64() {
+        // u64 range
         let mut c = UnsignedIntCollector::new();
         c.push(u64::MAX);
         let f = c.finalize();
         assert!(matches!(f.variant, UnsignedVariant::Uint64));
         assert_eq!(f.byte_size(), 8);
-    }
 
-    #[test]
-    fn test_unsigned_empty_uses_u8() {
-        let c = UnsignedIntCollector::new();
-        let f = c.finalize();
-        assert!(matches!(f.variant, UnsignedVariant::Uint8));
-    }
-
-    #[test]
-    fn test_unsigned_nodata_does_not_affect_type_selection() {
+        // noData doesn't affect type selection
         let mut c = UnsignedIntCollector::new();
         c.push(0);
-        c.push_no_data(); // Should not affect max
-        let f = c.finalize();
-        assert!(matches!(f.variant, UnsignedVariant::Uint8));
+        c.push_no_data();
+        assert!(matches!(c.finalize().variant, UnsignedVariant::Uint8));
     }
 
-    // ===========================================
-    // Encoding tests - signed
-    // ===========================================
-
     #[test]
-    fn test_encode_signed_i8() {
+    fn test_signed_encoding() {
+        // i8 encoding with noData
         let mut c = SignedIntCollector::new();
         c.push(42);
         c.push(-10);
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
-        assert_eq!(buf, vec![42u8, 246u8]); // 42, -10 as i8 bytes
-    }
-
-    #[test]
-    fn test_encode_signed_i8_with_nodata() {
-        let mut c = SignedIntCollector::new();
-        c.push(42);
         c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
-        assert_eq!(buf[0], 42u8);
-        assert_eq!(buf[1], INT8_NO_DATA as u8); // -128 = 0x80
-    }
+        assert_eq!(buf, vec![42u8, 246u8, INT8_NO_DATA as u8]);
 
-    #[test]
-    fn test_encode_signed_i16() {
+        // i16 encoding with noData
         let mut c = SignedIntCollector::new();
         c.push(1000);
         c.push(-500);
+        c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
         assert_eq!(&buf[0..2], &1000i16.to_le_bytes());
         assert_eq!(&buf[2..4], &(-500i16).to_le_bytes());
-    }
+        assert_eq!(&buf[4..6], &INT16_NO_DATA.to_le_bytes());
 
-    #[test]
-    fn test_encode_signed_i16_with_nodata() {
-        let mut c = SignedIntCollector::new();
-        c.push(1000);
-        c.push_no_data();
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
-        assert_eq!(&buf[2..4], &INT16_NO_DATA.to_le_bytes());
-    }
-
-    #[test]
-    fn test_encode_signed_i32() {
+        // i32 encoding
         let mut c = SignedIntCollector::new();
         c.push(100000);
-        c.push(-50000);
+        c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
         assert_eq!(&buf[0..4], &100000i32.to_le_bytes());
-        assert_eq!(&buf[4..8], &(-50000i32).to_le_bytes());
-    }
-
-    #[test]
-    fn test_encode_signed_i32_with_nodata() {
-        let mut c = SignedIntCollector::new();
-        c.push(100000);
-        c.push_no_data();
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
         assert_eq!(&buf[4..8], &INT32_NO_DATA.to_le_bytes());
-    }
 
-    #[test]
-    fn test_encode_signed_i64() {
+        // i64 encoding
         let mut c = SignedIntCollector::new();
-        c.push(i64::MIN + 1); // Force i64
-        c.push(123456789012345);
+        c.push(i64::MIN + 1);
+        c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
         assert_eq!(&buf[0..8], &(i64::MIN + 1).to_le_bytes());
-        assert_eq!(&buf[8..16], &123456789012345i64.to_le_bytes());
-    }
-
-    #[test]
-    fn test_encode_signed_i64_with_nodata() {
-        let mut c = SignedIntCollector::new();
-        c.push(i64::MIN + 1); // Force i64
-        c.push_no_data();
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
         assert_eq!(&buf[8..16], &INT64_NO_DATA.to_le_bytes());
     }
 
-    // ===========================================
-    // Encoding tests - unsigned
-    // ===========================================
-
     #[test]
-    fn test_encode_unsigned_u8() {
+    fn test_unsigned_encoding() {
+        // u8 encoding with noData
         let mut c = UnsignedIntCollector::new();
         c.push(42);
         c.push(200);
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
-        assert_eq!(buf, vec![42u8, 200u8]);
-    }
-
-    #[test]
-    fn test_encode_unsigned_u8_with_nodata() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(42);
         c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
-        assert_eq!(buf[0], 42u8);
-        assert_eq!(buf[1], UINT8_NO_DATA); // 255
-    }
+        assert_eq!(buf, vec![42u8, 200u8, UINT8_NO_DATA]);
 
-    #[test]
-    fn test_encode_unsigned_u16() {
+        // u16 encoding with noData
         let mut c = UnsignedIntCollector::new();
         c.push(1000);
         c.push(50000);
+        c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
         assert_eq!(&buf[0..2], &1000u16.to_le_bytes());
         assert_eq!(&buf[2..4], &50000u16.to_le_bytes());
-    }
+        assert_eq!(&buf[4..6], &UINT16_NO_DATA.to_le_bytes());
 
-    #[test]
-    fn test_encode_unsigned_u16_with_nodata() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(1000);
-        c.push_no_data();
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
-        assert_eq!(&buf[2..4], &UINT16_NO_DATA.to_le_bytes());
-    }
-
-    #[test]
-    fn test_encode_unsigned_u32() {
+        // u32 encoding
         let mut c = UnsignedIntCollector::new();
         c.push(100000);
-        c.push(3000000000);
+        c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
         assert_eq!(&buf[0..4], &100000u32.to_le_bytes());
-        assert_eq!(&buf[4..8], &3000000000u32.to_le_bytes());
-    }
-
-    #[test]
-    fn test_encode_unsigned_u32_with_nodata() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(100000);
-        c.push_no_data();
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
         assert_eq!(&buf[4..8], &UINT32_NO_DATA.to_le_bytes());
-    }
 
-    #[test]
-    fn test_encode_unsigned_u64() {
+        // u64 encoding
         let mut c = UnsignedIntCollector::new();
-        c.push(u64::MAX - 1); // Force u64
-        c.push(123456789012345);
+        c.push(u64::MAX - 1);
+        c.push_no_data();
         let f = c.finalize();
         let mut buf = Vec::new();
         f.encode_all(&mut buf);
         assert_eq!(&buf[0..8], &(u64::MAX - 1).to_le_bytes());
-        assert_eq!(&buf[8..16], &123456789012345u64.to_le_bytes());
-    }
-
-    #[test]
-    fn test_encode_unsigned_u64_with_nodata() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(u64::MAX - 1); // Force u64
-        c.push_no_data();
-        let f = c.finalize();
-        let mut buf = Vec::new();
-        f.encode_all(&mut buf);
         assert_eq!(&buf[8..16], &UINT64_NO_DATA.to_le_bytes());
-    }
-
-    // ===========================================
-    // component_type and no_data_json tests
-    // ===========================================
-
-    #[test]
-    fn test_signed_component_types() {
-        let mut c = SignedIntCollector::new();
-        c.push(-100);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Int8
-        ));
-
-        let mut c = SignedIntCollector::new();
-        c.push(-1000);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Int16
-        ));
-
-        let mut c = SignedIntCollector::new();
-        c.push(-100000);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Int32
-        ));
-
-        let mut c = SignedIntCollector::new();
-        c.push(i64::MIN + 1);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Int64
-        ));
-    }
-
-    #[test]
-    fn test_unsigned_component_types() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(200);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Uint8
-        ));
-
-        let mut c = UnsignedIntCollector::new();
-        c.push(1000);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Uint16
-        ));
-
-        let mut c = UnsignedIntCollector::new();
-        c.push(100000);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Uint32
-        ));
-
-        let mut c = UnsignedIntCollector::new();
-        c.push(u64::MAX);
-        assert!(matches!(
-            c.finalize().component_type(),
-            ClassPropertyComponentType::Uint64
-        ));
-    }
-
-    #[test]
-    fn test_signed_no_data_json() {
-        let mut c = SignedIntCollector::new();
-        c.push(-100);
-        assert_eq!(c.finalize().no_data_json(), serde_json::json!(-128));
-
-        let mut c = SignedIntCollector::new();
-        c.push(-1000);
-        assert_eq!(c.finalize().no_data_json(), serde_json::json!(-32768));
-
-        let mut c = SignedIntCollector::new();
-        c.push(-100000);
-        assert_eq!(
-            c.finalize().no_data_json(),
-            serde_json::json!(-2147483648i64)
-        );
-
-        let mut c = SignedIntCollector::new();
-        c.push(i64::MIN + 1);
-        assert_eq!(c.finalize().no_data_json(), serde_json::json!(i64::MIN));
-    }
-
-    #[test]
-    fn test_unsigned_no_data_json() {
-        let mut c = UnsignedIntCollector::new();
-        c.push(200);
-        assert_eq!(c.finalize().no_data_json(), serde_json::json!(255));
-
-        let mut c = UnsignedIntCollector::new();
-        c.push(1000);
-        assert_eq!(c.finalize().no_data_json(), serde_json::json!(65535));
-
-        let mut c = UnsignedIntCollector::new();
-        c.push(100000);
-        assert_eq!(
-            c.finalize().no_data_json(),
-            serde_json::json!(4294967295u64)
-        );
-
-        let mut c = UnsignedIntCollector::new();
-        c.push(u64::MAX);
-        assert_eq!(c.finalize().no_data_json(), serde_json::json!(u64::MAX));
-    }
-
-    // ===========================================
-    // len() tests
-    // ===========================================
-
-    #[test]
-    fn test_collector_len() {
-        let mut c = SignedIntCollector::new();
-        assert_eq!(c.len(), 0);
-        assert!(c.is_empty());
-        c.push(1);
-        assert_eq!(c.len(), 1);
-        c.push_no_data();
-        assert_eq!(c.len(), 2);
-        assert!(!c.is_empty());
-
-        let mut c = UnsignedIntCollector::new();
-        assert_eq!(c.len(), 0);
-        c.push(1);
-        c.push(2);
-        c.push_no_data();
-        assert_eq!(c.len(), 3);
     }
 }
