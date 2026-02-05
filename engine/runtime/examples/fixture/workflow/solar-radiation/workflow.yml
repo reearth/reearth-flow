@@ -746,7 +746,7 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output: |
-            file::join_path("file:///home/shunski/work/eukarya/code/reearth-flow/engine/worktrees/feature-sun-pos/engine/runtime/examples/fixture/workflow/solar-radiation/color_based_on_shadow", "debug_grid_3dtiles")
+            file::join_path(env.get("outputPath"), "debug_grid_3dtiles")
 
     edges:
       # Section 1: CityGML Loading Pipeline

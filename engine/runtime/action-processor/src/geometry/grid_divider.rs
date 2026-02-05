@@ -425,21 +425,6 @@ fn clip_citygml_geometry_per_polygon(
                 // Each vertex gets placeholder UV coordinates (0.0, 0.0)
                 let uv_polygon = create_placeholder_uv_polygon(&clipped_poly);
 
-                // Debug: verify vertex counts match at creation time
-                let clipped_exterior_len = clipped_poly.exterior().0.len();
-                let uv_exterior_len = uv_polygon.exterior().0.len();
-                if clipped_exterior_len != uv_exterior_len {
-                    panic!(
-                        "GridDivider: Vertex count mismatch at creation!\n\
-                        clipped_poly exterior: {} vertices\n\
-                        uv_polygon exterior: {} vertices\n\
-                        clipped_poly first 3 coords: {:?}",
-                        clipped_exterior_len,
-                        uv_exterior_len,
-                        clipped_poly.exterior().0.iter().take(3).collect::<Vec<_>>()
-                    );
-                }
-
                 let single_citygml = CityGmlGeometry {
                     gml_geometries: vec![single_gml],
                     materials: citygml.materials.clone(),
@@ -448,23 +433,6 @@ fn clip_citygml_geometry_per_polygon(
                     polygon_textures: vec![None],
                     polygon_uvs: MultiPolygon2D::new(vec![uv_polygon]),
                 };
-
-                // Debug assertion: verify the invariant that polygon count matches array lengths
-                debug_assert_eq!(
-                    single_citygml.gml_geometries[0].polygons.len(),
-                    single_citygml.gml_geometries[0].len as usize,
-                    "GridDivider: polygon count mismatch with len"
-                );
-                debug_assert_eq!(
-                    single_citygml.polygon_materials.len(),
-                    1,
-                    "GridDivider: polygon_materials should have 1 element"
-                );
-                debug_assert_eq!(
-                    single_citygml.polygon_uvs.iter().count(),
-                    1,
-                    "GridDivider: polygon_uvs should have 1 element"
-                );
 
                 results.push(ClipResult {
                     geometry: GeometryValue::CityGmlGeometry(single_citygml),
