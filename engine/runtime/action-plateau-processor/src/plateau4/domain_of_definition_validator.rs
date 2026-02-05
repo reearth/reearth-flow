@@ -599,16 +599,23 @@ fn process_feature(
                 return;
             }
 
-            let fragment = match editable_node_to_xml(node) {
-                Ok(fragment) => fragment,
-                Err(err) => {
-                    stream_error = Some(err);
-                    return;
+            // Use the EditableNode's internal document directly instead of
+            // serializing to XML string and re-parsing (roundtrip elimination).
+            let doc = node.document();
+            let xml_ctx = match xml::create_context(doc) {
+                Ok(mut ctx) => {
+                    // Register namespaces from StreamTransformer's root namespace extraction
+                    for (prefix, uri) in node.namespaces() {
+                        if ctx.register_namespace(prefix, uri).is_err() {
+                            stream_error =
+                                Some(PlateauProcessorError::DomainOfDefinitionValidator(
+                                    "Failed to register namespace".to_string(),
+                                ));
+                            return;
+                        }
+                    }
+                    ctx
                 }
-            };
-
-            let xml_document = match xml::parse(fragment.as_bytes()) {
-                Ok(doc) => doc,
                 Err(e) => {
                     stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
                         format!("{e:?}"),
@@ -616,16 +623,7 @@ fn process_feature(
                     return;
                 }
             };
-            let xml_ctx = match xml::create_context(&xml_document) {
-                Ok(ctx) => ctx,
-                Err(e) => {
-                    stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
-                        format!("{e:?}"),
-                    ));
-                    return;
-                }
-            };
-            let root_node = match xml::get_root_readonly_node(&xml_document) {
+            let root_node = match xml::get_root_readonly_node(doc) {
                 Ok(node) => node,
                 Err(e) => {
                     stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
@@ -926,11 +924,6 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
             "Failed to get envelope element".to_string(),
         )
     })
-}
-
-fn editable_node_to_xml(node: &mut EditableNode) -> super::errors::Result<String> {
-    node.to_xml_with_namespaces()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))
 }
 
 fn collect_xlinks(
@@ -1455,43 +1448,30 @@ fn process_member_node(
                     .map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-                let xml_document = xml::parse(xml_content).map_err(|e| {
+                let xml_content_str = String::from_utf8(xml_content.to_vec()).map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                 })?;
-                let xml_ctx = xml::create_context(&xml_document).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let root_node = xml::get_root_readonly_node(&xml_document).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let gml_id_children = xml::find_readonly_nodes_by_xpath(
-                    &xml_ctx,
-                    ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
-                    &root_node,
-                )
-                .map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "Failed to evaluate xpath at {}:{}: {e:?}",
-                        file!(),
-                        line!()
-                    ))
-                })?;
-                gml_id_children.iter().for_each(|gml_id_node| {
-                    let Some(gml_id) = gml_id_node.get_attribute_ns("id", gml_ns) else {
-                        return;
-                    };
-                    if response.external_file_to_gml_ids.contains_key(gml_path) {
-                        response
-                            .external_file_to_gml_ids
-                            .get_mut(gml_path)
-                            .unwrap()
-                            .push(gml_id.clone());
-                    } else {
-                        response
-                            .external_file_to_gml_ids
-                            .insert(gml_path.to_string(), vec![gml_id.clone()]);
-                    }
-                });
+                let gml_path_owned = gml_path.to_string();
+                let ext_transformer = StreamTransformer::new(&xml_content_str)
+                    .with_root_namespaces()
+                    .map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                    })?;
+                ext_transformer
+                    .on(".//*", |node| {
+                        if let Some(id) = node.get_attribute_ns("http://www.opengis.net/gml", "id")
+                        {
+                            response
+                                .external_file_to_gml_ids
+                                .entry(gml_path_owned.clone())
+                                .or_default()
+                                .push(id);
+                        }
+                    })
+                    .for_each()
+                    .map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                    })?;
             }
             if !response.external_file_to_gml_ids.contains_key(gml_path)
                 || !response

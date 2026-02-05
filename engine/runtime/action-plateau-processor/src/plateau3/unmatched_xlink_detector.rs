@@ -1,9 +1,11 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
+    rc::Rc,
     str::FromStr,
 };
 
-use nusamai_citygml::GML31_NS;
+use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -96,6 +98,13 @@ impl From<XlinkGmlElement> for Response {
         }
     }
 }
+
+const LOD_TAGS: &[&str] = &[
+    "bldg:lod2Solid",
+    "bldg:lod3Solid",
+    "bldg:lod4Solid",
+    "bldg:lod4MultiSurface",
+];
 
 #[derive(Debug, Default, Clone)]
 struct XlinkGmlElement {
@@ -207,58 +216,104 @@ impl Processor for UnmatchedXlinkDetector {
         let xml_content = String::from_utf8(content.to_vec()).map_err(|_| {
             PlateauProcessorError::UnmatchedXlinkDetector("Invalid UTF-8".to_string())
         })?;
-        let Ok(document) = xml::parse(xml_content) else {
-            return Err(PlateauProcessorError::UnmatchedXlinkDetector(
-                "Failed to parse XML".to_string(),
-            )
-            .into());
-        };
-        let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to create xml context: {e}"
-            ))
-        })?;
-        let root_node = match xml::get_root_readonly_node(&document) {
-            Ok(node) => node,
-            Err(e) => {
-                return Err(PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                    "Failed to get root node: {e}"
+
+        let summary = Rc::new(RefCell::new(Summary::default()));
+        let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
+
+        let transformer = StreamTransformer::new(&xml_content)
+            .with_root_namespaces()
+            .map_err(|e| {
+                PlateauProcessorError::UnmatchedXlinkDetector(format!(
+                    "Failed to create StreamTransformer: {e:?}"
                 ))
-                .into());
-            }
-        };
-        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)
-        .map_err(|e| {
-            PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to find_readonly_nodes_in_elements with {e}"
-            ))
-        })?;
-        let mut summary = Summary::default();
-        for node in nodes {
-            let xlink_gml_element = extract_xlink_gml_element(&xml_ctx, &node)?;
-            let Some(xlink_gml_element) = xlink_gml_element else {
-                continue;
-            };
-            summary.xlink_from_count += xlink_gml_element.from.len() as u32;
-            summary.xlink_to_count += xlink_gml_element.to.len() as u32;
-            let response = Response::from(xlink_gml_element);
-            summary.unmatched_xlink_from_count += response.unmatched_xlink_from_count;
-            summary.unmatched_xlink_to_count += response.unmatched_xlink_to_count;
-            let mut ports = Vec::<Port>::new();
-            if response.unmatched_xlink_from_count > 0 {
-                ports.push(UNMATCHED_XLINK_FROM.clone());
-            }
-            if response.unmatched_xlink_to_count > 0 {
-                ports.push(UNMATCHED_XLINK_TO.clone());
-            }
-            for port in ports {
-                let mut feature = feature.clone();
-                feature.refresh_id();
-                let attributes: HashMap<Attribute, AttributeValue> = response.clone().into();
-                feature.attributes_mut().extend(attributes);
-                fw.send(ctx.new_with_feature_and_port(feature, port.clone()));
-            }
+            })?;
+
+        let mut t = transformer;
+        for target in ["bldg:Building", "bldg:BuildingPart", "bldg:Room"] {
+            let xpath = format!("//{target}");
+            let summary = Rc::clone(&summary);
+            let stream_error = Rc::clone(&stream_error);
+            let ctx = &ctx;
+
+            t = t.on(&xpath, move |node| {
+                if stream_error.borrow().is_some() {
+                    return;
+                }
+
+                // Check LOD condition: element must have at least one LOD child
+                let has_lod = node
+                    .children()
+                    .iter()
+                    .any(|c| LOD_TAGS.contains(&c.qname().as_str()));
+                if !has_lod {
+                    return;
+                }
+
+                let doc = node.document();
+                let mut xml_ctx = match xml::create_context(doc) {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        *stream_error.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
+                for (prefix, uri) in node.namespaces() {
+                    let _ = xml_ctx.register_namespace(prefix, uri);
+                }
+                let root_node = match xml::get_root_readonly_node(doc) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        *stream_error.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
+
+                match extract_xlink_gml_element(&xml_ctx, &root_node) {
+                    Ok(Some(xlink_gml_element)) => {
+                        let mut s = summary.borrow_mut();
+                        s.xlink_from_count += xlink_gml_element.from.len() as u32;
+                        s.xlink_to_count += xlink_gml_element.to.len() as u32;
+                        let response = Response::from(xlink_gml_element);
+                        s.unmatched_xlink_from_count += response.unmatched_xlink_from_count;
+                        s.unmatched_xlink_to_count += response.unmatched_xlink_to_count;
+                        drop(s);
+
+                        let mut ports = Vec::<Port>::new();
+                        if response.unmatched_xlink_from_count > 0 {
+                            ports.push(UNMATCHED_XLINK_FROM.clone());
+                        }
+                        if response.unmatched_xlink_to_count > 0 {
+                            ports.push(UNMATCHED_XLINK_TO.clone());
+                        }
+                        for port in ports {
+                            let mut f = feature.clone();
+                            f.refresh_id();
+                            let attributes: HashMap<Attribute, AttributeValue> =
+                                response.clone().into();
+                            f.attributes_mut().extend(attributes);
+                            fw.send(ctx.new_with_feature_and_port(f, port.clone()));
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        *stream_error.borrow_mut() = Some(e.to_string());
+                    }
+                }
+            });
         }
+
+        t.for_each().map_err(|e| {
+            PlateauProcessorError::UnmatchedXlinkDetector(format!("StreamTransformer error: {e:?}"))
+        })?;
+
+        if let Some(err) = Rc::try_unwrap(stream_error)
+            .expect("all callback references should be dropped after for_each()")
+            .into_inner()
+        {
+            return Err(PlateauProcessorError::UnmatchedXlinkDetector(err).into());
+        }
+
+        let summary = Rc::try_unwrap(summary).unwrap().into_inner();
         let mut feature = feature.clone();
         let attributes: HashMap<Attribute, AttributeValue> = summary.clone().into();
         feature.attributes_mut().extend(attributes);
@@ -284,12 +339,7 @@ fn extract_xlink_gml_element(
     node: &XmlRoNode,
 ) -> Result<Option<XlinkGmlElement>> {
     let gml_id = node
-        .get_attribute_ns(
-            "id",
-            String::from_utf8(GML31_NS.into_inner().to_vec())
-                .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?
-                .as_str(),
-        )
+        .get_attribute_ns("id", "http://www.opengis.net/gml")
         .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
             "Failed to get gml id".to_string(),
         ))?;

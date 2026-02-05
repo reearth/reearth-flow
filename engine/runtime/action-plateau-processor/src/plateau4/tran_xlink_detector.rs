@@ -1,8 +1,11 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
+    rc::Rc,
     str::FromStr,
 };
 
+use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -158,50 +161,93 @@ impl TransportationXlinkDetector {
         let storage = ctx.storage_resolver.resolve(&uri)?;
         let content = storage.get_sync(uri.path().as_path())?;
         let xml_content = String::from_utf8(content.to_vec())?;
-        let document = xml::parse(xml_content)?;
-        let xml_ctx = xml::create_context(&document)?;
-        let root_node = xml::get_root_readonly_node(&document)?;
 
-        // Find all Road features
-        let road_nodes = xml::find_readonly_nodes_by_xpath(
-            &xml_ctx,
-            "//tran:Road[tran:lod2MultiSurface or tran:lod3MultiSurface]",
-            &root_node,
-        )?;
+        let stream_error: Rc<RefCell<Option<Error>>> = Rc::new(RefCell::new(None));
 
-        for road_node in road_nodes {
-            if let Some(unreferenced_surfaces) =
-                extract_unreferenced_surfaces(&xml_ctx, &road_node)?
-            {
-                // For each unreferenced surface, create a separate feature
-                for (lod, surface_id) in unreferenced_surfaces.unreferenced_surfaces {
-                    let mut feature = feature.clone();
-                    feature.refresh_id();
+        let transformer = StreamTransformer::new(&xml_content)
+            .with_root_namespaces()
+            .map_err(|e| Error::TranXlinkDetector(format!("{e:?}")))?;
 
-                    // Set attributes according to expected output format
-                    feature.attributes_mut().insert(
-                        Attribute::new("gmlId"),
-                        AttributeValue::String(unreferenced_surfaces.road_id.clone()),
-                    );
-                    feature.attributes_mut().insert(
-                        Attribute::new("featureType"),
-                        AttributeValue::String("Road".to_string()),
-                    );
-                    feature
-                        .attributes_mut()
-                        .insert(Attribute::new("lod"), AttributeValue::String(lod));
-                    feature.attributes_mut().insert(
-                        Attribute::new("unreferenced"),
-                        AttributeValue::String(surface_id),
-                    );
-
-                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+        let stream_error_clone = Rc::clone(&stream_error);
+        let ctx = &ctx;
+        transformer
+            .on("//tran:Road", move |node| {
+                if stream_error_clone.borrow().is_some() {
+                    return;
                 }
-            } else {
-                // All surfaces are properly referenced
-                let feature = feature.clone();
-                fw.send(ctx.new_with_feature_and_port(feature, PASSED_PORT.clone()));
-            }
+
+                // Check LOD condition: element must have lod2 or lod3 MultiSurface child
+                let has_lod = node.children().iter().any(|c| {
+                    let qname = c.qname();
+                    qname == "tran:lod2MultiSurface" || qname == "tran:lod3MultiSurface"
+                });
+                if !has_lod {
+                    return;
+                }
+
+                let doc = node.document();
+                let mut xml_ctx = match xml::create_context(doc) {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() =
+                            Some(Error::TranXlinkDetector(format!("{e:?}")));
+                        return;
+                    }
+                };
+                for (prefix, uri) in node.namespaces() {
+                    let _ = xml_ctx.register_namespace(prefix, uri);
+                }
+                let root_node = match xml::get_root_readonly_node(doc) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() =
+                            Some(Error::TranXlinkDetector(format!("{e:?}")));
+                        return;
+                    }
+                };
+
+                match extract_unreferenced_surfaces(&xml_ctx, &root_node) {
+                    Ok(Some(unreferenced_surfaces)) => {
+                        for (lod, surface_id) in unreferenced_surfaces.unreferenced_surfaces {
+                            let mut feature = feature.clone();
+                            feature.refresh_id();
+
+                            feature.attributes_mut().insert(
+                                Attribute::new("gmlId"),
+                                AttributeValue::String(unreferenced_surfaces.road_id.clone()),
+                            );
+                            feature.attributes_mut().insert(
+                                Attribute::new("featureType"),
+                                AttributeValue::String("Road".to_string()),
+                            );
+                            feature
+                                .attributes_mut()
+                                .insert(Attribute::new("lod"), AttributeValue::String(lod));
+                            feature.attributes_mut().insert(
+                                Attribute::new("unreferenced"),
+                                AttributeValue::String(surface_id),
+                            );
+
+                            fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+                        }
+                    }
+                    Ok(None) => {
+                        let feature = feature.clone();
+                        fw.send(ctx.new_with_feature_and_port(feature, PASSED_PORT.clone()));
+                    }
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(e);
+                    }
+                }
+            })
+            .for_each()
+            .map_err(|e| Error::TranXlinkDetector(format!("{e:?}")))?;
+
+        if let Some(err) = Rc::try_unwrap(stream_error)
+            .expect("all callback references should be dropped after for_each()")
+            .into_inner()
+        {
+            return Err(err);
         }
 
         Ok(())

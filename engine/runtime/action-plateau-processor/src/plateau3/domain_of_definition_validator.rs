@@ -1,9 +1,11 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use nusamai_citygml::GML31_NS;
+use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::XmlContext;
@@ -512,7 +514,7 @@ fn process_feature(
     for member in members.iter() {
         let feture_type = member.get_name();
         let gml_id = member
-            .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+            .get_attribute_ns("id", "http://www.opengis.net/gml")
             .unwrap_or_default();
         let xlinks = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
             .map_err(|e| {
@@ -712,9 +714,7 @@ fn process_member_node(
 ) -> super::errors::Result<Vec<Feature>> {
     let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
-    let Some(gml_id) =
-        member.get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
-    else {
+    let Some(gml_id) = member.get_attribute_ns("id", "http://www.opengis.net/gml") else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get gml id".to_string(),
         ));
@@ -777,7 +777,7 @@ fn process_member_node(
         })?;
     for gml_id_child in gml_id_children {
         let gml_id = gml_id_child
-            .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+            .get_attribute_ns("id", "http://www.opengis.net/gml")
             .unwrap_or_default();
         let tag = xml::get_readonly_node_tag(&gml_id_child);
         gml_ids.insert(
@@ -1029,43 +1029,41 @@ fn process_member_node(
                     .map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-                let xml_document = xml::parse(xml_content).map_err(|e| {
+                let xml_str = String::from_utf8(xml_content.to_vec()).map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                 })?;
-                let xml_ctx = xml::create_context(&xml_document).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let root_node = xml::get_root_readonly_node(&xml_document).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let gml_id_children =
-                    xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@gml:id]", &root_node)
-                        .map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                                "Failed to evaluate xpath at {}:{}: {e:?}",
-                                file!(),
-                                line!()
-                            ))
-                        })?;
-                gml_id_children.iter().for_each(|gml_id_node| {
-                    let Some(gml_id) = gml_id_node.get_attribute_ns(
-                        "id",
-                        std::str::from_utf8(GML31_NS.into_inner()).unwrap(),
-                    ) else {
-                        return;
-                    };
-                    if response.external_file_to_gml_ids.contains_key(gml_path) {
-                        response
-                            .external_file_to_gml_ids
-                            .get_mut(gml_path)
-                            .unwrap()
-                            .push(gml_id.clone());
-                    } else {
-                        response
-                            .external_file_to_gml_ids
-                            .insert(gml_path.to_string(), vec![gml_id.clone()]);
-                    }
-                });
+                let collected_ids: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
+                let collected_ids_clone = Rc::clone(&collected_ids);
+                let transformer = StreamTransformer::new(&xml_str)
+                    .with_root_namespaces()
+                    .map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                            "Failed to create StreamTransformer: {e:?}"
+                        ))
+                    })?;
+                transformer
+                    .on("//*", move |node| {
+                        if let Some(id) = node.get_attribute_ns("http://www.opengis.net/gml", "id")
+                        {
+                            collected_ids_clone.borrow_mut().push(id);
+                        }
+                    })
+                    .for_each()
+                    .map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                            "StreamTransformer error: {e:?}"
+                        ))
+                    })?;
+                let ids = Rc::try_unwrap(collected_ids)
+                    .expect("all callback references should be dropped after for_each()")
+                    .into_inner();
+                for id in ids {
+                    response
+                        .external_file_to_gml_ids
+                        .entry(gml_path.to_string())
+                        .or_default()
+                        .push(id);
+                }
             }
             if !response.external_file_to_gml_ids.contains_key(gml_path)
                 || !response
@@ -1217,9 +1215,7 @@ fn process_member_node(
                     AttributeValue::String("InvalidLodXGeometry".to_string()),
                 );
                 result_feature.insert("parentTag", AttributeValue::String(parent_tag));
-                if let Some(gml_id) = parent
-                    .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
-                {
+                if let Some(gml_id) = parent.get_attribute_ns("id", "http://www.opengis.net/gml") {
                     result_feature.insert("gmlId", AttributeValue::String(gml_id));
                 } else {
                     result_feature.insert("gmlId", AttributeValue::String("".to_string()));
