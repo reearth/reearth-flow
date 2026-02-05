@@ -228,7 +228,7 @@ impl TestContext {
             let relative_path_str = relative_path.to_string_lossy();
 
             if path.is_file() {
-                zip.start_file(relative_path_str.as_ref(), options)?;
+                zip.start_file::<&str, ()>(relative_path_str.as_ref(), options)?;
                 let mut f = File::open(path)?;
                 std::io::copy(&mut f, &mut zip)?;
             } else if path.is_dir() {
