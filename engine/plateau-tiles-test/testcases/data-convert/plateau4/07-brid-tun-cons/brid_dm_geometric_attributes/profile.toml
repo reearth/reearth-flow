@@ -6,6 +6,7 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_brid.zip"
 ".attributes.meshcode" = "string"
 ".dm_attributes" = "json"
 
+# FIXME: main branch seems to have a bug causing texture presence test to fail
 # [tests.cesium_statistics]
 
 [tests.mvt_lines]
