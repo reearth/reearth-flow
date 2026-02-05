@@ -1,0 +1,10 @@
+citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_unf.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[filter.tree]
+"udx/unf/" = ["08EE751_unf_10169_gas_op.gml"]
