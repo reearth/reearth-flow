@@ -15,8 +15,8 @@ use reearth_flow_types::AttributeValue;
 use tracing::warn;
 
 use super::{
-    ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA, INT16_NO_DATA, INT32_NO_DATA, INT64_NO_DATA,
-    INT8_NO_DATA, UINT16_NO_DATA, UINT32_NO_DATA, UINT64_NO_DATA, UINT8_NO_DATA,
+    int_type_selector::{SignedIntCollector, UnsignedIntCollector},
+    ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA,
 };
 
 pub struct MetadataEncoder<'a> {
@@ -203,12 +203,10 @@ impl Class {
             } else {
                 match prop.type_ {
                     PropertyType::SignedInt => {
-                        // Push sentinel value for noData (don't update min_signed)
-                        prop.int_values.push(INT64_NO_DATA);
+                        prop.signed_collector.push_no_data();
                     }
                     PropertyType::UnsignedInt => {
-                        // Push sentinel value for noData (don't update max_unsigned)
-                        prop.uint_values.push(UINT64_NO_DATA);
+                        prop.unsigned_collector.push_no_data();
                     }
                     PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
                     PropertyType::String => {
@@ -251,9 +249,9 @@ impl Class {
                 continue;
             }
 
-            // Select optimal integer types based on actual value ranges
-            let selected_signed = select_signed_type(prop.min_signed, prop.max_unsigned);
-            let selected_unsigned = select_unsigned_type(prop.max_unsigned);
+            // Finalize collectors to select optimal integer types
+            let finalized_signed = prop.signed_collector.finalize();
+            let finalized_unsigned = prop.unsigned_collector.finalize();
 
             class_properties.insert(
                 name.to_string(),
@@ -267,8 +265,8 @@ impl Class {
                         PropertyType::Enum => ClassPropertyType::Enum,
                     },
                     component_type: match prop.type_ {
-                        PropertyType::SignedInt => Some(selected_signed.component_type()),
-                        PropertyType::UnsignedInt => Some(selected_unsigned.component_type()),
+                        PropertyType::SignedInt => Some(finalized_signed.component_type()),
+                        PropertyType::UnsignedInt => Some(finalized_unsigned.component_type()),
                         PropertyType::Float64 => Some(ClassPropertyComponentType::Float64),
                         PropertyType::String => None,
                         PropertyType::Enum => None,
@@ -290,9 +288,9 @@ impl Class {
                         (PropertyType::Float64, false) => Some(serde_json::Value::Number(
                             serde_json::Number::from_f64(FLOAT_NO_DATA).unwrap(),
                         )),
-                        (PropertyType::SignedInt, false) => Some(selected_signed.no_data_json()),
+                        (PropertyType::SignedInt, false) => Some(finalized_signed.no_data_json()),
                         (PropertyType::UnsignedInt, false) => {
-                            Some(selected_unsigned.no_data_json())
+                            Some(finalized_unsigned.no_data_json())
                         }
                     },
                     ..Default::default()
@@ -302,8 +300,8 @@ impl Class {
             // values
             // Align based on property type and selected integer size
             let alignment = match prop.type_ {
-                PropertyType::SignedInt => selected_signed.byte_size(),
-                PropertyType::UnsignedInt => selected_unsigned.byte_size(),
+                PropertyType::SignedInt => finalized_signed.byte_size(),
+                PropertyType::UnsignedInt => finalized_unsigned.byte_size(),
                 PropertyType::Float64 => 8,
                 PropertyType::Enum => 4,   // Enum uses u32
                 PropertyType::String => 1, // String values are raw bytes
@@ -315,14 +313,10 @@ impl Class {
             // Encode values based on property type
             match prop.type_ {
                 PropertyType::SignedInt => {
-                    for val in &prop.int_values {
-                        selected_signed.encode_value(*val, buffer);
-                    }
+                    finalized_signed.encode_all(buffer);
                 }
                 PropertyType::UnsignedInt => {
-                    for val in &prop.uint_values {
-                        selected_unsigned.encode_value(*val, buffer);
-                    }
+                    finalized_unsigned.encode_all(buffer);
                 }
                 _ => {
                     buffer.extend(prop.value_buffer);
@@ -546,19 +540,13 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
             prop.count = new_count;
         }
         PropertyType::SignedInt => {
-            // Store value temporarily, track min/max for type selection later
             let val: i64 = match value {
                 AttributeValue::Number(n) => n.as_i64().unwrap_or(0),
                 AttributeValue::String(s) => s.parse().unwrap_or(0),
                 AttributeValue::Bool(b) => *b as i64,
                 _ => 0,
             };
-            prop.int_values.push(val);
-            prop.min_signed = prop.min_signed.min(val);
-            // Track positive values using max_unsigned for upper bound check
-            if val >= 0 {
-                prop.max_unsigned = prop.max_unsigned.max(val as u64);
-            }
+            prop.signed_collector.push(val);
             let Some(new_count) = prop.count.checked_add(1) else {
                 warn!("Skipping SignedInt encoding: property count would overflow u32");
                 return;
@@ -566,15 +554,13 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
             prop.count = new_count;
         }
         PropertyType::UnsignedInt => {
-            // Store value temporarily, track max for type selection later
             let val: u64 = match value {
                 AttributeValue::Number(n) => n.as_u64().unwrap_or(0),
                 AttributeValue::String(s) => s.parse().unwrap_or(0),
                 AttributeValue::Bool(b) => *b as u64,
                 _ => 0,
             };
-            prop.uint_values.push(val);
-            prop.max_unsigned = prop.max_unsigned.max(val);
+            prop.unsigned_collector.push(val);
             let Some(new_count) = prop.count.checked_add(1) else {
                 warn!("Skipping UnsignedInt encoding: property count would overflow u32");
                 return;
@@ -718,14 +704,10 @@ struct Property {
     used: bool,
     array_offsets: Vec<u32>,
     string_offsets: Vec<u32>,
-    /// Temporary storage for signed integer values (for dynamic type selection)
-    int_values: Vec<i64>,
-    /// Temporary storage for unsigned integer values (for dynamic type selection)
-    uint_values: Vec<u64>,
-    /// Track minimum value for signed integers
-    min_signed: i64,
-    /// Track maximum value for unsigned integers
-    max_unsigned: u64,
+    /// Collector for signed integer values (handles min/max tracking and type selection)
+    signed_collector: SignedIntCollector,
+    /// Collector for unsigned integer values (handles max tracking and type selection)
+    unsigned_collector: UnsignedIntCollector,
 }
 
 impl Property {
@@ -746,10 +728,8 @@ impl Property {
             used: false,
             string_offsets,
             array_offsets,
-            int_values: Vec::new(),
-            uint_values: Vec::new(),
-            min_signed: i64::MAX,
-            max_unsigned: 0,
+            signed_collector: SignedIntCollector::new(),
+            unsigned_collector: UnsignedIntCollector::new(),
         }
     }
 }
@@ -786,195 +766,6 @@ enum PropertyType {
     String,
     // Boolean,
     Enum,
-}
-
-/// Selected integer type with its noData value and byte size
-#[derive(Debug, Clone, Copy)]
-enum SelectedSignedType {
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum SelectedUnsignedType {
-    Uint8,
-    Uint16,
-    Uint32,
-    Uint64,
-}
-
-/// Select the smallest signed integer type that can hold all values.
-/// Uses MIN values as noData, so we need min > type::MIN to use that type.
-/// Also checks that max fits within the positive range of the type.
-fn select_signed_type(min: i64, max: u64) -> SelectedSignedType {
-    // i8: min > -128 and max <= 127
-    if min > INT8_NO_DATA as i64 && max <= i8::MAX as u64 {
-        SelectedSignedType::Int8
-    // i16: min > -32768 and max <= 32767
-    } else if min > INT16_NO_DATA as i64 && max <= i16::MAX as u64 {
-        SelectedSignedType::Int16
-    // i32: min > -2147483648 and max <= 2147483647
-    } else if min > INT32_NO_DATA as i64 && max <= i32::MAX as u64 {
-        SelectedSignedType::Int32
-    } else {
-        SelectedSignedType::Int64
-    }
-}
-
-/// Select the smallest unsigned integer type that can hold all values.
-/// Uses MAX values as noData, so we need max < type::MAX to use that type.
-fn select_unsigned_type(max: u64) -> SelectedUnsignedType {
-    if max < UINT8_NO_DATA as u64 {
-        SelectedUnsignedType::Uint8
-    } else if max < UINT16_NO_DATA as u64 {
-        SelectedUnsignedType::Uint16
-    } else if max < UINT32_NO_DATA as u64 {
-        SelectedUnsignedType::Uint32
-    } else {
-        SelectedUnsignedType::Uint64
-    }
-}
-
-impl SelectedSignedType {
-    fn component_type(self) -> ClassPropertyComponentType {
-        match self {
-            SelectedSignedType::Int8 => ClassPropertyComponentType::Int8,
-            SelectedSignedType::Int16 => ClassPropertyComponentType::Int16,
-            SelectedSignedType::Int32 => ClassPropertyComponentType::Int32,
-            SelectedSignedType::Int64 => ClassPropertyComponentType::Int64,
-        }
-    }
-
-    fn no_data_json(self) -> serde_json::Value {
-        match self {
-            SelectedSignedType::Int8 => {
-                serde_json::Value::Number(serde_json::Number::from(INT8_NO_DATA))
-            }
-            SelectedSignedType::Int16 => {
-                serde_json::Value::Number(serde_json::Number::from(INT16_NO_DATA))
-            }
-            SelectedSignedType::Int32 => {
-                serde_json::Value::Number(serde_json::Number::from(INT32_NO_DATA))
-            }
-            SelectedSignedType::Int64 => {
-                serde_json::Value::Number(serde_json::Number::from(INT64_NO_DATA))
-            }
-        }
-    }
-
-    fn byte_size(self) -> usize {
-        match self {
-            SelectedSignedType::Int8 => 1,
-            SelectedSignedType::Int16 => 2,
-            SelectedSignedType::Int32 => 4,
-            SelectedSignedType::Int64 => 8,
-        }
-    }
-
-    /// Encode a value to bytes, converting INT64_NO_DATA sentinel to the appropriate noData
-    fn encode_value(self, val: i64, buf: &mut Vec<u8>) {
-        match self {
-            SelectedSignedType::Int8 => {
-                let v = if val == INT64_NO_DATA {
-                    INT8_NO_DATA
-                } else {
-                    val as i8
-                };
-                buf.extend(v.to_le_bytes());
-            }
-            SelectedSignedType::Int16 => {
-                let v = if val == INT64_NO_DATA {
-                    INT16_NO_DATA
-                } else {
-                    val as i16
-                };
-                buf.extend(v.to_le_bytes());
-            }
-            SelectedSignedType::Int32 => {
-                let v = if val == INT64_NO_DATA {
-                    INT32_NO_DATA
-                } else {
-                    val as i32
-                };
-                buf.extend(v.to_le_bytes());
-            }
-            SelectedSignedType::Int64 => {
-                buf.extend(val.to_le_bytes());
-            }
-        }
-    }
-}
-
-impl SelectedUnsignedType {
-    fn component_type(self) -> ClassPropertyComponentType {
-        match self {
-            SelectedUnsignedType::Uint8 => ClassPropertyComponentType::Uint8,
-            SelectedUnsignedType::Uint16 => ClassPropertyComponentType::Uint16,
-            SelectedUnsignedType::Uint32 => ClassPropertyComponentType::Uint32,
-            SelectedUnsignedType::Uint64 => ClassPropertyComponentType::Uint64,
-        }
-    }
-
-    fn no_data_json(self) -> serde_json::Value {
-        match self {
-            SelectedUnsignedType::Uint8 => {
-                serde_json::Value::Number(serde_json::Number::from(UINT8_NO_DATA))
-            }
-            SelectedUnsignedType::Uint16 => {
-                serde_json::Value::Number(serde_json::Number::from(UINT16_NO_DATA))
-            }
-            SelectedUnsignedType::Uint32 => {
-                serde_json::Value::Number(serde_json::Number::from(UINT32_NO_DATA))
-            }
-            SelectedUnsignedType::Uint64 => {
-                serde_json::Value::Number(serde_json::Number::from(UINT64_NO_DATA))
-            }
-        }
-    }
-
-    fn byte_size(self) -> usize {
-        match self {
-            SelectedUnsignedType::Uint8 => 1,
-            SelectedUnsignedType::Uint16 => 2,
-            SelectedUnsignedType::Uint32 => 4,
-            SelectedUnsignedType::Uint64 => 8,
-        }
-    }
-
-    /// Encode a value to bytes, converting UINT64_NO_DATA sentinel to the appropriate noData
-    fn encode_value(self, val: u64, buf: &mut Vec<u8>) {
-        match self {
-            SelectedUnsignedType::Uint8 => {
-                let v = if val == UINT64_NO_DATA {
-                    UINT8_NO_DATA
-                } else {
-                    val as u8
-                };
-                buf.extend(v.to_le_bytes());
-            }
-            SelectedUnsignedType::Uint16 => {
-                let v = if val == UINT64_NO_DATA {
-                    UINT16_NO_DATA
-                } else {
-                    val as u16
-                };
-                buf.extend(v.to_le_bytes());
-            }
-            SelectedUnsignedType::Uint32 => {
-                let v = if val == UINT64_NO_DATA {
-                    UINT32_NO_DATA
-                } else {
-                    val as u32
-                };
-                buf.extend(v.to_le_bytes());
-            }
-            SelectedUnsignedType::Uint64 => {
-                buf.extend(val.to_le_bytes());
-            }
-        }
-    }
 }
 
 pub fn add_padding(buf: &mut Vec<u8>, align: usize) {
