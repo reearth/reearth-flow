@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
-	"github.com/reearth/reearth-accounts/server/pkg/user"
 	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
@@ -18,7 +17,7 @@ func TestMe(t *testing.T) {
 
 	workspace := factory.NewWorkspace()
 	testUserSubject := "auth0|test-user"
-	auths := []user.Auth{
+	auths := []accountsuser.Auth{
 		{Provider: "auth0", Sub: testUserSubject},
 	}
 	userEntity := factory.NewUser(func(b *accountsuser.Builder) {

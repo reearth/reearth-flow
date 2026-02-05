@@ -37,7 +37,11 @@ func TestCreateWorkspace(t *testing.T) {
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockWorkspaceRepo.EXPECT().CreateWorkspace(gomock.Any(), "test").Return(w, nil),
+		mockWorkspaceRepo.EXPECT().
+			CreateWorkspace(gomock.Any(), workspace.CreateWorkspaceInput{
+				Name: "test",
+			}).
+			Return(w, nil),
 	)
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,

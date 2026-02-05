@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-accounts/server/pkg/user"
 	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -129,7 +128,7 @@ func TestUserFacingLogInteractor_Subscribe(t *testing.T) {
 	jobID := id.NewJobID()
 
 	// Setup auth info
-	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
+	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
@@ -172,7 +171,7 @@ func TestUserFacingLogInteractor_Unsubscribe(t *testing.T) {
 	jobID := id.NewJobID()
 
 	// Setup auth info
-	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
+	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
