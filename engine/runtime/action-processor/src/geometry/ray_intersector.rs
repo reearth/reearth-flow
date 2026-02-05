@@ -202,6 +202,10 @@ pub struct RayIntersector {
 }
 
 impl Processor for RayIntersector {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -245,7 +249,11 @@ impl Processor for RayIntersector {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
 
         // Process each pair group

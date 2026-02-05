@@ -183,7 +183,11 @@ impl Processor for SpatialFilter {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         if self.filters.is_empty() {
             // No filters provided, reject all candidates
             for candidate in &self.candidates {
@@ -657,7 +661,7 @@ mod tests {
 
     #[test]
     fn test_spatial_filter_no_filters() {
-        let filter = SpatialFilter {
+        let mut filter = SpatialFilter {
             params: SpatialFilterParams::default(),
             filters: Vec::new(),
             candidates: vec![Feature::new_with_attributes(Attributes::new())],

@@ -358,7 +358,11 @@ impl Processor for DomainOfDefinitionValidator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
         for (_, gml_id) in self.feature_buffer.iter() {
             for (k, v) in gml_id.iter() {

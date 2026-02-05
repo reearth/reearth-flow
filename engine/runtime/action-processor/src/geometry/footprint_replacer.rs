@@ -102,7 +102,7 @@ impl Processor for FootprintReplacer {
         Ok(())
     }
 
-    fn finish(&self, _: NodeContext, _: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(&mut self, _: NodeContext, _: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

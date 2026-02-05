@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use reearth_flow_eval_expr::engine::Engine;
@@ -14,8 +15,17 @@ use crate::{
 #[derive(Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum ExecutorOperation {
-    Op { ctx: ExecutorContext },
-    Terminate { ctx: NodeContext },
+    Op {
+        ctx: ExecutorContext,
+    },
+    FileBackedOp {
+        path: PathBuf,
+        port: Port,
+        context: Context,
+    },
+    Terminate {
+        ctx: NodeContext,
+    },
 }
 
 #[derive(Debug, Clone)]

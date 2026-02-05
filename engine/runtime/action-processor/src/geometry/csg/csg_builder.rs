@@ -140,6 +140,10 @@ pub struct CSGBuilder {
 }
 
 impl Processor for CSGBuilder {
+    fn is_accumulating(&self) -> bool {
+        false
+    }
+
     fn num_threads(&self) -> usize {
         2
     }
@@ -204,7 +208,11 @@ impl Processor for CSGBuilder {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Send all unpaired features to the rejected port
         for feature in self.left_buffer.values() {
             let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(

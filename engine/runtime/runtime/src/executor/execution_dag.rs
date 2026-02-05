@@ -55,6 +55,8 @@ pub struct EdgeType {
 
 pub struct ExecutionDag {
     pub(crate) id: GraphId,
+    /// Unique identifier for this workflow execution, used for cache isolation.
+    pub(crate) executor_id: uuid::Uuid,
     /// Nodes will be moved into execution threads.
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
@@ -68,6 +70,7 @@ impl ExecutionDag {
         feature_flush_threshold: usize,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
+        executor_id: uuid::Uuid,
     ) -> Result<Self, ExecutionError> {
         let graph_id = builder_dag.id;
         // We only create record writer once for every output port. Every `HashMap` in this `Vec` tracks if a node's output ports already have the record writer created.
@@ -163,6 +166,7 @@ impl ExecutionDag {
         );
         Ok(ExecutionDag {
             id: graph_id,
+            executor_id,
             graph,
             event_hub,
             ingress_state,
@@ -171,6 +175,10 @@ impl ExecutionDag {
 
     pub fn graph(&self) -> &petgraph::graph::DiGraph<NodeType, EdgeType> {
         &self.graph
+    }
+
+    pub fn executor_id(&self) -> uuid::Uuid {
+        self.executor_id
     }
 
     pub fn node_weight_mut(&mut self, node_index: petgraph::graph::NodeIndex) -> &mut NodeType {
