@@ -310,7 +310,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         }
                     }
-                    let _ = std::fs::remove_file(&path);
                 }
                 ExecutorOperation::Terminate { ctx } => {
                     is_terminated[index] = true;

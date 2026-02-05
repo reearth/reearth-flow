@@ -389,7 +389,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         self.wait_until_pool_has_capacity();
                         self.on_op_with_failure_tracking(ctx, has_failed.clone())?;
                     }
-                    let _ = std::fs::remove_file(&path);
                 }
                 ExecutorOperation::Terminate { ctx: _ctx } => {
                     is_terminated[index] = true;

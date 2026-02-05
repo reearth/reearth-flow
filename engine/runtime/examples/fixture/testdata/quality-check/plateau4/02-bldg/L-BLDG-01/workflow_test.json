@@ -1,6 +1,5 @@
 {
   "description": "Test PLATEAU4 L-BLSG-1 quality check solid intersection",
-  "skip": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
