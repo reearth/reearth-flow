@@ -710,7 +710,7 @@ fn validate_data_quality_attributes(
                         lod,
                         format!("uro:DataQualityAttribute/uro:geometrySrcDescLod{lod}"),
                     ));
-                } else {
+                } else if geom_texts.len() == 1 {
                     // Check if value is "000" for C08 validation
                     let text = geom_texts.first().cloned().unwrap_or_default();
                     if !text.is_empty() && text.trim() == "000" {
