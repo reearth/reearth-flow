@@ -1,0 +1,623 @@
+id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c70
+name: "PLATEAU4-quality-check-12-unf-workflow"
+entryGraphId: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d81
+with:
+  cityGmlPath:
+  schemasPath:
+  schemas:
+  codelistsPath:
+  codelists:
+  workerArtifactPath:
+  prcs:
+  objectListsPath:
+  objectLists:
+graphs:
+  # Include common graphs
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
+  # Domain-specific graphs
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/surface_validator.yml
+  - !include unf.yml
+  # Entry point graph
+  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d81
+    name: entry_point
+    nodes:
+      - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                schemas: env.get("schemasPath") ?? env.get("schemas"),
+                codelists: env.get("codelistsPath") ?? env.get("codelists"),
+                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
+              },
+            ]
+
+      - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9c
+        name: DirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      # Common quality check subgraph call
+      - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6c
+        name: CommonQualityCheck-01-01
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7d
+        name: CommonQualityCheck-01-02
+        type: subGraph
+        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
+
+      # ===== UNF Domain-Specific Validation =====
+      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0d
+        name: FeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          sourceDataset: |
+            env.get("__value")["cityGmlPath"]
+          extractArchive: true
+          destPrefix: udx
+
+      - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1e
+        name: FeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
+        name: FeatureCounterFileIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: fileIndex
+
+      - id: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d30
+        name: PLATEAU4.UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
+
+      - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e41
+        name: AttributeMapperGmlPathAndFilename
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: gmlPath
+              expr: |
+                env.get("__value").path
+            - attribute: gmlFilename
+              expr: |
+                env.get("__value").name
+            - attribute: fileIndex
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: codelists
+              expr: |
+                env.get("__value").codelists
+            - attribute: schemas
+              expr: |
+                env.get("__value").schemas
+            - attribute: udxDirs
+              expr: |
+                // Extract folder from path (e.g., "file://path/unf/file.gml" -> "unf")
+                // The folder is the second-to-last segment of the path
+                let path = env.get("__value").path;
+                let parts = path.split("/");
+                let len = parts.len();
+                if len >= 2 {
+                  parts[len - 2]
+                } else {
+                  env.get("__value").udxDirs ?? ""
+                }
+
+      - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5c
+        name: FeatureCityGmlReader
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          codelistsPath: env.get("__value").codelists
+          flatten: true
+          dataset: |
+            env.get("__value")["gmlPath"]
+
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: env.get("prcs")
+
+      - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7e
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes: [fileIndex]
+          order: ascending
+
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8f
+        name: FeatureCounterFeatureIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 0
+          outputAttribute: featureIndex
+
+      # UNF Validation Subgraph
+      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        name: UNFValidation
+        type: subGraph
+        subGraphId: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d82
+
+      # ===== Error Summary Output =====
+      # File info extraction for per-file summary
+      - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e11
+        name: FileInfoExtractor
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: filename
+              expr: |
+                env.get("__value").gmlFilename
+            - attribute: udxDirs
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: gmlFilename
+              expr: |
+                env.get("__value").gmlFilename
+            - attribute: UndergroundFacility
+              expr: |
+                env.get("__value").UndergroundFacility
+            - attribute: lod
+              expr: |
+                env.get("__value").lod ?? "0"
+
+      - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        name: GeometryRemoverForErrorSummary
+        type: action
+        action: GeometryRemover
+
+      - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2d
+        name: ErrorSummaryMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").filename
+          supplierAttributeValue: |
+            env.get("__value").Filename ?? env.get("__value").filename
+
+      # Instance count per file (with lod for grouping)
+      - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3e
+        name: InstanceCountCalculator
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - gmlFilename
+            - fileIndex
+            - udxDirs
+            - lod
+          calculations:
+            - newAttribute: UndergroundFacility
+              expr: |
+                let ft = env.get("__feature_type");
+                // Underground facility feature types
+                if ft == "unf:WaterPipe" || ft == "unf:SewerPipe" || ft == "unf:ThermalPipe" ||
+                   ft == "unf:OilGasChemicalsPipe" || ft == "unf:Pipe" ||
+                   ft == "unf:TelecommunicationsCable" || ft == "unf:ElectricityCable" || ft == "unf:Cable" ||
+                   ft == "unf:Duct" || ft == "unf:Appurtenance" || ft == "unf:Manhole" || ft == "unf:Handhole" {
+                  1
+                } else {
+                  0
+                }
+
+      # Summary CSV output - per-file result
+      - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50
+        name: SummaryAttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex ?? env.get("__value").index
+            - attribute: Folder
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: Filename
+              expr: |
+                env.get("__value").gmlFilename ?? env.get("__value").filename
+            - attribute: フィーチャータイプ
+              expr: |
+                "UndergroundFacility"
+            - attribute: LOD
+              expr: |
+                env.get("__value").lod ?? "0"
+            - attribute: インスタンス数
+              expr: |
+                env.get("__value").UndergroundFacility ?? 0
+            - attribute: 面のエラー
+              expr: |
+                env.get("__value")._num_surface_errors ?? 0
+            - attribute: 面の向き不正
+              expr: |
+                env.get("__value")._num_orientation_errors ?? 0
+            - attribute: 非水密立体
+              expr: |
+                env.get("__value")._num_not_closed_solid ?? 0
+            - attribute: 立体のエラー
+              expr: |
+                env.get("__value")._num_solid_errors ?? 0
+
+      - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e61
+        name: CSVSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_検査結果一覧.csv")
+
+      # JSON summary output
+      - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
+        name: StatisticsCalculator
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: 面のエラー
+              expr: |
+                env.get("__value")["面のエラー"] ?? 0
+            - newAttribute: 面の向き不正
+              expr: |
+                env.get("__value")["面の向き不正"] ?? 0
+            - newAttribute: 非水密立体
+              expr: |
+                env.get("__value")["非水密立体"] ?? 0
+            - newAttribute: 立体のエラー
+              expr: |
+                env.get("__value")["立体のエラー"] ?? 0
+            - newAttribute: totalErrorCount
+              expr: |
+                let total = 0;
+                let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー"];
+                for key in keys {
+                  total += env.get("__value")[key] ?? 0;
+                }
+                total
+
+      - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8d
+        name: JSONSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          converter: |
+            if env.get("__features").is_empty() {
+              []
+            } else {
+              let result = [];
+              let feature = env.get("__features")[0];
+              let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー"];
+              for key in keys {
+                result.push(#{
+                  name: key,
+                  count: feature[key] ?? 0,
+                });
+              }
+              result
+            }
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "summary_unf.json")
+
+      # qc_result_ok generation flow
+      - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9f
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr: |
+                env.get("__value")["totalErrorCount"] ?? 0
+
+      - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c00
+        name: FeatureFilterNoErrors
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["totalErrorCount"] == 0
+              outputPort: default
+
+      - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d11
+        name: FileWriterQcResultOk
+        type: action
+        action: JsonWriter
+        with:
+          converter: '[]'
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+            let dirname = env.get("workerArtifactPath");
+            file::join_path(dirname, filename)
+
+      # ZipFileWriter - Bundle all output files
+      - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
+            let dirname = env.get("workerArtifactPath");
+            file::join_path(dirname, filename)
+
+    edges:
+      # FeatureCreator → DirectoryDecompressor
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6e
+        from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+        to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9c
+        fromPort: default
+        toPort: default
+
+      # DirectoryDecompressor → CommonQualityCheck-01-01
+      - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7f
+        from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9c
+        to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6c
+        fromPort: default
+        toPort: default
+
+      # DirectoryDecompressor → CommonQualityCheck-01-02
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c80
+        from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9c
+        to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7d
+        fromPort: default
+        toPort: default
+
+      # DirectoryDecompressor → FeatureFilePathExtractor (for UNF validation)
+      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9c
+        to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0d
+        fromPort: default
+        toPort: default
+
+      # FeatureFilePathExtractor → FeatureFilterByGml
+      - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0c
+        from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0d
+        to: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1e
+        fromPort: default
+        toPort: default
+
+      # FeatureFilterByGml → FeatureCounterFileIndex
+      - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1d
+        from: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1e
+        to: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
+        fromPort: default
+        toPort: default
+
+      # FeatureCounterFileIndex → UDXFolderExtractor
+      - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2e
+        from: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
+        to: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d30
+        fromPort: default
+        toPort: default
+
+      # UDXFolderExtractor → AttributeMapperGmlPathAndFilename
+      - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3f
+        from: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d30
+        to: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e41
+        fromPort: default
+        toPort: default
+
+      # AttributeMapperGmlPathAndFilename → FeatureCityGmlReader
+      - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c40
+        from: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e41
+        to: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5c
+        fromPort: default
+        toPort: default
+
+      # FeatureCityGmlReader → HorizontalReprojector
+      - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d51
+        from: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5c
+        to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
+        fromPort: default
+        toPort: default
+
+      # HorizontalReprojector → FeatureSorter
+      - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6c
+        from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
+        to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7e
+        fromPort: default
+        toPort: default
+
+      # FeatureSorter → FeatureCounterFeatureIndex
+      - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
+        from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7e
+        to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8f
+        fromPort: default
+        toPort: default
+
+      # FeatureCounterFeatureIndex → UNFValidation
+      - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
+        from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8f
+        to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        fromPort: default
+        toPort: default
+
+      # FeatureCounterFeatureIndex → InstanceCountCalculator
+      - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9e
+        from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8f
+        to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3e
+        fromPort: default
+        toPort: default
+
+      # InstanceCountCalculator → FileInfoExtractor (for requestor)
+      - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d10
+        from: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3e
+        to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e11
+        fromPort: default
+        toPort: default
+
+      # FileInfoExtractor → ErrorSummaryMerger (requestor)
+      - id: c7d8e9f0-a1b2-3c4d-5e6f-7a8b9c0d1e21
+        from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e11
+        to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2d
+        fromPort: default
+        toPort: requestor
+
+      # UNF Validation error counts → GeometryRemover → ErrorSummaryMerger (supplier)
+      # Surface Errors (面のエラー)
+      - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b50
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountSurfaceErrors
+        toPort: default
+
+      # Orientation Errors (面の向き不正)
+      - id: d8e9f0a1-b2c3-4d5e-6f7a-8b9c0d1e2f3c
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountOrientationErrors
+        toPort: default
+
+      # Not Closed Solid (非水密立体)
+      - id: e9f0a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a4d
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountNotClosedSolid
+        toPort: default
+
+      # Solid Errors (立体のエラー)
+      - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5f
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountSolidErrors
+        toPort: default
+
+      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c71
+        from: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2d
+        fromPort: default
+        toPort: supplier
+
+      # ErrorSummaryMerger → SummaryAttributeMapper
+      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d72
+        from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2d
+        to: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50
+        fromPort: merged
+        toPort: default
+
+      - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e82
+        from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2d
+        to: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50
+        fromPort: unmerged
+        toPort: default
+
+      # SummaryAttributeMapper → CSVSummaryWriter
+      - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+        from: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50
+        to: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e61
+        fromPort: default
+        toPort: default
+
+      # SummaryAttributeMapper → StatisticsCalculator
+      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a02
+        from: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50
+        to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
+        fromPort: default
+        toPort: default
+
+      # StatisticsCalculator → JSONSummaryWriter
+      - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b12
+        from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
+        to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8d
+        fromPort: default
+        toPort: default
+
+      # ===== ZipFileWriter connections =====
+      # Common subgraph outputs to ZipFileWriter
+      - id: dd2e3f4a-b6c7-8d9e-0f1a-2b3c4d5e6f72
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6c
+        to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
+        fromPort: default
+        toPort: default
+
+      - id: ee3f4a5b-c7d8-9e0f-1a2b-3c4d5e6f7a82
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7d
+        to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
+        fromPort: default
+        toPort: default
+
+      # UNF validation file output to ZipFileWriter
+      - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b92
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
+        fromPort: fileOutput
+        toPort: default
+
+      # CSVSummaryWriter → ZipFileWriter
+      - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c03
+        from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e61
+        to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
+        fromPort: default
+        toPort: default
+
+      # JSONSummaryWriter → ZipFileWriter
+      - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d13
+        from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8d
+        to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
+        fromPort: default
+        toPort: default
+
+      # ===== qc_result_ok generation flow =====
+      # StatisticsCalculator → StatisticsCalculatorTotalErrors
+      - id: c7d8e9f0-a1b2-3c4d-5e6f-7a8b9c0d1e22
+        from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
+        to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9f
+        fromPort: default
+        toPort: default
+
+      # StatisticsCalculatorTotalErrors → FeatureFilterNoErrors
+      - id: d8e9f0a1-b2c3-4d5e-6f7a-8b9c0d1e2f32
+        from: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9f
+        to: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c00
+        fromPort: default
+        toPort: default
+
+      # FeatureFilterNoErrors → FileWriterQcResultOk
+      - id: e9f0a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a42
+        from: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c00
+        to: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d11
+        fromPort: default
+        toPort: default

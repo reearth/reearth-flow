@@ -1,0 +1,80 @@
+# Underground Facility (地下埋設物) quality check subgraph
+# Underground facilities include:
+# - Pipes: WaterPipe, SewerPipe, ThermalPipe, OilGasChemicalsPipe, Pipe
+# - Cables: TelecommunicationsCable, ElectricityCable, Cable
+# - Appurtenances: Duct, Appurtenance, Manhole, Handhole
+# LOD0-4 supported with various geometry types
+# TODO: Implement actual validation logic based on FME workflow:
+# - Surface topology validation (LOD0-4)
+# - Solid boundary validation (LOD1-4)
+# - Non-watertight solid detection
+# - CompositeSurface continuity validation
+id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d82
+name: "UNF.UndergroundFacilityValidation"
+nodes:
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6f
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  # Placeholder - pass through to output routers
+  # This creates the required output ports without actual validation
+  - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c9
+    name: OutputRouterSurfaceErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountSurfaceErrors
+
+  - id: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5ca
+    name: OutputRouterOrientationErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountOrientationErrors
+
+  - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d92
+    name: OutputRouterNotClosed
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountNotClosedSolid
+
+  - id: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5cb
+    name: OutputRouterSolidErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountSolidErrors
+
+  - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    name: OutputRouterFileOutput
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileOutput
+
+edges:
+  # No edges for now - this is a placeholder subgraph
+  # The output routers define the ports but don't produce any data
+  []
+
+ports:
+  outputs:
+    - id: errorCountSurfaceErrors
+      nodeId: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c9
+      port: default
+    - id: errorCountOrientationErrors
+      nodeId: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5ca
+      port: default
+    - id: errorCountNotClosedSolid
+      nodeId: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d92
+      port: default
+    - id: errorCountSolidErrors
+      nodeId: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5cb
+      port: default
+    - id: fileOutput
+      nodeId: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+      port: default
