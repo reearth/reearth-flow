@@ -38,20 +38,19 @@ export default ({
   const { value: debugRunState, updateValue: updateDebugRunState } =
     useIndexedDB("debugRun");
 
-  const debugJobId = useMemo(
+  const debugJobState = useMemo(
     () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
 
-  const { job, refetch } = useGetJob(debugJobId);
+  const { job, refetch } = useGetJob(debugJobState?.jobId);
 
   const debugJob = job;
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
-    debugJobId,
+    debugJobState?.jobId,
     !debugJob ||
       debugJob?.status === "completed" ||
       debugJob?.status === "failed" ||
@@ -105,13 +104,14 @@ export default ({
 
   useEffect(() => {
     if (
-      realTimeJobStatus === "completed" ||
-      realTimeJobStatus === "failed" ||
-      realTimeJobStatus === "cancelled"
+      (realTimeJobStatus === "completed" ||
+        realTimeJobStatus === "failed" ||
+        realTimeJobStatus === "cancelled") &&
+      debugJobState?.status !== realTimeJobStatus
     ) {
       refetch();
     }
-  }, [realTimeJobStatus, refetch]);
+  }, [realTimeJobStatus, debugJobState, refetch]);
 
   return {
     showOverlayElement,
