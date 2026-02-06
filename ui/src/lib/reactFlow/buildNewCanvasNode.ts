@@ -1,7 +1,5 @@
 import { XYPosition } from "@xyflow/react";
-import { JSONSchema7Definition } from "json-schema";
 
-import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
@@ -85,17 +83,13 @@ const createActionNode = async (
   const action = await fetcher<Action>(`${api}/actions/${name}`);
   if (!action) return null;
 
-  const patchedParams = patchAnyOfAndOneOfType(
-    action.parameter as JSONSchema7Definition,
-  );
-
   const defaultParams: Record<string, any> = {};
   if (
-    patchedParams &&
-    typeof patchedParams === "object" &&
-    "properties" in patchedParams
+    action.parameter &&
+    typeof action.parameter === "object" &&
+    "properties" in action.parameter
   ) {
-    const properties = patchedParams.properties as Record<string, unknown>;
+    const properties = action.parameter.properties as Record<string, unknown>;
     for (const [key, propertySchema] of Object.entries(properties)) {
       if (
         propertySchema &&

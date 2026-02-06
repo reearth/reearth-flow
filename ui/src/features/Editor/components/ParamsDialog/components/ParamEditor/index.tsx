@@ -4,9 +4,7 @@ import {
   PuzzlePieceIcon,
   QuestionIcon,
 } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
-import { JSONSchema7Definition } from "json-schema";
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 
 import {
   SchemaForm,
@@ -21,7 +19,6 @@ import {
   TooltipContent,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
-import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
@@ -71,19 +68,7 @@ const ParamEditor: React.FC<Props> = ({
     fetchedAction,
   );
 
-  // This is a patch for the `anyOf` type in JSON Schema.
-  const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
-    () =>
-      createdAction?.parameter
-        ? patchAnyOfAndOneOfType(
-            createdAction.parameter as JSONSchema7Definition,
-          )
-        : undefined,
-    [createdAction?.parameter],
-  );
-
-  // Generate UI schema from original schema (before patching) to preserve Expr detection
-  const originalSchema = createdAction?.parameter;
+  const schema = createdAction?.parameter;
 
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
@@ -168,8 +153,7 @@ const ParamEditor: React.FC<Props> = ({
               {createdAction && (
                 <SchemaForm
                   readonly={readonly}
-                  schema={patchedSchemaParams}
-                  originalSchema={originalSchema}
+                  schema={schema}
                   actionName={nodeMeta.officialName}
                   defaultFormData={nodeParams}
                   onChange={onParamsUpdate}
