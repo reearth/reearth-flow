@@ -199,8 +199,6 @@ async fn parse_tree_reader<R: BufRead>(
 fn convert_appearance_store_to_attribute_value(
     appearance_store: &AppearanceStore,
 ) -> AttributeValue {
-    println!("==> appearance_store: {:?}", appearance_store);
-
     use std::collections::HashMap;
     let mut appearance_attrs = HashMap::new();
 
@@ -216,7 +214,7 @@ fn convert_appearance_store_to_attribute_value(
                     "uri".to_string(),
                     AttributeValue::String(texture.image_url.to_string()),
                 );
-                
+
                 // Add targets information by checking all themes for ring_id_to_texture mappings
                 let mut all_targets = Vec::new();
                 for (_theme_name, theme) in &appearance_store.themes {
@@ -225,11 +223,8 @@ fn convert_appearance_store_to_attribute_value(
                             let mut target_map = HashMap::new();
                             // Create URI from ring ID (this follows the pattern seen in the input GML)
                             let uri = format!("#{}", ring_id.0);
-                            target_map.insert(
-                                "uri".to_string(),
-                                AttributeValue::String(uri),
-                            );
-                            
+                            target_map.insert("uri".to_string(), AttributeValue::String(uri));
+
                             // Add texture coordinates from the line string
                             let mut coord_strings = Vec::new();
                             // Access the points using the public API (likely iter method)
@@ -246,19 +241,16 @@ fn convert_appearance_store_to_attribute_value(
                                     AttributeValue::Array(tex_coords),
                                 );
                             }
-                            
+
                             all_targets.push(AttributeValue::Map(target_map));
                         }
                     }
                 }
-                
+
                 if !all_targets.is_empty() {
-                    texture_map.insert(
-                        "targets".to_string(),
-                        AttributeValue::Array(all_targets),
-                    );
+                    texture_map.insert("targets".to_string(), AttributeValue::Array(all_targets));
                 }
-                
+
                 AttributeValue::Map(texture_map)
             })
             .collect();

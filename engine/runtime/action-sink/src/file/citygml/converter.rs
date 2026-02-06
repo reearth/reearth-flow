@@ -45,23 +45,26 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                         if let Some(AttributeValue::String(uri)) = tex_map.get("uri") {
                             textures.push(uri.clone());
                         }
-                        
+
                         // Extract targets if available
                         if let Some(AttributeValue::Array(target_array)) = tex_map.get("targets") {
                             for target in target_array {
                                 if let AttributeValue::Map(target_map) = target {
-                                    if let Some(AttributeValue::String(uri)) = target_map.get("uri") {
+                                    if let Some(AttributeValue::String(uri)) = target_map.get("uri")
+                                    {
                                         let mut texture_coords = Vec::new();
-                                        
+
                                         // Extract texture coordinates if available
-                                        if let Some(AttributeValue::Array(coord_array)) = target_map.get("textureCoordinates") {
+                                        if let Some(AttributeValue::Array(coord_array)) =
+                                            target_map.get("textureCoordinates")
+                                        {
                                             for coord in coord_array {
                                                 if let AttributeValue::String(coord_str) = coord {
                                                     texture_coords.push(coord_str.clone());
                                                 }
                                             }
                                         }
-                                        
+
                                         targets.push(TargetData {
                                             uri: uri.clone(),
                                             texture_coordinates: texture_coords,
@@ -85,7 +88,11 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                 }
             }
 
-            Some(AppearanceData { textures, themes, targets })
+            Some(AppearanceData {
+                textures,
+                themes,
+                targets,
+            })
         }
         _ => None,
     }
