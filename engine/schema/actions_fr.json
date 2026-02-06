@@ -6663,6 +6663,24 @@
       ]
     },
     {
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
+      "type": "processor",
+      "description": "Checks if a CompositeSurface is continuous (all parts share edges)",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
