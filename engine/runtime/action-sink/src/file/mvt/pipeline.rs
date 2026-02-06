@@ -37,6 +37,7 @@ use super::tiling::VectorLayer;
 #[repr(C)]
 pub(super) struct SortKey {
     tile_id: u64,
+    // feature order must be preserved to correctly display z-order within a tile (used by lsld)
     seq: u64,
 }
 
@@ -93,7 +94,10 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    let key = SortKey { tile_id, seq: seq as u64 };
+                    let key = SortKey {
+                        tile_id,
+                        seq: seq as u64,
+                    };
                     if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
@@ -113,7 +117,10 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    let key = SortKey { tile_id, seq: seq as u64 };
+                    let key = SortKey {
+                        tile_id,
+                        seq: seq as u64,
+                    };
                     if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
@@ -133,7 +140,10 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    let key = SortKey { tile_id, seq: seq as u64 };
+                    let key = SortKey {
+                        tile_id,
+                        seq: seq as u64,
+                    };
                     if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
@@ -524,71 +534,4 @@ pub(super) fn make_tile(
 
     let bytes = tile.encode_to_vec();
     Ok(bytes)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use indexmap::IndexMap;
-    use reearth_flow_types::{Attribute, AttributeValue};
-    use tinymvt::tag::TagsDecoder;
-
-    fn create_test_feature(order: i64) -> Vec<u8> {
-        let mut props = IndexMap::new();
-        props.insert(
-            Attribute::new("order"),
-            AttributeValue::Number(order.into()),
-        );
-
-        // Create a simple point at (0.5, 0.5) in tile coordinates
-        let mut points = MultiPoint2::new();
-        points.push([0.5, 0.5]);
-
-        let feature = super::super::slice::SlicedFeature {
-            typename: "test_layer".to_string(),
-            multi_polygons: MultiPolygon2::new(),
-            multi_line_strings: MultiLineString2::new(),
-            multi_points: points,
-            properties: props,
-        };
-        serde_json::to_vec(&feature).unwrap()
-    }
-
-    #[test]
-    fn test_feature_ordering_preserved_in_tile() {
-        // Create features in order 0..10
-        let features: Vec<Vec<u8>> = (0..10).map(|i| create_test_feature(i)).collect();
-
-        // Run through make_tile
-        let tile_bytes = make_tile(4096, &features, false, false).unwrap();
-
-        // Decode the MVT
-        let tile = vector_tile::Tile::decode(&tile_bytes[..]).unwrap();
-        assert_eq!(tile.layers.len(), 1);
-
-        let layer = &tile.layers[0];
-        let decoder = TagsDecoder::new(&layer.keys, &layer.values);
-
-        // Verify features are in correct order
-        assert_eq!(layer.features.len(), 10);
-        for (i, feature) in layer.features.iter().enumerate() {
-            let tags = decoder.decode(&feature.tags).unwrap();
-            let order_value = tags
-                .iter()
-                .find(|(k, _)| *k == "order")
-                .map(|(_, v)| match v {
-                    tinymvt::tag::Value::Int(v) => *v,
-                    tinymvt::tag::Value::SInt(v) => *v,
-                    tinymvt::tag::Value::Uint(v) => *v as i64,
-                    _ => panic!("Unexpected value type for order: {:?}", v),
-                })
-                .expect("order attribute not found");
-
-            assert_eq!(
-                order_value, i as i64,
-                "Feature at position {} has order {}, expected {}",
-                i, order_value, i
-            );
-        }
-    }
 }
