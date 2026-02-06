@@ -50,7 +50,7 @@ const TitleFieldTemplate = <
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" align="end" className="bg-primary">
-              <div className="max-w-[300px] text-xs text-muted-foreground">
+              <div className="max-w-75 text-xs text-muted-foreground">
                 {Object.entries(descriptions).map(([key, value], index) => (
                   <div key={index}>
                     <span className="font-medium">{key}:</span> {String(value)}

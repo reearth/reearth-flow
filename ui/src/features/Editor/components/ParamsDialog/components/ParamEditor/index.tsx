@@ -4,7 +4,9 @@ import {
   PuzzlePieceIcon,
   QuestionIcon,
 } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { RJSFSchema } from "@rjsf/utils";
+import { JSONSchema7Definition } from "json-schema";
+import { memo, useMemo, useState } from "react";
 
 import {
   SchemaForm,
@@ -19,6 +21,7 @@ import {
   TooltipContent,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
@@ -68,7 +71,19 @@ const ParamEditor: React.FC<Props> = ({
     fetchedAction,
   );
 
-  const schema = createdAction?.parameter;
+  // This is a patch for the `anyOf` type in JSON Schema.
+  const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
+    () =>
+      createdAction?.parameter
+        ? patchAnyOfAndOneOfType(
+            createdAction.parameter as JSONSchema7Definition,
+          )
+        : undefined,
+    [createdAction?.parameter],
+  );
+
+  // Generate UI schema from original schema (before patching) to preserve Expr detection
+  const originalSchema = createdAction?.parameter;
 
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
@@ -153,7 +168,8 @@ const ParamEditor: React.FC<Props> = ({
               {createdAction && (
                 <SchemaForm
                   readonly={readonly}
-                  schema={schema}
+                  schema={patchedSchemaParams}
+                  originalSchema={originalSchema}
                   actionName={nodeMeta.officialName}
                   defaultFormData={nodeParams}
                   onChange={onParamsUpdate}
@@ -198,7 +214,7 @@ const ParamEditor: React.FC<Props> = ({
                         side="top"
                         align="end"
                         className="bg-primary">
-                        <div className="max-w-[300px] text-xs text-muted-foreground">
+                        <div className="max-w-75 text-xs text-muted-foreground">
                           {Object.entries(customizationDescriptions).map(
                             ([key, value], index) => (
                               <div key={index}>
@@ -248,13 +264,13 @@ const ParamEditor: React.FC<Props> = ({
                   </h4>
                   <div className="my-4 flex w-full flex-col gap-4">
                     <div className="flex items-center text-sm">
-                      <p className="mr-2 w-[150px] font-medium">
+                      <p className="mr-2 w-37.5 font-medium">
                         {t("Action Name")}:
                       </p>
                       <p className="text-sm">{nodeMeta.officialName}</p>
                     </div>
                     <div className="flex items-center text-sm">
-                      <p className="mr-2 w-[150px] font-medium">
+                      <p className="mr-2 w-37.5 font-medium">
                         {t("Description")}:
                       </p>
                       {createdAction?.description && (

@@ -16,6 +16,7 @@ import { ThemedForm } from "./ThemedForm";
 type SchemaFormProps = {
   readonly?: boolean;
   schema?: RJSFSchema;
+  originalSchema?: any; // Original schema before patching, used for UI schema generation
   actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
   onChange: (data: any) => void;
@@ -138,6 +139,7 @@ const buildExprUiSchema = (
 const SchemaForm: React.FC<SchemaFormProps> = ({
   readonly,
   schema,
+  originalSchema,
   actionName,
   defaultFormData,
   onChange,
@@ -214,6 +216,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
         formContext={{
           onEditorOpen,
           onPythonEditorOpen,
+          originalSchema,
           schema,
           actionName,
         }}
