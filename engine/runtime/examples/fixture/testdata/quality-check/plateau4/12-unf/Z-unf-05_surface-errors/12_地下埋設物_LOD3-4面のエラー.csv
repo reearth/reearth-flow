@@ -1,2 +1,2 @@
 Folder,Index,Filename,FeatureType,LOD,gml:id,エラー数,エラー内容
-unf,1,08EE753_unf_10169_sewer_op.gml,SewerPipe,3,unf_test_lod34_surface_error_001,1,Non-Planar Surface
+unf,1,08EE753_unf_10169_sewer_op.gml,SewerPipe,3,unf_test_lod34_surface_error_001,1,NonPlanarSurface

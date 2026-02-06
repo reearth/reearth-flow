@@ -43,6 +43,9 @@
         "expectedFile": "summary_common.json"
       },
       {
+        "expectedFile": "summary_common2-unf.json"
+      },
+      {
         "expectedFile": "summary_unf.json"
       }
     ],
@@ -57,6 +60,11 @@
         "expectedFile": "12_地下埋設物_検査結果一覧.csv",
         "excludeColumns": [
           "Index"
+        ],
+        "keyColumns": [
+          "Filename",
+          "フィーチャータイプ",
+          "LOD"
         ]
       }
     ]

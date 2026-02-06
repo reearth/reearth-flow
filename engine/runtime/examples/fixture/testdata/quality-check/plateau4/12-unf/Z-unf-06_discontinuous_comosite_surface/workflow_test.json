@@ -45,7 +45,15 @@
       "expectedFile": "summary_unf.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "12_地下埋設物_検査結果一覧.csv"
+      "expectedFile": "12_地下埋設物_検査結果一覧.csv",
+      "excludeColumns": [
+        "立体のその他のエラー"
+      ],
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
+      ]
     }
   },
   "expectResultOkFile": false

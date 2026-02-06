@@ -168,6 +168,29 @@ graphs:
           countStart: 0
           outputAttribute: featureIndex
 
+      # Extract specific feature type name for grouping
+      - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
+        name: FeatureTypeNameExtractor
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: featureTypeName
+              method: create
+              value: |
+                let ft = env.get("__feature_type") ?? "";
+                if ft.contains(":") {
+                  ft.split(":")[1]
+                } else {
+                  ft
+                }
+
+      # GeometrySplitter for LOD-based counting (split features by LOD before counting)
+      - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
+        name: GeometrySplitterForCount
+        type: action
+        action: GeometrySplitter
+
       # UNF Validation Subgraph
       - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
         name: UNFValidation
@@ -175,6 +198,22 @@ graphs:
         subGraphId: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d82
 
       # ===== Error Summary Output =====
+      # Instance count per file (with lod and featureType for grouping)
+      - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3e
+        name: InstanceCountCalculator
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - gmlFilename
+            - fileIndex
+            - udxDirs
+            - lod
+            - featureTypeName
+          calculations:
+            - newAttribute: instanceCount
+              expr: '1'
+
       # File info extraction for per-file summary
       - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e11
         name: FileInfoExtractor
@@ -194,9 +233,12 @@ graphs:
             - attribute: gmlFilename
               expr: |
                 env.get("__value").gmlFilename
-            - attribute: UndergroundFacility
+            - attribute: featureTypeName
               expr: |
-                env.get("__value").UndergroundFacility
+                env.get("__value").featureTypeName
+            - attribute: instanceCount
+              expr: |
+                env.get("__value").instanceCount
             - attribute: lod
               expr: |
                 env.get("__value").lod ?? "0"
@@ -212,34 +254,14 @@ graphs:
         action: FeatureMerger
         with:
           requestorAttributeValue: |
-            env.get("__value").filename
+            let v = env.get("__value");
+            v.gmlFilename + "|" + v.featureTypeName + "|" + v.lod
           supplierAttributeValue: |
-            env.get("__value").Filename ?? env.get("__value").filename
-
-      # Instance count per file (with lod for grouping)
-      - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3e
-        name: InstanceCountCalculator
-        type: action
-        action: StatisticsCalculator
-        with:
-          groupBy:
-            - gmlFilename
-            - fileIndex
-            - udxDirs
-            - lod
-          calculations:
-            - newAttribute: UndergroundFacility
-              expr: |
-                let ft = env.get("__feature_type");
-                // Underground facility feature types
-                if ft == "unf:WaterPipe" || ft == "unf:SewerPipe" || ft == "unf:ThermalPipe" ||
-                   ft == "unf:OilGasChemicalsPipe" || ft == "unf:Pipe" ||
-                   ft == "unf:TelecommunicationsCable" || ft == "unf:ElectricityCable" || ft == "unf:Cable" ||
-                   ft == "unf:Duct" || ft == "unf:Appurtenance" || ft == "unf:Manhole" || ft == "unf:Handhole" {
-                  1
-                } else {
-                  0
-                }
+            let v = env.get("__value");
+            let fname = v.Filename ?? v.filename ?? "";
+            let ftype = v.FeatureType ?? v.feature_type ?? "";
+            let lod_val = v.LOD ?? v.lod ?? "";
+            fname + "|" + ftype + "|" + lod_val
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50
@@ -259,25 +281,31 @@ graphs:
                 env.get("__value").gmlFilename ?? env.get("__value").filename
             - attribute: フィーチャータイプ
               expr: |
-                "UndergroundFacility"
+                env.get("__value").featureTypeName ?? "UndergroundFacility"
             - attribute: LOD
               expr: |
                 env.get("__value").lod ?? "0"
             - attribute: インスタンス数
               expr: |
-                env.get("__value").UndergroundFacility ?? 0
-            - attribute: 面のエラー
+                env.get("__value").instanceCount ?? 0
+            - attribute: 無効な空間属性の型
               expr: |
-                env.get("__value")._num_surface_errors ?? 0
-            - attribute: 面の向き不正
-              expr: |
-                env.get("__value")._num_orientation_errors ?? 0
+                env.get("__value")._num_invalid_spatial_attr ?? 0
             - attribute: 非水密立体
               expr: |
                 env.get("__value")._num_not_closed_solid ?? 0
-            - attribute: 立体のエラー
+            - attribute: 立体のその他のエラー
               expr: |
-                env.get("__value")._num_solid_errors ?? 0
+                env.get("__value")._num_other_solid_errors ?? 0
+            - attribute: 立体の境界面のエラー
+              expr: |
+                env.get("__value")._num_boundary_surface_errors ?? 0
+            - attribute: 面のエラー
+              expr: |
+                env.get("__value")._num_lod34_surface_errors ?? 0
+            - attribute: 不連続なCompositeSurface
+              expr: |
+                env.get("__value")._num_discontinuous_cs ?? 0
 
       - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e61
         name: CSVSummaryWriter
@@ -295,22 +323,28 @@ graphs:
         action: StatisticsCalculator
         with:
           calculations:
-            - newAttribute: 面のエラー
+            - newAttribute: 無効な空間属性の型
               expr: |
-                env.get("__value")["面のエラー"] ?? 0
-            - newAttribute: 面の向き不正
-              expr: |
-                env.get("__value")["面の向き不正"] ?? 0
+                env.get("__value")["無効な空間属性の型"] ?? 0
             - newAttribute: 非水密立体
               expr: |
                 env.get("__value")["非水密立体"] ?? 0
-            - newAttribute: 立体のエラー
+            - newAttribute: 立体のその他のエラー
               expr: |
-                env.get("__value")["立体のエラー"] ?? 0
+                env.get("__value")["立体のその他のエラー"] ?? 0
+            - newAttribute: 立体の境界面のエラー
+              expr: |
+                env.get("__value")["立体の境界面のエラー"] ?? 0
+            - newAttribute: 面のエラー
+              expr: |
+                env.get("__value")["面のエラー"] ?? 0
+            - newAttribute: 不連続なCompositeSurface
+              expr: |
+                env.get("__value")["不連続なCompositeSurface"] ?? 0
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
-                let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー"];
+                let keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
                 }
@@ -328,7 +362,7 @@ graphs:
             } else {
               let result = [];
               let feature = env.get("__features")[0];
-              let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー"];
+              let keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
               for key in keys {
                 result.push(#{
                   name: key,
@@ -468,16 +502,30 @@ graphs:
         fromPort: default
         toPort: default
 
-      # FeatureCounterFeatureIndex → UNFValidation
+      # FeatureCounterFeatureIndex → FeatureTypeNameExtractor
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
         from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8f
+        to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
+        fromPort: default
+        toPort: default
+
+      # FeatureTypeNameExtractor → UNFValidation
+      - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c91
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
         to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
         fromPort: default
         toPort: default
 
-      # FeatureCounterFeatureIndex → InstanceCountCalculator
+      # FeatureTypeNameExtractor → GeometrySplitterForCount
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9e
-        from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8f
+        from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
+        to: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
+        fromPort: default
+        toPort: default
+
+      # GeometrySplitterForCount → InstanceCountCalculator
+      - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d21
+        from: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
         to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3e
         fromPort: default
         toPort: default
@@ -497,32 +545,46 @@ graphs:
         toPort: requestor
 
       # UNF Validation error counts → GeometryRemover → ErrorSummaryMerger (supplier)
-      # Surface Errors (面のエラー)
+      # Invalid Spatial Attribute Type
       - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b50
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
-        fromPort: errorCountSurfaceErrors
+        fromPort: errorCountInvalidSpatialAttr
         toPort: default
 
-      # Orientation Errors (面の向き不正)
+      # Not Closed Solid
       - id: d8e9f0a1-b2c3-4d5e-6f7a-8b9c0d1e2f3c
-        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
-        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
-        fromPort: errorCountOrientationErrors
-        toPort: default
-
-      # Not Closed Solid (非水密立体)
-      - id: e9f0a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a4d
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
         fromPort: errorCountNotClosedSolid
         toPort: default
 
-      # Solid Errors (立体のエラー)
+      # Other Solid Errors
+      - id: e9f0a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a4d
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountOtherSolidErrors
+        toPort: default
+
+      # Boundary Surface Errors
       - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5f
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
-        fromPort: errorCountSolidErrors
+        fromPort: errorCountBoundarySurfaceErrors
+        toPort: default
+
+      # LOD3-4 Surface Errors
+      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c72
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountLod34SurfaceErrors
+        toPort: default
+
+      # Discontinuous CompositeSurface
+      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d73
+        from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
+        to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1c
+        fromPort: errorCountDiscontinuousCS
         toPort: default
 
       - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c71

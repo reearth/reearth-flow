@@ -4,6 +4,7 @@ pub(crate) mod building_part_connectivity_checker;
 pub(crate) mod building_usage_attribute_validator;
 pub(crate) mod city_code_extractor;
 pub(crate) mod citygml_mesh_builder;
+pub(crate) mod composite_surface_continuity_filter;
 pub(crate) mod destination_mesh_code_extractor;
 pub(crate) mod domain_of_definition_validator;
 pub(crate) mod errors;
