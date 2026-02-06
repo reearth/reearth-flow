@@ -48,9 +48,26 @@ export const separateWorkflow = async ({
     return { pseudoInputs, pseudoOutputs };
   };
 
+  const workflowPathMap = new Map<string, string>();
+  const buildPaths = (graphId: string, parentPath: string) => {
+    workflowPathMap.set(graphId, parentPath);
+    const graph = graphs.find((g) => g.id === graphId);
+    if (!graph) return;
+    graph.nodes.forEach((node) => {
+      if (node.type === "subGraph" && node.subGraphId) {
+        const childPath = parentPath
+          ? `${parentPath}.${node.subGraphId}`
+          : node.subGraphId;
+        buildPaths(node.subGraphId, childPath);
+      }
+    });
+  };
+  buildPaths(entryGraphId, "");
+
   const workflowsPromises = graphs.map(async (graph: EngineReadyGraph) => {
+    const workflowPath = workflowPathMap.get(graph.id);
     const nodes = (
-      await convertNodes(graph.nodes, getSubworkflowPseudoPorts)
+      await convertNodes(graph.nodes, getSubworkflowPseudoPorts, workflowPath)
     ).filter(isDefined);
 
     const edges = convertEdges(graph.edges);
