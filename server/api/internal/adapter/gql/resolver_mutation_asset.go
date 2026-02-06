@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -10,7 +11,7 @@ import (
 )
 
 func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	wid, err := gqlmodel.ToID[accountsid.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +61,7 @@ func (r *mutationResolver) DeleteAsset(ctx context.Context, input gqlmodel.Delet
 }
 
 func (r *mutationResolver) CreateAssetUpload(ctx context.Context, input gqlmodel.CreateAssetUploadInput) (*gqlmodel.CreateAssetUploadPayload, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	wid, err := gqlmodel.ToID[accountsid.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

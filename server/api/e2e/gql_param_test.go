@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/gavv/httpexpect/v2"
+	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
+	workspacemockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace/mockrepo"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -78,9 +78,9 @@ func TestDeclareParameter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -239,9 +239,9 @@ func TestUpdateParameter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -355,9 +355,9 @@ func TestUpdateParameterOrder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -470,9 +470,9 @@ func TestRemoveParameter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -566,9 +566,9 @@ func TestParametersQuery(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)

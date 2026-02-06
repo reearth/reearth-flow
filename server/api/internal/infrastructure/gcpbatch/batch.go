@@ -14,6 +14,7 @@ import (
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
 	"github.com/google/uuid"
 	"github.com/googleapis/gax-go/v2"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
@@ -98,7 +99,7 @@ func (b *BatchRepo) SubmitJob(
 	workflowsURL, metadataURL string,
 	variables map[string]string,
 	projectID id.ProjectID,
-	workspaceID id.WorkspaceID,
+	workspaceID accountsid.WorkspaceID,
 	previousJobID *id.JobID,
 	startNodeID *uuid.UUID,
 ) (string, error) {

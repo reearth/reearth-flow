@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -18,7 +19,7 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 		pid = &p
 	}
 
-	wsid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	wsid, err := gqlmodel.ToID[accountsid.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

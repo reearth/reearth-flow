@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	echo "github.com/labstack/echo/v4"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearthx/log"
 )
 
@@ -73,7 +73,7 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 	}
 }
 
-func authMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
+func authMiddleware(gqlClient *gqlclient.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if websocket.IsWebSocketUpgrade(c.Request()) {

@@ -2,7 +2,7 @@ package factory
 
 import (
 	faker "github.com/go-faker/faker/v4"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	"github.com/reearth/reearth-accounts/server/pkg/workspace"
 )
 
 type WorkspaceOption func(*workspace.Builder)

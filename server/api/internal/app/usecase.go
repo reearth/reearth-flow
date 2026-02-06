@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"github.com/labstack/echo/v4"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 )
 
-func UsecaseMiddleware(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker, GQLClient *gql.Client, sharedJob interfaces.Job, config interactor.ContainerConfig) echo.MiddlewareFunc {
+func UsecaseMiddleware(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker, GQLClient *gqlclient.Client, sharedJob interfaces.Job, config interactor.ContainerConfig) echo.MiddlewareFunc {
 	return ContextMiddleware(func(ctx context.Context) context.Context {
 		repos := r
 

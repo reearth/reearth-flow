@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
@@ -13,8 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -25,7 +25,7 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -40,10 +40,10 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 		Transaction: &usecasex.NopTransaction{},
 	}
 
-	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 	pid := project.NewID()
 	defer project.MockNewID(pid)()
-	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
+	prj := project.New().ID(pid).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {

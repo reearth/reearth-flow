@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
@@ -25,7 +26,7 @@ type JobInfo struct {
 }
 
 type Batch interface {
-	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID id.WorkspaceID, previousJobID *id.JobID, startNodeID *uuid.UUID) (string, error)
+	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID accountsid.WorkspaceID, previousJobID *id.JobID, startNodeID *uuid.UUID) (string, error)
 	GetJobStatus(ctx context.Context, jobName string) (JobStatus, error)
 	ListJobs(ctx context.Context, projectID id.ProjectID) ([]JobInfo, error)
 	CancelJob(ctx context.Context, jobName string) error

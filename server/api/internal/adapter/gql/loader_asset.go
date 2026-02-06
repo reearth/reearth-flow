@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -34,7 +35,7 @@ func (c *AssetLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel
 }
 
 func (c *AssetLoader) FindByWorkspace(ctx context.Context, wID gqlmodel.ID, keyword *string, sort *asset.SortType, pagination *gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](wID)
+	wid, err := gqlmodel.ToID[accountsid.Workspace](wID)
 	if err != nil {
 		return nil, err
 	}
