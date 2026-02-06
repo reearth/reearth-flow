@@ -34,6 +34,9 @@ export default defineConfig(() => {
     resolve: {
       alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
     },
+    optimizeDeps: {
+      include: ["@dagrejs/dagre"],
+    },
     test: {
       environment: "jsdom",
       setupFiles: ["./src/testing/setup.ts"],
