@@ -199,8 +199,9 @@ async fn parse_tree_reader<R: BufRead>(
 fn convert_appearance_store_to_attribute_value(
     appearance_store: &AppearanceStore,
 ) -> AttributeValue {
-    use std::collections::HashMap;
+    println!("==> appearance_store: {:?}", appearance_store);
 
+    use std::collections::HashMap;
     let mut appearance_attrs = HashMap::new();
 
     // Add textures if available
@@ -208,12 +209,56 @@ fn convert_appearance_store_to_attribute_value(
         let textures: Vec<AttributeValue> = appearance_store
             .textures
             .iter()
-            .map(|texture| {
+            .enumerate()
+            .map(|(idx, texture)| {
                 let mut texture_map = HashMap::new();
                 texture_map.insert(
                     "uri".to_string(),
                     AttributeValue::String(texture.image_url.to_string()),
                 );
+                
+                // Add targets information by checking all themes for ring_id_to_texture mappings
+                let mut all_targets = Vec::new();
+                for (_theme_name, theme) in &appearance_store.themes {
+                    for (ring_id, (tex_idx, line_string)) in &theme.ring_id_to_texture {
+                        if *tex_idx == idx as u32 {
+                            let mut target_map = HashMap::new();
+                            // Create URI from ring ID (this follows the pattern seen in the input GML)
+                            let uri = format!("#{}", ring_id.0);
+                            target_map.insert(
+                                "uri".to_string(),
+                                AttributeValue::String(uri),
+                            );
+                            
+                            // Add texture coordinates from the line string
+                            let mut coord_strings = Vec::new();
+                            // Access the points using the public API (likely iter method)
+                            for point in line_string.iter() {
+                                coord_strings.push(format!("{} {}", point[0], point[1]));
+                            }
+                            if !coord_strings.is_empty() {
+                                let tex_coords: Vec<AttributeValue> = coord_strings
+                                    .iter()
+                                    .map(|coord| AttributeValue::String(coord.clone()))
+                                    .collect();
+                                target_map.insert(
+                                    "textureCoordinates".to_string(),
+                                    AttributeValue::Array(tex_coords),
+                                );
+                            }
+                            
+                            all_targets.push(AttributeValue::Map(target_map));
+                        }
+                    }
+                }
+                
+                if !all_targets.is_empty() {
+                    texture_map.insert(
+                        "targets".to_string(),
+                        AttributeValue::Array(all_targets),
+                    );
+                }
+                
                 AttributeValue::Map(texture_map)
             })
             .collect();
