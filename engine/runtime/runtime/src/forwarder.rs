@@ -1,13 +1,18 @@
 use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam::channel::Sender;
+
+use crate::cache::executor_cache_subdir;
 use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
 
 use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
-use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
+use crate::executor_operation::{Context, ExecutorContext, ExecutorOperation, NodeContext};
 use crate::feature_store::{FeatureWriter, FeatureWriterKey};
 
 use crate::node::{NodeHandle, Port};
@@ -32,12 +37,56 @@ impl ProcessorChannelForwarder {
         }
     }
 
+    /// Sends a file-backed operation to downstream processors.
+    ///
+    /// The file at `path` will be moved and cleaned up by the engine core.
+    pub fn send_file(&self, path: PathBuf, port: Port, context: Context) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(channel_manager) => {
+                channel_manager.send_file(path, port, context)
+            }
+            ProcessorChannelForwarder::Noop(noop) => noop.send_file(path, port),
+        }
+    }
+
     pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
         match self {
             ProcessorChannelForwarder::ChannelManager(channel_manager) => {
                 channel_manager.send_terminate(ctx)
             }
             ProcessorChannelForwarder::Noop(_) => Ok(()),
+        }
+    }
+
+    pub fn wait_until_downstream_empty(&self) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.wait_until_downstream_empty(),
+            ProcessorChannelForwarder::Noop(_) => {}
+        }
+    }
+
+    /// Reset the send counter to zero.
+    /// Call this before a section where you want to measure sends (e.g., before finish()).
+    pub fn reset_send_count(&self) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.reset_send_count(),
+            ProcessorChannelForwarder::Noop(_) => {}
+        }
+    }
+
+    /// Get the number of features sent since the last reset.
+    pub fn get_send_count(&self) -> u64 {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.get_send_count(),
+            ProcessorChannelForwarder::Noop(_) => 0,
+        }
+    }
+
+    /// Get the executor ID for cache isolation
+    pub fn executor_id(&self) -> uuid::Uuid {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.executor_id(),
+            ProcessorChannelForwarder::Noop(_) => uuid::Uuid::nil(),
         }
     }
 }
@@ -66,15 +115,60 @@ impl SenderWithPortMapping {
         }
         Ok(())
     }
+
+    pub fn send_file_backed_op(
+        &self,
+        path: &Path,
+        port: &Port,
+        context: &Context,
+    ) -> Result<(), ExecutionError> {
+        let Some(ports) = self.port_mapping.get(port) else {
+            return Ok(());
+        };
+
+        if let Some((last_port, rest_ports)) = ports.split_last() {
+            for p in rest_ports {
+                self.sender.send(ExecutorOperation::FileBackedOp {
+                    path: path.to_path_buf(),
+                    port: p.clone(),
+                    context: context.clone(),
+                })?;
+            }
+            self.sender.send(ExecutorOperation::FileBackedOp {
+                path: path.to_path_buf(),
+                port: last_port.clone(),
+                context: context.clone(),
+            })?;
+        }
+        Ok(())
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ChannelManager {
     owner: NodeHandle,
     feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
+    /// Counter for features sent since the last reset - used for measuring sends in a specific phase
+    send_count: Arc<AtomicU64>,
+    /// Unique identifier for this workflow execution, used for cache isolation
+    executor_id: uuid::Uuid,
+}
+
+impl Clone for ChannelManager {
+    fn clone(&self) -> Self {
+        Self {
+            owner: self.owner.clone(),
+            feature_writers: self.feature_writers.clone(),
+            senders: self.senders.clone(),
+            runtime: self.runtime.clone(),
+            event_hub: self.event_hub.clone(),
+            send_count: self.send_count.clone(),
+            executor_id: self.executor_id,
+        }
+    }
 }
 
 impl ChannelManager {
@@ -191,6 +285,16 @@ impl ChannelManager {
         Ok(())
     }
 
+    pub fn are_downstream_channels_empty(&self) -> bool {
+        self.senders.iter().all(|s| s.sender.is_empty())
+    }
+
+    pub fn wait_until_downstream_empty(&self) {
+        while !self.are_downstream_channels_empty() {
+            std::thread::yield_now();
+        }
+    }
+
     pub fn owner(&self) -> &NodeHandle {
         &self.owner
     }
@@ -201,6 +305,7 @@ impl ChannelManager {
         senders: Vec<SenderWithPortMapping>,
         runtime: Arc<Handle>,
         event_hub: EventHub,
+        executor_id: uuid::Uuid,
     ) -> Self {
         Self {
             owner,
@@ -208,13 +313,176 @@ impl ChannelManager {
             senders,
             runtime,
             event_hub,
+            send_count: Arc::new(AtomicU64::new(0)),
+            executor_id,
         }
     }
+
+    /// Reset the send counter to zero.
+    /// Call this before a section where you want to measure sends (e.g., before finish()).
+    pub fn reset_send_count(&self) {
+        self.send_count.store(0, Ordering::SeqCst);
+    }
+
+    /// Get the number of features sent since the last reset.
+    pub fn get_send_count(&self) -> u64 {
+        self.send_count.load(Ordering::SeqCst)
+    }
+
+    /// Increment the send counter.
+    fn increment_send_count(&self, count: u64) {
+        self.send_count.fetch_add(count, Ordering::SeqCst);
+    }
+
+    /// Get the executor ID for cache isolation
+    pub fn executor_id(&self) -> uuid::Uuid {
+        self.executor_id
+    }
+}
+
+/// Returns the channel buffer directory path within the executor-specific cache.
+fn channel_buffer_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "channel-buffers")
 }
 
 impl ChannelManager {
     fn node_id(&self) -> String {
         self.owner.id.clone().into_inner()
+    }
+
+    /// Sends a file-backed operation to downstream processors.
+    ///
+    /// The file at `path` will be moved and cleaned up by the engine core.
+    fn send_file(&self, path: PathBuf, port: Port, context: Context) {
+        // Count features in the file for debugging
+        let feature_count = std::fs::File::open(&path)
+            .map(|f| {
+                BufReader::new(f)
+                    .lines()
+                    .filter(|l| l.as_ref().map(|s| !s.is_empty()).unwrap_or(false))
+                    .count()
+            })
+            .unwrap_or(0);
+        self.increment_send_count(feature_count as u64);
+
+        // Write features to FeatureWriter for observability
+        self.write_file_features_to_store(&path, &port);
+
+        // Move the file to executor-specific cache directory to prevent deletion when
+        // the source processor's temp directory is cleaned up by Drop
+        let cache_dir = channel_buffer_dir(self.executor_id);
+        std::fs::create_dir_all(&cache_dir).unwrap_or_else(|e| {
+            panic!("Failed to create channel buffer directory {cache_dir:?}: {e}")
+        });
+
+        let file_name = format!(
+            "{}-{}.jsonl",
+            uuid::Uuid::new_v4(),
+            path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("output")
+        );
+        let new_path = cache_dir.join(file_name);
+
+        std::fs::rename(&path, &new_path).unwrap_or_else(|e| {
+            panic!("Failed to move file from {:?} to {:?}: {e}", path, new_path)
+        });
+
+        // Send FileBackedOp through channels with the new path
+        let node_id = self.owner.id.clone().into_inner();
+        if let Some((last_sender, senders)) = self.senders.split_last() {
+            for sender in senders {
+                sender
+                    .send_file_backed_op(&new_path, &port, &context)
+                    .unwrap_or_else(|e| {
+                        panic!(
+                            "Failed to send file-backed operation: node_id = {node_id:?}, path = {new_path:?}, error = {e:?}",
+                        )
+                    });
+            }
+            last_sender
+                .send_file_backed_op(&new_path, &port, &context)
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "Failed to send file-backed operation: node_id = {node_id:?}, path = {new_path:?}, error = {e:?}",
+                    )
+                });
+        }
+    }
+
+    fn write_file_features_to_store(&self, path: &Path, port: &Port) {
+        let file = match std::fs::File::open(path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            if line.is_empty() {
+                continue;
+            }
+            let feature: Feature = match serde_json::from_str(&line) {
+                Ok(f) => f,
+                Err(_) => continue,
+            };
+
+            let sender_ports: HashMap<Port, Vec<Port>> = {
+                let mut sender_port = HashMap::new();
+                for sender in &self.senders {
+                    for (p, ports) in &sender.port_mapping {
+                        let entry = sender_port.entry(p.clone()).or_insert_with(Vec::new);
+                        for port_item in ports {
+                            if !entry.contains(port_item) {
+                                entry.push(port_item.clone());
+                            }
+                        }
+                    }
+                }
+                sender_port
+            };
+
+            if let Some(sender_ports) = sender_ports.get(port) {
+                for mapped_port in sender_ports {
+                    if let Some(writers) = self
+                        .feature_writers
+                        .get(&FeatureWriterKey(port.clone(), mapped_port.clone()))
+                    {
+                        for writer in writers {
+                            let edge_id = writer.edge_id();
+                            let feature_id = feature.id;
+                            let mut writer = writer.clone();
+                            let feature = feature.clone();
+                            let event_hub = self.event_hub.clone();
+                            let node_handle = self.owner.clone();
+
+                            self.event_hub.send(Event::EdgePassThrough {
+                                feature_id,
+                                edge_id: edge_id.clone(),
+                            });
+
+                            self.runtime.block_on(async move {
+                                let result = writer.write(&feature).await;
+                                if let Err(e) = result {
+                                    event_hub.error_log_with_node_handle(
+                                        None,
+                                        node_handle,
+                                        format!("Failed to write feature: {e}"),
+                                    );
+                                } else {
+                                    event_hub.send(Event::EdgeCompleted {
+                                        feature_id,
+                                        edge_id,
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn send(&self, ctx: ExecutorContext) {
@@ -225,7 +493,8 @@ impl ChannelManager {
             panic!(
                 "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
             )
-        })
+        });
+        self.increment_send_count(1);
     }
 }
 
@@ -254,5 +523,30 @@ impl NoopChannelForwarder {
         send_features.push(ctx.feature.clone());
         let mut send_ports = self.send_ports.lock().unwrap();
         send_ports.push(ctx.port.clone());
+    }
+
+    pub fn send_file(&self, path: PathBuf, port: Port) {
+        let file = match std::fs::File::open(&path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+        let reader = BufReader::new(file);
+        let mut send_features = self.send_features.lock().unwrap();
+        let mut send_ports = self.send_ports.lock().unwrap();
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            if line.is_empty() {
+                continue;
+            }
+            let feature: Feature = match serde_json::from_str(&line) {
+                Ok(f) => f,
+                Err(_) => continue,
+            };
+            send_features.push(feature);
+            send_ports.push(port.clone());
+        }
     }
 }

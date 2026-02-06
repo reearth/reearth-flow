@@ -309,7 +309,11 @@ impl Processor for HttpCallerProcessor {
         self.execute_request(&ctx, fw)
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

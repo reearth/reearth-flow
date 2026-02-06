@@ -254,7 +254,11 @@ impl Processor for FloodingAreaSurfaceGenerator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // If no grouping, nothing to do
         if self.group_by.is_none() {
             return Ok(());

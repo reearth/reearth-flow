@@ -3761,7 +3761,46 @@ Replace Feature Geometry from Attribute
 ### Description
 Split Multi-Geometries into Individual Features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometrySplitterParam",
+  "description": "Parameters for GeometrySplitter",
+  "type": "object",
+  "properties": {
+    "splitLevel": {
+      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
+      "default": "element",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SplitLevel"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "SplitLevel": {
+      "description": "Split level for CityGML geometry",
+      "oneOf": [
+        {
+          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
+          "type": "string",
+          "enum": [
+            "element"
+          ]
+        },
+        {
+          "description": "Split down to individual polygons within each element",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -3968,6 +4007,62 @@ Writes 3D features to GLTF format with optional texture attachment
 ### Output Ports
 ### Category
 * File
+
+## GridDivider
+### Type
+* processor
+### Description
+Divide Polygons into Regular Grid Cells
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GridDivider Parameters",
+  "type": "object",
+  "required": [
+    "unitSquareSize"
+  ],
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features - each group gets its own grid origin",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "keepSquareOnly": {
+      "title": "Keep Square Only",
+      "description": "If true, only output complete grid squares (discard edge pieces). Default: false",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "unitSquareSize": {
+      "title": "Unit Square Size",
+      "description": "Side length of each grid cell (in the same units as the geometry coordinates)",
+      "type": "number",
+      "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
 
 ## HTTPCaller
 ### Type
@@ -5282,20 +5377,31 @@ Convert vector geometries to raster image format
     },
     "saveTo": {
       "title": "Save To",
-      "description": "Optional path to save the generated image. If not provided, uses default cache directory.",
+      "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
       "default": null,
-      "type": [
-        "string",
-        "null"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
       ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
 * default
+* textureCoordinates
 ### Output Ports
 * default
+* textured
 ### Category
 * Geometry
 
@@ -6873,6 +6979,201 @@ Extract object list
 ### Category
 * PLATEAU
 
+## PLATEAU4.SolarPositionCalculator
+### Type
+* processor
+### Description
+Calculates solar position (altitude and azimuth) for geographic features using Spencer's algorithm
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolarPositionCalculatorParam",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "sourceEpsg",
+        "time",
+        "type"
+      ],
+      "properties": {
+        "outputType": {
+          "description": "Output type: unit normal vector or altitude/azimuth angles",
+          "default": "unitNormalVector",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputType"
+            }
+          ]
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time": {
+          "description": "Time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "time"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "end",
+        "sourceEpsg",
+        "start",
+        "step",
+        "stepUnit",
+        "type"
+      ],
+      "properties": {
+        "end": {
+          "description": "End time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "outputType": {
+          "description": "Output type: unit normal vector or altitude/azimuth angles",
+          "default": "unitNormalVector",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputType"
+            }
+          ]
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "description": "Start time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "step": {
+          "description": "Step value expression evaluating to an integer",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "stepUnit": {
+          "description": "Unit for the step value",
+          "allOf": [
+            {
+              "$ref": "#/definitions/StepUnit"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "duration"
+          ]
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "OutputType": {
+      "description": "Output type for solar position calculation",
+      "oneOf": [
+        {
+          "description": "Output as unit normal vector (x, y, z) in ENU coordinate system",
+          "type": "string",
+          "enum": [
+            "unitNormalVector"
+          ]
+        },
+        {
+          "description": "Output as altitude and azimuth angles in degrees",
+          "type": "string",
+          "enum": [
+            "altitudeAndAzimuth"
+          ]
+        },
+        {
+          "description": "Output both unit normal vector and altitude/azimuth angles",
+          "type": "string",
+          "enum": [
+            "both"
+          ]
+        }
+      ]
+    },
+    "StepUnit": {
+      "type": "string",
+      "enum": [
+        "second",
+        "minute",
+        "hour",
+        "day"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU4.SolidIntersectionTestPairCreator
 ### Type
 * processor
@@ -7243,6 +7544,15 @@ Computes intersection points between rays and geometries
         }
       ]
     },
+    "outputGeometryType": {
+      "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
+      "default": "pointOfIntersection",
+      "allOf": [
+        {
+          "$ref": "#/definitions/OutputGeometryType"
+        }
+      ]
+    },
     "pairId": {
       "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
       "allOf": [
@@ -7278,6 +7588,25 @@ Computes intersection points between rays and geometries
     },
     "Expr": {
       "type": "string"
+    },
+    "OutputGeometryType": {
+      "description": "Output geometry type for ray intersection results",
+      "oneOf": [
+        {
+          "description": "Output a point at the intersection location (default behavior)",
+          "type": "string",
+          "enum": [
+            "pointOfIntersection"
+          ]
+        },
+        {
+          "description": "Output a line segment from ray origin to intersection point",
+          "type": "string",
+          "enum": [
+            "lineSegmentToIntersection"
+          ]
+        }
+      ]
     },
     "RayDefinition": {
       "description": "Defines how ray data is extracted from feature attributes.",
@@ -7349,6 +7678,7 @@ Computes intersection points between rays and geometries
 * geom
 ### Output Ports
 * intersection
+* no_intersection
 * rejected
 ### Category
 * Geometry

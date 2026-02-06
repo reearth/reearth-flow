@@ -14,6 +14,7 @@ threshold = 0.01
 # both should not exist (no urf in area data)
 [tests.json_attributes.dictionary]
 path = "dictionary.json"
+must_not_exist = true
 
 [filter.tree]
 "udx/frn/" = ["56380598_frn_6697_op.gml"]

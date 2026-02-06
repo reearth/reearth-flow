@@ -177,6 +177,10 @@ enum Method {
 }
 
 impl Processor for AttributeAggregator {
+    fn is_accumulating(&self) -> bool {
+        false
+    }
+
     fn num_threads(&self) -> usize {
         2
     }
@@ -241,7 +245,11 @@ impl Processor for AttributeAggregator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context(), fw);
         Ok(())
     }

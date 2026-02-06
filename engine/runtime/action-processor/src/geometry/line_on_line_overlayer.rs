@@ -19,6 +19,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::metadata::Metadata;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -164,7 +165,11 @@ impl Processor for LineOnLineOverlayer {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let overlaid = self.overlay()?;
         for feature in &overlaid.line {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -274,12 +279,12 @@ impl LineOnLineOverlayer {
                 overlay_count,
                 overlay_ids,
             } = ls;
-            let mut feature = Feature::new_with_attributes(Attributes::new());
-            feature.attributes_mut().insert(
+            let mut attributes = Attributes::new();
+            attributes.insert(
                 Attribute::new("overlayCount"),
                 AttributeValue::Number(Number::from(*overlay_count)),
             );
-            feature.attributes_mut().insert(
+            attributes.insert(
                 Attribute::new(&self.overlaid_lists_attr_name),
                 AttributeValue::Array(
                     overlay_ids
@@ -288,8 +293,10 @@ impl LineOnLineOverlayer {
                             AttributeValue::Map(
                                 features_2d[map_ls_to_features[id]]
                                     .attributes
-                                    .iter()
-                                    .map(|(k, v)| (k.inner(), v.clone()))
+                                    .as_ref()
+                                    .clone()
+                                    .into_iter()
+                                    .map(|(k, v)| (k.inner(), v))
                                     .collect::<HashMap<_, _>>(),
                             )
                         })
@@ -302,9 +309,7 @@ impl LineOnLineOverlayer {
                 let attr = &features_2d[map_ls_to_features[overlay_ids[0]]].attributes;
                 for group_by in group_by {
                     if let Some(value) = attr.get(group_by) {
-                        feature
-                            .attributes_mut()
-                            .insert(group_by.clone(), value.clone());
+                        attributes.insert(group_by.clone(), value.clone());
                     } else {
                         return Err(Box::new(
                             GeometryProcessorError::LineOnLineOverlayerFactory(
@@ -314,15 +319,19 @@ impl LineOnLineOverlayer {
                     }
                 }
             };
-            feature.geometry_mut().value =
-                GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone()));
+            let geometry = reearth_flow_types::Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone())),
+                ..Default::default()
+            };
+            let feature =
+                Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::new());
             overlaid.line.push(feature);
         }
 
         let last_feature = features_2d.last().unwrap();
 
         for result_coords in line_string_intersection_result.split_coords {
-            let attrs = if let Some(group_by) = &self.group_by {
+            let attributes = if let Some(group_by) = &self.group_by {
                 group_by
                     .iter()
                     .filter_map(|attr| {
@@ -333,10 +342,13 @@ impl LineOnLineOverlayer {
             } else {
                 IndexMap::new()
             };
-            let mut feature = Feature::new_with_attributes(attrs);
 
-            feature.geometry_mut().value =
-                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords)));
+            let geometry = reearth_flow_types::Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords))),
+                ..Default::default()
+            };
+            let feature =
+                Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::new());
             overlaid.point.push(feature);
         }
 

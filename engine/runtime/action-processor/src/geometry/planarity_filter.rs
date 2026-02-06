@@ -250,7 +250,11 @@ impl Processor for PlanarityFilter {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -316,6 +320,49 @@ fn check_planarity_height(
     let a = points[0]; // This is safe since we have at least 4 points
     for p in &mut points {
         *p = *p - a;
+    }
+
+    // Early return optimization: O(n) planarity check
+    // Find two base vertices and search for a third that forms a well-defined triangle
+    let n = points.len();
+    let v0 = points[0]; // At origin after translation
+    let v_mid = points[n / 2];
+
+    // Try to find a third vertex that forms a triangle with area > (10*threshold)^2
+    // Area = 0.5 * |cross product|, so we need |cross| > 2 * (10*threshold)^2
+    let area_threshold = (10.0 * threshold).powi(2);
+    let cross_threshold = 2.0 * area_threshold;
+
+    let mut found_normal = None;
+    for (i, &v) in points.iter().enumerate() {
+        if i == 0 || i == n / 2 {
+            continue;
+        }
+        let edge1 = v_mid - v0;
+        let edge2 = v - v0;
+        let cross = edge1.cross(&edge2);
+        let cross_norm = cross.norm();
+        if cross_norm > cross_threshold {
+            found_normal = Some(cross / cross_norm);
+            break;
+        }
+    }
+
+    if let Some(unit_normal) = found_normal {
+        // Compute projections of all points onto the normal direction
+        // Since v0 is at origin, we compute p · unit_normal directly
+        let mut min_proj = 0.0_f64;
+        let mut max_proj = 0.0_f64;
+        for &p in &points {
+            let proj = p.dot(&unit_normal);
+            min_proj = min_proj.min(proj);
+            max_proj = max_proj.max(proj);
+        }
+
+        if max_proj - min_proj <= threshold {
+            // Planar! Return the coplanar result
+            return are_points_coplanar(&points, f64::MAX);
+        }
     }
 
     // Compute 3D convex hull

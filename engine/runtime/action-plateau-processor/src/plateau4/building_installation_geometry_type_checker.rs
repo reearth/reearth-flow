@@ -90,7 +90,11 @@ impl Processor for BuildingInstallationGeometryTypeChecker {
         self.process_impl(ctx, fw).map_err(Into::into)
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

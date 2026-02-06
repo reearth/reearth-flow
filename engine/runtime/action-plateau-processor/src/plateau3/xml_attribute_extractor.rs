@@ -537,7 +537,11 @@ impl Processor for XmlAttributeExtractor {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let codelists = self
             .codelists_map
             .iter()

@@ -114,7 +114,11 @@ impl Processor for Clipper {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let clip_regions2d = self
             .clippers
             .iter()
@@ -739,7 +743,7 @@ mod tests {
 
     #[test]
     fn test_clipper_finish_with_no_clippers() {
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: Vec::new(),
             candidates: vec![Feature::new_with_attributes(Attributes::new())],
         };
@@ -928,7 +932,7 @@ mod tests {
         let polygon = create_test_polygon_2d();
         let clip_polygon = create_clipper_polygon_2d();
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -959,7 +963,7 @@ mod tests {
         let polygon = create_test_polygon_3d();
         let clip_polygon = create_clipper_polygon_3d();
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -1039,7 +1043,7 @@ mod tests {
     fn test_clipper_finish_with_non_polygon_candidate() {
         let clip_polygon = create_clipper_polygon_2d();
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -1098,7 +1102,7 @@ mod tests {
             polygon_uvs: Default::default(),
         };
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -1156,7 +1160,7 @@ mod tests {
             polygon_uvs: Default::default(),
         };
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::CityGmlGeometry(citygml_clipper),
                 ..Default::default()
@@ -1231,7 +1235,7 @@ mod tests {
             polygon_uvs: Default::default(),
         };
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -1296,7 +1300,7 @@ mod tests {
             polygon_uvs: Default::default(),
         };
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -1387,7 +1391,7 @@ mod tests {
 
         let clip_polygon = create_clipper_polygon_3d();
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
                 ..Default::default()
@@ -1424,7 +1428,7 @@ mod tests {
 
         let clip_polygon = create_clipper_polygon_2d();
 
-        let clipper = Clipper {
+        let mut clipper = Clipper {
             clippers: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(clip_polygon)),
                 ..Default::default()

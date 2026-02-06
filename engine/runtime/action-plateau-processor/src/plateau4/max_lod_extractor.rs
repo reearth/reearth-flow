@@ -145,7 +145,11 @@ impl Processor for MaxLodExtractor {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context(), fw);
         Ok(())
     }

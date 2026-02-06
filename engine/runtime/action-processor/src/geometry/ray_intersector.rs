@@ -8,7 +8,10 @@ use reearth_flow_geometry::algorithm::bvh_acceleration::AcceleratedGeometrySet;
 use reearth_flow_geometry::algorithm::ray_intersection::{IncludeOrigin, Ray3D, RayHit};
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
+use reearth_flow_geometry::types::line::Line;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon3D;
 use reearth_flow_geometry::types::point::Point3D;
+use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -27,6 +30,7 @@ use super::errors::GeometryProcessorError;
 static RAY_PORT: Lazy<Port> = Lazy::new(|| Port::new("ray"));
 static GEOM_PORT: Lazy<Port> = Lazy::new(|| Port::new("geom"));
 static INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("intersection"));
+static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no_intersection"));
 
 const DEFAULT_TOLERANCE: f64 = 1e-10;
 
@@ -55,7 +59,11 @@ impl ProcessorFactory for RayIntersectorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![INTERSECTION_PORT.clone(), REJECTED_PORT.clone()]
+        vec![
+            INTERSECTION_PORT.clone(),
+            NO_INTERSECTION_PORT.clone(),
+            REJECTED_PORT.clone(),
+        ]
     }
 
     fn build(
@@ -131,10 +139,22 @@ impl ProcessorFactory for RayIntersectorFactory {
             closest_only_ast,
             tolerance_ast,
             include_ray_origin_ast,
+            output_geometry_type: params.output_geometry_type,
             ray_buffer: HashMap::new(),
             geom_buffer: HashMap::new(),
         }))
     }
+}
+
+/// Output geometry type for ray intersection results
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum OutputGeometryType {
+    /// Output a point at the intersection location (default behavior)
+    #[default]
+    PointOfIntersection,
+    /// Output a line segment from ray origin to intersection point
+    LineSegmentToIntersection,
 }
 
 /// RayIntersector Parameters
@@ -162,6 +182,12 @@ pub struct RayIntersectorParams {
     /// When false, exclude intersections where t < tolerance.
     #[serde(default)]
     pub include_ray_origin: Option<Expr>,
+
+    /// Type of geometry to output for intersection results.
+    /// - "pointOfIntersection" (default): Output a point at the intersection location
+    /// - "lineSegmentToIntersection": Output a line segment from ray origin to intersection point
+    #[serde(default)]
+    pub output_geometry_type: OutputGeometryType,
 }
 
 /// Defines how ray data is extracted from feature attributes.
@@ -197,11 +223,16 @@ pub struct RayIntersector {
     closest_only_ast: Option<rhai::AST>,
     tolerance_ast: Option<rhai::AST>,
     include_ray_origin_ast: Option<rhai::AST>,
+    output_geometry_type: OutputGeometryType,
     ray_buffer: HashMap<String, Vec<RayData>>,
     geom_buffer: HashMap<String, Vec<Geometry3D<f64>>>,
 }
 
 impl Processor for RayIntersector {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -230,9 +261,31 @@ impl Processor for RayIntersector {
                         .entry(pair_id)
                         .or_default()
                         .push(geo.clone());
+                } else if let GeometryValue::CityGmlGeometry(geo) = &feature.geometry.value {
+                    if geo.gml_geometries.len() != 1 {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                        return Ok(());
+                    }
+
+                    let polygons = &geo.gml_geometries[0].polygons;
+                    let geo =
+                        match polygons.len() {
+                            0 => {
+                                fw.send(ctx.new_with_feature_and_port(
+                                    feature.clone(),
+                                    REJECTED_PORT.clone(),
+                                ));
+                                return Ok(());
+                            }
+                            1 => Geometry3D::Polygon(Polygon3D::from(polygons[0].clone())),
+                            _ => Geometry3D::MultiPolygon(MultiPolygon3D::new(polygons.to_vec())),
+                        };
+                    self.geom_buffer.entry(pair_id).or_default().push(geo);
                 } else {
                     // TODO (After geometry type refactor):
-                    // Currently only FlowGeometry3D is supported.
+                    // Currently only 3D geometry is supported.
                     // This is because the current geometry type makes it difficult to integrate
                     // the ray intersection logic for 2D and 3D geometries.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -245,24 +298,41 @@ impl Processor for RayIntersector {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
 
         // Process each pair group
         for (pair_id, rays) in &self.ray_buffer {
-            let Some(geoms) = self.geom_buffer.get(pair_id) else {
-                continue; // No matching geometries for this pair
-            };
+            let geoms = self.geom_buffer.get(pair_id);
 
-            if geoms.is_empty() || rays.is_empty() {
+            // If no matching geometries for this pair, emit all rays to no_intersection port
+            if geoms.is_none() || geoms.map(|g| g.is_empty()).unwrap_or(true) {
+                for ray_data in rays {
+                    let output_feature =
+                        self.create_ray_output_feature(&ray_data.feature, &ray_data.ray);
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        output_feature,
+                        NO_INTERSECTION_PORT.clone(),
+                    ));
+                }
+                continue;
+            }
+
+            let geoms = geoms.unwrap();
+            if rays.is_empty() {
                 continue;
             }
 
             let accel_set = AcceleratedGeometrySet::build(geoms);
 
-            let results: Vec<(Feature, Vec<RayHit>)> = rays
+            let results = rays
                 .par_iter()
-                .filter_map(|ray_data| {
+                .map(|ray_data| {
                     let closest_only = self
                         .evaluate_closest_only(&expr_engine, &ray_data.feature)
                         .unwrap_or(true);
@@ -292,17 +362,24 @@ impl Processor for RayIntersector {
                             .collect()
                     };
 
-                    if hits.is_empty() {
-                        None
-                    } else {
-                        Some((ray_data.feature.clone(), hits))
-                    }
+                    (ray_data.feature.clone(), ray_data.ray, hits)
                 })
-                .collect();
+                .collect::<Vec<_>>();
 
-            for (ray_feature, hits) in results {
-                for hit in hits {
-                    self.emit_intersection(&ray_feature, hit, &ctx, fw);
+            for (ray_feature, ray, hits) in results {
+                if hits.is_empty() {
+                    // No intersection found - emit to no_intersection port
+                    let output_feature = self.create_ray_output_feature(&ray_feature, &ray);
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        output_feature,
+                        NO_INTERSECTION_PORT.clone(),
+                    ));
+                } else {
+                    // Emit each intersection
+                    for hit in hits {
+                        self.emit_intersection(&ray_feature, &ray, hit, &ctx, fw);
+                    }
                 }
             }
         }
@@ -422,22 +499,58 @@ impl RayIntersector {
         }
     }
 
+    /// Creates an output feature with ray geometry when lineSegmentToIntersection is set,
+    /// or returns the original feature otherwise.
+    fn create_ray_output_feature(&self, ray_feature: &Feature, ray: &Ray3D) -> Feature {
+        match self.output_geometry_type {
+            OutputGeometryType::PointOfIntersection => ray_feature.clone(),
+            OutputGeometryType::LineSegmentToIntersection => {
+                let mut output_feature = ray_feature.clone();
+                let (origin, direction) = ray.origin_and_direction();
+                // Line segment from ray origin to the tip of the ray unit vector
+                let end = Coordinate3D::new__(
+                    origin.x + direction.x,
+                    origin.y + direction.y,
+                    origin.z + direction.z,
+                );
+                let geometry = Geometry {
+                    value: GeometryValue::FlowGeometry3D(Geometry3D::Line(Line::new_(origin, end))),
+                    ..Default::default()
+                };
+                let geometry = Arc::new(geometry);
+                output_feature.geometry = geometry;
+                output_feature
+            }
+        }
+    }
+
     fn emit_intersection(
         &self,
         ray_feature: &Feature,
+        ray: &Ray3D,
         hit: RayHit,
         ctx: &NodeContext,
         fw: &ProcessorChannelForwarder,
     ) {
         let mut output_feature = ray_feature.clone();
-        output_feature.geometry = Arc::new(Geometry {
-            value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::new(
-                hit.point.x,
-                hit.point.y,
-                hit.point.z,
-            ))),
+
+        // Create geometry based on output_geometry_type
+        let geometry_value = match self.output_geometry_type {
+            OutputGeometryType::PointOfIntersection => GeometryValue::FlowGeometry3D(
+                Geometry3D::Point(Point3D::new(hit.point.x, hit.point.y, hit.point.z)),
+            ),
+            OutputGeometryType::LineSegmentToIntersection => {
+                let (origin, _) = ray.origin_and_direction();
+                // Line segment from ray origin to the tip of the ray unit vector
+                GeometryValue::FlowGeometry3D(Geometry3D::Line(Line::new_(origin, hit.point)))
+            }
+        };
+
+        let geometry = Geometry {
+            value: geometry_value,
             ..Default::default()
-        });
+        };
+        output_feature.geometry = Arc::new(geometry);
 
         output_feature.attributes_mut().insert(
             Attribute::new("ray_intersection_t"),
