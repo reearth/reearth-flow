@@ -101,7 +101,7 @@ export const yWorkflowConstructor = (
   nodes?.forEach((n) => {
     const newYNode = yNodeConstructor({
       ...n,
-      data: { ...n.data, workflowPath },
+      data: workflowPath !== undefined ? { ...n.data, workflowPath } : n.data,
     });
     yNodes.set(n.id, newYNode);
   });
