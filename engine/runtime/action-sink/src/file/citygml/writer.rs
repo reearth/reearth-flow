@@ -182,7 +182,11 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
-    fn write_surface_data_member(&mut self, texture_uri: &str, appearance_data: &AppearanceData) -> Result<(), SinkError> {
+    fn write_surface_data_member(
+        &mut self,
+        texture_uri: &str,
+        appearance_data: &AppearanceData,
+    ) -> Result<(), SinkError> {
         // Extract just the directory and filename part from the full URI
         let path_parts: Vec<&str> = texture_uri.split('/').collect();
         let simplified_path = if path_parts.len() >= 2 {
@@ -255,21 +259,21 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
             // Join all texture coordinates into a single space-separated string
             let coord_string = target.texture_coordinates.join(" ");
-            
+
             // Find the ring ID from the URI to use as the ring attribute
             let ring_id = self.extract_ring_id_from_uri(&target.uri);
-            
+
             if !ring_id.is_empty() {
                 let mut tex_coord = BytesStart::new("app:textureCoordinates");
                 tex_coord.push_attribute(("ring", ring_id.as_str()));
                 self.writer
                     .write_event(Event::Start(tex_coord))
                     .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-                    
+
                 self.writer
                     .write_event(Event::Text(BytesText::new(&coord_string)))
                     .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-                    
+
                 self.writer
                     .write_event(Event::End(BytesEnd::new("app:textureCoordinates")))
                     .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
