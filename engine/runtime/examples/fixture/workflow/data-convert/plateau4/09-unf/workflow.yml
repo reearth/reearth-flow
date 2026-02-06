@@ -385,6 +385,65 @@ graphs:
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod4.zip")
 
+      - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+        name: AttributeManagerDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: feature_type_without_prefix
+              method: create
+              value: |
+                env.get("__value")["featureType"].split(":")[1]
+      - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - feature_type_without_prefix
+      - id: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+        name: AttributeConversionTableDict
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: |
+            name,description
+            WaterPipe,上水道管
+            SewerPipe,下水道管
+            ThermalPipe,熱供給管
+            OilGasChemicalsPipe,ガス・石油・化学物質管
+            Pipe,その他の管
+            Duct,ダクト
+            TelecommunicationsCable,通信ケーブル
+            ElectricityCable,電力ケーブル
+            Cable,その他のケーブル
+            Appurtenance,付属物
+            Manhole,マンホール
+            Handhole,ハンドホール
+          rules:
+            - featureFroms:
+                - feature_type_without_prefix
+              featureTo: feature_type_ja
+              conversionTableKeys:
+                - name
+              conversionTableTo: description
+      - id: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              unf: env.get("__features").map(|f| #{
+                name: f.feature_type_without_prefix,
+                description: f.feature_type_ja
+              })
+            }
+
     edges:
       # Main processing pipeline
       - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012345b6f
@@ -551,3 +610,25 @@ graphs:
         to: c3e7f4a8-9d0b-1c2e-5f6a-b78901234a5e
         fromPort: schema
         toPort: schema
+
+      # Dictionary branch edges (parallel branch for dictionary.json)
+      - id: c9e3f0a4-5d6b-7c8e-1f2a-b345d1c701e1
+        from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+        to: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+        fromPort: default
+        toPort: default
+      - id: d0f4a1b5-6e7c-8d9f-2a3b-c456d1c702e2
+        from: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+        to: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+        fromPort: default
+        toPort: default
+      - id: e1a5b2c6-7f8d-9e0a-3b4c-d567d1c703e3
+        from: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+        to: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+        fromPort: default
+        toPort: default
+      - id: f2b6c3d7-8a9e-0f1b-4c5d-e678d1c704e4
+        from: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+        to: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
+        fromPort: default
+        toPort: default
