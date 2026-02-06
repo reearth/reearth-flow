@@ -1,0 +1,75 @@
+id: a8062ae8-f2a9-11f0-8ef7-7c70db10a7e3
+name: PLATEAU4-13-quality-check-general-ban-objects
+entryGraphId: 3ea97a10-f4d8-11f0-8dec-7c70db10a7e3
+with:
+  # export FLOW_VAR_cityGmlPath="/home/zw/code/rust_programming/reearth-flow/engine/tmp/14204_kamakura-shi_city_2024_citygml_1_op/udx/gen/523974_gen_6697_f22_op.gml"
+  # export FLOW_VAR_schemas="/home/zw/code/rust_programming/reearth-flow/engine/tmp/14204_kamakura-shi_city_2024_citygml_1_op/schemas"
+  # export FLOW_VAR_codelists="/home/zw/code/rust_programming/reearth-flow/engine/tmp/14204_kamakura-shi_city_2024_citygml_1_op/codelists"
+  cityGmlPath: null
+  codelists:
+  schemas:
+graphs:
+  # subgraph: runtime/examples/fixture/graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - id: 3ea97a10-f4d8-11f0-8dec-7c70db10a7e3
+    name: entry_point 
+    nodes:
+      # node01
+      - id: 5ca33da8-f4d8-11f0-b1ed-7c70db10a7e3
+        name: FeatureCreator 
+        type: action 
+        action: FeatureCreator 
+        with: 
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+              },              
+            ]
+
+      # node02 
+      - id: d5fa7732-ef20-45ec-a331-e6d57571354b
+        name: FolderAndfilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+      
+      # node03
+      - id: 254d6287-7649-4647-9ab5-0c1c423f356a
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          codelistsPath: env.get("__value").codelists
+          dataset: |
+            env.get("__value")["path"]
+
+      # LastNode 
+      - id: 257f71be-f4e4-11f0-80a0-7c70db10a7e3
+        name: DummyOutput
+        type: action 
+        action: NoopSink
+
+    edges:
+      # From FeatureCreator(node01) to SubGraph FolderAndfilePathReader(node02)
+      - id: f76e6062-f4e5-11f0-933d-7c70db10a7e3
+        from: 5ca33da8-f4d8-11f0-b1ed-7c70db10a7e3
+        to: d5fa7732-ef20-45ec-a331-e6d57571354b
+        fromPort: default 
+        toPort: default 
+      
+      # From SubGraph FolderAndfilePathReader(node02) to FeatureReaderByCityGml(node03)
+      - id: d3bf4482-f4e6-11f0-ae82-7c70db10a7e3
+        from: d5fa7732-ef20-45ec-a331-e6d57571354b
+        to: 254d6287-7649-4647-9ab5-0c1c423f356a
+        fromPort: default 
+        toPort: default 
+
+      # From FeatureReaderByCityGml(node03) to LastNode
+      - id: eada4716-f4e6-11f0-a8ce-7c70db10a7e3
+        from: 254d6287-7649-4647-9ab5-0c1c423f356a
+        to: 257f71be-f4e4-11f0-80a0-7c70db10a7e3
+        fromPort: default 
+        toPort: default
