@@ -25,13 +25,16 @@ const SelectWidget = <
   readonly,
   required,
   value,
+  multiple,
   onChange,
   onBlur,
   onFocus,
   placeholder,
   rawErrors = [],
 }: WidgetProps<T, S, F>) => {
-  const { enumOptions, enumDisabled } = options;
+  const { enumOptions, enumDisabled, emptyValue } = options;
+
+  const showPlaceholderOption = !multiple && !required;
 
   const getCurrentLabel = useCallback(() => {
     const option = enumOptions?.find((opt: any) => opt.value === value);
@@ -57,7 +60,7 @@ const SelectWidget = <
   return (
     <DropdownMenu modal={true}>
       <DropdownMenuTrigger
-        className={`flex h-8 max-w-[564px] items-center justify-between gap-2 rounded border bg-background px-3 hover:bg-accent ${
+        className={`flex h-8 max-w-141 min-w-[30%] items-center justify-between gap-2 rounded border bg-background px-3 hover:bg-accent ${
           rawErrors.length > 0 ? "border-destructive" : ""
         }`}
         disabled={readonly || disabled}
@@ -73,6 +76,13 @@ const SelectWidget = <
         <ChevronDownIcon className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-h-60 overflow-auto" align="start">
+        {showPlaceholderOption && (
+          <DropdownMenuItem
+            onSelect={() => handleSelect(emptyValue)}
+            className={`text-muted-foreground ${value == null ? "bg-accent" : ""}`}>
+            {placeholder || "\u00A0"}
+          </DropdownMenuItem>
+        )}
         {enumOptions?.map(({ value: optionValue, label }: any, i: number) => {
           const isDisabled = enumDisabled?.includes(optionValue);
           return (

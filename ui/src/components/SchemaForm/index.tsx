@@ -196,11 +196,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     }
   }, [schema, defaultFormData, onValidationChange, t]);
 
-  // Generate UI schema to mark Expr fields from original schema (before patching)
-
-  const exprUiSchema = originalSchema
-    ? buildExprUiSchema(originalSchema, actionName)
-    : {};
+  const exprUiSchema = schema ? buildExprUiSchema(schema, actionName) : {};
 
   const finalUiSchema = {
     ...exprUiSchema,
@@ -221,6 +217,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
           onEditorOpen,
           onPythonEditorOpen,
           originalSchema,
+          schema,
           actionName,
         }}
         onChange={handleChange}
