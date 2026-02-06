@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:gml="http://www.opengis.net/gml" gml:id="UtilityNetworkElement_administrator">
+  <gml:name>UtilityNetworkElement_administrator</gml:name>
+  <gml:dictionaryEntry>
+    <gml:Definition gml:id="UtilityNetworkElement_administrator_1">
+      <gml:name>1</gml:name>
+      <gml:description>値1</gml:description>
+    </gml:Definition>
+  </gml:dictionaryEntry>
+</gml:Dictionary>
