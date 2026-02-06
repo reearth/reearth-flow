@@ -31,12 +31,21 @@ use super::tiling::TileContent;
 use super::tiling::TileMetadata;
 use super::tiling::VectorLayer;
 
+#[derive(
+    bytemuck::Pod, bytemuck::Zeroable, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, std::fmt::Debug,
+)]
+#[repr(C)]
+pub(super) struct SortKey {
+    tile_id: u64,
+    seq: u64,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
     ctx: Context,
     upstream: &[(Feature, String)],
     tile_id_conv: TileIdMethod,
-    sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
+    sender_sliced: std::sync::mpsc::SyncSender<(SortKey, Vec<u8>)>,
     output_path: &Uri,
     min_zoom: u8,
     max_zoom: u8,
@@ -51,8 +60,9 @@ pub(super) fn geometry_slicing_stage(
     // Convert CityObjects to sliced features
     upstream
         .iter()
+        .enumerate()
         .par_bridge()
-        .try_for_each(|(feature, layer_name)| {
+        .try_for_each(|(seq, (feature, layer_name))| {
             let max_detail = 12; // 4096
             let buffer_pixels = 5;
 
@@ -83,7 +93,8 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                    let key = SortKey { tile_id, seq: seq as u64 };
+                    if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
                     Ok(())
@@ -102,7 +113,8 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                    let key = SortKey { tile_id, seq: seq as u64 };
+                    if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
                     Ok(())
@@ -121,7 +133,8 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                    let key = SortKey { tile_id, seq: seq as u64 };
+                    if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
                     Ok(())
@@ -200,7 +213,7 @@ pub(super) fn geometry_slicing_stage(
 }
 
 pub(super) fn feature_sorting_stage(
-    receiver_sliced: std::sync::mpsc::Receiver<(u64, Vec<u8>)>,
+    receiver_sliced: std::sync::mpsc::Receiver<(SortKey, Vec<u8>)>,
     sender_sorted: std::sync::mpsc::SyncSender<(u64, Vec<Vec<u8>>)>,
 ) -> crate::errors::Result<()> {
     let config = kv_extsort::SortConfig::default().max_chunk_bytes(256 * 1024 * 1024);
@@ -208,12 +221,13 @@ pub(super) fn feature_sorting_stage(
     let sorted_iter = kv_extsort::sort(
         receiver_sliced
             .into_iter()
-            .map(|(tile_id, body)| std::result::Result::<_, Infallible>::Ok((tile_id, body))),
+            .map(|(key, body)| std::result::Result::<_, Infallible>::Ok((key, body))),
         config,
     );
 
+    // Group by tile_id only (not the full SortKey), features within each tile are already sorted by seq
     for ((_, tile_id), grouped) in &sorted_iter.chunk_by(|feat| match feat {
-        Ok((tile_id, _)) => (false, *tile_id),
+        Ok((key, _)) => (false, key.tile_id),
         Err(_) => (true, 0),
     }) {
         let grouped = grouped
@@ -510,4 +524,71 @@ pub(super) fn make_tile(
 
     let bytes = tile.encode_to_vec();
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indexmap::IndexMap;
+    use reearth_flow_types::{Attribute, AttributeValue};
+    use tinymvt::tag::TagsDecoder;
+
+    fn create_test_feature(order: i64) -> Vec<u8> {
+        let mut props = IndexMap::new();
+        props.insert(
+            Attribute::new("order"),
+            AttributeValue::Number(order.into()),
+        );
+
+        // Create a simple point at (0.5, 0.5) in tile coordinates
+        let mut points = MultiPoint2::new();
+        points.push([0.5, 0.5]);
+
+        let feature = super::super::slice::SlicedFeature {
+            typename: "test_layer".to_string(),
+            multi_polygons: MultiPolygon2::new(),
+            multi_line_strings: MultiLineString2::new(),
+            multi_points: points,
+            properties: props,
+        };
+        serde_json::to_vec(&feature).unwrap()
+    }
+
+    #[test]
+    fn test_feature_ordering_preserved_in_tile() {
+        // Create features in order 0..10
+        let features: Vec<Vec<u8>> = (0..10).map(|i| create_test_feature(i)).collect();
+
+        // Run through make_tile
+        let tile_bytes = make_tile(4096, &features, false, false).unwrap();
+
+        // Decode the MVT
+        let tile = vector_tile::Tile::decode(&tile_bytes[..]).unwrap();
+        assert_eq!(tile.layers.len(), 1);
+
+        let layer = &tile.layers[0];
+        let decoder = TagsDecoder::new(&layer.keys, &layer.values);
+
+        // Verify features are in correct order
+        assert_eq!(layer.features.len(), 10);
+        for (i, feature) in layer.features.iter().enumerate() {
+            let tags = decoder.decode(&feature.tags).unwrap();
+            let order_value = tags
+                .iter()
+                .find(|(k, _)| *k == "order")
+                .map(|(_, v)| match v {
+                    tinymvt::tag::Value::Int(v) => *v,
+                    tinymvt::tag::Value::SInt(v) => *v,
+                    tinymvt::tag::Value::Uint(v) => *v as i64,
+                    _ => panic!("Unexpected value type for order: {:?}", v),
+                })
+                .expect("order attribute not found");
+
+            assert_eq!(
+                order_value, i as i64,
+                "Feature at position {} has order {}, expected {}",
+                i, order_value, i
+            );
+        }
+    }
 }
