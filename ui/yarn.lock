@@ -1381,12 +1381,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dagrejs/dagre@npm:2.0.3":
-  version: 2.0.3
-  resolution: "@dagrejs/dagre@npm:2.0.3"
+"@dagrejs/dagre@npm:1.1.8":
+  version: 1.1.8
+  resolution: "@dagrejs/dagre@npm:1.1.8"
   dependencies:
     "@dagrejs/graphlib": "npm:2.2.4"
-  checksum: 10c0/a59872666011287c3c089124f7532299822625b4242df49c3dd717f083ec8eb101fae4672365cb1cdf90c32db51e0d90cde097790af34b478dc1bf9ad746dfbe
+  checksum: 10c0/3f4f99beb1c791c4c35fcab7a6891731a712931f076ae27b380afa4077e81a1f46341cd0ac8f21df29bf7b458e631b780e819846140a9e4f89e36faf907cdc66
   languageName: node
   linkType: hard
 
@@ -6103,7 +6103,7 @@ __metadata:
   resolution: "@reearth/flow-web@workspace:."
   dependencies:
     "@auth0/auth0-react": "npm:2.13.0"
-    "@dagrejs/dagre": "npm:2.0.3"
+    "@dagrejs/dagre": "npm:1.1.8"
     "@dnd-kit/core": "npm:6.3.1"
     "@dnd-kit/sortable": "npm:10.0.0"
     "@dnd-kit/utilities": "npm:3.2.2"
