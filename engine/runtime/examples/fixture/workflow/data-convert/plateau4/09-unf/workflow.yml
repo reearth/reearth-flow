@@ -309,15 +309,17 @@ graphs:
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
-            file::join_path(artifact, pkg + "_lod1")
+            let ft = env.get("__value")["feature_type"].split(":").pop();
+            file::join_path(artifact, pkg + "_" + ft + "_lod1")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
+            let ft = env.get("__value")["feature_type"].split(":").pop();
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod1.zip")
 
       - id: a1c5d2e6-7b8f-9a0c-3d4e-f56789012e3c
         name: cesium3DTilesWriterByLod2
@@ -331,15 +333,17 @@ graphs:
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
-            file::join_path(artifact, pkg + "_lod2")
+            let ft = env.get("__value")["feature_type"].split(":").pop();
+            file::join_path(artifact, pkg + "_" + ft + "_lod2")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
+            let ft = env.get("__value")["feature_type"].split(":").pop();
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod2.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod2.zip")
 
       - id: b2d6e3f7-8c9a-0b1d-4e5f-a67890123f4d
         name: cesium3DTilesWriterByLod3
@@ -353,15 +357,17 @@ graphs:
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
-            file::join_path(artifact, pkg + "_lod3")
+            let ft = env.get("__value")["feature_type"].split(":").pop();
+            file::join_path(artifact, pkg + "_" + ft + "_lod3")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
+            let ft = env.get("__value")["feature_type"].split(":").pop();
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod3.zip")
 
       - id: c3e7f4a8-9d0b-1c2e-5f6a-b78901234a5e
         name: cesium3DTilesWriterByLod4
@@ -375,15 +381,17 @@ graphs:
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
-            file::join_path(artifact, pkg + "_lod4")
+            let ft = env.get("__value")["feature_type"].split(":").pop();
+            file::join_path(artifact, pkg + "_" + ft + "_lod4")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
+            let ft = env.get("__value")["feature_type"].split(":").pop();
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod4.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod4.zip")
 
       - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
         name: AttributeManagerDict
