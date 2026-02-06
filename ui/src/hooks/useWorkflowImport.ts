@@ -10,6 +10,7 @@ import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
+import { computeWorkflowPath } from "@flow/lib/yjs/utils/computeWorkflowPath";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { AnyWorkflowVariable } from "@flow/types";
 import {
@@ -102,11 +103,16 @@ export default () => {
           yWebSocketProvider.once("sync", () => {
             const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
             canvasReadyWorkflows.workflows.forEach((w: any) => {
+              const workflowPath = computeWorkflowPath(
+                canvasReadyWorkflows.workflows,
+                w.id,
+              );
               const yWorkflow = yWorkflowConstructor(
                 w.id,
                 w.name ?? "undefined",
                 w.nodes,
                 w.edges,
+                workflowPath,
               );
               yWorkflows.set(w.id, yWorkflow);
             });

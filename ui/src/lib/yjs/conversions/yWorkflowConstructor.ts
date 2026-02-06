@@ -92,13 +92,17 @@ export const yWorkflowConstructor = (
   name: string,
   nodes?: Node[],
   edges?: Edge[],
+  workflowPath?: string,
 ) => {
   const yWorkflow = new Y.Map() as YWorkflow;
   const yId = toYjsText(id) ?? new Y.Text();
   const yName = toYjsText(name) ?? new Y.Text();
   const yNodes = new Y.Map() as YNodesMap;
   nodes?.forEach((n) => {
-    const newYNode = yNodeConstructor(n);
+    const newYNode = yNodeConstructor({
+      ...n,
+      data: { ...n.data, workflowPath },
+    });
     yNodes.set(n.id, newYNode);
   });
   const yEdges = new Y.Map() as YEdgesMap;
