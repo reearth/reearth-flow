@@ -27,7 +27,6 @@ describe("rebuildWorkflow", () => {
           outputs: ["output1", "output2"],
           isCollapsed: false,
           isDisabled: false,
-          workflowPath: "workflow-1",
           params: {
             param1: "value1",
             param2: 2,

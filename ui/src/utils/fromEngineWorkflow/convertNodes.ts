@@ -17,6 +17,7 @@ export const convertNodes = async (
         pseudoOutputs: PseudoPort[];
       }
     | undefined,
+  workflowPath?: string,
 ) => {
   if (!engineNodes) return [];
   const { api } = config();
@@ -46,6 +47,7 @@ export const convertNodes = async (
           customizations: {
             customName: en.name,
           },
+          workflowPath,
         },
       };
 
