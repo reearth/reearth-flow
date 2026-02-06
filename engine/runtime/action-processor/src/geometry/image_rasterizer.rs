@@ -1104,10 +1104,10 @@ mod tests {
         let img = geometry_polygons.draw(width, height, true);
 
         // Save the image to verify it worked
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = std::path::Path::new(&home_dir)
-            .join(".cache")
-            .join("reearth-flow-test-images");
+        let base_dir = std::env::var_os("REEARTH_FLOW_TEST_IMAGE_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir);
+        let cache_dir = base_dir.join("reearth-flow-test-images");
 
         std::fs::create_dir_all(&cache_dir)
             .expect("Could not create cache directory for test images");

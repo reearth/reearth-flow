@@ -29,6 +29,7 @@ async-trait.workspace = true
 bytes.workspace = true
 calamine.workspace = true
 chrono.workspace = true
+fastxml.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 num-traits.workspace = true

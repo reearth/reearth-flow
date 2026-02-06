@@ -37,13 +37,7 @@ pub fn recursive_check_namespace(
     let child_node = node.get_child_nodes();
     let child_nodes = child_node
         .into_iter()
-        .filter(|n| {
-            if let Some(typ) = n.get_type() {
-                typ == xml::XmlNodeType::ElementNode
-            } else {
-                false
-            }
-        })
+        .filter(|n| n.get_type() == xml::XmlNodeType::Element)
         .collect::<Vec<_>>();
     for child in child_nodes {
         let child_result = recursive_check_namespace(child, namespaces);

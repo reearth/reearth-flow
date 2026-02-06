@@ -32,6 +32,7 @@ base64.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 csv.workspace = true
+fastxml.workspace = true
 flatgeom.workspace = true
 image.workspace = true
 indexmap.workspace = true
