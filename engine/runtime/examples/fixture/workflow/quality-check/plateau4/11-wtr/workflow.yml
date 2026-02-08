@@ -9,6 +9,7 @@ with:
   codelists:
   workerArtifactPath:
   prcs:
+  targetPackages: ["wtr"]
   objectListsPath:
   objectLists:
 graphs:
@@ -100,6 +101,16 @@ graphs:
             env.get("__value")["path"]
           codelistsPath: "codelists"
           schemasPath: "schemas"
+
+      - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        name: FeatureFilterByPackage
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            outputPort: default
 
       - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e4f
         name: AttributeMapperGmlPathAndFilename
@@ -433,10 +444,15 @@ graphs:
         to: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d3e
         fromPort: default
         toPort: default
-
-      # UDXFolderExtractor → AttributeMapperGmlPathAndFilename
-      - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
+      - id: b8c9d0e1-0001-0001-0001-000000000001
         from: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d3e
+        to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        fromPort: default
+        toPort: default
+
+      # FeatureFilterByPackage → AttributeMapperGmlPathAndFilename
+      - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e4f
         fromPort: default
         toPort: default

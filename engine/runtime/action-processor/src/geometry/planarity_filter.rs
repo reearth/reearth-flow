@@ -286,6 +286,18 @@ fn check_planarity_height(
     mut points: Vec<Coordinate3D<f64>>,
     threshold: f64,
 ) -> Option<reearth_flow_geometry::utils::PointsCoplanar> {
+    // Remove closing point if the polygon ring is closed (last point == first point).
+    // This ensures that closed triangles (3 unique vertices + closing = 4 coords)
+    // are handled by the triangle shortcut below.
+    if points.len() >= 2 {
+        let first = points[0];
+        let last = *points.last().unwrap();
+        let d = first - last;
+        if d.x * d.x + d.y * d.y + d.z * d.z < 1e-20 {
+            points.pop();
+        }
+    }
+
     if points.len() < 4 {
         // Less than 4 points: compute plane normal if we have at least 3
         if points.len() < 3 {
@@ -401,7 +413,6 @@ fn check_planarity_height(
     // The minimum height is the smallest distance from any face to the most distant point
     // perpendicular to that face
     let min_height = compute_convex_hull_min_height(vertices, triangles);
-
     if min_height <= threshold {
         // Compute the best-fit plane normal using PCA
         are_points_coplanar(&points, f64::MAX)

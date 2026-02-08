@@ -39,6 +39,7 @@ use super::{
     refiner::RefinerFactory,
     remover::GeometryRemoverFactory,
     replacer::GeometryReplacerFactory,
+    rotator_3d::Rotator3DFactory,
     solid_boundary_validator::SolidBoundaryValidatorFactory,
     spatial_filter::SpatialFilterFactory,
     splitter::GeometrySplitterFactory,
@@ -106,6 +107,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<RayIntersectorFactory>::default(),
         Box::<ImageRasterizerFactory>::default(),
         Box::<GridDividerFactory>::default(),
+        Box::<Rotator3DFactory>::default(),
     ];
     factories
         .into_iter()

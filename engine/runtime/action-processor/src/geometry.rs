@@ -35,6 +35,7 @@ pub(crate) mod ray_intersector;
 pub(crate) mod refiner;
 pub(crate) mod remover;
 pub(crate) mod replacer;
+pub(crate) mod rotator_3d;
 pub(crate) mod solid_boundary_validator;
 pub(crate) mod spatial_filter;
 pub(crate) mod splitter;
