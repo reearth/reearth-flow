@@ -11,11 +11,9 @@ use std::{
 use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher, SchemaFetcher};
 use fastxml::schema::types::CompiledSchema;
 use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
+use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
-use reearth_flow_common::{
-    uri::Uri,
-    xml::{self, XmlDocument, XmlRoNamespace},
-};
+use reearth_flow_common::{uri::Uri, xml};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -27,7 +25,6 @@ use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Value;
 
 use super::errors::{Result, XmlProcessorError};
-use super::namespace::recursive_check_namespace;
 use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorParam};
 
 /// Get current process RSS (Resident Set Size) in MB using sysinfo.
@@ -202,28 +199,8 @@ impl XmlValidator {
             rss_start
         );
 
-        let t_parse = Instant::now();
-        let document = match xml::parse(xml_content) {
-            Ok(doc) => doc,
-            Err(_) => {
-                Self::send_syntax_error(&ctx, fw, feature);
-                return Ok(());
-            }
-        };
-        tracing::info!(
-            "[PERF] XMLValidator::validate_syntax_and_namespace parse | elapsed={}ms | rss={:.1} MB",
-            t_parse.elapsed().as_millis(),
-            current_rss_mb()
-        );
-
-        let t_ns = Instant::now();
-        match Self::check_namespace(&document) {
+        match Self::check_namespace_streaming(&xml_content) {
             Ok(result) => {
-                tracing::info!(
-                    "[PERF] XMLValidator::validate_syntax_and_namespace check_ns | elapsed={}ms | rss={:.1} MB",
-                    t_ns.elapsed().as_millis(),
-                    current_rss_mb()
-                );
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
@@ -244,8 +221,6 @@ impl XmlValidator {
                 Self::send_syntax_error(&ctx, fw, feature);
             }
         }
-        // Drop document explicitly to free DOM memory
-        drop(document);
 
         tracing::info!(
             "[PERF] XMLValidator::validate_syntax_and_namespace TOTAL | elapsed={}ms | rss={:.1} MB (delta={:+.1})",
@@ -421,23 +396,44 @@ impl XmlValidator {
         fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
     }
 
-    fn check_namespace(document: &XmlDocument) -> Result<Vec<ValidationResult>> {
-        let root_node = match xml::get_root_readonly_node(document) {
-            Ok(node) => node,
-            Err(e) => {
-                return Err(XmlProcessorError::Validator(format!(
-                    "Failed to get root node: {e}"
-                )));
-            }
-        };
+    fn check_namespace_streaming(xml_content: &str) -> Result<Vec<ValidationResult>> {
+        use std::cell::{Cell, RefCell};
 
-        let namespaces: Vec<XmlRoNamespace> = root_node
-            .get_namespace_declarations()
-            .into_iter()
-            .map(|ns| ns.into())
-            .collect::<Vec<_>>();
+        let root_prefixes: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
+        let is_root = Cell::new(true);
+        let errors: RefCell<Vec<ValidationResult>> = RefCell::new(Vec::new());
 
-        Ok(recursive_check_namespace(root_node, &namespaces))
+        let transformer = StreamTransformer::new(xml_content)
+            .with_root_namespaces()
+            .map_err(|e| XmlProcessorError::Validator(format!("Failed to parse XML: {e:?}")))?;
+
+        transformer
+            .on("//*", |node| {
+                if is_root.get() {
+                    for prefix in node.namespaces().keys() {
+                        root_prefixes.borrow_mut().insert(prefix.to_string());
+                    }
+                    is_root.set(false);
+                }
+                let qname = node.qname();
+                if let Some((prefix, _)) = qname.split_once(':') {
+                    if !root_prefixes.borrow().contains(prefix) {
+                        errors.borrow_mut().push(ValidationResult::new(
+                            "NamespaceError",
+                            &format!("No namespace declaration for {prefix}"),
+                        ));
+                    }
+                } else {
+                    errors.borrow_mut().push(ValidationResult::new(
+                        "NamespaceError",
+                        "No namespace declaration",
+                    ));
+                }
+            })
+            .for_each()
+            .map_err(|e| XmlProcessorError::Validator(format!("Failed to parse XML: {e:?}")))?;
+
+        Ok(errors.into_inner())
     }
 
     /// Streaming schema validation with per-step performance profiling.
