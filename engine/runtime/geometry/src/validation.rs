@@ -5,10 +5,7 @@ use reearth_flow_common::collection::ApproxHashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    algorithm::{
-        contains::Contains, GeoFloat,
-        GeoNum,
-    },
+    algorithm::{contains::Contains, GeoFloat, GeoNum},
     types::{
         coordinate::Coordinate,
         csg::{CSGChild, CSG},
@@ -220,63 +217,62 @@ impl Display for ValidationProblemPosition {
 
 impl Display for ValidationProblemReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let buffer = self
-            .0
-            .iter()
-            .map(|p| {
-                let (problem, position) = (&p.0, &p.1);
-                let mut str_buffer: Vec<String> = Vec::new();
-                let is_polygon = matches!(
-                    position,
-                    ValidationProblemPosition::Polygon(_, _)
-                        | ValidationProblemPosition::MultiPolygon(_, _, _)
-                );
+        let buffer =
+            self.0
+                .iter()
+                .map(|p| {
+                    let (problem, position) = (&p.0, &p.1);
+                    let mut str_buffer: Vec<String> = Vec::new();
+                    let is_polygon = matches!(
+                        position,
+                        ValidationProblemPosition::Polygon(_, _)
+                            | ValidationProblemPosition::MultiPolygon(_, _, _)
+                    );
 
-                str_buffer.push(format!("{position}"));
+                    str_buffer.push(format!("{position}"));
 
-                match *problem {
-                    ValidationProblem::NotFinite => {
-                        str_buffer.push("Coordinate is not finite (NaN or infinite)".to_string())
-                    }
-                    ValidationProblem::TooFewPoints => {
-                        if is_polygon {
-                            str_buffer.push("Polygon ring has too few points".to_string())
-                        } else {
-                            str_buffer.push("LineString has too few points".to_string())
+                    match *problem {
+                        ValidationProblem::NotFinite => str_buffer
+                            .push("Coordinate is not finite (NaN or infinite)".to_string()),
+                        ValidationProblem::TooFewPoints => {
+                            if is_polygon {
+                                str_buffer.push("Polygon ring has too few points".to_string())
+                            } else {
+                                str_buffer.push("LineString has too few points".to_string())
+                            }
                         }
-                    }
-                    ValidationProblem::IdenticalCoords => {
-                        str_buffer.push("Identical coords".to_string())
-                    }
-                    ValidationProblem::DuplicateConsecutivePoints => str_buffer.push(
-                        "Duplicate consecutive coordinates within distance threshold".to_string(),
-                    ),
-                    ValidationProblem::CollinearCoords => {
-                        str_buffer.push("Collinear coords".to_string())
-                    }
-                    ValidationProblem::SelfIntersection => {
-                        str_buffer.push("Ring has a self-intersection".to_string())
-                    }
-                    ValidationProblem::InteriorRingNotContainedInExteriorRing => str_buffer.push(
-                        "The interior ring of a Polygon is not contained in the exterior ring"
-                            .to_string(),
-                    ),
-                    ValidationProblem::ElementsOverlaps => str_buffer
-                        .push("Two Polygons of MultiPolygons overlap partially".to_string()),
-                    ValidationProblem::ElementsTouchOnALine => {
-                        str_buffer.push("Two Polygons of MultiPolygons touch on a line".to_string())
-                    }
-                    ValidationProblem::ElementsAreIdentical => {
-                        str_buffer.push("Two Polygons of MultiPolygons are identical".to_string())
-                    }
-                    ValidationProblem::DegenerateGeometry => {
-                        str_buffer.push("Degenerate Geometry".to_string())
-                    }
-                };
-                str_buffer.into_iter().rev().collect::<Vec<_>>().join("")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
+                        ValidationProblem::IdenticalCoords => {
+                            str_buffer.push("Identical coords".to_string())
+                        }
+                        ValidationProblem::DuplicateConsecutivePoints => str_buffer.push(
+                            "Duplicate consecutive coordinates within distance threshold"
+                                .to_string(),
+                        ),
+                        ValidationProblem::CollinearCoords => {
+                            str_buffer.push("Collinear coords".to_string())
+                        }
+                        ValidationProblem::SelfIntersection => {
+                            str_buffer.push("Ring has a self-intersection".to_string())
+                        }
+                        ValidationProblem::InteriorRingNotContainedInExteriorRing => str_buffer
+                            .push(
+                            "The interior ring of a Polygon is not contained in the exterior ring"
+                                .to_string(),
+                        ),
+                        ValidationProblem::ElementsOverlaps => str_buffer
+                            .push("Two Polygons of MultiPolygons overlap partially".to_string()),
+                        ValidationProblem::ElementsTouchOnALine => str_buffer
+                            .push("Two Polygons of MultiPolygons touch on a line".to_string()),
+                        ValidationProblem::ElementsAreIdentical => str_buffer
+                            .push("Two Polygons of MultiPolygons are identical".to_string()),
+                        ValidationProblem::DegenerateGeometry => {
+                            str_buffer.push("Degenerate Geometry".to_string())
+                        }
+                    };
+                    str_buffer.into_iter().rev().collect::<Vec<_>>().join("")
+                })
+                .collect::<Vec<String>>()
+                .join("\n");
 
         write!(f, "{buffer}")
     }
