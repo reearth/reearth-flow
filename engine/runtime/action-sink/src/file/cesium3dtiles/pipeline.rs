@@ -414,11 +414,6 @@ pub(super) fn tile_writing_stage(
             let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
             let geom_error = tiling::geometric_error(tile_zoom, tile_y);
 
-            // DEBUG: check features have textures before packing
-            let feats_with_tex = valid_features.iter().filter(|f| f.materials.iter().any(|m| m.base_texture.is_some())).count();
-            eprintln!("[DEBUG tile {z}/{x}/{y}] before packing: {feats_with_tex}/{} features have textures, geom_error={geom_error}",
-                valid_features.len());
-
             let packer = Mutex::new(AtlasPacker::default());
 
             let (max_width, max_height) = load_textures_into_packer(
@@ -429,9 +424,6 @@ pub(super) fn tile_writing_stage(
                 geom_error,
                 limit_texture_resolution.unwrap_or(false),
             )?;
-
-            // DEBUG: after loading
-            eprintln!("[DEBUG tile {z}/{x}/{y}] after load_textures_into_packer: max=({max_width},{max_height})");
 
             // Export atlas textures
             let atlas_path = atlas_dir
@@ -451,11 +443,6 @@ pub(super) fn tile_writing_stage(
                 &texture_cache,
                 |feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
             )?;
-
-            // DEBUG: check primitives after atlas export
-            let mats_with_tex = primitives.keys().filter(|m| m.base_texture.is_some()).count();
-            eprintln!("[DEBUG tile {z}/{x}/{y}] after process_geometry: {} primitives, {} with texture",
-                primitives.len(), mats_with_tex);
 
             // Write glTF to storage
             let content_path = tile_ctx.content.content_path.clone();
