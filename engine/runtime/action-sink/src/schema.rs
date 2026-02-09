@@ -1,5 +1,5 @@
 use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
-use reearth_flow_types::AttributeValue;
+use reearth_flow_types::{AttributeValue, Attributes, Feature};
 
 /// Get the attribute definitions map for a feature type from the schema.
 /// Returns None if the feature type is not found or is a Property type.
@@ -70,10 +70,35 @@ pub fn cast_attribute_value(value: &AttributeValue, type_ref: &TypeRef) -> Attri
                 AttributeValue::String(_) => value.clone(),
                 AttributeValue::Number(n) => AttributeValue::String(n.to_string()),
                 AttributeValue::Bool(b) => AttributeValue::String(b.to_string()),
+                AttributeValue::DateTime(dt) => AttributeValue::String(dt.to_string()),
                 _ => value.clone(),
             }
         }
         // Unknown, JsonString, Point, Named — pass through unchanged
         _ => value.clone(),
     }
+}
+
+/// Filter feature attributes by schema and cast values to match schema types.
+/// If no schema is found for the feature type, returns attributes unchanged.
+pub fn filter_and_cast_attributes(feature: &Feature, schema: &Schema) -> Attributes {
+    let schema_key = feature
+        .get("__schema_definition")
+        .and_then(|v| v.as_string())
+        .or_else(|| feature.feature_type());
+    let Some(schema_attrs) = schema_key
+        .as_ref()
+        .and_then(|ft| schema_attributes(ft, schema))
+    else {
+        return feature.attributes.as_ref().clone();
+    };
+
+    feature
+        .attributes
+        .iter()
+        .filter_map(|(key, value)| {
+            let attr_def = schema_attrs.get(key.as_ref())?;
+            Some((key.clone(), cast_attribute_value(value, &attr_def.type_ref)))
+        })
+        .collect()
 }

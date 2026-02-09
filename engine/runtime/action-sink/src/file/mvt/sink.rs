@@ -18,7 +18,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
-use reearth_flow_types::{Attribute, Attributes, Feature};
+use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -227,35 +227,16 @@ impl Sink for MVTWriter {
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
-                // Apply attribute processing before buffering:
-                // schema filtering/casting, skip_unexposed_attributes, colon_to_underscore
-                let schema_key = feature
-                    .get("__schema_definition")
-                    .and_then(|v| v.as_string())
-                    .or_else(|| feature.feature_type());
-                let schema_attrs = schema_key
-                    .as_ref()
-                    .and_then(|ft| crate::schema::schema_attributes(ft, &self.schema));
-
-                let mut new_attrs = Attributes::new();
-                for (key, value) in feature.attributes.iter() {
-                    if self.params.skip_unexposed_attributes && key.as_ref().starts_with("__") {
-                        continue;
-                    }
-                    let value = if let Some(attrs) = schema_attrs {
-                        let Some(attr_def) = attrs.get(key.as_ref()) else {
-                            continue;
-                        };
-                        crate::schema::cast_attribute_value(value, &attr_def.type_ref)
-                    } else {
-                        value.clone()
-                    };
-                    let key = if self.params.colon_to_underscore {
-                        Attribute::new(key.inner().replace(":", "_"))
-                    } else {
-                        key.clone()
-                    };
-                    new_attrs.insert(key, value);
+                let mut new_attrs =
+                    crate::schema::filter_and_cast_attributes(feature, &self.schema);
+                if self.params.skip_unexposed_attributes {
+                    new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
+                }
+                if self.params.colon_to_underscore {
+                    new_attrs = new_attrs
+                        .into_iter()
+                        .map(|(k, v)| (Attribute::new(k.inner().replace(":", "_")), v))
+                        .collect();
                 }
                 let cleaned_feature = feature.with_attributes(new_attrs);
 
