@@ -63,7 +63,7 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    handleCloseFeatureDetails,
+    handleShowFeatureDetailsOverlay,
     // Data properties
     detectedGeometryType,
     visualizerType,
@@ -240,7 +240,9 @@ const DebugPanel: React.FC = () => {
                       detailsOverlayOpen={detailsOverlayOpen}
                       detailsFeature={detailsFeature}
                       formattedData={formattedData}
-                      onCloseFeatureDetails={handleCloseFeatureDetails}
+                      onShowFeatureDetailsOverlay={
+                        handleShowFeatureDetailsOverlay
+                      }
                     />
                   </div>
                 </ResizablePanel>
@@ -271,6 +273,9 @@ const DebugPanel: React.FC = () => {
                           }
                           onSelectedFeature={handleFeatureSelect}
                           onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                          onShowFeatureDetailsOverlay={
+                            handleShowFeatureDetailsOverlay
+                          }
                           // Data detection props
                           detectedGeometryType={detectedGeometryType}
                           visualizerType={visualizerType}

@@ -18,7 +18,7 @@ type Props = {
   detailsOverlayOpen: boolean;
   detailsFeature: any;
   formattedData: ReturnType<typeof useDataColumnizer>;
-  onCloseFeatureDetails: () => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const TableViewer: React.FC<Props> = memo(
@@ -32,7 +32,7 @@ const TableViewer: React.FC<Props> = memo(
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
-    onCloseFeatureDetails,
+    onShowFeatureDetailsOverlay,
   }) => {
     const t = useT();
 
@@ -152,7 +152,7 @@ const TableViewer: React.FC<Props> = memo(
           <FeatureDetailsOverlay
             feature={detailsFeature}
             detectedGeometryType={detectedGeometryType}
-            onClose={onCloseFeatureDetails}
+            onClose={() => onShowFeatureDetailsOverlay(false)}
           />
         )}
       </div>
