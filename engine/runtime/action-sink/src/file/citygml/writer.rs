@@ -286,14 +286,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
             
             tracing::debug!("write_target_element: joined {} bytes of coordinates", coord_string.len());
 
-            // Find the ring ID from the URI to use as the ring attribute
-            let ring_id = self.extract_ring_id_from_uri(&target.uri);
-
+            // Use the ring field directly (which contains the ring ID, not surface ID)
             // The ring attribute must have a # prefix to be valid LocalId reference
-            let ring_ref = if ring_id.starts_with('#') {
-                ring_id.clone()
+            let ring_ref = if target.ring.starts_with('#') {
+                target.ring.clone()
             } else {
-                format!("#{}", ring_id)
+                format!("#{}", target.ring)
             };
             
             let mut tex_coord = BytesStart::new("app:textureCoordinates");
@@ -321,15 +319,6 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
-    }
-
-    fn extract_ring_id_from_uri(&self, uri: &str) -> String {
-        // Extract ring ID from URI like "#UUID_..." or "#ringId"
-        if uri.starts_with('#') {
-            uri[1..].to_string()
-        } else {
-            uri.to_string()
-        }
     }
 
     fn write_lod_geometry(
