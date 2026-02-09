@@ -326,7 +326,7 @@ fn send_xml_fragment(
     let bytes = storage
         .get_sync(&url.path())
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let raw_xml = String::from_utf8(bytes.to_vec())
+    let raw_xml = std::str::from_utf8(&bytes)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
     tracing::info!(
         "[PERF] XmlFragmenter::send_xml_fragment file_read | count={} | xml_size={} bytes | rss={:.1} MB",

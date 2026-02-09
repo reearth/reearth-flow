@@ -20,6 +20,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use bytes::Bytes;
 use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Value;
 
@@ -242,15 +243,15 @@ impl XmlValidator {
         let total_start = Instant::now();
         let rss_start = current_rss_mb();
         let feature = &ctx.feature;
-        let xml_content = self.get_xml_content(&ctx, feature)?;
+        let xml_bytes = self.get_xml_content_bytes(&ctx, feature)?;
 
         tracing::info!(
             "[PERF] XMLValidator::validate_syntax_and_namespace START | xml_size={} bytes | rss={:.1} MB",
-            xml_content.len(),
+            xml_bytes.len(),
             rss_start
         );
 
-        match Self::check_namespace_streaming(&xml_content) {
+        match Self::check_namespace_streaming(&xml_bytes) {
             Ok(result) => {
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
@@ -385,7 +386,7 @@ impl XmlValidator {
     }
 
     /// Get XML content as bytes for streaming validation (more memory efficient)
-    fn get_xml_content_bytes(&self, ctx: &ExecutorContext, feature: &Feature) -> Result<Vec<u8>> {
+    fn get_xml_content_bytes(&self, ctx: &ExecutorContext, feature: &Feature) -> Result<Bytes> {
         let start = Instant::now();
         let result = match self.params.input_type {
             XmlInputType::File => {
@@ -409,7 +410,7 @@ impl XmlValidator {
                 let content = storage
                     .get_sync(uri.path().as_path())
                     .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
-                Ok(content.to_vec())
+                Ok(content)
             }
             XmlInputType::Text => {
                 let content = feature
@@ -424,7 +425,7 @@ impl XmlValidator {
                         ))
                     }
                 };
-                Ok(content.as_bytes().to_vec())
+                Ok(Bytes::from(content.as_bytes().to_vec()))
             }
         };
         let bytes = result?;
@@ -447,11 +448,11 @@ impl XmlValidator {
         fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
     }
 
-    fn check_namespace_streaming(xml_content: &str) -> Result<Vec<ValidationResult>> {
+    fn check_namespace_streaming(xml_bytes: &[u8]) -> Result<Vec<ValidationResult>> {
         use quick_xml::events::Event;
         use quick_xml::Reader;
 
-        let mut reader = Reader::from_str(xml_content);
+        let mut reader = Reader::from_reader(xml_bytes);
         reader.config_mut().trim_text(false);
 
         let mut buf = Vec::new();
