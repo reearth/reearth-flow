@@ -34,7 +34,7 @@ type Props = {
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
-  onCloseFeatureDetails: () => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
@@ -43,7 +43,7 @@ const CesiumViewer: React.FC<Props> = ({
   viewerRef,
   selectedFeatureId,
   onSelectedFeature,
-  onCloseFeatureDetails,
+  onShowFeatureDetailsOverlay,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -71,10 +71,36 @@ const CesiumViewer: React.FC<Props> = ({
         }
       } else {
         onSelectedFeature(null);
-        onCloseFeatureDetails();
+        onShowFeatureDetailsOverlay(false);
       }
     },
-    [onSelectedFeature, onCloseFeatureDetails, viewerRef],
+    [onSelectedFeature, onShowFeatureDetailsOverlay, viewerRef],
+  );
+
+  const handleDoubleClick = useCallback(
+    (movement: any) => {
+      if (!onSelectedFeature || !viewerRef?.current?.cesiumElement) return;
+
+      const cesiumViewer = viewerRef.current.cesiumElement;
+      const pickedObject = cesiumViewer.scene.pick(movement.position);
+
+      if (defined(pickedObject) && defined(pickedObject.id)) {
+        const entity = pickedObject.id;
+        const properties = entity.properties?.getValue?.();
+        if (properties?._originalId) {
+          try {
+            onSelectedFeature(properties?._originalId);
+            onShowFeatureDetailsOverlay(true);
+          } catch (e) {
+            console.error("Cesium viewer error:", e);
+          }
+        }
+      } else {
+        onSelectedFeature(null);
+        onShowFeatureDetailsOverlay(false);
+      }
+    },
+    [onSelectedFeature, onShowFeatureDetailsOverlay, viewerRef],
   );
 
   // Separate features by geometry type
@@ -108,6 +134,10 @@ const CesiumViewer: React.FC<Props> = ({
           <ScreenSpaceEvent
             action={handleSingleClick}
             type={ScreenSpaceEventType.LEFT_CLICK}
+          />
+          <ScreenSpaceEvent
+            action={handleDoubleClick}
+            type={ScreenSpaceEventType.LEFT_DOUBLE_CLICK}
           />
         </ScreenSpaceEventHandler>
       )}

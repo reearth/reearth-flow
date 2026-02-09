@@ -464,8 +464,8 @@ export default () => {
     [convertedSelectedFeature, handleFlyToSelectedFeature, handleFeatureSelect],
   );
 
-  const handleCloseFeatureDetails = useCallback(() => {
-    setDetailsOverlayOpen(false);
+  const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
+    setDetailsOverlayOpen(value);
   }, []);
 
   const handleRemoveDataURL = useCallback(
@@ -571,7 +571,7 @@ export default () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    handleCloseFeatureDetails,
+    handleShowFeatureDetailsOverlay,
 
     // Data loading features (always available now)
     streamingQuery: streamingQuery,
