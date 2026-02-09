@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_c3dfbc4a-8b9d-42a4-b4d6-3a1ab8187c02">
+<gml:name>PointCloudSpecAttribute_class</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_class_1">
+<gml:description>計測データ（公共測量成果又は基本測量成果）</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_class_2">
+<gml:description>計測データ（公共測量成果又は基本測量成果以外）</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_class_3">
+<gml:description>生成データ</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

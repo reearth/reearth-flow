@@ -9,6 +9,7 @@ with:
   codelists:
   workerArtifactPath:
   prcs:
+  targetPackages: ["luse", "urf", "area"]
   objectListsPath:
   objectLists:
 graphs:
@@ -95,6 +96,16 @@ graphs:
             env.get("__value")["path"]
           codelistsPath: codelists
           schemasPath: schemas
+
+      - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        name: FeatureFilterByPackage
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            outputPort: default
 
       - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
         name: FeatureCityGmlReader
@@ -486,8 +497,13 @@ graphs:
         to: 55767a5d-6d94-471b-af4a-09e20ae5f024
         fromPort: default
         toPort: default
-      - id: 17912650-d822-45a9-b31a-81d9bd9932ee
+      - id: 55767a5d-0001-0001-0001-000000000001
         from: 55767a5d-6d94-471b-af4a-09e20ae5f024
+        to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        fromPort: default
+        toPort: default
+      - id: 17912650-d822-45a9-b31a-81d9bd9932ee
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: 80f7b3d8-201b-4985-b512-c4b94690c16d
         fromPort: default
         toPort: default
@@ -569,7 +585,7 @@ graphs:
 
       # Error aggregation flow
       - id: 4ff8a685-06c9-4227-b33e-0dc21b07fc12
-        from: 55767a5d-6d94-471b-af4a-09e20ae5f024 # UDXFolderExtractor
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13 # FeatureFilterByPackage
         to: 7ccbb722-d0cc-4843-a42e-179576530340  # FileInfoExtractor
         fromPort: default
         toPort: default

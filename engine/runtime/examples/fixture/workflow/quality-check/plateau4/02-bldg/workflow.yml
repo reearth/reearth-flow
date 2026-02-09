@@ -12,6 +12,7 @@ with:
   objectLists:
   workerArtifactPath:
   prcs:
+  targetPackages: ["bldg"]
 graphs:
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
@@ -102,6 +103,16 @@ graphs:
             env.get("__value")["path"]
           codelistsPath: "codelists"
           schemasPath: "schemas"
+
+      - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        name: FeatureFilterByPackage
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            outputPort: default
 
       - id: 7a561c34-2e94-4883-91e4-4026b09c2f8a
         name: ReferenceAndTypeChecker
@@ -566,8 +577,13 @@ graphs:
         to: 7e833060-f8c4-458b-a8cc-8c817527f25b
         fromPort: default
         toPort: default
-      - id: 4b7e2a9c-5f1d-4a8e-f2c6-7b4a1e8d5c9f
+      - id: 7e833060-0001-0001-0001-000000000001
         from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        fromPort: default
+        toPort: default
+      - id: 4b7e2a9c-5f1d-4a8e-f2c6-7b4a1e8d5c9f
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         fromPort: default
         toPort: default

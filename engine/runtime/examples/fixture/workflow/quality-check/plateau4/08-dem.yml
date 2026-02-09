@@ -11,6 +11,8 @@ with:
   objectLists: null
   workerArtifactPath: null
   prcs: null
+  targetPackages:
+  - dem
 graphs:
 - id: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
   name: PLATEAU4.XMLValidator
@@ -1661,6 +1663,15 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
+  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    name: FeatureFilterByPackage
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
   - id: 7568f48a-0858-4244-b473-2a8a63909341
     name: PLATEAU4.CityGmlMeshBuilder
     type: action
@@ -2052,8 +2063,13 @@ graphs:
     to: 3c272f2e-a301-4d39-9a1e-6fd3bc09f6b9
     fromPort: default
     toPort: default
-  - id: c7309009-b155-4aa5-9a1a-7218b385876e
+  - id: 3c272f2e-0001-0001-0001-000000000001
     from: 3c272f2e-a301-4d39-9a1e-6fd3bc09f6b9
+    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    fromPort: default
+    toPort: default
+  - id: c7309009-b155-4aa5-9a1a-7218b385876e
+    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: 7568f48a-0858-4244-b473-2a8a63909341
     fromPort: default
     toPort: default

@@ -3842,8 +3842,7 @@
                 "type": "string",
                 "enum": [
                   "duplicatePoints",
-                  "corruptGeometry",
-                  "selfIntersection"
+                  "corruptGeometry"
                 ]
               },
               {
@@ -3854,6 +3853,23 @@
                 "properties": {
                   "duplicateConsecutivePoints": {
                     "type": "number",
+                    "format": "double"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
+                "type": "object",
+                "required": [
+                  "selfIntersection"
+                ],
+                "properties": {
+                  "selfIntersection": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
                     "format": "double"
                   }
                 },
@@ -7791,6 +7807,172 @@
       ],
       "categories": [
         "Feature"
+      ]
+    },
+    {
+      "name": "Rotator3D",
+      "type": "processor",
+      "description": "Rotate a 3D polygon using from/to vectors or axis-angle specification",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Rotator3D Parameters",
+        "description": "Configure the rotation for a 3D polygon",
+        "type": "object",
+        "required": [
+          "rotation"
+        ],
+        "properties": {
+          "rotation": {
+            "title": "Rotation",
+            "description": "The rotation specification: either from/to vectors or axis-angle",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RotationParam"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "RotationParam": {
+            "description": "Rotation specification",
+            "oneOf": [
+              {
+                "description": "Rotation defined by two vectors (from and to)",
+                "type": "object",
+                "required": [
+                  "fromX",
+                  "fromY",
+                  "fromZ",
+                  "toX",
+                  "toY",
+                  "toZ",
+                  "type"
+                ],
+                "properties": {
+                  "fromX": {
+                    "description": "X component of the source direction vector",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "fromY": {
+                    "description": "Y component of the source direction vector",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "fromZ": {
+                    "description": "Z component of the source direction vector",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "toX": {
+                    "description": "X component of the target direction vector",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "toY": {
+                    "description": "Y component of the target direction vector",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "toZ": {
+                    "description": "Z component of the target direction vector",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fromToVectors"
+                    ]
+                  }
+                }
+              },
+              {
+                "description": "Rotation defined by an axis and angle",
+                "type": "object",
+                "required": [
+                  "angle",
+                  "axisX",
+                  "axisY",
+                  "axisZ",
+                  "type"
+                ],
+                "properties": {
+                  "angle": {
+                    "description": "Rotation angle in degrees",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "axisX": {
+                    "description": "X component of the rotation axis",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "axisY": {
+                    "description": "Y component of the rotation axis",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "axisZ": {
+                    "description": "Z component of the rotation axis",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "axisAngle"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
