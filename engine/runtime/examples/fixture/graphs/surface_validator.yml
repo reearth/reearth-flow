@@ -69,8 +69,6 @@ nodes:
     action: GeometryValidator
     with:
       validationTypes:
-        # Note: duplicatePoints removed to match FME SurfaceValidator_2D behavior
-        # FME doesn't check for duplicate points in surface validation
         - corruptGeometry
 
   - id: 6a1d4f7c-9e2b-4c8a-f5e1-7c2a6f9d4e1b
@@ -137,7 +135,6 @@ nodes:
     with:
       validationTypes:
         - duplicateConsecutivePoints: 0.01
-        # Match FME's SELF_INTERSECTION_TOLERANCE = "Automatic" behavior
         - selfIntersection: 0.01
 
   - id: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
@@ -231,7 +228,6 @@ nodes:
       groupBy:
         - surfaceId
         - holeId
-      # Match FME RING_INTERSECTION_TOLERANCE value
       tolerance: 0.01
       outputAttribute: overlap
 
@@ -254,8 +250,6 @@ nodes:
         - surfaceId
       accumulationMode: useAttributesFromOneFeature
       outputAttribute: overlap
-      # Filter out small intersections (min_area = tolerance^2)
-      # FME uses AUTO cleaning, we use a larger tolerance to match behavior
       tolerance: 0.1
 
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d

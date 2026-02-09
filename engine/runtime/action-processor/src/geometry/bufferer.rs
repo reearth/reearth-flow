@@ -173,14 +173,12 @@ impl Bufferer {
                 Geometry2D::Polygon(polygon) => {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
-                    // Use proper polygon buffer algorithm to preserve shape (not convex hull)
                     if let Some(buffered) = buffer_polygon(polygon, self.distance) {
                         geometry.value =
                             GeometryValue::FlowGeometry2D(Geometry2D::Polygon(buffered));
                         feature.geometry = Arc::new(geometry);
                         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     } else {
-                        // If buffering fails, send to rejected port
                         fw.send(
                             ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
                         );
@@ -233,14 +231,12 @@ impl Bufferer {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
                     let polygon_2d: Polygon2D<f64> = polygon.clone().into();
-                    // Use proper polygon buffer algorithm to preserve shape (not convex hull)
                     if let Some(buffered) = buffer_polygon(&polygon_2d, self.distance) {
                         geometry.value =
                             GeometryValue::FlowGeometry2D(Geometry2D::Polygon(buffered));
                         feature.geometry = Arc::new(geometry);
                         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     } else {
-                        // If buffering fails, send to rejected port
                         fw.send(
                             ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
                         );
