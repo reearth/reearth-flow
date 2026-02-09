@@ -71,7 +71,7 @@ const SelectWidget = <
         aria-invalid={rawErrors.length > 0}
         aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}>
         <span className={`${value ? "" : "text-muted-foreground"}`}>
-          {getCurrentLabel() || placeholder}
+          {getCurrentLabel() || placeholder || "-"}
         </span>
         <ChevronDownIcon className="size-4" />
       </DropdownMenuTrigger>
@@ -80,7 +80,7 @@ const SelectWidget = <
           <DropdownMenuItem
             onSelect={() => handleSelect(emptyValue)}
             className={`text-muted-foreground ${value == null ? "bg-accent" : ""}`}>
-            {placeholder || "\u00A0"}
+            {placeholder || "-"}
           </DropdownMenuItem>
         )}
         {enumOptions?.map(({ value: optionValue, label }: any, i: number) => {
