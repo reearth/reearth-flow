@@ -271,6 +271,7 @@ const DebugPanel: React.FC = () => {
                           }
                           onSelectedFeature={handleFeatureSelect}
                           onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                          onCloseFeatureDetails={handleCloseFeatureDetails}
                           // Data detection props
                           detectedGeometryType={detectedGeometryType}
                           visualizerType={visualizerType}

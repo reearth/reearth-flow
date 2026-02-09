@@ -37,6 +37,7 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onCloseFeatureDetails: () => void;
   detectedGeometryType: string | null;
   visualizerType: "2d-map" | "3d-map" | "3d-model";
 };
@@ -51,6 +52,7 @@ const DebugPreview: React.FC<Props> = ({
   selectedFeatureId,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onCloseFeatureDetails,
   detectedGeometryType,
   visualizerType,
 }) => {
@@ -180,6 +182,7 @@ const DebugPreview: React.FC<Props> = ({
               onMapLoad={handleMapLoad}
               onSelectedFeature={onSelectedFeature}
               onFlyToSelectedFeature={onFlyToSelectedFeature}
+              onCloseFeatureDetails={onCloseFeatureDetails}
             />
           </div>
         </div>
@@ -206,6 +209,7 @@ const DebugPreview: React.FC<Props> = ({
               cesiumViewerRef={cesiumViewerRef}
               selectedFeaturedId={selectedFeatureId}
               onSelectedFeature={onSelectedFeature}
+              onCloseFeatureDetails={onCloseFeatureDetails}
             />
           </div>
         </div>

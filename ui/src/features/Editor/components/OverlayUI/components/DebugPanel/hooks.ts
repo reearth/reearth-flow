@@ -433,7 +433,8 @@ export default () => {
     if (!featureIdMap.has(selectedFeatureId)) {
       setSelectedFeatureId(null);
     }
-  }, [selectedFeatureId, featureIdMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureIdMap]);
 
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {

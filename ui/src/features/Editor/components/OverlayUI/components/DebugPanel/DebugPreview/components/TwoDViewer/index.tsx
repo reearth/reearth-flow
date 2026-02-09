@@ -14,6 +14,7 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   onMapLoad: (onCenter?: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onCloseFeatureDetails: () => void;
 };
 
 const TwoDViewer: React.FC<Props> = ({
@@ -25,6 +26,7 @@ const TwoDViewer: React.FC<Props> = ({
   onMapLoad,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onCloseFeatureDetails,
 }) => {
   const t = useT();
   return (
@@ -40,6 +42,7 @@ const TwoDViewer: React.FC<Props> = ({
         onMapLoad={onMapLoad}
         onSelectedFeature={onSelectedFeature}
         onFlyToSelectedFeature={onFlyToSelectedFeature}
+        onCloseFeatureDetails={onCloseFeatureDetails}
       />
     </RenderFallback>
   );

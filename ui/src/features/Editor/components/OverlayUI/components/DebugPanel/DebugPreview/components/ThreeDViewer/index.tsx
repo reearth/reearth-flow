@@ -11,6 +11,7 @@ type Props = {
   cesiumViewerRef: React.RefObject<any>;
   selectedFeaturedId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
+  onCloseFeatureDetails: () => void;
 };
 
 const ThreeDViewer: React.FC<Props> = ({
@@ -20,6 +21,7 @@ const ThreeDViewer: React.FC<Props> = ({
   cesiumViewerRef,
   selectedFeaturedId,
   onSelectedFeature,
+  onCloseFeatureDetails,
 }) => {
   const t = useT();
   return (
@@ -33,6 +35,7 @@ const ThreeDViewer: React.FC<Props> = ({
           viewerRef={cesiumViewerRef}
           selectedFeatureId={selectedFeaturedId}
           onSelectedFeature={onSelectedFeature}
+          onCloseFeatureDetails={onCloseFeatureDetails}
         />
       </div>
     </RenderFallback>

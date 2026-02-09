@@ -18,6 +18,7 @@ type Props = {
   onMapLoad: (onCenter?: boolean) => void;
   onSelectedFeature: (value: any) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onCloseFeatureDetails: () => void;
 };
 
 const MapLibre: React.FC<Props> = ({
@@ -30,6 +31,7 @@ const MapLibre: React.FC<Props> = ({
   onMapLoad,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onCloseFeatureDetails,
 }) => {
   const handleMapClick = useCallback(
     (e: maplibregl.MapLayerMouseEvent) => {
@@ -37,9 +39,10 @@ const MapLibre: React.FC<Props> = ({
         onSelectedFeature(e.features[0].id);
       } else {
         onSelectedFeature(null);
+        onCloseFeatureDetails();
       }
     },
-    [onSelectedFeature],
+    [onSelectedFeature, onCloseFeatureDetails],
   );
 
   const handleMapDoubleClick = useCallback(

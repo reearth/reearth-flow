@@ -34,6 +34,7 @@ type Props = {
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
+  onCloseFeatureDetails: () => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
@@ -42,6 +43,7 @@ const CesiumViewer: React.FC<Props> = ({
   viewerRef,
   selectedFeatureId,
   onSelectedFeature,
+  onCloseFeatureDetails,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -69,9 +71,10 @@ const CesiumViewer: React.FC<Props> = ({
         }
       } else {
         onSelectedFeature(null);
+        onCloseFeatureDetails();
       }
     },
-    [onSelectedFeature, viewerRef],
+    [onSelectedFeature, onCloseFeatureDetails, viewerRef],
   );
 
   // Separate features by geometry type
