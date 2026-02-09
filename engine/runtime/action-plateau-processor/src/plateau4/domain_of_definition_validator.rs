@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Instant;
 
 use fastxml::transform::{EditableNode, StreamTransformer};
 use nusamai_citygml::GML31_NS;
@@ -576,15 +577,28 @@ fn process_feature(
 
     let mut response = ValidateResponse::default();
 
+    let t_total = Instant::now();
+
+    let t_envelope = Instant::now();
     let envelope_xpath =
         "//*[namespace-uri()='http://www.opengis.net/gml'][local-name()='Envelope']";
     response.envelope = stream_extract_envelope(&xml_str, envelope_xpath)?;
+    let envelope_ms = t_envelope.elapsed().as_millis();
 
     let mut city_object_groups = Vec::<CityObjectGroupInfo>::new();
     let mut stream_error: Option<PlateauProcessorError> = None;
     let members_xpath =
         "//*[namespace-uri()='http://www.opengis.net/citygml/2.0'][local-name()='cityObjectMember']";
 
+    let mut member_count: usize = 0;
+    let mut accum_gmlid_ms: u128 = 0;
+    let mut accum_codespace_ms: u128 = 0;
+    let mut accum_pos_ms: u128 = 0;
+    let mut accum_xlink_ms: u128 = 0;
+    let mut accum_lod_ms: u128 = 0;
+    let mut accum_ext_stream_ms: u128 = 0;
+
+    let t_members = Instant::now();
     let transformer = StreamTransformer::new(&xml_str)
         .with_root_namespaces()
         .map_err(|e| {
@@ -595,6 +609,7 @@ fn process_feature(
 
     transformer
         .on(members_xpath, |node| {
+            member_count += 1;
             if stream_error.is_some() {
                 return;
             }
@@ -678,6 +693,12 @@ fn process_feature(
                 &gml_id_pattern,
                 Arc::clone(&storage_resolver),
                 fallback_codelists_path,
+                &mut accum_gmlid_ms,
+                &mut accum_codespace_ms,
+                &mut accum_pos_ms,
+                &mut accum_xlink_ms,
+                &mut accum_lod_ms,
+                &mut accum_ext_stream_ms,
             ) {
                 Ok(process_result) => {
                     result.extend(process_result);
@@ -690,12 +711,16 @@ fn process_feature(
         .for_each()
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
+    let members_ms = t_members.elapsed().as_millis();
+
     if let Some(err) = stream_error {
         return Err(err);
     }
 
     // On the city object group model T03: Extracting unreferenced xlink:href
+    let t_xlinks = Instant::now();
     let xlinks = collect_xlinks(&xml_str, &xlink_prefixes)?;
+    let xlinks_ms = t_xlinks.elapsed().as_millis();
     for member in city_object_groups.iter() {
         for xlink in xlinks.iter() {
             let xlink_href = xlink.href.clone();
@@ -720,6 +745,13 @@ fn process_feature(
             }
         }
     }
+    let total_ms = t_total.elapsed().as_millis();
+    tracing::info!(
+        "[DomainOfDefinitionValidator] total={}ms envelope={}ms members_stream={}ms collect_xlinks={}ms members={} | xpath_totals: gmlid={}ms codespace={}ms pos={}ms xlink={}ms lod={}ms ext_stream={}ms",
+        total_ms, envelope_ms, members_ms, xlinks_ms, member_count,
+        accum_gmlid_ms, accum_codespace_ms, accum_pos_ms,
+        accum_xlink_ms, accum_lod_ms, accum_ext_stream_ms,
+    );
     let mut result_feature = feature.clone();
     let envelope = &response.envelope;
     result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
@@ -998,6 +1030,12 @@ fn process_member_node(
     gml_id_pattern: &Regex,
     storage_resolver: Arc<StorageResolver>,
     fallback_codelists_path: Option<&Uri>,
+    accum_gmlid_ms: &mut u128,
+    accum_codespace_ms: &mut u128,
+    accum_pos_ms: &mut u128,
+    accum_xlink_ms: &mut u128,
+    accum_lod_ms: &mut u128,
+    accum_ext_stream_ms: &mut u128,
 ) -> super::errors::Result<Vec<Feature>> {
     let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
@@ -1080,6 +1118,7 @@ fn process_member_node(
         ])],
     );
     // 2. gml:id collection of lower-level elements
+    let t_gmlid = Instant::now();
     let gml_id_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
         ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
@@ -1092,6 +1131,7 @@ fn process_member_node(
             line!()
         ))
     })?;
+    *accum_gmlid_ms += t_gmlid.elapsed().as_millis();
     for gml_id_child in gml_id_children {
         let gml_id = gml_id_child
             .get_attribute_ns("id", gml_ns)
@@ -1140,6 +1180,7 @@ fn process_member_node(
         }
     }
     // L04: code definition area verification
+    let t_codespace = Instant::now();
     let code_space_children =
         xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@codeSpace]", member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
@@ -1148,6 +1189,7 @@ fn process_member_node(
                 line!()
             ))
         })?;
+    *accum_codespace_ms += t_codespace.elapsed().as_millis();
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
     )?;
@@ -1269,6 +1311,7 @@ fn process_member_node(
         }
     }
     // L06: Geographical coverage verification
+    let t_pos = Instant::now();
     let mut pos_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
         ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='pos']",
@@ -1293,6 +1336,7 @@ fn process_member_node(
             line!()
         ))
     })?;
+    *accum_pos_ms += t_pos.elapsed().as_millis();
     let mut positions = Vec::<f64>::new();
     pos_children.extend(pos_list_children);
     for child in pos_children {
@@ -1414,6 +1458,7 @@ fn process_member_node(
         }
     }
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
+    let t_xlink = Instant::now();
     let xlink_children = xml::find_readonly_nodes_by_xpath(
         xml_ctx,
         ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
@@ -1426,6 +1471,7 @@ fn process_member_node(
             line!()
         ))
     })?;
+    *accum_xlink_ms += t_xlink.elapsed().as_millis();
     for child in xlink_children
         .iter()
         .filter(|&child| xml::get_readonly_node_tag(child) != "core:CityObjectGroup")
@@ -1451,6 +1497,7 @@ fn process_member_node(
                 let xml_content_str = String::from_utf8(xml_content.to_vec()).map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                 })?;
+                let t_ext = Instant::now();
                 let gml_path_owned = gml_path.to_string();
                 let ext_transformer = StreamTransformer::new(&xml_content_str)
                     .with_root_namespaces()
@@ -1472,6 +1519,7 @@ fn process_member_node(
                     .map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
+                *accum_ext_stream_ms += t_ext.elapsed().as_millis();
             }
             if !response.external_file_to_gml_ids.contains_key(gml_path)
                 || !response
@@ -1553,6 +1601,7 @@ fn process_member_node(
         }
     }
     // L-frn-01: Validation of geometric object types described as lod{0-4}Geometry.
+    let t_lod = Instant::now();
     for lod in 0..4 {
         let mut xpath = ".//*[local-name()='lod".to_string();
         xpath.push_str(lod.to_string().as_str());
@@ -1637,6 +1686,7 @@ fn process_member_node(
             }
         }
     }
+    *accum_lod_ms += t_lod.elapsed().as_millis();
     Ok(result)
 }
 
