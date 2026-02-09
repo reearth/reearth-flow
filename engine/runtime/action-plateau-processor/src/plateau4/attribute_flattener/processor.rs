@@ -25,6 +25,19 @@ static SKIPPABLE_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     ])
 });
 
+/// DM Geometric Attribute keys to extract to toplevel.
+/// Based on FME reference implementation's DmGeometricAttributeExtractor ATTRS list.
+static DM_GEOMETRIC_ATTRS: &[&str] = &[
+    "uro:dmCode",
+    "uro:dmCode_code",
+    "uro:geometryType",
+    "uro:geometryType_code",
+    "uro:mapLevel",
+    "uro:mapLevel_code",
+    "uro:shapeType",
+    "uro:shapeType_code",
+];
+
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
@@ -372,6 +385,9 @@ impl AttributeFlattener {
             strip_parent_info(&mut citygml_attributes);
             // extract attributes to toplevel
             for (key, value) in citygml_attributes.iter() {
+                if !DM_GEOMETRIC_ATTRS.contains(&key.as_str()) {
+                    continue;
+                }
                 let key = key.replace("uro:", "dm_");
                 feature.insert(key.clone(), value.clone());
             }
