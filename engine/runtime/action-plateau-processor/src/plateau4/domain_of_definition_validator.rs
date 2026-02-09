@@ -5,6 +5,17 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Get current process RSS (Resident Set Size) in MB using sysinfo.
+fn current_rss_mb_dodv() -> f64 {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+    let pid = Pid::from_u32(std::process::id());
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    sys.process(pid)
+        .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+        .unwrap_or(0.0)
+}
+
 use fastxml::transform::{EditableNode, StreamTransformer};
 use nusamai_citygml::GML31_NS;
 use once_cell::sync::Lazy;
@@ -575,6 +586,13 @@ fn process_feature(
 
     let mut response = ValidateResponse::default();
 
+    let rss_start = current_rss_mb_dodv();
+    tracing::info!(
+        "[PERF] DomainOfDefinitionValidator::process_feature START | xml_size={} bytes | rss={:.1} MB",
+        xml_str.len(),
+        rss_start
+    );
+
     let t_total = Instant::now();
 
     let t_envelope = Instant::now();
@@ -665,6 +683,11 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     let members_ms = t_members.elapsed().as_millis();
+    tracing::info!(
+        "[PERF] DomainOfDefinitionValidator::process_feature members_stream | elapsed={}ms | rss={:.1} MB",
+        members_ms,
+        current_rss_mb_dodv()
+    );
 
     if let Some(err) = stream_error {
         return Err(err);
@@ -700,10 +723,12 @@ fn process_feature(
     }
     let total_ms = t_total.elapsed().as_millis();
     tracing::info!(
-        "[DomainOfDefinitionValidator] total={}ms envelope={}ms members_stream={}ms collect_xlinks={}ms members={} | collect={}ms codespace_proc={}ms pos_proc={}ms xlink_proc={}ms lod_proc={}ms ext_stream={}ms",
+        "[PERF] DomainOfDefinitionValidator::process_feature END | total={}ms envelope={}ms members_stream={}ms collect_xlinks={}ms members={} | collect={}ms codespace_proc={}ms pos_proc={}ms xlink_proc={}ms lod_proc={}ms ext_stream={}ms | rss={:.1} MB (delta={:+.1})",
         total_ms, envelope_ms, members_ms, xlinks_ms, member_count,
         accum_collect_ms, accum_codespace_proc_ms, accum_pos_proc_ms,
         accum_xlink_proc_ms, accum_lod_proc_ms, accum_ext_stream_ms,
+        current_rss_mb_dodv(),
+        current_rss_mb_dodv() - rss_start,
     );
     let mut result_feature = feature.clone();
     let envelope = &response.envelope;
