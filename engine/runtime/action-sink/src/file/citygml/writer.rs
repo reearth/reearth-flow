@@ -5,7 +5,7 @@ use quick_xml::Writer;
 
 use super::converter::{
     format_pos_list, AppearanceData, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement,
-    GmlSurface, TargetData,
+    GmlSurface, TargetData, TextureData,
 };
 use crate::errors::SinkError;
 
@@ -147,6 +147,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
         &mut self,
         appearance_data: &AppearanceData,
     ) -> Result<(), SinkError> {
+        let total_targets: usize = appearance_data.textures.iter().map(|t| t.targets.len()).sum();
+        tracing::debug!(
+            "write_appearance_members: textures={}, themes={}, total_targets={}",
+            appearance_data.textures.len(),
+            appearance_data.themes.len(),
+            total_targets
+        );
+        
         // Only write appearance members if there are textures
         if !appearance_data.textures.is_empty() {
             // Start appearance member
@@ -164,9 +172,9 @@ impl<W: Write> CityGmlXmlWriter<W> {
                 self.write_text_element("app:theme", theme_name)?;
             }
 
-            // Write each texture as a surface data member
-            for texture_uri in &appearance_data.textures {
-                self.write_surface_data_member(texture_uri, appearance_data)?;
+            // Write each texture as a surface data member (with its own targets)
+            for texture_data in &appearance_data.textures {
+                self.write_surface_data_member(texture_data)?;
             }
 
             // Close Appearance
@@ -184,11 +192,16 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     fn write_surface_data_member(
         &mut self,
-        texture_uri: &str,
-        appearance_data: &AppearanceData,
+        texture_data: &TextureData,
     ) -> Result<(), SinkError> {
+        tracing::debug!(
+            "write_surface_data_member: texture_uri={}, targets={}",
+            texture_data.uri,
+            texture_data.targets.len()
+        );
+        
         // Extract just the directory and filename part from the full URI
-        let path_parts: Vec<&str> = texture_uri.split('/').collect();
+        let path_parts: Vec<&str> = texture_data.uri.split('/').collect();
         let simplified_path = if path_parts.len() >= 2 {
             // Take the last two parts: directory and filename
             format!(
@@ -198,7 +211,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
             )
         } else {
             // If there are less than 2 parts, just use the original
-            texture_uri.to_string()
+            texture_data.uri.to_string()
         };
 
         // Write surface data member with ParameterizedTexture
@@ -223,11 +236,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
         };
         self.write_text_element("app:mimeType", mime_type)?;
 
-        // Write target elements if available - find targets associated with this texture
-        for target in &appearance_data.targets {
-            // For now, write all targets - in a more sophisticated implementation,
-            // we might want to associate targets with specific textures
-            self.write_target_element(target)?;
+        // Write target elements specific to this texture only
+        if !texture_data.targets.is_empty() {
+            tracing::debug!("write_surface_data_member: writing {} targets for this texture", texture_data.targets.len());
+            for target in &texture_data.targets {
+                self.write_target_element(target)?;
+            }
         }
 
         // Close ParameterizedTexture
@@ -244,6 +258,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
     }
 
     fn write_target_element(&mut self, target: &TargetData) -> Result<(), SinkError> {
+        tracing::debug!(
+            "write_target_element: uri={}, coords_count={}",
+            target.uri,
+            target.texture_coordinates.len()
+        );
+        
         // Start target element with URI attribute
         let mut target_start = BytesStart::new("app:target");
         target_start.push_attribute(("uri", target.uri.as_str()));
@@ -253,12 +273,15 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
         // Write texture coordinate list if available
         if !target.texture_coordinates.is_empty() {
+            tracing::debug!("write_target_element: writing TexCoordList with {} coordinates", target.texture_coordinates.len());
             self.writer
                 .write_event(Event::Start(BytesStart::new("app:TexCoordList")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
             // Join all texture coordinates into a single space-separated string
+            tracing::debug!("write_target_element: joining coordinates...");
             let coord_string = target.texture_coordinates.join(" ");
+            tracing::debug!("write_target_element: joined {} bytes of coordinates", coord_string.len());
 
             // Find the ring ID from the URI to use as the ring attribute
             let ring_id = self.extract_ring_id_from_uri(&target.uri);
@@ -556,5 +579,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::End(BytesEnd::new("core:CityModel")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         Ok(())
+    }
+
+    /// Flush the underlying writer to ensure all data is written.
+    pub fn flush(&mut self) -> Result<(), SinkError> {
+        self.writer
+            .get_mut()
+            .flush()
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))
     }
 }
