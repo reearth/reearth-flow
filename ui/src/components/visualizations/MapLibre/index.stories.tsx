@@ -26,6 +26,7 @@ export const WithPoint: Story = {
     mapRef: { current: null },
     onMapLoad: () => {},
     onSelectedFeature: () => {},
+    onCloseFeatureDetails: () => {},
   },
 };
 
@@ -37,6 +38,7 @@ export const WithLineString: Story = {
     mapRef: { current: null },
     onMapLoad: () => {},
     onSelectedFeature: () => {},
+    onCloseFeatureDetails: () => {},
   },
 };
 
@@ -48,6 +50,7 @@ export const WithPolygon: Story = {
     mapRef: { current: null },
     onMapLoad: () => {},
     onSelectedFeature: () => {},
+    onCloseFeatureDetails: () => {},
   },
 };
 
@@ -59,6 +62,7 @@ export const WithMixture: Story = {
     mapRef: { current: null },
     onMapLoad: () => {},
     onSelectedFeature: () => {},
+    onCloseFeatureDetails: () => {},
   },
 };
 
@@ -73,5 +77,6 @@ export const EmptyData: Story = {
     mapRef: { current: null },
     onMapLoad: () => {},
     onSelectedFeature: () => {},
+    onCloseFeatureDetails: () => {},
   },
 };
