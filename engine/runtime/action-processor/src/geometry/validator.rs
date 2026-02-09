@@ -92,8 +92,11 @@ pub enum ValidationType {
     DuplicateConsecutivePoints(f64),
     #[serde(rename = "corruptGeometry")]
     CorruptGeometry,
+    /// Self-intersection check with optional tolerance.
+    /// If tolerance is None or 0.0, exact intersection check is performed.
+    /// If tolerance > 0.0, intersections within tolerance distance are ignored.
     #[serde(rename = "selfIntersection")]
-    SelfIntersection,
+    SelfIntersection(Option<f64>),
 }
 
 impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType {
@@ -110,8 +113,8 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
             ValidationType::CorruptGeometry => {
                 reearth_flow_geometry::validation::ValidationType::CorruptGeometry
             }
-            ValidationType::SelfIntersection => {
-                reearth_flow_geometry::validation::ValidationType::SelfIntersection
+            ValidationType::SelfIntersection(tolerance) => {
+                reearth_flow_geometry::validation::ValidationType::SelfIntersection(tolerance)
             }
         }
     }
@@ -234,11 +237,9 @@ impl GeometryValidator {
         if result.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
         } else {
+            let merged = ValidationResult::merge(result);
             let mut feature = feature.clone();
-            feature.insert(
-                "validationResult",
-                serde_json::to_value(ValidationResult::merge(result))?.into(),
-            );
+            feature.insert("validationResult", serde_json::to_value(merged)?.into());
             fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
         }
         Ok(())

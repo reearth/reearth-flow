@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use reearth_flow_geometry::algorithm::bufferable::Bufferable;
+use reearth_flow_geometry::algorithm::bufferable::{buffer_polygon, Bufferable};
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::line_string::LineString2D;
@@ -173,11 +173,16 @@ impl Bufferer {
                 Geometry2D::Polygon(polygon) => {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
-                    geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        polygon.to_polygon(self.distance, self.interpolation_angle),
-                    ));
-                    feature.geometry = Arc::new(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    if let Some(buffered) = buffer_polygon(polygon, self.distance) {
+                        geometry.value =
+                            GeometryValue::FlowGeometry2D(Geometry2D::Polygon(buffered));
+                        feature.geometry = Arc::new(geometry);
+                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    } else {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    }
                 }
                 _ => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
@@ -225,12 +230,17 @@ impl Bufferer {
                 Geometry3D::Polygon(polygon) => {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
-                    let polygon: Polygon2D<f64> = polygon.clone().into();
-                    geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        polygon.to_polygon(self.distance, self.interpolation_angle),
-                    ));
-                    feature.geometry = Arc::new(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    let polygon_2d: Polygon2D<f64> = polygon.clone().into();
+                    if let Some(buffered) = buffer_polygon(&polygon_2d, self.distance) {
+                        geometry.value =
+                            GeometryValue::FlowGeometry2D(Geometry2D::Polygon(buffered));
+                        feature.geometry = Arc::new(geometry);
+                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    } else {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    }
                 }
                 _ => {
                     let value: Geometry2D = geos.clone().into();

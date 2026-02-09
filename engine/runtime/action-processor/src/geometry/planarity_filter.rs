@@ -286,6 +286,18 @@ fn check_planarity_height(
     mut points: Vec<Coordinate3D<f64>>,
     threshold: f64,
 ) -> Option<reearth_flow_geometry::utils::PointsCoplanar> {
+    // Remove closing point if the polygon ring is closed (last point == first point).
+    // This ensures that closed triangles (3 unique vertices + closing = 4 coords)
+    // are handled by the triangle shortcut below.
+    if points.len() >= 2 {
+        let first = points[0];
+        let last = *points.last().unwrap();
+        let d = first - last;
+        if d.x * d.x + d.y * d.y + d.z * d.z < 1e-20 {
+            points.pop();
+        }
+    }
+
     if points.len() < 4 {
         // Less than 4 points: compute plane normal if we have at least 3
         if points.len() < 3 {
@@ -328,10 +340,8 @@ fn check_planarity_height(
     let v0 = points[0]; // At origin after translation
     let v_mid = points[n / 2];
 
-    // Try to find a third vertex that forms a triangle with area > (10*threshold)^2
-    // Area = 0.5 * |cross product|, so we need |cross| > 2 * (10*threshold)^2
-    let area_threshold = (10.0 * threshold).powi(2);
-    let cross_threshold = 2.0 * area_threshold;
+    // We need a non-degenerate triangle to define a reliable normal direction.
+    let cross_threshold = threshold * threshold;
 
     let mut found_normal = None;
     for (i, &v) in points.iter().enumerate() {
@@ -368,26 +378,10 @@ fn check_planarity_height(
     // Compute 3D convex hull
     // we require quick_hull_3d to compute hull with 1% tolerance of the threshold
     let Some(hull) = quick_hull_3d(&points, threshold * 0.01) else {
-        let (triangle, n) = points.windows(3).find_map(|w| {
-            let [a, b, c] = [w[0], w[1], w[2]];
-            let ab = b - a;
-            let ac = c - a;
-            let mut n = ab.cross(&ac);
-            if n.norm() > threshold * threshold {
-                n = n.normalize();
-                Some(([a, b, c], n))
-            } else {
-                None
-            }
-        })?; // if no such triangle found, then meaningful normal cannot be computed. so return `None`.
-        return Some(reearth_flow_geometry::utils::PointsCoplanar {
-            normal: reearth_flow_geometry::types::point::Point3D::new_(n.x, n.y, n.z),
-            center: reearth_flow_geometry::types::point::Point3D::new_(
-                (triangle[0].x + triangle[1].x + triangle[2].x) / 3.0,
-                (triangle[0].y + triangle[1].y + triangle[2].y) / 3.0,
-                (triangle[0].z + triangle[1].z + triangle[2].z) / 3.0,
-            ),
-        });
+        // quick_hull_3d returns None when points are coplanar (can't form a 3D tetrahedron).
+        // This means the convex hull minimum height is effectively 0, which is always <= threshold.
+        // Use PCA to compute the best-fit plane normal.
+        return are_points_coplanar(&points, f64::MAX);
     };
     let vertices = hull.get_vertices();
     let triangles = hull.get_triangles();
@@ -401,7 +395,6 @@ fn check_planarity_height(
     // The minimum height is the smallest distance from any face to the most distant point
     // perpendicular to that face
     let min_height = compute_convex_hull_min_height(vertices, triangles);
-
     if min_height <= threshold {
         // Compute the best-fit plane normal using PCA
         are_points_coplanar(&points, f64::MAX)
