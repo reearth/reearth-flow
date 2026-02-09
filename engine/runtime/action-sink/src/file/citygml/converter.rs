@@ -19,10 +19,15 @@ pub struct TargetData {
 }
 
 #[derive(Debug, Clone)]
+pub struct TextureData {
+    pub uri: String,
+    pub targets: Vec<TargetData>, // Targets associated with this specific texture
+}
+
+#[derive(Debug, Clone)]
 pub struct AppearanceData {
-    pub textures: Vec<String>,
+    pub textures: Vec<TextureData>, // Each texture with its associated targets
     pub themes: Vec<String>,
-    pub targets: Vec<TargetData>, // Add targets information
 }
 
 use reearth_flow_types::Attribute;
@@ -36,21 +41,23 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
         AttributeValue::Map(map) => {
             let mut textures = Vec::new();
             let mut themes = Vec::new();
-            let mut targets = Vec::new();
 
-            // Extract textures
+            // Extract textures with their associated targets
             if let Some(AttributeValue::Array(tex_array)) = map.get("textures") {
                 for tex in tex_array {
                     if let AttributeValue::Map(tex_map) = tex {
-                        if let Some(AttributeValue::String(uri)) = tex_map.get("uri") {
-                            textures.push(uri.clone());
-                        }
+                        let uri = if let Some(AttributeValue::String(uri)) = tex_map.get("uri") {
+                            uri.clone()
+                        } else {
+                            continue; // Skip textures without URI
+                        };
 
-                        // Extract targets if available
+                        // Extract targets specific to this texture
+                        let mut texture_targets = Vec::new();
                         if let Some(AttributeValue::Array(target_array)) = tex_map.get("targets") {
                             for target in target_array {
                                 if let AttributeValue::Map(target_map) = target {
-                                    if let Some(AttributeValue::String(uri)) = target_map.get("uri")
+                                    if let Some(AttributeValue::String(target_uri)) = target_map.get("uri")
                                     {
                                         let mut texture_coords = Vec::new();
 
@@ -65,14 +72,19 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                                             }
                                         }
 
-                                        targets.push(TargetData {
-                                            uri: uri.clone(),
+                                        texture_targets.push(TargetData {
+                                            uri: target_uri.clone(),
                                             texture_coordinates: texture_coords,
                                         });
                                     }
                                 }
                             }
                         }
+
+                        textures.push(TextureData {
+                            uri,
+                            targets: texture_targets,
+                        });
                     }
                 }
             }
@@ -91,7 +103,6 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
             Some(AppearanceData {
                 textures,
                 themes,
-                targets,
             })
         }
         _ => None,

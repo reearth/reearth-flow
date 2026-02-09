@@ -153,7 +153,10 @@ impl Sink for CityGmlWriterSink {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        tracing::info!("CityGmlWriter: finish() started, {} features in buffer", self.buffer.len());
+        
         if self.buffer.is_empty() {
+            tracing::info!("CityGmlWriter: buffer is empty, returning early");
             return Ok(());
         }
 
@@ -165,6 +168,8 @@ impl Sink for CityGmlWriterSink {
             .eval::<String>(self.params.output.as_ref())
             .unwrap_or_else(|_| self.params.output.as_ref().to_string());
         let output_uri = Uri::from_str(&path)?;
+        
+        tracing::info!("CityGmlWriter: output path = {}", path);
 
         let srs_name = self
             .params
@@ -182,15 +187,26 @@ impl Sink for CityGmlWriterSink {
 
         // Dynamic buffer sizing based on feature count (32KB min, 512KB max)
         let buffer_size = (self.buffer.len() * 4096).clamp(32 * 1024, 512 * 1024);
+        tracing::info!("CityGmlWriter: buffer_size = {} bytes", buffer_size);
+        
         let mut xml_buffer = Vec::with_capacity(buffer_size);
         {
+            tracing::info!("CityGmlWriter: creating BufWriter and XML writer");
             let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
             let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty, srs_name);
 
+            tracing::info!("CityGmlWriter: writing header...");
             xml_writer.write_header(self.envelope.as_ref())?;
+            tracing::info!("CityGmlWriter: header written");
 
-            for feature in &self.buffer {
+            let total_features = self.buffer.len();
+            tracing::info!("CityGmlWriter: starting to process {} features", total_features);
+            
+            for (idx, feature) in self.buffer.iter().enumerate() {
+                tracing::debug!("CityGmlWriter: processing feature {}", idx);
+                
                 let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value else {
+                    tracing::debug!("CityGmlWriter: feature {} has no CityGmlGeometry, skipping", idx);
                     continue;
                 };
 
@@ -200,34 +216,59 @@ impl Sink for CityGmlWriterSink {
                     .as_deref()
                     .unwrap_or("gen:GenericCityObject");
                 let city_type = CityObjectType::from_feature_type(feature_type);
+                tracing::debug!("CityGmlWriter: feature {} type = {}", idx, feature_type);
 
+                tracing::debug!("CityGmlWriter: feature {} - converting geometry...", idx);
                 let geometries = convert_citygml_geometry(geom, &self.lod_mask);
                 if geometries.is_empty() {
+                    tracing::debug!("CityGmlWriter: feature {} has empty geometries, skipping", idx);
                     continue;
                 }
+                tracing::debug!("CityGmlWriter: feature {} - geometry converted, {} entries", idx, geometries.len());
 
                 // Extract appearance data from feature attributes
+                tracing::debug!("CityGmlWriter: feature {} - extracting appearance data...", idx);
                 let appearance_data = extract_appearance_data(feature);
+                tracing::debug!("CityGmlWriter: feature {} - appearance data extracted: {:?}", idx, appearance_data.is_some());
 
                 let gml_id_str = feature.id.to_string();
+                tracing::debug!("CityGmlWriter: feature {} - writing city object (gml_id={})...", idx, gml_id_str);
                 xml_writer.write_city_object(
                     city_type,
                     &geometries,
                     Some(gml_id_str.as_str()),
                     appearance_data.as_ref(),
                 )?;
+                tracing::debug!("CityGmlWriter: feature {} - city object written", idx);
+                
+                if (idx + 1) % 10 == 0 || idx + 1 == total_features {
+                    tracing::info!("CityGmlWriter: processed feature {}/{}", idx + 1, total_features);
+                }
             }
+            tracing::info!("CityGmlWriter: finished processing all features");
 
+            tracing::info!("CityGmlWriter: writing footer...");
             xml_writer.write_footer()?;
-        }
+            tracing::info!("CityGmlWriter: write_footer complete");
+            
+            tracing::info!("CityGmlWriter: flushing writer...");
+            xml_writer.flush()?;
+            tracing::info!("CityGmlWriter: flush complete");
+        } // <-- BufWriter drops here
+        
+        tracing::info!("CityGmlWriter: xml_buffer size = {} bytes", xml_buffer.len());
+        tracing::info!("CityGmlWriter: resolving storage...");
 
         let storage = storage_resolver
             .resolve(&output_uri)
             .map_err(SinkError::citygml_writer)?;
+        
+        tracing::info!("CityGmlWriter: calling storage.put_sync()...");
         storage
             .put_sync(output_uri.path().as_path(), Bytes::from(xml_buffer))
             .map_err(SinkError::citygml_writer)?;
-
+        
+        tracing::info!("CityGmlWriter: put_sync complete, finish() done");
         Ok(())
     }
 }
