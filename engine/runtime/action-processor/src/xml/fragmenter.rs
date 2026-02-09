@@ -1,5 +1,4 @@
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     str::FromStr,
     sync::{
@@ -74,7 +73,6 @@ fn current_rss_mb() -> f64 {
 
 static FRAG_PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-use fastxml::transform::{EditableNode, StreamTransformer};
 use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -353,20 +351,8 @@ fn send_xml_fragment(
         return Ok(());
     }
 
-    let t_parent = Instant::now();
-    let parent_map = build_parent_id_map(&raw_xml, &url, &match_tags)
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    tracing::info!(
-        "[PERF] XmlFragmenter::send_xml_fragment parent_map | count={} | elapsed={}ms | entries={} | rss={:.1} MB",
-        count,
-        t_parent.elapsed().as_millis(),
-        parent_map.len(),
-        current_rss_mb()
-    );
-
     let t_gen = Instant::now();
-    let result =
-        generate_fragment_streaming(ctx, fw, feature, &url, &raw_xml, &parent_map, &match_tags);
+    let result = generate_fragment_streaming(ctx, fw, feature, &url, &raw_xml, &match_tags);
     tracing::info!(
         "[PERF] XmlFragmenter::send_xml_fragment END | count={} | total={}ms gen={}ms | rss={:.1} MB (delta={:+.1})",
         count,
@@ -384,7 +370,6 @@ fn generate_fragment_streaming(
     feature: &Feature,
     uri: &Uri,
     raw_xml: &str,
-    parent_map: &HashMap<String, Option<String>>,
     match_tags: &[String],
 ) -> Result<()> {
     use quick_xml::events::Event;
@@ -400,6 +385,9 @@ fn generate_fragment_streaming(
     reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
 
+    // Stack-based parent tracking (replaces separate build_parent_id_map pass)
+    let mut parent_stack: Vec<ElementInfo> = Vec::new();
+
     loop {
         let element_start_pos = reader.buffer_position();
         match reader.read_event_into(&mut buf) {
@@ -412,8 +400,12 @@ fn generate_fragment_streaming(
                 if match_tags_set.contains(name.as_str()) {
                     let rss_before = current_rss_mb();
 
-                    // Compute xml_id from attributes (same logic as compute_xml_id_from_editable_node)
                     let xml_id = compute_xml_id_from_start_event(uri, e, &name);
+
+                    // Compute parent_id from the immediate parent element on the stack
+                    let xml_parent_id = parent_stack
+                        .last()
+                        .map(|parent| compute_parent_id_from_stack(uri, parent));
 
                     // Collect existing xmlns prefixes on this element to avoid duplicates
                     let existing_ns: HashSet<String> = e
@@ -433,7 +425,7 @@ fn generate_fragment_streaming(
                         })
                         .collect();
 
-                    // Track depth to find matching End tag
+                    // Track depth to find matching End tag (consumes entire subtree)
                     let mut depth = 1u32;
                     loop {
                         match reader.read_event_into(&mut buf) {
@@ -467,8 +459,6 @@ fn generate_fragment_streaming(
                     let frag_size = fragment.len();
                     let rss_after_build = current_rss_mb();
 
-                    let xml_parent_id = parent_map.get(&xml_id).cloned().flatten();
-
                     let frag = XmlFragment {
                         xml_id,
                         fragment,
@@ -490,7 +480,25 @@ fn generate_fragment_streaming(
                         name, frag_size, frag_size as f64 / 1_048_576.0,
                         rss_before, rss_after_build, rss_after_send
                     );
+                    // Matched element's subtree is fully consumed; do NOT push to parent_stack
+                } else {
+                    // Non-matched element: push to stack for parent lookups
+                    let attrs: Vec<(String, String)> = e
+                        .attributes()
+                        .flatten()
+                        .map(|attr| {
+                            let key = std::str::from_utf8(attr.key.as_ref())
+                                .unwrap_or("")
+                                .to_string();
+                            let val = attr.unescape_value().unwrap_or_default().to_string();
+                            (key, val)
+                        })
+                        .collect();
+                    parent_stack.push(ElementInfo { qname: name, attrs });
                 }
+            }
+            Ok(Event::End(_)) => {
+                parent_stack.pop();
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
@@ -504,6 +512,41 @@ fn generate_fragment_streaming(
     }
 
     Ok(())
+}
+
+/// Element info stored on the parent tracking stack
+struct ElementInfo {
+    qname: String,
+    attrs: Vec<(String, String)>,
+}
+
+/// Compute parent ID from stack entry (same logic as compute_parent_xml_id)
+fn compute_parent_id_from_stack(uri: &Uri, parent: &ElementInfo) -> String {
+    // Check for 'id' attribute
+    for (key, val) in &parent.attrs {
+        if key == "id" {
+            return val.clone();
+        }
+    }
+    // Check for 'gml:id' attribute
+    for (key, val) in &parent.attrs {
+        if key == "gml:id" {
+            return val.clone();
+        }
+    }
+    // Build hash from non-xmlns attributes (sorted by local name)
+    let mut attrs: Vec<(String, String)> = parent
+        .attrs
+        .iter()
+        .filter(|(k, _)| *k != "xmlns" && !k.starts_with("xmlns:"))
+        .map(|(k, v)| {
+            let local_name = k.split_once(':').map(|(_, local)| local).unwrap_or(k);
+            (local_name.to_string(), v.clone())
+        })
+        .collect();
+    attrs.sort_by(|a, b| a.0.cmp(&b.0));
+    let key_values: Vec<String> = attrs.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    to_hash(format!("{}:{}[{}]", uri, parent.qname, key_values.join(",")).as_str())
 }
 
 /// Build a string of xmlns declarations to inject (only those not already present)
@@ -568,79 +611,4 @@ fn compute_xml_id_from_start_event(
         .collect();
     key_values.sort();
     to_hash(format!("{}:{}[{}]", uri, name, key_values.join(",")).as_str())
-}
-
-fn build_parent_id_map(
-    raw_xml: &str,
-    uri: &Uri,
-    match_tags: &[String],
-) -> Result<HashMap<String, Option<String>>, XmlProcessorError> {
-    let map = std::rc::Rc::new(RefCell::new(HashMap::<String, Option<String>>::new()));
-
-    let mut transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-
-    for tag in match_tags {
-        let xpath = format!("//{tag}");
-        let map = std::rc::Rc::clone(&map);
-        let uri = uri.clone();
-        transformer = transformer.on_with_context(&xpath, move |node, ctx| {
-            let xml_id = compute_xml_id_from_editable_node(&uri, node);
-            let parent_id = compute_parent_xml_id(&uri, ctx);
-            map.borrow_mut().insert(xml_id, parent_id);
-        });
-    }
-
-    transformer
-        .for_each()
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-
-    let map = std::rc::Rc::try_unwrap(map)
-        .expect("all closures should be dropped after for_each")
-        .into_inner();
-    Ok(map)
-}
-
-fn compute_parent_xml_id(uri: &Uri, ctx: &fastxml::transform::TransformContext) -> Option<String> {
-    let parent = ctx.parent()?;
-
-    // Check for 'id' attribute (handles both 'id' and 'gml:id')
-    if let Some(id) = parent.attributes.get("id") {
-        return Some(id.clone());
-    }
-    if let Some(id) = parent.attributes.get("gml:id") {
-        return Some(id.clone());
-    }
-
-    // Build hash from attributes (excluding xmlns)
-    let mut attrs: Vec<(String, String)> = parent
-        .attributes
-        .iter()
-        .filter(|(k, _)| *k != "xmlns" && !k.starts_with("xmlns:"))
-        .map(|(k, v)| {
-            let local_name = k.split_once(':').map(|(_, local)| local).unwrap_or(k);
-            (local_name.to_string(), v.clone())
-        })
-        .collect();
-    attrs.sort_by(|a, b| a.0.cmp(&b.0));
-
-    let key_values: Vec<String> = attrs.iter().map(|(k, v)| format!("{k}={v}")).collect();
-    Some(to_hash(
-        format!("{}:{}[{}]", uri, parent.qname, key_values.join(",")).as_str(),
-    ))
-}
-
-fn compute_xml_id_from_editable_node(uri: &Uri, node: &EditableNode) -> String {
-    if let Some(id) = node.get_attribute("id") {
-        return id;
-    }
-    let tag = node.qname();
-    let mut key_values = node
-        .get_attributes()
-        .iter()
-        .map(|(k, v)| format!("{k}={v}"))
-        .collect::<Vec<_>>();
-    key_values.sort();
-    to_hash(format!("{}:{}[{}]", uri, tag, key_values.join(",")).as_str())
 }
