@@ -14,7 +14,8 @@ pub struct GeometryEntry {
 
 #[derive(Debug, Clone)]
 pub struct TargetData {
-    pub uri: String,
+    pub uri: String,                      // Surface ID (Polygon gml:id)
+    pub ring: String,                     // Ring ID (LinearRing gml:id)
     pub texture_coordinates: Vec<String>, // List of texture coordinate pairs as strings
 }
 
@@ -72,8 +73,17 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                                             }
                                         }
 
+                                        // Extract ring ID if available (new field)
+                                        let ring_id = if let Some(AttributeValue::String(ring)) = target_map.get("ring") {
+                                            ring.clone()
+                                        } else {
+                                            // Fallback: extract from URI (backward compatibility)
+                                            target_uri.clone()
+                                        };
+
                                         texture_targets.push(TargetData {
                                             uri: target_uri.clone(),
+                                            ring: ring_id,
                                             texture_coordinates: texture_coords,
                                         });
                                     }
