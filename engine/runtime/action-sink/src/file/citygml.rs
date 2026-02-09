@@ -199,6 +199,21 @@ impl Sink for CityGmlWriterSink {
             xml_writer.write_header(self.envelope.as_ref())?;
             tracing::info!("CityGmlWriter: header written");
 
+            // Collect global appearance data from all features (they should share the same global appearance)
+            let global_appearance = self.buffer.iter().find_map(|f| {
+                let app_data = extract_appearance_data(f);
+                app_data.filter(|a| !a.textures.is_empty())
+            });
+            
+            // Write global appearances at CityModel level (before city objects)
+            if let Some(ref appearance_data) = global_appearance {
+                tracing::info!("CityGmlWriter: writing global appearances...");
+                xml_writer.write_global_appearances(appearance_data)?;
+                tracing::info!("CityGmlWriter: global appearances written");
+            } else {
+                tracing::info!("CityGmlWriter: no global appearances to write");
+            }
+
             let total_features = self.buffer.len();
             tracing::info!("CityGmlWriter: starting to process {} features", total_features);
             
@@ -226,18 +241,12 @@ impl Sink for CityGmlWriterSink {
                 }
                 tracing::debug!("CityGmlWriter: feature {} - geometry converted, {} entries", idx, geometries.len());
 
-                // Extract appearance data from feature attributes
-                tracing::debug!("CityGmlWriter: feature {} - extracting appearance data...", idx);
-                let appearance_data = extract_appearance_data(feature);
-                tracing::debug!("CityGmlWriter: feature {} - appearance data extracted: {:?}", idx, appearance_data.is_some());
-
                 let gml_id_str = feature.id.to_string();
                 tracing::debug!("CityGmlWriter: feature {} - writing city object (gml_id={})...", idx, gml_id_str);
                 xml_writer.write_city_object(
                     city_type,
                     &geometries,
                     Some(gml_id_str.as_str()),
-                    appearance_data.as_ref(),
                 )?;
                 tracing::debug!("CityGmlWriter: feature {} - city object written", idx);
                 
