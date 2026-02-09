@@ -148,6 +148,19 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
 
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000010
+        name: AttributeManagerRenameCityAttrsForDm
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+
       - id: c32a279d-97be-4584-b282-4d65627b1133
         name: LodSplitterWithDmForDm
         type: subGraph
@@ -492,9 +505,15 @@ graphs:
         to: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
         fromPort: default
         toPort: default
-      # AttributeFlattenerForDm -> LodSplitterWithDmForDm
+      # AttributeFlattenerForDm -> AttributeManagerRenameCityAttrsForDm
       - id: a1b2c3d4-e5f6-7890-abcd-ef0000000004
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
+        to: a1b2c3d4-e5f6-7890-abcd-ef0000000010
+        fromPort: default
+        toPort: default
+      # AttributeManagerRenameCityAttrsForDm -> LodSplitterWithDmForDm
+      - id: a1b2c3d4-e5f6-7890-abcd-ef0000000011
+        from: a1b2c3d4-e5f6-7890-abcd-ef0000000010
         to: c32a279d-97be-4584-b282-4d65627b1133
         fromPort: default
         toPort: default

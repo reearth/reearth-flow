@@ -229,7 +229,8 @@ impl Sink for MVTWriter {
                 }
                 // Apply attribute processing before buffering:
                 // schema filtering/casting, skip_unexposed_attributes, colon_to_underscore
-                let schema_key = feature.get("__schema_definition")
+                let schema_key = feature
+                    .get("__schema_definition")
                     .and_then(|v| v.as_string())
                     .or_else(|| feature.feature_type());
                 let schema_attrs = schema_key
