@@ -291,6 +291,17 @@ graphs:
       validationTypes:
       - duplicateConsecutivePoints: 0.01
       - selfIntersection: 0.01
+  - id: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
+    name: AttributeManagerSelfIntersection
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: issue
+        method: create
+        value: |
+          let vr = env.get("__value").validationResult;
+          vr.details[0][0]
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
     type: action
@@ -524,8 +535,13 @@ graphs:
     toPort: default
   - id: 1a5e8c2d-6f9b-4a1e-c7d2-5a1e8c2d6f9b
     from: 5d2c7f4a-8b1e-4c6d-a9f2-4a7d2c5f8b1e
-    to: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
+    to: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
     fromPort: failed
+    toPort: default
+  - id: 7c1d4a8e-3f6b-4e9c-b2d5-8a1e4f7c3b6d
+    from: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
+    to: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
+    fromPort: default
     toPort: default
   - id: 3d8b5a2f-7c4e-4d8b-a6f1-8b3d5a2f7c4e
     from: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
