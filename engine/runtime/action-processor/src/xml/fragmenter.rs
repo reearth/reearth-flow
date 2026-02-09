@@ -9,15 +9,67 @@ use std::{
     time::Instant,
 };
 
-/// Get current process RSS (Resident Set Size) in MB using sysinfo.
+/// Get current process memory in MB.
+/// macOS: phys_footprint (same as Activity Monitor / top MEM).
+/// Other: sysinfo RSS fallback.
 fn current_rss_mb() -> f64 {
-    use sysinfo::{Pid, ProcessesToUpdate, System};
-    let pid = Pid::from_u32(std::process::id());
-    let mut sys = System::new();
-    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
-    sys.process(pid)
-        .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
-        .unwrap_or(0.0)
+    #[cfg(target_os = "macos")]
+    {
+        #[allow(non_camel_case_types)]
+        #[repr(C)]
+        struct task_vm_info {
+            virtual_size: u64,
+            region_count: i32,
+            page_size: i32,
+            resident_size: u64,
+            resident_size_peak: u64,
+            device: u64,
+            device_peak: u64,
+            internal: u64,
+            internal_peak: u64,
+            external: u64,
+            external_peak: u64,
+            reusable: u64,
+            reusable_peak: u64,
+            purgeable_volatile_pmap: u64,
+            purgeable_volatile_resident: u64,
+            purgeable_volatile_virtual: u64,
+            compressed: u64,
+            compressed_peak: u64,
+            compressed_lifetime: u64,
+            phys_footprint: u64,
+        }
+        const TASK_VM_INFO: u32 = 22;
+        extern "C" {
+            fn mach_task_self() -> u32;
+            fn task_info(t: u32, f: u32, o: *mut i32, c: *mut u32) -> i32;
+        }
+        unsafe {
+            let mut info: task_vm_info = std::mem::zeroed();
+            let mut count =
+                (std::mem::size_of::<task_vm_info>() / std::mem::size_of::<i32>()) as u32;
+            let kr = task_info(
+                mach_task_self(),
+                TASK_VM_INFO,
+                &mut info as *mut _ as *mut i32,
+                &mut count,
+            );
+            if kr == 0 {
+                return info.phys_footprint as f64 / 1024.0 / 1024.0;
+            }
+        }
+        0.0
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        use sysinfo::{Pid, ProcessesToUpdate, System};
+        let pid = Pid::from_u32(std::process::id());
+        let mut sys = System::new();
+        sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+        sys.process(pid)
+            .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+            .unwrap_or(0.0)
+    }
 }
 
 static FRAG_PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
