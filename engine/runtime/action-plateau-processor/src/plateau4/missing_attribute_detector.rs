@@ -17,6 +17,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Instant;
+
+/// Get current process RSS (Resident Set Size) in MB using sysinfo.
+fn current_rss_mb() -> f64 {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+    let pid = Pid::from_u32(std::process::id());
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    sys.process(pid)
+        .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+        .unwrap_or(0.0)
+}
+
+static MAD_PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 static REQUIRED_PORT: Lazy<Port> = Lazy::new(|| Port::new("required"));
@@ -134,6 +149,16 @@ impl Processor for MissingAttributeDetector {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        let count = MAD_PROCESS_COUNT.fetch_add(1, Ordering::Relaxed);
+        let t_start = Instant::now();
+        if count.is_multiple_of(100) {
+            tracing::info!(
+                "[PERF] MissingAttributeDetector::process START | count={} | rss={:.1} MB",
+                count,
+                current_rss_mb()
+            );
+        }
+
         let feature = &ctx.feature;
         let AttributeValue::String(package) = feature
             .attributes
@@ -181,6 +206,15 @@ impl Processor for MissingAttributeDetector {
 
         if flush {
             self.process_group(ctx.as_context(), fw, package.to_string())?;
+        }
+
+        if count.is_multiple_of(100) {
+            tracing::info!(
+                "[PERF] MissingAttributeDetector::process END | count={} | elapsed={}ms | rss={:.1} MB",
+                count,
+                t_start.elapsed().as_millis(),
+                current_rss_mb()
+            );
         }
         Ok(())
     }
@@ -364,6 +398,7 @@ impl MissingAttributeDetector {
             ));
         };
 
+        let t_detect = Instant::now();
         let root_info = parse_root_info(xml_content)?;
         let gml_id = root_info
             .gml_id
@@ -550,6 +585,16 @@ impl MissingAttributeDetector {
         } else {
             "Warn"
         };
+
+        let count = MAD_PROCESS_COUNT.load(Ordering::Relaxed);
+        if count.is_multiple_of(100) {
+            tracing::info!(
+                "[PERF] MissingAttributeDetector::detect target+required+conditional | elapsed={}ms | xml_size={} | rss={:.1} MB",
+                t_detect.elapsed().as_millis(),
+                xml_content.len(),
+                current_rss_mb()
+            );
+        }
 
         // C07/C08 Data Quality Attribute validation
         let lod_count = count_lod_geometries(xml_content, package)?;

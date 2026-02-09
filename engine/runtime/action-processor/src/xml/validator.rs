@@ -192,14 +192,17 @@ impl XmlValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<()> {
         let total_start = Instant::now();
+        let rss_start = current_rss_mb();
         let feature = &ctx.feature;
         let xml_content = self.get_xml_content(&ctx, feature)?;
 
         tracing::info!(
-            "[PERF] XMLValidator::validate_syntax_and_namespace START | xml_size={} bytes",
-            xml_content.len()
+            "[PERF] XMLValidator::validate_syntax_and_namespace START | xml_size={} bytes | rss={:.1} MB",
+            xml_content.len(),
+            rss_start
         );
 
+        let t_parse = Instant::now();
         let document = match xml::parse(xml_content) {
             Ok(doc) => doc,
             Err(_) => {
@@ -207,9 +210,20 @@ impl XmlValidator {
                 return Ok(());
             }
         };
+        tracing::info!(
+            "[PERF] XMLValidator::validate_syntax_and_namespace parse | elapsed={}ms | rss={:.1} MB",
+            t_parse.elapsed().as_millis(),
+            current_rss_mb()
+        );
 
+        let t_ns = Instant::now();
         match Self::check_namespace(&document) {
             Ok(result) => {
+                tracing::info!(
+                    "[PERF] XMLValidator::validate_syntax_and_namespace check_ns | elapsed={}ms | rss={:.1} MB",
+                    t_ns.elapsed().as_millis(),
+                    current_rss_mb()
+                );
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
@@ -230,10 +244,14 @@ impl XmlValidator {
                 Self::send_syntax_error(&ctx, fw, feature);
             }
         }
+        // Drop document explicitly to free DOM memory
+        drop(document);
 
         tracing::info!(
-            "[PERF] XMLValidator::validate_syntax_and_namespace TOTAL | elapsed={}ms",
-            total_start.elapsed().as_millis()
+            "[PERF] XMLValidator::validate_syntax_and_namespace TOTAL | elapsed={}ms | rss={:.1} MB (delta={:+.1})",
+            total_start.elapsed().as_millis(),
+            current_rss_mb(),
+            current_rss_mb() - rss_start
         );
 
         Ok(())

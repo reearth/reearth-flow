@@ -2,8 +2,25 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     str::FromStr,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Instant,
 };
+
+/// Get current process RSS (Resident Set Size) in MB using sysinfo.
+fn current_rss_mb() -> f64 {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+    let pid = Pid::from_u32(std::process::id());
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    sys.process(pid)
+        .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+        .unwrap_or(0.0)
+}
+
+static FRAG_PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 use fastxml::transform::{EditableNode, StreamTransformer};
 use reearth_flow_common::{str::to_hash, uri::Uri};
@@ -211,6 +228,15 @@ fn send_xml_fragment(
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
 ) -> Result<()> {
+    let count = FRAG_PROCESS_COUNT.fetch_add(1, Ordering::Relaxed);
+    let t_total = Instant::now();
+    let rss_start = current_rss_mb();
+    tracing::info!(
+        "[PERF] XmlFragmenter::send_xml_fragment START | count={} | rss={:.1} MB",
+        count,
+        rss_start
+    );
+
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let expr_engine = Arc::clone(&ctx.expr_engine);
 
@@ -252,6 +278,12 @@ fn send_xml_fragment(
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
     let raw_xml = String::from_utf8(bytes.to_vec())
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+    tracing::info!(
+        "[PERF] XmlFragmenter::send_xml_fragment file_read | count={} | xml_size={} bytes | rss={:.1} MB",
+        count,
+        raw_xml.len(),
+        current_rss_mb()
+    );
     if elements_to_match.is_empty() {
         return Ok(());
     }
@@ -269,10 +301,29 @@ fn send_xml_fragment(
         return Ok(());
     }
 
+    let t_parent = Instant::now();
     let parent_map = build_parent_id_map(&raw_xml, &url, &match_tags)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+    tracing::info!(
+        "[PERF] XmlFragmenter::send_xml_fragment parent_map | count={} | elapsed={}ms | entries={} | rss={:.1} MB",
+        count,
+        t_parent.elapsed().as_millis(),
+        parent_map.len(),
+        current_rss_mb()
+    );
 
-    generate_fragment_streaming(ctx, fw, feature, &url, &raw_xml, &parent_map, &match_tags)
+    let t_gen = Instant::now();
+    let result =
+        generate_fragment_streaming(ctx, fw, feature, &url, &raw_xml, &parent_map, &match_tags);
+    tracing::info!(
+        "[PERF] XmlFragmenter::send_xml_fragment END | count={} | total={}ms gen={}ms | rss={:.1} MB (delta={:+.1})",
+        count,
+        t_total.elapsed().as_millis(),
+        t_gen.elapsed().as_millis(),
+        current_rss_mb(),
+        current_rss_mb() - rss_start
+    );
+    result
 }
 
 fn generate_fragment_streaming(
