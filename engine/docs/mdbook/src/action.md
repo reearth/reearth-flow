@@ -6639,6 +6639,22 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 * PLATEAU
 * Geometry
 
+## PLATEAU4.CompositeSurfaceContinuityFilter
+### Type
+* processor
+### Description
+Checks if a CompositeSurface is continuous (all parts share edges)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* passed
+* failed
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU4.DestinationMeshCodeExtractor
 ### Type
 * processor
