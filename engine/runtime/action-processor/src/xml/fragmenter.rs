@@ -467,30 +467,31 @@ fn build_parent_id_map(
     uri: &Uri,
     match_tags: &[String],
 ) -> Result<HashMap<String, Option<String>>, XmlProcessorError> {
-    let match_tags: HashSet<String> = match_tags.iter().cloned().collect();
-    let map: RefCell<HashMap<String, Option<String>>> = RefCell::new(HashMap::new());
-    let uri = uri.clone();
+    let map = std::rc::Rc::new(RefCell::new(HashMap::<String, Option<String>>::new()));
 
-    let transformer = StreamTransformer::new(raw_xml)
+    let mut transformer = StreamTransformer::new(raw_xml)
         .with_root_namespaces()
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
 
-    transformer
-        .on_with_context("//*", |node, ctx| {
-            let qname = node.qname();
-            if !match_tags.contains(&qname) {
-                return;
-            }
-
+    for tag in match_tags {
+        let xpath = format!("//{tag}");
+        let map = std::rc::Rc::clone(&map);
+        let uri = uri.clone();
+        transformer = transformer.on_with_context(&xpath, move |node, ctx| {
             let xml_id = compute_xml_id_from_editable_node(&uri, node);
             let parent_id = compute_parent_xml_id(&uri, ctx);
-
             map.borrow_mut().insert(xml_id, parent_id);
-        })
+        });
+    }
+
+    transformer
         .for_each()
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
 
-    Ok(map.into_inner())
+    let map = std::rc::Rc::try_unwrap(map)
+        .expect("all closures should be dropped after for_each")
+        .into_inner();
+    Ok(map)
 }
 
 fn compute_parent_xml_id(uri: &Uri, ctx: &fastxml::transform::TransformContext) -> Option<String> {
