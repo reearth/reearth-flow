@@ -11,7 +11,6 @@ use std::{
 use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher, SchemaFetcher};
 use fastxml::schema::types::CompiledSchema;
 use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
-use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
 use reearth_flow_runtime::{
@@ -449,43 +448,57 @@ impl XmlValidator {
     }
 
     fn check_namespace_streaming(xml_content: &str) -> Result<Vec<ValidationResult>> {
-        use std::cell::{Cell, RefCell};
+        use quick_xml::events::Event;
+        use quick_xml::Reader;
 
-        let root_prefixes: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
-        let is_root = Cell::new(true);
-        let errors: RefCell<Vec<ValidationResult>> = RefCell::new(Vec::new());
+        let mut reader = Reader::from_str(xml_content);
+        reader.config_mut().trim_text(false);
 
-        let transformer = StreamTransformer::new(xml_content)
-            .with_root_namespaces()
-            .map_err(|e| XmlProcessorError::Validator(format!("Failed to parse XML: {e:?}")))?;
+        let mut buf = Vec::new();
+        let mut root_prefixes: HashSet<String> = HashSet::new();
+        let mut is_root = true;
+        let mut errors: Vec<ValidationResult> = Vec::new();
 
-        transformer
-            .on("//*", |node| {
-                if is_root.get() {
-                    for prefix in node.namespaces().keys() {
-                        root_prefixes.borrow_mut().insert(prefix.to_string());
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                    if is_root {
+                        for attr in e.attributes().flatten() {
+                            let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                            if let Some(prefix) = key.strip_prefix("xmlns:") {
+                                root_prefixes.insert(prefix.to_string());
+                            }
+                        }
+                        is_root = false;
                     }
-                    is_root.set(false);
-                }
-                let qname = node.qname();
-                if let Some((prefix, _)) = qname.split_once(':') {
-                    if !root_prefixes.borrow().contains(prefix) {
-                        errors.borrow_mut().push(ValidationResult::new(
+                    let name_bytes = e.name();
+                    let name = std::str::from_utf8(name_bytes.as_ref()).unwrap_or("");
+                    if let Some((prefix, _)) = name.split_once(':') {
+                        if !root_prefixes.contains(prefix) {
+                            errors.push(ValidationResult::new(
+                                "NamespaceError",
+                                &format!("No namespace declaration for {prefix}"),
+                            ));
+                        }
+                    } else {
+                        errors.push(ValidationResult::new(
                             "NamespaceError",
-                            &format!("No namespace declaration for {prefix}"),
+                            "No namespace declaration",
                         ));
                     }
-                } else {
-                    errors.borrow_mut().push(ValidationResult::new(
-                        "NamespaceError",
-                        "No namespace declaration",
-                    ));
                 }
-            })
-            .for_each()
-            .map_err(|e| XmlProcessorError::Validator(format!("Failed to parse XML: {e:?}")))?;
+                Ok(Event::Eof) => break,
+                Ok(_) => {}
+                Err(e) => {
+                    return Err(XmlProcessorError::Validator(format!(
+                        "Failed to parse XML: {e}"
+                    )));
+                }
+            }
+            buf.clear();
+        }
 
-        Ok(errors.into_inner())
+        Ok(errors)
     }
 
     /// Streaming schema validation with per-step performance profiling.
