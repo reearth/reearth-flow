@@ -4,9 +4,13 @@ use std::{
     fmt::{Debug, Formatter},
     path::PathBuf,
     str::FromStr,
+    sync::Arc,
+    time::Instant,
 };
 
-use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher};
+use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher, SchemaFetcher};
+use fastxml::schema::types::CompiledSchema;
+use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -25,6 +29,17 @@ use serde_json::Value;
 use super::errors::{Result, XmlProcessorError};
 use super::namespace::recursive_check_namespace;
 use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorParam};
+
+/// Get current process RSS (Resident Set Size) in MB using sysinfo.
+fn current_rss_mb() -> f64 {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+    let pid = Pid::from_u32(std::process::id());
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    sys.process(pid)
+        .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+        .unwrap_or(0.0)
+}
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
@@ -82,7 +97,10 @@ impl ProcessorFactory for XmlValidatorFactory {
             .into());
         };
 
-        let process = XmlValidator { params };
+        let process = XmlValidator {
+            params,
+            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        };
         Ok(Box::new(process))
     }
 }
@@ -90,6 +108,20 @@ impl ProcessorFactory for XmlValidatorFactory {
 #[derive(Clone)]
 pub struct XmlValidator {
     params: XmlValidatorParam,
+    /// Cache of compiled schemas keyed by sorted schema locations.
+    /// Shared across clones (threads) via Arc so that the ~27s compilation
+    /// cost is paid only once per unique set of schema locations.
+    schema_cache: Arc<parking_lot::RwLock<HashMap<String, Arc<CompiledSchema>>>>,
+}
+
+/// Build a deterministic cache key from schema locations.
+fn schema_cache_key(locations: &[(String, String)]) -> String {
+    let mut parts: Vec<String> = locations
+        .iter()
+        .map(|(ns, loc)| format!("{ns}={loc}"))
+        .collect();
+    parts.sort();
+    parts.join("|")
 }
 
 impl Debug for XmlValidator {
@@ -159,8 +191,14 @@ impl XmlValidator {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<()> {
+        let total_start = Instant::now();
         let feature = &ctx.feature;
         let xml_content = self.get_xml_content(&ctx, feature)?;
+
+        tracing::info!(
+            "[PERF] XMLValidator::validate_syntax_and_namespace START | xml_size={} bytes",
+            xml_content.len()
+        );
 
         let document = match xml::parse(xml_content) {
             Ok(doc) => doc,
@@ -193,6 +231,11 @@ impl XmlValidator {
             }
         }
 
+        tracing::info!(
+            "[PERF] XMLValidator::validate_syntax_and_namespace TOTAL | elapsed={}ms",
+            total_start.elapsed().as_millis()
+        );
+
         Ok(())
     }
 
@@ -201,9 +244,15 @@ impl XmlValidator {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<()> {
+        let total_start = Instant::now();
         let feature = &ctx.feature;
         // Get XML as bytes for streaming validation (more memory efficient)
         let xml_bytes = self.get_xml_content_bytes(&ctx, feature)?;
+
+        tracing::info!(
+            "[PERF] XMLValidator::validate_syntax_and_schema START | xml_size={} bytes",
+            xml_bytes.len()
+        );
 
         match self.check_schema_streaming(feature, &xml_bytes) {
             Ok(result) => {
@@ -238,6 +287,11 @@ impl XmlValidator {
                 fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
             }
         }
+
+        tracing::info!(
+            "[PERF] XMLValidator::validate_syntax_and_schema TOTAL | elapsed={}ms",
+            total_start.elapsed().as_millis()
+        );
 
         Ok(())
     }
@@ -288,7 +342,8 @@ impl XmlValidator {
 
     /// Get XML content as bytes for streaming validation (more memory efficient)
     fn get_xml_content_bytes(&self, ctx: &ExecutorContext, feature: &Feature) -> Result<Vec<u8>> {
-        match self.params.input_type {
+        let start = Instant::now();
+        let result = match self.params.input_type {
             XmlInputType::File => {
                 let uri = feature
                     .attributes
@@ -327,7 +382,14 @@ impl XmlValidator {
                 };
                 Ok(content.as_bytes().to_vec())
             }
-        }
+        };
+        let bytes = result?;
+        tracing::info!(
+            "[PERF] XMLValidator::get_xml_content_bytes | elapsed={}ms | size={} bytes",
+            start.elapsed().as_millis(),
+            bytes.len()
+        );
+        Ok(bytes)
     }
 
     fn send_syntax_error(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, feature: &Feature) {
@@ -360,16 +422,25 @@ impl XmlValidator {
         Ok(recursive_check_namespace(root_node, &namespaces))
     }
 
-    /// Streaming schema validation using fastxml's high-level API.
-    /// Handles schema location extraction, fetching, resolution, compilation,
-    /// and validation in a single call. Uses a caching fetcher to avoid
-    /// redundant HTTP requests across multiple XML files.
+    /// Streaming schema validation with per-step performance profiling.
+    /// Decomposes the validation into individual steps to measure:
+    /// 1. Schema location extraction (XML parse + attribute read)
+    /// 2. Schema fetch + resolve + compile (with caching fetcher)
+    /// 3. Streaming validation
     fn check_schema_streaming(
         &self,
         feature: &Feature,
         xml_bytes: &[u8],
     ) -> Result<Vec<ValidationResult>> {
-        use std::io::{BufReader, Cursor};
+        use fastxml::schema::validator::StreamValidator;
+
+        let total_start = Instant::now();
+        let rss_start = current_rss_mb();
+        tracing::info!(
+            "[PERF] XMLValidator::check_schema_streaming START | xml_size={} bytes | rss={:.1} MB",
+            xml_bytes.len(),
+            rss_start
+        );
 
         // Determine base directory for relative schema resolution
         let base_dir = self.get_xml_base_url(feature).and_then(|uri| {
@@ -379,25 +450,119 @@ impl XmlValidator {
                 .filter(|p| p.exists())
         });
 
-        // Create a caching fetcher that stores HTTP schemas in a temp directory,
-        // enabling cache sharing across different validator instances and test processes
-        let inner = match &base_dir {
-            Some(dir) => DefaultFetcher::with_base_dir(dir),
-            None => DefaultFetcher::new(),
+        // --- Step 1: Extract schema locations ---
+        let step1_start = Instant::now();
+        let document = xml::parse(xml_bytes).map_err(|e| {
+            XmlProcessorError::Validator(format!("Failed to parse XML for schema locations: {e}"))
+        })?;
+        let schema_locations = xml::parse_schema_locations(&document).map_err(|e| {
+            XmlProcessorError::Validator(format!("Failed to extract schema locations: {e}"))
+        })?;
+        // Drop the document to free DOM memory before proceeding
+        drop(document);
+        let rss_after_locations = current_rss_mb();
+        tracing::info!(
+            "[PERF] XMLValidator::check_schema_streaming schema_locations extracted | elapsed={}ms | locations={} | rss={:.1} MB",
+            step1_start.elapsed().as_millis(),
+            schema_locations.len(),
+            rss_after_locations
+        );
+
+        if schema_locations.is_empty() {
+            tracing::info!(
+                "[PERF] XMLValidator::check_schema_streaming TOTAL (no schema) | elapsed={}ms | rss_delta={:+.1} MB",
+                total_start.elapsed().as_millis(),
+                current_rss_mb() - rss_start
+            );
+            return Ok(Vec::new());
+        }
+
+        // --- Step 2: Fetch + resolve + compile schemas (with cache) ---
+        let step2_start = Instant::now();
+        let cache_key = schema_cache_key(&schema_locations);
+
+        // Check cache first
+        let cached = {
+            let cache = self.schema_cache.read();
+            cache.get(&cache_key).cloned()
         };
-        let fetcher = FileCachingFetcher::new(inner).map_err(|e| {
-            XmlProcessorError::Validator(format!("Failed to create caching fetcher: {e:?}"))
+
+        let compiled = if let Some(compiled) = cached {
+            let rss_after_cache = current_rss_mb();
+            tracing::info!(
+                "[PERF] XMLValidator::check_schema_streaming schema cache HIT | elapsed={}ms | rss={:.1} MB",
+                step2_start.elapsed().as_millis(),
+                rss_after_cache
+            );
+            compiled
+        } else {
+            // Cache miss - compile from scratch
+            let inner = match &base_dir {
+                Some(dir) => DefaultFetcher::with_base_dir(dir),
+                None => DefaultFetcher::new(),
+            };
+            let fetcher = FileCachingFetcher::new(inner).map_err(|e| {
+                XmlProcessorError::Validator(format!("Failed to create caching fetcher: {e:?}"))
+            })?;
+
+            let mut all_schemas: Vec<XsdSchema> = Vec::new();
+            for (_namespace, location) in &schema_locations {
+                let fetch_result = fetcher.fetch(location).map_err(|e| {
+                    XmlProcessorError::Validator(format!(
+                        "Failed to fetch schema {}: {e:?}",
+                        location
+                    ))
+                })?;
+
+                let base_uri = &fetch_result.final_url;
+                let mut resolver = SchemaResolver::new(&fetcher);
+                let schemas = resolver
+                    .resolve_all(&fetch_result.content, base_uri)
+                    .map_err(|e| {
+                        XmlProcessorError::Validator(format!(
+                            "Failed to resolve schema imports for {}: {e:?}",
+                            location
+                        ))
+                    })?;
+                all_schemas.extend(schemas);
+            }
+
+            let mut compiled = compile_schemas(all_schemas).map_err(|e| {
+                XmlProcessorError::Validator(format!("Failed to compile schemas: {e:?}"))
+            })?;
+            register_builtin_types(&mut compiled);
+            let compiled = Arc::new(compiled);
+
+            // Store in cache
+            {
+                let mut cache = self.schema_cache.write();
+                cache.insert(cache_key, Arc::clone(&compiled));
+            }
+
+            let rss_after_compile = current_rss_mb();
+            tracing::info!(
+                "[PERF] XMLValidator::check_schema_streaming schema compiled (cache MISS) | elapsed={}ms | rss={:.1} MB",
+                step2_start.elapsed().as_millis(),
+                rss_after_compile
+            );
+            compiled
+        };
+
+        // --- Step 3: Streaming validation ---
+        let step3_start = Instant::now();
+        let reader = std::io::BufReader::new(std::io::Cursor::new(xml_bytes));
+        let validator = StreamValidator::new(Arc::clone(&compiled));
+        let errors = validator.validate(reader).map_err(|e| {
+            XmlProcessorError::Validator(format!("Streaming validation failed: {e:?}"))
         })?;
 
-        // Create reader for streaming validation
-        let reader = BufReader::new(Cursor::new(xml_bytes));
-
-        // Use the high-level API that handles schema location extraction,
-        // fetching, resolution, compilation, and validation in one call
-        let errors = fastxml::streaming_validate_with_schema_location_and_fetcher(reader, fetcher)
-            .map_err(|e| {
-                XmlProcessorError::Validator(format!("Schema validation failed: {e:?}"))
-            })?;
+        let rss_after_validate = current_rss_mb();
+        tracing::info!(
+            "[PERF] XMLValidator::check_schema_streaming validation done | elapsed={}ms | errors={} | rss={:.1} MB",
+            step3_start.elapsed().as_millis(),
+            errors.len(),
+            rss_after_validate
+        );
 
         // Convert errors to ValidationResult and deduplicate
         let validation_results: HashSet<_> = errors
@@ -411,6 +576,13 @@ impl XmlValidator {
                 )
             })
             .collect();
+
+        let rss_end = current_rss_mb();
+        tracing::info!(
+            "[PERF] XMLValidator::check_schema_streaming TOTAL | elapsed={}ms | rss_delta={:+.1} MB",
+            total_start.elapsed().as_millis(),
+            rss_end - rss_start
+        );
 
         Ok(validation_results.into_iter().collect())
     }
@@ -458,7 +630,10 @@ mod tests {
             validation_type,
         };
 
-        XmlValidator { params }
+        XmlValidator {
+            params,
+            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        }
     }
 
     fn create_feature_with_xml(xml_content: &str) -> Feature {
