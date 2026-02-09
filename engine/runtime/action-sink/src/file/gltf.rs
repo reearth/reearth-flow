@@ -431,29 +431,34 @@ impl GltfWriter {
                         };
                         let (mat_idx, _) = materials.insert_full(mat);
                         let mut ring_buffer: Vec<[f64; 5]> = Vec::new();
-                        poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
-                            |(ri, (ring, uv_ring))| {
-                                ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
-                                    |(c, uv)| {
-                                        let [lng, lat, height] = c;
-                                        ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
+                        for (ri, (ring, uv_ring)) in
+                            poly.rings().zip(poly_uv.rings()).enumerate()
+                        {
+                            let ring_coords: Vec<_> = ring.iter_closed().collect();
+                            let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
+                            for (c, uv) in ring_coords.iter().zip(
+                                uv_coords
+                                    .iter()
+                                    .chain(std::iter::repeat(&[0.0, 0.0]))
+                                    .take(ring_coords.len()),
+                            ) {
+                                let [lng, lat, height] = *c;
+                                ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
 
-                                        local_bvol.min_lng = local_bvol.min_lng.min(lng);
-                                        local_bvol.max_lng = local_bvol.max_lng.max(lng);
-                                        local_bvol.min_lat = local_bvol.min_lat.min(lat);
-                                        local_bvol.max_lat = local_bvol.max_lat.max(lat);
-                                        local_bvol.min_height = local_bvol.min_height.min(height);
-                                        local_bvol.max_height = local_bvol.max_height.max(height);
-                                    },
-                                );
-                                if ri == 0 {
-                                    class_feature.polygons.add_exterior(ring_buffer.drain(..));
-                                    class_feature.polygon_material_ids.push(mat_idx as u32);
-                                } else {
-                                    class_feature.polygons.add_interior(ring_buffer.drain(..));
-                                }
-                            },
-                        );
+                                local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                                local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                                local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                                local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                                local_bvol.min_height = local_bvol.min_height.min(height);
+                                local_bvol.max_height = local_bvol.max_height.max(height);
+                            }
+                            if ri == 0 {
+                                class_feature.polygons.add_exterior(ring_buffer.drain(..));
+                                class_feature.polygon_material_ids.push(mat_idx as u32);
+                            } else {
+                                class_feature.polygons.add_interior(ring_buffer.drain(..));
+                            }
+                        }
                     }
                 }
                 GeometryType::Curve => {

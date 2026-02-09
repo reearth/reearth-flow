@@ -172,22 +172,26 @@ pub fn slice_to_tiles<E>(
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later
                                     });
-                            assert!(poly.rings().count() == poly_uv.rings().count());
-                            poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
-                                |(ri, (ring, uv_ring))| {
-                                    ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
-                                        |(c, uv)| {
-                                            ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
-                                        },
-                                    );
-                                    if ri == 0 {
-                                        sliced_feature.polygons.add_exterior(ring_buffer.drain(..));
-                                        sliced_feature.polygon_material_ids.push(mat_idx as u32);
-                                    } else {
-                                        sliced_feature.polygons.add_interior(ring_buffer.drain(..));
-                                    }
-                                },
-                            );
+                            for (ri, (ring, uv_ring)) in
+                                poly.rings().zip(poly_uv.rings()).enumerate()
+                            {
+                                let ring_coords: Vec<_> = ring.iter_closed().collect();
+                                let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
+                                for (c, uv) in ring_coords.iter().zip(
+                                    uv_coords
+                                        .iter()
+                                        .chain(std::iter::repeat(&[0.0, 0.0]))
+                                        .take(ring_coords.len()),
+                                ) {
+                                    ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
+                                }
+                                if ri == 0 {
+                                    sliced_feature.polygons.add_exterior(ring_buffer.drain(..));
+                                    sliced_feature.polygon_material_ids.push(mat_idx as u32);
+                                } else {
+                                    sliced_feature.polygons.add_interior(ring_buffer.drain(..));
+                                }
+                            }
                         }
                     }
                 }
@@ -242,13 +246,23 @@ fn slice_polygon(
 
         // todo?: check interior bbox to optimize
 
-        for (ri, (ring, uv_ring)) in poly.rings().zip_eq(poly_uv.rings()).enumerate() {
+        for (ri, (ring, uv_ring)) in poly.rings().zip(poly_uv.rings()).enumerate() {
             if ring.raw_coords().is_empty() {
                 continue;
             }
             ring_buffer.clear();
-            ring.iter_closed()
-                .zip_eq(uv_ring.iter_closed())
+            let ring_coords: Vec<_> = ring.iter_closed().collect();
+            let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
+            ring_coords
+                .iter()
+                .zip(
+                    uv_coords
+                        .iter()
+                        .map(|uv| *uv)
+                        .chain(std::iter::repeat([0.0, 0.0]))
+                        .take(ring_coords.len()),
+                )
+                .map(|(c, uv)| (*c, uv))
                 .fold(None, |a, b| {
                     let Some((a, a_uv)) = a else { return Some(b) };
                     let (b, b_uv) = b;

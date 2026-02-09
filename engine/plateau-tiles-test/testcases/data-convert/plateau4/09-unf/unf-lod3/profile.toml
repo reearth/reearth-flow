@@ -1,0 +1,10 @@
+citygml_zip_name = "13999_tokyo_udx-mlit_2024_citygml_2_sample-takeshiba_op_unf_lod3.zip"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[filter.tree]
+"udx/unf/" = ["53393680_unf_lod3_6697_op.gml"]
