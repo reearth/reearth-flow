@@ -696,6 +696,8 @@ nodes:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
       generateList: list
+      groupBy: 
+        - lod
 
   - id: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
     name: FeatureFilterSolidIntersectionOverlap

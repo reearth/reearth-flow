@@ -1,4 +1,4 @@
-use kiddo::{KdTree, SquaredEuclidean};
+use kiddo::{ImmutableKdTree, SquaredEuclidean};
 
 use crate::types::{coordinate::Coordinate, coordnum::CoordFloat};
 
@@ -17,12 +17,15 @@ pub fn glue_vertices_closer_than<T: CoordFloat + From<Z>, Z: CoordFloat>(
     let tol_f64 = tolerance.to_f64().unwrap();
     let sq_tol = tol_f64 * tol_f64;
 
-    // Build a k-d tree over the vertex positions (2D: x, y)
-    let mut tree: KdTree<f64, 2> = KdTree::new();
-    for (i, v) in vertices.iter().enumerate() {
-        let pt = [v.x.to_f64().unwrap(), v.y.to_f64().unwrap()];
-        tree.add(&pt, i as u64);
-    }
+    // Build an immutable k-d tree over the vertex positions (2D: x, y).
+    // ImmutableKdTree handles degenerate point distributions (many points
+    // sharing the same coordinate on one axis) without panicking, unlike
+    // the mutable KdTree.
+    let points: Vec<[f64; 2]> = vertices
+        .iter()
+        .map(|v| [v.x.to_f64().unwrap(), v.y.to_f64().unwrap()])
+        .collect();
+    let tree: ImmutableKdTree<f64, 2> = ImmutableKdTree::new_from_slice(&points);
 
     let mut updated = vec![false; n];
 

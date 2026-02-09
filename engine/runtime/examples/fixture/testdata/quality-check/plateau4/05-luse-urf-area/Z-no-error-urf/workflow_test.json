@@ -1,0 +1,59 @@
+{
+  "description": "Verify output files: no errors, empty CityGML",
+  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "luse_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../plateau-citymodel/13101_chiyoda-ku_pref_2025_citygml_1_op/13101_pref_2025_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/urf",
+      "name": "luse_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/13101_chiyoda-ku_pref_2025_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/13101_chiyoda-ku_pref_2025_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_urf.json"
+      },
+      {
+        "expectedFile": "summary_common.json"
+      }
+    ],
+    "fileErrorSummary": [
+      {
+        "expectedFile": "05_都市計画決定情報_検査結果一覧.csv"
+      },
+      {
+        "expectedFile": "01_共通.csv"
+      }
+    ]
+  },
+  "expectResultOkFile": true
+}

@@ -6400,6 +6400,7 @@ dependencies = [
  "bytes",
  "chrono",
  "csv",
+ "earcut",
  "flatgeom",
  "image 0.25.9",
  "indexmap 2.12.1",

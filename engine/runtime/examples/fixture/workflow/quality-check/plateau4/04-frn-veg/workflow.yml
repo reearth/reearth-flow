@@ -152,8 +152,8 @@ graphs:
               outputPort: multiSurface
             - expr: |
                 let prop = env.get("__value").gmlPropertyName;
-                prop == "lod1Solid" || prop == "lod2Solid" || prop == "lod3Solid"
-              outputPort: solid
+                prop == "lod1MultiSolid" || prop == "lod2MultiSolid" || prop == "lod3MultiSolid"
+              outputPort: multiSolid
             - expr: |
                 let prop = env.get("__value").gmlPropertyName;
                 let is_geom = prop == "lod1Geometry" || prop == "lod2Geometry" || prop == "lod3Geometry";
@@ -768,7 +768,7 @@ graphs:
       - id: aa75806c-3daf-4c5c-bab0-188979ecb00b
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
-        fromPort: solid
+        fromPort: multiSolid
         toPort: default
       - id: a5f4a4ee-9d18-4f94-8909-19ca4228e931
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
@@ -795,7 +795,7 @@ graphs:
       - id: 92fbdd35-b2ac-4a68-9300-4fc35b0bb59b
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: bf13c543-ca57-4479-be36-47fe5ad34dfc
-        fromPort: solid
+        fromPort: multiSolid
         toPort: default
       - id: caddaf7a-1f14-4fbc-99f0-af6a360c0c56
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
