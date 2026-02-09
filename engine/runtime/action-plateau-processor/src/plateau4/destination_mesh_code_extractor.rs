@@ -342,9 +342,14 @@ impl DestinationMeshCodeExtractor {
         let mut intersecting_mesh_count = 0;
 
         for mesh_code in candidate_meshes {
-            // Get mesh boundary as polygon (in WGS84)
+            // Get mesh boundary as polygon (in WGS84) with densified edges.
+            // Mesh boundaries are constant-latitude/longitude lines which are curved
+            // in Transverse Mercator projections. A 4-corner polygon with straight edges
+            // in projected space deviates from the true boundary. Adding intermediate
+            // points along each edge before transformation produces a more accurate
+            // representation of the curved boundaries.
             let mesh_bounds = mesh_code.bounds();
-            let mesh_polygon = mesh_bounds.to_polygon();
+            let mesh_polygon = Self::densified_rect_polygon(&mesh_bounds);
 
             let mesh_polygon = Self::transform_polygon_to_epsg(&mesh_polygon, epsg_code)?;
 
@@ -453,6 +458,50 @@ impl DestinationMeshCodeExtractor {
         let min = Self::transform_coord_from_epsg(rect.min(), epsg_code)?;
         let max = Self::transform_coord_from_epsg(rect.max(), epsg_code)?;
         Some(Rect2D::new(min, max))
+    }
+
+    /// Create a densified polygon from a geographic rectangle by subdividing each edge.
+    ///
+    /// In Transverse Mercator projections, lines of constant latitude are curved.
+    /// A simple 4-corner rectangle transformed to projected coordinates uses straight
+    /// lines between corners, which deviates from the true curved mesh boundary.
+    /// By adding intermediate points along each edge in geographic coordinates before
+    /// transformation, the resulting projected polygon more accurately follows the
+    /// true constant-latitude/longitude curves.
+    fn densified_rect_polygon(rect: &Rect2D<f64>) -> Polygon2D<f64> {
+        const SEGMENTS_PER_EDGE: usize = 16;
+
+        let min_x = rect.min().x;
+        let min_y = rect.min().y;
+        let max_x = rect.max().x;
+        let max_y = rect.max().y;
+
+        let mut coords = Vec::with_capacity(4 * SEGMENTS_PER_EDGE + 1 /* closing point */);
+
+        // Bottom edge: SW → SE (constant lat = min_y, varying lng)
+        for i in 0..SEGMENTS_PER_EDGE {
+            let t = i as f64 / SEGMENTS_PER_EDGE as f64;
+            coords.push(Coordinate2D::new_(min_x + t * (max_x - min_x), min_y));
+        }
+        // Right edge: SE → NE (constant lng = max_x, varying lat)
+        for i in 0..SEGMENTS_PER_EDGE {
+            let t = i as f64 / SEGMENTS_PER_EDGE as f64;
+            coords.push(Coordinate2D::new_(max_x, min_y + t * (max_y - min_y)));
+        }
+        // Top edge: NE → NW (constant lat = max_y, varying lng)
+        for i in 0..SEGMENTS_PER_EDGE {
+            let t = i as f64 / SEGMENTS_PER_EDGE as f64;
+            coords.push(Coordinate2D::new_(max_x - t * (max_x - min_x), max_y));
+        }
+        // Left edge: NW → SW (constant lng = min_x, varying lat)
+        for i in 0..SEGMENTS_PER_EDGE {
+            let t = i as f64 / SEGMENTS_PER_EDGE as f64;
+            coords.push(Coordinate2D::new_(min_x, max_y - t * (max_y - min_y)));
+        }
+        // Close the polygon
+        coords.push(coords[0]);
+
+        Polygon2D::new(coords.into(), vec![])
     }
 
     /// Convert Geometry2D to Polygon2D for area calculations

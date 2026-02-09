@@ -49,22 +49,6 @@
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-							<!-- Fails. The failure is caused by the angle tolerance. -->
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>
-                                                34.683397 137.312568 0.0
-												34.683397 137.312570 0.0
-												34.683400 137.312570 0.0
-                                                34.683400 137.312568 0.02
-                                                34.683397 137.312568 0.0
-											</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
 							<!-- Fails. The failure is caused by the thicness tolerance. -->
 							<gml:surfaceMember>
 								<gml:Polygon>
@@ -85,32 +69,6 @@
 					</gml:exterior>
 				</gml:Solid>
 			</bldg:lod1Solid>
-			<uro:buildingDataQualityAttribute>
-				<uro:BuildingDataQualityAttribute>
-					<uro:srcScale codeSpace="../../codelists/BuildingDataQualityAttribute_srcScale.xml">1</uro:srcScale>
-					<uro:geometrySrcDesc codeSpace="../../codelists/BuildingDataQualityAttribute_geometrySrcDesc.xml">5</uro:geometrySrcDesc>
-					<uro:thematicSrcDesc codeSpace="../../codelists/BuildingDataQualityAttribute_thematicSrcDesc.xml">1</uro:thematicSrcDesc>
-					<uro:lod1HeightType codeSpace="../../codelists/BuildingDataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
-				</uro:BuildingDataQualityAttribute>
-			</uro:buildingDataQualityAttribute>
-			<uro:buildingDetailAttribute>
-				<uro:BuildingDetailAttribute>
-					<uro:totalFloorArea uom="m2">1014.21</uro:totalFloorArea>
-					<uro:buildingFootprintArea uom="m2">1014.21</uro:buildingFootprintArea>
-					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">601</uro:buildingStructureType>
-					<uro:areaClassificationType codeSpace="../../codelists/Common_areaClassificationType.xml">23</uro:areaClassificationType>
-					<uro:orgUsage2 codeSpace="../../codelists/BuildingDetailAttribute_orgUsage2.xml">1320</uro:orgUsage2>
-					<uro:buildingHeight uom="m">5.5</uro:buildingHeight>
-					<uro:surveyYear>2022</uro:surveyYear>
-				</uro:BuildingDetailAttribute>
-			</uro:buildingDetailAttribute>
-			<uro:buildingIDAttribute>
-				<uro:BuildingIDAttribute>
-					<uro:buildingID>23201-bldg-10467</uro:buildingID>
-					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">23</uro:prefecture>
-					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">23201</uro:city>
-				</uro:BuildingIDAttribute>
-			</uro:buildingIDAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

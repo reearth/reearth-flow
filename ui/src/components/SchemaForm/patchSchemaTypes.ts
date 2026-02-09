@@ -97,8 +97,19 @@ const consolidateOneOfToEnum = (
       } else if (typeof oneOfValues.values[0] === "number") {
         newSchema.type = "number";
       }
-      // Force enum to ensure RJSF uses a select dropdown
-      (newSchema as JSONSchema7 & { enum: any[] }).enum = oneOfValues.values;
+
+      const hasTitles = oneOfValues.titles.some((t) => t !== undefined);
+      if (hasTitles) {
+        // Normalize to oneOf with const+title format so RJSF renders labeled select options
+        newSchema.oneOf = oneOfValues.values.map((val, i) => ({
+          const: val,
+          title: oneOfValues.titles[i] || String(val),
+        }));
+      } else {
+        // No titles available, fall back to plain enum
+        delete newSchema.oneOf;
+        (newSchema as JSONSchema7 & { enum: any[] }).enum = oneOfValues.values;
+      }
     }
   }
 

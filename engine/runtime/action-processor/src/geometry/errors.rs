@@ -175,6 +175,10 @@ pub(super) enum GeometryProcessorError {
     GeometrySplitterFactory(String),
     #[error("GeometrySplitter error: {0}")]
     GeometrySplitter(String),
+    #[error("Rotator3D Factory error: {0}")]
+    Rotator3DFactory(String),
+    #[error("Rotator3D error: {0}")]
+    Rotator3D(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
