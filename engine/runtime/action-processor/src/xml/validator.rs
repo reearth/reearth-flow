@@ -516,16 +516,13 @@ impl XmlValidator {
                 .filter(|p| p.exists())
         });
 
-        // --- Step 1: Extract schema locations ---
+        // --- Step 1: Extract schema locations (streaming, no DOM) ---
         let step1_start = Instant::now();
-        let document = xml::parse(xml_bytes).map_err(|e| {
-            XmlProcessorError::Validator(format!("Failed to parse XML for schema locations: {e}"))
-        })?;
-        let schema_locations = xml::parse_schema_locations(&document).map_err(|e| {
-            XmlProcessorError::Validator(format!("Failed to extract schema locations: {e}"))
-        })?;
-        // Drop the document to free DOM memory before proceeding
-        drop(document);
+        let schema_locations =
+            fastxml::parser::parse_schema_locations_from_reader(std::io::Cursor::new(xml_bytes))
+                .map_err(|e| {
+                    XmlProcessorError::Validator(format!("Failed to extract schema locations: {e}"))
+                })?;
         let rss_after_locations = current_rss_mb();
         tracing::info!(
             "[PERF] XMLValidator::check_schema_streaming schema_locations extracted | elapsed={}ms | locations={} | rss={:.1} MB",
