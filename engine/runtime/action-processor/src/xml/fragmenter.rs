@@ -387,79 +387,187 @@ fn generate_fragment_streaming(
     parent_map: &HashMap<String, Option<String>>,
     match_tags: &[String],
 ) -> Result<()> {
-    let stream_error: std::rc::Rc<RefCell<Option<XmlProcessorError>>> =
-        std::rc::Rc::new(RefCell::new(None));
+    use quick_xml::events::Event;
+    use quick_xml::Reader;
 
-    let mut transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
+    let match_tags_set: HashSet<String> = match_tags.iter().cloned().collect();
+
+    // Extract root namespace declarations for injection into fragments
+    let root_ns = fastxml::namespace::extract_root_namespaces(raw_xml)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
 
-    for tag in match_tags {
-        let xpath = format!("//{tag}");
-        let ctx = ctx.clone();
-        let fw = fw.clone();
-        let feature = feature.clone();
-        let uri = uri.clone();
-        let tag = tag.clone();
-        let stream_error = std::rc::Rc::clone(&stream_error);
+    let mut reader = Reader::from_str(raw_xml);
+    reader.config_mut().trim_text(false);
+    let mut buf = Vec::new();
 
-        transformer = transformer.on(&xpath, move |node| {
-            if node.qname() != tag {
-                return;
-            }
-            if stream_error.borrow().is_some() {
-                return;
-            }
+    loop {
+        let element_start_pos = reader.buffer_position();
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) => {
+                let name_bytes = e.name();
+                let name = std::str::from_utf8(name_bytes.as_ref())
+                    .unwrap_or("")
+                    .to_string();
 
-            match build_fragment_from_node(node, &uri, parent_map) {
-                Ok(fragment) => {
+                if match_tags_set.contains(name.as_str()) {
+                    let rss_before = current_rss_mb();
+
+                    // Compute xml_id from attributes (same logic as compute_xml_id_from_editable_node)
+                    let xml_id = compute_xml_id_from_start_event(uri, e, &name);
+
+                    // Collect existing xmlns prefixes on this element to avoid duplicates
+                    let existing_ns: HashSet<String> = e
+                        .attributes()
+                        .flatten()
+                        .filter_map(|attr| {
+                            let key = std::str::from_utf8(attr.key.as_ref()).ok()?;
+                            key.strip_prefix("xmlns:")
+                                .map(|p| p.to_string())
+                                .or_else(|| {
+                                    if key == "xmlns" {
+                                        Some(String::new())
+                                    } else {
+                                        None
+                                    }
+                                })
+                        })
+                        .collect();
+
+                    // Track depth to find matching End tag
+                    let mut depth = 1u32;
+                    loop {
+                        match reader.read_event_into(&mut buf) {
+                            Ok(Event::Start(_)) => depth += 1,
+                            Ok(Event::End(_)) => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            Ok(Event::Eof) => break,
+                            _ => {}
+                        }
+                        buf.clear();
+                    }
+                    let element_end_pos = reader.buffer_position();
+
+                    // Zero-copy: slice the original XML for this element
+                    let raw_slice = &raw_xml[element_start_pos as usize..element_end_pos as usize];
+
+                    // Build namespace injection string (only missing ones)
+                    let ns_inject = build_ns_inject_string(&root_ns, &existing_ns);
+
+                    // Inject namespaces into the opening tag
+                    let fragment = if ns_inject.is_empty() {
+                        raw_slice.to_string()
+                    } else {
+                        inject_ns_into_opening_tag(raw_slice, &ns_inject)
+                    };
+
+                    let frag_size = fragment.len();
+                    let rss_after_build = current_rss_mb();
+
+                    let xml_parent_id = parent_map.get(&xml_id).cloned().flatten();
+
+                    let frag = XmlFragment {
+                        xml_id,
+                        fragment,
+                        matched_tag: name.clone(),
+                        xml_parent_id,
+                    };
+
                     let mut value =
                         Feature::new_with_attributes(feature.attributes.as_ref().clone());
-                    XmlFragment::to_hashmap(fragment)
+                    XmlFragment::to_hashmap(frag)
                         .into_iter()
                         .for_each(|(k, v)| {
                             value.attributes_mut().insert(k, v);
                         });
                     fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
-                }
-                Err(err) => {
-                    *stream_error.borrow_mut() = Some(err);
+                    let rss_after_send = current_rss_mb();
+                    tracing::info!(
+                        "[PERF] XmlFragmenter::generate_fragment | tag={} | fragment_size={} bytes ({:.1} MB) | rss: before={:.1} after_build={:.1} after_send={:.1} MB",
+                        name, frag_size, frag_size as f64 / 1_048_576.0,
+                        rss_before, rss_after_build, rss_after_send
+                    );
                 }
             }
-        });
-    }
-
-    let result = transformer.for_each();
-    if let Err(err) = result {
-        return Err(XmlProcessorError::Fragmenter(format!("{err:?}")));
-    }
-
-    if let Some(err) = stream_error.borrow_mut().take() {
-        return Err(err);
+            Ok(Event::Eof) => break,
+            Ok(_) => {}
+            Err(e) => {
+                return Err(XmlProcessorError::Fragmenter(format!(
+                    "XML parse error: {e}"
+                )));
+            }
+        }
+        buf.clear();
     }
 
     Ok(())
 }
 
-fn build_fragment_from_node(
-    node: &mut EditableNode,
+/// Build a string of xmlns declarations to inject (only those not already present)
+fn build_ns_inject_string(
+    root_ns: &std::collections::HashMap<String, String>,
+    existing_ns: &HashSet<String>,
+) -> String {
+    let mut ns_inject = String::new();
+    for (prefix, uri_val) in root_ns {
+        if !existing_ns.contains(prefix) {
+            if prefix.is_empty() {
+                ns_inject.push_str(&format!(" xmlns=\"{uri_val}\""));
+            } else {
+                ns_inject.push_str(&format!(" xmlns:{prefix}=\"{uri_val}\""));
+            }
+        }
+    }
+    ns_inject
+}
+
+/// Inject namespace declarations into the opening tag of an XML slice
+fn inject_ns_into_opening_tag(raw_slice: &str, ns_inject: &str) -> String {
+    // Find the first '>' which ends the opening tag
+    if let Some(first_gt) = raw_slice.find('>') {
+        let inject_pos = if first_gt > 0 && raw_slice.as_bytes()[first_gt - 1] == b'/' {
+            first_gt - 1 // self-closing: insert before '/'
+        } else {
+            first_gt // insert before '>'
+        };
+        let mut fragment = String::with_capacity(raw_slice.len() + ns_inject.len());
+        fragment.push_str(&raw_slice[..inject_pos]);
+        fragment.push_str(ns_inject);
+        fragment.push_str(&raw_slice[inject_pos..]);
+        fragment
+    } else {
+        raw_slice.to_string()
+    }
+}
+
+/// Compute xml_id from a quick_xml BytesStart event (same logic as compute_xml_id_from_editable_node)
+fn compute_xml_id_from_start_event(
     uri: &Uri,
-    parent_map: &HashMap<String, Option<String>>,
-) -> Result<XmlFragment> {
-    let xml_id = compute_xml_id_from_editable_node(uri, node);
-    let matched_tag = node.qname();
-    let fragment = node
-        .to_xml_with_namespaces()
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-
-    let xml_parent_id = parent_map.get(&xml_id).cloned().flatten();
-
-    Ok(XmlFragment {
-        xml_id,
-        fragment,
-        matched_tag,
-        xml_parent_id,
-    })
+    e: &quick_xml::events::BytesStart,
+    name: &str,
+) -> String {
+    // Check for 'id' attribute (exact key match, same as EditableNode::get_attribute("id"))
+    for attr in e.attributes().flatten() {
+        let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+        if key == "id" {
+            return attr.unescape_value().unwrap_or_default().to_string();
+        }
+    }
+    // Fall back to hash from all attributes (sorted)
+    let mut key_values: Vec<String> = e
+        .attributes()
+        .flatten()
+        .map(|attr| {
+            let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+            let value = attr.unescape_value().unwrap_or_default();
+            format!("{key}={value}")
+        })
+        .collect();
+    key_values.sort();
+    to_hash(format!("{}:{}[{}]", uri, name, key_values.join(",")).as_str())
 }
 
 fn build_parent_id_map(

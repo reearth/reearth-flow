@@ -626,6 +626,11 @@ impl XmlValidator {
 
         // --- Step 3: Streaming validation ---
         let step3_start = Instant::now();
+        let rss_before_validate = current_rss_mb();
+        tracing::info!(
+            "[PERF] XMLValidator::check_schema_streaming validation start | rss={:.1} MB",
+            rss_before_validate
+        );
         let reader = std::io::BufReader::new(std::io::Cursor::new(xml_bytes));
         let validator = StreamValidator::new(Arc::clone(&compiled));
         let errors = validator.validate(reader).map_err(|e| {
@@ -634,10 +639,11 @@ impl XmlValidator {
 
         let rss_after_validate = current_rss_mb();
         tracing::info!(
-            "[PERF] XMLValidator::check_schema_streaming validation done | elapsed={}ms | errors={} | rss={:.1} MB",
+            "[PERF] XMLValidator::check_schema_streaming validation done | elapsed={}ms | errors={} | rss={:.1} MB (validate_delta={:+.1})",
             step3_start.elapsed().as_millis(),
             errors.len(),
-            rss_after_validate
+            rss_after_validate,
+            rss_after_validate - rss_before_validate
         );
 
         // Convert errors to ValidationResult and deduplicate
