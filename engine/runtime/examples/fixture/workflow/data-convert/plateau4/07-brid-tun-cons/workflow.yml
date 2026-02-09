@@ -422,11 +422,11 @@ graphs:
           dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
+            let pkg = env.get("__value")["package"];
             file::join_path(artifact, pkg + "_lod4")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
+            let pkg = env.get("__value")["package"];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
@@ -572,9 +572,9 @@ graphs:
 
       # LOD4 pipeline edges
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
-        from: c32a279d-97be-4584-b282-4d65627b1132
+        from: c32a279d-97be-4584-b282-4d65627b1133
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
-        fromPort: up_to_lod4
+        fromPort: lod4
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
@@ -599,7 +599,7 @@ graphs:
         fromPort: schema
         toPort: schema
       - id: b559f3df-c4cb-4b96-95d6-9e3561add2b7
-        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
         to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         fromPort: schema
         toPort: schema
