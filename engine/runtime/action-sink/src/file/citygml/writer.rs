@@ -108,7 +108,6 @@ impl<W: Write> CityGmlXmlWriter<W> {
         city_type: CityObjectType,
         geometries: &[GeometryEntry],
         gml_id: Option<&str>,
-        appearance_data: Option<&AppearanceData>,
     ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
@@ -128,11 +127,6 @@ impl<W: Write> CityGmlXmlWriter<W> {
             self.write_lod_geometry(city_type, entry)?;
         }
 
-        // Write appearance data if available
-        if let Some(appearances) = appearance_data {
-            self.write_appearance_members(appearances)?;
-        }
-
         self.writer
             .write_event(Event::End(BytesEnd::new(element_name)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -143,13 +137,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
-    fn write_appearance_members(
+    /// Write global appearance members at CityModel level (before city objects)
+    pub fn write_global_appearances(
         &mut self,
         appearance_data: &AppearanceData,
     ) -> Result<(), SinkError> {
         let total_targets: usize = appearance_data.textures.iter().map(|t| t.targets.len()).sum();
-        tracing::debug!(
-            "write_appearance_members: textures={}, themes={}, total_targets={}",
+        tracing::info!(
+            "write_global_appearances: textures={}, themes={}, total_targets={}",
             appearance_data.textures.len(),
             appearance_data.themes.len(),
             total_targets
@@ -279,31 +274,41 @@ impl<W: Write> CityGmlXmlWriter<W> {
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
             // Join all texture coordinates into a single space-separated string
+            // CityGML requires the first and last coordinate to be the same (closed loop)
             tracing::debug!("write_target_element: joining coordinates...");
-            let coord_string = target.texture_coordinates.join(" ");
+            let mut coord_string = target.texture_coordinates.join(" ");
+            
+            // Append the first coordinate at the end to close the loop
+            if let Some(first_coord) = target.texture_coordinates.first() {
+                coord_string.push(' ');
+                coord_string.push_str(first_coord);
+            }
+            
             tracing::debug!("write_target_element: joined {} bytes of coordinates", coord_string.len());
 
             // Find the ring ID from the URI to use as the ring attribute
             let ring_id = self.extract_ring_id_from_uri(&target.uri);
 
-            if !ring_id.is_empty() {
-                let mut tex_coord = BytesStart::new("app:textureCoordinates");
-                tex_coord.push_attribute(("ring", ring_id.as_str()));
-                self.writer
-                    .write_event(Event::Start(tex_coord))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
-                self.writer
-                    .write_event(Event::Text(BytesText::new(&coord_string)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
-                self.writer
-                    .write_event(Event::End(BytesEnd::new("app:textureCoordinates")))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            // The ring attribute must have a # prefix to be valid LocalId reference
+            let ring_ref = if ring_id.starts_with('#') {
+                ring_id.clone()
             } else {
-                // If no ring ID found, just write the coordinates without ring attribute
-                self.write_text_element("app:textureCoordinates", &coord_string)?;
-            }
+                format!("#{}", ring_id)
+            };
+            
+            let mut tex_coord = BytesStart::new("app:textureCoordinates");
+            tex_coord.push_attribute(("ring", ring_ref.as_str()));
+            self.writer
+                .write_event(Event::Start(tex_coord))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            self.writer
+                .write_event(Event::Text(BytesText::new(&coord_string)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:textureCoordinates")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
             self.writer
                 .write_event(Event::End(BytesEnd::new("app:TexCoordList")))
