@@ -15,7 +15,6 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
@@ -451,13 +450,11 @@ impl MissingAttributeDetector {
         };
 
         let t_detect = Instant::now();
-        let root_info = parse_root_info(xml_content)?;
-        let gml_id = root_info
-            .gml_id
-            .ok_or(PlateauProcessorError::MissingAttributeDetector(
-                "Failed to get gml id".to_string(),
-            ))?;
-        let feature_type = root_info.qname;
+        let collected = collect_all_info(xml_content)?;
+        let gml_id = collected.root_gml_id.clone().ok_or(
+            PlateauProcessorError::MissingAttributeDetector("Failed to get gml id".to_string()),
+        )?;
+        let feature_type = collected.root_qname.clone();
         if !buffer
             .feature_types_to_target_attributes
             .contains_key(&feature_type)
@@ -536,9 +533,7 @@ impl MissingAttributeDetector {
             .get_mut(&feature_type)
         {
             for xpath in target_attributes.clone().iter() {
-                let xpath_with_prefix = format!("//{xpath}");
-                let exists = stream_exists(xml_content, &xpath_with_prefix)?;
-                if exists {
+                if path_exists(xpath, &collected.all_qnames, &collected.parent_child_qnames) {
                     target_attributes.remove(xpath);
                 }
             }
@@ -554,29 +549,35 @@ impl MissingAttributeDetector {
                     match paths.len() {
                         0 => {}
                         1 => {
-                            let xpath = format!("//{}", paths[0]);
-                            let exists = stream_exists(xml_content, &xpath)?;
-                            if !exists {
+                            if !path_exists(
+                                &paths[0],
+                                &collected.all_qnames,
+                                &collected.parent_child_qnames,
+                            ) {
                                 missing_required.push(paths[0].clone());
                             }
                         }
                         2.. => {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
-                                let xpath = format!("//{p}");
-                                let exists = stream_exists(xml_content, &xpath)?;
-                                if !exists {
+                                if !path_exists(
+                                    p,
+                                    &collected.all_qnames,
+                                    &collected.parent_child_qnames,
+                                ) {
                                     hit = false;
                                     break;
                                 }
                             }
-                            if hit {
-                                let xpath = format!("//{}", paths[paths.len() - 1]);
-                                let exists = stream_exists(xml_content, &xpath)?;
-                                if !exists {
-                                    let joined = paths.join("/");
-                                    missing_required.push(joined);
-                                }
+                            if hit
+                                && !path_exists(
+                                    &paths[paths.len() - 1],
+                                    &collected.all_qnames,
+                                    &collected.parent_child_qnames,
+                                )
+                            {
+                                let joined = paths.join("/");
+                                missing_required.push(joined);
                             }
                         }
                     }
@@ -595,44 +596,48 @@ impl MissingAttributeDetector {
                     match paths.len() {
                         0 => {}
                         1 => {
-                            let xpath = format!("//{}", paths[0]);
-                            let exists = stream_exists(xml_content, &xpath)?;
-                            if !exists {
+                            if !path_exists(
+                                &paths[0],
+                                &collected.all_qnames,
+                                &collected.parent_child_qnames,
+                            ) {
                                 missing_conditional.push(paths[0].clone());
                             }
                         }
                         2.. => {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
-                                let xpath = format!("//{p}");
-                                let exists = stream_exists(xml_content, &xpath)?;
-                                if !exists {
+                                if !path_exists(
+                                    p,
+                                    &collected.all_qnames,
+                                    &collected.parent_child_qnames,
+                                ) {
                                     hit = false;
                                     break;
                                 }
                             }
-                            if hit {
-                                let xpath = format!("//{}", paths[paths.len() - 1]);
-                                let exists = stream_exists(xml_content, &xpath)?;
-                                if !exists {
-                                    let joined = paths.join("/");
-                                    missing_conditional.push(joined);
-                                }
+                            if hit
+                                && !path_exists(
+                                    &paths[paths.len() - 1],
+                                    &collected.all_qnames,
+                                    &collected.parent_child_qnames,
+                                )
+                            {
+                                let joined = paths.join("/");
+                                missing_conditional.push(joined);
                             }
                         }
                     }
                 }
             }
         }
-        let xpath = FEATURE_TYPE_TO_PART_XPATH.get(feature_type.as_str());
+        let part_xpath = FEATURE_TYPE_TO_PART_XPATH.get(feature_type.as_str());
 
-        let severity = if let Some(xpath) = xpath {
-            let xpath = format!("/*/{xpath}");
-            let exists = stream_exists(xml_content, &xpath)?;
-            if !exists {
-                "Error"
-            } else {
+        let severity = if let Some(part_qname) = part_xpath {
+            if collected.root_child_qnames.contains(*part_qname) {
                 "Warn"
+            } else {
+                "Error"
             }
         } else {
             "Warn"
@@ -641,7 +646,7 @@ impl MissingAttributeDetector {
         let count = MAD_PROCESS_COUNT.load(Ordering::Relaxed);
         if count.is_multiple_of(100) {
             tracing::info!(
-                "[PERF] MissingAttributeDetector::detect target+required+conditional | elapsed={}ms | xml_size={} | rss={:.1} MB",
+                "[PERF] MissingAttributeDetector::detect single-pass | elapsed={}ms | xml_size={} | rss={:.1} MB",
                 t_detect.elapsed().as_millis(),
                 xml_content.len(),
                 current_rss_mb()
@@ -649,9 +654,8 @@ impl MissingAttributeDetector {
         }
 
         // C07/C08 Data Quality Attribute validation
-        let lod_count = count_lod_geometries(xml_content, package)?;
-        let (c07_errors, c08_errors) =
-            validate_data_quality_attributes(xml_content, &lod_count, package)?;
+        let lod_count = count_lod_from_collected(&collected, package);
+        let (c07_errors, c08_errors) = validate_data_quality_from_collected(&collected, &lod_count);
 
         // Update counters
         buffer.c07_counter += c07_errors.len();
@@ -744,14 +748,139 @@ impl MissingAttributeDetector {
     }
 }
 
-fn count_lod_geometries(raw_xml: &str, package: &str) -> Result<[usize; 5], PlateauProcessorError> {
+/// All information collected in a single StreamTransformer pass over the XML.
+#[derive(Debug, Default)]
+struct CollectedInfo {
+    /// Root element qualified name (e.g. "dem:ReliefFeature")
+    root_qname: String,
+    /// Root element gml:id
+    root_gml_id: Option<String>,
+    /// Qualified names of root's direct children (for `/*/*` LOD detection)
+    root_child_names: Vec<String>,
+    /// Qualified names of root's direct children (for `/*/child` existence)
+    root_child_qnames: HashSet<String>,
+    /// Text content of dem:lod root child (for DEM package LOD)
+    dem_lod_text: Option<String>,
+    /// All element qualified names found in the document (for `//qname` checks)
+    all_qnames: HashSet<String>,
+    /// All (parent_qname, child_qname) pairs (for `//parent/child` checks)
+    parent_child_qnames: HashSet<(String, String)>,
+    /// All element local names found (for `local-name()='X'` checks)
+    all_local_names: HashSet<String>,
+    /// Text contents indexed by local name (only for data quality attributes)
+    local_name_texts: HashMap<String, Vec<String>>,
+}
+
+/// Collect all needed information in a single streaming pass.
+fn collect_all_info(raw_xml: &str) -> Result<CollectedInfo, PlateauProcessorError> {
+    use std::cell::RefCell;
+
+    let collected: RefCell<CollectedInfo> = RefCell::new(CollectedInfo::default());
+
+    let transformer = StreamTransformer::new(raw_xml)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
+        })?;
+
+    // Process root element to collect basic info and all descendants
+    transformer
+        .on("/*", |node| {
+            let mut info = collected.borrow_mut();
+            let attrs = node.get_attributes();
+            info.root_gml_id = attrs.get("id").or_else(|| attrs.get("gml:id")).cloned();
+            let root_qname = node.qname();
+            info.all_qnames.insert(root_qname.clone());
+            info.all_local_names.insert(node.name());
+            info.root_qname = root_qname.clone();
+
+            // Collect direct children of root and recurse into all descendants
+            for child in node.children() {
+                let child_qname = child.qname();
+                let child_name = child.name();
+                info.root_child_names.push(child_name.clone());
+                info.root_child_qnames.insert(child_qname.clone());
+                info.parent_child_qnames
+                    .insert((root_qname.clone(), child_qname.clone()));
+
+                // DEM lod text
+                if child_qname == "dem:lod" {
+                    info.dem_lod_text = child.get_content();
+                }
+
+                // Collect this child and all its descendants
+                info.all_qnames.insert(child_qname.clone());
+                info.all_local_names.insert(child_name);
+                collect_descendants(&child, &mut info);
+            }
+        })
+        .for_each()
+        .map_err(|e| {
+            PlateauProcessorError::MissingAttributeDetector(format!(
+                "Failed to collect element info: {e:?}"
+            ))
+        })?;
+
+    Ok(collected.into_inner())
+}
+
+/// Recursively collect information from all descendant elements
+fn collect_descendants(node: &fastxml::transform::EditableNodeRef, info: &mut CollectedInfo) {
+    for child in node.children() {
+        let qname = child.qname();
+        let local_name = child.name();
+        let parent_qname = node.qname();
+
+        // Collect basic info
+        info.all_qnames.insert(qname.clone());
+        info.all_local_names.insert(local_name.clone());
+        info.parent_child_qnames
+            .insert((parent_qname, qname.clone()));
+
+        // Collect text content for data quality local-name based checks
+        if local_name.starts_with("geometrySrcDesc")
+            || local_name.starts_with("srcScale")
+            || local_name.starts_with("publicSurveySrcDesc")
+        {
+            let content = child.get_content().unwrap_or_default();
+            info.local_name_texts
+                .entry(local_name)
+                .or_default()
+                .push(content);
+        }
+
+        // Recurse into children
+        collect_descendants(&child, info);
+    }
+}
+
+/// Check if a path expression exists in collected data.
+/// Handles single qnames, two-level parent/child, and multi-level paths (e.g. "a/b/c/d").
+fn path_exists(
+    path: &str,
+    all_qnames: &HashSet<String>,
+    parent_child_qnames: &HashSet<(String, String)>,
+) -> bool {
+    let parts: Vec<&str> = path.split('/').collect();
+    match parts.len() {
+        0 => false,
+        1 => all_qnames.contains(parts[0]),
+        _ => {
+            // Check that all consecutive parent-child pairs exist in the document
+            parts
+                .windows(2)
+                .all(|w| parent_child_qnames.contains(&(w[0].to_string(), w[1].to_string())))
+        }
+    }
+}
+
+fn count_lod_from_collected(collected: &CollectedInfo, package: &str) -> [usize; 5] {
     let mut lod_count = [0; 5];
 
     if package == "dem" {
-        // Special handling for DEM package
-        let xpath = "/*/dem:lod";
-        let texts = stream_collect_texts(raw_xml, xpath)?;
-        if let Some(text) = texts.first() {
+        if let Some(text) = &collected.dem_lod_text {
             if let Ok(lod) = text.trim().parse::<usize>() {
                 if lod <= 4 {
                     lod_count[lod] += 1;
@@ -759,11 +888,8 @@ fn count_lod_geometries(raw_xml: &str, package: &str) -> Result<[usize; 5], Plat
             }
         }
     } else {
-        // General LOD pattern matching for other packages
-        let xpath = "/*/*";
-        let tags = stream_collect_names(raw_xml, xpath)?;
-        for tag in tags {
-            if let Some(captures) = LOD_TAG_PATTERN.captures(&tag) {
+        for tag in &collected.root_child_names {
+            if let Some(captures) = LOD_TAG_PATTERN.captures(tag) {
                 if let Some(lod_match) = captures.get(1) {
                     if let Ok(lod) = lod_match.as_str().parse::<usize>() {
                         if lod <= 4 {
@@ -775,173 +901,66 @@ fn count_lod_geometries(raw_xml: &str, package: &str) -> Result<[usize; 5], Plat
         }
     }
 
-    Ok(lod_count)
-}
-
-fn uro_xpath(local_name: &str) -> String {
-    format!("//*[local-name()='{local_name}']")
+    lod_count
 }
 
 #[allow(clippy::type_complexity)]
-fn validate_data_quality_attributes(
-    raw_xml: &str,
+fn validate_data_quality_from_collected(
+    collected: &CollectedInfo,
     lod_count: &[usize; 5],
-    _package: &str,
-) -> Result<(Vec<(usize, String)>, Vec<(usize, String)>), PlateauProcessorError> {
+) -> (Vec<(usize, String)>, Vec<(usize, String)>) {
     let mut c07_errors = Vec::new();
     let mut c08_errors = Vec::new();
 
-    // Find DataQualityAttribute section (nested under bldgDataQualityAttribute)
-    let data_quality_xpath = uro_xpath("DataQualityAttribute");
-    if stream_exists(raw_xml, &data_quality_xpath)? {
-        // Check each LOD that has geometry elements
-        for (lod, &count) in lod_count.iter().enumerate() {
-            if count > 0 {
-                // C07: Check for geometrySrcDescLod{N}
-                let geom_src_desc_xpath = uro_xpath(&format!("geometrySrcDescLod{lod}"));
-                let geom_texts = stream_collect_texts(raw_xml, &geom_src_desc_xpath)?;
+    if !collected.all_local_names.contains("DataQualityAttribute") {
+        return (c07_errors, c08_errors);
+    }
 
-                if geom_texts.is_empty() {
-                    // Missing geometrySrcDescLod{N} - C07 error
-                    c07_errors.push((
-                        lod,
-                        format!("uro:DataQualityAttribute/uro:geometrySrcDescLod{lod}"),
-                    ));
-                } else if geom_texts.len() == 1 {
-                    // Check if value is "000" for C08 validation
-                    let text = geom_texts.first().cloned().unwrap_or_default();
-                    if !text.is_empty() && text.trim() == "000" {
-                        // C08: Check PublicSurveyDataQualityAttribute sub-elements
-                        // Check srcScaleLod{N}
-                        let src_scale_xpath = uro_xpath(&format!("srcScaleLod{lod}"));
-                        let src_scale_exists = stream_exists(raw_xml, &src_scale_xpath)?;
+    for (lod, &count) in lod_count.iter().enumerate() {
+        if count == 0 {
+            continue;
+        }
 
-                        if !src_scale_exists {
-                            c08_errors.push((
-                                lod,
-                                format!(
-                                    "uro:PublicSurveyDataQualityAttribute/uro:srcScaleLod{lod}"
-                                ),
-                            ));
-                        }
+        let geom_key = format!("geometrySrcDescLod{lod}");
+        let geom_texts = collected.local_name_texts.get(&geom_key);
 
-                        // Check publicSurveySrcDescLod{N}
-                        let public_survey_src_desc_xpath =
-                            uro_xpath(&format!("publicSurveySrcDescLod{lod}"));
-                        let public_survey_exists =
-                            stream_exists(raw_xml, &public_survey_src_desc_xpath)?;
+        match geom_texts {
+            None => {
+                // Missing geometrySrcDescLod{N} - C07 error
+                c07_errors.push((
+                    lod,
+                    format!("uro:DataQualityAttribute/uro:geometrySrcDescLod{lod}"),
+                ));
+            }
+            Some(texts) if texts.len() == 1 => {
+                let text = &texts[0];
+                if !text.is_empty() && text.trim() == "000" {
+                    // C08: Check srcScaleLod{N}
+                    let src_scale_key = format!("srcScaleLod{lod}");
+                    if !collected.all_local_names.contains(&src_scale_key) {
+                        c08_errors.push((
+                            lod,
+                            format!("uro:PublicSurveyDataQualityAttribute/uro:srcScaleLod{lod}"),
+                        ));
+                    }
 
-                        if !public_survey_exists {
-                            c08_errors.push((
-                                lod,
-                                format!(
-                                    "uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod{lod}"
-                                ),
-                            ));
-                        }
+                    // C08: Check publicSurveySrcDescLod{N}
+                    let public_survey_key = format!("publicSurveySrcDescLod{lod}");
+                    if !collected.all_local_names.contains(&public_survey_key) {
+                        c08_errors.push((
+                            lod,
+                            format!(
+                                "uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod{lod}"
+                            ),
+                        ));
                     }
                 }
             }
+            _ => {}
         }
     }
 
-    Ok((c07_errors, c08_errors))
-}
-
-#[derive(Clone, Debug)]
-struct RootInfo {
-    qname: String,
-    gml_id: Option<String>,
-}
-
-fn parse_root_info(raw_xml: &str) -> Result<RootInfo, PlateauProcessorError> {
-    use std::cell::RefCell;
-
-    let root_info: RefCell<Option<RootInfo>> = RefCell::new(None);
-
-    let transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-
-    transformer
-        .on("/*", |node| {
-            let qname = node.qname();
-            let attrs = node.get_attributes();
-            let gml_id = attrs.get("id").or_else(|| attrs.get("gml:id")).cloned();
-
-            *root_info.borrow_mut() = Some(RootInfo { qname, gml_id });
-        })
-        .for_each()
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to parse root element: {e:?}"
-            ))
-        })?;
-
-    let result = root_info.borrow_mut().take();
-    result.ok_or_else(|| {
-        PlateauProcessorError::MissingAttributeDetector(
-            "Failed to parse XML root element".to_string(),
-        )
-    })
-}
-
-fn stream_exists(raw_xml: &str, xpath: &str) -> Result<bool, PlateauProcessorError> {
-    let found = Cell::new(false);
-    let transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-    transformer
-        .on(xpath, |_| {
-            found.set(true);
-        })
-        .for_each()
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to evaluate xpath '{xpath}': {e:?}"
-            ))
-        })?;
-    Ok(found.get())
-}
-
-fn stream_collect_texts(raw_xml: &str, xpath: &str) -> Result<Vec<String>, PlateauProcessorError> {
-    let transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-    transformer
-        .collect(xpath, |node| node.get_content().unwrap_or_default())
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to evaluate xpath '{xpath}': {e:?}"
-            ))
-        })
-}
-
-fn stream_collect_names(raw_xml: &str, xpath: &str) -> Result<Vec<String>, PlateauProcessorError> {
-    let transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-    transformer.collect(xpath, |node| node.name()).map_err(|e| {
-        PlateauProcessorError::MissingAttributeDetector(format!(
-            "Failed to evaluate xpath '{xpath}': {e:?}"
-        ))
-    })
+    (c07_errors, c08_errors)
 }
 
 #[cfg(test)]
@@ -1055,6 +1074,29 @@ mod tests {
     fn test_c07_missing_geometry_src_desc() -> Result<(), BoxedError> {
         // Arrange
         let feature = create_feature_with_missing_geometry_src_desc();
+
+        // Debug: Check what the collect_all_info returns
+        let xml = feature.get("xmlFragment").unwrap();
+        if let AttributeValue::String(xml_content) = xml {
+            let collected = collect_all_info(xml_content).unwrap();
+            eprintln!("DEBUG: root_qname: {}", collected.root_qname);
+            eprintln!("DEBUG: root_child_names: {:?}", collected.root_child_names);
+            eprintln!(
+                "DEBUG: all_local_names: {:?}",
+                collected
+                    .all_local_names
+                    .iter()
+                    .take(10)
+                    .collect::<Vec<_>>()
+            );
+            eprintln!(
+                "DEBUG: all_local_names contains DataQualityAttribute: {}",
+                collected.all_local_names.contains("DataQualityAttribute")
+            );
+            eprintln!("DEBUG: local_name_texts: {:?}", collected.local_name_texts);
+            let lod_count = count_lod_from_collected(&collected, "bldg");
+            eprintln!("DEBUG: lod_count: {:?}", lod_count);
+        }
 
         // Act
         let fw = run_processor_with_feature(feature)?;
