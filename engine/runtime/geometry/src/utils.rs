@@ -313,13 +313,11 @@ pub fn linestring_has_self_intersection<
 
             // Check if lines intersect
             if line.intersects(other_line) {
-                // If tolerance is set, check if the intersection should be ignored
                 if tol > 0.0 {
-                    // Check if segments are "nearly adjacent" - any connecting endpoints within tolerance
+                    // Check if segments are "nearly adjacent" — connecting endpoints
+                    // within tolerance (would share a vertex if not for precision)
                     let near_adjacent = [
-                        // line.end near other_line.start (would be adjacent if exact)
                         line_euclidean_length(Line::new_(line.end, other_line.start)),
-                        // line.start near other_line.end (would be adjacent if exact)
                         line_euclidean_length(Line::new_(line.start, other_line.end)),
                     ]
                     .into_iter()
@@ -330,7 +328,8 @@ pub fn linestring_has_self_intersection<
                         continue;
                     }
 
-                    // Also check if ANY pair of endpoints is very close (indicates near-duplicate or near-adjacent)
+                    // Check if any pair of endpoints is very close — indicates the
+                    // intersection is a floating-point artifact near a shared vertex
                     let endpoints_close = [
                         line_euclidean_length(Line::new_(line.start, other_line.start)),
                         line_euclidean_length(Line::new_(line.start, other_line.end)),
