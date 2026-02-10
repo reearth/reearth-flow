@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -631,26 +631,16 @@ impl MissingAttributeDetector {
         let required_features = result
             .into_iter()
             .map(|(xpath, severity)| {
-                let mut feature = feature.clone();
-                feature.insert(
-                    "gmlId".to_string(),
-                    AttributeValue::String(gml_id.to_string()),
-                );
-                feature.update_feature_type(feature_type.clone());
-                feature.update_feature_id(gml_id.to_string());
-                feature.insert(
-                    "featureType".to_string(),
-                    AttributeValue::String(feature_type.clone()),
-                );
-                feature.insert(
+                let mut f = create_error_feature(feature, &gml_id, &feature_type);
+                f.insert(
                     "severity".to_string(),
                     AttributeValue::String(severity.to_string()),
                 );
-                feature.insert(
+                f.insert(
                     "missing".to_string(),
                     AttributeValue::String(xpath.to_string()),
                 );
-                feature
+                f
             })
             .collect::<Vec<_>>();
 
@@ -658,23 +648,13 @@ impl MissingAttributeDetector {
         let c07_features = c07_errors
             .into_iter()
             .map(|(lod, xpath)| {
-                let mut feature = feature.clone();
-                feature.insert(
-                    "gmlId".to_string(),
-                    AttributeValue::String(gml_id.to_string()),
-                );
-                feature.update_feature_type(feature_type.clone());
-                feature.update_feature_id(gml_id.to_string());
-                feature.insert(
-                    "featureType".to_string(),
-                    AttributeValue::String(feature_type.clone()),
-                );
-                feature.insert(
+                let mut f = create_error_feature(feature, &gml_id, &feature_type);
+                f.insert(
                     "lod".to_string(),
                     AttributeValue::String(format!("LOD{lod}")),
                 );
-                feature.insert("missing".to_string(), AttributeValue::String(xpath));
-                feature
+                f.insert("missing".to_string(), AttributeValue::String(xpath));
+                f
             })
             .collect::<Vec<_>>();
 
@@ -682,28 +662,42 @@ impl MissingAttributeDetector {
         let c08_features = c08_errors
             .into_iter()
             .map(|(lod, xpath)| {
-                let mut feature = feature.clone();
-                feature.insert(
-                    "gmlId".to_string(),
-                    AttributeValue::String(gml_id.to_string()),
-                );
-                feature.update_feature_type(feature_type.clone());
-                feature.update_feature_id(gml_id.to_string());
-                feature.insert(
-                    "featureType".to_string(),
-                    AttributeValue::String(feature_type.clone()),
-                );
-                feature.insert(
+                let mut f = create_error_feature(feature, &gml_id, &feature_type);
+                f.insert(
                     "lod".to_string(),
                     AttributeValue::String(format!("LOD{lod}")),
                 );
-                feature.insert("missing".to_string(), AttributeValue::String(xpath));
-                feature
+                f.insert("missing".to_string(), AttributeValue::String(xpath));
+                f
             })
             .collect::<Vec<_>>();
 
         Ok((required_features, c07_features, c08_features))
     }
+}
+
+/// Create a lightweight error Feature by copying only the attributes needed by
+/// downstream processors (`package`, `udxDirs`, `path`) from the parent Feature
+/// instead of cloning the entire (potentially large) parent.
+fn create_error_feature(parent: &Feature, gml_id: &str, feature_type: &str) -> Feature {
+    let mut attrs = Attributes::new();
+    for key in ["package", "udxDirs", "path"] {
+        if let Some(val) = parent.get(key) {
+            attrs.insert(Attribute::new(key), val.clone());
+        }
+    }
+    attrs.insert(
+        Attribute::new("gmlId"),
+        AttributeValue::String(gml_id.to_string()),
+    );
+    attrs.insert(
+        Attribute::new("featureType"),
+        AttributeValue::String(feature_type.to_string()),
+    );
+    let mut f = Feature::new_with_attributes(attrs);
+    f.update_feature_type(feature_type.to_string());
+    f.update_feature_id(gml_id.to_string());
+    f
 }
 
 /// All information collected in a single StreamTransformer pass over the XML.

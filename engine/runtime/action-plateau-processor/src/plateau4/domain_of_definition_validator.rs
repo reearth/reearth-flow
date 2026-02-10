@@ -710,7 +710,8 @@ fn process_feature(
         for xlink in xlinks.iter() {
             let xlink_href = xlink.href.clone();
             if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
-                let mut result_feature = feature.clone();
+                let mut result_feature =
+                    create_lightweight_feature(feature, &["index", "udxDirs", "name"]);
                 result_feature.insert(
                     "flag",
                     AttributeValue::String("XLink_NoReference".to_string()),
@@ -748,7 +749,7 @@ fn process_feature(
         rss_delta_mb = current_rss_mb() - rss_start,
         "DomainOfDefinitionValidator::process_feature END"
     );
-    let mut result_feature = feature.clone();
+    let mut result_feature = create_lightweight_feature(feature, &["index"]);
     let envelope = &response.envelope;
     result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
     result_feature.insert("srsName", AttributeValue::String(envelope.srs_name.clone()));
@@ -838,6 +839,18 @@ fn process_feature(
     fw.send(ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()));
     result.push(result_feature);
     Ok((result, gml_ids))
+}
+
+/// Create a lightweight Feature by copying only the specified keys from the
+/// parent, instead of cloning the full (potentially large) parent Feature.
+fn create_lightweight_feature(parent: &Feature, keys: &[&str]) -> Feature {
+    let mut attrs = Attributes::new();
+    for key in keys {
+        if let Some(val) = parent.get(*key) {
+            attrs.insert(Attribute::new(*key), val.clone());
+        }
+    }
+    Feature::new_with_attributes(attrs)
 }
 
 fn parse_envelope_from_node(node: &EditableNode) -> super::errors::Result<Envelope> {
@@ -1032,7 +1045,6 @@ fn process_member_node(
     accum_lod_proc_ms: &mut u128,
     accum_ext_stream_ms: &mut u128,
 ) -> super::errors::Result<Vec<Feature>> {
-    let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
     let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
     let xlink_ns = "http://www.w3.org/1999/xlink";
@@ -1041,7 +1053,20 @@ fn process_member_node(
             "Failed to get gml id".to_string(),
         ));
     };
-    base_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
+    // Build a lightweight base_feature with only the attributes needed by
+    // downstream processors, instead of cloning the full (potentially large)
+    // parent Feature.
+    let mut base_attrs = Attributes::new();
+    for key in ["index", "udxDirs", "name", "path"] {
+        if let Some(val) = feature.get(key) {
+            base_attrs.insert(Attribute::new(key), val.clone());
+        }
+    }
+    base_attrs.insert(
+        Attribute::new("gmlId"),
+        AttributeValue::String(gml_id.clone()),
+    );
+    let mut base_feature = Feature::new_with_attributes(base_attrs);
     let feature_type = if member
         .prefix()
         .map(|p| XML_NAMESPACES.contains_key(p.as_str()))
