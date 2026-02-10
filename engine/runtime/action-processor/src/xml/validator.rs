@@ -400,6 +400,7 @@ impl XmlValidator {
 
         let mut buf = Vec::new();
         let mut root_prefixes: HashSet<String> = HashSet::new();
+        let mut has_default_ns = false;
         let mut is_root = true;
         let mut errors: Vec<ValidationResult> = Vec::new();
 
@@ -411,6 +412,8 @@ impl XmlValidator {
                             let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
                             if let Some(prefix) = key.strip_prefix("xmlns:") {
                                 root_prefixes.insert(prefix.to_string());
+                            } else if key == "xmlns" {
+                                has_default_ns = true;
                             }
                         }
                         is_root = false;
@@ -424,7 +427,7 @@ impl XmlValidator {
                                 &format!("No namespace declaration for {prefix}"),
                             ));
                         }
-                    } else {
+                    } else if !has_default_ns {
                         errors.push(ValidationResult::new(
                             "NamespaceError",
                             "No namespace declaration",
