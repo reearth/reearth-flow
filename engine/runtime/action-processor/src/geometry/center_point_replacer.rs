@@ -114,7 +114,11 @@ impl CenterPointReplacer {
             return;
         };
         let mut feature = feature.clone();
-        feature.geometry = Geometry { epsg: geometry.epsg, value: GeometryValue::FlowGeometry2D(centroid.into()) }.into();
+        feature.geometry = Geometry {
+            epsg: geometry.epsg,
+            value: GeometryValue::FlowGeometry2D(centroid.into()),
+        }
+        .into();
         fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 
@@ -143,7 +147,11 @@ impl CenterPointReplacer {
             return;
         };
         let mut feature = feature.clone();
-        feature.geometry = Geometry { epsg: geometry.epsg, value: GeometryValue::FlowGeometry3D(centroid.into()) }.into();
+        feature.geometry = Geometry {
+            epsg: geometry.epsg,
+            value: GeometryValue::FlowGeometry3D(centroid.into()),
+        }
+        .into();
         fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 
@@ -160,7 +168,11 @@ impl CenterPointReplacer {
             return;
         };
         let mut feature = feature.clone();
-        feature.geometry = Geometry { epsg: geometry.epsg, value: GeometryValue::FlowGeometry3D(centroid.into()) }.into();
+        feature.geometry = Geometry {
+            epsg: geometry.epsg,
+            value: GeometryValue::FlowGeometry3D(centroid.into()),
+        }
+        .into();
         fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 }
