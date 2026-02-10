@@ -212,11 +212,12 @@ impl XmlValidator {
             }
         }
 
+        let rss_end = current_rss_mb();
         tracing::debug!(
             target: "perf",
             elapsed_ms = %total_start.elapsed().as_millis(),
-            rss_mb = current_rss_mb(),
-            rss_delta_mb = current_rss_mb() - rss_start,
+            rss_mb = rss_end,
+            rss_delta_mb = rss_end - rss_start,
             "XMLValidator::validate_syntax_and_namespace TOTAL"
         );
 
