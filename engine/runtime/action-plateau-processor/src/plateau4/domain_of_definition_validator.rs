@@ -27,6 +27,23 @@ use serde_json::{Number, Value};
 
 use super::errors::PlateauProcessorError;
 
+/// Accumulated per-phase timing counters for `process_member_node`, in milliseconds.
+#[derive(Default)]
+struct PerfCounters {
+    /// Collecting descendant node information (gml:id, xlink, codespace, etc.)
+    collect_ms: u128,
+    /// Validating codeSpace attributes against code-list dictionaries
+    codespace_proc_ms: u128,
+    /// Validating coordinates and bounding-box (Envelope) extents
+    pos_proc_ms: u128,
+    /// Resolving and validating xlink:href references
+    xlink_proc_ms: u128,
+    /// Validating LOD geometry structure
+    lod_proc_ms: u128,
+    /// Streaming and parsing external XML files referenced by xlink
+    ext_stream_ms: u128,
+}
+
 static VALID_SRS_NAME_6697: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 static VALID_SRS_NAME_6668: &str = "http://www.opengis.net/def/crs/EPSG/0/6668";
 
@@ -597,12 +614,7 @@ fn process_feature(
         "//*[namespace-uri()='http://www.opengis.net/citygml/2.0'][local-name()='cityObjectMember']";
 
     let mut member_count: usize = 0;
-    let mut accum_collect_ms: u128 = 0;
-    let mut accum_codespace_proc_ms: u128 = 0;
-    let mut accum_pos_proc_ms: u128 = 0;
-    let mut accum_xlink_proc_ms: u128 = 0;
-    let mut accum_lod_proc_ms: u128 = 0;
-    let mut accum_ext_stream_ms: u128 = 0;
+    let mut perf = PerfCounters::default();
 
     let t_members = Instant::now();
     let transformer = StreamTransformer::new(&xml_str)
@@ -654,12 +666,7 @@ fn process_feature(
                 &gml_id_pattern,
                 Arc::clone(&storage_resolver),
                 fallback_codelists_path,
-                &mut accum_collect_ms,
-                &mut accum_codespace_proc_ms,
-                &mut accum_pos_proc_ms,
-                &mut accum_xlink_proc_ms,
-                &mut accum_lod_proc_ms,
-                &mut accum_ext_stream_ms,
+                &mut perf,
             ) {
                 Ok(process_result) => {
                     result.extend(process_result);
@@ -721,12 +728,12 @@ fn process_feature(
         members_stream_ms = %members_ms,
         collect_xlinks_ms = %xlinks_ms,
         member_count,
-        collect_ms = %accum_collect_ms,
-        codespace_proc_ms = %accum_codespace_proc_ms,
-        pos_proc_ms = %accum_pos_proc_ms,
-        xlink_proc_ms = %accum_xlink_proc_ms,
-        lod_proc_ms = %accum_lod_proc_ms,
-        ext_stream_ms = %accum_ext_stream_ms,
+        collect_ms = %perf.collect_ms,
+        codespace_proc_ms = %perf.codespace_proc_ms,
+        pos_proc_ms = %perf.pos_proc_ms,
+        xlink_proc_ms = %perf.xlink_proc_ms,
+        lod_proc_ms = %perf.lod_proc_ms,
+        ext_stream_ms = %perf.ext_stream_ms,
         rss_mb = current_rss_mb(),
         rss_delta_mb = current_rss_mb() - rss_start,
         "DomainOfDefinitionValidator::process_feature END"
@@ -1020,12 +1027,7 @@ fn process_member_node(
     gml_id_pattern: &Regex,
     storage_resolver: Arc<StorageResolver>,
     fallback_codelists_path: Option<&Uri>,
-    accum_collect_ms: &mut u128,
-    accum_codespace_proc_ms: &mut u128,
-    accum_pos_proc_ms: &mut u128,
-    accum_xlink_proc_ms: &mut u128,
-    accum_lod_proc_ms: &mut u128,
-    accum_ext_stream_ms: &mut u128,
+    perf: &mut PerfCounters,
 ) -> super::errors::Result<Vec<Feature>> {
     let mut result = Vec::<Feature>::new();
     let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
@@ -1092,7 +1094,7 @@ fn process_member_node(
     // One-pass collection of all descendant information
     let t_collect = Instant::now();
     let collected = collect_descendant_info(member, gml_ns, xlink_ns, &tag);
-    *accum_collect_ms += t_collect.elapsed().as_millis();
+    perf.collect_ms += t_collect.elapsed().as_millis();
 
     // C03: gml:id collection
     // 1. gml:id record of geographic object instance
@@ -1289,7 +1291,7 @@ fn process_member_node(
             );
         }
     }
-    *accum_codespace_proc_ms += t_codespace.elapsed().as_millis();
+    perf.codespace_proc_ms += t_codespace.elapsed().as_millis();
 
     // L06: Geographical coverage verification
     let t_pos = Instant::now();
@@ -1411,7 +1413,7 @@ fn process_member_node(
             fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
         }
     }
-    *accum_pos_proc_ms += t_pos.elapsed().as_millis();
+    perf.pos_proc_ms += t_pos.elapsed().as_millis();
 
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
     let t_xlink = Instant::now();
@@ -1461,7 +1463,7 @@ fn process_member_node(
                     .map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-                *accum_ext_stream_ms += t_ext.elapsed().as_millis();
+                perf.ext_stream_ms += t_ext.elapsed().as_millis();
             }
             if !response.external_file_to_gml_ids.contains_key(gml_path)
                 || !response
@@ -1524,7 +1526,7 @@ fn process_member_node(
             }
         }
     }
-    *accum_xlink_proc_ms += t_xlink.elapsed().as_millis();
+    perf.xlink_proc_ms += t_xlink.elapsed().as_millis();
 
     // L-frn-01: Validation of geometric object types described as lod{0-3}Geometry.
     let t_lod = Instant::now();
@@ -1585,7 +1587,7 @@ fn process_member_node(
             response.invalid_lod_x_geometry_num += 1;
         }
     }
-    *accum_lod_proc_ms += t_lod.elapsed().as_millis();
+    perf.lod_proc_ms += t_lod.elapsed().as_millis();
     Ok(result)
 }
 
