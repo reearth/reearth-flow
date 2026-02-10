@@ -48,8 +48,8 @@ func (i *Workspace) Delete(ctx context.Context, wid accountsid.WorkspaceID) erro
 }
 
 func (i *Workspace) AddUserMember(ctx context.Context, wid accountsid.WorkspaceID, users map[accountsid.UserID]role.RoleType) (*accountsworkspace.Workspace, error) {
-	members := lo.MapToSlice(users, func(uid accountsid.UserID, r role.RoleType) gqlworkspace.MemberInput {
-		return gqlworkspace.MemberInput{
+	members := lo.MapToSlice(users, func(uid accountsid.UserID, r role.RoleType) gqlworkspace.WorkspaceMemberInput {
+		return gqlworkspace.WorkspaceMemberInput{
 			UserID: uid.String(),
 			Role:   string(r),
 		}

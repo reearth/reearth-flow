@@ -178,9 +178,9 @@ func TestSearchUser(t *testing.T) {
 	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockUserRepo.EXPECT().UserByNameOrEmail(gomock.Any(), "e2e").Return(u, nil),
+		mockUserRepo.EXPECT().FindByNameOrEmail(gomock.Any(), "e2e").Return(u, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockUserRepo.EXPECT().UserByNameOrEmail(gomock.Any(), "notfound").Return(nil, nil),
+		mockUserRepo.EXPECT().FindByNameOrEmail(gomock.Any(), "notfound").Return(nil, nil),
 	)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,

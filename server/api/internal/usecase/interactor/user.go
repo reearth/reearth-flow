@@ -25,7 +25,7 @@ func (i *User) FindByIDs(ctx context.Context, ids accountsid.UserIDList) (accoun
 }
 
 func (i *User) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*accountsuser.User, error) {
-	return i.userRepo.UserByNameOrEmail(ctx, nameOrEmail)
+	return i.userRepo.FindByNameOrEmail(ctx, nameOrEmail)
 }
 
 func (i *User) UpdateMe(ctx context.Context, p interfaces.UpdateMeParam) (*accountsuser.User, error) {
