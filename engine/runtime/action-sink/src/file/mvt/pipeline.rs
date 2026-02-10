@@ -275,8 +275,6 @@ pub(super) fn tile_writing_stage(
     output_path: &Uri,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
-    skip_unexposed_attributes: bool,
-    colon_to_underscore: bool,
     default_extent: i32,
 ) -> crate::errors::Result<()> {
     let min_extent: i32 = 512;
@@ -300,8 +298,6 @@ pub(super) fn tile_writing_stage(
                 let bytes = make_tile(
                     extent,
                     &serialized_feats,
-                    skip_unexposed_attributes,
-                    colon_to_underscore,
                 )?;
                 let compressed_size = {
                     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
@@ -333,8 +329,6 @@ pub(super) fn tile_writing_stage(
 pub(super) fn make_tile(
     extent: i32,
     serialized_feats: &[Vec<u8>],
-    skip_unexposed_attributes: bool,
-    colon_to_underscore: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
@@ -463,18 +457,8 @@ pub(super) fn make_tile(
         let layer = {
             let layer = layers.entry(feature.typename).or_default();
 
-            // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                // skip keys starting with "__"
-                if skip_unexposed_attributes && key.as_ref().starts_with("__") {
-                    continue;
-                }
-                let key_string = if colon_to_underscore {
-                    key.inner().replace(":", "_")
-                } else {
-                    key.inner().to_string()
-                };
-                convert_properties(&mut layer.tags_enc, &key_string, value);
+                convert_properties(&mut layer.tags_enc, &key.inner().to_string(), value);
             }
             layer
         };

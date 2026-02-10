@@ -25,6 +25,19 @@ static SKIPPABLE_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     ])
 });
 
+/// DM Geometric Attribute keys to extract to toplevel.
+/// Based on FME reference implementation's DmGeometricAttributeExtractor ATTRS list.
+static DM_GEOMETRIC_ATTRS: &[&str] = &[
+    "uro:dmCode",
+    "uro:dmCode_code",
+    "uro:geometryType",
+    "uro:geometryType_code",
+    "uro:mapLevel",
+    "uro:mapLevel_code",
+    "uro:shapeType",
+    "uro:shapeType_code",
+];
+
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
@@ -144,6 +157,8 @@ pub(super) struct AttributeFlattener {
     children_buffer: HashMap<String, Vec<Feature>>,
     // LOD4 feature_type_key -> ancestor feature_type_key mapping for schema generation
     lod4_to_ancestor_type: HashMap<String, String>,
+    // risk attribute keys per feature, for excluding from LOD4 inheritance
+    gmlid_to_risk_attr_keys: HashMap<String, HashSet<String>>,
 }
 
 // remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
@@ -239,7 +254,7 @@ impl AttributeFlattener {
         &mut self,
         feature: &mut Feature,
         citygml_attributes: &HashMap<String, AttributeValue>,
-    ) {
+    ) -> HashSet<String> {
         let edit_citygml_attributes = citygml_attributes
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
@@ -252,20 +267,27 @@ impl AttributeFlattener {
             );
         }
 
-        feature.extend(
-            self.flattener
-                .extract_fld_risk_attribute(&edit_citygml_attributes),
-        );
+        let mut risk_keys = HashSet::new();
 
-        feature.extend(
-            self.flattener
-                .extract_tnm_htd_ifld_risk_attribute(&edit_citygml_attributes),
-        );
+        let fld = self
+            .flattener
+            .extract_fld_risk_attribute(&edit_citygml_attributes);
+        risk_keys.extend(fld.keys().map(|k| k.to_string()));
+        feature.extend(fld);
 
-        feature.extend(
-            self.flattener
-                .extract_lsld_risk_attribute(&edit_citygml_attributes),
-        );
+        let tnm = self
+            .flattener
+            .extract_tnm_htd_ifld_risk_attribute(&edit_citygml_attributes);
+        risk_keys.extend(tnm.keys().map(|k| k.to_string()));
+        feature.extend(tnm);
+
+        let lsld = self
+            .flattener
+            .extract_lsld_risk_attribute(&edit_citygml_attributes);
+        risk_keys.extend(lsld.keys().map(|k| k.to_string()));
+        feature.extend(lsld);
+
+        risk_keys
     }
 
     fn get_parent_attr(&self, citygml_attributes: &AttributeMap) -> AttributeMap {
@@ -323,6 +345,102 @@ impl AttributeFlattener {
         }
     }
 
+    /// Walks the parent chain from a cached feature to find the root (toplevel) ancestor's gml:id.
+    fn find_toplevel_ancestor_id(&self, feature_id: &str) -> Option<String> {
+        let attr = self.gmlid_to_citygml_attributes.get(feature_id)?;
+        let mut toplevel_id = None;
+        let mut current_id = Self::get_parent_id(attr);
+        let mut seen_ids = HashSet::new();
+        while let Some(id) = current_id {
+            if seen_ids.contains(&id) {
+                break;
+            }
+            seen_ids.insert(id.clone());
+            let Some(attr) = self.gmlid_to_citygml_attributes.get(&id) else {
+                break;
+            };
+            toplevel_id = Some(id);
+            current_id = Self::get_parent_id(attr);
+        }
+        toplevel_id
+    }
+
+    /// LOD4 v2: overrides the feature's inner attributes with the toplevel ancestor's
+    /// citygml_attributes, and inherits toplevel's extracted feature-level attributes.
+    /// Called after normal processing to override results for LOD4 features.
+    fn inherit_lod4_attributes_v2(&mut self, feature: &mut Feature, lookup_key: &str) {
+        let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
+        if !is_lod4 {
+            return;
+        }
+        let is_tun = feature
+            .get("package")
+            .and_then(|v| v.as_string())
+            .is_some_and(|p| p == "tun");
+        if !is_tun {
+            return;
+        }
+
+        let Some(feature_id) = feature.feature_id() else {
+            return;
+        };
+        let Some(toplevel_id) = self.find_toplevel_ancestor_id(&feature_id) else {
+            return;
+        };
+
+        // Override inner attributes with toplevel's citygml_attributes,
+        // but keep the surface's own feature_type and gml:id
+        let own_citygml = self.gmlid_to_citygml_attributes.get(&feature_id);
+        let own_feature_type = own_citygml.and_then(|a| a.get("feature_type").cloned());
+        let own_gml_id = own_citygml.and_then(|a| a.get("gml:id").cloned());
+
+        if let Some(toplevel_citygml) = self.gmlid_to_citygml_attributes.get(&toplevel_id) {
+            let mut attrs = toplevel_citygml.clone();
+            strip_parent_info(&mut attrs);
+            if let Some(v) = own_feature_type {
+                attrs.insert("feature_type".to_string(), v);
+            }
+            if let Some(v) = own_gml_id {
+                attrs.insert("gml:id".to_string(), v);
+            }
+            let attrs = convert_gyear_fields(attrs);
+            let json = serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(attrs)))
+                .unwrap();
+            feature.insert("attributes".to_string(), AttributeValue::String(json));
+        }
+
+        // Track LOD4 -> ancestor type mapping for schema generation
+        if let Some(toplevel_citygml) = self.gmlid_to_citygml_attributes.get(&toplevel_id) {
+            if let Some(AttributeValue::String(ancestor_feature_type)) =
+                toplevel_citygml.get("feature_type")
+            {
+                if let Some(package) = feature.get("package").and_then(|v| v.as_string()) {
+                    let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
+                    self.lod4_to_ancestor_type
+                        .insert(lookup_key.to_string(), ancestor_lookup_key);
+                }
+            }
+        }
+
+        // Inherit toplevel's extracted feature-level attributes, excluding risk attributes
+        let toplevel_attrs = self
+            .gmlid_to_subfeature_inherited
+            .get(&toplevel_id)
+            .cloned();
+        let toplevel_risk_keys = self.gmlid_to_risk_attr_keys.get(&toplevel_id);
+        if let Some(toplevel_attrs) = toplevel_attrs {
+            for (key, value) in toplevel_attrs.iter() {
+                if toplevel_risk_keys.is_some_and(|keys| keys.contains(key)) {
+                    continue;
+                }
+                let attr_key = Attribute::new(key.clone());
+                if !feature.attributes.contains_key(&attr_key) {
+                    feature.insert(key.clone(), value.clone());
+                }
+            }
+        }
+    }
+
     fn insert_common_attributes(
         feature: &Feature,
         citygml_attributes: &mut HashMap<String, AttributeValue>,
@@ -372,6 +490,9 @@ impl AttributeFlattener {
             strip_parent_info(&mut citygml_attributes);
             // extract attributes to toplevel
             for (key, value) in citygml_attributes.iter() {
+                if !DM_GEOMETRIC_ATTRS.contains(&key.as_str()) {
+                    continue;
+                }
                 let key = key.replace("uro:", "dm_");
                 feature.insert(key.clone(), value.clone());
             }
@@ -415,7 +536,15 @@ impl AttributeFlattener {
         strip_parent_info(&mut citygml_attributes);
 
         // For LOD4 subfeatures, inherit top-level ancestor's extracted attributes
-        self.inherit_lod4_attributes(feature, &mut ancestors, lookup_key);
+        // PLATEAU v5 uses a different lod4 inheritance implementation (implemented in inherit_lod4_attributes_v2)
+        // The proper fix is to implement PLATEAU5.attribute_flattener. For now, we specially match tun which has only v5 data
+        let package = feature
+            .get("package")
+            .and_then(|v| v.as_string())
+            .unwrap_or_default();
+        if package != "tun" {
+            self.inherit_lod4_attributes(feature, &mut ancestors, lookup_key);
+        }
 
         if !ancestors.is_empty() {
             citygml_attributes.insert(
@@ -500,6 +629,9 @@ impl AttributeFlattener {
             "attributes".to_string(),
             AttributeValue::String(citygml_attributes_json),
         );
+
+        // For LOD4 subfeatures, override with toplevel ancestor's attributes
+        self.inherit_lod4_attributes_v2(feature, lookup_key);
     }
 
     fn get_parent_id(map: &AttributeMap) -> Option<String> {
@@ -670,7 +802,10 @@ impl AttributeFlattener {
         self.encountered_feature_types.insert(lookup_key.clone());
 
         // Process risk attributes before consuming citygml_attributes
-        self.process_and_add_risk_attributes(&mut feature, &citygml_attributes);
+        let risk_keys = self.process_and_add_risk_attributes(&mut feature, &citygml_attributes);
+        if let Some(feature_id) = feature.feature_id() {
+            self.gmlid_to_risk_attr_keys.insert(feature_id, risk_keys);
+        }
 
         // Process inner attributes
         self.process_inner_attributes(&mut feature, citygml_attributes, &lookup_key);

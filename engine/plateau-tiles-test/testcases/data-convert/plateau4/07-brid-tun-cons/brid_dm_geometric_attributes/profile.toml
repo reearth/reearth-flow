@@ -6,8 +6,9 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_brid.zip"
 ".attributes.meshcode" = "string"
 ".dm_attributes" = "json"
 
-# FIXME: main branch seems to have a bug causing texture presence test to fail
-# [tests.cesium_statistics]
+[tests.cesium_statistics]
+# FIXME: there is a nondeterministic bug causing texture presence test to fail, likely inside atlas packing
+skip_texture_presence_test = true
 
 [tests.mvt_lines]
 zoom = [12, 16]
