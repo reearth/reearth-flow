@@ -473,7 +473,7 @@ impl MissingAttributeDetector {
             .get_mut(&feature_type)
         {
             for xpath in target_attributes.clone().iter() {
-                if path_exists(xpath, &collected.all_qnames, &collected.parent_child_qnames) {
+                if path_exists(xpath, &collected.all_qnames, &collected.contiguous_paths) {
                     target_attributes.remove(xpath);
                 }
             }
@@ -492,7 +492,7 @@ impl MissingAttributeDetector {
                             if !path_exists(
                                 &paths[0],
                                 &collected.all_qnames,
-                                &collected.parent_child_qnames,
+                                &collected.contiguous_paths,
                             ) {
                                 missing_required.push(paths[0].clone());
                             }
@@ -503,7 +503,7 @@ impl MissingAttributeDetector {
                                 if !path_exists(
                                     p,
                                     &collected.all_qnames,
-                                    &collected.parent_child_qnames,
+                                    &collected.contiguous_paths,
                                 ) {
                                     hit = false;
                                     break;
@@ -513,7 +513,7 @@ impl MissingAttributeDetector {
                                 && !path_exists(
                                     &paths[paths.len() - 1],
                                     &collected.all_qnames,
-                                    &collected.parent_child_qnames,
+                                    &collected.contiguous_paths,
                                 )
                             {
                                 let joined = paths.join("/");
@@ -539,7 +539,7 @@ impl MissingAttributeDetector {
                             if !path_exists(
                                 &paths[0],
                                 &collected.all_qnames,
-                                &collected.parent_child_qnames,
+                                &collected.contiguous_paths,
                             ) {
                                 missing_conditional.push(paths[0].clone());
                             }
@@ -550,7 +550,7 @@ impl MissingAttributeDetector {
                                 if !path_exists(
                                     p,
                                     &collected.all_qnames,
-                                    &collected.parent_child_qnames,
+                                    &collected.contiguous_paths,
                                 ) {
                                     hit = false;
                                     break;
@@ -560,7 +560,7 @@ impl MissingAttributeDetector {
                                 && !path_exists(
                                     &paths[paths.len() - 1],
                                     &collected.all_qnames,
-                                    &collected.parent_child_qnames,
+                                    &collected.contiguous_paths,
                                 )
                             {
                                 let joined = paths.join("/");
@@ -698,8 +698,10 @@ struct CollectedInfo {
     dem_lod_text: Option<String>,
     /// All element qualified names found in the document (for `//qname` checks)
     all_qnames: HashSet<String>,
-    /// All (parent_qname, child_qname) pairs (for `//parent/child` checks)
-    parent_child_qnames: HashSet<(String, String)>,
+    /// All contiguous ancestor paths found in the document (e.g. "a/b", "a/b/c").
+    /// Each entry represents an actual nesting chain, avoiding false positives from
+    /// independently-existing parent-child pairs in different parts of the tree.
+    contiguous_paths: HashSet<String>,
     /// All element local names found (for `local-name()='X'` checks)
     all_local_names: HashSet<String>,
     /// Text contents indexed by local name (only for data quality attributes)
@@ -737,8 +739,8 @@ fn collect_all_info(raw_xml: &str) -> Result<CollectedInfo, PlateauProcessorErro
                 let child_name = child.name();
                 info.root_child_names.push(child_name.clone());
                 info.root_child_qnames.insert(child_qname.clone());
-                info.parent_child_qnames
-                    .insert((root_qname.clone(), child_qname.clone()));
+                info.contiguous_paths
+                    .insert(format!("{root_qname}/{child_qname}"));
 
                 // DEM lod text
                 if child_qname == "dem:lod" {
@@ -748,7 +750,8 @@ fn collect_all_info(raw_xml: &str) -> Result<CollectedInfo, PlateauProcessorErro
                 // Collect this child and all its descendants
                 info.all_qnames.insert(child_qname.clone());
                 info.all_local_names.insert(child_name);
-                collect_descendants(&child, &mut info);
+                let mut ancestors = vec![root_qname.clone(), child_qname];
+                collect_descendants(&child, &mut info, &mut ancestors);
             }
         })
         .for_each()
@@ -761,18 +764,33 @@ fn collect_all_info(raw_xml: &str) -> Result<CollectedInfo, PlateauProcessorErro
     Ok(collected.into_inner())
 }
 
-/// Recursively collect information from all descendant elements
-fn collect_descendants(node: &fastxml::transform::EditableNodeRef, info: &mut CollectedInfo) {
+/// Recursively collect information from all descendant elements.
+/// `ancestors` tracks the qname stack from root to `node` (inclusive).
+fn collect_descendants(
+    node: &fastxml::transform::EditableNodeRef,
+    info: &mut CollectedInfo,
+    ancestors: &mut Vec<String>,
+) {
     for child in node.children() {
         let qname = child.qname();
         let local_name = child.name();
-        let parent_qname = node.qname();
 
         // Collect basic info
         info.all_qnames.insert(qname.clone());
         info.all_local_names.insert(local_name.clone());
-        info.parent_child_qnames
-            .insert((parent_qname, qname.clone()));
+
+        // Record all contiguous ancestor-to-child paths.
+        // For ancestors [root, a, b] and child c, this inserts:
+        //   "b/c", "a/b/c", "root/a/b/c"
+        for start in (0..ancestors.len()).rev() {
+            let path = ancestors[start..]
+                .iter()
+                .map(String::as_str)
+                .chain(std::iter::once(qname.as_str()))
+                .collect::<Vec<_>>()
+                .join("/");
+            info.contiguous_paths.insert(path);
+        }
 
         // Collect text content for data quality local-name based checks
         if local_name.starts_with("geometrySrcDesc")
@@ -787,27 +805,25 @@ fn collect_descendants(node: &fastxml::transform::EditableNodeRef, info: &mut Co
         }
 
         // Recurse into children
-        collect_descendants(&child, info);
+        ancestors.push(qname);
+        collect_descendants(&child, info, ancestors);
+        ancestors.pop();
     }
 }
 
 /// Check if a path expression exists in collected data.
-/// Handles single qnames, two-level parent/child, and multi-level paths (e.g. "a/b/c/d").
+/// For single element names, checks `all_qnames`.
+/// For multi-segment paths (e.g. "a/b/c"), verifies an actual contiguous nesting
+/// chain exists in the document via `contiguous_paths`.
 fn path_exists(
     path: &str,
     all_qnames: &HashSet<String>,
-    parent_child_qnames: &HashSet<(String, String)>,
+    contiguous_paths: &HashSet<String>,
 ) -> bool {
-    let parts: Vec<&str> = path.split('/').collect();
-    match parts.len() {
-        0 => false,
-        1 => all_qnames.contains(parts[0]),
-        _ => {
-            // Check that all consecutive parent-child pairs exist in the document
-            parts
-                .windows(2)
-                .all(|w| parent_child_qnames.contains(&(w[0].to_string(), w[1].to_string())))
-        }
+    if path.contains('/') {
+        contiguous_paths.contains(path)
+    } else {
+        all_qnames.contains(path)
     }
 }
 
@@ -1365,5 +1381,79 @@ mod tests {
                 Err("Expected Noop forwarder for testing".into())
             }
         }
+    }
+
+    /// Verify that `path_exists` rejects multi-segment paths whose parent-child
+    /// pairs exist in different parts of the tree but never as a contiguous chain.
+    #[test]
+    fn test_path_exists_rejects_non_contiguous_chain() {
+        // XML where uro:aaa has child uro:BBB, and uro:ccc has child uro:BBB
+        // with child uro:ddd.  The pair (uro:aaa, uro:BBB) exists and
+        // (uro:BBB, uro:ddd) exists, but NOT as a contiguous chain under uro:aaa.
+        let xml = r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
+    gml:id="test1">
+  <uro:aaa>
+    <uro:BBB/>
+  </uro:aaa>
+  <uro:ccc>
+    <uro:BBB>
+      <uro:ddd>value</uro:ddd>
+    </uro:BBB>
+  </uro:ccc>
+</bldg:Building>"#;
+
+        let collected = collect_all_info(xml).unwrap();
+
+        // Individual elements exist
+        assert!(path_exists(
+            "uro:aaa",
+            &collected.all_qnames,
+            &collected.contiguous_paths
+        ));
+        assert!(path_exists(
+            "uro:BBB",
+            &collected.all_qnames,
+            &collected.contiguous_paths
+        ));
+        assert!(path_exists(
+            "uro:ddd",
+            &collected.all_qnames,
+            &collected.contiguous_paths
+        ));
+
+        // Two-segment paths that actually exist
+        assert!(path_exists(
+            "uro:aaa/uro:BBB",
+            &collected.all_qnames,
+            &collected.contiguous_paths
+        ));
+        assert!(path_exists(
+            "uro:ccc/uro:BBB",
+            &collected.all_qnames,
+            &collected.contiguous_paths
+        ));
+        assert!(path_exists(
+            "uro:BBB/uro:ddd",
+            &collected.all_qnames,
+            &collected.contiguous_paths
+        ));
+
+        // Three-segment contiguous chain that DOES exist: ccc > BBB > ddd
+        assert!(path_exists(
+            "uro:ccc/uro:BBB/uro:ddd",
+            &collected.all_qnames,
+            &collected.contiguous_paths,
+        ));
+
+        // Three-segment path that does NOT exist as contiguous chain:
+        // aaa > BBB exists, BBB > ddd exists, but aaa's BBB has no child ddd.
+        assert!(!path_exists(
+            "uro:aaa/uro:BBB/uro:ddd",
+            &collected.all_qnames,
+            &collected.contiguous_paths,
+        ));
     }
 }
