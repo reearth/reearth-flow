@@ -707,7 +707,7 @@ mod tests {
         let xml = r#"<root><element>Test</element></root>"#;
         let document = parse(xml).unwrap();
         let serialized = fastxml::serialize::document_to_xml_string(&document).unwrap();
-        // fastxml 0.4.0 serializes without trailing newlines
+        // fastxml serializes without trailing newlines
         assert_eq!(
             serialized,
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><element>Test</element></root>"
@@ -885,7 +885,7 @@ mod tests {
         let ctx = create_context(&document).unwrap();
         let root = get_root_readonly_node(&document).unwrap();
 
-        // Test using namespace-uri() and local-name() XPath functions (supported in fastxml 0.5.0)
+        // Test using namespace-uri() and local-name() XPath functions (supported in fastxml)
         let result = find_readonly_nodes_by_xpath(
             &ctx,
             ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
@@ -931,7 +931,7 @@ mod tests {
             );
         }
 
-        // In fastxml 0.5.0, get_namespace() works correctly for child elements
+        // In fastxml, get_namespace() works correctly for child elements
         let lower_corner = children
             .iter()
             .find(|&n| get_readonly_node_tag(n) == "gml:lowerCorner");
@@ -945,7 +945,7 @@ mod tests {
         assert_eq!(building.len(), 1, "Should find bldg:Building");
         let building_node = &building[0];
 
-        // Test gml:id attribute - should work in fastxml 0.5.0
+        // Test gml:id attribute - should work in fastxml
         let gml_id = building_node.get_attribute_ns("id", "http://www.opengis.net/gml");
         println!("gml:id via get_attribute_ns: {:?}", gml_id);
         assert_eq!(
@@ -954,7 +954,7 @@ mod tests {
             "get_attribute_ns should return gml:id value"
         );
 
-        // Also try regular get_attribute - returns local name as key in fastxml 0.5.0
+        // Also try regular get_attribute - returns local name as key in fastxml
         let attrs = building_node.get_attributes();
         println!("All attributes: {:?}", attrs);
         assert!(
@@ -975,11 +975,11 @@ mod tests {
                 .map(|n| format!("{}={}", n.get_prefix(), n.get_href()))
         );
 
-        // In fastxml 0.5.0, get_namespace() returns correct namespace,
+        // In fastxml, get_namespace() returns correct namespace,
         // so get_readonly_node_tag returns tag with prefix
         assert_eq!(
             root_tag, "core:CityModel",
-            "Root tag should have namespace prefix in fastxml 0.5.0"
+            "Root tag should have namespace prefix in fastxml"
         );
         assert!(root_ns.is_some(), "Root should have namespace");
 
@@ -997,7 +997,7 @@ mod tests {
         );
         assert_eq!(
             building_tag, "bldg:Building",
-            "Building tag should have namespace prefix in fastxml 0.5.0"
+            "Building tag should have namespace prefix in fastxml"
         );
         assert!(building_ns.is_some(), "Building should have namespace");
     }
