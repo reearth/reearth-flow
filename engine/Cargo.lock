@@ -914,7 +914,6 @@ dependencies = [
 [[package]]
 name = "cesiumtiles"
 version = "0.0.0"
-source = "git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1#a6a11d2b42aead81e5e7103317a8abd705cdcbb5"
 dependencies = [
  "indexmap 2.13.0",
  "serde",

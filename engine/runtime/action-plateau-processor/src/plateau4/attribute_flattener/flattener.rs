@@ -12,18 +12,18 @@ impl Flattener {
     pub(super) fn extract_fld_risk_attribute(
         &mut self,
         attributes: &HashMap<String, AttributeValue>,
-    ) -> HashMap<Attribute, AttributeValue> {
+    ) -> IndexMap<Attribute, AttributeValue> {
         let Some(disaster_risks) = attributes.get("uro:RiverFloodingRiskAttribute") else {
-            return HashMap::new();
+            return IndexMap::new();
         };
         let disaster_risks = match disaster_risks {
             AttributeValue::Array(disaster_risks) => disaster_risks,
             AttributeValue::Map(disaster_risks) => {
                 &vec![AttributeValue::Map(disaster_risks.clone())]
             }
-            _ => return HashMap::new(),
+            _ => return IndexMap::new(),
         };
-        let mut result = HashMap::new();
+        let mut result = IndexMap::new();
         for risk in disaster_risks {
             let risk_obj = match risk.as_map() {
                 Some(obj) => obj,
@@ -83,7 +83,7 @@ impl Flattener {
     pub(super) fn extract_tnm_htd_ifld_risk_attribute(
         &mut self,
         attributes: &HashMap<String, AttributeValue>,
-    ) -> HashMap<Attribute, AttributeValue> {
+    ) -> IndexMap<Attribute, AttributeValue> {
         let src = [
             ("uro:TsunamiRiskAttribute", "津波浸水想定", "tnm"),
             ("uro:HighTideRiskAttribute", "高潮浸水想定", "htd"),
@@ -95,7 +95,7 @@ impl Flattener {
             ),
         ];
 
-        let mut result = HashMap::new();
+        let mut result = IndexMap::new();
         for (tag, title, package) in src.iter() {
             let Some(disaster_risks) = attributes.get(*tag) else {
                 continue;
@@ -105,7 +105,7 @@ impl Flattener {
                 AttributeValue::Map(disaster_risks) => {
                     &vec![AttributeValue::Map(disaster_risks.clone())]
                 }
-                _ => return HashMap::new(),
+                _ => return IndexMap::new(),
             };
 
             for risk_value in disaster_risks {
@@ -161,18 +161,18 @@ impl Flattener {
     pub(super) fn extract_lsld_risk_attribute(
         &mut self,
         attributes: &HashMap<String, AttributeValue>,
-    ) -> HashMap<Attribute, AttributeValue> {
+    ) -> IndexMap<Attribute, AttributeValue> {
         let Some(disaster_risks) = attributes.get("uro:LandSlideRiskAttribute") else {
-            return HashMap::new();
+            return IndexMap::new();
         };
         let disaster_risks = match disaster_risks {
             AttributeValue::Array(disaster_risks) => disaster_risks,
             AttributeValue::Map(disaster_risks) => {
                 &vec![AttributeValue::Map(disaster_risks.clone())]
             }
-            _ => return HashMap::new(),
+            _ => return IndexMap::new(),
         };
-        let mut result = HashMap::new();
+        let mut result = IndexMap::new();
         for risk_value in disaster_risks {
             let risk_obj = match risk_value.as_map() {
                 Some(obj) => obj,
@@ -260,12 +260,12 @@ impl Flattener {
 pub(super) struct CommonAttributeProcessor {
     max_lod: i64,
     gml_path_to_max_lod: HashMap<String, i64>,
-    attribute_to_attribute_type: HashMap<String, String>,
+    attribute_to_attribute_type: IndexMap<String, String>,
 }
 
 impl CommonAttributeProcessor {
-    pub(super) fn get_generic_schema(&self) -> HashMap<Attribute, AttributeValue> {
-        let mut result = HashMap::new();
+    pub(super) fn get_generic_schema(&self) -> IndexMap<Attribute, AttributeValue> {
+        let mut result = IndexMap::new();
         for (key, value) in self.attribute_to_attribute_type.iter() {
             match value.as_str() {
                 "string" | "date" | "buffer" => {
@@ -289,8 +289,8 @@ impl CommonAttributeProcessor {
         &mut self,
         attribute: &HashMap<String, AttributeValue>,
         prefix: &str,
-    ) -> HashMap<Attribute, AttributeValue> {
-        let mut result = HashMap::new();
+    ) -> IndexMap<Attribute, AttributeValue> {
+        let mut result = IndexMap::new();
         if let (Some(AttributeValue::String(name)), Some(AttributeValue::String(typ))) =
             (attribute.get("name"), attribute.get("type"))
         {
@@ -327,8 +327,8 @@ impl CommonAttributeProcessor {
     pub(super) fn flatten_generic_attributes(
         &mut self,
         attributes: &HashMap<String, AttributeValue>,
-    ) -> HashMap<Attribute, AttributeValue> {
-        let mut result = HashMap::new();
+    ) -> IndexMap<Attribute, AttributeValue> {
+        let mut result = IndexMap::new();
 
         // Extract gen:genericAttribute array from the citygml attributes
         let Some(generic_attrs) = attributes.get("gen:genericAttribute") else {

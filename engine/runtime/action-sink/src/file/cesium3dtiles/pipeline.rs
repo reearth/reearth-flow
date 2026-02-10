@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     convert::Infallible,
     fs,
     io::BufWriter,
@@ -18,7 +17,7 @@ use atlas_packer::{
     texture::cache::{TextureCache, TextureSizeCache},
 };
 use bytemuck::Zeroable;
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
@@ -277,11 +276,11 @@ fn collect_property_stats(
     features: &[&GltfFeature],
     typename: &str,
     schema: &Schema,
-) -> HashMap<String, PropertyMetadata> {
+) -> IndexMap<String, PropertyMetadata> {
     use nusamai_citygml::schema::TypeDef;
     use reearth_flow_types::AttributeValue;
 
-    let mut stats: HashMap<String, PropertyMetadata> = HashMap::new();
+    let mut stats: IndexMap<String, PropertyMetadata> = IndexMap::new();
 
     let Some(TypeDef::Feature(feature_def)) = schema.types.get(typename) else {
         return stats;
@@ -356,8 +355,8 @@ fn collect_property_stats(
 
 /// Merge per-tile property stats into global stats
 fn merge_property_stats(
-    global: &mut HashMap<String, PropertyMetadata>,
-    local: HashMap<String, PropertyMetadata>,
+    global: &mut IndexMap<String, PropertyMetadata>,
+    local: IndexMap<String, PropertyMetadata>,
 ) {
     for (key, local_meta) in local {
         global.entry(key).or_default().merge(&local_meta);
@@ -374,7 +373,7 @@ pub(super) fn tile_writing_stage(
     draco_compression: bool,
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
-    let property_stats: Arc<Mutex<HashMap<String, PropertyMetadata>>> = Default::default();
+    let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = Default::default();
 
     // Texture cache (use default cache size)
     let texture_cache = TextureCache::new(200_000_000);
@@ -486,7 +485,7 @@ pub(super) fn tile_writing_stage(
         if stats.is_empty() {
             None
         } else {
-            let props: HashMap<String, serde_json::Value> = stats
+            let props: IndexMap<String, serde_json::Value> = stats
                 .iter()
                 .map(|(key, meta)| {
                     let mut obj = serde_json::Map::new();

@@ -263,3 +263,6 @@ walkdir = "2.5.0"
 wkt = "0.11.1"
 zip = "2.4.2"
 zstd = "0.13.3"
+
+[patch."https://github.com/reearth/cesiumtiles-rs"]
+cesiumtiles = { path = "../../cesiumtiles-rs" }

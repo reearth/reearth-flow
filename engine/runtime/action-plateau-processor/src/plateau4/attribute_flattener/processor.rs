@@ -736,8 +736,7 @@ impl AttributeFlattener {
                     definition
                         .clone()
                         .into_iter()
-                        .map(|(k, v)| (Attribute::new(k), v))
-                        .collect::<HashMap<Attribute, AttributeValue>>(),
+                        .map(|(k, v)| (Attribute::new(k), v)),
                 );
             }
         }
