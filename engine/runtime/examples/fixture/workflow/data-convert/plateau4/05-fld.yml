@@ -171,6 +171,16 @@ graphs:
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+      - attribute: __scale
+        method: create
+        value: |
+          let pkg = env.get("__value")["package"];
+          if pkg == "fld" {
+            let file_name = file::extract_filename(env.get("__value")["name"]);
+            str::extract_single_by_regex("_(l[12])[_.]", file_name)
+          } else {
+            ""
+          }
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -260,10 +270,9 @@ graphs:
         citygml = parts[0];
         let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
-        let scale = "";
-        if pkg == "fld" {
-          let file_name = file::extract_filename_without_ext(env.get("__value")["name"]);
-          scale = "_" + file_name.split("_").pop();
+        let scale = env.get("__value")["__scale"];
+        if scale != "" {
+          scale = "_" + scale;
         }
         file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
@@ -279,9 +288,8 @@ graphs:
           let parts = udx_dirs.split("/");
           let last_segment = parts[parts.len() - 1];
           let pkg = env.get("__value")["package"];
-          if pkg == "fld" {
-            let name = file::extract_filename_without_ext(env.get("__value")["name"]);
-            let scale = name.split("_").pop();
+          let scale = env.get("__value")["__scale"];
+          if scale != "" {
             last_segment + "_" + scale
           } else {
             last_segment

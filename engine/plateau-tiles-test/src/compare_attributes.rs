@@ -90,7 +90,12 @@ pub enum CastConfig {
 pub fn structural_casts(casts: &HashMap<String, CastConfig>) -> HashMap<String, CastConfig> {
     casts
         .iter()
-        .filter(|(_, v)| matches!(v, CastConfig::Json | CastConfig::ListToDict { .. } | CastConfig::IgnoreBoth))
+        .filter(|(_, v)| {
+            matches!(
+                v,
+                CastConfig::Json | CastConfig::ListToDict { .. } | CastConfig::IgnoreBoth
+            )
+        })
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect()
 }

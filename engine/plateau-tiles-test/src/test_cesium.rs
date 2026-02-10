@@ -23,13 +23,11 @@ pub struct CesiumConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
     #[serde(default)]
     pub skip_geometry_tests: Vec<GeometryTest>,
+    #[serde(default)]
+    pub skip_all_geometry_tests: bool,
 }
 
-pub fn test_cesium(
-    fme_path: &Path,
-    flow_path: &Path,
-    config: &CesiumConfig,
-) -> Result<(), String> {
+pub fn test_cesium(fme_path: &Path, flow_path: &Path, config: &CesiumConfig) -> Result<(), String> {
     let casts = if let Some(casts_cfg) = &config.casts {
         convert_casts(casts_cfg)?
     } else {
@@ -62,7 +60,9 @@ pub fn test_cesium(
         compare_attributes(&fme_collector, &flow_collector, &casts)?;
 
         // Compare statistics
-        align_and_compare(&fme_collector, &flow_collector, config)?;
+        if !config.skip_all_geometry_tests {
+            compare_geometry(&fme_collector, &flow_collector, config)?;
+        }
     }
 
     Ok(())
@@ -135,7 +135,7 @@ fn test_texture_presence(
     Ok(())
 }
 
-fn align_and_compare(
+fn compare_geometry(
     fme_geometries: &GeometryCollector,
     flow_geometries: &GeometryCollector,
     config: &CesiumConfig,

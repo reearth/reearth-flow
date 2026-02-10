@@ -1,4 +1,6 @@
-use crate::compare_attributes::{analyze_attributes, make_feature_key, structural_casts, CastConfig};
+use crate::compare_attributes::{
+    analyze_attributes, make_feature_key, structural_casts, CastConfig,
+};
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
     extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
