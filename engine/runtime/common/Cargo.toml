@@ -37,6 +37,7 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 sha2.workspace = true
 strum_macros.workspace = true
+sysinfo = { workspace = true, optional = true }
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
@@ -45,5 +46,4 @@ url.workspace = true
 uuid.workspace = true
 walkdir.workspace = true
 zip.workspace = true
-sysinfo = { workspace = true, optional = true }
 zstd.workspace = true
