@@ -5,12 +5,12 @@ citygml_zip_name = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun.
 ".attributes.meshcode" = "string"
 ".dm_attributes" = "json"
 
+[tests.cesium]
+skip_all_geometry_tests = true
+
 [tests.cesium.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
-
-[tests.cesium]
-skip_all_geometry_tests = true
 
 [tests.mvt_polygons]
 threshold = 0.001
