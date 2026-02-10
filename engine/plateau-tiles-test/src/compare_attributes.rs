@@ -83,6 +83,18 @@ pub enum CastConfig {
     IgnoreBoth,
 }
 
+/// Returns only the structural casts (Json, ListToDict, IgnoreBoth) that need
+/// to be applied to both sides for data-equivalence checks within the same dataset.
+/// Primitive casts (String, Float, Int) are dropped since they only normalize
+/// FME's unreliable types toward ground truth.
+pub fn structural_casts(casts: &HashMap<String, CastConfig>) -> HashMap<String, CastConfig> {
+    casts
+        .iter()
+        .filter(|(_, v)| matches!(v, CastConfig::Json | CastConfig::ListToDict { .. } | CastConfig::IgnoreBoth))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
+
 impl AttributeComparer {
     pub fn new(
         identifier: String,
