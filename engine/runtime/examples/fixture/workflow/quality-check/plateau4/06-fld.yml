@@ -9,6 +9,12 @@ with:
   schemas: null
   workerArtifactPath: null
   prcs: null
+  targetPackages:
+  - fld
+  - htd
+  - ifld
+  - tnm
+  - rfld
 graphs:
 - id: 0a2f610f-b92c-483b-a76a-e6143c3ab249
   name: EntryPoint
@@ -62,6 +68,15 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
+  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    name: FeatureFilterByPackage
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
   - id: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
     name: FldScaleExtractor
     type: action
@@ -372,8 +387,13 @@ graphs:
     to: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
     fromPort: default
     toPort: default
-  - id: 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+  - id: 30af8e4f-0001-0001-0001-000000000001
     from: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
+    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    fromPort: default
+    toPort: default
+  - id: 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
     fromPort: default
     toPort: default

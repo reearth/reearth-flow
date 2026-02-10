@@ -289,10 +289,12 @@ impl AttributeValue {
                     key.to_string(),
                     AttributeValue::String(v.value().to_owned()),
                 );
-                result.insert(
-                    format!("{key}_code"),
-                    AttributeValue::String(v.code().to_owned()),
-                );
+                if let Some(code) = v.code() {
+                    result.insert(
+                        format!("{key}_code"),
+                        AttributeValue::String(code.to_owned()),
+                    );
+                }
             }
             nusamai_citygml::Value::Measure(v) => {
                 let value = serde_json::Number::from_string_unchecked(v.value().to_string());
@@ -338,7 +340,11 @@ impl AttributeValue {
                     nusamai_citygml::Value::Code(code) => {
                         // Unzip Code types: collect values and codes separately
                         values.push(AttributeValue::String(code.value().to_owned()));
-                        codes.push(AttributeValue::String(code.code().to_owned()));
+                        let code = match code.code() {
+                            Some(c) => AttributeValue::String(c.to_owned()),
+                            None => AttributeValue::Null,
+                        };
+                        codes.push(code);
                         has_codes = true;
                     }
                     nusamai_citygml::Value::Object(obj) => {

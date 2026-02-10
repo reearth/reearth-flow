@@ -14,6 +14,7 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   onMapLoad: (onCenter?: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const TwoDViewer: React.FC<Props> = ({
@@ -25,6 +26,7 @@ const TwoDViewer: React.FC<Props> = ({
   onMapLoad,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onShowFeatureDetailsOverlay,
 }) => {
   const t = useT();
   return (
@@ -40,6 +42,7 @@ const TwoDViewer: React.FC<Props> = ({
         onMapLoad={onMapLoad}
         onSelectedFeature={onSelectedFeature}
         onFlyToSelectedFeature={onFlyToSelectedFeature}
+        onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
       />
     </RenderFallback>
   );

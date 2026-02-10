@@ -1,6 +1,13 @@
 import bbox from "@turf/bbox";
 import { Cartesian3, GeoJsonDataSource } from "cesium";
-import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
@@ -421,6 +428,14 @@ export default () => {
     return selectedFeature;
   }, [detailsOverlayOpen, selectedFeature]);
 
+  useEffect(() => {
+    if (!selectedFeatureId || !featureIdMap) return;
+    if (!featureIdMap.has(selectedFeatureId)) {
+      setSelectedFeatureId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureIdMap]);
+
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {
       if (selectedFeatureId !== featureId) {
@@ -449,8 +464,8 @@ export default () => {
     [convertedSelectedFeature, handleFlyToSelectedFeature, handleFeatureSelect],
   );
 
-  const handleCloseFeatureDetails = useCallback(() => {
-    setDetailsOverlayOpen(false);
+  const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
+    setDetailsOverlayOpen(value);
   }, []);
 
   const handleRemoveDataURL = useCallback(
@@ -556,7 +571,7 @@ export default () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    handleCloseFeatureDetails,
+    handleShowFeatureDetailsOverlay,
 
     // Data loading features (always available now)
     streamingQuery: streamingQuery,

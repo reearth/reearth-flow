@@ -37,6 +37,7 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
   detectedGeometryType: string | null;
   visualizerType: "2d-map" | "3d-map" | "3d-model";
 };
@@ -51,6 +52,7 @@ const DebugPreview: React.FC<Props> = ({
   selectedFeatureId,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onShowFeatureDetailsOverlay,
   detectedGeometryType,
   visualizerType,
 }) => {
@@ -60,13 +62,6 @@ const DebugPreview: React.FC<Props> = ({
   const handleResetClick = useCallback(() => {
     threeJSViewerRef.current?.resetCamera();
   }, []);
-
-  // Determine if we should show the viewer based on data availability
-
-  const { handleMapLoad } = useHooks({
-    mapRef,
-    selectedOutputData,
-  });
 
   const { featureMap, processedOutputData } = useMemo(() => {
     if (!selectedOutputData?.features) {
@@ -99,6 +94,7 @@ const DebugPreview: React.FC<Props> = ({
     };
   }, [selectedOutputData]);
 
+  // Determine if we should show the viewer based on data availability
   const convertFeature = useCallback(
     (featureId: string | null) => {
       if (!featureId || !featureMap) return null;
@@ -124,6 +120,12 @@ const DebugPreview: React.FC<Props> = ({
     onConvertedSelectedFeature(converted);
     return converted;
   }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
+
+  const { handleMapLoad } = useHooks({
+    mapRef,
+    selectedOutputData,
+    convertedSelectedFeature,
+  });
 
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
@@ -180,6 +182,7 @@ const DebugPreview: React.FC<Props> = ({
               onMapLoad={handleMapLoad}
               onSelectedFeature={onSelectedFeature}
               onFlyToSelectedFeature={onFlyToSelectedFeature}
+              onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
             />
           </div>
         </div>
@@ -201,10 +204,12 @@ const DebugPreview: React.FC<Props> = ({
           </div>
           <div className="h-[calc(100%-55px)]" id="cesiumContainer">
             <ThreeDViewer
-              fileContent={selectedOutputData}
+              fileContent={processedOutputData}
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
+              selectedFeaturedId={selectedFeatureId}
               onSelectedFeature={onSelectedFeature}
+              onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
             />
           </div>
         </div>

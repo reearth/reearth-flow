@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
@@ -97,15 +98,16 @@ impl Processor for JPStandardGridAccumulator {
                         continue;
                     };
 
-                    let mut attributes = feature.attributes.clone();
+                    let mut attributes = (*feature.attributes).clone();
                     attributes.insert(
                         Attribute::new("meshcode"),
                         AttributeValue::String(meshcode.to_number().to_string()),
                     );
 
                     let mut new_feature = feature.clone();
-                    new_feature.geometry.value = GeometryValue::FlowGeometry2D(binded_geometry);
-                    new_feature.attributes = attributes;
+                    new_feature.geometry_mut().value =
+                        GeometryValue::FlowGeometry2D(binded_geometry);
+                    new_feature.attributes = Arc::new(attributes);
 
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
@@ -117,7 +119,11 @@ impl Processor for JPStandardGridAccumulator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -160,7 +166,11 @@ impl JPStandardGridAccumulator {
                         line_string.clone(),
                     ]);
 
-                let clipped = bounds_polygon.clip(&multi_line_string, false);
+                let clipped = <Polygon2D<f64> as BooleanOps>::clip(
+                    &bounds_polygon,
+                    &multi_line_string,
+                    false,
+                );
 
                 if clipped.0.is_empty() {
                     return None;
@@ -171,7 +181,8 @@ impl JPStandardGridAccumulator {
                 }
             }
             Geometry::MultiLineString(multi_line_string) => {
-                let clipped = bounds_polygon.clip(multi_line_string, false);
+                let clipped =
+                    <Polygon2D<f64> as BooleanOps>::clip(&bounds_polygon, multi_line_string, false);
 
                 if clipped.0.is_empty() {
                     return None;

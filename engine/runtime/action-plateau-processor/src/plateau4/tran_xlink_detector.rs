@@ -126,7 +126,11 @@ impl Processor for TransportationXlinkDetector {
         self.process_impl(ctx, fw).map_err(Into::into)
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -175,18 +179,18 @@ impl TransportationXlinkDetector {
                     feature.refresh_id();
 
                     // Set attributes according to expected output format
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("gmlId"),
                         AttributeValue::String(unreferenced_surfaces.road_id.clone()),
                     );
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("featureType"),
                         AttributeValue::String("Road".to_string()),
                     );
                     feature
-                        .attributes
+                        .attributes_mut()
                         .insert(Attribute::new("lod"), AttributeValue::String(lod));
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("unreferenced"),
                         AttributeValue::String(surface_id),
                     );

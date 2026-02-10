@@ -16,7 +16,6 @@ export default ({
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
-
   const [showOverlayElement, setshowOverlayElement] = useState<
     | "debugStart"
     | "debugStop"
@@ -39,18 +38,19 @@ export default ({
   const { value: debugRunState, updateValue: updateDebugRunState } =
     useIndexedDB("debugRun");
 
-  const debugJobId = useMemo(
+  const debugJobState = useMemo(
     () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
 
-  const debugJob = useGetJob(debugJobId).job;
+  const { job, refetch } = useGetJob(debugJobState?.jobId);
+
+  const debugJob = job;
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
-    debugJobId,
+    debugJobState?.jobId,
     !debugJob ||
       debugJob?.status === "completed" ||
       debugJob?.status === "failed" ||
@@ -101,6 +101,17 @@ export default ({
     if (!jobState) return;
     await updateDebugRunState({ jobs: jobState });
   };
+
+  useEffect(() => {
+    if (
+      (realTimeJobStatus === "completed" ||
+        realTimeJobStatus === "failed" ||
+        realTimeJobStatus === "cancelled") &&
+      debugJobState?.status !== realTimeJobStatus
+    ) {
+      refetch();
+    }
+  }, [realTimeJobStatus, debugJobState, refetch]);
 
   return {
     showOverlayElement,

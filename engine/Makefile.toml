@@ -204,6 +204,9 @@ WORKFLOW_QC=(
   "07-lsld"
   "08-dem"
   "09-brid-tun-ubld"
+  "11-wtr"
+  "12-unf"
+  "13-gen"
 )
 
 process_workflows() {
@@ -219,6 +222,9 @@ process_workflows() {
 
 process_workflows "$BASEPATH_CONV" "${WORKFLOW_CONV[@]}"
 process_workflows "$BASEPATH_QC" "${WORKFLOW_QC[@]}"
+
+# Solar radiation workflow
+yaml-include ./runtime/examples/fixture/workflow/solar-radiation/workflow.yml > ./runtime/examples/fixture/workflow/solar-radiation/solar-radiation.yml
 ''']
 
 [tasks.check-generate-examples-cms-workflow]

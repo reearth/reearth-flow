@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_runtime::{
@@ -74,25 +75,29 @@ impl Processor for TwoDimensionForcer {
             }
             GeometryValue::FlowGeometry3D(geos) => {
                 let value: Geometry2D = geos.clone().into();
-                let mut geometry = geometry.clone();
+                let mut geometry = (**geometry).clone();
                 geometry.value = GeometryValue::FlowGeometry2D(value);
                 let mut feature = feature.clone();
-                feature.geometry = geometry;
+                feature.geometry = Arc::new(geometry);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(gml) => {
                 let value: Geometry2D = gml.clone().into();
-                let mut geometry = geometry.clone();
+                let mut geometry = (**geometry).clone();
                 geometry.value = GeometryValue::FlowGeometry2D(value);
                 let mut feature = feature.clone();
-                feature.geometry = geometry;
+                feature.geometry = Arc::new(geometry);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
         }
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

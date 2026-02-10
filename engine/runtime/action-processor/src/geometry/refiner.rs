@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::line_string::LineString;
@@ -91,10 +93,10 @@ impl Processor for Refiner {
                 for geo in geometries {
                     let feature = Feature {
                         id: Uuid::new_v4(),
-                        geometry: TypeGeometry {
+                        geometry: Arc::new(TypeGeometry {
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry2D(geo),
-                        },
+                        }),
                         metadata: metadata.clone(),
                         attributes: attributes.clone(),
                     };
@@ -106,10 +108,10 @@ impl Processor for Refiner {
                 for geo in geometries {
                     let feature = Feature {
                         id: Uuid::new_v4(),
-                        geometry: TypeGeometry {
+                        geometry: Arc::new(TypeGeometry {
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry3D(geo),
-                        },
+                        }),
                         metadata: metadata.clone(),
                         attributes: attributes.clone(),
                     };
@@ -121,7 +123,11 @@ impl Processor for Refiner {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

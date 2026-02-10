@@ -63,7 +63,7 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    handleCloseFeatureDetails,
+    handleShowFeatureDetailsOverlay,
     // Data properties
     detectedGeometryType,
     visualizerType,
@@ -96,11 +96,11 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`z-30 absolute bottom-2 ${fullscreenDebug ? "" : "left-1/2 -translate-x-1/2"}`}>
+      className={`absolute bottom-2 z-30 ${fullscreenDebug ? "" : "left-1/2 -translate-x-1/2"}`}>
       <div
         className={`${fullscreenDebug ? "fixed inset-0" : ""} flex items-end`}>
         <Tabs
-          className={`z-30 pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[92vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[92vw] rounded-xl"}`}
+          className={`pointer-events-auto z-30 border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur  transition-all dark:border-primary dark:shadow-secondary ${minimized ? "h-[42px] w-[92vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[92vw] rounded-xl"}`}
           value={tabValue}
           defaultValue="debug-logs"
           onValueChange={setTabValue}>
@@ -226,7 +226,7 @@ const DebugPanel: React.FC = () => {
                   </div>
                   <div
                     className={
-                      detailsOverlayOpen
+                      detailsOverlayOpen && detailsFeature
                         ? "mt-[42px] min-h-0 flex-1"
                         : "mt-0 min-h-0 flex-1"
                     }>
@@ -240,7 +240,9 @@ const DebugPanel: React.FC = () => {
                       detailsOverlayOpen={detailsOverlayOpen}
                       detailsFeature={detailsFeature}
                       formattedData={formattedData}
-                      onCloseFeatureDetails={handleCloseFeatureDetails}
+                      onShowFeatureDetailsOverlay={
+                        handleShowFeatureDetailsOverlay
+                      }
                     />
                   </div>
                 </ResizablePanel>
@@ -271,6 +273,9 @@ const DebugPanel: React.FC = () => {
                           }
                           onSelectedFeature={handleFeatureSelect}
                           onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                          onShowFeatureDetailsOverlay={
+                            handleShowFeatureDetailsOverlay
+                          }
                           // Data detection props
                           detectedGeometryType={detectedGeometryType}
                           visualizerType={visualizerType}

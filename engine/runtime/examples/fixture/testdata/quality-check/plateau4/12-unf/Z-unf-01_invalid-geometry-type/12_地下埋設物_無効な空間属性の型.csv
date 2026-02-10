@@ -1,0 +1,3 @@
+Folder,Index,Filename,FeatureType,LOD,gml:id,無効な空間属性の型
+unf,1,08EE753_unf_10169_sewer_op.gml,SewerPipe,2,unf_test_invalid_geom_type_lod2,MultiSurface
+unf,1,08EE753_unf_10169_sewer_op.gml,SewerPipe,3,unf_test_invalid_geom_type_lod3,Solid

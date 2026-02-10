@@ -177,7 +177,7 @@ impl Processor for AreaCalculator {
 
         // Create a new feature with the calculated area attribute
         let mut new_feature = feature.clone();
-        new_feature.attributes.insert(
+        new_feature.attributes_mut().insert(
             self.output_attribute.clone(),
             AttributeValue::Number(
                 serde_json::Number::from_f64(area).unwrap_or_else(|| serde_json::Number::from(0)),
@@ -188,7 +188,11 @@ impl Processor for AreaCalculator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

@@ -86,6 +86,109 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
+func TestBatchRepo_SubmitJob_SpotVM(t *testing.T) {
+	ctx := context.Background()
+
+	jobID, _ := id.JobIDFrom("test-job-id")
+	projectID, _ := id.ProjectIDFrom("test-project-id")
+	workspaceID, _ := id.WorkspaceIDFrom("test-workspace-id")
+	workflowURL := "gs://test-bucket/test-workflow.yaml"
+	metadataURL := "gs://test-bucket/test-metadata.json"
+
+	tests := []struct {
+		name                    string
+		maxRetryCount           int
+		expectMaxRetryCount     int32
+		useSpotVMs              bool
+		expectSpot              bool
+		expectLifecyclePolicies bool
+	}{
+		{
+			name:                    "standard VM with no retries",
+			useSpotVMs:              false,
+			maxRetryCount:           0,
+			expectSpot:              false,
+			expectMaxRetryCount:     0,
+			expectLifecyclePolicies: false,
+		},
+		{
+			name:                    "standard VM ignores MaxRetryCount",
+			useSpotVMs:              false,
+			maxRetryCount:           3,
+			expectSpot:              false,
+			expectMaxRetryCount:     0,
+			expectLifecyclePolicies: false,
+		},
+		{
+			name:                    "spot VM with retries",
+			useSpotVMs:              true,
+			maxRetryCount:           3,
+			expectSpot:              true,
+			expectMaxRetryCount:     3,
+			expectLifecyclePolicies: true,
+		},
+		{
+			name:                    "spot VM with zero retries",
+			useSpotVMs:              true,
+			maxRetryCount:           0,
+			expectSpot:              true,
+			expectMaxRetryCount:     0,
+			expectLifecyclePolicies: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockClient := new(mockBatchClient)
+			batchRepo := &BatchRepo{
+				client: mockClient,
+				config: BatchConfig{
+					ProjectID:     "test-project",
+					Region:        "us-central1",
+					ImageURI:      "gcr.io/test/image:latest",
+					UseSpotVMs:    tc.useSpotVMs,
+					MaxRetryCount: tc.maxRetryCount,
+				},
+			}
+
+			var capturedReq *batchpb.CreateJobRequest
+			mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).
+				Run(func(args mock.Arguments) {
+					capturedReq = args.Get(1).(*batchpb.CreateJobRequest)
+				}).
+				Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/test-job-id"}, nil)
+
+			_, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, nil, projectID, workspaceID, nil, nil)
+			assert.NoError(t, err)
+
+			job := capturedReq.Job
+			taskSpec := job.TaskGroups[0].TaskSpec
+			instancePolicy := job.AllocationPolicy.Instances[0].GetPolicy()
+
+			// Verify provisioning model
+			if tc.expectSpot {
+				assert.Equal(t, batchpb.AllocationPolicy_SPOT, instancePolicy.ProvisioningModel)
+			} else {
+				assert.Equal(t, batchpb.AllocationPolicy_STANDARD, instancePolicy.ProvisioningModel)
+			}
+
+			// Verify MaxRetryCount
+			assert.Equal(t, tc.expectMaxRetryCount, taskSpec.MaxRetryCount)
+
+			// Verify lifecycle policies
+			if tc.expectLifecyclePolicies {
+				assert.Len(t, taskSpec.LifecyclePolicies, 1)
+				assert.Equal(t, batchpb.LifecyclePolicy_RETRY_TASK, taskSpec.LifecyclePolicies[0].Action)
+				assert.Equal(t, []int32{50001}, taskSpec.LifecyclePolicies[0].ActionCondition.ExitCodes)
+			} else {
+				assert.Empty(t, taskSpec.LifecyclePolicies)
+			}
+
+			mockClient.AssertExpectations(t)
+		})
+	}
+}
+
 func TestBatchRepo_GetJobStatus(t *testing.T) {
 	ctx := context.Background()
 	mockClient := new(mockBatchClient)
@@ -125,16 +228,17 @@ func TestBatchRepo_Close(t *testing.T) {
 func TestConvertGCPStatusToGatewayStatus(t *testing.T) {
 	testCases := []struct {
 		name         string
-		gcpStatus    batchpb.JobStatus_State
 		expectStatus gateway.JobStatus
+		gcpStatus    batchpb.JobStatus_State
 	}{
-		{"Unspecified", batchpb.JobStatus_STATE_UNSPECIFIED, gateway.JobStatusUnknown},
-		{"Queued", batchpb.JobStatus_QUEUED, gateway.JobStatusPending},
-		{"Scheduled", batchpb.JobStatus_SCHEDULED, gateway.JobStatusPending},
-		{"Running", batchpb.JobStatus_RUNNING, gateway.JobStatusRunning},
-		{"Succeeded", batchpb.JobStatus_SUCCEEDED, gateway.JobStatusCompleted},
-		{"Failed", batchpb.JobStatus_FAILED, gateway.JobStatusFailed},
-		{"Unknown", batchpb.JobStatus_State(999), gateway.JobStatusUnknown},
+		{"Unspecified", gateway.JobStatusUnknown, batchpb.JobStatus_STATE_UNSPECIFIED},
+		{"Queued", gateway.JobStatusPending, batchpb.JobStatus_QUEUED},
+		{"Scheduled", gateway.JobStatusPending, batchpb.JobStatus_SCHEDULED},
+		{"Running", gateway.JobStatusRunning, batchpb.JobStatus_RUNNING},
+		{"Succeeded", gateway.JobStatusCompleted, batchpb.JobStatus_SUCCEEDED},
+		{"Failed", gateway.JobStatusFailed, batchpb.JobStatus_FAILED},
+		{"DeletionInProgress", gateway.JobStatusCancelled, batchpb.JobStatus_DELETION_IN_PROGRESS},
+		{"Unknown", gateway.JobStatusUnknown, batchpb.JobStatus_State(999)},
 	}
 
 	for _, tc := range testCases {

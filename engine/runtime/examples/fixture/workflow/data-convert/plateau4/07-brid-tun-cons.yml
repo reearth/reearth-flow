@@ -9,6 +9,7 @@ with:
   schemas: null
   targetPackages:
   - brid
+  - tun
   - cons
   workerArtifactPath: null
 graphs:
@@ -326,6 +327,52 @@ graphs:
     name: AttributeFlattener
     type: action
     action: PLATEAU4.AttributeFlattener
+  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    name: AttributeManagerDmGeometricAttributeDefault
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: dm_feature_type
+        method: create
+        value: '""'
+      - attribute: dm_attributes
+        method: create
+        value: '""'
+      - attribute: dm_dmCode
+        method: create
+        value: '""'
+      - attribute: dm_dmCode_code
+        method: create
+        value: '""'
+      - attribute: dm_geometryType
+        method: create
+        value: '""'
+      - attribute: dm_geometryType_code
+        method: create
+        value: '""'
+      - attribute: dm_mapLevel
+        method: create
+        value: '""'
+      - attribute: dm_mapLevel_code
+        method: create
+        value: '""'
+      - attribute: dm_shapeType
+        method: create
+        value: '""'
+      - attribute: dm_shapeType_code
+        method: create
+        value: '""'
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    name: AttributeManagerForMerger
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: __schema_definition
+        method: create
+        value: |
+          env.get("__value")["feature_type"]
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e7
     name: FeatureReaderByCityGmlForDm
     type: action
@@ -358,6 +405,18 @@ graphs:
     name: AttributeFlattenerForDm
     type: action
     action: PLATEAU4.AttributeFlattener
+  - id: a1b2c3d4-e5f6-7890-abcd-ef0000000010
+    name: AttributeManagerRenameCityAttrsForDm
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: cityCode
+        method: rename
+        value: city_code
+      - attribute: cityName
+        method: rename
+        value: city_name
   - id: c32a279d-97be-4584-b282-4d65627b1133
     name: LodSplitterWithDmForDm
     type: subGraph
@@ -461,6 +520,15 @@ graphs:
         method: remove
       - attribute: schemas
         method: remove
+  - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+    name: FeatureMergerForAttributes
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gml_id
+      supplierAttribute:
+      - gml_id
   - id: b2c3d4e5-f6a7-8901-bcde-f12345678902
     name: FeatureSorterDmGeometricAttribute
     type: action
@@ -602,11 +670,11 @@ graphs:
       dracoCompression: false
       output: |
         let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
+        let pkg = env.get("__value")["package"];
         file::join_path(artifact, pkg + "_lod4")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
+        let pkg = env.get("__value")["package"];
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         if city_gml.ends_with("_" + pkg) {
           city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
@@ -643,6 +711,11 @@ graphs:
     to: c32a279d-97be-4584-b282-4d65627b1132
     fromPort: default
     toPort: default
+  - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    from: 3e637368-48dc-48c2-aade-253d5b0cfeeb
+    to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    fromPort: default
+    toPort: default
   - id: a1b2c3d4-e5f6-7890-abcd-ef0000000001
     from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
     to: ded2e272-e05c-4918-86b3-aa9f763da6e7
@@ -660,6 +733,11 @@ graphs:
     toPort: default
   - id: a1b2c3d4-e5f6-7890-abcd-ef0000000004
     from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
+    to: a1b2c3d4-e5f6-7890-abcd-ef0000000010
+    fromPort: default
+    toPort: default
+  - id: a1b2c3d4-e5f6-7890-abcd-ef0000000011
+    from: a1b2c3d4-e5f6-7890-abcd-ef0000000010
     to: c32a279d-97be-4584-b282-4d65627b1133
     fromPort: default
     toPort: default
@@ -670,8 +748,18 @@ graphs:
     toPort: default
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     from: a1b2c3d4-e5f6-7890-abcd-ef1234567891
-    to: b2c3d4e5-f6a7-8901-bcde-f12345678902
+    to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
     fromPort: default
+    toPort: requestor
+  - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+    to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+    fromPort: default
+    toPort: supplier
+  - id: f3a4b5c6-d7e8-9f0a-1b2c-3d4e5f6a7b8c
+    from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+    to: b2c3d4e5-f6a7-8901-bcde-f12345678902
+    fromPort: merged
     toPort: default
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
     from: b2c3d4e5-f6a7-8901-bcde-f12345678902
@@ -714,9 +802,9 @@ graphs:
     fromPort: default
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
-    from: c32a279d-97be-4584-b282-4d65627b1132
+    from: c32a279d-97be-4584-b282-4d65627b1133
     to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
-    fromPort: up_to_lod4
+    fromPort: lod4
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
     from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
@@ -739,7 +827,17 @@ graphs:
     fromPort: schema
     toPort: schema
   - id: b559f3df-c4cb-4b96-95d6-9e3561add2b7
-    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
     to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
     fromPort: schema
+    toPort: schema
+  - id: 9f4e2d6a-3c5b-4d2a-8f7e-8c9d6eb4a3b2
+    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    fromPort: schema
+    toPort: default
+  - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: d4e5f6a7-b8c9-0123-def1-234567890124
+    fromPort: default
     toPort: schema

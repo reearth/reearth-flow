@@ -185,7 +185,11 @@ impl Processor for MissingAttributeDetector {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let features = self.sumary_features(None);
         for (port, features) in features {
             for feature in features {
@@ -218,7 +222,7 @@ impl MissingAttributeDetector {
             for (feature_type, names) in buffer.feature_types_to_target_attributes.iter() {
                 target_counter += names.len();
                 for name in names {
-                    let mut feature = Feature::new();
+                    let mut feature = Feature::new_with_attributes(Default::default());
                     feature.insert(
                         "package".to_string(),
                         AttributeValue::String(package.to_string()),
@@ -231,7 +235,7 @@ impl MissingAttributeDetector {
                     targets.push(feature);
                 }
             }
-            let mut feature = Feature::new();
+            let mut feature = Feature::new_with_attributes(Default::default());
             feature.insert(
                 "package".to_string(),
                 AttributeValue::String(package.to_string()),
@@ -1376,9 +1380,7 @@ mod tests {
             AttributeValue::Map(object_list_map),
         );
 
-        let mut feature = Feature::new();
-        feature.attributes = attributes;
-        feature
+        Feature::new_with_attributes(attributes)
     }
 
     //

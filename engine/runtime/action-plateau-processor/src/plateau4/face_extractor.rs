@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 
 static ERROR_PORT: Lazy<Port> = Lazy::new(|| Port::new("error"));
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
@@ -387,33 +388,33 @@ impl FaceExtractor {
 
                 if !points.is_empty() {
                     let polygon = Polygon3D::new(LineString3D::new(points), vec![]);
-                    feature.geometry = Geometry {
+                    feature.geometry = Arc::new(Geometry {
                         epsg: Some(6697), // JGD2011 geographic
                         value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
-                    };
+                    });
                 }
 
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     Attribute::new("gml_id"),
                     AttributeValue::String(gml_id.clone()),
                 );
 
                 if result.is_incorrect_num_vertices {
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new(ATTR_IS_INCORRECT_NUM_VERTICES),
                         AttributeValue::Number(serde_json::Number::from(1)),
                     );
                 }
 
                 if result.is_not_closed {
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new(ATTR_IS_NOT_CLOSED),
                         AttributeValue::Number(serde_json::Number::from(1)),
                     );
                 }
 
                 if result.is_wrong_orientation {
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new(ATTR_IS_WRONG_ORIENTATION),
                         AttributeValue::Number(serde_json::Number::from(1)),
                     );
@@ -452,27 +453,27 @@ impl FaceExtractor {
             // Clone the base feature (input feature) and add error count attributes
             let mut summary_feature = base_feature;
 
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("__is_summary"),
                 AttributeValue::Number(serde_json::Number::from(1)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_file_path"),
                 AttributeValue::String(file_path),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_instances"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_instances)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_incorrect_num_vertices"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_incorrect_num_vertices)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_not_closed"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_not_closed)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_wrong_orientation"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_wrong_orientation)),
             );
@@ -483,7 +484,7 @@ impl FaceExtractor {
                 summary_feature.attributes.get(&Attribute::new("udxDirs"))
             {
                 let json_filename = format!("summary_{}.json", udx_dirs.replace('/', "_"));
-                summary_feature.attributes.insert(
+                summary_feature.attributes_mut().insert(
                     Attribute::new("_json_filename"),
                     AttributeValue::String(json_filename),
                 );
@@ -539,7 +540,11 @@ impl Processor for FaceExtractor {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Cast self to mutable to flush buffer
         // This is safe because finish is called once at the end
         let mut mutable_self = self.clone();

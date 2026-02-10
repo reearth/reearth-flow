@@ -129,12 +129,16 @@ impl Processor for AttributeBulkArrayJoiner {
             }
             new_attributes.insert(key.clone(), AttributeValue::String(new_value.join(",")));
         }
-        feature.attributes.extend(new_attributes);
+        feature.extend(new_attributes);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

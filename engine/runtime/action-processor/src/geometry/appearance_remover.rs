@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -69,10 +70,10 @@ impl Processor for AppearanceRemover {
                 gml.polygon_textures.clear();
                 gml.polygon_uvs.0.clear();
 
-                let mut geometry = feature.geometry.clone();
+                let mut geometry = (*feature.geometry).clone();
                 geometry.value = GeometryValue::CityGmlGeometry(gml);
                 Feature {
-                    geometry,
+                    geometry: Arc::new(geometry),
                     attributes: feature.attributes.clone(),
                     metadata: feature.metadata.clone(),
                     id: feature.id,
@@ -86,7 +87,11 @@ impl Processor for AppearanceRemover {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

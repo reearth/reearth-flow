@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
@@ -117,14 +118,14 @@ impl Processor for BoundaryExtractor {
                 }
             }
             GeometryValue::FlowGeometry2D(geo) => self.extract_2d_boundary(geo).map(|g| {
-                let mut new_geo = geometry.clone();
+                let mut new_geo = (**geometry).clone();
                 new_geo.value = GeometryValue::FlowGeometry2D(g);
-                new_geo
+                Arc::new(new_geo)
             }),
             GeometryValue::FlowGeometry3D(geo) => self.extract_3d_boundary(geo).map(|g| {
-                let mut new_geo = geometry.clone();
+                let mut new_geo = (**geometry).clone();
                 new_geo.value = GeometryValue::FlowGeometry3D(g);
-                new_geo
+                Arc::new(new_geo)
             }),
             GeometryValue::CityGmlGeometry(_) => {
                 // For CityGML geometries, we don't extract boundaries directly
@@ -143,14 +144,18 @@ impl Processor for BoundaryExtractor {
             fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         } else if self.params.keep_empty_boundaries {
             let mut new_feature = feature.clone();
-            new_feature.geometry = Geometry::default();
+            new_feature.geometry = Arc::new(Geometry::default());
             fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         }
 
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

@@ -116,7 +116,7 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 	return fileRepo
 }
 
-func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batch) {
+func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
 	if conf.Worker_ImageURL == "" {
 		return nil
 	}
@@ -148,6 +148,19 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatalf("invalid task count: %v", err)
 	}
 
+	maxRunDurationSeconds, err := strconv.Atoi(conf.Worker_MaxRunDurationSeconds)
+	if err != nil {
+		log.Fatalf("invalid max run duration seconds: %v", err)
+	}
+
+	maxRetryCount, err := strconv.Atoi(conf.Worker_MaxRetries)
+	if err != nil {
+		log.Fatalf("invalid max retries: %v", err)
+	}
+	if maxRetryCount < 0 {
+		log.Fatalf("invalid max retries: must be non-negative, got %d", maxRetryCount)
+	}
+
 	config := gcpbatch.BatchConfig{
 		AllowedLocations:                conf.Worker_AllowedLocations,
 		BinaryPath:                      conf.Worker_BinaryPath,
@@ -169,18 +182,21 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		Region:                          conf.GCPRegion,
 		RustLog:                         conf.Worker_RustLog,
 		SAEmail:                         conf.Worker_BatchSAEmail,
+		MaxRetryCount:                   maxRetryCount,
+		MaxRunDurationSeconds:           maxRunDurationSeconds,
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
 		FeatureWriterDisable:            conf.Worker_FeatureWriterDisable,
+		UseSpotVMs:                      conf.Worker_UseSpotVMs,
 	}
 
-	batchRepo, err = gcpbatch.NewBatch(ctx, config)
+	batchRepo, err := gcpbatch.NewBatch(ctx, config)
 	if err != nil {
 		log.Fatalf("failed to create Batch repository: %v", err)
 	}
 
-	return
+	return batchRepo
 }
 
 func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {

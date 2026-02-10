@@ -18,6 +18,7 @@ type Props = {
   onMapLoad: (onCenter?: boolean) => void;
   onSelectedFeature: (value: any) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const MapLibre: React.FC<Props> = ({
@@ -30,6 +31,7 @@ const MapLibre: React.FC<Props> = ({
   onMapLoad,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onShowFeatureDetailsOverlay,
 }) => {
   const handleMapClick = useCallback(
     (e: maplibregl.MapLayerMouseEvent) => {
@@ -37,9 +39,10 @@ const MapLibre: React.FC<Props> = ({
         onSelectedFeature(e.features[0].id);
       } else {
         onSelectedFeature(null);
+        onShowFeatureDetailsOverlay(false);
       }
     },
-    [onSelectedFeature],
+    [onSelectedFeature, onShowFeatureDetailsOverlay],
   );
 
   const handleMapDoubleClick = useCallback(
@@ -47,9 +50,10 @@ const MapLibre: React.FC<Props> = ({
       if (e.features?.[0]?.id) {
         onSelectedFeature(e.features[0].id);
         onFlyToSelectedFeature?.(e.features[0]);
+        onShowFeatureDetailsOverlay(true);
       }
     },
-    [onSelectedFeature, onFlyToSelectedFeature],
+    [onSelectedFeature, onFlyToSelectedFeature, onShowFeatureDetailsOverlay],
   );
   return (
     <div className={`relative size-full ${className}`}>

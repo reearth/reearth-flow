@@ -161,7 +161,11 @@ impl Processor for XmlValidator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -215,8 +219,8 @@ impl XmlValidator {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
                     let mut feature = feature.clone();
-                    feature.attributes.insert(
-                        Attribute::new("xmlError"),
+                    feature.insert(
+                        "xmlError",
                         AttributeValue::Array(
                             result
                                 .into_iter()
@@ -254,8 +258,8 @@ impl XmlValidator {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
                     let mut feature = feature.clone();
-                    feature.attributes.insert(
-                        Attribute::new("xmlError"),
+                    feature.insert(
+                        "xmlError",
                         AttributeValue::Array(
                             result
                                 .into_iter()
@@ -267,10 +271,9 @@ impl XmlValidator {
                 }
             }
             Err(e) => {
-                // Schema validation setup failed - report the actual error
                 let mut feature = feature.clone();
-                feature.attributes.insert(
-                    Attribute::new("xmlError"),
+                feature.insert(
+                    "xmlError",
                     AttributeValue::Array(vec![AttributeValue::Map(
                         ValidationResult::new(
                             "SchemaError",
@@ -332,8 +335,8 @@ impl XmlValidator {
 
     fn send_syntax_error(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, feature: &Feature) {
         let mut feature = feature.clone();
-        feature.attributes.insert(
-            Attribute::new("xmlError"),
+        feature.insert(
+            "xmlError",
             AttributeValue::Array(vec![AttributeValue::Map(
                 ValidationResult::new("SyntaxError", "Invalid document structure").into(),
             )]),
@@ -659,12 +662,7 @@ mod tests {
             AttributeValue::String(xml_content.to_string()),
         );
 
-        Feature {
-            id: uuid::Uuid::new_v4(),
-            geometry: Geometry::new(),
-            attributes,
-            metadata: Default::default(),
-        }
+        Feature::new_with_attributes_and_geometry(attributes, Geometry::new(), Default::default())
     }
 
     fn run_validator_test(
@@ -1317,8 +1315,8 @@ mod tests {
             let mut processor = result.unwrap();
 
             // Create a feature with XML content that includes HTTPS schema reference
-            let mut feature = Feature::default();
-            feature.attributes.insert(
+            let mut feature = Feature::new_with_attributes(IndexMap::new());
+            feature.insert(
                 Attribute::new("xml_content"),
                 AttributeValue::String(
                     r#"<?xml version="1.0" encoding="UTF-8"?>

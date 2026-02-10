@@ -9,7 +9,9 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   cesiumViewerRef: React.RefObject<any>;
+  selectedFeaturedId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const ThreeDViewer: React.FC<Props> = ({
@@ -17,7 +19,9 @@ const ThreeDViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   cesiumViewerRef,
+  selectedFeaturedId,
   onSelectedFeature,
+  onShowFeatureDetailsOverlay,
 }) => {
   const t = useT();
   return (
@@ -29,7 +33,9 @@ const ThreeDViewer: React.FC<Props> = ({
           fileContent={fileContent}
           fileType={fileType}
           viewerRef={cesiumViewerRef}
+          selectedFeatureId={selectedFeaturedId}
           onSelectedFeature={onSelectedFeature}
+          onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
         />
       </div>
     </RenderFallback>

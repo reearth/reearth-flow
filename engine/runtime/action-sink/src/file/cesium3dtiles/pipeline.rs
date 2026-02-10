@@ -37,7 +37,6 @@ use crate::file::mvt::tileid::TileIdMethod;
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
-    schema: &nusamai_citygml::schema::Schema,
     tile_id_conv: TileIdMethod,
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
@@ -47,7 +46,6 @@ pub(super) fn geometry_slicing_stage(
     upstream.iter().par_bridge().try_for_each(|parcel| {
         slice_to_tiles(
             parcel,
-            schema,
             min_zoom,
             max_zoom,
             attach_texture,
@@ -515,16 +513,16 @@ pub(super) fn tile_writing_stage(
         }
     };
 
-    let mut tileset = cesiumtiles::tileset::Tileset {
+    let tileset = cesiumtiles::tileset::Tileset {
         asset: cesiumtiles::tileset::Asset {
             version: "1.1".to_string(),
             ..Default::default()
         },
         root: tree.into_tileset_root(),
         geometric_error: 1e+100,
+        properties,
         ..Default::default()
     };
-    tileset.properties = properties;
 
     let storage = ctx
         .storage_resolver

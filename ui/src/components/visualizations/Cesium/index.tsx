@@ -1,6 +1,6 @@
 // import { Viewer as CesiumViewerType } from "cesium";
 import { defined, SceneMode, ScreenSpaceEventType } from "cesium";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
@@ -32,14 +32,18 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
+  selectedFeatureId?: string | null;
   onSelectedFeature?: (featureId: string | null) => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   viewerRef,
+  selectedFeatureId,
   onSelectedFeature,
+  onShowFeatureDetailsOverlay,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -57,30 +61,71 @@ const CesiumViewer: React.FC<Props> = ({
 
       if (defined(pickedObject) && defined(pickedObject.id)) {
         const entity = pickedObject.id;
-        if (entity.id) {
+        const properties = entity.properties?.getValue?.();
+        if (properties?._originalId) {
           try {
-            onSelectedFeature(entity.id);
+            onSelectedFeature(properties?._originalId);
           } catch (e) {
             console.error("Cesium viewer error:", e);
           }
         }
       } else {
         onSelectedFeature(null);
+        onShowFeatureDetailsOverlay(false);
       }
     },
-    [onSelectedFeature, viewerRef],
+    [onSelectedFeature, onShowFeatureDetailsOverlay, viewerRef],
+  );
+
+  const handleDoubleClick = useCallback(
+    (movement: any) => {
+      if (!onSelectedFeature || !viewerRef?.current?.cesiumElement) return;
+
+      const cesiumViewer = viewerRef.current.cesiumElement;
+      const pickedObject = cesiumViewer.scene.pick(movement.position);
+
+      if (defined(pickedObject) && defined(pickedObject.id)) {
+        const entity = pickedObject.id;
+        const properties = entity.properties?.getValue?.();
+        if (properties?._originalId) {
+          try {
+            onSelectedFeature(properties?._originalId);
+            onShowFeatureDetailsOverlay(true);
+          } catch (e) {
+            console.error("Cesium viewer error:", e);
+          }
+        }
+      } else {
+        onSelectedFeature(null);
+        onShowFeatureDetailsOverlay(false);
+      }
+    },
+    [onSelectedFeature, onShowFeatureDetailsOverlay, viewerRef],
   );
 
   // Separate features by geometry type
-  const geoJsonFeatures =
-    fileContent?.features?.filter(
-      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
-    ) || [];
+  const { geoJsonData, cityGmlData } = useMemo(() => {
+    const features = fileContent?.features || [];
 
-  const cityGmlFeatures =
-    fileContent?.features?.filter(
+    const geoJsonFeatures = features.filter(
+      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
+    );
+
+    const cityGmlFeatures = features.filter(
       (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
-    ) || [];
+    );
+
+    return {
+      geoJsonData:
+        geoJsonFeatures.length > 0
+          ? { type: "FeatureCollection" as const, features: geoJsonFeatures }
+          : null,
+      cityGmlData:
+        cityGmlFeatures.length > 0
+          ? { type: "FeatureCollection" as const, features: cityGmlFeatures }
+          : null,
+    };
+  }, [fileContent]);
 
   return (
     <Viewer ref={viewerRef} full {...defaultCesiumProps}>
@@ -90,30 +135,25 @@ const CesiumViewer: React.FC<Props> = ({
             action={handleSingleClick}
             type={ScreenSpaceEventType.LEFT_CLICK}
           />
+          <ScreenSpaceEvent
+            action={handleDoubleClick}
+            type={ScreenSpaceEventType.LEFT_DOUBLE_CLICK}
+          />
         </ScreenSpaceEventHandler>
       )}
 
       {isLoaded && fileType === "geojson" && (
         <>
           {/* Standard GeoJSON features */}
-          {geoJsonFeatures.length > 0 && (
+          {geoJsonData && (
             <GeoJsonData
-              geoJsonData={{
-                type: "FeatureCollection",
-                features: geoJsonFeatures,
-              }}
+              geoJsonData={geoJsonData}
+              selectedFeatureId={selectedFeatureId}
             />
           )}
 
           {/* CityGML features */}
-          {cityGmlFeatures.length > 0 && (
-            <CityGmlData
-              cityGmlData={{
-                type: "FeatureCollection",
-                features: cityGmlFeatures,
-              }}
-            />
-          )}
+          {cityGmlData && <CityGmlData cityGmlData={cityGmlData} />}
         </>
       )}
     </Viewer>

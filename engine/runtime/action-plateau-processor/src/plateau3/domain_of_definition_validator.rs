@@ -20,7 +20,7 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use serde_json::{Number, Value};
 
 use super::errors::PlateauProcessorError;
@@ -358,7 +358,11 @@ impl Processor for DomainOfDefinitionValidator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
         for (_, gml_id) in self.feature_buffer.iter() {
             for (k, v) in gml_id.iter() {
@@ -375,7 +379,7 @@ impl Processor for DomainOfDefinitionValidator {
                 continue;
             }
             for attribute in attributes.iter() {
-                let mut result_feature = Feature::new();
+                let mut result_feature = Feature::new_with_attributes(Attributes::new());
                 result_feature.insert(
                     "flag",
                     AttributeValue::String("GMLID_NotUnique".to_string()),

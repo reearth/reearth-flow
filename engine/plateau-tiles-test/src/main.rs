@@ -94,6 +94,8 @@ fn zip_dir(src_dir: &Path, zip_path: &Path) {
 
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/lod1",
+    "data-convert/plateau4/01-bldg/tako-machi",
+    "data-convert/plateau4/01-bldg/ogasawara-mura",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
@@ -112,9 +114,10 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/06-area-urf/urf",
     "data-convert/plateau4/06-area-urf/nested",
     "data-convert/plateau4/06-area-urf/area",
-    // "data-convert/plateau4/07-brid-tun-cons/brid",
-    // "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
-    // "data-convert/plateau4/07-brid-tun-cons/cons",
+    "data-convert/plateau4/07-brid-tun-cons/brid",
+    "data-convert/plateau4/07-brid-tun-cons/brid_dm_geometric_attributes",
+    "data-convert/plateau4/07-brid-tun-cons/tun",
+    "data-convert/plateau4/07-brid-tun-cons/cons",
     "data-convert/plateau4/08-ubld/ubld",
     "data-convert/plateau4/10-wtr/lod1",
     "data-convert/plateau4/11-gen/mvt",

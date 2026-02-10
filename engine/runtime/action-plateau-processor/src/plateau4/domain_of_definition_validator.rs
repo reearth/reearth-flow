@@ -20,7 +20,7 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
@@ -434,7 +434,11 @@ impl Processor for DomainOfDefinitionValidator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
         for (_, gml_id) in self.feature_buffer.iter() {
             for (k, v) in gml_id.iter() {
@@ -464,7 +468,7 @@ impl Processor for DomainOfDefinitionValidator {
         for filename in &self.filenames {
             let duplicate_count = duplicate_gml_id_count.get(filename).unwrap_or(&0);
 
-            let mut result_feature = Feature::new();
+            let mut result_feature = Feature::new_with_attributes(Attributes::new());
             result_feature.insert("filename", AttributeValue::String(filename.clone()));
             result_feature.insert(
                 "duplicateGmlIdCount",
@@ -485,7 +489,7 @@ impl Processor for DomainOfDefinitionValidator {
                 continue;
             }
             for attribute in attributes.iter() {
-                let mut result_feature = Feature::new();
+                let mut result_feature = Feature::new_with_attributes(Attributes::new());
                 result_feature.insert(
                     "flag",
                     AttributeValue::String("GMLID_NotUnique".to_string()),
@@ -1771,9 +1775,7 @@ mod tests {
             AttributeValue::String(file_path.to_string()),
         );
 
-        let mut feature = Feature::new();
-        feature.attributes = attributes;
-        feature
+        Feature::new_with_attributes(attributes)
     }
 
     // Helper function to extract file_stats outputs from ProcessorChannelForwarder

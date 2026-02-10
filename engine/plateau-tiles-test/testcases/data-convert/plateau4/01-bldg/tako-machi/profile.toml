@@ -1,0 +1,22 @@
+citygml_zip_name = "12347_tako-machi_city_2025_citygml_1_op_bldg.zip"
+
+[tests.json_attributes.tilesets]
+path = "12347_tako-machi_city_2025_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
+".properties.uro:BuildingDetailAttribute_uro:surveyYear" = "ignore_both"
+
+[tests.cesium_attributes.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
+".attributes.uro:BuildingDetailAttribute[0].uro:surveyYear" = "int"
+".attributes.uro:BuildingDetailAttribute[0].uro:specifiedFloorAreaRate" = "float"
+".attributes.uro:BuildingDetailAttribute[0].uro:specifiedBuildingCoverageRate" = "float"
+".attributes.uro:DataQualityAttribute[0].uro:appearanceSrcDescLod2" = "string"
+
+[filter.tree]
+"udx/bldg" = ["53404336_bldg_6697.gml"]

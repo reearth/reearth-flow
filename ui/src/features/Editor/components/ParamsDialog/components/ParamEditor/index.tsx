@@ -214,7 +214,7 @@ const ParamEditor: React.FC<Props> = ({
                         side="top"
                         align="end"
                         className="bg-primary">
-                        <div className="max-w-[300px] text-xs text-muted-foreground">
+                        <div className="max-w-75 text-xs text-muted-foreground">
                           {Object.entries(customizationDescriptions).map(
                             ([key, value], index) => (
                               <div key={index}>
@@ -264,13 +264,13 @@ const ParamEditor: React.FC<Props> = ({
                   </h4>
                   <div className="my-4 flex w-full flex-col gap-4">
                     <div className="flex items-center text-sm">
-                      <p className="mr-2 w-[150px] font-medium">
+                      <p className="mr-2 w-37.5 font-medium">
                         {t("Action Name")}:
                       </p>
                       <p className="text-sm">{nodeMeta.officialName}</p>
                     </div>
                     <div className="flex items-center text-sm">
-                      <p className="mr-2 w-[150px] font-medium">
+                      <p className="mr-2 w-37.5 font-medium">
                         {t("Description")}:
                       </p>
                       {createdAction?.description && (

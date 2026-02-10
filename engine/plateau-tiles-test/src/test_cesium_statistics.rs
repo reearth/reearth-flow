@@ -6,13 +6,16 @@ use serde::Deserialize;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
-pub struct CesiumStatisticsConfig {}
+pub struct CesiumStatisticsConfig {
+    #[serde(default)]
+    pub skip_texture_presence_test: bool,
+}
 
 /// Tests Cesium 3D Tiles statistics between FME and Flow outputs
 pub fn test_cesium_statistics(
     fme_path: &Path,
     flow_path: &Path,
-    _config: &CesiumStatisticsConfig,
+    config: &CesiumStatisticsConfig,
 ) -> Result<(), String> {
     tracing::debug!("Testing Cesium statistics");
 
@@ -39,7 +42,7 @@ pub fn test_cesium_statistics(
         let fme_geometries = collect_geometries_by_ident(&fme_dir)?;
         let flow_geometries = collect_geometries_by_ident(&flow_dir)?;
 
-        align_and_compare(&fme_geometries, &flow_geometries)?;
+        align_and_compare(&fme_geometries, &flow_geometries, config)?;
     }
 
     Ok(())
@@ -89,6 +92,7 @@ fn test_texture_presence(
 fn align_and_compare(
     fme_geometries: &GeometryCollector,
     flow_geometries: &GeometryCollector,
+    config: &CesiumStatisticsConfig,
 ) -> Result<(), String> {
     let fme_detail_levels = &fme_geometries.detail_levels;
     let flow_detail_levels = &flow_geometries.detail_levels;
@@ -112,7 +116,9 @@ fn align_and_compare(
     for ident in fme_keys {
         let fme_detail_levels = &fme_detail_levels[ident];
         let flow_detail_levels = &flow_detail_levels[ident];
-        test_texture_presence(ident, fme_detail_levels, flow_detail_levels)?;
+        if !config.skip_texture_presence_test {
+            test_texture_presence(ident, fme_detail_levels, flow_detail_levels)?;
+        }
 
         // Assert geometric error decreases monotonically
         verify_monotonic_geometric_error(ident, fme_detail_levels, "FME")?;
@@ -231,8 +237,8 @@ fn compare_detail_level(
     result.bounding_box_error = error_min.max(error_max);
     if result.bounding_box_error > 1.0 {
         return Err(format!(
-            "ident '{}': bounding box mismatch exceeds max error: {}: min:({}, {}, {}), max:({}, {}, {})",
-            ident, bbox_error,
+            "ident '{}': bounding box mismatch exceeds max error: {}/{}: min:({}, {}, {}), max:({}, {}, {})",
+            ident, fme_error, flow_error,
             fme_bbox.0.x - flow_bbox.0.x,
             fme_bbox.0.y - flow_bbox.0.y,
             fme_bbox.0.z - flow_bbox.0.z,

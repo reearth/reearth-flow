@@ -167,6 +167,18 @@ pub(super) enum GeometryProcessorError {
     ImageRasterizerFactory(String),
     #[error("ImageRasterizer error: {0}")]
     ImageRasterizer(String),
+    #[error("GridDivider Factory error: {0}")]
+    GridDividerFactory(String),
+    #[error("GridDivider error: {0}")]
+    GridDivider(String),
+    #[error("GeometrySplitter Factory error: {0}")]
+    GeometrySplitterFactory(String),
+    #[error("GeometrySplitter error: {0}")]
+    GeometrySplitter(String),
+    #[error("Rotator3D Factory error: {0}")]
+    Rotator3DFactory(String),
+    #[error("Rotator3D error: {0}")]
+    Rotator3D(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

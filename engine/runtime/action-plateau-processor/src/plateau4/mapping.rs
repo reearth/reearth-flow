@@ -9,10 +9,12 @@ use super::{
     building_part_connectivity_checker::BuildingPartConnectivityCheckerFactory,
     building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory,
     city_code_extractor::CityCodeExtractorFactory, citygml_mesh_builder::CityGmlMeshBuilderFactory,
+    composite_surface_continuity_filter::CompositeSurfaceContinuityFilterFactory,
     destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     face_extractor::FaceExtractorFactory,
     flooding_area_surface_generator::FloodingAreaSurfaceGeneratorFactory,
+    gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory,
     missing_attribute_detector::MissingAttributeDetectorFactory,
     object_list_extractor::ObjectListExtractorFactory,
@@ -35,6 +37,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<CityGmlMeshBuilderFactory>::default(),
         Box::<DestinationMeshCodeExtractorFactory>::default(),
         Box::<FloodingAreaSurfaceGeneratorFactory>::default(),
+        Box::<GmlNameCodeSpaceValidatorFactory>::default(),
         Box::<ObjectListExtractorFactory>::default(),
         Box::<MissingAttributeDetectorFactory>::default(),
         Box::<DomainOfDefinitionValidatorFactory>::default(),
@@ -43,6 +46,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<TransportationXlinkDetectorFactory>::default(),
         Box::<FaceExtractorFactory>::default(),
         Box::<UnsharedEdgeDetectorFactory>::default(),
+        Box::<CompositeSurfaceContinuityFilterFactory>::default(),
     ];
     factories
         .into_iter()

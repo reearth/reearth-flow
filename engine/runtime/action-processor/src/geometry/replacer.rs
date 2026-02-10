@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_common::compress::decode;
 use reearth_flow_runtime::{
@@ -103,13 +104,17 @@ impl Processor for GeometryReplacer {
         };
         let dump = decode(dump)?;
         let geometry: Geometry = serde_json::from_str(&dump)?;
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         feature.remove(&self.source_attribute);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

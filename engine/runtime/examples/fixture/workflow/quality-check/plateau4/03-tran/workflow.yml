@@ -12,6 +12,12 @@ with:
   objectLists:
   workerArtifactPath:
   prcs:
+  targetPackages:
+    - tran
+    - rwy
+    - trk
+    - squr
+    - wwy
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator.yml
@@ -97,6 +103,16 @@ graphs:
             env.get("__value")["path"]
           codelistsPath: codelists
           schemasPath: schemas
+
+      - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        name: FeatureFilterByPackage
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            outputPort: default
 
       - id: 242e339a-c7df-4be4-82f7-3223a6ed2145
         name: FeatureCityGmlReader
@@ -777,8 +793,13 @@ graphs:
         to: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
         fromPort: default
         toPort: default
-      - id: 31d8d432-82c6-47e4-9cf2-4acafc87a848
+      - id: 33cb26b6-0001-0001-0001-000000000001
         from: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+        to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        fromPort: default
+        toPort: default
+      - id: 31d8d432-82c6-47e4-9cf2-4acafc87a848
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: 242e339a-c7df-4be4-82f7-3223a6ed2145
         fromPort: default
         toPort: default
@@ -795,7 +816,7 @@ graphs:
 
       # XLink detection flow
       - id: 30d1bde3-8025-47aa-983e-1f5429069aa4
-        from: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
         fromPort: default
         toPort: default
@@ -1053,7 +1074,7 @@ graphs:
       # ===== Error Summary Output Edges =====
       # Phase 1: Extract file info from UDXFolderExtractor
       - id: 75db1ea3-bab6-4f15-a9dc-9c0b3496baea
-        from: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678  # PLATEAU4.UDXFolderExtractor
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13  # FeatureFilterByPackage
         to: eac6a0cc-0785-4a12-852c-50cdd6f94f13    # FileInfoExtractor
         fromPort: default
         toPort: default

@@ -90,7 +90,11 @@ impl Processor for BuildingInstallationGeometryTypeChecker {
         self.process_impl(ctx, fw).map_err(Into::into)
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -172,7 +176,7 @@ impl BuildingInstallationGeometryTypeChecker {
                             AttributeValue::String(tag.clone()),
                         ),
                     ]);
-                    feature.attributes.extend(attributes);
+                    feature.attributes_mut().extend(attributes);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             }

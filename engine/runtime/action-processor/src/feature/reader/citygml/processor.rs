@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    str::FromStr,
-    sync::{mpsc::Receiver, Arc},
-};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -17,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use crate::feature::errors;
 use crate::feature::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
@@ -87,36 +82,18 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             flatten: params.flatten,
             codelists_path,
         };
-        let threads_num = {
-            let size = (num_cpus::get() as f32 / 4_f32).trunc() as usize;
-            if size < 1 {
-                1
-            } else {
-                std::cmp::min(size, 4)
-            }
-        };
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(threads_num)
-            .build()
-            .unwrap();
         let process = FeatureCityGmlReader {
             global_params: with,
             params: compiled_params,
-            join_handles: Vec::new(),
-            thread_pool: Arc::new(parking_lot::Mutex::new(pool)),
         };
         Ok(Box::new(process))
     }
 }
 
-type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), errors::FeatureProcessorError>>>>;
-
 #[derive(Debug, Clone)]
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureCityGmlReaderParam,
-    join_handles: Vec<JoinHandle>,
-    thread_pool: Arc<parking_lot::Mutex<rayon::ThreadPool>>,
 }
 
 /// # FeatureCityGmlReader Parameters
@@ -146,7 +123,7 @@ struct CompiledFeatureCityGmlReaderParam {
 
 impl Processor for FeatureCityGmlReader {
     fn num_threads(&self) -> usize {
-        2
+        1
     }
 
     fn process(
@@ -161,62 +138,32 @@ impl Processor for FeatureCityGmlReader {
         let dataset = self.params.dataset.clone();
         let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
-        let codelists_path = self.params.codelists_path.clone();
-        let pool = self.thread_pool.lock();
-        let (tx, rx) = std::sync::mpsc::channel();
-        self.join_handles
-            .push(Arc::new(parking_lot::Mutex::new(rx)));
-        pool.spawn(move || {
-            let codelists_url = codelists_path.and_then(|ast| {
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let scope = feature.new_scope(expr_engine.clone(), &global_params);
-                scope
-                    .eval_ast::<String>(&ast)
-                    .ok()
-                    .and_then(|s| Url::from_str(&s).ok())
-            });
-            let result = super::reader::read_citygml(
-                ctx,
-                fw,
-                feature,
-                dataset,
-                original_dataset,
-                flatten,
-                global_params.clone(),
-                codelists_url,
-            );
-            tx.send(result).unwrap();
+        let codelists_url = self.params.codelists_path.clone().and_then(|ast| {
+            let expr_engine = Arc::clone(&ctx.expr_engine);
+            let scope = feature.new_scope(expr_engine.clone(), &global_params);
+            scope
+                .eval_ast::<String>(&ast)
+                .ok()
+                .and_then(|s| Url::from_str(&s).ok())
         });
-        Ok(())
+        super::reader::read_citygml(
+            ctx,
+            fw,
+            feature,
+            dataset,
+            original_dataset,
+            flatten,
+            global_params,
+            codelists_url,
+        )
+        .map_err(|e| e.into())
     }
 
-    fn finish(&self, ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let timeout = std::time::Duration::from_secs(60 * 60);
-        let mut errors = Vec::new();
-
-        for (i, join) in self.join_handles.iter().enumerate() {
-            match join.lock().recv_timeout(timeout) {
-                Ok(result) => {
-                    if let Err(e) = result {
-                        errors.push(format!("Worker thread {i} failed: {e}"));
-                    }
-                }
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                    errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
-                }
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub
-                        .warn_log(None, format!("Worker thread {i} disconnected unexpectedly"));
-                }
-            }
-        }
-        if !errors.is_empty() {
-            return Err(errors::FeatureProcessorError::FileCityGmlReader(format!(
-                "Failed to complete all worker threads: {}",
-                errors.join("; ")
-            ))
-            .into());
-        }
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

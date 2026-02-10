@@ -3761,7 +3761,46 @@ Replace Feature Geometry from Attribute
 ### Description
 Split Multi-Geometries into Individual Features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometrySplitterParam",
+  "description": "Parameters for GeometrySplitter",
+  "type": "object",
+  "properties": {
+    "splitLevel": {
+      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
+      "default": "element",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SplitLevel"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "SplitLevel": {
+      "description": "Split level for CityGML geometry",
+      "oneOf": [
+        {
+          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
+          "type": "string",
+          "enum": [
+            "element"
+          ]
+        },
+        {
+          "description": "Split down to individual polygons within each element",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -3801,8 +3840,7 @@ Validate Feature Geometry Quality
           "type": "string",
           "enum": [
             "duplicatePoints",
-            "corruptGeometry",
-            "selfIntersection"
+            "corruptGeometry"
           ]
         },
         {
@@ -3813,6 +3851,23 @@ Validate Feature Geometry Quality
           "properties": {
             "duplicateConsecutivePoints": {
               "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
+          "type": "object",
+          "required": [
+            "selfIntersection"
+          ],
+          "properties": {
+            "selfIntersection": {
+              "type": [
+                "number",
+                "null"
+              ],
               "format": "double"
             }
           },
@@ -3968,6 +4023,62 @@ Writes 3D features to GLTF format with optional texture attachment
 ### Output Ports
 ### Category
 * File
+
+## GridDivider
+### Type
+* processor
+### Description
+Divide Polygons into Regular Grid Cells
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GridDivider Parameters",
+  "type": "object",
+  "required": [
+    "unitSquareSize"
+  ],
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features - each group gets its own grid origin",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "keepSquareOnly": {
+      "title": "Keep Square Only",
+      "description": "If true, only output complete grid squares (discard edge pieces). Default: false",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "unitSquareSize": {
+      "title": "Unit Square Size",
+      "description": "Side length of each grid cell (in the same units as the geometry coordinates)",
+      "type": "number",
+      "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
 
 ## HTTPCaller
 ### Type
@@ -5282,20 +5393,31 @@ Convert vector geometries to raster image format
     },
     "saveTo": {
       "title": "Save To",
-      "description": "Optional path to save the generated image. If not provided, uses default cache directory.",
+      "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
       "default": null,
-      "type": [
-        "string",
-        "null"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
       ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
 * default
+* textureCoordinates
 ### Output Ports
 * default
+* textured
 ### Category
 * Geometry
 
@@ -5756,6 +5878,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File
@@ -6533,6 +6656,22 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 * PLATEAU
 * Geometry
 
+## PLATEAU4.CompositeSurfaceContinuityFilter
+### Type
+* processor
+### Description
+Checks if a CompositeSurface is continuous (all parts share edges)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* passed
+* failed
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU4.DestinationMeshCodeExtractor
 ### Type
 * processor
@@ -6722,6 +6861,47 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
 ### Category
 * PLATEAU
 
+## PLATEAU4.GmlNameCodeSpaceValidator
+### Type
+* processor
+### Description
+Validates that gml:name elements have codeSpace attributes (coded values)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GmlNameCodeSpaceValidator Parameters",
+  "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "description": "Expression to get the path to the CityGML file",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* gmlNameErrors
+* stats
+### Category
+* PLATEAU
+
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor
@@ -6829,6 +7009,201 @@ Extract object list
 * default
 ### Output Ports
 * default
+### Category
+* PLATEAU
+
+## PLATEAU4.SolarPositionCalculator
+### Type
+* processor
+### Description
+Calculates solar position (altitude and azimuth) for geographic features using Spencer's algorithm
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolarPositionCalculatorParam",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "sourceEpsg",
+        "time",
+        "type"
+      ],
+      "properties": {
+        "outputType": {
+          "description": "Output type: unit normal vector or altitude/azimuth angles",
+          "default": "unitNormalVector",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputType"
+            }
+          ]
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time": {
+          "description": "Time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "time"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "end",
+        "sourceEpsg",
+        "start",
+        "step",
+        "stepUnit",
+        "type"
+      ],
+      "properties": {
+        "end": {
+          "description": "End time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "outputType": {
+          "description": "Output type: unit normal vector or altitude/azimuth angles",
+          "default": "unitNormalVector",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputType"
+            }
+          ]
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "description": "Start time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "step": {
+          "description": "Step value expression evaluating to an integer",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "stepUnit": {
+          "description": "Unit for the step value",
+          "allOf": [
+            {
+              "$ref": "#/definitions/StepUnit"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "duration"
+          ]
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "OutputType": {
+      "description": "Output type for solar position calculation",
+      "oneOf": [
+        {
+          "description": "Output as unit normal vector (x, y, z) in ENU coordinate system",
+          "type": "string",
+          "enum": [
+            "unitNormalVector"
+          ]
+        },
+        {
+          "description": "Output as altitude and azimuth angles in degrees",
+          "type": "string",
+          "enum": [
+            "altitudeAndAzimuth"
+          ]
+        },
+        {
+          "description": "Output both unit normal vector and altitude/azimuth angles",
+          "type": "string",
+          "enum": [
+            "both"
+          ]
+        }
+      ]
+    },
+    "StepUnit": {
+      "type": "string",
+      "enum": [
+        "second",
+        "minute",
+        "hour",
+        "day"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 
@@ -7202,6 +7577,15 @@ Computes intersection points between rays and geometries
         }
       ]
     },
+    "outputGeometryType": {
+      "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
+      "default": "pointOfIntersection",
+      "allOf": [
+        {
+          "$ref": "#/definitions/OutputGeometryType"
+        }
+      ]
+    },
     "pairId": {
       "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
       "allOf": [
@@ -7237,6 +7621,25 @@ Computes intersection points between rays and geometries
     },
     "Expr": {
       "type": "string"
+    },
+    "OutputGeometryType": {
+      "description": "Output geometry type for ray intersection results",
+      "oneOf": [
+        {
+          "description": "Output a point at the intersection location (default behavior)",
+          "type": "string",
+          "enum": [
+            "pointOfIntersection"
+          ]
+        },
+        {
+          "description": "Output a line segment from ray origin to intersection point",
+          "type": "string",
+          "enum": [
+            "lineSegmentToIntersection"
+          ]
+        }
+      ]
     },
     "RayDefinition": {
       "description": "Defines how ray data is extracted from feature attributes.",
@@ -7308,6 +7711,7 @@ Computes intersection points between rays and geometries
 * geom
 ### Output Ports
 * intersection
+* no_intersection
 * rejected
 ### Category
 * Geometry
@@ -7374,6 +7778,172 @@ Executes Rhai script expressions to conditionally process and transform features
 * default
 ### Category
 * Feature
+
+## Rotator3D
+### Type
+* processor
+### Description
+Rotate a 3D polygon using from/to vectors or axis-angle specification
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rotator3D Parameters",
+  "description": "Configure the rotation for a 3D polygon",
+  "type": "object",
+  "required": [
+    "rotation"
+  ],
+  "properties": {
+    "rotation": {
+      "title": "Rotation",
+      "description": "The rotation specification: either from/to vectors or axis-angle",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RotationParam"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "RotationParam": {
+      "description": "Rotation specification",
+      "oneOf": [
+        {
+          "description": "Rotation defined by two vectors (from and to)",
+          "type": "object",
+          "required": [
+            "fromX",
+            "fromY",
+            "fromZ",
+            "toX",
+            "toY",
+            "toZ",
+            "type"
+          ],
+          "properties": {
+            "fromX": {
+              "description": "X component of the source direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "fromY": {
+              "description": "Y component of the source direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "fromZ": {
+              "description": "Z component of the source direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "toX": {
+              "description": "X component of the target direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "toY": {
+              "description": "Y component of the target direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "toZ": {
+              "description": "Z component of the target direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "fromToVectors"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Rotation defined by an axis and angle",
+          "type": "object",
+          "required": [
+            "angle",
+            "axisX",
+            "axisY",
+            "axisZ",
+            "type"
+          ],
+          "properties": {
+            "angle": {
+              "description": "Rotation angle in degrees",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "axisX": {
+              "description": "X component of the rotation axis",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "axisY": {
+              "description": "Y component of the rotation axis",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "axisZ": {
+              "description": "Z component of the rotation axis",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "axisAngle"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
 
 ## ShapefileReader
 ### Type

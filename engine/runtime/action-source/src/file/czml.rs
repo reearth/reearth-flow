@@ -300,13 +300,10 @@ fn packet_to_features(
     // Fall back to static geometry extraction (existing logic)
     let geometry = extract_geometry(packet, force_2d)?;
     if let Some(geom) = geometry {
-        let mut feature = Feature {
-            geometry: geom,
-            attributes: base_attributes,
-            ..Default::default()
-        };
+        let mut feature =
+            Feature::new_with_attributes_and_geometry(base_attributes, geom, Default::default());
         // Capture extra CZML properties for roundtrip
-        extract_extra_czml_properties(packet, &mut feature.attributes);
+        extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
         Ok(vec![feature])
     } else {
         Ok(vec![])
@@ -424,13 +421,13 @@ fn build_timeseries_features(
         TimeSamplingStrategy::FirstSampleOnly => {
             if let Some(sample) = ts.samples.first() {
                 let geom = point_from_sample(sample, force_2d);
-                let mut feature = Feature {
-                    geometry: geom,
-                    attributes: base_attributes.clone(),
-                    ..Default::default()
-                };
+                let mut feature = Feature::new_with_attributes_and_geometry(
+                    base_attributes.clone(),
+                    geom,
+                    Default::default(),
+                );
                 add_interpolation_attributes(&mut feature, ts);
-                extract_extra_czml_properties(packet, &mut feature.attributes);
+                extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
                 Ok(vec![feature])
             } else {
                 Ok(vec![])
@@ -440,18 +437,18 @@ fn build_timeseries_features(
             let mut features = Vec::with_capacity(ts.samples.len());
             for sample in &ts.samples {
                 let geom = point_from_sample(sample, force_2d);
-                let mut feature = Feature {
-                    geometry: geom,
-                    attributes: base_attributes.clone(),
-                    ..Default::default()
-                };
+                let mut feature = Feature::new_with_attributes_and_geometry(
+                    base_attributes.clone(),
+                    geom,
+                    Default::default(),
+                );
 
                 let timestamp = sample_timestamp(sample, ts.epoch.as_deref());
-                feature.attributes.insert(
+                Arc::make_mut(&mut feature.attributes).insert(
                     Attribute::new("czml.timestamp"),
                     AttributeValue::String(timestamp),
                 );
-                feature.attributes.insert(
+                Arc::make_mut(&mut feature.attributes).insert(
                     Attribute::new("czml.timeOffset"),
                     AttributeValue::Number(
                         serde_json::Number::from_f64(sample.time_offset)
@@ -470,11 +467,11 @@ fn build_timeseries_features(
                 return Ok(vec![]);
             };
 
-            let mut feature = Feature {
-                geometry: geom,
-                attributes: base_attributes.clone(),
-                ..Default::default()
-            };
+            let mut feature = Feature::new_with_attributes_and_geometry(
+                base_attributes.clone(),
+                geom,
+                Default::default(),
+            );
 
             let timeseries: Vec<Value> = ts
                 .samples
@@ -490,12 +487,12 @@ fn build_timeseries_features(
                 })
                 .collect();
 
-            feature.attributes.insert(
+            Arc::make_mut(&mut feature.attributes).insert(
                 Attribute::new("czml.timeseries"),
                 AttributeValue::String(serde_json::to_string(&timeseries).unwrap_or_default()),
             );
             add_interpolation_attributes(&mut feature, ts);
-            extract_extra_czml_properties(packet, &mut feature.attributes);
+            extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
             Ok(vec![feature])
         }
     }
@@ -529,19 +526,19 @@ fn sample_timestamp(sample: &TimeSample, epoch: Option<&str>) -> String {
 
 fn add_interpolation_attributes(feature: &mut Feature, ts: &TimeTaggedPosition) {
     if let Some(epoch) = &ts.epoch {
-        feature.attributes.insert(
+        Arc::make_mut(&mut feature.attributes).insert(
             Attribute::new("czml.epoch"),
             AttributeValue::String(epoch.clone()),
         );
     }
     if let Some(alg) = &ts.interpolation_algorithm {
-        feature.attributes.insert(
+        Arc::make_mut(&mut feature.attributes).insert(
             Attribute::new("czml.interpolationAlgorithm"),
             AttributeValue::String(alg.clone()),
         );
     }
     if let Some(deg) = ts.interpolation_degree {
-        feature.attributes.insert(
+        Arc::make_mut(&mut feature.attributes).insert(
             Attribute::new("czml.interpolationDegree"),
             AttributeValue::Number(
                 serde_json::Number::from_f64(deg).unwrap_or_else(|| serde_json::Number::from(0)),
