@@ -17,8 +17,8 @@ path = "src/main.rs"
 [features]
 default = []
 memory-stats = [
-  "reearth-flow-action-processor/memory-stats",
   "reearth-flow-action-plateau-processor/memory-stats",
+  "reearth-flow-action-processor/memory-stats",
 ]
 
 [dependencies]

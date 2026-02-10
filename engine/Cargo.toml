@@ -229,8 +229,8 @@ sqlx = { version = "0.8.6", features = [
   "tls-rustls",
 ] }
 strum = "0.27.2"
-sysinfo = "0.32"
 strum_macros = "0.27.2"
+sysinfo = "0.32"
 tempfile = "3.23.0"
 thiserror = "2.0.17"
 time = { version = "0.3.44", features = ["formatting"] }
