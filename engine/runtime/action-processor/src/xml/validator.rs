@@ -13,7 +13,7 @@ use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher, SchemaFetcher
 use fastxml::schema::types::CompiledSchema;
 use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
 use once_cell::sync::Lazy;
-use reearth_flow_common::{uri::Uri, xml};
+use reearth_flow_common::{process::current_rss_mb, uri::Uri, xml};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -26,24 +26,6 @@ use serde_json::Value;
 
 use super::errors::{Result, XmlProcessorError};
 use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorParam};
-
-/// Get current process RSS in MB (requires `memory-stats` feature).
-fn current_rss_mb() -> f64 {
-    #[cfg(feature = "memory-stats")]
-    {
-        use sysinfo::{Pid, ProcessesToUpdate, System};
-        let pid = Pid::from_u32(std::process::id());
-        let mut sys = System::new();
-        sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
-        sys.process(pid)
-            .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
-            .unwrap_or(0.0)
-    }
-    #[cfg(not(feature = "memory-stats"))]
-    {
-        0.0
-    }
-}
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
