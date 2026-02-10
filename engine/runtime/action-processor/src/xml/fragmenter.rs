@@ -8,58 +8,9 @@ use std::{
     time::Instant,
 };
 
-/// Get current process memory in MB.
-/// macOS: phys_footprint (same as Activity Monitor / top MEM).
-/// Other: sysinfo RSS fallback.
+/// Get current process RSS in MB (requires `memory-stats` feature).
 fn current_rss_mb() -> f64 {
-    #[cfg(target_os = "macos")]
-    {
-        #[allow(non_camel_case_types)]
-        #[repr(C)]
-        struct task_vm_info {
-            virtual_size: u64,
-            region_count: i32,
-            page_size: i32,
-            resident_size: u64,
-            resident_size_peak: u64,
-            device: u64,
-            device_peak: u64,
-            internal: u64,
-            internal_peak: u64,
-            external: u64,
-            external_peak: u64,
-            reusable: u64,
-            reusable_peak: u64,
-            purgeable_volatile_pmap: u64,
-            purgeable_volatile_resident: u64,
-            purgeable_volatile_virtual: u64,
-            compressed: u64,
-            compressed_peak: u64,
-            compressed_lifetime: u64,
-            phys_footprint: u64,
-        }
-        const TASK_VM_INFO: u32 = 22;
-        extern "C" {
-            fn mach_task_self() -> u32;
-            fn task_info(t: u32, f: u32, o: *mut i32, c: *mut u32) -> i32;
-        }
-        unsafe {
-            let mut info: task_vm_info = std::mem::zeroed();
-            let mut count =
-                (std::mem::size_of::<task_vm_info>() / std::mem::size_of::<i32>()) as u32;
-            let kr = task_info(
-                mach_task_self(),
-                TASK_VM_INFO,
-                &mut info as *mut _ as *mut i32,
-                &mut count,
-            );
-            if kr == 0 {
-                return info.phys_footprint as f64 / 1024.0 / 1024.0;
-            }
-        }
-        0.0
-    }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(feature = "memory-stats")]
     {
         use sysinfo::{Pid, ProcessesToUpdate, System};
         let pid = Pid::from_u32(std::process::id());
@@ -68,6 +19,10 @@ fn current_rss_mb() -> f64 {
         sys.process(pid)
             .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
             .unwrap_or(0.0)
+    }
+    #[cfg(not(feature = "memory-stats"))]
+    {
+        0.0
     }
 }
 
@@ -281,10 +236,11 @@ fn send_xml_fragment(
     let count = FRAG_PROCESS_COUNT.fetch_add(1, Ordering::Relaxed);
     let t_total = Instant::now();
     let rss_start = current_rss_mb();
-    tracing::info!(
-        "[PERF] XmlFragmenter::send_xml_fragment START | count={} | rss={:.1} MB",
+    tracing::debug!(
+        target: "perf",
         count,
-        rss_start
+        rss_mb = rss_start,
+        "XmlFragmenter::send_xml_fragment START"
     );
 
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
@@ -326,13 +282,14 @@ fn send_xml_fragment(
     let bytes = storage
         .get_sync(&url.path())
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let raw_xml = std::str::from_utf8(&bytes)
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    tracing::info!(
-        "[PERF] XmlFragmenter::send_xml_fragment file_read | count={} | xml_size={} bytes | rss={:.1} MB",
+    let raw_xml =
+        std::str::from_utf8(&bytes).map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+    tracing::debug!(
+        target: "perf",
         count,
-        raw_xml.len(),
-        current_rss_mb()
+        xml_size_bytes = raw_xml.len(),
+        rss_mb = current_rss_mb(),
+        "XmlFragmenter::send_xml_fragment file_read"
     );
     if elements_to_match.is_empty() {
         return Ok(());
@@ -352,14 +309,15 @@ fn send_xml_fragment(
     }
 
     let t_gen = Instant::now();
-    let result = generate_fragment_streaming(ctx, fw, feature, &url, &raw_xml, &match_tags);
-    tracing::info!(
-        "[PERF] XmlFragmenter::send_xml_fragment END | count={} | total={}ms gen={}ms | rss={:.1} MB (delta={:+.1})",
+    let result = generate_fragment_streaming(ctx, fw, feature, &url, raw_xml, &match_tags);
+    tracing::debug!(
+        target: "perf",
         count,
-        t_total.elapsed().as_millis(),
-        t_gen.elapsed().as_millis(),
-        current_rss_mb(),
-        current_rss_mb() - rss_start
+        total_ms = %t_total.elapsed().as_millis(),
+        gen_ms = %t_gen.elapsed().as_millis(),
+        rss_mb = current_rss_mb(),
+        rss_delta_mb = current_rss_mb() - rss_start,
+        "XmlFragmenter::send_xml_fragment END"
     );
     result
 }
@@ -475,10 +433,15 @@ fn generate_fragment_streaming(
                         });
                     fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
                     let rss_after_send = current_rss_mb();
-                    tracing::info!(
-                        "[PERF] XmlFragmenter::generate_fragment | tag={} | fragment_size={} bytes ({:.1} MB) | rss: before={:.1} after_build={:.1} after_send={:.1} MB",
-                        name, frag_size, frag_size as f64 / 1_048_576.0,
-                        rss_before, rss_after_build, rss_after_send
+                    tracing::debug!(
+                        target: "perf",
+                        tag = %name,
+                        fragment_size_bytes = frag_size,
+                        fragment_size_mb = frag_size as f64 / 1_048_576.0,
+                        rss_before_mb = rss_before,
+                        rss_after_build_mb = rss_after_build,
+                        rss_after_send_mb = rss_after_send,
+                        "XmlFragmenter::generate_fragment"
                     );
                     // Matched element's subtree is fully consumed; do NOT push to parent_stack
                 } else {

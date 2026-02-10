@@ -5,58 +5,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
-/// Get current process memory in MB.
-/// macOS: phys_footprint (same as Activity Monitor / top MEM).
-/// Other: sysinfo RSS fallback.
-fn current_rss_mb_dodv() -> f64 {
-    #[cfg(target_os = "macos")]
-    {
-        #[allow(non_camel_case_types)]
-        #[repr(C)]
-        struct task_vm_info {
-            virtual_size: u64,
-            region_count: i32,
-            page_size: i32,
-            resident_size: u64,
-            resident_size_peak: u64,
-            device: u64,
-            device_peak: u64,
-            internal: u64,
-            internal_peak: u64,
-            external: u64,
-            external_peak: u64,
-            reusable: u64,
-            reusable_peak: u64,
-            purgeable_volatile_pmap: u64,
-            purgeable_volatile_resident: u64,
-            purgeable_volatile_virtual: u64,
-            compressed: u64,
-            compressed_peak: u64,
-            compressed_lifetime: u64,
-            phys_footprint: u64,
-        }
-        const TASK_VM_INFO: u32 = 22;
-        extern "C" {
-            fn mach_task_self() -> u32;
-            fn task_info(t: u32, f: u32, o: *mut i32, c: *mut u32) -> i32;
-        }
-        unsafe {
-            let mut info: task_vm_info = std::mem::zeroed();
-            let mut count =
-                (std::mem::size_of::<task_vm_info>() / std::mem::size_of::<i32>()) as u32;
-            let kr = task_info(
-                mach_task_self(),
-                TASK_VM_INFO,
-                &mut info as *mut _ as *mut i32,
-                &mut count,
-            );
-            if kr == 0 {
-                return info.phys_footprint as f64 / 1024.0 / 1024.0;
-            }
-        }
-        0.0
-    }
-    #[cfg(not(target_os = "macos"))]
+/// Get current process RSS in MB (requires `memory-stats` feature).
+fn current_rss_mb() -> f64 {
+    #[cfg(feature = "memory-stats")]
     {
         use sysinfo::{Pid, ProcessesToUpdate, System};
         let pid = Pid::from_u32(std::process::id());
@@ -65,6 +16,10 @@ fn current_rss_mb_dodv() -> f64 {
         sys.process(pid)
             .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
             .unwrap_or(0.0)
+    }
+    #[cfg(not(feature = "memory-stats"))]
+    {
+        0.0
     }
 }
 
@@ -638,11 +593,12 @@ fn process_feature(
 
     let mut response = ValidateResponse::default();
 
-    let rss_start = current_rss_mb_dodv();
-    tracing::info!(
-        "[PERF] DomainOfDefinitionValidator::process_feature START | xml_size={} bytes | rss={:.1} MB",
-        xml_str.len(),
-        rss_start
+    let rss_start = current_rss_mb();
+    tracing::debug!(
+        target: "perf",
+        xml_size_bytes = xml_str.len(),
+        rss_mb = rss_start,
+        "DomainOfDefinitionValidator::process_feature START"
     );
 
     let t_total = Instant::now();
@@ -735,10 +691,11 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     let members_ms = t_members.elapsed().as_millis();
-    tracing::info!(
-        "[PERF] DomainOfDefinitionValidator::process_feature members_stream | elapsed={}ms | rss={:.1} MB",
-        members_ms,
-        current_rss_mb_dodv()
+    tracing::debug!(
+        target: "perf",
+        elapsed_ms = %members_ms,
+        rss_mb = current_rss_mb(),
+        "DomainOfDefinitionValidator::process_feature members_stream"
     );
 
     if let Some(err) = stream_error {
@@ -774,13 +731,22 @@ fn process_feature(
         }
     }
     let total_ms = t_total.elapsed().as_millis();
-    tracing::info!(
-        "[PERF] DomainOfDefinitionValidator::process_feature END | total={}ms envelope={}ms members_stream={}ms collect_xlinks={}ms members={} | collect={}ms codespace_proc={}ms pos_proc={}ms xlink_proc={}ms lod_proc={}ms ext_stream={}ms | rss={:.1} MB (delta={:+.1})",
-        total_ms, envelope_ms, members_ms, xlinks_ms, member_count,
-        accum_collect_ms, accum_codespace_proc_ms, accum_pos_proc_ms,
-        accum_xlink_proc_ms, accum_lod_proc_ms, accum_ext_stream_ms,
-        current_rss_mb_dodv(),
-        current_rss_mb_dodv() - rss_start,
+    tracing::debug!(
+        target: "perf",
+        total_ms = %total_ms,
+        envelope_ms = %envelope_ms,
+        members_stream_ms = %members_ms,
+        collect_xlinks_ms = %xlinks_ms,
+        member_count,
+        collect_ms = %accum_collect_ms,
+        codespace_proc_ms = %accum_codespace_proc_ms,
+        pos_proc_ms = %accum_pos_proc_ms,
+        xlink_proc_ms = %accum_xlink_proc_ms,
+        lod_proc_ms = %accum_lod_proc_ms,
+        ext_stream_ms = %accum_ext_stream_ms,
+        rss_mb = current_rss_mb(),
+        rss_delta_mb = current_rss_mb() - rss_start,
+        "DomainOfDefinitionValidator::process_feature END"
     );
     let mut result_feature = feature.clone();
     let envelope = &response.envelope;

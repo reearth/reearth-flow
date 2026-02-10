@@ -19,58 +19,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-/// Get current process memory in MB.
-/// macOS: phys_footprint (same as Activity Monitor / top MEM).
-/// Other: sysinfo RSS fallback.
+/// Get current process RSS in MB (requires `memory-stats` feature).
 fn current_rss_mb() -> f64 {
-    #[cfg(target_os = "macos")]
-    {
-        #[allow(non_camel_case_types)]
-        #[repr(C)]
-        struct task_vm_info {
-            virtual_size: u64,
-            region_count: i32,
-            page_size: i32,
-            resident_size: u64,
-            resident_size_peak: u64,
-            device: u64,
-            device_peak: u64,
-            internal: u64,
-            internal_peak: u64,
-            external: u64,
-            external_peak: u64,
-            reusable: u64,
-            reusable_peak: u64,
-            purgeable_volatile_pmap: u64,
-            purgeable_volatile_resident: u64,
-            purgeable_volatile_virtual: u64,
-            compressed: u64,
-            compressed_peak: u64,
-            compressed_lifetime: u64,
-            phys_footprint: u64,
-        }
-        const TASK_VM_INFO: u32 = 22;
-        extern "C" {
-            fn mach_task_self() -> u32;
-            fn task_info(t: u32, f: u32, o: *mut i32, c: *mut u32) -> i32;
-        }
-        unsafe {
-            let mut info: task_vm_info = std::mem::zeroed();
-            let mut count =
-                (std::mem::size_of::<task_vm_info>() / std::mem::size_of::<i32>()) as u32;
-            let kr = task_info(
-                mach_task_self(),
-                TASK_VM_INFO,
-                &mut info as *mut _ as *mut i32,
-                &mut count,
-            );
-            if kr == 0 {
-                return info.phys_footprint as f64 / 1024.0 / 1024.0;
-            }
-        }
-        0.0
-    }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(feature = "memory-stats")]
     {
         use sysinfo::{Pid, ProcessesToUpdate, System};
         let pid = Pid::from_u32(std::process::id());
@@ -79,6 +30,10 @@ fn current_rss_mb() -> f64 {
         sys.process(pid)
             .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
             .unwrap_or(0.0)
+    }
+    #[cfg(not(feature = "memory-stats"))]
+    {
+        0.0
     }
 }
 
@@ -203,10 +158,11 @@ impl Processor for MissingAttributeDetector {
         let count = MAD_PROCESS_COUNT.fetch_add(1, Ordering::Relaxed);
         let t_start = Instant::now();
         if count.is_multiple_of(100) {
-            tracing::info!(
-                "[PERF] MissingAttributeDetector::process START | count={} | rss={:.1} MB",
+            tracing::debug!(
+                target: "perf",
                 count,
-                current_rss_mb()
+                rss_mb = current_rss_mb(),
+                "MissingAttributeDetector::process START"
             );
         }
 
@@ -260,11 +216,12 @@ impl Processor for MissingAttributeDetector {
         }
 
         if count.is_multiple_of(100) {
-            tracing::info!(
-                "[PERF] MissingAttributeDetector::process END | count={} | elapsed={}ms | rss={:.1} MB",
+            tracing::debug!(
+                target: "perf",
                 count,
-                t_start.elapsed().as_millis(),
-                current_rss_mb()
+                elapsed_ms = %t_start.elapsed().as_millis(),
+                rss_mb = current_rss_mb(),
+                "MissingAttributeDetector::process END"
             );
         }
         Ok(())
@@ -645,11 +602,12 @@ impl MissingAttributeDetector {
 
         let count = MAD_PROCESS_COUNT.load(Ordering::Relaxed);
         if count.is_multiple_of(100) {
-            tracing::info!(
-                "[PERF] MissingAttributeDetector::detect single-pass | elapsed={}ms | xml_size={} | rss={:.1} MB",
-                t_detect.elapsed().as_millis(),
-                xml_content.len(),
-                current_rss_mb()
+            tracing::debug!(
+                target: "perf",
+                elapsed_ms = %t_detect.elapsed().as_millis(),
+                xml_size_bytes = xml_content.len(),
+                rss_mb = current_rss_mb(),
+                "MissingAttributeDetector::detect single-pass"
             );
         }
 
@@ -1074,29 +1032,6 @@ mod tests {
     fn test_c07_missing_geometry_src_desc() -> Result<(), BoxedError> {
         // Arrange
         let feature = create_feature_with_missing_geometry_src_desc();
-
-        // Debug: Check what the collect_all_info returns
-        let xml = feature.get("xmlFragment").unwrap();
-        if let AttributeValue::String(xml_content) = xml {
-            let collected = collect_all_info(xml_content).unwrap();
-            eprintln!("DEBUG: root_qname: {}", collected.root_qname);
-            eprintln!("DEBUG: root_child_names: {:?}", collected.root_child_names);
-            eprintln!(
-                "DEBUG: all_local_names: {:?}",
-                collected
-                    .all_local_names
-                    .iter()
-                    .take(10)
-                    .collect::<Vec<_>>()
-            );
-            eprintln!(
-                "DEBUG: all_local_names contains DataQualityAttribute: {}",
-                collected.all_local_names.contains("DataQualityAttribute")
-            );
-            eprintln!("DEBUG: local_name_texts: {:?}", collected.local_name_texts);
-            let lod_count = count_lod_from_collected(&collected, "bldg");
-            eprintln!("DEBUG: lod_count: {:?}", lod_count);
-        }
 
         // Act
         let fw = run_processor_with_feature(feature)?;

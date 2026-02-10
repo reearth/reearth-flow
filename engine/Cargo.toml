@@ -49,8 +49,8 @@ lto = "fat"
 
 [workspace.dependencies]
 reearth-flow-action-log = { path = "runtime/action-log" }
-reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
-reearth-flow-action-processor = { path = "runtime/action-processor" }
+reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor", default-features = false }
+reearth-flow-action-processor = { path = "runtime/action-processor", default-features = false }
 reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
