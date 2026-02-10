@@ -114,9 +114,7 @@ impl CenterPointReplacer {
             return;
         };
         let mut feature = feature.clone();
-        let mut geometry = geometry.clone();
-        geometry.value = GeometryValue::FlowGeometry2D(centroid.into());
-        feature.geometry = geometry.into();
+        feature.geometry = Geometry { epsg: geometry.epsg, value: GeometryValue::FlowGeometry2D(centroid.into()) }.into();
         fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 
@@ -128,24 +126,24 @@ impl CenterPointReplacer {
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) {
-        let polygons: Vec<_> = city_gml
+        let mut polygons = city_gml
             .gml_geometries
             .iter()
-            .flat_map(|g| g.polygons.iter())
-            .collect();
-        if polygons.len() != 1 {
+            .flat_map(|g| g.polygons.iter());
+        let Some(polygon) = polygons.next() else {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            return;
+        };
+        if polygons.next().is_some() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return;
         }
-        let polygon = polygons[0];
         let Some(centroid) = polygon.centroid() else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return;
         };
         let mut feature = feature.clone();
-        let mut geometry = geometry.clone();
-        geometry.value = GeometryValue::FlowGeometry3D(centroid.into());
-        feature.geometry = geometry.into();
+        feature.geometry = Geometry { epsg: geometry.epsg, value: GeometryValue::FlowGeometry3D(centroid.into()) }.into();
         fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 
@@ -162,9 +160,7 @@ impl CenterPointReplacer {
             return;
         };
         let mut feature = feature.clone();
-        let mut geometry = geometry.clone();
-        geometry.value = GeometryValue::FlowGeometry3D(centroid.into());
-        feature.geometry = geometry.into();
+        feature.geometry = Geometry { epsg: geometry.epsg, value: GeometryValue::FlowGeometry3D(centroid.into()) }.into();
         fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 }
