@@ -537,21 +537,27 @@ fn compute_xml_id_from_start_event(
     e: &quick_xml::events::BytesStart,
     name: &str,
 ) -> String {
-    // Check for 'id' attribute (exact key match, same as EditableNode::get_attribute("id"))
+    // Check for 'id' attribute (bare or namespaced, e.g. "gml:id").
+    // quick_xml exposes the raw attribute name including any prefix, so we treat any *:id
+    // as an ID attribute to match the DOM-based get_attributes().get("id") behavior.
     for attr in e.attributes().flatten() {
         let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
-        if key == "id" {
+        if key == "id" || key.ends_with(":id") {
             return attr.unescape_value().unwrap_or_default().to_string();
         }
     }
-    // Fall back to hash from all attributes (sorted)
+    // Fall back to hash from attributes (sorted), excluding namespace declarations
+    // (xmlns / xmlns:*) to match DOM-based get_attributes() which omits them.
     let mut key_values: Vec<String> = e
         .attributes()
         .flatten()
-        .map(|attr| {
+        .filter_map(|attr| {
             let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+            if key == "xmlns" || key.starts_with("xmlns:") {
+                return None;
+            }
             let value = attr.unescape_value().unwrap_or_default();
-            format!("{key}={value}")
+            Some(format!("{key}={value}"))
         })
         .collect();
     key_values.sort();
