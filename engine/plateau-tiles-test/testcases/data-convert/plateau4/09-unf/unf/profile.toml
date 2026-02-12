@@ -3,6 +3,9 @@ citygml_zip_name = "13999_tokyo_udx-mlit_2024_citygml_2_sample-takeshiba_op_unf.
 [tests.cesium.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+".attributes.uro:depth" = "float"
+".attributes.uro:maxDepth" = "float"
+".attributes.uro:minDepth" = "float"
 
 [tests.mvt_polygons]
 threshold = 0.001
