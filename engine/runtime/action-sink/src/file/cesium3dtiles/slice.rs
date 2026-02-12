@@ -284,7 +284,7 @@ fn slice_polygon(
                 .zip(
                     uv_coords
                         .iter()
-                        .map(|uv| *uv)
+                        .copied()
                         .chain(std::iter::repeat([0.0, 0.0]))
                         .take(ring_coords.len()),
                 )
