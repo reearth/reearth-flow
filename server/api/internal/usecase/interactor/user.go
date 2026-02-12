@@ -57,6 +57,17 @@ func (i *User) Signup(ctx context.Context, p interfaces.SignupParam) (*accountsu
 		workspaceID = p.WorkspaceID.String()
 	}
 
+	if userID == "" {
+		return i.userRepo.SignupNoID(
+			ctx,
+			p.Name,
+			p.Email,
+			p.Password,
+			lo.FromPtr(p.Secret),
+			p.MockAuth,
+		)
+	}
+
 	return i.userRepo.Signup(
 		ctx,
 		userID,
