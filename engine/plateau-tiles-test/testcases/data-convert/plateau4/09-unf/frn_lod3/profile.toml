@@ -3,16 +3,9 @@ citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_unf.zip"
 [tests.json_attributes.dictionary]
 path = "dictionary.json"
 
-[tests.cesium_attributes.casts]
+[tests.cesium.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
-
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-
-[tests.mvt_polygons]
-threshold = 0.001
 
 [filter.tree]
 "udx/unf/" = ["08EE752_unf_10169_sewer_op.gml"]

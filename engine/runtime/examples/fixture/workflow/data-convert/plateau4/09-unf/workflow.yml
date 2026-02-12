@@ -149,6 +149,13 @@ graphs:
             - attribute: __package
               valueAttribute: package
 
+      - id: aa1b2c3d-4e5f-6a7b-8c9d-e0f123456789
+        name: HorizontalReprojectorToGeographic
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: "6668"
+
       - id: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
         name: FeatureLodFilter
         type: action
@@ -504,9 +511,14 @@ graphs:
         to: a9c3d0e4-5b6f-7a8c-1d2e-f34567890126
         fromPort: default
         toPort: default
-      # AttributeMapper -> FeatureLodFilter
+      # AttributeMapper -> HorizontalReprojector -> FeatureLodFilter
       - id: c9e3f0a4-5d6b-7c8e-1f2a-b345678901ae
         from: a9c3d0e4-5b6f-7a8c-1d2e-f34567890126
+        to: aa1b2c3d-4e5f-6a7b-8c9d-e0f123456789
+        fromPort: default
+        toPort: default
+      - id: aa1b2c3d-4e5f-6a7b-8c9d-e0f12345ff00
+        from: aa1b2c3d-4e5f-6a7b-8c9d-e0f123456789
         to: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
         fromPort: default
         toPort: default
