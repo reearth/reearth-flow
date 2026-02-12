@@ -96,7 +96,11 @@ pub(crate) struct GeometryCollector {
 }
 
 impl GeometryCollector {
-    fn new(tileset_dir: PathBuf, casts: &HashMap<String, CastConfig>, self_consistency_check: bool) -> Self {
+    fn new(
+        tileset_dir: PathBuf,
+        casts: &HashMap<String, CastConfig>,
+        self_consistency_check: bool,
+    ) -> Self {
         Self {
             tileset_dir,
             casts: structural_casts(casts),
@@ -227,7 +231,12 @@ impl GeometryCollector {
                         self.casts.clone(),
                         Default::default(),
                     )
-                    .map_err(|e| format!("Self-consistency check failed for feature_key in {:?}: {}", glb_path, e))?;
+                    .map_err(|e| {
+                        format!(
+                            "Self-consistency check failed for feature_key in {:?}: {}",
+                            glb_path, e
+                        )
+                    })?;
                 }
             } else {
                 self.feature_attributes.insert(key.clone(), props_value);
@@ -444,7 +453,8 @@ pub fn collect_geometries_by_ident(
     self_consistency_check: bool,
 ) -> Result<GeometryCollector, String> {
     let tileset_info = load_tileset(tileset_dir)?;
-    let mut collector = GeometryCollector::new(tileset_dir.to_path_buf(), casts, self_consistency_check);
+    let mut collector =
+        GeometryCollector::new(tileset_dir.to_path_buf(), casts, self_consistency_check);
 
     if let Some(root) = tileset_info.content.get("root") {
         collector.process_tile(root)?;

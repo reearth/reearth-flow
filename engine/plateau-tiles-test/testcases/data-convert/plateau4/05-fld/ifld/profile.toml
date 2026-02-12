@@ -6,7 +6,6 @@ citygml_zip_name = "11100_saitama-shi_city_2024_citygml_1_op_ifld.zip"
 ".dm_attributes" = "json"
 ".uro:rankOrg_code" = "string"
 
-
 [tests.json_attributes.dictionary]
 path = "dictionary.json"
 [tests.json_attributes.dictionary.casts.".ifld"]

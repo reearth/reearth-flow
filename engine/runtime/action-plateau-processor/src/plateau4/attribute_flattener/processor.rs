@@ -730,7 +730,17 @@ impl AttributeFlattener {
         let generic_schema = self.common_attribute_processor.get_generic_schema();
         feature.extend(generic_schema);
 
-        for typ in ["fld", "tnm", "htd", "ifld", "rfld", "lsld"] {
+        // fld attributes use sorted order (by desc_code, admin_code, scale_code, order)
+        if let Some(fld_definitions) = self.flattener.risk_to_attribute_definitions.get("fld") {
+            let mut entries = self.flattener.fld_sort_entries.clone();
+            super::flattener::sort_fld_entries(&mut entries);
+            for entry in &entries {
+                if let Some(value_type) = fld_definitions.get(&entry.attr_name) {
+                    feature.insert(entry.attr_name.clone(), value_type.clone());
+                }
+            }
+        }
+        for typ in ["tnm", "htd", "ifld", "rfld", "lsld"] {
             if let Some(definition) = self.flattener.risk_to_attribute_definitions.get(typ) {
                 feature.extend(
                     definition

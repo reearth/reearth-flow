@@ -207,7 +207,7 @@ rust_xlsxwriter = "0.92.2"
 schemars = { version = "0.8.22", features = ["chrono", "uuid1"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_derive = "1.0.228"
-serde_json = { version = "1.0.145", features = ["arbitrary_precision"] }
+serde_json = { version = "1.0.145", features = ["arbitrary_precision", "preserve_order"] }
 serde_yaml = "0.9.34"
 sha2 = "0.10.9"
 shapefile = { version = "0.7.0", features = ["encoding_rs"] }

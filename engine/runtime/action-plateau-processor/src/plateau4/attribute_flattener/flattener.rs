@@ -3,9 +3,41 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use reearth_flow_types::{Attribute, AttributeValue};
 
+/// Sort key for flooding risk schema attributes, matching FME's fldAttrsSorter.
+/// Sorted by (desc_code, admin_code, scale_code, order) where desc_code
+/// is compared numerically when parseable as i64.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(super) struct FldSortEntry {
+    pub desc_code: String,
+    pub admin_code: String,
+    pub scale_code: String,
+    pub order: u8,
+    pub attr_name: String,
+}
+
+impl FldSortEntry {
+    fn sort_key(&self) -> impl Ord + '_ {
+        let desc_num = self.desc_code.parse::<i64>().ok();
+        (
+            desc_num,
+            &self.desc_code,
+            &self.admin_code,
+            &self.scale_code,
+            self.order,
+        )
+    }
+}
+
+/// Sort fld entries by (desc_code numeric, desc_code string, admin_code, scale_code, order)
+pub(super) fn sort_fld_entries(entries: &mut [FldSortEntry]) {
+    entries.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct Flattener {
     pub(super) risk_to_attribute_definitions: HashMap<String, IndexMap<String, AttributeValue>>,
+    /// Unsorted entries for fld risk attributes; sorted once at schema generation time.
+    pub(super) fld_sort_entries: Vec<FldSortEntry>,
 }
 
 impl Flattener {
@@ -52,18 +84,33 @@ impl Flattener {
             let depth = risk_obj.get("uro:depth").map(|v| v.to_string());
             let duration = risk_obj.get("uro:duration").map(|v| v.to_string());
 
+            // Extract code values for schema sort order (matching FME's fldAttrsSorter)
+            let desc_code = risk_obj
+                .get("uro:description_code")
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| desc.clone());
+            let admin_code = risk_obj
+                .get("uro:adminType_code")
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| admin.clone());
+            let scale_code = risk_obj
+                .get("uro:scale_code")
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| scale.clone());
+
             let attribs = vec![
-                ("浸水ランク", AttributeValue::default_string(), rank),
+                ("浸水ランク", AttributeValue::default_string(), rank, 1u8),
                 (
                     "浸水ランクコード",
                     AttributeValue::default_number(),
                     rank_code,
+                    2,
                 ),
-                ("浸水深", AttributeValue::default_float(), depth),
-                ("浸水継続時間", AttributeValue::default_float(), duration),
+                ("浸水深", AttributeValue::default_float(), depth, 3),
+                ("浸水継続時間", AttributeValue::default_float(), duration, 4),
             ];
 
-            for (label, value, value_opt) in attribs {
+            for (label, value, value_opt, order) in attribs {
                 if let Some(value_str) = value_opt {
                     let name = format!("{basename}_{label}");
                     result.insert(
@@ -74,6 +121,13 @@ impl Flattener {
                         .entry("fld".to_string())
                         .or_default()
                         .insert(name.clone(), value);
+                    self.fld_sort_entries.push(FldSortEntry {
+                        desc_code: desc_code.clone(),
+                        admin_code: admin_code.clone(),
+                        scale_code: scale_code.clone(),
+                        order,
+                        attr_name: name,
+                    });
                 }
             }
         }
