@@ -3,7 +3,6 @@ use crate::object_list::ObjectListMap;
 use super::errors::PlateauProcessorError;
 use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
-use reearth_flow_common::process::current_rss_mb;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -17,10 +16,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
-
-static MAD_PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 static REQUIRED_PORT: Lazy<Port> = Lazy::new(|| Port::new("required"));
@@ -138,17 +133,6 @@ impl Processor for MissingAttributeDetector {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let count = MAD_PROCESS_COUNT.fetch_add(1, Ordering::Relaxed);
-        let t_start = Instant::now();
-        if count.is_multiple_of(100) {
-            tracing::debug!(
-                target: "perf",
-                count,
-                rss_mb = current_rss_mb(),
-                "MissingAttributeDetector::process START"
-            );
-        }
-
         let feature = &ctx.feature;
         let AttributeValue::String(package) = feature
             .attributes
@@ -198,15 +182,6 @@ impl Processor for MissingAttributeDetector {
             self.process_group(ctx.as_context(), fw, package.to_string())?;
         }
 
-        if count.is_multiple_of(100) {
-            tracing::debug!(
-                target: "perf",
-                count,
-                elapsed_ms = %t_start.elapsed().as_millis(),
-                rss_mb = current_rss_mb(),
-                "MissingAttributeDetector::process END"
-            );
-        }
         Ok(())
     }
 
@@ -389,7 +364,6 @@ impl MissingAttributeDetector {
             ));
         };
 
-        let t_detect = Instant::now();
         let collected = collect_all_info(xml_content)?;
         let gml_id = collected.root_gml_id.clone().ok_or(
             PlateauProcessorError::MissingAttributeDetector("Failed to get gml id".to_string()),
@@ -582,17 +556,6 @@ impl MissingAttributeDetector {
         } else {
             "Warn"
         };
-
-        let count = MAD_PROCESS_COUNT.load(Ordering::Relaxed);
-        if count.is_multiple_of(100) {
-            tracing::debug!(
-                target: "perf",
-                elapsed_ms = %t_detect.elapsed().as_millis(),
-                xml_size_bytes = xml_content.len(),
-                rss_mb = current_rss_mb(),
-                "MissingAttributeDetector::detect single-pass"
-            );
-        }
 
         // C07/C08 Data Quality Attribute validation
         let lod_count = count_lod_from_collected(&collected, package);

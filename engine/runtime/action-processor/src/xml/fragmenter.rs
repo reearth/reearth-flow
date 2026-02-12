@@ -1,16 +1,11 @@
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::Arc,
     time::Instant,
 };
 
-static FRAG_PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
-
-use reearth_flow_common::{process::current_rss_mb, str::to_hash, uri::Uri};
+use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -215,15 +210,7 @@ fn send_xml_fragment(
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
 ) -> Result<()> {
-    let count = FRAG_PROCESS_COUNT.fetch_add(1, Ordering::Relaxed);
     let t_total = Instant::now();
-    let rss_start = current_rss_mb();
-    tracing::debug!(
-        target: "perf",
-        count,
-        rss_mb = rss_start,
-        "XmlFragmenter::send_xml_fragment START"
-    );
 
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -266,13 +253,6 @@ fn send_xml_fragment(
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
     let raw_xml =
         std::str::from_utf8(&bytes).map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    tracing::debug!(
-        target: "perf",
-        count,
-        xml_size_bytes = raw_xml.len(),
-        rss_mb = current_rss_mb(),
-        "XmlFragmenter::send_xml_fragment file_read"
-    );
     if elements_to_match.is_empty() {
         return Ok(());
     }
@@ -294,11 +274,8 @@ fn send_xml_fragment(
     let result = generate_fragment_streaming(ctx, fw, feature, &url, raw_xml, &match_tags);
     tracing::debug!(
         target: "perf",
-        count,
         total_ms = %t_total.elapsed().as_millis(),
         gen_ms = %t_gen.elapsed().as_millis(),
-        rss_mb = current_rss_mb(),
-        rss_delta_mb = current_rss_mb() - rss_start,
         "XmlFragmenter::send_xml_fragment END"
     );
     result
@@ -338,8 +315,6 @@ fn generate_fragment_streaming(
                     .to_string();
 
                 if match_tags_set.contains(name.as_str()) {
-                    let rss_before = current_rss_mb();
-
                     let xml_id = compute_xml_id_from_start_event(uri, e, &name);
 
                     // Compute parent_id from the immediate parent element on the stack
@@ -396,9 +371,6 @@ fn generate_fragment_streaming(
                         inject_ns_into_opening_tag(raw_slice, &ns_inject)
                     };
 
-                    let frag_size = fragment.len();
-                    let rss_after_build = current_rss_mb();
-
                     let frag = XmlFragment {
                         xml_id,
                         fragment,
@@ -414,17 +386,6 @@ fn generate_fragment_streaming(
                             value.attributes_mut().insert(k, v);
                         });
                     fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
-                    let rss_after_send = current_rss_mb();
-                    tracing::debug!(
-                        target: "perf",
-                        tag = %name,
-                        fragment_size_bytes = frag_size,
-                        fragment_size_mb = frag_size as f64 / 1_048_576.0,
-                        rss_before_mb = rss_before,
-                        rss_after_build_mb = rss_after_build,
-                        rss_after_send_mb = rss_after_send,
-                        "XmlFragmenter::generate_fragment"
-                    );
                     // Matched element's subtree is fully consumed; do NOT push to parent_stack
                 } else {
                     // Non-matched element: push to stack for parent lookups
