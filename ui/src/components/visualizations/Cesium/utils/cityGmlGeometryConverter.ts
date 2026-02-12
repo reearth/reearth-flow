@@ -15,7 +15,9 @@ import {
   PolylineGraphics,
   ConstantPositionProperty,
   Cartographic,
+  Viewer,
 } from "cesium";
+import { RefObject } from "react";
 
 import { generateUUID } from "@flow/utils";
 
@@ -1008,4 +1010,50 @@ function createFallbackEntity(
   entity.properties = propertyBag;
 
   return true;
+}
+
+export function updateLod2Feature(
+  entry: {
+    feature: CityGmlFeature;
+    entity: EntityWithSurfaces;
+  },
+  lod2Polygons: ProcessedPolygon[],
+  viewer: Viewer,
+  entitiesRef: RefObject<Entity[]>,
+): any {
+  const { entity } = entry;
+  const surfaces = entity.surfaces ?? [];
+
+  // Mutate existing surfaces or add new ones for LOD2
+  for (let i = 0; i < lod2Polygons.length; i++) {
+    if (i < surfaces.length) {
+      // Mutate existing surface entity in-place via ConstantProperty.setValue()
+      const hierarchy = surfaces[i].polygon?.hierarchy as ConstantProperty;
+      hierarchy?.setValue(new PolygonHierarchy(lod2Polygons[i].positions));
+      surfaces[i].show = true;
+    } else {
+      // LOD2 has more polygons than LOD1 - create extra surface entities
+      const surfaceEntity = new Entity({
+        id: `${entity.id}_lod2_extra_${i}`,
+        name: `${entity.name} - ${lod2Polygons[i].surfaceType} ${i + 1}`,
+        polygon: new PolygonGraphics({
+          hierarchy: new ConstantProperty(
+            new PolygonHierarchy(lod2Polygons[i].positions),
+          ),
+          material: lod2Polygons[i].material,
+          outline: new ConstantProperty(true),
+          outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
+          outlineWidth: new ConstantProperty(2),
+          heightReference: new ConstantProperty(HeightReference.NONE),
+          perPositionHeight: new ConstantProperty(true),
+        }),
+      });
+      viewer.entities.add(surfaceEntity);
+      surfaces.push(surfaceEntity);
+      entitiesRef.current.push(surfaceEntity);
+    }
+  }
+
+  // Update surfaces reference in case extras were added
+  entity.surfaces = surfaces;
 }
