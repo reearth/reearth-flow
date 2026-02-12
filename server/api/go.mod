@@ -23,7 +23,7 @@ require (
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/redis/go-redis/v9 v9.14.0
-	github.com/reearth/reearth-accounts/server v0.0.0-20260212114903-a898cdb505f6
+	github.com/reearth/reearth-accounts/server v0.0.0-20260212115920-1b0fa7642cf9
 	github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6
 	github.com/samber/lo v1.52.0
 	github.com/spf13/afero v1.15.0
