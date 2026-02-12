@@ -19,9 +19,18 @@ import {
 
 import { generateUUID } from "@flow/utils";
 
-// Extend Entity type to include surfaces
-type EntityWithSurfaces = Entity & {
+// Extend Entity type to include surfaces and LOD1 revert data
+export type EntityWithSurfaces = Entity & {
   surfaces?: Entity[];
+  lodData?: Cartesian3[][]; // LOD1 positions per surface for revert
+};
+
+export type ProcessedPolygon = {
+  positions: Cartesian3[];
+  surfaceType: string;
+  material: ColorMaterialProperty;
+  minZ: number;
+  maxZ: number;
 };
 
 type CityGmlGeometry = {
@@ -81,7 +90,93 @@ export function convertFeatureToEntity(
 }
 
 /**
+ * Process raw CityGML building polygons into positions arrays with surface metadata.
+ * Handles Z-analysis, surface type detection, ground level normalization, and coordinate conversion.
+ */
+function processPolygons(buildingPolygons: any[]): ProcessedPolygon[] {
+  const results: ProcessedPolygon[] = [];
+
+  // Pre-compute global ground level across all polygons
+  const allZValues = buildingPolygons.flatMap((p: any) =>
+    (p.exterior || []).map((c: any) => c.z || 0),
+  );
+  if (allZValues.length === 0) return results;
+  const globalMinZ = Math.min(...allZValues);
+
+  buildingPolygons.forEach((polygon) => {
+    if (!polygon.exterior || !Array.isArray(polygon.exterior)) return;
+
+    const zValues = polygon.exterior.map((coord: any) => coord.z || 0);
+    const minZ = Math.min(...zValues);
+    const maxZ = Math.max(...zValues);
+    const isFlat = Math.abs(maxZ - minZ) < 0.1;
+
+    let surfaceType: string;
+    let material: ColorMaterialProperty;
+
+    if (isFlat && minZ < globalMinZ + 1) {
+      surfaceType = "Floor";
+      material = new ColorMaterialProperty(Color.BROWN.withAlpha(0.8));
+    } else if (isFlat) {
+      surfaceType = "Roof";
+      material = new ColorMaterialProperty(Color.RED.withAlpha(0.8));
+    } else {
+      surfaceType = "Wall";
+      material = new ColorMaterialProperty(Color.BLUE.withAlpha(0.8));
+    }
+
+    const rawPositions = convertCoordinatesToPositions(polygon.exterior);
+    const positions = rawPositions.map((pos) => {
+      const cartographic = Cartographic.fromCartesian(pos);
+      cartographic.height = (cartographic.height || 0) - globalMinZ;
+      return Cartographic.toCartesian(cartographic);
+    });
+
+    if (positions.length >= 3) {
+      results.push({ positions, surfaceType, material, minZ, maxZ });
+    }
+  });
+
+  return results;
+}
+
+/**
+ * Extract LOD2 polygon data for a feature without creating entities.
+ * Returns processed polygon positions arrays for in-place mutation of existing surfaces.
+ */
+export function extractLodPolygons(
+  feature: CityGmlFeature,
+): ProcessedPolygon[] | null {
+  const { geometry } = feature;
+  const gmlGeometries =
+    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
+
+  if (!gmlGeometries || !Array.isArray(gmlGeometries)) return null;
+
+  const lod2Geometries = gmlGeometries.filter(
+    (geom: any) =>
+      geom.lod === 2 ||
+      geom.gml_trait?.property?.includes("Lod2") ||
+      geom.gml_trait?.property?.includes("LOD2"),
+  );
+
+  if (lod2Geometries.length === 0) return null;
+
+  const buildingPolygons: any[] = [];
+  lod2Geometries.forEach((geom: any) => {
+    if (geom.polygons && Array.isArray(geom.polygons)) {
+      buildingPolygons.push(...geom.polygons);
+    }
+  });
+
+  if (buildingPolygons.length === 0) return null;
+
+  return processPolygons(buildingPolygons);
+}
+
+/**
  * Convert building-specific geometry (solid, multi-surface, etc.)
+ * Always builds LOD1 on load; LOD1 positions are stored in entity.lodData for revert.
  */
 function convertBuildingGeometry(
   entity: EntityWithSurfaces,
@@ -110,100 +205,48 @@ function convertBuildingGeometry(
     return false;
   }
 
-  // Group geometries by LOD and create meaningful building entities
+  // Always build LOD1 on load
   const lod1Geometries = gmlGeometries.filter((geom) => geom.lod === 1);
 
-  let hasValidGeometry = false;
-  entity.surfaces = [];
+  if (lod1Geometries.length === 0) return false;
 
-  // Skip LOD0 footprints since we have proper 3D geometry
-  // (Footprints would be hidden under the brown floor polygons anyway)
+  const buildingPolygons: any[] = [];
+  lod1Geometries.forEach((geom) => {
+    if (geom.polygons && Array.isArray(geom.polygons)) {
+      buildingPolygons.push(...geom.polygons);
+    }
+  });
 
-  // Create LOD1+ 3D building geometry (walls + roof as single entity)
-  if (lod1Geometries.length > 0) {
-    const buildingPolygons: any[] = [];
-    lod1Geometries.forEach((geom) => {
-      if (geom.polygons && Array.isArray(geom.polygons)) {
-        buildingPolygons.push(...geom.polygons);
-      }
+  if (buildingPolygons.length === 0) return false;
+
+  const processed = processPolygons(buildingPolygons);
+  if (processed.length === 0) return false;
+
+  const surfaces: Entity[] = [];
+  const lodData: Cartesian3[][] = [];
+  entity.surfaces = surfaces;
+  entity.lodData = lodData;
+
+  processed.forEach((p, index) => {
+    const surfaceEntity = new Entity({
+      id: `${entity.id}_${p.surfaceType.toLowerCase()}_${index}`,
+      name: `${entity.name} - ${p.surfaceType} ${index + 1}`,
+      polygon: new PolygonGraphics({
+        hierarchy: new ConstantProperty(new PolygonHierarchy(p.positions)),
+        material: p.material,
+        outline: new ConstantProperty(true),
+        outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
+        outlineWidth: new ConstantProperty(2),
+        heightReference: new ConstantProperty(HeightReference.NONE),
+        perPositionHeight: new ConstantProperty(true),
+      }),
     });
 
-    if (buildingPolygons.length > 0) {
-      // Show ALL LOD1 polygons and categorize them properly
-      const limitedPolygons = buildingPolygons; // Show all, not just 3
-
-      limitedPolygons.forEach((polygon, index) => {
-        if (polygon.exterior && Array.isArray(polygon.exterior)) {
-          // Detect surface type by Z-coordinate pattern
-          const zValues = polygon.exterior.map((coord: any) => coord.z || 0);
-          const minZ = Math.min(...zValues);
-          const maxZ = Math.max(...zValues);
-          const isFlat = Math.abs(maxZ - minZ) < 0.1; // All points at same height
-
-          let surfaceType: string;
-          let material: ColorMaterialProperty;
-
-          if (
-            isFlat &&
-            minZ <
-              Math.min(
-                ...buildingPolygons.flatMap((p: any) =>
-                  p.exterior.map((c: any) => c.z),
-                ),
-              ) +
-                1
-          ) {
-            // Flat surface at low elevation = Floor
-            surfaceType = "Floor";
-            material = new ColorMaterialProperty(Color.BROWN.withAlpha(0.8));
-          } else if (isFlat) {
-            // Flat surface at high elevation = Roof
-            surfaceType = "Roof";
-            material = new ColorMaterialProperty(Color.RED.withAlpha(0.8));
-          } else {
-            // Varying heights = Wall
-            surfaceType = "Wall";
-            material = new ColorMaterialProperty(Color.BLUE.withAlpha(0.8));
-          }
-
-          // Get ground level for normalization
-          const groundLevel = Math.min(
-            ...buildingPolygons.flatMap((p: any) =>
-              p.exterior.map((c: any) => c.z || 0),
-            ),
-          );
-
-          // Convert coordinates and make them relative to ground level
-          const rawPositions = convertCoordinatesToPositions(polygon.exterior);
-          const positions = rawPositions.map((pos) => {
-            const cartographic = Cartographic.fromCartesian(pos);
-            // Offset height to be relative to ground (subtract minimum Z)
-            cartographic.height = (cartographic.height || 0) - groundLevel;
-            return Cartographic.toCartesian(cartographic);
-          });
-
-          if (positions.length >= 3) {
-            const surfaceEntity = new Entity({
-              id: `${entity.id}_${surfaceType.toLowerCase()}_${index}`,
-              name: `${entity.name} - ${surfaceType} ${index + 1}`,
-              polygon: new PolygonGraphics({
-                hierarchy: new ConstantProperty(
-                  new PolygonHierarchy(positions),
-                ),
-                material: material,
-                outline: new ConstantProperty(true),
-                outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
-                outlineWidth: new ConstantProperty(2),
-                heightReference: new ConstantProperty(HeightReference.NONE),
-                perPositionHeight: new ConstantProperty(true), // Enable per-vertex height
-              }),
-            });
-
-            // Add InfoBox content for individual surfaces
-            const surfaceInfoHtml = `
+    // Add InfoBox content for individual surfaces
+    const surfaceInfoHtml = `
             <div style="font-family: sans-serif; line-height: 1.4;">
-              <h3 style="margin: 0 0 10px 0; color: #2c3e50;">${surfaceType === "Wall" ? "🧱" : surfaceType === "Roof" ? "🏠" : "🏢"} ${surfaceType} Surface</h3>
-              
+              <h3 style="margin: 0 0 10px 0; color: #2c3e50;">${p.surfaceType === "Wall" ? "🧱" : p.surfaceType === "Roof" ? "🏠" : "🏢"} ${p.surfaceType} Surface</h3>
+
               <table style="width: 100%; border-collapse: collapse;">
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 4px 8px 4px 0; font-weight: bold; width: 40%;">Building:</td>
@@ -211,96 +254,87 @@ function convertBuildingGeometry(
                 </tr>
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 4px 8px 4px 0; font-weight: bold;">Surface Type:</td>
-                  <td style="padding: 4px 0;">${surfaceType}</td>
+                  <td style="padding: 4px 0;">${p.surfaceType}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 4px 8px 4px 0; font-weight: bold;">Height Range:</td>
-                  <td style="padding: 4px 0;">${minZ.toFixed(1)}m - ${maxZ.toFixed(1)}m</td>
+                  <td style="padding: 4px 0;">${p.minZ.toFixed(1)}m - ${p.maxZ.toFixed(1)}m</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 4px 8px 4px 0; font-weight: bold;">Surface #:</td>
-                  <td style="padding: 4px 0;">${index + 1} of ${buildingPolygons.length}</td>
+                  <td style="padding: 4px 0;">${index + 1} of ${processed.length}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 8px 4px 0; font-weight: bold;">Vertices:</td>
-                  <td style="padding: 4px 0;">${positions.length}</td>
+                  <td style="padding: 4px 0;">${p.positions.length}</td>
                 </tr>
               </table>
-              
+
               <p style="margin: 10px 0 0 0; font-size: 11px; color: #666;">
-                Part of building with ${buildingPolygons.length} total surfaces
+                Part of building with ${processed.length} total surfaces
               </p>
             </div>`;
 
-            surfaceEntity.description = new ConstantProperty(surfaceInfoHtml);
+    surfaceEntity.description = new ConstantProperty(surfaceInfoHtml);
 
-            const propertyBag = new PropertyBag(properties);
-            propertyBag.addProperty("cityGmlType", surfaceType);
-            propertyBag.addProperty("lod", 1);
-            propertyBag.addProperty("surfaceIndex", index + 1);
-            propertyBag.addProperty(
-              "totalLOD1Polygons",
-              buildingPolygons.length,
-            );
-            propertyBag.addProperty(
-              "zRange",
-              `${minZ.toFixed(2)}-${maxZ.toFixed(2)}m`,
-            );
-            surfaceEntity.properties = propertyBag;
+    const propertyBag = new PropertyBag(properties);
+    propertyBag.addProperty("cityGmlType", p.surfaceType);
+    propertyBag.addProperty("lod", 1);
+    propertyBag.addProperty("surfaceIndex", index + 1);
+    propertyBag.addProperty("totalLOD1Polygons", processed.length);
+    propertyBag.addProperty(
+      "zRange",
+      `${p.minZ.toFixed(2)}-${p.maxZ.toFixed(2)}m`,
+    );
+    surfaceEntity.properties = propertyBag;
 
-            if (!entity.surfaces) entity.surfaces = [];
-            entity.surfaces.push(surfaceEntity);
-            hasValidGeometry = true;
-          }
-        }
-      });
-    }
-  }
+    surfaces.push(surfaceEntity);
+    lodData.push([...p.positions]); // Store LOD1 positions for revert
+  });
 
-  if (hasValidGeometry) {
-    // Extract key building attributes for InfoBox
-    const buildingHeight = extractHeight(geometry, properties);
-    const buildingUsage =
-      properties?.cityGmlAttributes?.["bldg:usage"] ||
-      properties?.["bldg:usage"] ||
-      "Unknown";
-    const constructionYear =
-      properties?.cityGmlAttributes?.["bldg:yearOfConstruction"] ||
-      properties?.["bldg:yearOfConstruction"] ||
-      "Unknown";
-    const buildingClass =
-      properties?.cityGmlAttributes?.["bldg:class"] ||
-      properties?.["bldg:class"] ||
-      "Unknown";
-    const buildingId = properties?.gmlId || properties?.id || "Unknown";
-    const totalFloorArea =
-      properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro
-        ?.totalFloorArea || "Unknown";
-    const buildingFootprint =
-      properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro
-        ?.buildingFootprintArea || "Unknown";
-    const buildingSurfacesMeta = () => {
-      const length = entity.surfaces?.length || 0;
-      const walls =
-        entity.surfaces?.filter(
-          (s) => s.properties?.getValue()?.cityGmlType === "Wall",
-        ).length || 0;
-      const roofs =
-        entity.surfaces?.filter(
-          (s) => s.properties?.getValue()?.cityGmlType === "Roof",
-        ).length || 0;
-      const floors =
-        entity.surfaces?.filter(
-          (s) => s.properties?.getValue()?.cityGmlType === "Floor",
-        ).length || 0;
-      return { length, walls, roofs, floors };
-    };
+  // Extract key building attributes for InfoBox
+  const buildingHeight = extractHeight(geometry, properties);
+  const buildingUsage =
+    properties?.cityGmlAttributes?.["bldg:usage"] ||
+    properties?.["bldg:usage"] ||
+    "Unknown";
+  const constructionYear =
+    properties?.cityGmlAttributes?.["bldg:yearOfConstruction"] ||
+    properties?.["bldg:yearOfConstruction"] ||
+    "Unknown";
+  const buildingClass =
+    properties?.cityGmlAttributes?.["bldg:class"] ||
+    properties?.["bldg:class"] ||
+    "Unknown";
+  const buildingId = properties?.gmlId || properties?.id || "Unknown";
+  const totalFloorArea =
+    properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro
+      ?.totalFloorArea || "Unknown";
+  const buildingFootprint =
+    properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro
+      ?.buildingFootprintArea || "Unknown";
+  const buildingSurfacesMeta = () => {
+    const length = entity.surfaces?.length || 0;
+    const walls =
+      entity.surfaces?.filter(
+        (s) => s.properties?.getValue()?.cityGmlType === "Wall",
+      ).length || 0;
+    const roofs =
+      entity.surfaces?.filter(
+        (s) => s.properties?.getValue()?.cityGmlType === "Roof",
+      ).length || 0;
+    const floors =
+      entity.surfaces?.filter(
+        (s) => s.properties?.getValue()?.cityGmlType === "Floor",
+      ).length || 0;
+    return { length, walls, roofs, floors };
+  };
 
-    // Create HTML content for InfoBox
-    const infoBoxHtml = `
+  // Create HTML content for InfoBox
+  const infoBoxHtml = `
     <div style="font-family: sans-serif; line-height: 1.4;">
       <h3 style="margin: 0 0 10px 0; color: #2c3e50;">🏢 CityGML Building</h3>
-      
+
       <table style="width: 100%; border-collapse: collapse;">
         <tr style="border-bottom: 1px solid #eee;">
           <td style="padding: 4px 8px 4px 0; font-weight: bold; width: 40%;">ID:</td>
@@ -335,92 +369,78 @@ function convertBuildingGeometry(
           <td style="padding: 4px 0;">${buildingSurfacesMeta().length} (${buildingSurfacesMeta().walls} walls, ${buildingSurfacesMeta().roofs} roofs, ${buildingSurfacesMeta().floors} floors)</td>
         </tr>
       </table>
-      
+
       <p style="margin: 10px 0 0 0; font-size: 11px; color: #666;">
         Click on any building surface (wall/roof/floor) for combined surface + building details
       </p>
     </div>`;
 
-    // Set the InfoBox description on the main entity
-    entity.description = new ConstantProperty(infoBoxHtml);
+  // Set the InfoBox description on the main entity
+  entity.description = new ConstantProperty(infoBoxHtml);
 
-    // Instead of creating separate point entities, make surfaces clickable for main building info
-    // Add building info to each surface entity so clicking any surface shows both surface AND building details
-    if (entity.surfaces && entity.surfaces.length > 0) {
-      entity.surfaces.forEach((surface) => {
-        // Add building information to each surface's description
-        const currentSurfaceDescription = surface.description?.getValue() || "";
-        const combinedDescription = `
+  // Add building info to each surface entity so clicking any surface shows both surface AND building details
+  entity.surfaces.forEach((surface) => {
+    // Add building information to each surface's description
+    const currentSurfaceDescription = surface.description?.getValue() || "";
+    const combinedDescription = `
         <div style="font-family: sans-serif;">
           <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #ddd;">
             ${currentSurfaceDescription}
           </div>
-          
           <div>
             <h4 style="margin: 0 0 8px 0; color: #2c3e50;">🏢 Parent Building Details</h4>
             ${infoBoxHtml}
           </div>
         </div>`;
 
-        surface.description = new ConstantProperty(combinedDescription);
-      });
+    surface.description = new ConstantProperty(combinedDescription);
+  });
 
-      // Calculate a simple building center for positioning (without creating a point entity)
-      // This is just for potential future use, not for rendering
-      const floorSurfaces = entity.surfaces.filter(
-        (s) => s.properties?.getValue()?.cityGmlType === "Floor",
-      );
+  // Calculate a simple building center for positioning (without creating a point entity)
+  // This is just for potential future use, not for rendering
+  const floorSurfaces = entity.surfaces.filter(
+    (s) => s.properties?.getValue()?.cityGmlType === "Floor",
+  );
 
-      if (floorSurfaces.length > 0) {
-        // Use floor center as building center (more reliable than averaging all vertices)
-        const floorSurface = floorSurfaces[0];
-        if (floorSurface.polygon && floorSurface.polygon.hierarchy) {
-          const hierarchy = floorSurface.polygon.hierarchy.getValue();
-          if (
-            hierarchy &&
-            hierarchy.positions &&
-            hierarchy.positions.length > 0
-          ) {
-            let totalX = 0,
-              totalY = 0,
-              totalZ = 0;
-            hierarchy.positions.forEach((pos: Cartesian3) => {
-              totalX += pos.x;
-              totalY += pos.y;
-              totalZ += pos.z;
-            });
+  if (floorSurfaces.length > 0) {
+    // Use floor center as building center (more reliable than averaging all vertices)
+    const floorSurface = floorSurfaces[0];
+    if (floorSurface.polygon && floorSurface.polygon.hierarchy) {
+      const hierarchy = floorSurface.polygon.hierarchy.getValue();
+      if (hierarchy && hierarchy.positions && hierarchy.positions.length > 0) {
+        let totalX = 0,
+          totalY = 0,
+          totalZ = 0;
+        hierarchy.positions.forEach((pos: Cartesian3) => {
+          totalX += pos.x;
+          totalY += pos.y;
+          totalZ += pos.z;
+        });
 
-            const centerPosition = new Cartesian3(
-              totalX / hierarchy.positions.length,
-              totalY / hierarchy.positions.length,
-              totalZ / hierarchy.positions.length + buildingHeight * 0.5,
-            );
+        const centerPosition = new Cartesian3(
+          totalX / hierarchy.positions.length,
+          totalY / hierarchy.positions.length,
+          totalZ / hierarchy.positions.length + buildingHeight * 0.5,
+        );
 
-            // Store center position without creating a point entity
-            entity.position = new ConstantPositionProperty(centerPosition);
-          }
-        }
+        // Store center position without creating a point entity
+        entity.position = new ConstantPositionProperty(centerPosition);
       }
     }
-
-    // Store CityGML-specific properties on the main entity
-    const propertyBag = new PropertyBag(properties);
-    propertyBag.addProperty("cityGmlType", "Building");
-    propertyBag.addProperty("height", buildingHeight);
-    propertyBag.addProperty("usage", buildingUsage);
-    propertyBag.addProperty("constructionYear", constructionYear);
-    propertyBag.addProperty("buildingClass", buildingClass);
-    propertyBag.addProperty("buildingId", buildingId);
-    propertyBag.addProperty(
-      "surfaceCount",
-      entity.surfaces ? entity.surfaces.length : 0,
-    );
-    entity.properties = propertyBag;
-
-    return true;
   }
 
-  return false;
+  // Store CityGML-specific properties on the main entity
+  const propertyBag = new PropertyBag(properties);
+  propertyBag.addProperty("cityGmlType", "Building");
+  propertyBag.addProperty("height", buildingHeight);
+  propertyBag.addProperty("usage", buildingUsage);
+  propertyBag.addProperty("constructionYear", constructionYear);
+  propertyBag.addProperty("buildingClass", buildingClass);
+  propertyBag.addProperty("buildingId", buildingId);
+  propertyBag.addProperty("surfaceCount", entity.surfaces.length);
+  entity.properties = propertyBag;
+
+  return true;
 }
 
 /**

@@ -153,7 +153,12 @@ const CesiumViewer: React.FC<Props> = ({
           )}
 
           {/* CityGML features */}
-          {cityGmlData && <CityGmlData cityGmlData={cityGmlData} />}
+          {cityGmlData && (
+            <CityGmlData
+              cityGmlData={cityGmlData}
+              selectedFeatureId={selectedFeatureId}
+            />
+          )}
         </>
       )}
     </Viewer>
