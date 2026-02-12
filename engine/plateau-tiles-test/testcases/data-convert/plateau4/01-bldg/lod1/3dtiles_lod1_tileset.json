@@ -1,0 +1,90 @@
+{
+  "meshcode": {},
+  "feature_type": {},
+  "city_code": {},
+  "city_name": {},
+  "gml_id": {},
+  "attributes": {},
+  "core:creationDate": {},
+  "_lod": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "_x": {
+    "minimum": 138.8043479727935,
+    "maximum": 138.8043479727935
+  },
+  "_y": {
+    "minimum": 37.444558110256665,
+    "maximum": 37.444558110256665
+  },
+  "_xmin": {
+    "minimum": 138.80428394159702,
+    "maximum": 138.80428394159702
+  },
+  "_xmax": {
+    "minimum": 138.80441200399,
+    "maximum": 138.80441200399
+  },
+  "_ymin": {
+    "minimum": 37.4445224336942,
+    "maximum": 37.4445224336942
+  },
+  "_ymax": {
+    "minimum": 37.44459378681912,
+    "maximum": 37.44459378681912
+  },
+  "_zmin": {
+    "minimum": 22.742,
+    "maximum": 22.742
+  },
+  "_zmax": {
+    "minimum": 29.701,
+    "maximum": 29.701
+  },
+  "bldg:class": {},
+  "bldg:usage": {},
+  "bldg:measuredHeight": {
+    "minimum": 8.6,
+    "maximum": 8.6
+  },
+  "bldg:storeysAboveGround": {
+    "minimum": 2,
+    "maximum": 2
+  },
+  "uro:BuildingIDAttribute_uro:buildingID": {},
+  "uro:BuildingIDAttribute_uro:prefecture": {},
+  "uro:BuildingIDAttribute_uro:city": {},
+  "uro:BuildingDetailAttribute_uro:buildingHeight": {
+    "minimum": 6.5,
+    "maximum": 6.5
+  },
+  "uro:BuildingDetailAttribute_uro:surveyYear": {
+    "minimum": 2022,
+    "maximum": 2022
+  },
+  "uro:geometrySrcDescLod1": {},
+  "uro:lod1HeightType": {},
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L1（計画規模）_浸水ランク": {},
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L1（計画規模）_浸水ランクコード": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L1（計画規模）_浸水深": {
+    "minimum": 0.07,
+    "maximum": 0.07
+  },
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水ランク": {},
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水ランクコード": {
+    "minimum": 2,
+    "maximum": 2
+  },
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水深": {
+    "minimum": 2.653,
+    "maximum": 2.653
+  },
+  "信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間": {
+    "minimum": 20.0,
+    "maximum": 20.0
+  }
+}

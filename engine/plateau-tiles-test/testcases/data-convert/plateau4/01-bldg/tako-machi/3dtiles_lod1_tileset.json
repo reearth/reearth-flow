@@ -1,0 +1,76 @@
+{
+  "meshcode": {},
+  "feature_type": {},
+  "city_code": {},
+  "city_name": {},
+  "gml_id": {},
+  "attributes": {},
+  "core:creationDate": {},
+  "_lod": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "_x": {
+    "minimum": 140.45524907888773,
+    "maximum": 140.4609590904812
+  },
+  "_y": {
+    "minimum": 35.69340978171487,
+    "maximum": 35.7000010828733
+  },
+  "_xmin": {
+    "minimum": 140.4551797582095,
+    "maximum": 140.4609409334565
+  },
+  "_xmax": {
+    "minimum": 140.45526720132725,
+    "maximum": 140.46097724750587
+  },
+  "_ymin": {
+    "minimum": 35.69334011909071,
+    "maximum": 35.699930207264444
+  },
+  "_ymax": {
+    "minimum": 35.693479444339026,
+    "maximum": 35.700071958482155
+  },
+  "_zmin": {
+    "minimum": 4.50461,
+    "maximum": 12.84435
+  },
+  "_zmax": {
+    "minimum": 7.13279,
+    "maximum": 18.34435
+  },
+  "bldg:class": {},
+  "bldg:usage": {},
+  "bldg:measuredHeight": {
+    "minimum": 1.8,
+    "maximum": 15.9
+  },
+  "bldg:storeysAboveGround": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "uro:BuildingIDAttribute_uro:buildingID": {},
+  "uro:BuildingIDAttribute_uro:prefecture": {},
+  "uro:BuildingIDAttribute_uro:city": {},
+  "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": {
+    "minimum": 3.8,
+    "maximum": 416.2
+  },
+  "uro:BuildingDetailAttribute_uro:urbanPlanType": {},
+  "uro:BuildingDetailAttribute_uro:districtsAndZonesType": {},
+  "uro:BuildingDetailAttribute_uro:landUseType": {},
+  "uro:BuildingDetailAttribute_uro:surveyYear": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "uro:geometrySrcDescLod1": {},
+  "uro:lod1HeightType": {},
+  "土砂災害リスク_急傾斜地の崩落_区域区分": {},
+  "土砂災害リスク_急傾斜地の崩落_区域区分コード": {
+    "minimum": 1,
+    "maximum": 2
+  }
+}

@@ -5,6 +5,7 @@ mod compare_attributes;
 mod runner;
 mod test_cesium;
 mod test_json_attributes;
+mod test_json_attributes_v2;
 mod test_json_object_key_order;
 mod test_mvt_attributes;
 mod test_mvt_lines;
@@ -19,6 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Once;
 use test_cesium::CesiumConfig;
 use test_json_attributes::JsonFileConfig;
+use test_json_attributes_v2::JsonFileV2Config;
 use test_json_object_key_order::KeyOrderConfig;
 use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_lines::MvtLinesConfig;
@@ -59,6 +61,8 @@ struct Profile {
 struct Tests {
     #[serde(default)]
     json_attributes: Option<HashMap<String, JsonFileConfig>>,
+    #[serde(default)]
+    json_attributes_v2: Option<HashMap<String, JsonFileV2Config>>,
     #[serde(default)]
     mvt_attributes: Option<MvtAttributesConfig>,
     #[serde(default)]
@@ -248,6 +252,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                     &flow_source_dir,
                     &fme_extracted_dir,
                     &flow_extracted_dir,
+                    cfg,
+                )
+            });
+        }
+
+        if let Some(cfg) = &tests.json_attributes_v2 {
+            run_test("json_attributes_v2", &relative_path_display, || {
+                test_json_attributes_v2::test_json_attributes_v2(
+                    &output_dir,
+                    &test_path,
                     cfg,
                 )
             });
