@@ -1,0 +1,28 @@
+# OtherConstruction quality check subgraph (placeholder - no-op)
+# OtherConstruction supports LOD0-3 with Surface and Solid geometry
+# This is a placeholder that will be implemented with actual validation logic later.
+id: c0a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
+name: "CONS.OtherConstructionValidation"
+nodes:
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c70
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  # File output router (no files produced in no-op mode)
+  - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c50
+    name: OutputRouterFileOutput
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileOutput
+
+edges: []
+
+ports:
+  outputs:
+    - id: fileOutput
+      nodeId: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c50
+      port: default
