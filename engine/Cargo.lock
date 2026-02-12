@@ -914,6 +914,18 @@ dependencies = [
 [[package]]
 name = "cesiumtiles"
 version = "0.0.0"
+source = "git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1#a6a11d2b42aead81e5e7103317a8abd705cdcbb5"
+dependencies = [
+ "indexmap 2.13.0",
+ "serde",
+ "serde_json",
+ "serde_repr",
+]
+
+[[package]]
+name = "cesiumtiles"
+version = "0.0.0"
+source = "git+https://github.com/reearth/cesiumtiles-rs?branch=fix%2Findexmap#5682a609757a1cfb9d9d54ea7c0a1da707ca5e48"
 dependencies = [
  "indexmap 2.13.0",
  "serde",
@@ -4931,7 +4943,7 @@ name = "nusamai-gltf-json"
 version = "0.1.0"
 source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
- "cesiumtiles",
+ "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1)",
  "serde",
  "serde_json",
  "serde_repr",
@@ -5685,7 +5697,7 @@ version = "0.1.65"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
- "indexmap 2.12.1",
+ "indexmap 2.13.0",
  "prost",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
@@ -6597,7 +6609,7 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "bytes",
- "cesiumtiles",
+ "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?branch=fix%2Findexmap)",
  "chrono",
  "crossbeam",
  "crossbeam-channel",

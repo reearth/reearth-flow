@@ -98,7 +98,7 @@ bytemuck = { version = "1.24.0", features = ["derive"] }
 byteorder = "1.5.0"
 bytes = { version = "1.11.0", features = ["serde"] }
 calamine = "0.26.1"
-cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs", tag = "v0.0.1" }
+cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs", branch = "fix/indexmap" }
 chrono = { version = "0.4.42", features = ["serde"] }
 clap = { version = "4.5.53", features = ["env", "string"] }
 clipper-sys = "0.8.0"
@@ -263,6 +263,3 @@ walkdir = "2.5.0"
 wkt = "0.11.1"
 zip = "2.4.2"
 zstd = "0.13.3"
-
-[patch."https://github.com/reearth/cesiumtiles-rs"]
-cesiumtiles = { path = "../../cesiumtiles-rs" }
