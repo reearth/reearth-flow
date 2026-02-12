@@ -85,6 +85,7 @@ pub fn load_tileset(dir: &Path) -> Result<TilesetInfo, String> {
 pub(crate) struct GeometryCollector {
     tileset_dir: PathBuf,
     casts: HashMap<String, CastConfig>,
+    self_consistency_check: bool,
     pub(crate) vertex_positions: Vec<Coordinate>,
     pub(crate) vertex_colors: Option<Vec<[f32; 4]>>,
     pub(crate) vertex_materials: Option<Vec<u32>>,
@@ -95,10 +96,11 @@ pub(crate) struct GeometryCollector {
 }
 
 impl GeometryCollector {
-    fn new(tileset_dir: PathBuf, casts: &HashMap<String, CastConfig>) -> Self {
+    fn new(tileset_dir: PathBuf, casts: &HashMap<String, CastConfig>, self_consistency_check: bool) -> Self {
         Self {
             tileset_dir,
             casts: structural_casts(casts),
+            self_consistency_check,
             vertex_positions: Vec::new(),
             vertex_colors: None,
             vertex_materials: None,
@@ -217,14 +219,16 @@ impl GeometryCollector {
             // Check for conflicting duplicate keys within the same dataset.
             // Only structural casts (Json, ListToDict) for data-equivalence; no primitive casts.
             if let Some(existing) = self.feature_attributes.get(&key) {
-                analyze_attributes(
-                    &key,
-                    existing,
-                    &props_value,
-                    self.casts.clone(),
-                    Default::default(),
-                )
-                .map_err(|e| format!("Conflicting feature_key in {:?}: {}", glb_path, e))?;
+                if self.self_consistency_check {
+                    analyze_attributes(
+                        &key,
+                        existing,
+                        &props_value,
+                        self.casts.clone(),
+                        Default::default(),
+                    )
+                    .map_err(|e| format!("Self-consistency check failed for feature_key in {:?}: {}", glb_path, e))?;
+                }
             } else {
                 self.feature_attributes.insert(key.clone(), props_value);
             }
@@ -437,9 +441,10 @@ impl GeometryCollector {
 pub fn collect_geometries_by_ident(
     tileset_dir: &Path,
     casts: &HashMap<String, CastConfig>,
+    self_consistency_check: bool,
 ) -> Result<GeometryCollector, String> {
     let tileset_info = load_tileset(tileset_dir)?;
-    let mut collector = GeometryCollector::new(tileset_dir.to_path_buf(), casts);
+    let mut collector = GeometryCollector::new(tileset_dir.to_path_buf(), casts, self_consistency_check);
 
     if let Some(root) = tileset_info.content.get("root") {
         collector.process_tile(root)?;

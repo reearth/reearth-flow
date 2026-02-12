@@ -6,7 +6,6 @@ citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op_fld.zip"
 ".dm_attributes" = "json"
 ".uro:rank_code" = "string"
 
-
 [tests.json_attributes.dictionary]
 path = "dictionary.json"
 [tests.json_attributes.dictionary.casts.".fld"]

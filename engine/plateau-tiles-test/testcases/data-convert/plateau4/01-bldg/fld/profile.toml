@@ -1,0 +1,27 @@
+citygml_zip_name = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg.zip"
+
+[tests.cesium.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
+# FME is probably wrong
+".利根川水系大落古利根川（都道府県管理区間）_L2（想定最大規模）_浸水継続時間" = "ignore_both"
+".荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水継続時間" = "ignore_both"
+
+[tests.json_attributes.tilesets]
+path = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1/tileset.json"
+extracted = true
+
+[tests.json_attributes.tilesets.casts]
+".geometricError" = "ignore_both"
+".root" = "ignore_both"
+# ".properties.uro:BuildingDetailAttribute_uro:surveyYear" = "ignore_both"
+".properties" = "dict_to_list"
+
+[tests.json_attributes.tilesets.values]
+# FME is probably wrong for these 0.0
+".properties.荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水継続時間" = { "maximum"=53.0, "minimum"=0.0 }
+".properties.利根川水系大落古利根川（都道府県管理区間）_L2（想定最大規模）_浸水継続時間.minimum" = 0.0
+
+[filter.tree]
+"udx/bldg/" = ["53396677_bldg_6697_op.gml"]

@@ -286,10 +286,13 @@ fn collect_property_stats(
         return stats;
     };
 
-    // Initialize all properties from schema with empty metadata
+    // Initialize all properties from schema to preserve attribute order
     for key in feature_def.attributes.keys() {
         stats.insert(key.clone(), PropertyMetadata::default());
     }
+
+    // Track which keys actually occur in features
+    let mut seen_keys: IndexSet<String, ahash::RandomState> = Default::default();
 
     // Update min/max only for numeric types
     for feature in features {
@@ -297,6 +300,8 @@ fn collect_property_stats(
             let Some(attr_def) = feature_def.attributes.get(key) else {
                 continue;
             };
+
+            seen_keys.insert(key.clone());
 
             // Only collect stats for numeric types
             let numeric_value: Option<serde_json::Number> = match attr_def.type_ref {
@@ -349,6 +354,9 @@ fn collect_property_stats(
             }
         }
     }
+
+    // Remove schema keys that never occurred in any feature
+    stats.retain(|key, _| seen_keys.contains(key));
 
     stats
 }
