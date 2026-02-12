@@ -11,7 +11,7 @@ use serde_json::Number;
 
 use reearth_flow_common::str::base64_encode;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_common::xml::XmlXpathValue;
+use reearth_flow_common::xml::{xpath_value_to_json, XmlXpathValue};
 
 use crate::datetime::DateTime;
 use crate::error;
@@ -366,9 +366,7 @@ impl From<nusamai_citygml::Value> for AttributeValue {
 
 impl From<XmlXpathValue> for AttributeValue {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<AttributeValue>::into(
-            value.to_string().parse::<serde_json::Value>().unwrap(),
-        )
+        std::convert::Into::<AttributeValue>::into(xpath_value_to_json(&value))
     }
 }
 

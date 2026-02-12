@@ -31,3 +31,6 @@ tmp/
 example.yml
 logs/
 /*.sh
+
+# Test-generated temporary files
+runtime/examples/fixture/testdata/**/*_.zip

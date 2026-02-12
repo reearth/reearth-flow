@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use std::str::FromStr;
 
+use fastxml::transform::StreamTransformer;
 use itertools::Itertools;
-use nusamai_citygml::{GML31_NS, XLINK_NS};
 use reearth_flow_common::{
     uri::Uri,
     xml::{self, XmlContext, XmlRoNode},
@@ -95,145 +97,182 @@ impl Processor for TranXLinkChecker {
             .map_err(|e| PlateauProcessorError::TranXLinkChecker(format!("{e:?}")))?;
         let xml_content = String::from_utf8(content.to_vec())
             .map_err(|_| PlateauProcessorError::TranXLinkChecker("Invalid UTF-8".to_string()))?;
-        let Ok(document) = xml::parse(xml_content) else {
-            return Err(
-                PlateauProcessorError::TranXLinkChecker("Failed to parse XML".to_string()).into(),
-            );
-        };
-        let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::TranXLinkChecker(format!("Failed to create xml context: {e}"))
-        })?;
-        let root_node = match xml::get_root_readonly_node(&document) {
-            Ok(node) => node,
-            Err(e) => {
-                return Err(PlateauProcessorError::TranXLinkChecker(format!(
-                    "Failed to get root node: {e}"
-                ))
-                .into());
-            }
-        };
-        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "*//tran:Road", &root_node)
+
+        let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
+
+        let transformer = StreamTransformer::new(&xml_content)
+            .with_root_namespaces()
             .map_err(|e| {
                 PlateauProcessorError::TranXLinkChecker(format!(
-                    "Failed to find_readonly_nodes_in_elements with {e}"
+                    "Failed to create StreamTransformer: {e:?}"
                 ))
             })?;
-        for road in &nodes {
-            let gml_id = road
-                .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
-                .unwrap_or_default();
-            let traffix_areas =
-                xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//tran:TrafficArea", road).map_err(
-                    |e| {
-                        PlateauProcessorError::TranXLinkChecker(format!(
-                            "Failed to find_readonly_nodes_in_elements with {e}"
-                        ))
-                    },
-                )?;
-            let mut lod2_trf_gml_ids = Vec::new();
-            let mut lod3_trf_gml_ids = Vec::new();
-            for traffix_area in &traffix_areas {
-                lod2_trf_gml_ids.extend(extract_gml_ids_by_xpath(
+
+        let stream_error_clone = Rc::clone(&stream_error);
+        let ctx = &ctx;
+        transformer
+            .on("//tran:Road", move |node| {
+                if stream_error_clone.borrow().is_some() {
+                    return;
+                }
+
+                let doc = node.document();
+                let mut xml_ctx = match xml::create_context(doc) {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
+                for (prefix, uri) in node.namespaces() {
+                    let _ = xml_ctx.register_namespace(prefix, uri);
+                }
+                let road = match xml::get_root_readonly_node(doc) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
+
+                let gml_id = road
+                    .get_attribute_ns("id", "http://www.opengis.net/gml")
+                    .unwrap_or_default();
+                let traffix_areas =
+                    match xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//tran:TrafficArea", &road)
+                    {
+                        Ok(nodes) => nodes,
+                        Err(e) => {
+                            *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                            return;
+                        }
+                    };
+                let mut lod2_trf_gml_ids = Vec::new();
+                let mut lod3_trf_gml_ids = Vec::new();
+                for traffix_area in &traffix_areas {
+                    lod2_trf_gml_ids.extend(extract_gml_ids_by_xpath(
+                        &xml_ctx,
+                        "./tran:lod2MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
+                        traffix_area,
+                    ));
+                    lod3_trf_gml_ids.extend(extract_gml_ids_by_xpath(
+                        &xml_ctx,
+                        "./tran:lod3MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
+                        traffix_area,
+                    ));
+                }
+                let aux_traffix_areas = match xml::find_readonly_nodes_by_xpath(
                     &xml_ctx,
-                    "./tran:lod2MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
-                    traffix_area,
-                ));
-                lod3_trf_gml_ids.extend(extract_gml_ids_by_xpath(
+                    ".//tran:AuxiliaryTrafficArea",
+                    &road,
+                ) {
+                    Ok(nodes) => nodes,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
+                let mut lod2_aux_gml_ids = Vec::new();
+                let mut lod3_aux_gml_ids = Vec::new();
+                for aux_traffix_area in &aux_traffix_areas {
+                    lod2_aux_gml_ids.extend(extract_gml_ids_by_xpath(
+                        &xml_ctx,
+                        "./tran:lod2MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
+                        aux_traffix_area,
+                    ));
+                    lod3_aux_gml_ids.extend(extract_gml_ids_by_xpath(
+                        &xml_ctx,
+                        "./tran:lod3MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
+                        aux_traffix_area,
+                    ));
+                }
+                let lod2xlinks = extract_xlink_by_xpath(
                     &xml_ctx,
-                    "./tran:lod3MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
-                    traffix_area,
-                ));
-            }
-            let aux_traffix_areas =
-                xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//tran:AuxiliaryTrafficArea", road)
-                    .map_err(|e| {
-                    PlateauProcessorError::TranXLinkChecker(format!(
-                        "Failed to find_readonly_nodes_in_elements with {e}"
-                    ))
-                })?;
-            let mut lod2_aux_gml_ids = Vec::new();
-            let mut lod3_aux_gml_ids = Vec::new();
-            for aux_traffix_area in &aux_traffix_areas {
-                lod2_aux_gml_ids.extend(extract_gml_ids_by_xpath(
+                    "./tran:lod2MultiSurface//*[@xlink:href]",
+                    &road,
+                );
+                let lod3xlinks = extract_xlink_by_xpath(
                     &xml_ctx,
-                    "./tran:lod2MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
-                    aux_traffix_area,
-                ));
-                lod3_aux_gml_ids.extend(extract_gml_ids_by_xpath(
-                    &xml_ctx,
-                    "./tran:lod3MultiSurface/gml:MultiSurface/gml:surfaceMember/*[@gml:id]",
-                    aux_traffix_area,
-                ));
-            }
-            let lod2xlinks =
-                extract_xlink_by_xpath(&xml_ctx, "./tran:lod2MultiSurface//*[@xlink:href]", road);
-            let lod3xlinks =
-                extract_xlink_by_xpath(&xml_ctx, "./tran:lod3MultiSurface//*[@xlink:href]", road);
-            if !lod2_trf_gml_ids.is_empty() {
-                let lod2_trf_gml_ids: HashSet<_> = lod2_trf_gml_ids.into_iter().collect();
-                let lod2_aux_gml_ids: HashSet<_> = lod2_aux_gml_ids.into_iter().collect();
-                let lod2_xlinks: HashSet<_> = lod2xlinks.into_iter().collect();
-                let lod2_gml_ids: HashSet<_> = lod2_trf_gml_ids
-                    .union(&lod2_aux_gml_ids)
-                    .cloned()
-                    .collect::<HashSet<_>>();
-                let lod2_gml_ids_difference: HashSet<_> = lod2_gml_ids
-                    .difference(&lod2_xlinks)
-                    .cloned()
-                    .collect::<HashSet<_>>();
-                let mut feature = feature.clone();
-                feature.refresh_id();
-                feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
-                feature.insert("featureType", AttributeValue::String("Road".to_string()));
-                feature.insert("lod", AttributeValue::String("2".to_string()));
-                feature.insert(
-                    "unreferencedSurfaceNum",
-                    AttributeValue::Number(lod2_gml_ids_difference.len().into()),
+                    "./tran:lod3MultiSurface//*[@xlink:href]",
+                    &road,
                 );
-                feature.insert(
-                    "unreferencedIds",
-                    AttributeValue::Array(
-                        lod2_gml_ids_difference
-                            .into_iter()
-                            .map(AttributeValue::String)
-                            .collect(),
-                    ),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-            }
-            if !lod3_trf_gml_ids.is_empty() {
-                let lod3_trf_gml_ids: HashSet<_> = lod3_trf_gml_ids.into_iter().collect();
-                let lod3_aux_gml_ids: HashSet<_> = lod3_aux_gml_ids.into_iter().collect();
-                let lod3_xlinks: HashSet<_> = lod3xlinks.into_iter().collect();
-                let lod3_gml_ids: HashSet<_> = lod3_trf_gml_ids
-                    .union(&lod3_aux_gml_ids)
-                    .cloned()
-                    .collect::<HashSet<_>>();
-                let lod3_gml_ids_difference: HashSet<_> = lod3_gml_ids
-                    .difference(&lod3_xlinks)
-                    .cloned()
-                    .collect::<HashSet<_>>();
-                let mut feature = feature.clone();
-                feature.refresh_id();
-                feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
-                feature.insert("featureType", AttributeValue::String("Road".to_string()));
-                feature.insert("lod", AttributeValue::String("3".to_string()));
-                feature.insert(
-                    "unreferencedSurfaceNum",
-                    AttributeValue::Number(lod3_gml_ids_difference.len().into()),
-                );
-                feature.insert(
-                    "unreferencedIds",
-                    AttributeValue::Array(
-                        lod3_gml_ids_difference
-                            .into_iter()
-                            .map(AttributeValue::String)
-                            .collect(),
-                    ),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-            }
+                if !lod2_trf_gml_ids.is_empty() {
+                    let lod2_trf_gml_ids: HashSet<_> = lod2_trf_gml_ids.into_iter().collect();
+                    let lod2_aux_gml_ids: HashSet<_> = lod2_aux_gml_ids.into_iter().collect();
+                    let lod2_xlinks: HashSet<_> = lod2xlinks.into_iter().collect();
+                    let lod2_gml_ids: HashSet<_> = lod2_trf_gml_ids
+                        .union(&lod2_aux_gml_ids)
+                        .cloned()
+                        .collect::<HashSet<_>>();
+                    let lod2_gml_ids_difference: HashSet<_> = lod2_gml_ids
+                        .difference(&lod2_xlinks)
+                        .cloned()
+                        .collect::<HashSet<_>>();
+                    let mut feature = feature.clone();
+                    feature.refresh_id();
+                    feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
+                    feature.insert("featureType", AttributeValue::String("Road".to_string()));
+                    feature.insert("lod", AttributeValue::String("2".to_string()));
+                    feature.insert(
+                        "unreferencedSurfaceNum",
+                        AttributeValue::Number(lod2_gml_ids_difference.len().into()),
+                    );
+                    feature.insert(
+                        "unreferencedIds",
+                        AttributeValue::Array(
+                            lod2_gml_ids_difference
+                                .into_iter()
+                                .map(AttributeValue::String)
+                                .collect(),
+                        ),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                if !lod3_trf_gml_ids.is_empty() {
+                    let lod3_trf_gml_ids: HashSet<_> = lod3_trf_gml_ids.into_iter().collect();
+                    let lod3_aux_gml_ids: HashSet<_> = lod3_aux_gml_ids.into_iter().collect();
+                    let lod3_xlinks: HashSet<_> = lod3xlinks.into_iter().collect();
+                    let lod3_gml_ids: HashSet<_> = lod3_trf_gml_ids
+                        .union(&lod3_aux_gml_ids)
+                        .cloned()
+                        .collect::<HashSet<_>>();
+                    let lod3_gml_ids_difference: HashSet<_> = lod3_gml_ids
+                        .difference(&lod3_xlinks)
+                        .cloned()
+                        .collect::<HashSet<_>>();
+                    let mut feature = feature.clone();
+                    feature.refresh_id();
+                    feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
+                    feature.insert("featureType", AttributeValue::String("Road".to_string()));
+                    feature.insert("lod", AttributeValue::String("3".to_string()));
+                    feature.insert(
+                        "unreferencedSurfaceNum",
+                        AttributeValue::Number(lod3_gml_ids_difference.len().into()),
+                    );
+                    feature.insert(
+                        "unreferencedIds",
+                        AttributeValue::Array(
+                            lod3_gml_ids_difference
+                                .into_iter()
+                                .map(AttributeValue::String)
+                                .collect(),
+                        ),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+            })
+            .for_each()
+            .map_err(|e| {
+                PlateauProcessorError::TranXLinkChecker(format!("StreamTransformer error: {e:?}"))
+            })?;
+
+        if let Some(err) = Rc::try_unwrap(stream_error)
+            .expect("all callback references should be dropped after for_each()")
+            .into_inner()
+        {
+            return Err(PlateauProcessorError::TranXLinkChecker(err).into());
         }
+
         Ok(())
     }
 
@@ -254,9 +293,7 @@ fn extract_gml_ids_by_xpath(ctx: &XmlContext, xpath: &str, node: &XmlRoNode) -> 
     let nodes = xml::find_readonly_nodes_by_xpath(ctx, xpath, node).unwrap_or_default();
     nodes
         .iter()
-        .flat_map(|node| {
-            node.get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
-        })
+        .flat_map(|node| node.get_attribute_ns("id", "http://www.opengis.net/gml"))
         .collect_vec()
 }
 
@@ -265,8 +302,7 @@ fn extract_xlink_by_xpath(ctx: &XmlContext, xpath: &str, node: &XmlRoNode) -> Ve
     nodes
         .iter()
         .flat_map(|node| {
-            let href =
-                node.get_attribute_ns("href", std::str::from_utf8(XLINK_NS.into_inner()).unwrap())?;
+            let href = node.get_attribute_ns("href", "http://www.w3.org/1999/xlink")?;
             Some(href[1..].to_string())
         })
         .collect_vec()

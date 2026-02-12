@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.287"
+version = "0.0.288"
 
 [profile.dev]
 opt-level = 0
@@ -49,8 +49,8 @@ lto = "fat"
 
 [workspace.dependencies]
 reearth-flow-action-log = { path = "runtime/action-log" }
-reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
-reearth-flow-action-processor = { path = "runtime/action-processor" }
+reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor", default-features = false }
+reearth-flow-action-processor = { path = "runtime/action-processor", default-features = false }
 reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
@@ -124,6 +124,7 @@ geo-types = "0.7.17"
 geojson = "0.24.2"
 glam = "0.30.9"
 # gltf = { version = "1.4", features = ["extensions", "extras"] }
+fastxml = { version = "0.8.0", features = ["ureq"] }
 gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238179ea5a6152c5cf22", features = [
   "EXT_texture_webp",
   "extensions",
@@ -146,7 +147,6 @@ itertools = "0.14.0"
 json-subscriber = "0.2.6"
 jsonpath_lib = "0.3.0"
 kiddo = "5.2.4"
-libxml = "0.3.8"
 nalgebra = "0.34.1"
 nalgebra-glm = "0.19.0"
 num-traits = "0.2.19"
@@ -230,6 +230,7 @@ sqlx = { version = "0.8.6", features = [
 ] }
 strum = "0.27.2"
 strum_macros = "0.27.2"
+sysinfo = "0.32"
 tempfile = "3.23.0"
 thiserror = "2.0.17"
 time = { version = "0.3.44", features = ["formatting"] }
