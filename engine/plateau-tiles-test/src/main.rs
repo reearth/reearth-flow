@@ -3,8 +3,7 @@ mod align_mvt;
 mod cast_config;
 mod compare_attributes;
 mod runner;
-mod test_cesium_attributes;
-mod test_cesium_statistics;
+mod test_cesium;
 mod test_json_attributes;
 mod test_mvt_attributes;
 mod test_mvt_lines;
@@ -17,8 +16,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
-use test_cesium_attributes::CesiumAttributesConfig;
-use test_cesium_statistics::CesiumStatisticsConfig;
+use test_cesium::CesiumConfig;
 use test_json_attributes::JsonFileConfig;
 use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_lines::MvtLinesConfig;
@@ -68,9 +66,7 @@ struct Tests {
     #[serde(default)]
     mvt_points: Option<MvtPointsConfig>,
     #[serde(default)]
-    cesium_attributes: Option<CesiumAttributesConfig>,
-    #[serde(default)]
-    cesium_statistics: Option<CesiumStatisticsConfig>,
+    cesium: Option<CesiumConfig>,
 }
 
 fn zip_dir(src_dir: &Path, zip_path: &Path) {
@@ -281,23 +277,9 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
-        if let Some(cfg) = &tests.cesium_attributes {
-            run_test("cesium_attributes", &relative_path_display, || {
-                test_cesium_attributes::test_cesium_attributes(
-                    &fme_extracted_dir,
-                    &flow_extracted_dir,
-                    cfg,
-                )
-            });
-        }
-
-        if let Some(cfg) = &tests.cesium_statistics {
-            run_test("cesium_statistics", &relative_path_display, || {
-                test_cesium_statistics::test_cesium_statistics(
-                    &fme_extracted_dir,
-                    &flow_extracted_dir,
-                    cfg,
-                )
+        if let Some(cfg) = &tests.cesium {
+            run_test("cesium", &relative_path_display, || {
+                test_cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
     }

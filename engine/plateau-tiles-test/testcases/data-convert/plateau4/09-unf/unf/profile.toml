@@ -1,6 +1,6 @@
 citygml_zip_name = "13999_tokyo_udx-mlit_2024_citygml_2_sample-takeshiba_op_unf.zip"
 
-[tests.cesium_attributes.casts]
+[tests.cesium.casts]
 ".attributes" = "json"
 
 [tests.mvt_polygons]

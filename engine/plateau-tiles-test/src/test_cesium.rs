@@ -1,25 +1,39 @@
 use crate::align_cesium::{
     collect_geometries_by_ident, find_cesium_tile_directories, DetailLevel, GeometryCollector,
 };
+use crate::cast_config::{convert_casts, CastConfigValue};
+use crate::compare_attributes::{analyze_attributes, CastConfig};
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use serde::Deserialize;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
-pub struct CesiumStatisticsConfig {
-    #[serde(default)]
-    pub skip_texture_presence_test: bool,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GeometryTest {
+    TexturePresence,
+    MonotonicGeometricError,
+    BoundingBox,
+    MassCenter,
+    AverageColor,
 }
 
-/// Tests Cesium 3D Tiles statistics between FME and Flow outputs
-pub fn test_cesium_statistics(
-    fme_path: &Path,
-    flow_path: &Path,
-    config: &CesiumStatisticsConfig,
-) -> Result<(), String> {
-    tracing::debug!("Testing Cesium statistics");
+#[derive(Debug, Deserialize)]
+pub struct CesiumConfig {
+    pub casts: Option<HashMap<String, CastConfigValue>>,
+    #[serde(default)]
+    pub skip_geometry_tests: Vec<GeometryTest>,
+    #[serde(default)]
+    pub skip_all_geometry_tests: bool,
+}
 
-    // Find top-level 3D Tiles directories
+pub fn test_cesium(fme_path: &Path, flow_path: &Path, config: &CesiumConfig) -> Result<(), String> {
+    let casts = if let Some(casts_cfg) = &config.casts {
+        convert_casts(casts_cfg)?
+    } else {
+        HashMap::new()
+    };
+
     let fme_dirs = find_cesium_tile_directories(fme_path)?;
     let flow_dirs = find_cesium_tile_directories(flow_path)?;
 
@@ -37,14 +51,46 @@ pub fn test_cesium_statistics(
         let fme_dir = fme_path.join(dir_name);
         let flow_dir = flow_path.join(dir_name);
 
-        tracing::debug!("Collecting geometries from directory: {}", dir_name);
+        tracing::debug!("Comparing Cesium in directory: {}", dir_name);
 
-        let fme_geometries = collect_geometries_by_ident(&fme_dir)?;
-        let flow_geometries = collect_geometries_by_ident(&flow_dir)?;
+        let fme_collector = collect_geometries_by_ident(&fme_dir, &casts)?;
+        let flow_collector = collect_geometries_by_ident(&flow_dir, &casts)?;
 
-        align_and_compare(&fme_geometries, &flow_geometries, config)?;
+        // Compare attributes
+        compare_attributes(&fme_collector, &flow_collector, &casts)?;
+
+        // Compare statistics
+        if !config.skip_all_geometry_tests {
+            compare_geometry(&fme_collector, &flow_collector, config)?;
+        }
     }
 
+    Ok(())
+}
+
+fn compare_attributes(
+    fme: &GeometryCollector,
+    flow: &GeometryCollector,
+    casts: &HashMap<String, CastConfig>,
+) -> Result<(), String> {
+    let all_keys: HashSet<_> = fme
+        .feature_attributes
+        .keys()
+        .chain(flow.feature_attributes.keys())
+        .collect();
+    for ident in all_keys {
+        let attr1 = fme
+            .feature_attributes
+            .get(ident)
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        let attr2 = flow
+            .feature_attributes
+            .get(ident)
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        analyze_attributes(ident, &attr1, &attr2, casts.clone(), Default::default())?;
+    }
     Ok(())
 }
 
@@ -89,11 +135,12 @@ fn test_texture_presence(
     Ok(())
 }
 
-fn align_and_compare(
+fn compare_geometry(
     fme_geometries: &GeometryCollector,
     flow_geometries: &GeometryCollector,
-    config: &CesiumStatisticsConfig,
+    config: &CesiumConfig,
 ) -> Result<(), String> {
+    let skip: HashSet<GeometryTest> = config.skip_geometry_tests.iter().copied().collect();
     let fme_detail_levels = &fme_geometries.detail_levels;
     let flow_detail_levels = &flow_geometries.detail_levels;
     let fme_keys: std::collections::HashSet<_> = fme_detail_levels.keys().collect();
@@ -116,13 +163,15 @@ fn align_and_compare(
     for ident in fme_keys {
         let fme_detail_levels = &fme_detail_levels[ident];
         let flow_detail_levels = &flow_detail_levels[ident];
-        if !config.skip_texture_presence_test {
+        if !skip.contains(&GeometryTest::TexturePresence) {
             test_texture_presence(ident, fme_detail_levels, flow_detail_levels)?;
         }
 
         // Assert geometric error decreases monotonically
-        verify_monotonic_geometric_error(ident, fme_detail_levels, "FME")?;
-        verify_monotonic_geometric_error(ident, flow_detail_levels, "Flow")?;
+        if !skip.contains(&GeometryTest::MonotonicGeometricError) {
+            verify_monotonic_geometric_error(ident, fme_detail_levels, "FME")?;
+            verify_monotonic_geometric_error(ident, flow_detail_levels, "Flow")?;
+        }
 
         // compare each Flow detail level to the highest-detail FME level
         let fme_highest_level = fme_detail_levels
@@ -135,6 +184,7 @@ fn align_and_compare(
                 fme_geometries,
                 level,
                 flow_geometries,
+                &skip,
             )?;
             tracing::debug!(
                 "{}: level {}, bbox:{:.6}, center:{:.6}, color:{:.6}",
@@ -212,73 +262,82 @@ fn compare_detail_level(
     fme_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
+    skip: &HashSet<GeometryTest>,
 ) -> Result<DetailLevelComparisonResult, String> {
     let mut result = DetailLevelComparisonResult::new(ident.to_string());
     let fme_error = fme_level.geometric_error;
     let flow_error = flow_level.geometric_error;
 
-    // Compute bounding boxes directly from vertex positions
-    let fme_bbox = compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
-    let flow_bbox = compute_bbox(&flow_level.triangles, &flow_geometries.vertex_positions)?;
+    if !skip.contains(&GeometryTest::BoundingBox) {
+        // Compute bounding boxes directly from vertex positions
+        let fme_bbox = compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+        let flow_bbox = compute_bbox(&flow_level.triangles, &flow_geometries.vertex_positions)?;
 
-    // if vertices have max error r, the bounding boxes can differ by at most r in each direction
-    // thus the bounding box error is at most sqrt(3) * r. We simply use 2 * r as a safe upper bound.
-    let bbox_error = 2.0 * (fme_error + flow_error);
-    let error_min = ((fme_bbox.0.x - flow_bbox.0.x).powi(2)
-        + (fme_bbox.0.y - flow_bbox.0.y).powi(2)
-        + (fme_bbox.0.z - flow_bbox.0.z).powi(2))
-    .sqrt()
-        / bbox_error;
-    let error_max = ((fme_bbox.1.x - flow_bbox.1.x).powi(2)
-        + (fme_bbox.1.y - flow_bbox.1.y).powi(2)
-        + (fme_bbox.1.z - flow_bbox.1.z).powi(2))
-    .sqrt()
-        / bbox_error;
-    result.bounding_box_error = error_min.max(error_max);
-    if result.bounding_box_error > 1.0 {
-        return Err(format!(
-            "ident '{}': bounding box mismatch exceeds max error: {}/{}: min:({}, {}, {}), max:({}, {}, {})",
-            ident, fme_error, flow_error,
-            fme_bbox.0.x - flow_bbox.0.x,
-            fme_bbox.0.y - flow_bbox.0.y,
-            fme_bbox.0.z - flow_bbox.0.z,
-            fme_bbox.1.x - flow_bbox.1.x,
-            fme_bbox.1.y - flow_bbox.1.y,
-            fme_bbox.1.z - flow_bbox.1.z,
-        ));
+        // if vertices have max error r, the bounding boxes can differ by at most r in each direction
+        // thus the bounding box error is at most sqrt(3) * r. We simply use 2 * r as a safe upper bound.
+        let bbox_error = 2.0 * (fme_error + flow_error);
+        let error_min = ((fme_bbox.0.x - flow_bbox.0.x).powi(2)
+            + (fme_bbox.0.y - flow_bbox.0.y).powi(2)
+            + (fme_bbox.0.z - flow_bbox.0.z).powi(2))
+        .sqrt()
+            / bbox_error;
+        let error_max = ((fme_bbox.1.x - flow_bbox.1.x).powi(2)
+            + (fme_bbox.1.y - flow_bbox.1.y).powi(2)
+            + (fme_bbox.1.z - flow_bbox.1.z).powi(2))
+        .sqrt()
+            / bbox_error;
+        result.bounding_box_error = error_min.max(error_max);
+        if result.bounding_box_error > 1.0 {
+            return Err(format!(
+                "ident '{}': bounding box mismatch exceeds max error: {}/{}: min:({}, {}, {}), max:({}, {}, {})",
+                ident, fme_error, flow_error,
+                fme_bbox.0.x - flow_bbox.0.x,
+                fme_bbox.0.y - flow_bbox.0.y,
+                fme_bbox.0.z - flow_bbox.0.z,
+                fme_bbox.1.x - flow_bbox.1.x,
+                fme_bbox.1.y - flow_bbox.1.y,
+                fme_bbox.1.z - flow_bbox.1.z,
+            ));
+        }
     }
 
-    // Compute centroids directly from vertex positions
-    let fme_centroid = compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)?;
-    let flow_centroid = compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions)?;
+    if !skip.contains(&GeometryTest::MassCenter) {
+        // Compute centroids directly from vertex positions
+        let fme_centroid =
+            compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+        let flow_centroid =
+            compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions)?;
 
-    // if vertices have max error r, centroids can differ by at most r
-    let centroid_error_bound = fme_error + flow_error;
-    let centroid_diff = ((fme_centroid.x - flow_centroid.x).powi(2)
-        + (fme_centroid.y - flow_centroid.y).powi(2)
-        + (fme_centroid.z - flow_centroid.z).powi(2))
-    .sqrt();
-    result.mass_center_error = centroid_diff / centroid_error_bound;
-    if result.mass_center_error > 1.0 {
-        return Err(format!(
-            "ident '{}': mass center mismatch exceeds error bound: {}",
-            ident, result.mass_center_error
-        ));
+        // if vertices have max error r, centroids can differ by at most r
+        let centroid_error_bound = fme_error + flow_error;
+        let centroid_diff = ((fme_centroid.x - flow_centroid.x).powi(2)
+            + (fme_centroid.y - flow_centroid.y).powi(2)
+            + (fme_centroid.z - flow_centroid.z).powi(2))
+        .sqrt();
+        result.mass_center_error = centroid_diff / centroid_error_bound;
+        if result.mass_center_error > 1.0 {
+            return Err(format!(
+                "ident '{}': mass center mismatch exceeds error bound: {}",
+                ident, result.mass_center_error
+            ));
+        }
     }
 
     // Skip color comparison if textures are present
     // NOTE: (probably) diffuseColor in X3D material is used as base color, overriden by texture if present.
     // Therefore, we ignore color comparison when textures exist.
-    let has_texture = fme_level.source_idx.is_some() || flow_level.source_idx.is_some();
-    if !has_texture {
-        // Test face-weighted average color (material base color × vertex color)
-        result.average_color_error = test_face_weighted_average_color(
-            ident,
-            fme_level,
-            fme_geometries,
-            flow_level,
-            flow_geometries,
-        )?;
+    if !skip.contains(&GeometryTest::AverageColor) {
+        let has_texture = fme_level.source_idx.is_some() || flow_level.source_idx.is_some();
+        if !has_texture {
+            // Test face-weighted average color (material base color × vertex color)
+            result.average_color_error = test_face_weighted_average_color(
+                ident,
+                fme_level,
+                fme_geometries,
+                flow_level,
+                flow_geometries,
+            )?;
+        }
     }
 
     Ok(result)
