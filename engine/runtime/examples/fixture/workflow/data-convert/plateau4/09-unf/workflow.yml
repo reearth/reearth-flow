@@ -418,16 +418,16 @@ graphs:
           format: csv
           inline: |
             name,description
-            WaterPipe,上水道管
-            SewerPipe,下水道管
-            ThermalPipe,熱供給管
-            OilGasChemicalsPipe,ガス・石油・化学物質管
-            Pipe,その他の管
-            Duct,ダクト
+            WaterPipe,管路（水道）
+            SewerPipe,管路（下水道）
+            ThermalPipe,管路（熱供給管）
+            OilGasChemicalsPipe,管路（ガス管）
+            Pipe,管路（その他）
+            Duct,保護設備（トラフ等）
             TelecommunicationsCable,通信ケーブル
-            ElectricityCable,電力ケーブル
-            Cable,その他のケーブル
-            Appurtenance,付属物
+            ElectricityCable,電気ケーブル
+            Cable,ケーブル（その他）
+            Appurtenance,設備(弁栓類）
             Manhole,マンホール
             Handhole,ハンドホール
           rules:

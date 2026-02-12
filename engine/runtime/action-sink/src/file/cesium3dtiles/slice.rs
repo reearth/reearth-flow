@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use flatgeom::{MultiPolygon, Polygon, Polygon2, Polygon3};
 use indexmap::IndexSet;
 use itertools::Itertools;
+use tracing;
 use reearth_flow_types::{
     material::{self, Material},
     Feature, GeometryType,
@@ -172,11 +173,28 @@ pub fn slice_to_tiles<E>(
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later
                                     });
+                            let poly_ring_count = poly.rings().count();
+                            let uv_ring_count = poly_uv.rings().count();
+                            if poly_ring_count != uv_ring_count {
+                                tracing::error!(
+                                    "polygon ring count ({}) != uv ring count ({}): geometry/uv mismatch likely from an earlier processing stage",
+                                    poly_ring_count,
+                                    uv_ring_count,
+                                );
+                            }
                             for (ri, (ring, uv_ring)) in
                                 poly.rings().zip(poly_uv.rings()).enumerate()
                             {
                                 let ring_coords: Vec<_> = ring.iter_closed().collect();
                                 let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
+                                if ring_coords.len() != uv_coords.len() {
+                                    tracing::error!(
+                                        "ring[{}] coord count ({}) != uv coord count ({}): geometry/uv mismatch likely from an earlier processing stage",
+                                        ri,
+                                        ring_coords.len(),
+                                        uv_coords.len(),
+                                    );
+                                }
                                 for (c, uv) in ring_coords.iter().zip(
                                     uv_coords
                                         .iter()
@@ -253,6 +271,14 @@ fn slice_polygon(
             ring_buffer.clear();
             let ring_coords: Vec<_> = ring.iter_closed().collect();
             let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
+            if ring_coords.len() != uv_coords.len() {
+                tracing::error!(
+                    "slice_polygon ring[{}] coord count ({}) != uv coord count ({}): geometry/uv mismatch likely from an earlier processing stage",
+                    ri,
+                    ring_coords.len(),
+                    uv_coords.len(),
+                );
+            }
             ring_coords
                 .iter()
                 .zip(

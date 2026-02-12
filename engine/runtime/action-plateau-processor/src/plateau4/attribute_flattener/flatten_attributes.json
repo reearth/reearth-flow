@@ -12674,6 +12674,11 @@
 			"json_path": "core:creationDate"
 		},
 		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
 			"attribute": "uro:geometrySrcDescLod1",
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
@@ -12689,6 +12694,11 @@
 			"attribute": "core:creationDate",
 			"data_type": "date",
 			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
 		},
 		{
 			"attribute": "uro:geometrySrcDescLod1",
@@ -12708,6 +12718,11 @@
 			"json_path": "core:creationDate"
 		},
 		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
 			"attribute": "uro:geometrySrcDescLod1",
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
@@ -12723,6 +12738,11 @@
 			"attribute": "core:creationDate",
 			"data_type": "date",
 			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
 		},
 		{
 			"attribute": "uro:geometrySrcDescLod1",
@@ -12742,6 +12762,11 @@
 			"json_path": "core:creationDate"
 		},
 		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
 			"attribute": "uro:geometrySrcDescLod1",
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
@@ -12757,6 +12782,11 @@
 			"attribute": "core:creationDate",
 			"data_type": "date",
 			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
 		},
 		{
 			"attribute": "uro:geometrySrcDescLod1",
@@ -12776,6 +12806,11 @@
 			"json_path": "core:creationDate"
 		},
 		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
 			"attribute": "uro:geometrySrcDescLod1",
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
@@ -12791,6 +12826,11 @@
 			"attribute": "core:creationDate",
 			"data_type": "date",
 			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
 		},
 		{
 			"attribute": "uro:geometrySrcDescLod1",
@@ -12810,6 +12850,11 @@
 			"json_path": "core:creationDate"
 		},
 		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
 			"attribute": "uro:geometrySrcDescLod1",
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
@@ -12825,6 +12870,11 @@
 			"attribute": "core:creationDate",
 			"data_type": "date",
 			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
 		},
 		{
 			"attribute": "uro:geometrySrcDescLod1",
@@ -12844,6 +12894,11 @@
 			"json_path": "core:creationDate"
 		},
 		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
 			"attribute": "uro:geometrySrcDescLod1",
 			"data_type": "buffer",
 			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
@@ -12859,6 +12914,11 @@
 			"attribute": "core:creationDate",
 			"data_type": "date",
 			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
 		},
 		{
 			"attribute": "uro:geometrySrcDescLod1",
