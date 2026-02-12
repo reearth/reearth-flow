@@ -11,7 +11,6 @@ use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use tracing;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
@@ -23,6 +22,7 @@ use reearth_flow_types::material::{self, Material};
 use reearth_flow_types::{Expr, GeometryType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tracing;
 
 use reearth_flow_common::uri::Uri;
 use serde_json::Value;
@@ -441,9 +441,7 @@ impl GltfWriter {
                                 uv_ring_count,
                             );
                         }
-                        for (ri, (ring, uv_ring)) in
-                            poly.rings().zip(poly_uv.rings()).enumerate()
-                        {
+                        for (ri, (ring, uv_ring)) in poly.rings().zip(poly_uv.rings()).enumerate() {
                             let ring_coords: Vec<_> = ring.iter_closed().collect();
                             let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
                             if ring_coords.len() != uv_coords.len() {

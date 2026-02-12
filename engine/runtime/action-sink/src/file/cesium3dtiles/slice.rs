@@ -5,11 +5,11 @@ use std::collections::{HashMap, HashSet};
 use flatgeom::{MultiPolygon, Polygon, Polygon2, Polygon3};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use tracing;
 use reearth_flow_types::{
     material::{self, Material},
     Feature, GeometryType,
 };
+use tracing;
 
 use super::{tiling, tiling::zxy_from_lng_lat};
 use crate::atlas::GltfFeature;
