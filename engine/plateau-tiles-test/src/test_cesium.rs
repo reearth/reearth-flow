@@ -37,13 +37,20 @@ pub fn test_cesium(fme_path: &Path, flow_path: &Path, config: &CesiumConfig) -> 
     let fme_dirs = find_cesium_tile_directories(fme_path)?;
     let flow_dirs = find_cesium_tile_directories(flow_path)?;
 
-    if fme_dirs.is_empty() || flow_dirs.is_empty() {
-        return Err("No 3D Tiles directories found".to_string());
+    if fme_dirs.is_empty() {
+        return Err("No FME 3D Tiles directories found".to_string());
     }
-    if fme_dirs != flow_dirs {
+    // Only require that all FME reference directories exist in Flow output.
+    // Flow may produce extra outputs (e.g. feature types without FME reference).
+    let flow_dirs_set: HashSet<_> = flow_dirs.iter().collect();
+    let missing: Vec<_> = fme_dirs
+        .iter()
+        .filter(|d| !flow_dirs_set.contains(d))
+        .collect();
+    if !missing.is_empty() {
         return Err(format!(
-            "3D Tiles directories differ: FME={:?}, Flow={:?}",
-            fme_dirs, flow_dirs
+            "FME directories missing in Flow output: {:?} (FME={:?}, Flow={:?})",
+            missing, fme_dirs, flow_dirs
         ));
     }
 
