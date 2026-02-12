@@ -296,6 +296,31 @@ graphs:
         with:
           reprojectorType: jgd2011ToWgs84
 
+      - id: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        name: AttributeMapperFor3dTiles
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: uro:lodType
+              valueAttribute: uro:lodType
+
       # 3D Tiles Writers
       - id: f0b4c1d5-6a7e-8f9b-2c3d-e45678901d2b
         name: cesium3DTilesWriterByLod1
@@ -597,24 +622,29 @@ graphs:
         fromPort: default
         toPort: default
 
-      # Schema connections (AttributeFlattener schema -> all Cesium3DTilesWriters)
+      # Schema connections (AttributeFlattener schema -> AttributeMapperFor3dTiles schema -> all Cesium3DTilesWriters)
       - id: e9a3b0c4-5f6d-7e8a-1b2c-d345678c8000
         from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: f0b4c1d5-6a7e-8f9b-2c3d-e45678901d2b
+        to: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
         fromPort: schema
         toPort: schema
       - id: f0b4c1d5-6a7e-8f9b-2c3d-e456789d9000
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: a1c5d2e6-7b8f-9a0c-3d4e-f56789012e3c
+        from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        to: f0b4c1d5-6a7e-8f9b-2c3d-e45678901d2b
         fromPort: schema
         toPort: schema
       - id: a1c5d2e6-7b8f-9a0c-3d4e-f5678901e000
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: b2d6e3f7-8c9a-0b1d-4e5f-a67890123f4d
+        from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        to: a1c5d2e6-7b8f-9a0c-3d4e-f56789012e3c
         fromPort: schema
         toPort: schema
       - id: b2d6e3f7-8c9a-0b1d-4e5f-a6789012f100
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
+        from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        to: b2d6e3f7-8c9a-0b1d-4e5f-a67890123f4d
+        fromPort: schema
+        toPort: schema
+      - id: c3e7f4a8-9d0b-1c2e-5f6a-b7890123ff01
+        from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
         to: c3e7f4a8-9d0b-1c2e-5f6a-b78901234a5e
         fromPort: schema
         toPort: schema
