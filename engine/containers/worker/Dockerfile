@@ -23,7 +23,6 @@ RUN  \
     libc-dev \
     # Required libraries
     libssl-dev \
-    libxml2-dev \
     pkg-config \
     clang \
     libdbus-1-dev \
@@ -52,7 +51,6 @@ RUN \
     apt-get update && \
     apt-get install -y \
     ca-certificates \
-    libxml2 \
     python3 \
     libproj25 && \
     rm -rf /var/lib/apt/lists/*
