@@ -107,7 +107,10 @@ mod tests {
         let actual = vec!["a", "c"];
         let expected = vec!["a", "b", "c"];
         let err = check_key_order(&actual, &expected, "", "").unwrap_err();
-        assert!(err.contains("Key order mismatch"), "missing key should cause mismatch, got: {err}");
+        assert!(
+            err.contains("Key order mismatch"),
+            "missing key should cause mismatch, got: {err}"
+        );
     }
 
     #[test]
@@ -115,6 +118,9 @@ mod tests {
         let actual = vec!["a", "b", "c"];
         let expected = vec!["c", "b", "a"];
         let err = check_key_order(&actual, &expected, "", "").unwrap_err();
-        assert!(err.contains("Key order mismatch"), "wrong order should cause mismatch, got: {err}");
+        assert!(
+            err.contains("Key order mismatch"),
+            "wrong order should cause mismatch, got: {err}"
+        );
     }
 }

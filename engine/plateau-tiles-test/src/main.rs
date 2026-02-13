@@ -259,11 +259,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
-                test_json_attributes_v2::test_json_attributes_v2(
-                    &output_dir,
-                    &test_path,
-                    cfg,
-                )
+                test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
             });
         }
 
