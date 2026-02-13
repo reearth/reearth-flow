@@ -1,0 +1,15 @@
+{
+  "meshcode": {},
+  "city_code": {},
+  "city_name": {},
+  "feature_type": {},
+  "gml_id": {},
+  "attributes": {},
+  "core:creationDate": {},
+  "veg:class": {},
+  "veg:averageHeight": {
+    "minimum": 0.3,
+    "maximum": 0.8
+  },
+  "uro:geometrySrcDescLod1": {}
+}

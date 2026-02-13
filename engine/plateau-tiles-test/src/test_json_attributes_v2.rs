@@ -1,3 +1,5 @@
+use crate::cast_config::CastConfigValue;
+use crate::compare_attributes::analyze_attributes;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -8,6 +10,8 @@ use std::path::Path;
 pub struct JsonFileV2Config {
     pub flow: FlowSource,
     pub truth: TruthSource,
+    #[serde(default)]
+    pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,77 +66,17 @@ pub fn test_json_attributes_v2(
 
         tracing::debug!("Comparing JSON (v2): {} flow={}", name, cfg.flow.path);
 
-        if flow_data != truth_data {
-            let diff = json_diff("", &truth_data, &flow_data);
-            if !diff.is_empty() {
-                for d in &diff {
-                    eprintln!("MISMATCH [{}] {}", name, d);
-                }
-                return Err(format!(
-                    "json_attributes_v2 '{}': {} mismatches found",
-                    name,
-                    diff.len()
-                ));
-            }
-        }
+        let casts = if let Some(ref casts_cfg) = cfg.casts {
+            crate::cast_config::convert_casts(casts_cfg)?
+        } else {
+            HashMap::new()
+        };
+
+        // Use analyze_attributes: flow as attr1 (casts applied to it), truth as attr2
+        analyze_attributes(name, &flow_data, &truth_data, casts, HashMap::new())?;
 
         tracing::debug!("OK: json_attributes_v2 '{}'", name);
     }
 
     Ok(())
-}
-
-/// Produces human-readable diff lines between two JSON values.
-fn json_diff(path: &str, expected: &Value, actual: &Value) -> Vec<String> {
-    let mut diffs = Vec::new();
-
-    match (expected, actual) {
-        (Value::Object(exp), Value::Object(act)) => {
-            let all_keys: std::collections::HashSet<_> =
-                exp.keys().chain(act.keys()).collect();
-            for k in all_keys {
-                let child_path = if path.is_empty() {
-                    format!(".{}", k)
-                } else {
-                    format!("{}.{}", path, k)
-                };
-                match (exp.get(k), act.get(k)) {
-                    (Some(e), Some(a)) => {
-                        diffs.extend(json_diff(&child_path, e, a));
-                    }
-                    (Some(e), None) => {
-                        diffs.push(format!("key {} missing in flow (expected {:?})", child_path, e));
-                    }
-                    (None, Some(a)) => {
-                        diffs.push(format!("key {} unexpected in flow (got {:?})", child_path, a));
-                    }
-                    (None, None) => unreachable!(),
-                }
-            }
-        }
-        (Value::Array(exp), Value::Array(act)) => {
-            if exp.len() != act.len() {
-                diffs.push(format!(
-                    "key {} array length mismatch: expected {} got {}",
-                    path,
-                    exp.len(),
-                    act.len()
-                ));
-            }
-            for (i, (e, a)) in exp.iter().zip(act.iter()).enumerate() {
-                let child_path = format!("{}[{}]", path, i);
-                diffs.extend(json_diff(&child_path, e, a));
-            }
-        }
-        _ => {
-            if expected != actual {
-                diffs.push(format!(
-                    "key {} expected {:?} got {:?}",
-                    path, expected, actual
-                ));
-            }
-        }
-    }
-
-    diffs
 }

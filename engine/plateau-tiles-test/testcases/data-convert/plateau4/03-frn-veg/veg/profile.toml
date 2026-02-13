@@ -6,13 +6,6 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_veg.zip"
 ".dm_attributes" = "json"
 ".attributes.meshcode" = "string"
 
-
-[tests.json_attributes.dictionary]
-path = "dictionary.json"
-[tests.json_attributes.dictionary.casts.".veg"]
-comparator = "list_to_dict"
-key = ".name"
-
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
@@ -26,40 +19,30 @@ threshold = 0.01
 zoom = [12, 16]
 threshold = 0.001
 
-[tests.json_attributes.tilesets_plantcover_lod1]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1/tileset.json"
-extracted = true
+[tests.json_attributes_v2.dictionary]
+flow.path = "flow/dictionary.json"
+truth.path = "dictionary.json"
+casts.veg = { comparator = "list_to_dict", key = ".name" }
 
-[tests.json_attributes.tilesets_plantcover_lod1.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
+[tests.json_attributes_v2.tilesets_plantcover_lod1]
+flow.path = "flow_extracted/08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_plantcover_lod1_tileset.json"
 
-[tests.json_attributes.tilesets_plantcover_lod2]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2/tileset.json"
-extracted = true
+[tests.json_attributes_v2.tilesets_plantcover_lod2]
+flow.path = "flow_extracted/08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_plantcover_lod2_tileset.json"
 
-[tests.json_attributes.tilesets_plantcover_lod2.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
+[tests.json_attributes_v2.tilesets_plantcover_lod3]
+flow.path = "flow_extracted/08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_plantcover_lod3_tileset.json"
 
-[tests.json_attributes.tilesets_plantcover_lod3]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3/tileset.json"
-extracted = true
-
-[tests.json_attributes.tilesets_plantcover_lod3.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
-
-[tests.json_attributes.tilesets_solitaryveg_lod1]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1/tileset.json"
-extracted = true
-
-[tests.json_attributes.tilesets_solitaryveg_lod1.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
-# FME gives 8 which is probably more correct (measure should preserve precision)
-# but for now we ignore such tiny issues and simply override the value (and skip lod2,3)
-".properties.veg:height.minimum" = "float"
+[tests.json_attributes_v2.tilesets_solitaryveg_lod1]
+flow.path = "flow_extracted/08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_solitaryveg_lod1_tileset.json"
 
 [filter.tree]
 # Warn: some other features in this dataset contains NaN and are excluded.

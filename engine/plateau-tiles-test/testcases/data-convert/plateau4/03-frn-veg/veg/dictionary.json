@@ -1,0 +1,12 @@
+{
+  "veg": [
+    {
+      "description": "植被",
+      "name": "PlantCover"
+    },
+    {
+      "description": "単独木",
+      "name": "SolitaryVegetationObject"
+    }
+  ]
+}

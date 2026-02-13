@@ -6,22 +6,15 @@ citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op_fld.zip"
 ".dm_attributes" = "json"
 ".uro:rank_code" = "string"
 
-[tests.json_attributes.dictionary]
-path = "dictionary.json"
-[tests.json_attributes.dictionary.casts.".fld"]
-comparator = "list_to_dict"
-key = ".name"
+[tests.json_attributes_v2.dictionary]
+flow.path = "flow/dictionary.json"
+truth.path = "dictionary.json"
+casts.fld = { comparator = "list_to_dict", key = ".name" }
 
-[tests.json_attributes.tilesets_l2]
-path = "16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture/tileset.json"
-extracted = true
-
-[tests.json_attributes.tilesets_l2.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
-
-[tests.json_attributes.tilesets_l2.values]
-".properties.uro:rank_code" = {}
+[tests.json_attributes_v2.tilesets_l2_no_texture]
+flow.path = "flow_extracted/16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_l2_no_texture_tileset.json"
 
 [filter.tree]
 "udx/fld/pref/oyabegawa_gandogawa/55360704_fld_6697_l2.gml" = [

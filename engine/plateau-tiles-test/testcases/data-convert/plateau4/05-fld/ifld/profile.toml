@@ -6,22 +6,15 @@ citygml_zip_name = "11100_saitama-shi_city_2024_citygml_1_op_ifld.zip"
 ".dm_attributes" = "json"
 ".uro:rankOrg_code" = "string"
 
-[tests.json_attributes.dictionary]
-path = "dictionary.json"
-[tests.json_attributes.dictionary.casts.".ifld"]
-comparator = "list_to_dict"
-key = ".name"
+[tests.json_attributes_v2.dictionary]
+flow.path = "flow/dictionary.json"
+truth.path = "dictionary.json"
+casts.ifld = { comparator = "list_to_dict", key = ".name" }
 
-[tests.json_attributes.tilesets]
-path = "11100_saitama-shi_city_2024_citygml_1_op_ifld_11_1_3dtiles_no_texture/tileset.json"
-extracted = true
-
-[tests.json_attributes.tilesets.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
-
-[tests.json_attributes.tilesets.values]
-".properties.uro:rankOrg_code" = {} # FME silently convert this to number type, causing min/max values to appear
+[tests.json_attributes_v2.tilesets_no_texture]
+flow.path = "flow_extracted/11100_saitama-shi_city_2024_citygml_1_op_ifld_11_1_3dtiles_no_texture/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_no_texture_tileset.json"
 
 [filter.tree]
 "udx/ifld/11_1/533955_ifld_6697_op.gml" = [
