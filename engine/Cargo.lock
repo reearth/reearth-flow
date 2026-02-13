@@ -925,7 +925,7 @@ dependencies = [
 [[package]]
 name = "cesiumtiles"
 version = "0.0.0"
-source = "git+https://github.com/reearth/cesiumtiles-rs?branch=fix%2Findexmap#5682a609757a1cfb9d9d54ea7c0a1da707ca5e48"
+source = "git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.2#908a311da92bceb3d2e8e66575a15375e1e2d033"
 dependencies = [
  "indexmap 2.13.0",
  "serde",
@@ -6609,7 +6609,7 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "bytes",
- "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?branch=fix%2Findexmap)",
+ "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.2)",
  "chrono",
  "crossbeam",
  "crossbeam-channel",
