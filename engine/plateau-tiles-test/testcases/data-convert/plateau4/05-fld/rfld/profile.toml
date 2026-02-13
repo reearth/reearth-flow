@@ -4,8 +4,6 @@ citygml_zip_name = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld.zip"
 [tests.cesium.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
-".uro:rank_code" = "string"
-
 
 [tests.json_attributes_v2.dictionary]
 flow.path = "flow/dictionary.json"
