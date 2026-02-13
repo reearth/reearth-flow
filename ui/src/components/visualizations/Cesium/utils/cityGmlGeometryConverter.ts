@@ -199,7 +199,7 @@ export function extractLodPolygons(
 
 /**
  * Convert building-specific geometry (solid, multi-surface, etc.)
- * Always builds LOD1 on load; LOD1 positions are stored in entity.lodData for revert.
+ * Always builds LOD1 on load; the original LOD1 surfaces are kept in entity.surfaces and re-shown on revert after an LOD upgrade.
  */
 function convertBuildingGeometry(
   entity: EntityWithSurfaces,
@@ -1044,11 +1044,6 @@ export function updateLodFeature(
 ): void {
   const { entity } = entry;
 
-  // Hide all LOD1 surface entities
-  entity.surfaces?.forEach((s) => {
-    s.show = false;
-  });
-
   // Batch all LOD polygons into a single Primitive for performance
   const instances = lodPolygons
     .filter((p) => p.positions.length >= 3)
@@ -1069,6 +1064,11 @@ export function updateLodFeature(
     });
 
   if (instances.length === 0) return;
+
+  // Hide all LOD1 surface entities
+  entity.surfaces?.forEach((s) => {
+    s.show = false;
+  });
 
   const primitive = new Primitive({
     geometryInstances: instances,

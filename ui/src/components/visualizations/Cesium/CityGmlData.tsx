@@ -42,6 +42,15 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     if (!cityGmlData || !viewer) return;
 
     // Clear existing entities
+    // Before clearing the feature map, remove any active LOD primitives
+    featureMapRef.current.forEach(({ entity }) => {
+      const entityAny = entity as any;
+      if (entityAny && entityAny.lodPrimitive) {
+        viewer.scene.primitives.remove(entityAny.lodPrimitive);
+        entityAny.lodPrimitive = undefined;
+      }
+    });
+
     entitiesRef.current.forEach((entity) => {
       viewer.entities.remove(entity);
     });
@@ -117,7 +126,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
       const entry = featureMapRef.current.get(currentId);
       if (entry) {
         const lodPolygons = extractLodPolygons(entry.feature);
-        if (lodPolygons) {
+        if (lodPolygons && lodPolygons.length > 0) {
           updateLodFeature(entry, lodPolygons, viewer);
         }
       }
