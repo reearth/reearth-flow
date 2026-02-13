@@ -26,7 +26,6 @@ expected_order = [
     "bldg:measuredHeight",
     "uro:BuildingDetailAttribute_uro:buildingStructureType",
     "uro:BuildingDetailAttribute_uro:fireproofStructureType",
-    # 洪水浸水想定 — grouped by river, L1→L2, 国管理→都道府県管理
     # 利根川水系利根川（国管理区間）
     "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランク",
     "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランクコード",

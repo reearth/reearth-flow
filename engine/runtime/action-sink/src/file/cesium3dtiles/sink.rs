@@ -261,7 +261,6 @@ impl Cesium3DTilesWriter {
         );
 
         let typedef: TypeDef = (&sanitized_feature).into();
-
         self.schema.types.insert(feature_type.clone(), typedef);
         Ok(())
     }

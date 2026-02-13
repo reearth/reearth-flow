@@ -350,13 +350,11 @@ fn collect_property_stats(
     stats
 }
 
-/// Merge per-tile property stats and seen keys into globals
+/// Merge per-tile property stats into globals
 fn merge_property_stats(
     global_stats: &mut IndexMap<String, PropertyMetadata>,
-    global_seen: &mut IndexSet<String, ahash::RandomState>,
     local: IndexMap<String, PropertyMetadata>,
 ) {
-    global_seen.extend(local.keys().cloned());
     for (key, local_meta) in local {
         global_stats.entry(key).or_default().merge(&local_meta);
     }
@@ -373,19 +371,8 @@ pub(super) fn tile_writing_stage(
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
-    // Pre-initialize property_stats from schema to preserve attribute order
-    let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = {
-        let mut stats = IndexMap::new();
-        for typedef in schema.types.values() {
-            if let nusamai_citygml::schema::TypeDef::Feature(fdef) = typedef {
-                for key in fdef.attributes.keys() {
-                    stats.insert(key.clone(), PropertyMetadata::default());
-                }
-            }
-        }
-        Arc::new(Mutex::new(stats))
-    };
-    let seen_keys: Arc<Mutex<IndexSet<String, ahash::RandomState>>> = Default::default();
+    let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> =
+        Arc::new(Mutex::new(IndexMap::new()));
 
     // Texture cache (use default cache size)
     let texture_cache = TextureCache::new(200_000_000);
@@ -419,11 +406,7 @@ pub(super) fn tile_writing_stage(
 
             // Collect property stats from valid features only
             let tile_stats = collect_property_stats(&valid_features, &typename, schema);
-            merge_property_stats(
-                &mut property_stats.lock().unwrap(),
-                &mut seen_keys.lock().unwrap(),
-                tile_stats,
-            );
+            merge_property_stats(&mut property_stats.lock().unwrap(), tile_stats);
 
             // Prepare texture packing
             let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
@@ -493,15 +476,6 @@ pub(super) fn tile_writing_stage(
     let mut tree = TileTree::default();
     for content in contents.lock().unwrap().drain(..) {
         tree.add_content(content);
-    }
-
-    // Remove schema keys that never occurred in any feature
-    {
-        let seen = seen_keys.lock().unwrap();
-        property_stats
-            .lock()
-            .unwrap()
-            .retain(|key, _| seen.contains(key));
     }
 
     // Convert property stats to tileset properties format
