@@ -10,5 +10,7 @@
   "tran:Track_tran:function": {},
   "tran:function": {},
   "uro:geometrySrcDescLod1": {},
-  "uro:lodType": {}
+  "uro:lodType": {},
+  "tran:usage": {},
+  "gml:name": {}
 }

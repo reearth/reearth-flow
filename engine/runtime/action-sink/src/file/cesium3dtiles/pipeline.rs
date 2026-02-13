@@ -371,8 +371,18 @@ pub(super) fn tile_writing_stage(
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
-    let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> =
-        Arc::new(Mutex::new(IndexMap::new()));
+    // Pre-initialize property_stats from schema to preserve attribute order
+    let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = {
+        let mut stats = IndexMap::new();
+        for typedef in schema.types.values() {
+            if let nusamai_citygml::schema::TypeDef::Feature(fdef) = typedef {
+                for key in fdef.attributes.keys() {
+                    stats.insert(key.clone(), PropertyMetadata::default());
+                }
+            }
+        }
+        Arc::new(Mutex::new(stats))
+    };
 
     // Texture cache (use default cache size)
     let texture_cache = TextureCache::new(200_000_000);
