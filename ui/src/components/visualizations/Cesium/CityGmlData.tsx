@@ -106,12 +106,22 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
   // Handle LOD upgrade/revert when selectedFeatureId changes
   useEffect(() => {
     if (!viewer) return;
-
     const prevId = prevSelectedRef.current;
     const currentId = selectedFeatureId ?? null;
     prevSelectedRef.current = currentId;
 
-    if (prevId === currentId) return;
+    if (prevId === currentId && cityGmlData) {
+      if (currentId) {
+        const entry = featureMapRef.current.get(currentId);
+        if (entry) {
+          const lodPolygons = extractLodPolygons(entry.feature);
+          if (lodPolygons && lodPolygons.length > 0) {
+            updateLodFeature(entry, lodPolygons, viewer);
+          }
+        }
+      }
+      return;
+    }
 
     // Revert previously selected feature back to LOD1
     if (prevId) {
@@ -131,7 +141,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
         }
       }
     }
-  }, [selectedFeatureId, viewer]);
+  }, [selectedFeatureId, viewer, cityGmlData]);
 
   // Cleanup on unmount
   useEffect(() => {
