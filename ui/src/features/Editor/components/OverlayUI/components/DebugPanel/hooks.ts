@@ -1,5 +1,11 @@
 import bbox from "@turf/bbox";
-import { Cartesian3, GeoJsonDataSource } from "cesium";
+import {
+  BoundingSphere,
+  Cartesian3,
+  GeoJsonDataSource,
+  HeadingPitchRange,
+  Math as CesiumMath,
+} from "cesium";
 import {
   MouseEvent,
   useCallback,
@@ -237,78 +243,66 @@ export default () => {
           );
 
           if (matchingEntities.length > 0) {
-            // Validate entities have reasonable coordinates
-            const validEntities = matchingEntities.filter((entity: any) => {
-              try {
-                if (entity.polygon?.hierarchy?.getValue) {
-                  const hierarchy = entity.polygon.hierarchy.getValue();
-                  if (hierarchy?.positions) {
-                    // Check if any position has invalid coordinates
-                    return hierarchy.positions.every(
-                      (pos: any) =>
-                        pos &&
-                        typeof pos.x === "number" &&
-                        !isNaN(pos.x) &&
-                        isFinite(pos.x) &&
-                        typeof pos.y === "number" &&
-                        !isNaN(pos.y) &&
-                        isFinite(pos.y) &&
-                        typeof pos.z === "number" &&
-                        !isNaN(pos.z) &&
-                        isFinite(pos.z),
-                    );
-                  }
-                }
-                return true; // If no polygon, assume valid
-              } catch {
-                return false;
+            // Prefer a parent entity with position (works even when LOD surfaces are hidden)
+            const parentWithPosition = matchingEntities.find(
+              (e: any) => e.position,
+            );
+
+            if (parentWithPosition) {
+              // Use camera.flyTo with the entity's position directly,
+              // since viewer.flyTo needs visible geometry to compute a bounding sphere
+              const position =
+                parentWithPosition.position.getValue?.(
+                  cesiumViewer.clock.currentTime,
+                ) ?? parentWithPosition.position.getValue?.();
+              if (position) {
+                const height =
+                  parentWithPosition.properties?.getValue?.()?.height ?? 50;
+                cesiumViewer.camera.flyToBoundingSphere(
+                  new BoundingSphere(position, height * 2),
+                  {
+                    duration: 1,
+                    offset: new HeadingPitchRange(
+                      0,
+                      CesiumMath.toRadians(-45),
+                      height * 4,
+                    ),
+                  },
+                );
+              } else {
+                cesiumViewer.flyTo(parentWithPosition);
               }
-            });
-
-            if (validEntities.length === 0) {
-              console.warn(
-                "No valid entities found - all have invalid coordinates",
-              );
-              return;
-            }
-
-            try {
-              // Try different zoom approaches to handle potential coordinate issues
-
-              // Approach 1: Simple zoomTo without offset on valid entities
-              cesiumViewer.zoomTo(validEntities);
-            } catch (zoomError) {
-              console.warn(
-                "Direct zoomTo failed, trying fallback approach:",
-                zoomError,
-              );
-
-              try {
-                // Approach 2: Zoom to first valid entity only
-                if (validEntities[0]) {
-                  cesiumViewer.zoomTo(validEntities[0]);
-                }
-              } catch (fallbackError) {
-                console.error("All zoom approaches failed:", fallbackError);
-
-                // Approach 3: Manual camera positioning using entity bounds
+            } else {
+              // Fallback: filter to visible entities with valid coordinates
+              const validEntities = matchingEntities.filter((entity: any) => {
+                if (!entity.show) return false;
                 try {
-                  const entity = validEntities[0];
-                  if (entity.position) {
-                    const position = entity.position.getValue();
-                    if (position) {
-                      cesiumViewer.camera.lookAt(
-                        position,
-                        new Cartesian3(100, 100, 100), // Simple offset
+                  if (entity.polygon?.hierarchy?.getValue) {
+                    const hierarchy = entity.polygon.hierarchy.getValue();
+                    if (hierarchy?.positions) {
+                      return hierarchy.positions.every(
+                        (pos: any) =>
+                          pos &&
+                          typeof pos.x === "number" &&
+                          !isNaN(pos.x) &&
+                          isFinite(pos.x) &&
+                          typeof pos.y === "number" &&
+                          !isNaN(pos.y) &&
+                          isFinite(pos.y) &&
+                          typeof pos.z === "number" &&
+                          !isNaN(pos.z) &&
+                          isFinite(pos.z),
                       );
                     }
                   }
-                } catch (manualError) {
-                  console.error(
-                    "Manual camera positioning failed:",
-                    manualError,
-                  );
+                  return true;
+                } catch {
+                  return false;
                 }
+              });
+
+              if (validEntities.length > 0) {
+                cesiumViewer.zoomTo(validEntities);
               }
             }
           } else {

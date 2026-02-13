@@ -1,10 +1,11 @@
-import { Entity, ConstantProperty, PolygonHierarchy } from "cesium";
+import { Entity } from "cesium";
 import { memo, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
 import {
   convertFeatureToEntity,
-  updateLod2Feature,
+  updateLodFeature,
+  revertLodFeature,
   extractLodPolygons,
   type EntityWithSurfaces,
 } from "./utils/cityGmlGeometryConverter";
@@ -35,8 +36,6 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     Map<string, { feature: CityGmlFeature; entity: EntityWithSurfaces }>
   >(new Map());
   const prevSelectedRef = useRef<string | null>(null);
-  // Track the count of original LOD1 surfaces per feature so we know which extras to hide on revert
-  const lod1SurfaceCountRef = useRef<Map<string, number>>(new Map());
 
   // Process CityGML data and create entities (only on data change)
   useEffect(() => {
@@ -48,7 +47,6 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     });
 
     featureMapRef.current.clear();
-    lod1SurfaceCountRef.current.clear();
 
     const newEntities: Entity[] = [];
 
@@ -80,7 +78,6 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
         const fid = feature.properties._originalId;
         if (fid) {
           featureMapRef.current.set(fid, { feature, entity });
-          lod1SurfaceCountRef.current.set(fid, entity.surfaces?.length ?? 0);
         }
       }
     });
@@ -97,7 +94,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     }
   }, [cityGmlData, viewer]);
 
-  // Handle LOD2 in-place mutation when selectedFeatureId changes
+  // Handle LOD upgrade/revert when selectedFeatureId changes
   useEffect(() => {
     if (!viewer) return;
 
@@ -111,35 +108,17 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     if (prevId) {
       const prevEntry = featureMapRef.current.get(prevId);
       if (prevEntry) {
-        const { entity } = prevEntry;
-        const lodData = entity.lodData;
-        const surfaces = entity.surfaces;
-        const lod1Count = lod1SurfaceCountRef.current.get(prevId) ?? 0;
-
-        if (surfaces && lodData) {
-          for (let i = 0; i < surfaces.length; i++) {
-            if (i < lod1Count && i < lodData.length) {
-              // Revert to LOD1 positions in-place
-              const hierarchy = surfaces[i].polygon
-                ?.hierarchy as ConstantProperty;
-              hierarchy?.setValue(new PolygonHierarchy(lodData[i]));
-              surfaces[i].show = true;
-            } else {
-              // Extra surface added for LOD2 - hide it
-              surfaces[i].show = false;
-            }
-          }
-        }
+        revertLodFeature(prevEntry.entity, viewer);
       }
     }
 
-    // Upgrade newly selected feature to LOD2
+    // Upgrade newly selected feature to highest available LOD
     if (currentId) {
       const entry = featureMapRef.current.get(currentId);
       if (entry) {
-        const lod2Polygons = extractLodPolygons(entry.feature);
-        if (lod2Polygons) {
-          updateLod2Feature(entry, lod2Polygons, viewer, entitiesRef);
+        const lodPolygons = extractLodPolygons(entry.feature);
+        if (lodPolygons) {
+          updateLodFeature(entry, lodPolygons, viewer);
         }
       }
     }
@@ -148,7 +127,13 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (viewer && entitiesRef.current.length > 0) {
+      if (viewer) {
+        // Remove any active LOD primitives
+        featureMapRef.current.forEach(({ entity }) => {
+          if (entity.lodPrimitive) {
+            viewer.scene.primitives.remove(entity.lodPrimitive);
+          }
+        });
         entitiesRef.current.forEach((entity) => {
           viewer.entities.remove(entity);
         });

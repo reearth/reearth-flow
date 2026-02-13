@@ -16,15 +16,19 @@ import {
   ConstantPositionProperty,
   Cartographic,
   Viewer,
+  Primitive,
+  GeometryInstance,
+  PolygonGeometry,
+  PerInstanceColorAppearance,
+  ColorGeometryInstanceAttribute,
 } from "cesium";
-import { RefObject } from "react";
 
 import { generateUUID } from "@flow/utils";
 
-// Extend Entity type to include surfaces and LOD1 revert data
+// Extend Entity type to include surfaces and LOD Primitive for on-select upgrade
 export type EntityWithSurfaces = Entity & {
   surfaces?: Entity[];
-  lodData?: Cartesian3[][]; // LOD1 positions per surface for revert
+  lodPrimitive?: Primitive;
 };
 
 export type ProcessedPolygon = {
@@ -98,19 +102,26 @@ export function convertFeatureToEntity(
 function processPolygons(buildingPolygons: any[]): ProcessedPolygon[] {
   const results: ProcessedPolygon[] = [];
 
-  // Pre-compute global ground level across all polygons
-  const allZValues = buildingPolygons.flatMap((p: any) =>
-    (p.exterior || []).map((c: any) => c.z || 0),
-  );
-  if (allZValues.length === 0) return results;
-  const globalMinZ = Math.min(...allZValues);
+  // Pre-compute global ground level across all polygons (loop to avoid stack overflow on large LOD3 data)
+  let globalMinZ = Infinity;
+  for (const p of buildingPolygons) {
+    for (const c of p.exterior || []) {
+      const z = c.z || 0;
+      if (z < globalMinZ) globalMinZ = z;
+    }
+  }
+  if (globalMinZ === Infinity) return results;
 
   buildingPolygons.forEach((polygon) => {
     if (!polygon.exterior || !Array.isArray(polygon.exterior)) return;
 
-    const zValues = polygon.exterior.map((coord: any) => coord.z || 0);
-    const minZ = Math.min(...zValues);
-    const maxZ = Math.max(...zValues);
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const coord of polygon.exterior) {
+      const z = coord.z || 0;
+      if (z < minZ) minZ = z;
+      if (z > maxZ) maxZ = z;
+    }
     const isFlat = Math.abs(maxZ - minZ) < 0.1;
 
     let surfaceType: string;
@@ -143,8 +154,8 @@ function processPolygons(buildingPolygons: any[]): ProcessedPolygon[] {
 }
 
 /**
- * Extract LOD2 polygon data for a feature without creating entities.
- * Returns processed polygon positions arrays for in-place mutation of existing surfaces.
+ * Extract highest available LOD polygon data (LOD3 > LOD2) for a feature.
+ * Returns processed polygon positions arrays for on-select LOD upgrade.
  */
 export function extractLodPolygons(
   feature: CityGmlFeature,
@@ -155,17 +166,27 @@ export function extractLodPolygons(
 
   if (!gmlGeometries || !Array.isArray(gmlGeometries)) return null;
 
-  const lod2Geometries = gmlGeometries.filter(
+  // Try LOD3 first, fall back to LOD2
+  let lodGeometries = gmlGeometries.filter(
     (geom: any) =>
-      geom.lod === 2 ||
-      geom.gml_trait?.property?.includes("Lod2") ||
-      geom.gml_trait?.property?.includes("LOD2"),
+      geom.lod === 3 ||
+      geom.gml_trait?.property?.includes("Lod3") ||
+      geom.gml_trait?.property?.includes("LOD3"),
   );
 
-  if (lod2Geometries.length === 0) return null;
+  if (lodGeometries.length === 0) {
+    lodGeometries = gmlGeometries.filter(
+      (geom: any) =>
+        geom.lod === 2 ||
+        geom.gml_trait?.property?.includes("Lod2") ||
+        geom.gml_trait?.property?.includes("LOD2"),
+    );
+  }
+
+  if (lodGeometries.length === 0) return null;
 
   const buildingPolygons: any[] = [];
-  lod2Geometries.forEach((geom: any) => {
+  lodGeometries.forEach((geom: any) => {
     if (geom.polygons && Array.isArray(geom.polygons)) {
       buildingPolygons.push(...geom.polygons);
     }
@@ -225,9 +246,7 @@ function convertBuildingGeometry(
   if (processed.length === 0) return false;
 
   const surfaces: Entity[] = [];
-  const lodData: Cartesian3[][] = [];
   entity.surfaces = surfaces;
-  entity.lodData = lodData;
 
   processed.forEach((p, index) => {
     const surfaceEntity = new Entity({
@@ -291,7 +310,6 @@ function convertBuildingGeometry(
     surfaceEntity.properties = propertyBag;
 
     surfaces.push(surfaceEntity);
-    lodData.push([...p.positions]); // Store LOD1 positions for revert
   });
 
   // Extract key building attributes for InfoBox
@@ -1012,48 +1030,74 @@ function createFallbackEntity(
   return true;
 }
 
-export function updateLod2Feature(
+/**
+ * Upgrade a building to higher LOD by hiding LOD1 surfaces and rendering
+ * all LOD polygons as a single batched Primitive (one draw call).
+ */
+export function updateLodFeature(
   entry: {
     feature: CityGmlFeature;
     entity: EntityWithSurfaces;
   },
-  lod2Polygons: ProcessedPolygon[],
+  lodPolygons: ProcessedPolygon[],
   viewer: Viewer,
-  entitiesRef: RefObject<Entity[]>,
-): any {
+): void {
   const { entity } = entry;
-  const surfaces = entity.surfaces ?? [];
 
-  // Mutate existing surfaces or add new ones for LOD2
-  for (let i = 0; i < lod2Polygons.length; i++) {
-    if (i < surfaces.length) {
-      // Mutate existing surface entity in-place via ConstantProperty.setValue()
-      const hierarchy = surfaces[i].polygon?.hierarchy as ConstantProperty;
-      hierarchy?.setValue(new PolygonHierarchy(lod2Polygons[i].positions));
-      surfaces[i].show = true;
-    } else {
-      // LOD2 has more polygons than LOD1 - create extra surface entities
-      const surfaceEntity = new Entity({
-        id: `${entity.id}_lod2_extra_${i}`,
-        name: `${entity.name} - ${lod2Polygons[i].surfaceType} ${i + 1}`,
-        polygon: new PolygonGraphics({
-          hierarchy: new ConstantProperty(
-            new PolygonHierarchy(lod2Polygons[i].positions),
-          ),
-          material: lod2Polygons[i].material,
-          outline: new ConstantProperty(true),
-          outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
-          outlineWidth: new ConstantProperty(2),
-          heightReference: new ConstantProperty(HeightReference.NONE),
-          perPositionHeight: new ConstantProperty(true),
+  // Hide all LOD1 surface entities
+  entity.surfaces?.forEach((s) => {
+    s.show = false;
+  });
+
+  // Batch all LOD polygons into a single Primitive for performance
+  const instances = lodPolygons
+    .filter((p) => p.positions.length >= 3)
+    .map((p, i) => {
+      const color =
+        p.material.color?.getValue(viewer.clock.currentTime) ??
+        Color.GRAY.withAlpha(0.8);
+      return new GeometryInstance({
+        geometry: new PolygonGeometry({
+          polygonHierarchy: new PolygonHierarchy(p.positions),
+          perPositionHeight: true,
         }),
+        attributes: {
+          color: ColorGeometryInstanceAttribute.fromColor(color),
+        },
+        id: `${entity.id}_lod_${i}`,
       });
-      viewer.entities.add(surfaceEntity);
-      surfaces.push(surfaceEntity);
-      entitiesRef.current.push(surfaceEntity);
-    }
+    });
+
+  if (instances.length === 0) return;
+
+  const primitive = new Primitive({
+    geometryInstances: instances,
+    appearance: new PerInstanceColorAppearance({
+      flat: true,
+      translucent: true,
+    }),
+  });
+
+  viewer.scene.primitives.add(primitive);
+  entity.lodPrimitive = primitive;
+}
+
+/**
+ * Revert a building back to LOD1 by removing the LOD Primitive
+ * and re-showing the original LOD1 surface entities.
+ */
+export function revertLodFeature(
+  entity: EntityWithSurfaces,
+  viewer: Viewer,
+): void {
+  // Remove the LOD primitive
+  if (entity.lodPrimitive) {
+    viewer.scene.primitives.remove(entity.lodPrimitive);
+    entity.lodPrimitive = undefined;
   }
 
-  // Update surfaces reference in case extras were added
-  entity.surfaces = surfaces;
+  // Show all LOD1 surface entities
+  entity.surfaces?.forEach((s) => {
+    s.show = true;
+  });
 }
