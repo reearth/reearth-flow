@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
-    xml::{self, XmlDocument, XmlRoNode},
+    xml::{self, XPathResultExt, XmlDocument, XmlRoNode},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -1111,7 +1111,7 @@ fn walk_node(
                 lod_count.plus_str(v.to_string());
             }
         } else if tag == "dem:load" {
-            let value = node.get_content();
+            let value = node.get_content().unwrap_or_default();
             let lod = value.parse::<i32>();
             if let Ok(lod) = lod {
                 lod_count.plus_i32(lod);
@@ -1239,15 +1239,12 @@ fn walk_node(
             _ => (),
         }
         // XML要素の値
-        let text = node.get_content();
+        let text = node.get_content().unwrap_or_default();
         if text.is_empty() {
             continue;
         }
-        let code_space = match node.get_attribute_node("codeSpace") {
-            Some(attr) => attr.get_content(),
-            None => "".to_string(),
-        };
-        if code_space.is_empty() {
+        let code_space = node.get_attribute("codeSpace").unwrap_or_default();
+        if !code_space.is_empty() {
             let codelist = city_gml_path.join(code_space.as_str()).map_err(|e| {
                 PlateauProcessorError::XmlAttributeExtractor(format!(
                     "Cannot join uri with error = {e:?}"
@@ -1289,16 +1286,16 @@ fn walk_node(
                 result.set(tag.clone(), value);
             }
         }
-        if let Some(uom) = node.get_attribute_node("uom") {
+        if let Some(uom) = node.get_attribute("uom") {
             if multi {
                 result.append(
                     format!("{}_uom", tag.clone()),
-                    serde_json::Value::String(uom.get_content()),
+                    serde_json::Value::String(uom),
                 );
             } else {
                 result.set(
                     format!("{}_uom", tag.clone()),
-                    serde_json::Value::String(uom.get_content()),
+                    serde_json::Value::String(uom),
                 );
             }
         }
@@ -1367,15 +1364,10 @@ fn walk_generic_node(
             ))?;
         result.push(GenericAttribute {
             r#type: typ.to_string(),
-            name: node
-                .get_attribute_node("name")
-                .map(|attr| attr.get_content())
-                .unwrap_or_default(),
-            value: serde_json::Value::String(value.get_content()),
+            name: node.get_attribute("name").unwrap_or_default(),
+            value: serde_json::Value::String(value.get_content().unwrap_or_default()),
             uom: if typ == "measure" {
-                value
-                    .get_attribute_node("uom")
-                    .map(|attr| attr.get_content())
+                value.get_attribute("uom")
             } else {
                 None
             },
@@ -1398,7 +1390,9 @@ fn get_address(document: &XmlDocument, node: &XmlRoNode) -> super::errors::Resul
         })?;
     let mut result = Vec::<String>::new();
     nodes.iter().for_each(|node| {
-        result.push(node.get_content());
+        if let Some(content) = node.get_content() {
+            result.push(content);
+        }
     });
     let nodes =
         xml::find_readonly_nodes_by_xpath(&ctx, ".//xAL:DependentLocality", node).map_err(|e| {
@@ -1407,20 +1401,19 @@ fn get_address(document: &XmlDocument, node: &XmlRoNode) -> super::errors::Resul
             ))
         })?;
     for node in nodes {
-        let attribute_node = node.get_attribute_node("Type");
-        match attribute_node {
-            Some(attribute_node) if attribute_node.get_content() == "district" => {
-                let nodes = xml::find_readonly_nodes_by_xpath(&ctx, "./*", &attribute_node)
-                    .map_err(|e| {
-                        PlateauProcessorError::XmlAttributeExtractor(format!(
-                            "Cannot evaluate xml with error = {e:?}"
-                        ))
-                    })?;
-                nodes.iter().for_each(|node| {
-                    result.push(node.get_content());
-                });
-            }
-            _ => (),
+        let attribute_value = node.get_attribute("Type");
+        if attribute_value.as_deref() == Some("district") {
+            let child_nodes =
+                xml::find_readonly_nodes_by_xpath(&ctx, "./*", &node).map_err(|e| {
+                    PlateauProcessorError::XmlAttributeExtractor(format!(
+                        "Cannot evaluate xml with error = {e:?}"
+                    ))
+                })?;
+            child_nodes.iter().for_each(|child| {
+                if let Some(content) = child.get_content() {
+                    result.push(content);
+                }
+            });
         }
     }
     Ok(result.join(""))

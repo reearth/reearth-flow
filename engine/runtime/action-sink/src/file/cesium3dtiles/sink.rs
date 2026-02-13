@@ -223,17 +223,12 @@ impl Cesium3DTilesWriter {
         };
 
         let feature = {
+            let mut attrs = crate::schema::filter_and_cast_attributes(&ctx.feature, &self.schema);
+            if self.params.skip_unexposed_attributes {
+                attrs.retain(|k, _| !k.as_ref().starts_with("__"));
+            }
             let mut feature = ctx.feature.clone();
-            feature.attributes = Arc::new(
-                feature
-                    .attributes
-                    .iter()
-                    .filter(|(k, _)| {
-                        !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
-                    })
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect(),
-            );
+            feature.attributes = Arc::new(attrs);
             feature
         };
 
@@ -315,12 +310,10 @@ impl Cesium3DTilesWriter {
         std::thread::scope(|s| {
             {
                 let ctx = ctx.clone();
-                let schema = schema.clone();
                 s.spawn(move || {
                     let now = time::Instant::now();
                     let result = super::pipeline::geometry_slicing_stage(
                         &features,
-                        &schema,
                         tile_id_conv,
                         sender_sliced,
                         min_zoom,

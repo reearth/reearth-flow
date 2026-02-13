@@ -5878,6 +5878,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File

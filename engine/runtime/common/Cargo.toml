@@ -10,6 +10,10 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+memory-stats = ["sysinfo"]
+
 [dependencies]
 approx.workspace = true
 async-recursion.workspace = true
@@ -19,11 +23,11 @@ bytes.workspace = true
 chrono.workspace = true
 colorsys.workspace = true
 directories.workspace = true
+fastxml.workspace = true
 futures.workspace = true
 home.workspace = true
 image.workspace = true
 jsonpath_lib.workspace = true
-libxml.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
@@ -33,6 +37,7 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 sha2.workspace = true
 strum_macros.workspace = true
+sysinfo = { workspace = true, optional = true }
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
