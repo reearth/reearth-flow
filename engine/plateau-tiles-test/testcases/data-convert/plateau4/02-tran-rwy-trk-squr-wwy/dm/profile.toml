@@ -15,13 +15,12 @@ threshold = 0.01
 ".attributes.ancestors[0].meshcode" = "string"
 ".dm_attributes" = "json"
 
-[tests.cesium_attributes.casts]
+[tests.cesium.casts]
 ".attributes" = "json"
 ".dm_attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"
 
-[tests.cesium_statistics]
 
 [tests.json_attributes.tilesets_lod3]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3/tileset.json"

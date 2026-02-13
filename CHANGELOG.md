@@ -2,6 +2,60 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.5 - 2026-02-10
+
+### api
+
+#### 🚀 Features
+
+- Add worker max retries and use spot VMs configuration ([#1899](https://github.com/reearth/reearth-flow/pull/1899)) [`417030`](https://github.com/reearth/reearth-flow/commit/417030)
+- Add max run duration configuration for worker ([#1892](https://github.com/reearth/reearth-flow/pull/1892)) [`94029c`](https://github.com/reearth/reearth-flow/commit/94029c)
+- Add CancelJob endpoint to cancel running jobs via API trigger ([#1890](https://github.com/reearth/reearth-flow/pull/1890)) [`7f0ae4`](https://github.com/reearth/reearth-flow/commit/7f0ae4)
+
+#### ✨ Refactor
+
+- Extract job cancel endpoint into dedicated handler ([#1902](https://github.com/reearth/reearth-flow/pull/1902)) [`25ad01`](https://github.com/reearth/reearth-flow/commit/25ad01)
+
+### engine
+
+#### 🚀 Features
+
+- Add unf quality check workflow ([#1906](https://github.com/reearth/reearth-flow/pull/1906)) [`af935e`](https://github.com/reearth/reearth-flow/commit/af935e)
+- Add workflow and profile configuration for PLATEAU4 data conversion (09-unf) ([#1903](https://github.com/reearth/reearth-flow/pull/1903)) [`ea446f`](https://github.com/reearth/reearth-flow/commit/ea446f)
+- Solar potential workflow (WIP) ([#1901](https://github.com/reearth/reearth-flow/pull/1901)) [`abb853`](https://github.com/reearth/reearth-flow/commit/abb853)
+- Output cesium 3D tiles &#x60;EXT_structural_metadata&#x60; integers with dynamic bit width ([#1895](https://github.com/reearth/reearth-flow/pull/1895)) [`019816`](https://github.com/reearth/reearth-flow/commit/019816)
+- Implement quality-check workflow for Generic City Object ([#1891](https://github.com/reearth/reearth-flow/pull/1891)) [`8e1f70`](https://github.com/reearth/reearth-flow/commit/8e1f70)
+- Add tunnel support in plateau4 data conversion ([#1882](https://github.com/reearth/reearth-flow/pull/1882)) [`55c461`](https://github.com/reearth/reearth-flow/commit/55c461)
+
+#### 🔧 Bug Fixes
+
+- Refactor and test tunnel workflow ([#1910](https://github.com/reearth/reearth-flow/pull/1910)) [`01e516`](https://github.com/reearth/reearth-flow/commit/01e516)
+- Bug fixes for PLATEAU qc workflows ([#1909](https://github.com/reearth/reearth-flow/pull/1909)) [`40a1c6`](https://github.com/reearth/reearth-flow/commit/40a1c6)
+- MVT writer respect feature order ([#1907](https://github.com/reearth/reearth-flow/pull/1907)) [`7049a6`](https://github.com/reearth/reearth-flow/commit/7049a6)
+- Memory management improvements for accumulating processors ([#1897](https://github.com/reearth/reearth-flow/pull/1897)) [`c6f96d`](https://github.com/reearth/reearth-flow/commit/c6f96d)
+- Local performance improvements ([#1888](https://github.com/reearth/reearth-flow/pull/1888)) [`d92c41`](https://github.com/reearth/reearth-flow/commit/d92c41)
+- Ignore whitespace in Excel cell markers for PLATEAU object list ([#1893](https://github.com/reearth/reearth-flow/pull/1893)) [`3f721c`](https://github.com/reearth/reearth-flow/commit/3f721c)
+- Arc wrapping of features ([#1886](https://github.com/reearth/reearth-flow/pull/1886)) [`4635d7`](https://github.com/reearth/reearth-flow/commit/4635d7)
+- Fix nested features attributes in bridge data-convert workflow ([#1884](https://github.com/reearth/reearth-flow/pull/1884)) [`382754`](https://github.com/reearth/reearth-flow/commit/382754)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Add onShowFeatureDetailsOverlay prop to visualization components and fix setSelectedFeatureId to null fix ([#1908](https://github.com/reearth/reearth-flow/pull/1908)) [`2f7c7c`](https://github.com/reearth/reearth-flow/commit/2f7c7c)
+- Add workflow path to yWorkflowConstructor on import [FLOW-FE-397] ([#1905](https://github.com/reearth/reearth-flow/pull/1905)) [`173ad5`](https://github.com/reearth/reearth-flow/commit/173ad5)
+- Use job subscription status to ensure output data is always available [FLOW-FE-388] ([#1898](https://github.com/reearth/reearth-flow/pull/1898)) [`462b8c`](https://github.com/reearth/reearth-flow/commit/462b8c)
+- Cesium doesn&[#39](https://github.com/reearth/reearth-flow/pull/39);t fly to feature on double click and prevent re-render of Cesium Viewer when selectedFeature changes [FLOW-FE-391] ([#1889](https://github.com/reearth/reearth-flow/pull/1889)) [`e2983a`](https://github.com/reearth/reearth-flow/commit/e2983a)
+- Added cleanup to setSelectedFeatureId to null if data changes ([#1896](https://github.com/reearth/reearth-flow/pull/1896)) [`74806c`](https://github.com/reearth/reearth-flow/commit/74806c)
+- Improve loading state management in useStreamingDebugRunQuery and refactor streamDecompressZstd ([#1887](https://github.com/reearth/reearth-flow/pull/1887)) [`7fc892`](https://github.com/reearth/reearth-flow/commit/7fc892)
+- Heavily nested workflow intermediate data not showing [FLOW-FE-364] ([#1867](https://github.com/reearth/reearth-flow/pull/1867)) [`f8c817`](https://github.com/reearth/reearth-flow/commit/f8c817)
+- Limit run from selected to only work on successful debug runs [FLOW-FE-386] ([#1881](https://github.com/reearth/reearth-flow/pull/1881)) [`bd620d`](https://github.com/reearth/reearth-flow/commit/bd620d)
+- Geometry not showing under Geometry heading in Feature Details [FLOW-FE-377] ([#1883](https://github.com/reearth/reearth-flow/pull/1883)) [`d9ca3c`](https://github.com/reearth/reearth-flow/commit/d9ca3c)
+
+#### Miscellaneous Tasks
+
+- February 2026 Dependency Updates [FLOW-FE-367] ([#1904](https://github.com/reearth/reearth-flow/pull/1904)) [`66b86d`](https://github.com/reearth/reearth-flow/commit/66b86d)
+
 ## 0.1.0-alpha.4 - 2026-02-03
 
 ### ci

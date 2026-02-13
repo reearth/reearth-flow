@@ -9,7 +9,7 @@ extracted = true
 ".root" = "ignore_both"
 ".properties.uro:BuildingDetailAttribute_uro:surveyYear" = "ignore_both"
 
-[tests.cesium_attributes.casts]
+[tests.cesium.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".uro:BuildingDetailAttribute_uro:surveyYear" = "int"

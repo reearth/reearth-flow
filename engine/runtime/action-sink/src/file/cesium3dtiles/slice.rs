@@ -7,7 +7,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 use reearth_flow_types::{
     material::{self, Material},
-    AttributeValue, Feature, GeometryType,
+    Feature, GeometryType,
 };
 
 use super::{tiling, tiling::zxy_from_lng_lat};
@@ -17,7 +17,6 @@ pub type TileZXYName = (u8, u32, u32);
 
 pub fn slice_to_tiles<E>(
     feature: &Feature,
-    schema: &nusamai_citygml::schema::Schema,
     min_zoom: u8,
     max_zoom: u8,
     attach_texture: bool,
@@ -58,10 +57,6 @@ pub fn slice_to_tiles<E>(
         .sorted()
         .dedup()
         .collect();
-    let Some(feature_type) = feature.feature_type() else {
-        return Ok(());
-    };
-    let feature_schema = schema.types.get(&feature_type).unwrap();
     for entry in city_gml.gml_geometries.iter() {
         match entry.ty {
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
@@ -153,10 +148,6 @@ pub fn slice_to_tiles<E>(
                                             attributes: feature
                                                 .attributes
                                                 .iter()
-                                                .filter(|(_, v)| v.convertible_nusamai_type_ref())
-                                                .filter(|(k, _)| {
-                                                    feature_schema.fields().contains(&k.to_string())
-                                                })
                                                 .map(|(k, v)| (k.to_string(), v.clone()))
                                                 .collect(),
                                             polygon_material_ids: Default::default(),
@@ -176,17 +167,7 @@ pub fn slice_to_tiles<E>(
                                         attributes: feature
                                             .attributes
                                             .iter()
-                                            .filter(|(_, v)| v.convertible_nusamai_type_ref())
-                                            .filter(|(k, _)| {
-                                                feature_schema.fields().contains(&k.to_string())
-                                            })
-                                            .map(|(k, v)| match v {
-                                                AttributeValue::DateTime(value) => (
-                                                    k.to_string(),
-                                                    AttributeValue::String(value.to_string()),
-                                                ),
-                                                _ => (k.to_string(), v.clone()),
-                                            })
+                                            .map(|(k, v)| (k.to_string(), v.clone()))
                                             .collect(),
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later

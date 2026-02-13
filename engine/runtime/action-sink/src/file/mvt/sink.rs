@@ -7,6 +7,8 @@ use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::vec;
 
+use nusamai_citygml::schema::{Schema, TypeDef};
+use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::Event;
@@ -16,7 +18,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
-use reearth_flow_types::Feature;
+use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -24,6 +26,8 @@ use serde_json::Value as JsonValue;
 use crate::errors::SinkError;
 
 use super::tileid::TileIdMethod;
+
+static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 
 #[derive(Debug, Clone, Default)]
 pub struct MVTSinkFactory;
@@ -46,7 +50,7 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -94,6 +98,7 @@ impl SinkFactory for MVTSinkFactory {
         let sink = MVTWriter {
             global_params: with,
             buffer: HashMap::new(),
+            schema: Default::default(),
             params: MVTWriterCompiledParam {
                 output,
                 layer_name,
@@ -117,6 +122,7 @@ type BufferValue = Vec<(Feature, String)>;
 pub struct MVTWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
+    pub(super) schema: Schema,
     /// (output, compress_output) -> Vec<(Feature, layer_name)>
     pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
     #[allow(clippy::type_complexity)]
@@ -174,6 +180,14 @@ impl Sink for MVTWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        if ctx.port == *SCHEMA_PORT {
+            let feature = &ctx.feature;
+            if let Some(feature_type) = feature.feature_type() {
+                let typedef: TypeDef = feature.into();
+                self.schema.types.insert(feature_type, typedef);
+            }
+            return Ok(());
+        }
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
             return Err(Box::new(SinkError::MvtWriter(
@@ -213,8 +227,21 @@ impl Sink for MVTWriter {
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
+                let mut new_attrs =
+                    crate::schema::filter_and_cast_attributes(feature, &self.schema);
+                if self.params.skip_unexposed_attributes {
+                    new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
+                }
+                if self.params.colon_to_underscore {
+                    new_attrs = new_attrs
+                        .into_iter()
+                        .map(|(k, v)| (Attribute::new(k.inner().replace(":", "_")), v))
+                        .collect();
+                }
+                let cleaned_feature = feature.with_attributes(new_attrs);
+
                 let buffer = self.buffer.entry((output, compress_output)).or_default();
-                buffer.push((feature.clone(), layer_name.clone()));
+                buffer.push((cleaned_feature, layer_name));
             }
             _ => {
                 return Err(Box::new(SinkError::MvtWriter(
@@ -334,8 +361,6 @@ impl MVTWriter {
         let gctx = gctx.clone();
         let name = self.name().to_string();
         let compress_output = compress_output.clone();
-        let skip_unexposed_attributes = self.params.skip_unexposed_attributes;
-        let colon_to_underscore = self.params.colon_to_underscore;
         let extent = self.params.extent;
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
@@ -350,8 +375,6 @@ impl MVTWriter {
                     &out,
                     receiver_sorted,
                     tile_id_conv,
-                    skip_unexposed_attributes,
-                    colon_to_underscore,
                     extent,
                 );
                 if let Err(err) = &result {

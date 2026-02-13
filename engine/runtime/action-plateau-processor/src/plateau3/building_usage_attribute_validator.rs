@@ -156,10 +156,10 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
                 for child in &node.get_child_nodes() {
                     match xml::get_readonly_node_tag(child).as_str() {
                         "gml:description" => {
-                            name = Some(child.get_content());
+                            name = child.get_content();
                         }
                         "gml:name" => {
-                            code = Some(child.get_content());
+                            code = child.get_content();
                         }
                         _ => {}
                     }
