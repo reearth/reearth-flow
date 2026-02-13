@@ -374,12 +374,17 @@ impl Feature {
     }
 
     /// Extend attributes. Uses copy-on-write if shared.
-    pub fn extend(&mut self, attributes: HashMap<Attribute, AttributeValue>) {
+    /// Accepts any IntoIterator (HashMap, IndexMap, Vec, etc.) to preserve caller's ordering.
+    pub fn extend<I: IntoIterator<Item = (Attribute, AttributeValue)>>(&mut self, attributes: I) {
         Arc::make_mut(&mut self.attributes).extend(attributes);
     }
 
     /// Extend attributes from string keys. Uses copy-on-write if shared.
-    pub fn extend_attributes(&mut self, attributes: HashMap<String, AttributeValue>) {
+    /// Accepts any IntoIterator (HashMap, IndexMap, Vec, etc.) to preserve caller's ordering.
+    pub fn extend_attributes<I: IntoIterator<Item = (String, AttributeValue)>>(
+        &mut self,
+        attributes: I,
+    ) {
         Arc::make_mut(&mut self.attributes)
             .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
     }

@@ -1,13 +1,9 @@
 citygml_zip_name = "12347_tako-machi_city_2025_citygml_1_op_bldg.zip"
 
-[tests.json_attributes.tilesets]
-path = "12347_tako-machi_city_2025_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
-extracted = true
-
-[tests.json_attributes.tilesets.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
-".properties.uro:BuildingDetailAttribute_uro:surveyYear" = "ignore_both"
+[tests.json_attributes_v2.tilesets_lod1]
+flow.path = "flow_extracted/12347_tako-machi_city_2025_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_lod1_tileset.json"
 
 [tests.cesium.casts]
 ".attributes" = "json"

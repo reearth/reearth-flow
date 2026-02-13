@@ -228,11 +228,11 @@ graphs:
       - attribute: uro:rank
         valueAttribute: uro:rank
       - attribute: uro:rank_code
-        valueAttribute: uro:rank_code
+        expr: '0'
       - attribute: uro:rankOrg
         valueAttribute: uro:rankOrg
       - attribute: uro:rankOrg_code
-        valueAttribute: uro:rankOrg_code
+        expr: '0'
       - attribute: uro:adminType
         valueAttribute: uro:adminType
       - attribute: uro:scale

@@ -1,23 +1,16 @@
 citygml_zip_name = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg.zip"
 
-
 [tests.cesium.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
-".信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間" = "int"
+".信濃川水系信濃川・大河津分水路（国管理区間）_L2（想定最大規模）_浸水継続時間" = "float"
 
-[tests.json_attributes.tilesets_lod1]
-path = "15202_nagaoka-shi_city_2024_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
-extracted = true
-
-[tests.json_attributes.tilesets_lod1.casts]
-".geometricError" = "ignore_both"
-".root" = "ignore_both"
-
-[tests.json_attributes.tilesets_lod1.values]
-# FME output which uses string type for surveyYear/meshcode but should be consistent with inner JSON attributes' types
-".properties.uro:BuildingDetailAttribute_uro:surveyYear" = { "minimum" = 2022, "maximum" = 2022 }
+# new version of json attributes test for lod1 tileset
+[tests.json_attributes_v2.tilesets_lod1]
+flow.path = "flow_extracted/15202_nagaoka-shi_city_2024_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
+flow.json_path = ".properties"
+truth.path = "3dtiles_lod1_tileset.json"
 
 [filter.tree]
 "udx/bldg/56381634_bldg_6697_op.gml" = ["bldg_5f70c68a-6fef-4591-81eb-d19edca66f09"]
