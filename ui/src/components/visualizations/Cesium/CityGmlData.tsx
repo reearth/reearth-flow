@@ -126,10 +126,12 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
 
   // Cleanup on unmount
   useEffect(() => {
+    // Capture the current value of featureMapRef at effect creation
+    const featureMapSnapshot = featureMapRef.current;
     return () => {
       if (viewer) {
         // Remove any active LOD primitives
-        featureMapRef.current.forEach(({ entity }) => {
+        featureMapSnapshot.forEach(({ entity }) => {
           if (entity.lodPrimitive) {
             viewer.scene.primitives.remove(entity.lodPrimitive);
           }
