@@ -34,7 +34,7 @@ impl TryFrom<Entity> for Geometry {
         };
 
         // Collect polygon ranges for this feature (global indices in geometry store)
-        let polygon_ranges: Vec<(u32, u32)> = geometries
+        let mut polygon_ranges: Vec<(u32, u32)> = geometries
             .iter()
             .filter(|g| {
                 matches!(
@@ -103,6 +103,39 @@ impl TryFrom<Entity> for Geometry {
                 gml_geo.pos = local_pos;
                 local_pos += gml_geo.len;
                 gml_geometries.push(gml_geo);
+            }
+        }
+
+        // When an entity has no geometry refs at all but the geometry store has polygons,
+        // this indicates a Solid geometry whose xlink:href references weren't resolved
+        // (forward references in a streaming parser). Reconstruct a Solid from all store polygons.
+        // Note: entities with non-empty geometries (e.g. DmGeometricAttribute with Curve/Point refs)
+        // that share a parent's geometry store must NOT trigger this reconstruction.
+        let has_polygon_geometries = gml_geometries.iter().any(|g| !g.polygons.is_empty());
+        if !has_polygon_geometries && geometries.is_empty() && !geoms.multipolygon.is_empty() {
+            let mut polygons = Vec::<Polygon3D<f64>>::new();
+            for idx_poly in geoms.multipolygon.iter_range(0..geoms.multipolygon.len()) {
+                let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                polygons.push(poly.into());
+            }
+            if !polygons.is_empty() {
+                let len = polygons.len() as u32;
+                let solid_gml = GmlGeometry {
+                    id: entity.id.clone(),
+                    ty: GeometryType::Solid.into(),
+                    gml_trait: None,
+                    lod: None, // LOD is already set as feature attribute by reader
+                    pos: 0,
+                    len,
+                    points: vec![],
+                    polygons,
+                    line_strings: vec![],
+                    feature_id: entity.id.clone(),
+                    feature_type: entity.typename.clone(),
+                    composite_surfaces: vec![],
+                };
+                gml_geometries = vec![solid_gml];
+                polygon_ranges = vec![(0, len)];
             }
         }
 

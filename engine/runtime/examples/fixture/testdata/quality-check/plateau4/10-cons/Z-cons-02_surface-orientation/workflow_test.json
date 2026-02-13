@@ -42,7 +42,12 @@
       "expectedFile": "summary_cons.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "10_その他の構造物_検査結果一覧.csv"
+      "expectedFile": "10_その他の構造物_検査結果一覧.csv",
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
+      ]
     }
   },
   "expectResultOkFile": false

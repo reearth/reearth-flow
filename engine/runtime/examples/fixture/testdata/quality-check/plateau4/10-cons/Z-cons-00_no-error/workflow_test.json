@@ -54,7 +54,12 @@
         "expectedFile": "01_共通.csv"
       },
       {
-        "expectedFile": "10_その他の構造物_検査結果一覧.csv"
+        "expectedFile": "10_その他の構造物_検査結果一覧.csv",
+        "keyColumns": [
+          "Filename",
+          "フィーチャータイプ",
+          "LOD"
+        ]
       }
     ]
   },
