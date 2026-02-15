@@ -2,7 +2,7 @@ mod calculator;
 
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
-use chrono::{DateTime, Duration, NaiveDateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use proj::Proj;
 use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_runtime::{
@@ -156,7 +156,7 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
 pub enum SolarPositionCalculatorParam {
     #[serde(rename_all = "camelCase")]
     Time {
-        /// Time expression evaluating to "yyyy/mm/dd/hh/mm/ss" format (local time)
+        /// Time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z")
         time: Expr,
         /// Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).
         source_epsg: Expr,
@@ -169,9 +169,9 @@ pub enum SolarPositionCalculatorParam {
     },
     #[serde(rename_all = "camelCase")]
     Duration {
-        /// Start time expression evaluating to "yyyy/mm/dd/hh/mm/ss" format (local time)
+        /// Start time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z")
         start: Expr,
-        /// End time expression evaluating to "yyyy/mm/dd/hh/mm/ss" format (local time)
+        /// End time expression evaluating to RFC 3339 format (e.g., "2025-01-12T00:00:00Z")
         end: Expr,
         /// Step value expression evaluating to an integer
         step: Expr,
@@ -323,7 +323,9 @@ impl Processor for SolarPositionCalculator {
                 Self::insert_centroid_attributes(&mut new_feature, &centroid_3d);
                 new_feature.insert(
                     "solar_time",
-                    AttributeValue::String(datetime.format("%Y/%m/%d/%H/%M/%S").to_string()),
+                    AttributeValue::String(
+                        datetime.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                    ),
                 );
 
                 fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
@@ -360,7 +362,9 @@ impl Processor for SolarPositionCalculator {
                     Self::insert_centroid_attributes(&mut new_feature, &centroid_3d);
                     new_feature.insert(
                         "solar_time",
-                        AttributeValue::String(current.format("%Y/%m/%d/%H/%M/%S").to_string()),
+                        AttributeValue::String(
+                            current.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                        ),
                     );
 
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
@@ -739,44 +743,15 @@ impl SolarPositionCalculator {
 }
 
 fn parse_time_string(time_str: &str) -> Result<DateTime<Utc>, SolarPositionError> {
-    let parts: Vec<&str> = time_str.split('/').collect();
-
-    if parts.len() != 6 {
-        return Err(SolarPositionError::TimeParse(format!(
-            "Invalid time format '{}'. Expected 'yyyy/mm/dd/hh/mm/ss'",
-            time_str
-        )));
-    }
-
-    let year: i32 = parts[0]
-        .parse()
-        .map_err(|_| SolarPositionError::TimeParse(format!("Invalid year in '{}'", time_str)))?;
-    let month: u32 = parts[1]
-        .parse()
-        .map_err(|_| SolarPositionError::TimeParse(format!("Invalid month in '{}'", time_str)))?;
-    let day: u32 = parts[2]
-        .parse()
-        .map_err(|_| SolarPositionError::TimeParse(format!("Invalid day in '{}'", time_str)))?;
-    let hour: u32 = parts[3]
-        .parse()
-        .map_err(|_| SolarPositionError::TimeParse(format!("Invalid hour in '{}'", time_str)))?;
-    let minute: u32 = parts[4]
-        .parse()
-        .map_err(|_| SolarPositionError::TimeParse(format!("Invalid minute in '{}'", time_str)))?;
-    let second: u32 = parts[5]
-        .parse()
-        .map_err(|_| SolarPositionError::TimeParse(format!("Invalid second in '{}'", time_str)))?;
-
-    let naive_dt = NaiveDateTime::parse_from_str(
-        &format!(
-            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-            year, month, day, hour, minute, second
-        ),
-        "%Y-%m-%d %H:%M:%S",
-    )
-    .map_err(|e| SolarPositionError::TimeParse(format!("Failed to parse datetime: {}", e)))?;
-
-    Ok(DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc))
+    // Parse RFC 3339 format (e.g., "2025-01-11T00:00:00Z")
+    DateTime::parse_from_rfc3339(time_str)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|e| {
+            SolarPositionError::TimeParse(format!(
+                "Invalid time format '{}'. Expected RFC 3339 format (e.g., '2025-01-11T00:00:00Z'): {}",
+                time_str, e
+            ))
+        })
 }
 
 #[cfg(test)]
@@ -786,7 +761,7 @@ mod tests {
 
     #[test]
     fn test_parse_time_string_valid() {
-        let result = parse_time_string("2024/06/21/12/00/00");
+        let result = parse_time_string("2024-06-21T12:00:00Z");
         assert!(result.is_ok());
         let dt = result.unwrap();
         assert_eq!(dt.year(), 2024);
@@ -798,14 +773,25 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_time_string_with_offset() {
+        let result = parse_time_string("2024-06-21T12:00:00+09:00");
+        assert!(result.is_ok());
+        let dt = result.unwrap();
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.month(), 6);
+        assert_eq!(dt.day(), 21);
+        assert_eq!(dt.hour(), 3); // 12:00 JST = 03:00 UTC
+    }
+
+    #[test]
     fn test_parse_time_string_invalid_format() {
-        let result = parse_time_string("2024-06-21 12:00:00");
+        let result = parse_time_string("2024/06/21/12/00/00");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_time_string_missing_parts() {
-        let result = parse_time_string("2024/06/21");
+        let result = parse_time_string("2024-06-21");
         assert!(result.is_err());
     }
 

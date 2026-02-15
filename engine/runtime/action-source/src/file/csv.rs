@@ -85,6 +85,20 @@ pub(super) struct CsvReaderParam {
     /// # File Format
     /// Choose the delimiter format for the input file
     format: CsvFormat,
+    /// # Character Encoding
+    ///
+    /// Character encoding for the CSV/TSV file.
+    /// If not specified, defaults to UTF-8.
+    ///
+    /// Supported encodings include:
+    /// - **UTF-8** - Unicode UTF-8 (default)
+    /// - **Shift-JIS** - Japanese encoding
+    /// - **EUC-JP** - Japanese encoding
+    /// - **Windows Code Pages** - Windows-1250 through Windows-1258
+    /// - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16
+    ///
+    /// All encoding labels are case-insensitive.
+    encoding: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -131,6 +145,7 @@ impl Source for CsvReader {
             self.params.format.delimiter(),
             &content,
             &self.params.property,
+            self.params.encoding.as_deref(),
             sender,
         )
         .await

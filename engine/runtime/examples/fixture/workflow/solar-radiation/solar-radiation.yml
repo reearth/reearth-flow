@@ -9,11 +9,12 @@ with:
   codelists: null
   schemas: null
   prcs: null
-  startTime: 2025/01/21/16/00/00
-  endTime: 2025/01/21/16/00/00
+  startTime: "2025-01-21T16:00:00Z"
+  endTime: "2025-01-21T16:00:00Z"
   outputPath: null
   dailySunDataPath: null
   monthlyWeatherDataPath: null
+  maxRadiationPerDay: 7.5
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -424,6 +425,13 @@ graphs:
       - expr: |
           env.get("__value")["featureType"] == "bldg:RoofSurface";
         outputPort: default
+  - id: 00000001-0000-0000-0000-000000000029
+    name: GridCellIdCounter
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 0
+      outputAttribute: cell_id
   - id: 00000001-0000-0000-0000-00000000000b
     name: SunPositionCalculator
     type: action
@@ -448,12 +456,12 @@ graphs:
       outputAttribute: cell_area
       multiplier: 1.0
   - id: 00000001-0000-0000-0000-000000000030
-    name: CellIdCounter
+    name: RayIdCounter
     type: action
     action: FeatureCounter
     with:
       countStart: 0
-      outputAttribute: cell_id
+      outputAttribute: ray_id
   - id: 00000001-0000-0000-0000-000000000010
     name: RayIntersectorShadow
     type: action
@@ -497,9 +505,9 @@ graphs:
     action: FeatureMerger
     with:
       requestorAttribute:
-      - cell_id
+      - ray_id
       supplierAttribute:
-      - cell_id
+      - ray_id
   - id: 00000001-0000-0000-0000-000000000011
     name: ComputeCosTheta
     type: action
@@ -539,12 +547,12 @@ graphs:
         method: create
         value: |
           let dt = env.get("__value")["solar_time"];
-          dt.split("/")[0] ?? ""
+          dt.split("-")[0] ?? ""
       - attribute: month
         method: create
         value: |
           let dt = env.get("__value")["solar_time"];
-          let month = dt.split("/")[1] ?? "";
+          let month = dt.split("-")[1] ?? "";
           if month[0] == "0" { month[1..] } else { month }
       - attribute: DTSunny
         method: create
@@ -626,6 +634,45 @@ graphs:
       format: csv
       output: |
         file::join_path(env.get("outputPath"), "monthly_radiation.csv")
+  - id: 00000001-0000-0000-0000-000000000070
+    name: NormalizeRadiation
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _normalized_t
+        method: create
+        value: |
+          let start_str = env.get("startTime");
+          let s_parts = start_str.split("T");
+          let s_date_parts = s_parts[0].split("-");
+          let s_year = parse_float(s_date_parts[0]);
+          let s_month = parse_float(s_date_parts[1]);
+          let s_day_val = parse_float(s_date_parts[2]);
+          let s_time_parts = s_parts[1].split(":");
+          let s_hour = parse_float(s_time_parts[0]);
+          let s_a = math::floor((14.0 - s_month) / 12.0);
+          let s_y = s_year + 4800.0 - s_a;
+          let s_m = s_month + 12.0 * s_a - 3.0;
+          let s_jdn = s_day_val + math::floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math::floor(s_y / 4.0) - math::floor(s_y / 100.0) + math::floor(s_y / 400.0) - 32045.0;
+          let end_str = env.get("endTime");
+          let e_parts = end_str.split("T");
+          let e_date_parts = e_parts[0].split("-");
+          let e_year = parse_float(e_date_parts[0]);
+          let e_month = parse_float(e_date_parts[1]);
+          let e_day_val = parse_float(e_date_parts[2]);
+          let e_time_parts = e_parts[1].split(":");
+          let e_hour = parse_float(e_time_parts[0]);
+          let e_a = math::floor((14.0 - e_month) / 12.0);
+          let e_y = e_year + 4800.0 - e_a;
+          let e_m = e_month + 12.0 * e_a - 3.0;
+          let e_jdn = e_day_val + math::floor((153.0 * e_m + 2.0) / 5.0) + 365.0 * e_y + math::floor(e_y / 4.0) - math::floor(e_y / 100.0) + math::floor(e_y / 400.0) - 32045.0;
+          let num_days_raw = (e_jdn - s_jdn) + (e_hour - s_hour) / 24.0;
+          let num_days = if num_days_raw <= 0.0 { 1.0 } else { num_days_raw };
+          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
+          let max_rad = env.get("maxRadiationPerDay") ?? 7.5;
+          let t_raw = dt / num_days / max_rad;
+          if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
   - id: 00000001-0000-0000-0000-00000000005f
     name: CellTwoDimensionForcer
     type: action
@@ -639,27 +686,26 @@ graphs:
       - attribute: color_r
         method: create
         value: |
-          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
-          let max_dt = 500000.0;
-          let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
-          let r = if normalized < 0.5 { 0.0 } else { (normalized - 0.5) * 2.0 * 255.0 };
-          math::floor(r)
+          let t = env.get("__value")["_normalized_t"] ?? 0.0;
+          let v = 4.0 * t - 1.0;
+          let r = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
+          math::round(255.0 * r)
       - attribute: color_g
         method: create
         value: |
-          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
-          let max_dt = 500000.0;
-          let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
-          let g = if normalized < 0.5 { normalized * 2.0 * 255.0 } else { (1.0 - normalized) * 2.0 * 255.0 };
-          math::floor(g)
+          let t = env.get("__value")["_normalized_t"] ?? 0.0;
+          let v1_raw = 4.0 * t;
+          let v1 = if v1_raw < 0.0 { 0.0 } else if v1_raw > 1.0 { 1.0 } else { v1_raw };
+          let v2_raw = 4.0 * t - 3.0;
+          let v2 = if v2_raw < 0.0 { 0.0 } else if v2_raw > 1.0 { 1.0 } else { v2_raw };
+          math::round(255.0 * (v1 - v2))
       - attribute: color_b
         method: create
         value: |
-          let dt = env.get("__value")["DTperMonth"] ?? 0.0;
-          let max_dt = 500000.0;
-          let normalized = if dt > max_dt { 1.0 } else { dt / max_dt };
-          let b = if normalized < 0.5 { (1.0 - normalized * 2.0) * 255.0 } else { 0.0 };
-          math::floor(b)
+          let t = env.get("__value")["_normalized_t"] ?? 0.0;
+          let v = 4.0 * t - 1.0;
+          let clamped = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
+          math::round(255.0 * (1.0 - clamped))
   - id: 00000001-0000-0000-0000-000000000068
     name: CellGeometryMerger
     type: action
@@ -925,6 +971,11 @@ graphs:
     toPort: default
   - id: e0000001-0000-0000-0000-00000000000a
     from: 00000001-0000-0000-0000-000000000009
+    to: 00000001-0000-0000-0000-000000000029
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000029
+    from: 00000001-0000-0000-0000-000000000029
     to: 00000001-0000-0000-0000-00000000000b
     fromPort: default
     toPort: default
@@ -1080,11 +1131,16 @@ graphs:
     toPort: default
   - id: e0000001-0000-0000-0000-00000000005f
     from: 00000001-0000-0000-0000-000000000053
+    to: 00000001-0000-0000-0000-000000000070
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000070
+    from: 00000001-0000-0000-0000-000000000070
     to: 00000001-0000-0000-0000-000000000060
     fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-000000000068
-    from: 00000001-0000-0000-0000-000000000030
+    from: 00000001-0000-0000-0000-000000000029
     to: 00000001-0000-0000-0000-000000000068
     fromPort: default
     toPort: requestor

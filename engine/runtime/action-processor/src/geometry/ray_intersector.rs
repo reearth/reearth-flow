@@ -1,5 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -9,9 +14,9 @@ use reearth_flow_geometry::algorithm::ray_intersection::{IncludeOrigin, Ray3D, R
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::line::Line;
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon3D;
 use reearth_flow_geometry::types::point::Point3D;
-use reearth_flow_geometry::types::polygon::Polygon3D;
+use reearth_flow_geometry::types::triangular_mesh::TriangularMesh;
+use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -26,6 +31,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
 static RAY_PORT: Lazy<Port> = Lazy::new(|| Port::new("ray"));
 static GEOM_PORT: Lazy<Port> = Lazy::new(|| Port::new("geom"));
@@ -140,8 +146,13 @@ impl ProcessorFactory for RayIntersectorFactory {
             tolerance_ast,
             include_ray_origin_ast,
             output_geometry_type: params.output_geometry_type,
+            pair_ids: Vec::new(),
+            pair_id_set: HashSet::new(),
             ray_buffer: HashMap::new(),
             geom_buffer: HashMap::new(),
+            buffer_bytes: 0,
+            temp_dir: None,
+            executor_id: None,
         }))
     }
 }
@@ -208,15 +219,17 @@ pub struct RayDefinition {
     pub dir_z: Attribute,
 }
 
-/// Internal data structure for buffered rays
-#[derive(Debug, Clone)]
-struct RayData {
+/// Disk record for rays — stores pre-extracted ray values to avoid re-evaluating
+/// attribute lookups in finish().
+#[derive(Serialize, Deserialize)]
+struct DiskRayRecord {
     feature: Feature,
-    ray: Ray3D,
+    origin: [f64; 3],
+    direction: [f64; 3],
 }
 
-#[derive(Clone, Debug)]
 pub struct RayIntersector {
+    // Immutable config
     global_params: Option<HashMap<String, Value>>,
     ray_definition: RayDefinition,
     pair_id_ast: rhai::AST,
@@ -224,174 +237,109 @@ pub struct RayIntersector {
     tolerance_ast: Option<rhai::AST>,
     include_ray_origin_ast: Option<rhai::AST>,
     output_geometry_type: OutputGeometryType,
-    ray_buffer: HashMap<String, Vec<RayData>>,
-    geom_buffer: HashMap<String, Vec<Geometry3D<f64>>>,
+
+    // Disk-backed state
+    pair_ids: Vec<String>,
+    pair_id_set: HashSet<String>,
+    ray_buffer: HashMap<String, Vec<String>>,
+    geom_buffer: HashMap<String, Vec<String>>,
+    buffer_bytes: usize,
+    temp_dir: Option<PathBuf>,
+    executor_id: Option<uuid::Uuid>,
 }
 
-impl Processor for RayIntersector {
-    fn is_accumulating(&self) -> bool {
-        true
+impl fmt::Debug for RayIntersector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RayIntersector")
+            .field("pair_ids", &self.pair_ids.len())
+            .field("buffer_bytes", &self.buffer_bytes)
+            .field("temp_dir", &self.temp_dir)
+            .finish()
     }
+}
 
-    fn process(
-        &mut self,
-        ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-
-        let pair_id = self.evaluate_pair_id(&expr_engine, feature)?;
-
-        match &ctx.port {
-            port if port == &*RAY_PORT => match self.extract_ray(feature) {
-                Ok(ray) => {
-                    self.ray_buffer.entry(pair_id).or_default().push(RayData {
-                        feature: feature.clone(),
-                        ray,
-                    });
-                }
-                Err(_) => {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-                }
-            },
-            port if port == &*GEOM_PORT => {
-                if let GeometryValue::FlowGeometry3D(geo) = &feature.geometry.value {
-                    self.geom_buffer
-                        .entry(pair_id)
-                        .or_default()
-                        .push(geo.clone());
-                } else if let GeometryValue::CityGmlGeometry(geo) = &feature.geometry.value {
-                    if geo.gml_geometries.len() != 1 {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
-                        );
-                        return Ok(());
-                    }
-
-                    let polygons = &geo.gml_geometries[0].polygons;
-                    let geo =
-                        match polygons.len() {
-                            0 => {
-                                fw.send(ctx.new_with_feature_and_port(
-                                    feature.clone(),
-                                    REJECTED_PORT.clone(),
-                                ));
-                                return Ok(());
-                            }
-                            1 => Geometry3D::Polygon(Polygon3D::from(polygons[0].clone())),
-                            _ => Geometry3D::MultiPolygon(MultiPolygon3D::new(polygons.to_vec())),
-                        };
-                    self.geom_buffer.entry(pair_id).or_default().push(geo);
-                } else {
-                    // TODO (After geometry type refactor):
-                    // Currently only 3D geometry is supported.
-                    // This is because the current geometry type makes it difficult to integrate
-                    // the ray intersection logic for 2D and 3D geometries.
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-                }
-            }
-            _ => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
+impl Clone for RayIntersector {
+    fn clone(&self) -> Self {
+        Self {
+            global_params: self.global_params.clone(),
+            ray_definition: self.ray_definition.clone(),
+            pair_id_ast: self.pair_id_ast.clone(),
+            closest_only_ast: self.closest_only_ast.clone(),
+            tolerance_ast: self.tolerance_ast.clone(),
+            include_ray_origin_ast: self.include_ray_origin_ast.clone(),
+            output_geometry_type: self.output_geometry_type.clone(),
+            pair_ids: Vec::new(),
+            pair_id_set: HashSet::new(),
+            ray_buffer: HashMap::new(),
+            geom_buffer: HashMap::new(),
+            buffer_bytes: 0,
+            temp_dir: None,
+            executor_id: None,
         }
-        Ok(())
     }
+}
 
-    fn finish(
-        &mut self,
-        ctx: NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-
-        // Process each pair group
-        for (pair_id, rays) in &self.ray_buffer {
-            let geoms = self.geom_buffer.get(pair_id);
-
-            // If no matching geometries for this pair, emit all rays to no_intersection port
-            if geoms.is_none() || geoms.map(|g| g.is_empty()).unwrap_or(true) {
-                for ray_data in rays {
-                    let output_feature =
-                        self.create_ray_output_feature(&ray_data.feature, &ray_data.ray);
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        output_feature,
-                        NO_INTERSECTION_PORT.clone(),
-                    ));
-                }
-                continue;
-            }
-
-            let geoms = geoms.unwrap();
-            if rays.is_empty() {
-                continue;
-            }
-
-            let accel_set = AcceleratedGeometrySet::build(geoms);
-
-            let results = rays
-                .par_iter()
-                .map(|ray_data| {
-                    let closest_only = self
-                        .evaluate_closest_only(&expr_engine, &ray_data.feature)
-                        .unwrap_or(true);
-                    let tolerance = self
-                        .evaluate_tolerance(&expr_engine, &ray_data.feature)
-                        .unwrap_or(DEFAULT_TOLERANCE);
-                    let include_ray_origin = self
-                        .evaluate_include_ray_origin(&expr_engine, &ray_data.feature)
-                        .unwrap_or(true);
-
-                    let include_origin = if include_ray_origin {
-                        IncludeOrigin::Yes
-                    } else {
-                        IncludeOrigin::No { tolerance }
-                    };
-
-                    let hits = if closest_only {
-                        accel_set
-                            .closest_ray_intersection(&ray_data.ray, tolerance, include_origin)
-                            .map(|(_, hit)| vec![hit])
-                            .unwrap_or_default()
-                    } else {
-                        accel_set
-                            .ray_intersections(&ray_data.ray, tolerance, include_origin)
-                            .into_iter()
-                            .map(|(_, hit)| hit)
-                            .collect()
-                    };
-
-                    (ray_data.feature.clone(), ray_data.ray, hits)
-                })
-                .collect::<Vec<_>>();
-
-            for (ray_feature, ray, hits) in results {
-                if hits.is_empty() {
-                    // No intersection found - emit to no_intersection port
-                    let output_feature = self.create_ray_output_feature(&ray_feature, &ray);
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        output_feature,
-                        NO_INTERSECTION_PORT.clone(),
-                    ));
-                } else {
-                    // Emit each intersection
-                    for hit in hits {
-                        self.emit_intersection(&ray_feature, &ray, hit, &ctx, fw);
-                    }
-                }
-            }
+impl Drop for RayIntersector {
+    fn drop(&mut self) {
+        if let Some(ref dir) = self.temp_dir {
+            let _ = std::fs::remove_dir_all(dir);
         }
-        Ok(())
     }
+}
 
-    fn name(&self) -> &str {
-        "RayIntersector"
-    }
+/// Executor-specific engine cache folder for accumulating processors
+fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "processors")
 }
 
 impl RayIntersector {
+    fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
+        if self.temp_dir.is_none() {
+            let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
+            let dir = engine_cache_dir(executor_id)
+                .join(format!("ray-intersector-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(dir.join("rays"))?;
+            std::fs::create_dir_all(dir.join("geoms"))?;
+            self.temp_dir = Some(dir);
+        }
+        Ok(self.temp_dir.as_ref().unwrap())
+    }
+
+    fn flush_buffer(&mut self) -> Result<(), BoxedError> {
+        if self.ray_buffer.is_empty() && self.geom_buffer.is_empty() {
+            return Ok(());
+        }
+
+        let dir = self.ensure_temp_dir()?.clone();
+
+        // Flush ray buffer
+        for (pair_id, lines) in self.ray_buffer.drain() {
+            let path = dir.join("rays").join(format!("{pair_id}.jsonl"));
+            let file = File::options().create(true).append(true).open(&path)?;
+            let mut writer = BufWriter::new(file);
+            for line in &lines {
+                writer.write_all(line.as_bytes())?;
+                writer.write_all(b"\n")?;
+            }
+            writer.flush()?;
+        }
+
+        // Flush geom buffer
+        for (pair_id, lines) in self.geom_buffer.drain() {
+            let path = dir.join("geoms").join(format!("{pair_id}.jsonl"));
+            let file = File::options().create(true).append(true).open(&path)?;
+            let mut writer = BufWriter::new(file);
+            for line in &lines {
+                writer.write_all(line.as_bytes())?;
+                writer.write_all(b"\n")?;
+            }
+            writer.flush()?;
+        }
+
+        self.buffer_bytes = 0;
+        Ok(())
+    }
+
     fn evaluate_pair_id(
         &self,
         expr_engine: &Arc<Engine>,
@@ -462,7 +410,7 @@ impl RayIntersector {
                 })?;
                 Ok(result.as_bool().unwrap_or(true))
             }
-            None => Ok(true), // Default: include ray origin
+            None => Ok(true),
         }
     }
 
@@ -499,49 +447,21 @@ impl RayIntersector {
         }
     }
 
-    /// Creates an output feature with ray geometry when lineSegmentToIntersection is set,
-    /// or returns the original feature otherwise.
-    fn create_ray_output_feature(&self, ray_feature: &Feature, ray: &Ray3D) -> Feature {
-        match self.output_geometry_type {
-            OutputGeometryType::PointOfIntersection => ray_feature.clone(),
-            OutputGeometryType::LineSegmentToIntersection => {
-                let mut output_feature = ray_feature.clone();
-                let (origin, direction) = ray.origin_and_direction();
-                // Line segment from ray origin to the tip of the ray unit vector
-                let end = Coordinate3D::new__(
-                    origin.x + direction.x,
-                    origin.y + direction.y,
-                    origin.z + direction.z,
-                );
-                let geometry = Geometry {
-                    value: GeometryValue::FlowGeometry3D(Geometry3D::Line(Line::new_(origin, end))),
-                    ..Default::default()
-                };
-                let geometry = Arc::new(geometry);
-                output_feature.geometry = geometry;
-                output_feature
-            }
-        }
-    }
-
-    fn emit_intersection(
+    /// Creates an intersection feature (pure function — no fw.send()).
+    fn create_intersection_feature(
         &self,
         ray_feature: &Feature,
         ray: &Ray3D,
         hit: RayHit,
-        ctx: &NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) {
+    ) -> Feature {
         let mut output_feature = ray_feature.clone();
 
-        // Create geometry based on output_geometry_type
         let geometry_value = match self.output_geometry_type {
             OutputGeometryType::PointOfIntersection => GeometryValue::FlowGeometry3D(
                 Geometry3D::Point(Point3D::new(hit.point.x, hit.point.y, hit.point.z)),
             ),
             OutputGeometryType::LineSegmentToIntersection => {
                 let (origin, _) = ray.origin_and_direction();
-                // Line segment from ray origin to the tip of the ray unit vector
                 GeometryValue::FlowGeometry3D(Geometry3D::Line(Line::new_(origin, hit.point)))
             }
         };
@@ -559,10 +479,421 @@ impl RayIntersector {
             ),
         );
 
-        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-            ctx,
-            output_feature,
-            INTERSECTION_PORT.clone(),
-        ));
+        output_feature
+    }
+
+    /// Creates an output feature with ray geometry when lineSegmentToIntersection is set,
+    /// or returns the original feature otherwise.
+    fn create_ray_output_feature(&self, ray_feature: &Feature, ray: &Ray3D) -> Feature {
+        match self.output_geometry_type {
+            OutputGeometryType::PointOfIntersection => ray_feature.clone(),
+            OutputGeometryType::LineSegmentToIntersection => {
+                let mut output_feature = ray_feature.clone();
+                let (origin, direction) = ray.origin_and_direction();
+                let end = Coordinate3D::new__(
+                    origin.x + direction.x,
+                    origin.y + direction.y,
+                    origin.z + direction.z,
+                );
+                let geometry = Geometry {
+                    value: GeometryValue::FlowGeometry3D(Geometry3D::Line(Line::new_(origin, end))),
+                    ..Default::default()
+                };
+                let geometry = Arc::new(geometry);
+                output_feature.geometry = geometry;
+                output_feature
+            }
+        }
+    }
+}
+
+impl Processor for RayIntersector {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
+        let feature = &ctx.feature;
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+
+        let pair_id = self.evaluate_pair_id(&expr_engine, feature)?;
+
+        // Register pair_id
+        if self.pair_id_set.insert(pair_id.clone()) {
+            self.pair_ids.push(pair_id.clone());
+        }
+
+        match &ctx.port {
+            port if port == &*RAY_PORT => match self.extract_ray(feature) {
+                Ok(ray) => {
+                    let (origin, direction) = ray.origin_and_direction();
+                    let record = DiskRayRecord {
+                        feature: feature.clone(),
+                        origin: [origin.x, origin.y, origin.z],
+                        direction: [direction.x, direction.y, direction.z],
+                    };
+                    let json = serde_json::to_string(&record).map_err(|e| {
+                        GeometryProcessorError::RayIntersector(format!(
+                            "Failed to serialize ray record: {e}"
+                        ))
+                    })?;
+                    self.buffer_bytes += json.len();
+                    self.ray_buffer.entry(pair_id).or_default().push(json);
+                }
+                Err(_) => {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                }
+            },
+            port if port == &*GEOM_PORT => {
+                if let GeometryValue::FlowGeometry3D(geo) = &feature.geometry.value {
+                    if let Some(mesh) = to_triangle_mesh(geo.clone(), DEFAULT_TOLERANCE) {
+                        let json = serde_json::to_string(&mesh).map_err(|e| {
+                            GeometryProcessorError::RayIntersector(format!(
+                                "Failed to serialize mesh: {e}"
+                            ))
+                        })?;
+                        self.buffer_bytes += json.len();
+                        self.geom_buffer.entry(pair_id).or_default().push(json);
+                    } else {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    }
+                } else if let GeometryValue::CityGmlGeometry(geo) = &feature.geometry.value {
+                    if geo.gml_geometries.len() != 1 {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                        return Ok(());
+                    }
+
+                    let polygons = &geo.gml_geometries[0].polygons;
+                    let geom =
+                        match polygons.len() {
+                            0 => {
+                                fw.send(ctx.new_with_feature_and_port(
+                                    feature.clone(),
+                                    REJECTED_PORT.clone(),
+                                ));
+                                return Ok(());
+                            }
+                            1 => Geometry3D::Polygon(polygons[0].clone()),
+                            _ => Geometry3D::MultiPolygon(
+                                reearth_flow_geometry::types::multi_polygon::MultiPolygon3D::new(
+                                    polygons.to_vec(),
+                                ),
+                            ),
+                        };
+                    if let Some(mesh) = to_triangle_mesh(geom, DEFAULT_TOLERANCE) {
+                        let json = serde_json::to_string(&mesh).map_err(|e| {
+                            GeometryProcessorError::RayIntersector(format!(
+                                "Failed to serialize mesh: {e}"
+                            ))
+                        })?;
+                        self.buffer_bytes += json.len();
+                        self.geom_buffer.entry(pair_id).or_default().push(json);
+                    } else {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    }
+                } else {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                }
+            }
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
+
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            self.flush_buffer()?;
+        }
+
+        Ok(())
+    }
+
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let finish_start = Instant::now();
+
+        // Flush remaining in-memory buffer
+        self.flush_buffer()?;
+        // Reclaim buffer memory
+        self.ray_buffer = HashMap::new();
+        self.geom_buffer = HashMap::new();
+
+        let dir = match &self.temp_dir {
+            Some(d) => d.clone(),
+            None => {
+                tracing::info!("RayIntersector finish: no data received");
+                return Ok(());
+            }
+        };
+
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let pair_ids = std::mem::take(&mut self.pair_ids);
+
+        tracing::info!("RayIntersector finish: {} pair groups", pair_ids.len(),);
+
+        let intersection_path = dir.join("intersection.jsonl");
+        let no_intersection_path = dir.join("no_intersection.jsonl");
+
+        let mut intersection_writer = BufWriter::new(File::create(&intersection_path)?);
+        let mut no_intersection_writer = BufWriter::new(File::create(&no_intersection_path)?);
+
+        let mut total_intersections = 0usize;
+        let mut total_no_intersections = 0usize;
+
+        for pair_id in &pair_ids {
+            let group_start = Instant::now();
+
+            let ray_path = dir.join("rays").join(format!("{pair_id}.jsonl"));
+            let geom_path = dir.join("geoms").join(format!("{pair_id}.jsonl"));
+
+            // Load all geometry meshes for this pair
+            let geoms: Vec<TriangularMesh<f64, f64>> = if geom_path.exists() {
+                let file = File::open(&geom_path)?;
+                let reader = BufReader::new(file);
+                let mut meshes = Vec::new();
+                for line in reader.lines() {
+                    let line = line?;
+                    if line.is_empty() {
+                        continue;
+                    }
+                    let mesh: TriangularMesh<f64, f64> = serde_json::from_str(&line)?;
+                    meshes.push(mesh);
+                }
+                meshes
+            } else {
+                Vec::new()
+            };
+
+            if !ray_path.exists() {
+                continue;
+            }
+
+            // If no geometries, emit all rays to no_intersection
+            if geoms.is_empty() {
+                let file = File::open(&ray_path)?;
+                let reader = BufReader::new(file);
+                for line in reader.lines() {
+                    let line = line?;
+                    if line.is_empty() {
+                        continue;
+                    }
+                    let record: DiskRayRecord = serde_json::from_str(&line)?;
+                    let ray = Ray3D::new(
+                        Coordinate3D::new__(record.origin[0], record.origin[1], record.origin[2]),
+                        Coordinate3D::new__(
+                            record.direction[0],
+                            record.direction[1],
+                            record.direction[2],
+                        ),
+                    );
+                    let output_feature = self.create_ray_output_feature(&record.feature, &ray);
+                    let json = serde_json::to_string(&output_feature)?;
+                    no_intersection_writer.write_all(json.as_bytes())?;
+                    no_intersection_writer.write_all(b"\n")?;
+                    total_no_intersections += 1;
+                }
+                tracing::info!(
+                    "RayIntersector pair_id={}: no geometries — skipped in {:.3}ms",
+                    pair_id,
+                    group_start.elapsed().as_secs_f64() * 1000.0,
+                );
+                continue;
+            }
+
+            // Build BVH
+            let bvh_start = Instant::now();
+            let accel_set = AcceleratedGeometrySet::build(&geoms);
+            let bvh_elapsed = bvh_start.elapsed();
+
+            // Stream rays in chunks
+            let intersect_start = Instant::now();
+            let file = File::open(&ray_path)?;
+            let reader = BufReader::new(file);
+            let mut chunk: Vec<DiskRayRecord> = Vec::new();
+            let mut chunk_bytes: usize = 0;
+            let mut group_intersections = 0usize;
+            let mut group_no_intersections = 0usize;
+
+            let mut lines_iter = reader.lines();
+            loop {
+                // Read lines until chunk is big enough or EOF
+                let mut eof = false;
+                while chunk_bytes < ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                    match lines_iter.next() {
+                        Some(Ok(line)) => {
+                            if line.is_empty() {
+                                continue;
+                            }
+                            chunk_bytes += line.len();
+                            let record: DiskRayRecord = serde_json::from_str(&line)?;
+                            chunk.push(record);
+                        }
+                        Some(Err(e)) => return Err(e.into()),
+                        None => {
+                            eof = true;
+                            break;
+                        }
+                    }
+                }
+
+                if chunk.is_empty() {
+                    break;
+                }
+
+                // Process chunk in parallel
+                let results: Vec<(Feature, Ray3D, Vec<RayHit>)> = chunk
+                    .par_iter()
+                    .map(|record| {
+                        let ray = Ray3D::new(
+                            Coordinate3D::new__(
+                                record.origin[0],
+                                record.origin[1],
+                                record.origin[2],
+                            ),
+                            Coordinate3D::new__(
+                                record.direction[0],
+                                record.direction[1],
+                                record.direction[2],
+                            ),
+                        );
+
+                        let closest_only = self
+                            .evaluate_closest_only(&expr_engine, &record.feature)
+                            .unwrap_or(true);
+                        let tolerance = self
+                            .evaluate_tolerance(&expr_engine, &record.feature)
+                            .unwrap_or(DEFAULT_TOLERANCE);
+                        let include_ray_origin = self
+                            .evaluate_include_ray_origin(&expr_engine, &record.feature)
+                            .unwrap_or(true);
+
+                        let include_origin = if include_ray_origin {
+                            IncludeOrigin::Yes
+                        } else {
+                            IncludeOrigin::No { tolerance }
+                        };
+
+                        let hits = if closest_only {
+                            accel_set
+                                .closest_ray_intersection(&ray, tolerance, include_origin)
+                                .map(|(_, hit)| vec![hit])
+                                .unwrap_or_default()
+                        } else {
+                            accel_set
+                                .ray_intersections(&ray, tolerance, include_origin)
+                                .into_iter()
+                                .map(|(_, hit)| hit)
+                                .collect()
+                        };
+
+                        (record.feature.clone(), ray, hits)
+                    })
+                    .collect();
+
+                // Write results to disk
+                for (ray_feature, ray, hits) in results {
+                    if hits.is_empty() {
+                        group_no_intersections += 1;
+                        let output_feature = self.create_ray_output_feature(&ray_feature, &ray);
+                        let json = serde_json::to_string(&output_feature)?;
+                        no_intersection_writer.write_all(json.as_bytes())?;
+                        no_intersection_writer.write_all(b"\n")?;
+                    } else {
+                        group_intersections += hits.len();
+                        for hit in hits {
+                            let output_feature =
+                                self.create_intersection_feature(&ray_feature, &ray, hit);
+                            let json = serde_json::to_string(&output_feature)?;
+                            intersection_writer.write_all(json.as_bytes())?;
+                            intersection_writer.write_all(b"\n")?;
+                        }
+                    }
+                }
+
+                chunk.clear();
+                chunk_bytes = 0;
+
+                if eof {
+                    break;
+                }
+            }
+
+            total_intersections += group_intersections;
+            total_no_intersections += group_no_intersections;
+
+            // BVH and geoms drop here at end of scope
+            tracing::info!(
+                "RayIntersector pair_id={}: {} geoms — \
+                 BVH build: {:.3}ms, ray intersect: {:.3}ms, \
+                 hits: {}, misses: {}, total: {:.3}ms",
+                pair_id,
+                geoms.len(),
+                bvh_elapsed.as_secs_f64() * 1000.0,
+                intersect_start.elapsed().as_secs_f64() * 1000.0,
+                group_intersections,
+                group_no_intersections,
+                group_start.elapsed().as_secs_f64() * 1000.0,
+            );
+        }
+
+        intersection_writer.flush()?;
+        no_intersection_writer.flush()?;
+
+        // Send output files
+        if total_intersections > 0 {
+            fw.send_file(
+                intersection_path,
+                INTERSECTION_PORT.clone(),
+                ctx.as_context(),
+            );
+        }
+        if total_no_intersections > 0 {
+            fw.send_file(
+                no_intersection_path,
+                NO_INTERSECTION_PORT.clone(),
+                ctx.as_context(),
+            );
+        }
+
+        tracing::info!(
+            "RayIntersector finish complete: {} intersections, {} no-intersections, total {:.3}ms",
+            total_intersections,
+            total_no_intersections,
+            finish_start.elapsed().as_secs_f64() * 1000.0,
+        );
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "RayIntersector"
+    }
+}
+
+fn to_triangle_mesh(geom: Geometry3D<f64>, tolerance: f64) -> Option<TriangularMesh<f64, f64>> {
+    match geom {
+        Geometry3D::Polygon(p) => TriangularMesh::try_from_polygons(vec![p], Some(tolerance)).ok(),
+        Geometry3D::MultiPolygon(mp) => {
+            TriangularMesh::try_from_polygons(mp.0, Some(tolerance)).ok()
+        }
+        Geometry3D::Solid(s) => s.as_triangle_mesh(Some(tolerance)).ok(),
+        Geometry3D::Triangle(t) => Some(TriangularMesh::from_single_triangle(t)),
+        Geometry3D::TriangularMesh(mesh) => Some(mesh),
+        _ => None,
     }
 }

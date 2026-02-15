@@ -38,6 +38,7 @@ chrono.workspace = true
 csv.workspace = true
 earcut.workspace = true
 fastxml.workspace = true
+encoding_rs.workspace = true
 flatgeom.workspace = true
 image.workspace = true
 indexmap.workspace = true

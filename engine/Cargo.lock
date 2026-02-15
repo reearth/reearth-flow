@@ -6535,6 +6535,7 @@ dependencies = [
  "csv",
  "earcut",
  "fastxml",
+ "encoding_rs",
  "flatgeom",
  "image 0.25.9",
  "indexmap 2.13.0",
