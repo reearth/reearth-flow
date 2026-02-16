@@ -524,3 +524,82 @@ fn compute_xml_id_from_start_event(
     key_values.sort();
     to_hash(format!("{}:{}[{}]", uri, name, key_values.join(",")).as_str())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::utils;
+    use reearth_flow_common::uri::Uri;
+    use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
+    use reearth_flow_types::{AttributeValue, Feature};
+
+    /// Helper: call generate_fragment_streaming with in-memory XML and return
+    /// the xmlFragment strings produced.
+    fn extract_fragment_strings(raw_xml: &str, match_tags: &[&str]) -> Vec<String> {
+        let feature = Feature::new_with_attributes(Default::default());
+        let ctx = utils::create_default_execute_context(&feature);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let uri = Uri::from_str("file:///test.xml").unwrap();
+        let tags: Vec<String> = match_tags.iter().map(|s| s.to_string()).collect();
+
+        generate_fragment_streaming(&ctx, &fw, &feature, &uri, raw_xml, &tags)
+            .expect("generate_fragment_streaming should succeed");
+
+        match &fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let features = noop_fw.send_features.lock().unwrap();
+                features
+                    .iter()
+                    .map(|f| match f.get(Attribute::new("xmlFragment")) {
+                        Some(AttributeValue::String(s)) => s.clone(),
+                        other => panic!("expected xmlFragment string, got: {other:?}"),
+                    })
+                    .collect()
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Baseline: fragments extracted from BOM-free XML must be well-formed.
+    #[test]
+    fn test_fragment_content_without_bom() {
+        let xml = "<root><child id=\"c1\"><data>hello</data></child></root>";
+        let fragments = extract_fragment_strings(xml, &["child"]);
+
+        assert_eq!(fragments.len(), 1);
+        assert!(
+            fragments[0].starts_with("<child"),
+            "fragment should start with '<child', got: {}",
+            fragments[0]
+        );
+        assert!(
+            fragments[0].ends_with("</child>"),
+            "fragment should end with '</child>', got: {}",
+            fragments[0]
+        );
+    }
+
+    /// BOM bug reproduction: when the input XML starts with UTF-8 BOM
+    /// (\u{FEFF}), quick_xml's buffer_position() may be offset by 3 bytes,
+    /// causing the raw_xml[start..end] slice to produce a corrupted fragment
+    /// (shifted by the BOM width).
+    #[test]
+    fn test_fragment_content_with_bom() {
+        let xml = "\u{FEFF}<root><child id=\"c1\"><data>hello</data></child></root>";
+        let fragments = extract_fragment_strings(xml, &["child"]);
+
+        assert_eq!(fragments.len(), 1, "should extract exactly one fragment");
+        // The fragment must start with the opening tag, not with garbage bytes
+        // caused by a 3-byte BOM offset.
+        assert!(
+            fragments[0].starts_with("<child"),
+            "fragment should start with '<child', got: {}",
+            fragments[0]
+        );
+        assert!(
+            fragments[0].ends_with("</child>"),
+            "fragment should end with '</child>', got: {}",
+            fragments[0]
+        );
+    }
+}
