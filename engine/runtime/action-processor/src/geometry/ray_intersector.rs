@@ -4,7 +4,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
 
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -37,6 +36,28 @@ static RAY_PORT: Lazy<Port> = Lazy::new(|| Port::new("ray"));
 static GEOM_PORT: Lazy<Port> = Lazy::new(|| Port::new("geom"));
 static INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("intersection"));
 static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no_intersection"));
+
+/// Sanitize a pair_id string for safe use as a filename component.
+/// Only allows alphanumeric, hyphen, and underscore; replaces everything
+/// else with `_` and truncates to 200 characters.
+fn sanitize_pair_id(pair_id: &str) -> String {
+    let sanitized: String = pair_id
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(200)
+        .collect();
+    if sanitized.is_empty() {
+        "_empty_".to_string()
+    } else {
+        sanitized
+    }
+}
 
 const DEFAULT_TOLERANCE: f64 = 1e-10;
 
@@ -342,7 +363,8 @@ impl RayIntersector {
 
         // Flush ray buffer
         for (pair_id, lines) in self.ray_buffer.drain() {
-            let path = dir.join("rays").join(format!("{pair_id}.jsonl"));
+            let safe_name = sanitize_pair_id(&pair_id);
+            let path = dir.join("rays").join(format!("{safe_name}.jsonl"));
             let file = File::options().create(true).append(true).open(&path)?;
             let mut writer = BufWriter::new(file);
             for line in &lines {
@@ -354,7 +376,8 @@ impl RayIntersector {
 
         // Flush geom buffer
         for (pair_id, lines) in self.geom_buffer.drain() {
-            let path = dir.join("geoms").join(format!("{pair_id}.jsonl"));
+            let safe_name = sanitize_pair_id(&pair_id);
+            let path = dir.join("geoms").join(format!("{safe_name}.jsonl"));
             let file = File::options().create(true).append(true).open(&path)?;
             let mut writer = BufWriter::new(file);
             for line in &lines {
@@ -681,8 +704,6 @@ impl Processor for RayIntersector {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let finish_start = Instant::now();
-
         // Flush remaining in-memory buffer
         self.flush_buffer()?;
         // Reclaim buffer memory
@@ -691,16 +712,11 @@ impl Processor for RayIntersector {
 
         let dir = match &self.temp_dir {
             Some(d) => d.clone(),
-            None => {
-                tracing::info!("RayIntersector finish: no data received");
-                return Ok(());
-            }
+            None => return Ok(()),
         };
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let pair_ids = std::mem::take(&mut self.pair_ids);
-
-        tracing::info!("RayIntersector finish: {} pair groups", pair_ids.len(),);
 
         let intersection_path = dir.join("intersection.jsonl");
         let no_intersection_path = dir.join("no_intersection.jsonl");
@@ -712,10 +728,9 @@ impl Processor for RayIntersector {
         let mut total_no_intersections = 0usize;
 
         for pair_id in &pair_ids {
-            let group_start = Instant::now();
-
-            let ray_path = dir.join("rays").join(format!("{pair_id}.jsonl"));
-            let geom_path = dir.join("geoms").join(format!("{pair_id}.jsonl"));
+            let safe_name = sanitize_pair_id(pair_id);
+            let ray_path = dir.join("rays").join(format!("{safe_name}.jsonl"));
+            let geom_path = dir.join("geoms").join(format!("{safe_name}.jsonl"));
 
             // Load all geometry meshes and geom IDs for this pair
             let (geoms, geom_ids): (Vec<TriangularMesh<f64, f64>>, Vec<Option<String>>) =
@@ -766,27 +781,17 @@ impl Processor for RayIntersector {
                     no_intersection_writer.write_all(b"\n")?;
                     total_no_intersections += 1;
                 }
-                tracing::info!(
-                    "RayIntersector pair_id={}: no geometries — skipped in {:.3}ms",
-                    pair_id,
-                    group_start.elapsed().as_secs_f64() * 1000.0,
-                );
                 continue;
             }
 
             // Build BVH
-            let bvh_start = Instant::now();
             let accel_set = AcceleratedGeometrySet::build(&geoms);
-            let bvh_elapsed = bvh_start.elapsed();
 
             // Stream rays in chunks
-            let intersect_start = Instant::now();
             let file = File::open(&ray_path)?;
             let reader = BufReader::new(file);
             let mut chunk: Vec<DiskRayRecord> = Vec::new();
             let mut chunk_bytes: usize = 0;
-            let mut group_intersections = 0usize;
-            let mut group_no_intersections = 0usize;
 
             let mut lines_iter = reader.lines();
             loop {
@@ -864,13 +869,13 @@ impl Processor for RayIntersector {
                 // Write results to disk
                 for (ray_feature, ray, hits) in results {
                     if hits.is_empty() {
-                        group_no_intersections += 1;
+                        total_no_intersections += 1;
                         let output_feature = self.create_ray_output_feature(&ray_feature, &ray);
                         let json = serde_json::to_string(&output_feature)?;
                         no_intersection_writer.write_all(json.as_bytes())?;
                         no_intersection_writer.write_all(b"\n")?;
                     } else {
-                        group_intersections += hits.len();
+                        total_intersections += hits.len();
                         for (geom_idx, hit) in hits {
                             let gid = geom_ids.get(geom_idx).and_then(|o| o.as_deref());
                             let output_feature =
@@ -889,23 +894,6 @@ impl Processor for RayIntersector {
                     break;
                 }
             }
-
-            total_intersections += group_intersections;
-            total_no_intersections += group_no_intersections;
-
-            // BVH and geoms drop here at end of scope
-            tracing::info!(
-                "RayIntersector pair_id={}: {} geoms — \
-                 BVH build: {:.3}ms, ray intersect: {:.3}ms, \
-                 hits: {}, misses: {}, total: {:.3}ms",
-                pair_id,
-                geoms.len(),
-                bvh_elapsed.as_secs_f64() * 1000.0,
-                intersect_start.elapsed().as_secs_f64() * 1000.0,
-                group_intersections,
-                group_no_intersections,
-                group_start.elapsed().as_secs_f64() * 1000.0,
-            );
         }
 
         intersection_writer.flush()?;
@@ -927,12 +915,6 @@ impl Processor for RayIntersector {
             );
         }
 
-        tracing::info!(
-            "RayIntersector finish complete: {} intersections, {} no-intersections, total {:.3}ms",
-            total_intersections,
-            total_no_intersections,
-            finish_start.elapsed().as_secs_f64() * 1000.0,
-        );
         Ok(())
     }
 

@@ -1,8 +1,8 @@
-use std::io::{BufRead, Cursor};
-
 use bytes::Bytes;
 use indexmap::IndexMap;
-use reearth_flow_common::csv::Delimiter;
+use reearth_flow_common::csv::{
+    auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
+};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -30,38 +30,6 @@ pub struct CsvReaderParam {
     pub(crate) geometry: Option<GeometryConfig>,
 }
 
-/// Decode bytes from the specified encoding to UTF-8.
-///
-/// If encoding is None or "UTF-8", returns the original bytes unchanged.
-/// Otherwise, uses `encoding_rs` to decode (matching the ShapefileReader pattern).
-fn decode_content<'a>(
-    content: &'a Bytes,
-    encoding: Option<&str>,
-) -> Result<std::borrow::Cow<'a, [u8]>, crate::errors::SourceError> {
-    let encoding_name = match encoding {
-        Some(name) if !name.is_empty() => name,
-        _ => return Ok(std::borrow::Cow::Borrowed(content.as_ref())),
-    };
-
-    let name_upper = encoding_name.to_uppercase();
-    if matches!(name_upper.as_str(), "UTF-8" | "UTF8" | "UNICODE" | "UTF_8") {
-        return Ok(std::borrow::Cow::Borrowed(content.as_ref()));
-    }
-
-    let enc = encoding_rs::Encoding::for_label(encoding_name.as_bytes()).ok_or_else(|| {
-        crate::errors::SourceError::CsvFileReader(format!("Unsupported encoding: {encoding_name}"))
-    })?;
-
-    let (decoded, _, had_errors) = enc.decode(content.as_ref());
-    if had_errors {
-        tracing::warn!(
-            "Encoding conversion from {} had unmappable characters (replaced with U+FFFD)",
-            enc.name()
-        );
-    }
-    Ok(std::borrow::Cow::Owned(decoded.into_owned().into_bytes()))
-}
-
 pub(crate) async fn read_csv(
     delimiter: Delimiter,
     content: &Bytes,
@@ -69,59 +37,20 @@ pub(crate) async fn read_csv(
     encoding: Option<&str>,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
-    let decoded = decode_content(content, encoding)?;
-    // Use BufRead to skip offset lines, because the csv crate silently
-    // skips blank lines which causes the offset count to be wrong when the
-    // file contains empty rows (e.g. JMA weather data CSVs).
-    let mut cursor = Cursor::new(decoded.as_ref());
     let offset = props.offset.unwrap_or(0);
-    for _ in 0..offset {
-        let mut line = String::new();
-        cursor.read_line(&mut line).map_err(|e| {
-            crate::errors::SourceError::CsvFileReader(format!("Failed to skip offset line: {e:?}"))
-        })?;
-    }
-    let mut rdr = csv::ReaderBuilder::new()
-        .flexible(true)
-        .has_headers(false)
-        .trim(csv::Trim::All)
-        .delimiter(delimiter.into())
-        .from_reader(cursor);
+    let mut rdr = build_csv_reader(content.as_ref(), encoding, delimiter, offset)
+        .map_err(crate::errors::SourceError::CsvFileReader)?;
+
     let header_rows = props.header_rows.unwrap_or(1);
-    let mut header = if header_rows == 0 {
-        Vec::new()
-    } else {
-        let mut iter = rdr.deserialize();
-        // Read `header_rows` consecutive rows and merge them
-        let mut rows: Vec<Vec<String>> = Vec::with_capacity(header_rows);
-        for _ in 0..header_rows {
-            let row: Vec<String> = iter
-                .next()
-                .unwrap_or(Ok(Vec::new()))
-                .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
-            rows.push(row);
-        }
-        // Determine maximum column count across all header rows
-        let max_cols = rows.iter().map(|r| r.len()).max().unwrap_or(0);
-        // Merge: for each column, join non-empty values with "_"
-        (0..max_cols)
-            .map(|col_idx| {
-                rows.iter()
-                    .filter_map(|row| row.get(col_idx).map(|s| s.trim()).filter(|s| !s.is_empty()))
-                    .collect::<Vec<_>>()
-                    .join("_")
-            })
-            .collect::<Vec<String>>()
-    };
+    let mut header = read_merged_header(&mut rdr, header_rows)
+        .map_err(crate::errors::SourceError::CsvFileReader)?;
+
     for rd in rdr.deserialize() {
         let record: Vec<String> =
             rd.map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
 
-        // Auto-generate column names when headerRows is 0
         if header_rows == 0 && header.is_empty() {
-            header = (0..record.len())
-                .map(|i| format!("column{}", i + 1))
-                .collect();
+            header = auto_generate_header(record.len());
         }
 
         // Build a map of column name -> value for geometry parsing

@@ -44,7 +44,7 @@ enum OverlapValue {
 impl PartialEq for OverlapValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (OverlapValue::Number(a), OverlapValue::Number(b)) => a == b,
+            (OverlapValue::Number(a), OverlapValue::Number(b)) => a.total_cmp(b).is_eq(),
             (OverlapValue::String(a), OverlapValue::String(b)) => a == b,
             _ => false,
         }
@@ -54,7 +54,7 @@ impl PartialEq for OverlapValue {
 impl PartialOrd for OverlapValue {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
-            (OverlapValue::Number(a), OverlapValue::Number(b)) => a.partial_cmp(b),
+            (OverlapValue::Number(a), OverlapValue::Number(b)) => Some(a.total_cmp(b)),
             (OverlapValue::String(a), OverlapValue::String(b)) => a.partial_cmp(b),
             _ => None,
         }
@@ -960,28 +960,24 @@ impl GeometryPolygons {
                 }
             }
             Some(OnOverlap::Sum(_)) => {
-                // Accumulate values per pixel, use last polygon's color
-                let mut accum: HashMap<(u32, u32), (f64, u8, u8, u8)> = HashMap::new();
+                // Saturating-add RGB channels per pixel
                 for polygon in &self.polygons {
                     let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
-                    let val = match &polygon.overlap_value {
-                        Some(OverlapValue::Number(n)) => *n,
-                        _ => 0.0,
-                    };
                     for pixel in pixels {
                         if pixel.x >= width || pixel.y >= height {
                             continue;
                         }
-                        let key = (pixel.x, pixel.y);
-                        let entry = accum.entry(key).or_insert((0.0, pixel.r, pixel.g, pixel.b));
-                        entry.0 += val;
-                        entry.1 = pixel.r;
-                        entry.2 = pixel.g;
-                        entry.3 = pixel.b;
+                        let existing = img.get_pixel(pixel.x, pixel.y);
+                        img.put_pixel(
+                            pixel.x,
+                            pixel.y,
+                            image::Rgb([
+                                existing[0].saturating_add(pixel.r),
+                                existing[1].saturating_add(pixel.g),
+                                existing[2].saturating_add(pixel.b),
+                            ]),
+                        );
                     }
-                }
-                for ((x, y), (_, r, g, b)) in &accum {
-                    img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
                 }
             }
             // None or TakeLast - current behavior (last polygon overwrites)
