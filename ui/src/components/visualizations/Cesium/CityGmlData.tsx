@@ -4,9 +4,9 @@ import { useCesium } from "resium";
 
 import {
   convertFeatureToEntity,
+  extractLodPolygons,
   updateLodFeature,
   revertLodFeature,
-  extractLodPolygons,
   type EntityWithSurfaces,
 } from "./utils/cityGmlGeometryConverter";
 
@@ -31,7 +31,6 @@ type Props = {
 const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
   const { viewer } = useCesium();
   const entitiesRef = useRef<Entity[]>([]);
-  // Map feature IDs to their source feature data + primary entity for LOD swaps
   const featureMapRef = useRef<
     Map<string, { feature: CityGmlFeature; entity: EntityWithSurfaces }>
   >(new Map());
@@ -41,14 +40,9 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
   useEffect(() => {
     if (!cityGmlData || !viewer) return;
 
-    // Clear existing entities
-    // Before clearing the feature map, remove any active LOD primitives
+    // Revert any active LOD upgrades before clearing
     featureMapRef.current.forEach(({ entity }) => {
-      const entityAny = entity as any;
-      if (entityAny && entityAny.lodPrimitive) {
-        viewer.scene.primitives.remove(entityAny.lodPrimitive);
-        entityAny.lodPrimitive = undefined;
-      }
+      revertLodFeature(entity, viewer);
     });
 
     entitiesRef.current.forEach((entity) => {
@@ -74,7 +68,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
           });
         }
 
-        // Add additional polygon entities (non-building features)
+        // Add additional polygon entities (non-3D features like zones, land use)
         const entityAny = entity as any;
         if (entityAny.additionalPolygons) {
           entityAny.additionalPolygons.forEach((additionalEntity: Entity) => {
@@ -83,7 +77,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
           });
         }
 
-        // Track the primary entity by feature ID for later LOD mutation
+        // Track the primary entity by feature ID for LOD upgrades
         const fid = feature.properties._originalId;
         if (fid) {
           featureMapRef.current.set(fid, { feature, entity });
@@ -95,7 +89,6 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
 
     // Zoom to entities if any were created
     if (newEntities.length > 0) {
-      // Wait for the next render frame to ensure entities are rendered
       const removeListener = viewer.scene.postRender.addEventListener(() => {
         removeListener();
         viewer.zoomTo(viewer.entities);
@@ -110,21 +103,8 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     const currentId = selectedFeatureId ?? null;
     prevSelectedRef.current = currentId;
 
-    if (prevId === currentId && cityGmlData) {
-      if (currentId) {
-        const entry = featureMapRef.current.get(currentId);
-        if (entry) {
-          const lodPolygons = extractLodPolygons(entry.feature);
-          if (lodPolygons && lodPolygons.length > 0) {
-            updateLodFeature(entry, lodPolygons, viewer);
-          }
-        }
-      }
-      return;
-    }
-
     // Revert previously selected feature back to LOD1
-    if (prevId) {
+    if (prevId && prevId !== currentId) {
       const prevEntry = featureMapRef.current.get(prevId);
       if (prevEntry) {
         revertLodFeature(prevEntry.entity, viewer);
@@ -134,26 +114,22 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     // Upgrade newly selected feature to highest available LOD
     if (currentId) {
       const entry = featureMapRef.current.get(currentId);
-      if (entry) {
+      if (entry && !entry.entity.lodSurfaces) {
         const lodPolygons = extractLodPolygons(entry.feature);
         if (lodPolygons && lodPolygons.length > 0) {
           updateLodFeature(entry, lodPolygons, viewer);
         }
       }
     }
-  }, [selectedFeatureId, viewer, cityGmlData]);
+  }, [selectedFeatureId, viewer]);
 
   // Cleanup on unmount
   useEffect(() => {
-    // Capture the current value of featureMapRef at effect creation
     const featureMapSnapshot = featureMapRef.current;
     return () => {
       if (viewer) {
-        // Remove any active LOD primitives
         featureMapSnapshot.forEach(({ entity }) => {
-          if (entity.lodPrimitive) {
-            viewer.scene.primitives.remove(entity.lodPrimitive);
-          }
+          revertLodFeature(entity, viewer);
         });
         entitiesRef.current.forEach((entity) => {
           viewer.entities.remove(entity);
@@ -162,7 +138,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     };
   }, [viewer]);
 
-  return null; // This component doesn't render anything directly
+  return null;
 };
 
 export default memo(CityGmlData);

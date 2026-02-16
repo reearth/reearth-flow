@@ -1,11 +1,5 @@
 import bbox from "@turf/bbox";
-import {
-  BoundingSphere,
-  Cartesian3,
-  GeoJsonDataSource,
-  HeadingPitchRange,
-  Math as CesiumMath,
-} from "cesium";
+import { Cartesian3, GeoJsonDataSource } from "cesium";
 import {
   MouseEvent,
   useCallback,
@@ -243,68 +237,7 @@ export default () => {
           );
 
           if (matchingEntities.length > 0) {
-            // Prefer a parent entity with position (works even when LOD surfaces are hidden)
-            const parentWithPosition = matchingEntities.find(
-              (e: any) => e.position,
-            );
-
-            if (parentWithPosition) {
-              // Use camera.flyTo with the entity's position directly,
-              // since viewer.flyTo needs visible geometry to compute a bounding sphere
-              const position =
-                parentWithPosition.position.getValue?.(
-                  cesiumViewer.clock.currentTime,
-                ) ?? parentWithPosition.position.getValue?.();
-              if (position) {
-                const height =
-                  parentWithPosition.properties?.getValue?.()?.height ?? 50;
-                cesiumViewer.camera.flyToBoundingSphere(
-                  new BoundingSphere(position, height * 2),
-                  {
-                    duration: 1,
-                    offset: new HeadingPitchRange(
-                      0,
-                      CesiumMath.toRadians(-45),
-                      height * 4,
-                    ),
-                  },
-                );
-              } else {
-                cesiumViewer.flyTo(parentWithPosition);
-              }
-            } else {
-              // Fallback: filter to visible entities with valid coordinates
-              const validEntities = matchingEntities.filter((entity: any) => {
-                if (!entity.show) return false;
-                try {
-                  if (entity.polygon?.hierarchy?.getValue) {
-                    const hierarchy = entity.polygon.hierarchy.getValue();
-                    if (hierarchy?.positions) {
-                      return hierarchy.positions.every(
-                        (pos: any) =>
-                          pos &&
-                          typeof pos.x === "number" &&
-                          !isNaN(pos.x) &&
-                          isFinite(pos.x) &&
-                          typeof pos.y === "number" &&
-                          !isNaN(pos.y) &&
-                          isFinite(pos.y) &&
-                          typeof pos.z === "number" &&
-                          !isNaN(pos.z) &&
-                          isFinite(pos.z),
-                      );
-                    }
-                  }
-                  return true;
-                } catch {
-                  return false;
-                }
-              });
-
-              if (validEntities.length > 0) {
-                cesiumViewer.zoomTo(validEntities);
-              }
-            }
+            cesiumViewer.zoomTo(matchingEntities);
           } else {
             console.warn(
               "No matching Cesium entities found for feature ID:",
