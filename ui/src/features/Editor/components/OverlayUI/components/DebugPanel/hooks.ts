@@ -335,7 +335,7 @@ export default () => {
   const featureIdMap = useMemo(() => {
     if (!formattedData.tableData) return null;
 
-    const map = new Map<string | number, any>();
+    const map = new Map<string, any>();
     formattedData.tableData.forEach((row: any) => {
       const id = row.id;
       const normalizedId = JSON.parse(id);

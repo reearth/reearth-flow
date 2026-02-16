@@ -947,6 +947,10 @@ export function updateLodFeature(
 ): void {
   const { entity } = entry;
 
+  const typeConfig = CITYGML_3D_TYPES.find((cfg) =>
+    cfg.detect(entry.feature.properties),
+  );
+
   // Hide LOD1 surface entities
   entity.surfaces?.forEach((s) => {
     s.show = false;
@@ -957,12 +961,18 @@ export function updateLodFeature(
   lodPolygons
     .filter((p) => p.positions.length >= 3)
     .forEach((p, index) => {
+      const material = typeConfig?.useSurfaceTypeColors
+        ? p.material
+        : new ColorMaterialProperty(
+            typeConfig?.color ?? Color.GRAY.withAlpha(0.8),
+          );
+
       const surfaceEntity = new Entity({
         id: `${entity.id}_lod_${index}`,
         name: `${entity.name} - ${p.surfaceType} ${index + 1}`,
         polygon: new PolygonGraphics({
           hierarchy: new ConstantProperty(new PolygonHierarchy(p.positions)),
-          material: p.material,
+          material,
           outline: new ConstantProperty(true),
           outlineColor: new ConstantProperty(Color.BLACK.withAlpha(0.8)),
           outlineWidth: new ConstantProperty(2),

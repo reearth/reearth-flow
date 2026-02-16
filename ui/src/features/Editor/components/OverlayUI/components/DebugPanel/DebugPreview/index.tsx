@@ -68,7 +68,7 @@ const DebugPreview: React.FC<Props> = ({
       return { featureMap: null, processedOutputData: selectedOutputData };
     }
 
-    const map = new Map<string | number, any>();
+    const map = new Map<string, any>();
     const processedFeatures = selectedOutputData.features.map((f: any) => {
       const processedFeature = {
         ...f,
