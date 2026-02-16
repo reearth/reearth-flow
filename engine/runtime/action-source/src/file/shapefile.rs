@@ -210,7 +210,15 @@ impl Source for ShapefileReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = match get_content(&ctx, &self.params.common_property, storage_resolver).await
+        {
+            Ok(content) => content,
+            Err(e) => {
+                // When dataset path is not provided (optional source), produce no features
+                tracing::info!("ShapefileReader: {e}, producing no features");
+                return Ok(());
+            }
+        };
         read_shapefile(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)

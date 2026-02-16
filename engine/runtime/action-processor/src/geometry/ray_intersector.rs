@@ -138,6 +138,17 @@ impl ProcessorFactory for RayIntersectorFactory {
             })
             .transpose()?;
 
+        let geom_id_ast = params
+            .geom_id
+            .map(|expr| {
+                expr_engine.compile(expr.as_ref()).map_err(|e| {
+                    GeometryProcessorError::RayIntersectorFactory(format!(
+                        "Failed to compile geomId expression: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
+
         Ok(Box::new(RayIntersector {
             global_params: with,
             ray_definition: params.ray,
@@ -145,6 +156,7 @@ impl ProcessorFactory for RayIntersectorFactory {
             closest_only_ast,
             tolerance_ast,
             include_ray_origin_ast,
+            geom_id_ast,
             output_geometry_type: params.output_geometry_type,
             pair_ids: Vec::new(),
             pair_id_set: HashSet::new(),
@@ -199,6 +211,12 @@ pub struct RayIntersectorParams {
     /// - "lineSegmentToIntersection": Output a line segment from ray origin to intersection point
     #[serde(default)]
     pub output_geometry_type: OutputGeometryType,
+
+    /// Expression evaluated on geometry features to extract an ID string.
+    /// When set, intersection features will include a `geom_id` attribute
+    /// identifying which geometry was hit.
+    #[serde(default)]
+    pub geom_id: Option<Expr>,
 }
 
 /// Defines how ray data is extracted from feature attributes.
@@ -228,6 +246,14 @@ struct DiskRayRecord {
     direction: [f64; 3],
 }
 
+/// Disk record for geometries — stores mesh along with optional geom_id.
+#[derive(Serialize, Deserialize)]
+struct DiskGeomRecord {
+    mesh: TriangularMesh<f64, f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    geom_id: Option<String>,
+}
+
 pub struct RayIntersector {
     // Immutable config
     global_params: Option<HashMap<String, Value>>,
@@ -236,6 +262,7 @@ pub struct RayIntersector {
     closest_only_ast: Option<rhai::AST>,
     tolerance_ast: Option<rhai::AST>,
     include_ray_origin_ast: Option<rhai::AST>,
+    geom_id_ast: Option<rhai::AST>,
     output_geometry_type: OutputGeometryType,
 
     // Disk-backed state
@@ -267,6 +294,7 @@ impl Clone for RayIntersector {
             closest_only_ast: self.closest_only_ast.clone(),
             tolerance_ast: self.tolerance_ast.clone(),
             include_ray_origin_ast: self.include_ray_origin_ast.clone(),
+            geom_id_ast: self.geom_id_ast.clone(),
             output_geometry_type: self.output_geometry_type.clone(),
             pair_ids: Vec::new(),
             pair_id_set: HashSet::new(),
@@ -414,6 +442,19 @@ impl RayIntersector {
         }
     }
 
+    fn evaluate_geom_id(
+        &self,
+        expr_engine: &Arc<Engine>,
+        feature: &Feature,
+    ) -> Option<String> {
+        self.geom_id_ast.as_ref().and_then(|ast| {
+            let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
+            let result: rhai::Dynamic = scope.eval_ast(ast).ok()?;
+            let s = result.to_string();
+            if s.is_empty() { None } else { Some(s) }
+        })
+    }
+
     fn extract_ray(&self, feature: &Feature) -> Result<Ray3D, BoxedError> {
         let px = self.get_f64_attribute(feature, &self.ray_definition.pos_x)?;
         let py = self.get_f64_attribute(feature, &self.ray_definition.pos_y)?;
@@ -453,6 +494,7 @@ impl RayIntersector {
         ray_feature: &Feature,
         ray: &Ray3D,
         hit: RayHit,
+        geom_id: Option<&str>,
     ) -> Feature {
         let mut output_feature = ray_feature.clone();
 
@@ -478,6 +520,13 @@ impl RayIntersector {
                 serde_json::Number::from_f64(hit.t).unwrap_or_else(|| serde_json::Number::from(0)),
             ),
         );
+
+        if let Some(id) = geom_id {
+            output_feature.attributes_mut().insert(
+                Attribute::new("geom_id"),
+                AttributeValue::String(id.to_string()),
+            );
+        }
 
         output_feature
     }
@@ -553,13 +602,26 @@ impl Processor for RayIntersector {
                 }
             },
             port if port == &*GEOM_PORT => {
+                let geom_id = self.evaluate_geom_id(&expr_engine, feature);
+
+                let serialize_mesh = |mesh: TriangularMesh<f64, f64>,
+                                      gid: Option<String>|
+                 -> Result<String, BoxedError> {
+                    let record = DiskGeomRecord {
+                        mesh,
+                        geom_id: gid,
+                    };
+                    serde_json::to_string(&record).map_err(|e| {
+                        GeometryProcessorError::RayIntersector(format!(
+                            "Failed to serialize mesh: {e}"
+                        ))
+                        .into()
+                    })
+                };
+
                 if let GeometryValue::FlowGeometry3D(geo) = &feature.geometry.value {
                     if let Some(mesh) = to_triangle_mesh(geo.clone(), DEFAULT_TOLERANCE) {
-                        let json = serde_json::to_string(&mesh).map_err(|e| {
-                            GeometryProcessorError::RayIntersector(format!(
-                                "Failed to serialize mesh: {e}"
-                            ))
-                        })?;
+                        let json = serialize_mesh(mesh, geom_id)?;
                         self.buffer_bytes += json.len();
                         self.geom_buffer.entry(pair_id).or_default().push(json);
                     } else {
@@ -593,11 +655,7 @@ impl Processor for RayIntersector {
                             ),
                         };
                     if let Some(mesh) = to_triangle_mesh(geom, DEFAULT_TOLERANCE) {
-                        let json = serde_json::to_string(&mesh).map_err(|e| {
-                            GeometryProcessorError::RayIntersector(format!(
-                                "Failed to serialize mesh: {e}"
-                            ))
-                        })?;
+                        let json = serialize_mesh(mesh, geom_id)?;
                         self.buffer_bytes += json.len();
                         self.geom_buffer.entry(pair_id).or_default().push(json);
                     } else {
@@ -662,23 +720,26 @@ impl Processor for RayIntersector {
             let ray_path = dir.join("rays").join(format!("{pair_id}.jsonl"));
             let geom_path = dir.join("geoms").join(format!("{pair_id}.jsonl"));
 
-            // Load all geometry meshes for this pair
-            let geoms: Vec<TriangularMesh<f64, f64>> = if geom_path.exists() {
-                let file = File::open(&geom_path)?;
-                let reader = BufReader::new(file);
-                let mut meshes = Vec::new();
-                for line in reader.lines() {
-                    let line = line?;
-                    if line.is_empty() {
-                        continue;
+            // Load all geometry meshes and geom IDs for this pair
+            let (geoms, geom_ids): (Vec<TriangularMesh<f64, f64>>, Vec<Option<String>>) =
+                if geom_path.exists() {
+                    let file = File::open(&geom_path)?;
+                    let reader = BufReader::new(file);
+                    let mut meshes = Vec::new();
+                    let mut ids = Vec::new();
+                    for line in reader.lines() {
+                        let line = line?;
+                        if line.is_empty() {
+                            continue;
+                        }
+                        let record: DiskGeomRecord = serde_json::from_str(&line)?;
+                        meshes.push(record.mesh);
+                        ids.push(record.geom_id);
                     }
-                    let mesh: TriangularMesh<f64, f64> = serde_json::from_str(&line)?;
-                    meshes.push(mesh);
-                }
-                meshes
-            } else {
-                Vec::new()
-            };
+                    (meshes, ids)
+                } else {
+                    (Vec::new(), Vec::new())
+                };
 
             if !ray_path.exists() {
                 continue;
@@ -757,7 +818,8 @@ impl Processor for RayIntersector {
                 }
 
                 // Process chunk in parallel
-                let results: Vec<(Feature, Ray3D, Vec<RayHit>)> = chunk
+                #[allow(clippy::type_complexity)]
+                let results: Vec<(Feature, Ray3D, Vec<(usize, RayHit)>)> = chunk
                     .par_iter()
                     .map(|record| {
                         let ray = Ray3D::new(
@@ -789,17 +851,14 @@ impl Processor for RayIntersector {
                             IncludeOrigin::No { tolerance }
                         };
 
-                        let hits = if closest_only {
+                        let hits: Vec<(usize, RayHit)> = if closest_only {
                             accel_set
                                 .closest_ray_intersection(&ray, tolerance, include_origin)
-                                .map(|(_, hit)| vec![hit])
-                                .unwrap_or_default()
+                                .into_iter()
+                                .collect()
                         } else {
                             accel_set
                                 .ray_intersections(&ray, tolerance, include_origin)
-                                .into_iter()
-                                .map(|(_, hit)| hit)
-                                .collect()
                         };
 
                         (record.feature.clone(), ray, hits)
@@ -816,9 +875,10 @@ impl Processor for RayIntersector {
                         no_intersection_writer.write_all(b"\n")?;
                     } else {
                         group_intersections += hits.len();
-                        for hit in hits {
+                        for (geom_idx, hit) in hits {
+                            let gid = geom_ids.get(geom_idx).and_then(|o| o.as_deref());
                             let output_feature =
-                                self.create_intersection_feature(&ray_feature, &ray, hit);
+                                self.create_intersection_feature(&ray_feature, &ray, hit, gid);
                             let json = serde_json::to_string(&output_feature)?;
                             intersection_writer.write_all(json.as_bytes())?;
                             intersection_writer.write_all(b"\n")?;

@@ -147,6 +147,7 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
             source_epsg_ast,
             standard_meridian_ast,
             output_type: params.output_type(),
+            output_below_horizon: params.output_below_horizon(),
         }))
     }
 }
@@ -166,6 +167,9 @@ pub enum SolarPositionCalculatorParam {
         /// Output type: unit normal vector or altitude/azimuth angles
         #[serde(default)]
         output_type: OutputType,
+        /// Whether to output sun positions below the horizon (altitude < 0). Default: false.
+        #[serde(default)]
+        output_below_horizon: bool,
     },
     #[serde(rename_all = "camelCase")]
     Duration {
@@ -185,6 +189,9 @@ pub enum SolarPositionCalculatorParam {
         /// Output type: unit normal vector or altitude/azimuth angles
         #[serde(default)]
         output_type: OutputType,
+        /// Whether to output sun positions below the horizon (altitude < 0). Default: false.
+        #[serde(default)]
+        output_below_horizon: bool,
     },
 }
 
@@ -211,6 +218,19 @@ impl SolarPositionCalculatorParam {
         match self {
             SolarPositionCalculatorParam::Time { output_type, .. } => output_type.clone(),
             SolarPositionCalculatorParam::Duration { output_type, .. } => output_type.clone(),
+        }
+    }
+
+    fn output_below_horizon(&self) -> bool {
+        match self {
+            SolarPositionCalculatorParam::Time {
+                output_below_horizon,
+                ..
+            } => *output_below_horizon,
+            SolarPositionCalculatorParam::Duration {
+                output_below_horizon,
+                ..
+            } => *output_below_horizon,
         }
     }
 }
@@ -268,6 +288,7 @@ pub struct SolarPositionCalculator {
     source_epsg_ast: AST,
     standard_meridian_ast: Option<AST>,
     output_type: OutputType,
+    output_below_horizon: bool,
 }
 
 impl Processor for SolarPositionCalculator {
@@ -318,6 +339,12 @@ impl Processor for SolarPositionCalculator {
                 let position =
                     calculate_solar_position(latitude, longitude, datetime, standard_meridian);
 
+                // Skip below-horizon positions unless output_below_horizon is enabled
+                if !self.output_below_horizon && position.altitude < 0.0 {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                    return Ok(());
+                }
+
                 let mut new_feature = feature.clone();
                 self.insert_solar_position_attributes(&mut new_feature, &position);
                 Self::insert_centroid_attributes(&mut new_feature, &centroid_3d);
@@ -355,6 +382,12 @@ impl Processor for SolarPositionCalculator {
                 while current <= end_datetime {
                     let position =
                         calculate_solar_position(latitude, longitude, current, standard_meridian);
+
+                    // Skip below-horizon positions unless output_below_horizon is enabled
+                    if !self.output_below_horizon && position.altitude < 0.0 {
+                        current += step_duration;
+                        continue;
+                    }
 
                     let mut new_feature = feature.clone();
                     new_feature.id = uuid::Uuid::new_v4();
