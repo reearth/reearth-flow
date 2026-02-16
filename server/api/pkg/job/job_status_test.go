@@ -3,7 +3,7 @@ package job
 import (
 	"testing"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 )
 
 func TestJob_StatusComputation(t *testing.T) {
@@ -176,7 +176,7 @@ func TestJob_WorkerStatusGetter(t *testing.T) {
 func TestNewJob_InitializesBatchStatus(t *testing.T) {
 	jobID := NewID()
 	deploymentID, _ := DeploymentIDFrom("01234567-89ab-cdef-0123-456789abcdef")
-	workspaceID, _ := id.WorkspaceIDFrom("01234567-89ab-cdef-0123-456789abcde0")
+	workspaceID, _ := accountsid.WorkspaceIDFrom("01234567-89ab-cdef-0123-456789abcde0")
 
 	j := NewJob(jobID, deploymentID, workspaceID, "gcp-job-123")
 

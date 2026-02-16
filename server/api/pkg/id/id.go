@@ -14,10 +14,8 @@ type (
 	ProjectAccess struct{}
 	Thread        struct{}
 	Trigger       struct{}
-	User          struct{}
 	Workflow      struct{}
 	WorkerConfig  struct{}
-	Workspace     struct{}
 )
 
 func (Asset) Type() string         { return "asset" }
@@ -31,10 +29,8 @@ func (Project) Type() string       { return "project" }
 func (ProjectAccess) Type() string { return "projectAccess" }
 func (Thread) Type() string        { return "thread" }
 func (Trigger) Type() string       { return "trigger" }
-func (User) Type() string          { return "user" }
 func (Workflow) Type() string      { return "workflow" }
 func (WorkerConfig) Type() string  { return "workerConfig" }
-func (Workspace) Type() string     { return "workspace" }
 
 type (
 	AssetID         = idx.ID[Asset]
@@ -48,10 +44,8 @@ type (
 	ProjectAccessID = idx.ID[ProjectAccess]
 	ThreadID        = idx.ID[Thread]
 	TriggerID       = idx.ID[Trigger]
-	UserID          = idx.ID[User]
 	WorkflowID      = idx.ID[Workflow]
 	WorkerConfigID  = idx.ID[WorkerConfig]
-	WorkspaceID     = idx.ID[Workspace]
 )
 
 var (
@@ -66,10 +60,8 @@ var (
 	NewProjectAccessID = idx.New[ProjectAccess]
 	NewThreadID        = idx.New[Thread]
 	NewTriggerID       = idx.New[Trigger]
-	NewUserID          = idx.New[User]
 	NewWorkflowID      = idx.New[Workflow]
 	NewWorkerConfigID  = idx.New[WorkerConfig]
-	NewWorkspaceID     = idx.New[Workspace]
 )
 
 var (
@@ -84,10 +76,8 @@ var (
 	MustProjectAccessID = idx.Must[ProjectAccess]
 	MustThreadID        = idx.Must[Thread]
 	MustTriggerID       = idx.Must[Trigger]
-	MustUserID          = idx.Must[User]
 	MustWorkflowID      = idx.Must[Workflow]
 	MustWorkerConfigID  = idx.Must[WorkerConfig]
-	MustWorkspaceID     = idx.Must[Workspace]
 )
 
 var (
@@ -102,10 +92,8 @@ var (
 	ProjectAccessIDFrom = idx.From[ProjectAccess]
 	ThreadIDFrom        = idx.From[Thread]
 	TriggerIDFrom       = idx.From[Trigger]
-	UserIDFrom          = idx.From[User]
 	WorkflowIDFrom      = idx.From[Workflow]
 	WorkerConfigIDFrom  = idx.From[WorkerConfig]
-	WorkspaceIDFrom     = idx.From[Workspace]
 )
 
 var (
@@ -120,10 +108,8 @@ var (
 	ProjectAccessIDFromRef = idx.FromRef[ProjectAccess]
 	ThreadIDFromRef        = idx.FromRef[Thread]
 	TriggerIDFromRef       = idx.FromRef[Trigger]
-	UserIDFromRef          = idx.FromRef[User]
 	WorkflowIDFromRef      = idx.FromRef[Workflow]
 	WorkerConfigIDFromRef  = idx.FromRef[WorkerConfig]
-	WorkspaceIDFromRef     = idx.FromRef[Workspace]
 )
 
 type (
@@ -136,8 +122,6 @@ type (
 	ProjectIDList       = idx.List[Project]
 	ProjectAccessIDList = idx.List[ProjectAccess]
 	TriggerIDList       = idx.List[Trigger]
-	UserIDList          = idx.List[User]
-	WorkspaceIDList     = idx.List[Workspace]
 )
 
 var (
@@ -150,8 +134,6 @@ var (
 	ProjectIDListFrom       = idx.ListFrom[Project]
 	ProjectAccessIDListFrom = idx.ListFrom[ProjectAccess]
 	TriggerIDListFrom       = idx.ListFrom[Trigger]
-	UserIDListFrom          = idx.ListFrom[User]
-	WorkspaceIDListFrom     = idx.ListFrom[Workspace]
 )
 
 type (
@@ -164,8 +146,6 @@ type (
 	ProjectIDSet       = idx.Set[Project]
 	ProjectAccessIDSet = idx.Set[ProjectAccess]
 	TriggerIDSet       = idx.Set[Trigger]
-	UserIDSet          = idx.Set[User]
-	WorkspaceIDSet     = idx.Set[Workspace]
 )
 
 var (
@@ -178,6 +158,4 @@ var (
 	NewProjectIDSet       = idx.NewSet[Project]
 	NewProjectAccessIDSet = idx.NewSet[ProjectAccess]
 	NewTriggerIDSet       = idx.NewSet[Trigger]
-	NewUserIDSet          = idx.NewSet[User]
-	NewWorkspaceIDSet     = idx.NewSet[Workspace]
 )

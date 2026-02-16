@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	authserver "github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -68,7 +68,8 @@ func Start(debug bool, version string) {
 	}
 
 	// AccountGQLClient
-	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.NewDynamicAuthTransport())
+	const accountsTimeoutSec = 30
+	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, authserver.NewDynamicAuthTransport())
 
 	serverCfg := &ServerConfig{
 		Config:            conf,
@@ -131,7 +132,7 @@ type ServerConfig struct {
 	AccountRepos      *accountrepo.Container // TODO: Remove this field once the migration is complete.
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container // TODO: Remove this field once the migration is complete.
-	AccountGQLClient  *gql.Client
+	AccountGQLClient  *gqlclient.Client
 	HealthChecker     *HealthChecker
 	Debug             bool
 }
