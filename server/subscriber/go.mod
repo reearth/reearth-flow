@@ -1,6 +1,6 @@
 module github.com/reearth/reearth-flow/subscriber
 
-go 1.24.5
+go 1.24.10
 
 require (
 	cloud.google.com/go/pubsub/v2 v2.0.0
