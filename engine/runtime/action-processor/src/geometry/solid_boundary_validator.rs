@@ -212,21 +212,42 @@ impl Processor for SolidBoundaryValidator {
         // The geometric tolerance can cause non-adjacent but spatially close vertices
         // to merge, corrupting the topology and producing false manifold violations.
         let vertex_merge_tolerance = tolerance * 0.01;
-        let Ok(mesh) = TriangularMesh::from_faces(&faces, Some(vertex_merge_tolerance)) else {
-            // If triangulation fails, then it is a surface issue.
-            let mut feature = feature.clone();
-            feature.attributes_mut().insert(
-                Attribute::new("solid_boundary_issues"),
-                AttributeValue::from(
-                    serde_json::to_value(&ValidationResult {
-                        issue_count: 1,
-                        issue: IssueType::SurfaceIssue,
+        let mesh = match TriangularMesh::from_faces(&faces, Some(vertex_merge_tolerance)) {
+            Ok(mesh) => mesh,
+            Err(_) => {
+                // Some faces failed triangulation (e.g., non-planar faces).
+                // Retry with only faces that can be triangulated.
+                // Missing faces will be caught by subsequent validation checks.
+                let valid_faces: Vec<_> = faces
+                    .iter()
+                    .filter(|face| {
+                        TriangularMesh::from_faces(&[(*face).clone()], Some(vertex_merge_tolerance))
+                            .is_ok()
                     })
-                    .unwrap(),
-                ),
-            );
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
-            return Ok(());
+                    .cloned()
+                    .collect();
+                match TriangularMesh::from_faces(&valid_faces, Some(vertex_merge_tolerance)) {
+                    Ok(mesh) => mesh,
+                    Err(_) => {
+                        // Even valid faces can't build a mesh
+                        let mut feature = feature.clone();
+                        feature.attributes_mut().insert(
+                            Attribute::new("solid_boundary_issues"),
+                            AttributeValue::from(
+                                serde_json::to_value(&ValidationResult {
+                                    issue_count: 1,
+                                    issue: IssueType::SurfaceIssue,
+                                })
+                                .unwrap(),
+                            ),
+                        );
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()),
+                        );
+                        return Ok(());
+                    }
+                }
+            }
         };
         if mesh.is_empty() {
             // If triangulation fails, send to rejected port

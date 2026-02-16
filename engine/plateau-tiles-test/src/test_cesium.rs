@@ -53,8 +53,8 @@ pub fn test_cesium(fme_path: &Path, flow_path: &Path, config: &CesiumConfig) -> 
 
         tracing::debug!("Comparing Cesium in directory: {}", dir_name);
 
-        let fme_collector = collect_geometries_by_ident(&fme_dir, &casts)?;
-        let flow_collector = collect_geometries_by_ident(&flow_dir, &casts)?;
+        let fme_collector = collect_geometries_by_ident(&fme_dir, &casts, false)?;
+        let flow_collector = collect_geometries_by_ident(&flow_dir, &casts, true)?;
 
         // Compare attributes
         compare_attributes(&fme_collector, &flow_collector, &casts)?;
