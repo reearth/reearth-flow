@@ -9,12 +9,12 @@ import (
 	"net/textproto"
 	"testing"
 
+	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
+	workspacemockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace/mockrepo"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -23,8 +23,8 @@ func TestQueryAssets(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -59,8 +59,8 @@ func TestCreateAsset(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -121,8 +121,8 @@ func TestDeleteAsset(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(3)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -207,8 +207,8 @@ func TestAssetSorting(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(4)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -279,8 +279,8 @@ func TestAssetKeywordSearch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(4)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -349,14 +349,14 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(1)
-	mockWorkspaceRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkgworkspace.List{w}, nil)
+	mockWorkspaceRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(accountsworkspace.List{w}, nil)
 
 	mock := &TestMocks{
 		UserRepo:      mockUserRepo,
@@ -393,10 +393,10 @@ func TestCreateAssetUpload(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(1)
