@@ -4350,7 +4350,6 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4899,7 +4898,6 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "ahash 0.8.12",
  "chrono",
@@ -4920,7 +4918,6 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4931,7 +4928,6 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4941,7 +4937,6 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1)",
  "serde",
@@ -4952,7 +4947,6 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4970,7 +4964,6 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.18",
@@ -4979,7 +4972,6 @@ dependencies = [
 [[package]]
 name = "nusamai-shapefile"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.23#f55eb170f5cf8339f9b979b3618e087826a0cde9"
 dependencies = [
  "flatgeom",
  "shapefile 0.6.0",
