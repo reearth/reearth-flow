@@ -39,8 +39,15 @@ static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no_intersectio
 
 /// Sanitize a pair_id string for safe use as a filename component.
 /// Only allows alphanumeric, hyphen, and underscore; replaces everything
-/// else with `_` and truncates to 200 characters.
+/// else with `_` and truncates to 180 characters. A 64-bit hash suffix is
+/// appended to guarantee uniqueness even when sanitization or truncation
+/// would otherwise cause collisions.
 fn sanitize_pair_id(pair_id: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    pair_id.hash(&mut hasher);
+    let hash = hasher.finish();
+
     let sanitized: String = pair_id
         .chars()
         .map(|c| {
@@ -50,12 +57,13 @@ fn sanitize_pair_id(pair_id: &str) -> String {
                 '_'
             }
         })
-        .take(200)
+        .take(180)
         .collect();
+
     if sanitized.is_empty() {
-        "_empty_".to_string()
+        format!("_empty_{hash:016x}")
     } else {
-        sanitized
+        format!("{sanitized}_{hash:016x}")
     }
 }
 

@@ -42,7 +42,7 @@ pub fn decode_to_utf8<'a>(
     };
 
     let name_upper = encoding_name.to_uppercase();
-    if matches!(name_upper.as_str(), "UTF-8" | "UTF8" | "UNICODE" | "UTF_8") {
+    if matches!(name_upper.as_str(), "UTF-8" | "UTF8" | "UTF_8") {
         return Ok(Cow::Borrowed(content));
     }
 

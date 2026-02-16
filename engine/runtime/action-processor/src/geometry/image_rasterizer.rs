@@ -32,7 +32,8 @@ pub(super) enum OnOverlap {
     TakeFirst,
     Max(Expr),
     Min(Expr),
-    Sum(Expr),
+    /// Saturating-add RGB channels of all overlapping polygons.
+    Sum,
 }
 
 #[derive(Debug, Clone)]
@@ -254,7 +255,7 @@ impl Processor for ImageRasterizer {
                 // Evaluate overlap expression if configured
                 if let Some(ref on_overlap) = self.on_overlap {
                     if let Some(expr) = match on_overlap {
-                        OnOverlap::Max(e) | OnOverlap::Min(e) | OnOverlap::Sum(e) => Some(e),
+                        OnOverlap::Max(e) | OnOverlap::Min(e) => Some(e),
                         _ => None,
                     } {
                         let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
@@ -959,7 +960,7 @@ impl GeometryPolygons {
                     img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
                 }
             }
-            Some(OnOverlap::Sum(_)) => {
+            Some(OnOverlap::Sum) => {
                 // Saturating-add RGB channels per pixel
                 for polygon in &self.polygons {
                     let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
