@@ -1,4 +1,4 @@
-use geo_buffer::buffer_multi_polygon as geo_buffer_multi_polygon;
+use geo_buffer::buffer_multi_polygon_rounded as geo_buffer_multi_polygon;
 
 use crate::{
     algorithm::convex_hull::quick_hull_2d,
