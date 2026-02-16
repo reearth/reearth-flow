@@ -1510,6 +1510,14 @@ Read Features from CSV or TSV File
         }
       ]
     },
+    "encoding": {
+      "title": "Character Encoding",
+      "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "format": {
       "title": "File Format",
       "description": "Choose the delimiter format for the input file",
@@ -1530,6 +1538,16 @@ Read Features from CSV or TSV File
           "type": "null"
         }
       ]
+    },
+    "headerRows": {
+      "title": "Header Row Count",
+      "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0.0
     },
     "inline": {
       "title": "Inline Content",
@@ -2755,11 +2773,29 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
             }
           ]
         },
+        "encoding": {
+          "title": "Character Encoding",
+          "description": "Character encoding for the CSV file. If not specified, defaults to UTF-8. Supported: UTF-8, Shift-JIS, EUC-JP, Windows-1252, ISO-8859-1, etc.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
             "csv"
           ]
+        },
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
         },
         "offset": {
           "description": "The offset of the first row to read",
@@ -2790,11 +2826,29 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
             }
           ]
         },
+        "encoding": {
+          "title": "Character Encoding",
+          "description": "Character encoding for the TSV file. If not specified, defaults to UTF-8. Supported: UTF-8, Shift-JIS, EUC-JP, Windows-1252, ISO-8859-1, etc.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
             "tsv"
           ]
+        },
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
         },
         "offset": {
           "description": "The offset of the first row to read",
@@ -5391,6 +5445,19 @@ Convert vector geometries to raster image format
       "format": "uint32",
       "minimum": 0.0
     },
+    "onOverlap": {
+      "title": "On Overlap",
+      "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/OnOverlap"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "saveTo": {
       "title": "Save To",
       "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
@@ -5408,6 +5475,54 @@ Convert vector geometries to raster image format
   "definitions": {
     "Expr": {
       "type": "string"
+    },
+    "OnOverlap": {
+      "description": "Overlap resolution strategy for rasterized pixels",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "takeLast",
+            "takeFirst"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "max"
+          ],
+          "properties": {
+            "max": {
+              "$ref": "#/definitions/Expr"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "min"
+          ],
+          "properties": {
+            "min": {
+              "$ref": "#/definitions/Expr"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "sum"
+          ],
+          "properties": {
+            "sum": {
+              "$ref": "#/definitions/Expr"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }
@@ -7031,6 +7146,11 @@ Calculates solar position (altitude and azimuth) for geographic features using S
         "type"
       ],
       "properties": {
+        "outputBelowHorizon": {
+          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
+          "default": false,
+          "type": "boolean"
+        },
         "outputType": {
           "description": "Output type: unit normal vector or altitude/azimuth angles",
           "default": "unitNormalVector",
@@ -7061,7 +7181,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
           ]
         },
         "time": {
-          "description": "Time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\")",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -7088,12 +7208,17 @@ Calculates solar position (altitude and azimuth) for geographic features using S
       ],
       "properties": {
         "end": {
-          "description": "End time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\")",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
             }
           ]
+        },
+        "outputBelowHorizon": {
+          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
+          "default": false,
+          "type": "boolean"
         },
         "outputType": {
           "description": "Output type: unit normal vector or altitude/azimuth angles",
@@ -7125,7 +7250,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
           ]
         },
         "start": {
-          "description": "Start time expression evaluating to \"yyyy/mm/dd/hh/mm/ss\" format (local time)",
+          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\")",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -7555,6 +7680,18 @@ Computes intersection points between rays and geometries
   "properties": {
     "closestIntersectionOnly": {
       "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "geomId": {
+      "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit.",
       "default": null,
       "anyOf": [
         {

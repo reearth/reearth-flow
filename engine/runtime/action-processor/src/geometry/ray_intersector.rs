@@ -442,16 +442,16 @@ impl RayIntersector {
         }
     }
 
-    fn evaluate_geom_id(
-        &self,
-        expr_engine: &Arc<Engine>,
-        feature: &Feature,
-    ) -> Option<String> {
+    fn evaluate_geom_id(&self, expr_engine: &Arc<Engine>, feature: &Feature) -> Option<String> {
         self.geom_id_ast.as_ref().and_then(|ast| {
             let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
             let result: rhai::Dynamic = scope.eval_ast(ast).ok()?;
             let s = result.to_string();
-            if s.is_empty() { None } else { Some(s) }
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
         })
     }
 
@@ -607,10 +607,7 @@ impl Processor for RayIntersector {
                 let serialize_mesh = |mesh: TriangularMesh<f64, f64>,
                                       gid: Option<String>|
                  -> Result<String, BoxedError> {
-                    let record = DiskGeomRecord {
-                        mesh,
-                        geom_id: gid,
-                    };
+                    let record = DiskGeomRecord { mesh, geom_id: gid };
                     serde_json::to_string(&record).map_err(|e| {
                         GeometryProcessorError::RayIntersector(format!(
                             "Failed to serialize mesh: {e}"
@@ -857,8 +854,7 @@ impl Processor for RayIntersector {
                                 .into_iter()
                                 .collect()
                         } else {
-                            accel_set
-                                .ray_intersections(&ray, tolerance, include_origin)
+                            accel_set.ray_intersections(&ray, tolerance, include_origin)
                         };
 
                         (record.feature.clone(), ray, hits)
