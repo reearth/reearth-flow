@@ -18,237 +18,284 @@ impl TryFrom<Entity> for Geometry {
     type Error = Error;
 
     fn try_from(entity: Entity) -> Result<Self, Self::Error> {
-        let apperance = entity.appearance_store.read().unwrap();
-        let theme = apperance
-            .themes
-            .get("rgbTexture")
-            .or_else(|| apperance.themes.get("FMETheme"));
-        let geoms = entity.geometry_store.read().unwrap();
-        let epsg = geoms.epsg;
-        // entity must be a Feature
-        let Value::Object(obj) = &entity.root else {
-            return Err(Error::unsupported_feature("no object found"));
-        };
-        let ObjectStereotype::Feature { id: _, geometries } = &obj.stereotype else {
-            return Err(Error::unsupported_feature("no feature found"));
-        };
+        entity_to_geometry(entity, false)
+    }
+}
 
-        // Collect polygon ranges for this feature (global indices in geometry store)
-        let polygon_ranges: Vec<(u32, u32)> = geometries
-            .iter()
-            .filter(|g| {
-                matches!(
-                    g.ty,
-                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
-                )
-            })
-            .map(|g| (g.pos, g.pos + g.len))
-            .collect();
+/// Convert a nusamai Entity into a Geometry.
+///
+/// When `reconstruct_unresolved_solid` is true and the entity has no geometry refs
+/// but the geometry store contains polygons, a Solid is reconstructed from all
+/// store polygons. This handles CityGML features (e.g. uro:OtherConstruction)
+/// whose Solid geometry uses xlink:href forward references that the streaming
+/// parser cannot resolve.
+pub fn entity_to_geometry(
+    entity: Entity,
+    reconstruct_unresolved_solid: bool,
+) -> Result<Geometry, Error> {
+    let apperance = entity.appearance_store.read().unwrap();
+    let theme = apperance
+        .themes
+        .get("rgbTexture")
+        .or_else(|| apperance.themes.get("FMETheme"));
+    let geoms = entity.geometry_store.read().unwrap();
+    let epsg = geoms.epsg;
+    // entity must be a Feature
+    let Value::Object(obj) = &entity.root else {
+        return Err(Error::unsupported_feature("no object found"));
+    };
+    let ObjectStereotype::Feature { id: _, geometries } = &obj.stereotype else {
+        return Err(Error::unsupported_feature("no feature found"));
+    };
 
-        // Build gml_geometries with local pos/len (relative to this feature's polygon arrays)
-        let mut gml_geometries = Vec::<GmlGeometry>::new();
-        let mut local_pos: u32 = 0;
-        let operation =
-            |geometry: &GeometryRef| -> Option<GmlGeometry> {
-                match geometry.ty {
-                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                        let mut polygons = Vec::<Polygon3D<f64>>::new();
-                        for idx_poly in geoms.multipolygon.iter_range(
-                            geometry.pos as usize..(geometry.pos + geometry.len) as usize,
-                        ) {
-                            let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                            polygons.push(poly.into());
-                        }
-                        let mut geometry_feature = GmlGeometry::from(geometry.clone());
-                        geometry_feature.polygons.extend(polygons);
-                        Some(geometry_feature)
-                    }
-                    GeometryType::Curve => {
-                        let mut linestrings = Vec::<LineString3D<f64>>::new();
-                        for idx_linestring in geoms.multilinestring.iter_range(
-                            geometry.pos as usize..(geometry.pos + geometry.len) as usize,
-                        ) {
-                            let linestring =
-                                idx_linestring.transform(|c| geoms.vertices[*c as usize]);
-                            // manually collect coordinates instead of using line_string.into()
-                            // This avoids iter_closed() which would incorrectly close the linestring
-                            linestrings.push(
-                                linestring
-                                    .iter()
-                                    .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
-                                    .collect(),
-                            );
-                        }
-                        let mut geometry_feature = GmlGeometry::from(geometry.clone());
-                        geometry_feature.line_strings.extend(linestrings);
-                        Some(geometry_feature)
-                    }
-                    GeometryType::Point => {
-                        let mut points = Vec::<Coordinate3D<f64>>::new();
-                        for idx_point in geoms.multipoint.iter_range(
-                            geometry.pos as usize..(geometry.pos + geometry.len) as usize,
-                        ) {
-                            let coord = geoms.vertices[idx_point as usize];
-                            points.push(Coordinate3D::new__(coord[0], coord[1], coord[2]));
-                        }
-                        let mut geometry_feature = GmlGeometry::from(geometry.clone());
-                        geometry_feature.points.extend(points);
-                        Some(geometry_feature)
-                    }
+    // Collect polygon ranges for this feature (global indices in geometry store)
+    let mut polygon_ranges: Vec<(u32, u32)> = geometries
+        .iter()
+        .filter(|g| {
+            matches!(
+                g.ty,
+                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
+            )
+        })
+        .map(|g| (g.pos, g.pos + g.len))
+        .collect();
+
+    // Build gml_geometries with local pos/len (relative to this feature's polygon arrays)
+    let mut gml_geometries = Vec::<GmlGeometry>::new();
+    let mut local_pos: u32 = 0;
+    let operation = |geometry: &GeometryRef| -> Option<GmlGeometry> {
+        match geometry.ty {
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                let mut polygons = Vec::<Polygon3D<f64>>::new();
+                for idx_poly in geoms
+                    .multipolygon
+                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                {
+                    let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                    polygons.push(poly.into());
                 }
-            };
-        for geometry in geometries.iter() {
-            if let Some(mut gml_geo) = operation(geometry) {
-                // Update pos to be local (relative to this feature's arrays)
-                gml_geo.pos = local_pos;
-                local_pos += gml_geo.len;
-                gml_geometries.push(gml_geo);
+                let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                geometry_feature.polygons.extend(polygons);
+                Some(geometry_feature)
             }
-        }
-
-        // Calculate total polygon count for this feature
-        let total_polygons: usize = polygon_ranges.iter().map(|(s, e)| (e - s) as usize).sum();
-
-        let mut geometry_entity = CityGmlGeometry::new(
-            gml_geometries,
-            apperance
-                .materials
-                .iter()
-                .cloned()
-                .map(Into::into)
-                .collect(),
-            apperance.textures.iter().cloned().map(Into::into).collect(),
-        );
-
-        // Consistency check: total rings vs total polygon rings
-        let total_rings: usize = geoms.ring_ids.len();
-        let total_polygon_rings: usize = geoms.multipolygon.iter().map(|p| p.rings().count()).sum();
-        if total_rings != total_polygon_rings {
-            tracing::error!(
-                "Inconsistent ring count: total_rings={} total_polygon_rings={}",
-                total_rings,
-                total_polygon_rings
-            );
-        }
-
-        if let Some(theme) = theme {
-            // find and apply materials (only for this feature's polygons)
-            {
-                let mut poly_materials = Vec::with_capacity(total_polygons);
-                for &(start, end) in &polygon_ranges {
-                    for global_idx in start..end {
-                        // Find material for this polygon via surface_spans
-                        let mut mat_iter = geoms
-                            .surface_spans
+            GeometryType::Curve => {
+                let mut linestrings = Vec::<LineString3D<f64>>::new();
+                for idx_linestring in geoms
+                    .multilinestring
+                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                {
+                    let linestring = idx_linestring.transform(|c| geoms.vertices[*c as usize]);
+                    // manually collect coordinates instead of using line_string.into()
+                    // This avoids iter_closed() which would incorrectly close the linestring
+                    linestrings.push(
+                        linestring
                             .iter()
-                            .filter(|surface| {
-                                global_idx >= surface.start && global_idx < surface.end
-                            })
-                            .filter_map(|surface| theme.surface_id_to_material.get(&surface.id));
-                        let mat = mat_iter.next().copied();
-                        if mat_iter.next().is_some() {
-                            tracing::warn!(
-                                "Multiple materials found for polygon index {}",
-                                global_idx
-                            );
-                        }
-                        poly_materials.push(mat);
-                    }
+                            .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
+                            .collect(),
+                    );
                 }
-                geometry_entity.polygon_materials = poly_materials;
+                let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                geometry_feature.line_strings.extend(linestrings);
+                Some(geometry_feature)
             }
-            // find and apply textures (only for this feature's polygons)
-            {
-                let mut poly_textures = Vec::with_capacity(total_polygons);
-                let mut poly_uvs = flatgeom::MultiPolygon::new();
-
-                // Build a lookup table: polygon_index -> starting_ring_index
-                // This pre-computes the cumulative ring count for efficient O(1) lookup
-                let mut polygon_to_ring_start: Vec<usize> =
-                    Vec::with_capacity(geoms.multipolygon.len());
-                let mut cumulative_rings = 0;
-                for poly_idx in 0..geoms.multipolygon.len() {
-                    polygon_to_ring_start.push(cumulative_rings);
-                    cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
+            GeometryType::Point => {
+                let mut points = Vec::<Coordinate3D<f64>>::new();
+                for idx_point in geoms
+                    .multipoint
+                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                {
+                    let coord = geoms.vertices[idx_point as usize];
+                    points.push(Coordinate3D::new__(coord[0], coord[1], coord[2]));
                 }
-
-                for &(start, end) in &polygon_ranges {
-                    for global_idx in start..end {
-                        let poly = geoms.multipolygon.get(global_idx as usize);
-                        let global_ring_idx = polygon_to_ring_start[global_idx as usize];
-
-                        for (i, ring) in poly.rings().enumerate() {
-                            let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
-                            let tex = ring_id
-                                .clone()
-                                .and_then(|id| theme.ring_id_to_texture.get(&id));
-
-                            let mut add_dummy_texture = || {
-                                let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
-                                if i == 0 {
-                                    poly_textures.push(None);
-                                    poly_uvs.add_exterior(uv);
-                                } else {
-                                    poly_uvs.add_interior(uv);
-                                }
-                            };
-
-                            match tex {
-                                Some((idx, uv)) if ring.len() == uv.len() => {
-                                    // texture found
-                                    if i == 0 {
-                                        poly_textures.push(Some(*idx));
-                                        poly_uvs.add_exterior(uv.iter_closed());
-                                    } else {
-                                        poly_uvs.add_interior(uv.iter_closed());
-                                    }
-                                }
-                                Some((_, uv)) if uv.len() != ring.len() => {
-                                    tracing::error!(
-                                        "Invalid texture: ring_id={:?}, polygon len={}, uv len={}",
-                                        ring_id,
-                                        ring.len(),
-                                        uv.len(),
-                                    );
-                                    add_dummy_texture();
-                                }
-                                _ => {
-                                    // no texture found
-                                    add_dummy_texture();
-                                }
-                            };
-                        }
-                    }
-                }
-                // apply textures to polygons
-                geometry_entity.polygon_textures = poly_textures;
-                geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
+                let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                geometry_feature.points.extend(points);
+                Some(geometry_feature)
             }
-        } else {
-            // set 'null' appearance if no theme found
-            geometry_entity.polygon_materials = vec![None; total_polygons];
-            geometry_entity.polygon_textures = vec![None; total_polygons];
+        }
+    };
+    for geometry in geometries.iter() {
+        if let Some(mut gml_geo) = operation(geometry) {
+            // Update pos to be local (relative to this feature's arrays)
+            gml_geo.pos = local_pos;
+            local_pos += gml_geo.len;
+            gml_geometries.push(gml_geo);
+        }
+    }
+
+    // When an entity has no geometry refs at all but the geometry store has polygons,
+    // this indicates a Solid geometry whose xlink:href references weren't resolved
+    // (forward references in a streaming parser). Reconstruct a Solid from all store polygons.
+    // Note: entities with non-empty geometries (e.g. DmGeometricAttribute with Curve/Point refs)
+    // that share a parent's geometry store must NOT trigger this reconstruction.
+    let has_polygon_geometries = gml_geometries.iter().any(|g| !g.polygons.is_empty());
+    if reconstruct_unresolved_solid
+        && !has_polygon_geometries
+        && geometries.is_empty()
+        && !geoms.multipolygon.is_empty()
+    {
+        let mut polygons = Vec::<Polygon3D<f64>>::new();
+        for idx_poly in geoms.multipolygon.iter_range(0..geoms.multipolygon.len()) {
+            let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+            polygons.push(poly.into());
+        }
+        if !polygons.is_empty() {
+            let len = polygons.len() as u32;
+            let solid_gml = GmlGeometry {
+                id: entity.id.clone(),
+                ty: GeometryType::Solid.into(),
+                gml_trait: None,
+                lod: None, // LOD is already set as feature attribute by reader
+                pos: 0,
+                len,
+                points: vec![],
+                polygons,
+                line_strings: vec![],
+                feature_id: entity.id.clone(),
+                feature_type: entity.typename.clone(),
+                composite_surfaces: vec![],
+            };
+            gml_geometries = vec![solid_gml];
+            polygon_ranges = vec![(0, len)];
+        }
+    }
+
+    // Calculate total polygon count for this feature
+    let total_polygons: usize = polygon_ranges.iter().map(|(s, e)| (e - s) as usize).sum();
+
+    let mut geometry_entity = CityGmlGeometry::new(
+        gml_geometries,
+        apperance
+            .materials
+            .iter()
+            .cloned()
+            .map(Into::into)
+            .collect(),
+        apperance.textures.iter().cloned().map(Into::into).collect(),
+    );
+
+    // Consistency check: total rings vs total polygon rings
+    let total_rings: usize = geoms.ring_ids.len();
+    let total_polygon_rings: usize = geoms.multipolygon.iter().map(|p| p.rings().count()).sum();
+    if total_rings != total_polygon_rings {
+        tracing::error!(
+            "Inconsistent ring count: total_rings={} total_polygon_rings={}",
+            total_rings,
+            total_polygon_rings
+        );
+    }
+
+    if let Some(theme) = theme {
+        // find and apply materials (only for this feature's polygons)
+        {
+            let mut poly_materials = Vec::with_capacity(total_polygons);
+            for &(start, end) in &polygon_ranges {
+                for global_idx in start..end {
+                    // Find material for this polygon via surface_spans
+                    let mut mat_iter = geoms
+                        .surface_spans
+                        .iter()
+                        .filter(|surface| global_idx >= surface.start && global_idx < surface.end)
+                        .filter_map(|surface| theme.surface_id_to_material.get(&surface.id));
+                    let mat = mat_iter.next().copied();
+                    if mat_iter.next().is_some() {
+                        tracing::warn!("Multiple materials found for polygon index {}", global_idx);
+                    }
+                    poly_materials.push(mat);
+                }
+            }
+            geometry_entity.polygon_materials = poly_materials;
+        }
+        // find and apply textures (only for this feature's polygons)
+        {
+            let mut poly_textures = Vec::with_capacity(total_polygons);
             let mut poly_uvs = flatgeom::MultiPolygon::new();
+
+            // Build a lookup table: polygon_index -> starting_ring_index
+            // This pre-computes the cumulative ring count for efficient O(1) lookup
+            let mut polygon_to_ring_start: Vec<usize> =
+                Vec::with_capacity(geoms.multipolygon.len());
+            let mut cumulative_rings = 0;
+            for poly_idx in 0..geoms.multipolygon.len() {
+                polygon_to_ring_start.push(cumulative_rings);
+                cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
+            }
+
             for &(start, end) in &polygon_ranges {
                 for global_idx in start..end {
                     let poly = geoms.multipolygon.get(global_idx as usize);
+                    let global_ring_idx = polygon_to_ring_start[global_idx as usize];
+
                     for (i, ring) in poly.rings().enumerate() {
-                        let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
-                        if i == 0 {
-                            poly_uvs.add_exterior(uv);
-                        } else {
-                            poly_uvs.add_interior(uv);
-                        }
+                        let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
+                        let tex = ring_id
+                            .clone()
+                            .and_then(|id| theme.ring_id_to_texture.get(&id));
+
+                        let mut add_dummy_texture = || {
+                            let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
+                            if i == 0 {
+                                poly_textures.push(None);
+                                poly_uvs.add_exterior(uv);
+                            } else {
+                                poly_uvs.add_interior(uv);
+                            }
+                        };
+
+                        match tex {
+                            Some((idx, uv)) if ring.len() == uv.len() => {
+                                // texture found
+                                if i == 0 {
+                                    poly_textures.push(Some(*idx));
+                                    poly_uvs.add_exterior(uv.iter_closed());
+                                } else {
+                                    poly_uvs.add_interior(uv.iter_closed());
+                                }
+                            }
+                            Some((_, uv)) if uv.len() != ring.len() => {
+                                tracing::error!(
+                                    "Invalid texture: ring_id={:?}, polygon len={}, uv len={}",
+                                    ring_id,
+                                    ring.len(),
+                                    uv.len(),
+                                );
+                                add_dummy_texture();
+                            }
+                            _ => {
+                                // no texture found
+                                add_dummy_texture();
+                            }
+                        };
                     }
                 }
             }
+            // apply textures to polygons
+            geometry_entity.polygon_textures = poly_textures;
             geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
         }
-        Ok(Self::new_with(
-            epsg,
-            GeometryValue::CityGmlGeometry(geometry_entity),
-        ))
+    } else {
+        // set 'null' appearance if no theme found
+        geometry_entity.polygon_materials = vec![None; total_polygons];
+        geometry_entity.polygon_textures = vec![None; total_polygons];
+        let mut poly_uvs = flatgeom::MultiPolygon::new();
+        for &(start, end) in &polygon_ranges {
+            for global_idx in start..end {
+                let poly = geoms.multipolygon.get(global_idx as usize);
+                for (i, ring) in poly.rings().enumerate() {
+                    let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
+                    if i == 0 {
+                        poly_uvs.add_exterior(uv);
+                    } else {
+                        poly_uvs.add_interior(uv);
+                    }
+                }
+            }
+        }
+        geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
     }
+    Ok(Geometry::new_with(
+        epsg,
+        GeometryValue::CityGmlGeometry(geometry_entity),
+    ))
 }
 
 impl AttributeValue {
