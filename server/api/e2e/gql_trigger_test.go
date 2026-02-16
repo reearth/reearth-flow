@@ -22,7 +22,7 @@ func TestCreateTimeDrivenTrigger(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -255,7 +255,7 @@ func TestUpdateTrigger(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -440,7 +440,7 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,

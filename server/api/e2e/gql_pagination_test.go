@@ -25,7 +25,7 @@ func TestProjectsPagination(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil).AnyTimes()
@@ -282,7 +282,7 @@ func TestJobsPagination(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(ws, nil).AnyTimes()
@@ -697,7 +697,7 @@ func TestTriggersPagination(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil).AnyTimes()

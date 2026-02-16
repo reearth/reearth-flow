@@ -80,7 +80,7 @@ func TestDeclareParameter(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -241,7 +241,7 @@ func TestUpdateParameter(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -357,7 +357,7 @@ func TestUpdateParameterOrder(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -472,7 +472,7 @@ func TestRemoveParameter(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
@@ -568,7 +568,7 @@ func TestParametersQuery(t *testing.T) {
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)

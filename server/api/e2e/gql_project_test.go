@@ -34,7 +34,7 @@ func TestProjectWorkflows(t *testing.T) {
 		b.ID(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -273,7 +273,7 @@ func TestListProjects(t *testing.T) {
 		b.ID(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -438,7 +438,7 @@ func TestProjectKeywordSearch(t *testing.T) {
 		b.ID(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -592,7 +592,7 @@ func TestProjectIncludeArchived(t *testing.T) {
 		b.ID(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),

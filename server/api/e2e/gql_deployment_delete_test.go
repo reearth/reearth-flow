@@ -21,7 +21,7 @@ func TestDeleteDeploymentWithTriggers(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,

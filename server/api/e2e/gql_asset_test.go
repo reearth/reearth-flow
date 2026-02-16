@@ -24,7 +24,7 @@ func TestQueryAssets(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -60,7 +60,7 @@ func TestCreateAsset(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -122,7 +122,7 @@ func TestDeleteAsset(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(3)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -208,7 +208,7 @@ func TestAssetSorting(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(4)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -280,7 +280,7 @@ func TestAssetKeywordSearch(t *testing.T) {
 	defer ctrl.Finish()
 
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(4)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -352,7 +352,7 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(1)
@@ -396,7 +396,7 @@ func TestCreateAssetUpload(t *testing.T) {
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(1)

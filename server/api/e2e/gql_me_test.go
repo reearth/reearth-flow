@@ -25,7 +25,7 @@ func TestMe(t *testing.T) {
 		b.Auths(auths)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(userEntity, nil)
 
 	mock := &TestMocks{

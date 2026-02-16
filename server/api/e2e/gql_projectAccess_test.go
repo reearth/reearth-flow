@@ -115,7 +115,7 @@ func TestProjectShareFlow(t *testing.T) {
 		b.ID(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)

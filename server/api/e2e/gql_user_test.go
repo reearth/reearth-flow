@@ -38,7 +38,7 @@ func TestUpdateMe(t *testing.T) {
 		b.Workspace(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().UpdateMe(gomock.Any(), gomock.Any()).Return(operator, nil),
@@ -84,7 +84,7 @@ func TestRemoveMyAuth(t *testing.T) {
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().RemoveMyAuth(gomock.Any(), gomock.Any()).Return(operator, nil),
@@ -127,7 +127,7 @@ func TestDeleteMe(t *testing.T) {
 		b.Email("hoge@test.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().DeleteMe(gomock.Any(), gomock.Any()).Return(nil),
@@ -175,7 +175,7 @@ func TestSearchUser(t *testing.T) {
 		b.Email("e2e@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().FindByNameOrEmail(gomock.Any(), "e2e").Return(u, nil),
@@ -238,7 +238,7 @@ func TestNode(t *testing.T) {
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(accountsuser.List{operator}, nil)
 	mock := &TestMocks{
@@ -278,7 +278,7 @@ func TestNodes(t *testing.T) {
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(accountsuser.List{operator}, nil)
 	mock := &TestMocks{

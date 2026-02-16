@@ -1805,8 +1805,8 @@ github.com/reearth/reearth-accounts/server v0.0.0-20260204041050-d82bcecd1fde h1
 github.com/reearth/reearth-accounts/server v0.0.0-20260204041050-d82bcecd1fde/go.mod h1:QsSV8aNxPZG0hk7gX/h3oOdeBwqwd5jqqT+6Z9JcvW4=
 github.com/reearth/reearth-accounts/server v0.0.0-20260205055458-ffb56d68d462 h1:HM5lhzbtQtpesk5OjV7ys3PimRfCWoj9EdqJHDpC4sU=
 github.com/reearth/reearth-accounts/server v0.0.0-20260205055458-ffb56d68d462/go.mod h1:QsSV8aNxPZG0hk7gX/h3oOdeBwqwd5jqqT+6Z9JcvW4=
-github.com/reearth/reearth-accounts/server v0.0.0-20260212115920-1b0fa7642cf9 h1:EAHtwlkL3TDjpVr0OOQApTM2MhwnCUdn6yI+VZTi+iM=
-github.com/reearth/reearth-accounts/server v0.0.0-20260212115920-1b0fa7642cf9/go.mod h1:QsSV8aNxPZG0hk7gX/h3oOdeBwqwd5jqqT+6Z9JcvW4=
+github.com/reearth/reearth-accounts/server v0.0.0-20260216070148-6989bf981831 h1:H8wFw8YuEJEQ7Srr6GY7l8fswU0aWeKXy7aXWcOIhX4=
+github.com/reearth/reearth-accounts/server v0.0.0-20260216070148-6989bf981831/go.mod h1:QsSV8aNxPZG0hk7gX/h3oOdeBwqwd5jqqT+6Z9JcvW4=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=

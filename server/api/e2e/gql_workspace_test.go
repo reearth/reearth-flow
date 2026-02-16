@@ -33,7 +33,7 @@ func TestCreateWorkspace(t *testing.T) {
 		b.Name("test")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -85,7 +85,7 @@ func TestDeleteWorkspace(t *testing.T) {
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -152,7 +152,7 @@ func TestUpdateWorkspace(t *testing.T) {
 		b.Name("updated")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -225,7 +225,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 	})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -291,7 +291,7 @@ func TestRemoveMemberFromWorkspace(t *testing.T) {
 	})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
@@ -350,7 +350,7 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 	})
 	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
-	mockUserRepo := usermockrepo.NewMockUserRepos(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
