@@ -196,7 +196,11 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     }
   }, [schema, defaultFormData, onValidationChange, t]);
 
-  const exprUiSchema = schema ? buildExprUiSchema(schema, actionName) : {};
+  // Generate UI schema to mark Expr fields from original schema (before patching)
+
+  const exprUiSchema = originalSchema
+    ? buildExprUiSchema(originalSchema, actionName)
+    : {};
 
   const finalUiSchema = {
     ...exprUiSchema,
