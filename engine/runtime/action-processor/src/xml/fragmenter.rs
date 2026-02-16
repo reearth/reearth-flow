@@ -292,6 +292,9 @@ fn generate_fragment_streaming(
     use quick_xml::events::Event;
     use quick_xml::Reader;
 
+    // Strip UTF-8 BOM so that buffer_position() stays aligned with byte indices
+    let raw_xml = raw_xml.strip_prefix('\u{FEFF}').unwrap_or(raw_xml);
+
     let match_tags_set: HashSet<String> = match_tags.iter().cloned().collect();
 
     // Extract root namespace declarations for injection into fragments
