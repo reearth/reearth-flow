@@ -164,11 +164,15 @@ impl Sink for CzmlWriter {
         let feature = &ctx.feature;
 
         let key = if let Some(group_by) = &self.params.group_by {
-            let key = group_by
-                .iter()
-                .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
-                .collect::<Vec<_>>();
-            AttributeValue::Array(key)
+            if group_by.is_empty() {
+                AttributeValue::Null
+            } else {
+                let key = group_by
+                    .iter()
+                    .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
+                    .collect::<Vec<_>>();
+                AttributeValue::Array(key)
+            }
         } else {
             AttributeValue::Null
         };
@@ -195,24 +199,18 @@ impl Sink for CzmlWriter {
                 .resolve(&file_path)
                 .map_err(crate::errors::SinkError::czml_writer)?;
 
-            let has_embedded = features.iter().any(|f| {
-                f.attributes
-                    .contains_key(&Attribute::new("czml.timeseries"))
-            });
             let is_grouped_timeseries =
                 self.params.group_timeseries_by.is_some() && self.params.time_field.is_some();
+            let has_citygml = features
+                .iter()
+                .any(|f| matches!(&f.geometry.value, GeometryValue::CityGmlGeometry(_)));
 
-            if has_embedded {
-                let buffer = build_embedded_czml(features, &self.params)?;
-                storage
-                    .put_sync(file_path.path().as_path(), Bytes::from(buffer))
-                    .map_err(crate::errors::SinkError::czml_writer)?;
-            } else if is_grouped_timeseries {
+            if is_grouped_timeseries {
                 let buffer = build_timeseries_czml(features, &self.params, &ctx)?;
                 storage
                     .put_sync(file_path.path().as_path(), Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::czml_writer)?;
-            } else {
+            } else if has_citygml {
                 let (sender, receiver) = std::sync::mpsc::sync_channel(1000);
                 let gctx = ctx.as_context();
 
@@ -265,6 +263,11 @@ impl Sink for CzmlWriter {
                 );
                 ra?;
                 rb?;
+            } else {
+                let buffer = build_embedded_czml(features, &self.params)?;
+                storage
+                    .put_sync(file_path.path().as_path(), Bytes::from(buffer))
+                    .map_err(crate::errors::SinkError::czml_writer)?;
             }
         }
         Ok(())
