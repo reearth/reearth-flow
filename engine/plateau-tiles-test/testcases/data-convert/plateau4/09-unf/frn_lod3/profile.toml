@@ -11,9 +11,11 @@ key = ".name"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 
-[tests.mvt_attributes]
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
 
-[tests.mvt_polygons]
+[tests.mvt_points]
 threshold = 0.001
 
 [filter.tree]

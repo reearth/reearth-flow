@@ -241,6 +241,8 @@ graphs:
         action: AttributeMapper
         with:
           mappers:
+            - attribute: __package
+              valueAttribute: package
             - attribute: meshcode
               valueAttribute: meshcode
             - attribute: city_code
@@ -253,6 +255,12 @@ graphs:
               valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
+            - attribute: core_creationDate
+              valueAttribute: core:creationDate
+            - attribute: uro_geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: uro_lodType
+              valueAttribute: uro:lodType
             - attribute: dm_feature_type
               valueAttribute: dm_feature_type
             - attribute: dm_attributes
@@ -297,19 +305,20 @@ graphs:
           maxZoom: 18
           extent: 65536
           output: |
-            let key = env.get("__value")["feature_type"];
-            key.replace(":", "_");
-            file::join_path(env.get("workerArtifactPath"), key + "_dm_geometric_attributes")
+            let feature_type = env.get("__value")["feature_type"];
+            let key = feature_type.split(":")[1];
+            let pkg = env.get("__value")["__package"];
+            file::join_path(env.get("workerArtifactPath"), pkg + "_" + key + "_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
-            let key = env.get("__value")["feature_type"];
-            key.replace(":", "_");
+            let feature_type = env.get("__value")["feature_type"];
+            let key = feature_type.split(":")[1];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + key + "_dm_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + key + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
