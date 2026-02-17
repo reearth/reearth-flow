@@ -678,54 +678,32 @@ fn extract_geometry(
     Ok(None)
 }
 
+/// Extract static coordinate values from a CZML position/positions object.
+/// Time-tagged detection is handled separately by `parse_time_tagged_position`
+/// before this function is called, so no time-tagged filtering is needed here.
 fn extract_cartographic_degrees(value: &Value) -> Option<Vec<f64>> {
     if let Some(arr) = value.as_array() {
-        let coords: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
-        return coords;
+        return arr.iter().map(|v| v.as_f64()).collect();
     }
 
-    if let Some(obj) = value.as_object() {
-        if let Some(deg) = obj.get("cartographicDegrees") {
-            if let Some(arr) = deg.as_array() {
-                if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
-                    let coords: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
-                    return coords;
-                }
-                // Time-tagged arrays are handled by parse_time_tagged_position
-                if arr.len() > 3 && arr.len() % 4 == 0 {
-                    return None;
-                }
-                let coords: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
-                return coords;
-            }
-        }
+    let obj = value.as_object()?;
 
-        if let Some(rad) = obj.get("cartographicRadians") {
-            if let Some(arr) = rad.as_array() {
-                if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
-                    let coords: Option<Vec<f64>> = arr
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| {
-                            v.as_f64()
-                                .map(|val| if i % 3 < 2 { val.to_degrees() } else { val })
-                        })
-                        .collect();
-                    return coords;
-                }
-                if arr.len() > 3 && arr.len() % 4 == 0 {
-                    return None;
-                }
-                let coords: Option<Vec<f64>> = arr
-                    .iter()
-                    .enumerate()
-                    .map(|(i, v)| {
-                        v.as_f64()
-                            .map(|val| if i % 3 < 2 { val.to_degrees() } else { val })
-                    })
-                    .collect();
-                return coords;
-            }
+    if let Some(deg) = obj.get("cartographicDegrees") {
+        if let Some(arr) = deg.as_array() {
+            return arr.iter().map(|v| v.as_f64()).collect();
+        }
+    }
+
+    if let Some(rad) = obj.get("cartographicRadians") {
+        if let Some(arr) = rad.as_array() {
+            return arr
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    v.as_f64()
+                        .map(|val| if i % 3 < 2 { val.to_degrees() } else { val })
+                })
+                .collect();
         }
     }
 
@@ -1056,7 +1034,7 @@ mod tests {
     }
 
     #[test]
-    fn test_packet_to_features_timeseries() {
+    fn test_packet_to_features_strategy_affects_count() {
         let packet = serde_json::json!({
             "id": "vehicle1",
             "name": "Vehicle",
@@ -1069,7 +1047,7 @@ mod tests {
                 ]
             }
         });
-        let params = CzmlReaderParam {
+        let base = CzmlReaderParam {
             common_property: FileReaderCommonParam {
                 dataset: None,
                 inline: None,
@@ -1078,13 +1056,31 @@ mod tests {
             skip_document_packet: true,
             time_sampling: TimeSamplingStrategy::AllSamples,
         };
-        let features = packet_to_features(&packet, &params).unwrap();
-        assert_eq!(features.len(), 3);
-        for f in &features {
-            assert_eq!(
-                f.attributes.get(&Attribute::new("id")),
-                Some(&AttributeValue::String("vehicle1".to_string()))
-            );
-        }
+
+        let all = packet_to_features(&packet, &base).unwrap();
+        assert_eq!(all.len(), 3);
+
+        let first_only = packet_to_features(
+            &packet,
+            &CzmlReaderParam {
+                time_sampling: TimeSamplingStrategy::FirstSampleOnly,
+                ..base.clone()
+            },
+        )
+        .unwrap();
+        assert_eq!(first_only.len(), 1);
+
+        let preserve = packet_to_features(
+            &packet,
+            &CzmlReaderParam {
+                time_sampling: TimeSamplingStrategy::PreserveRaw,
+                ..base
+            },
+        )
+        .unwrap();
+        assert_eq!(preserve.len(), 1);
+        assert!(preserve[0]
+            .attributes
+            .contains_key(&Attribute::new("czml.timeseries")));
     }
 }
