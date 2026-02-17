@@ -38,7 +38,7 @@ use crate::{
 /// Character encoding for shapefile DBF files
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ShapefileEncoding {
-    /// UTF-8 variants
+    /// UTF-8 and Unicode variants
     Utf8,
     /// encoding_rs supported encoding (100+ encodings)
     EncodingRs(&'static encoding_rs::Encoding),
@@ -51,8 +51,8 @@ impl ShapefileEncoding {
     fn from_name(name: &str) -> Result<Self, ShapefileError> {
         let name_upper = name.to_uppercase();
 
-        // Handle UTF-8 variants
-        if matches!(name_upper.as_str(), "UTF-8" | "UTF8" | "UTF_8") {
+        // Handle UTF-8/Unicode variants
+        if matches!(name_upper.as_str(), "UTF-8" | "UTF8" | "UNICODE" | "UTF_8") {
             return Ok(Self::Utf8);
         }
 
@@ -210,15 +210,7 @@ impl Source for ShapefileReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        let content = match get_content(&ctx, &self.params.common_property, storage_resolver).await
-        {
-            Ok(content) => content,
-            Err(e) => {
-                // When dataset path is not provided (optional source), produce no features
-                tracing::info!("ShapefileReader: {e}, producing no features");
-                return Ok(());
-            }
-        };
+        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
         read_shapefile(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)

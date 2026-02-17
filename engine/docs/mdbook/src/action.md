@@ -5511,16 +5511,11 @@ Convert vector geometries to raster image format
           "additionalProperties": false
         },
         {
-          "type": "object",
-          "required": [
+          "description": "Saturating-add RGB channels of all overlapping polygons.",
+          "type": "string",
+          "enum": [
             "sum"
-          ],
-          "properties": {
-            "sum": {
-              "$ref": "#/definitions/Expr"
-            }
-          },
-          "additionalProperties": false
+          ]
         }
       ]
     }
