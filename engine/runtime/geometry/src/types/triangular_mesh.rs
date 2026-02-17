@@ -74,6 +74,14 @@ impl<T: CoordNum, Z: CoordNum> TriangularMesh<T, Z> {
 }
 
 impl TriangularMesh<f64, f64> {
+    pub fn from_single_triangle(triangle: Triangle<f64, f64>) -> Self {
+        Self {
+            vertices: vec![triangle.0, triangle.1, triangle.2],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+            triangles: vec![[0, 1, 2]],
+        }
+    }
+
     pub fn from_triangles(trinangles: Vec<[Coordinate3D<f64>; 3]>) -> TriangularMesh<f64, f64> {
         let mut mesh = TriangularMesh::<f64, f64>::default();
         mesh.triangles.reserve(trinangles.len());

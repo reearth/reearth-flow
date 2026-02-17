@@ -77,6 +77,7 @@ impl ProcessorFactory for FeatureReaderFactory {
             FeatureReaderParam::Csv {
                 common_param,
                 param,
+                encoding,
             } => {
                 let compiled_common_param = CompiledCommonReaderParam {
                     expr: expr_engine
@@ -89,6 +90,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                     params: CompiledFeatureReaderParam::Csv {
                         common_param: compiled_common_param,
                         param,
+                        encoding,
                     },
                 };
                 Ok(Box::new(process))
@@ -96,6 +98,7 @@ impl ProcessorFactory for FeatureReaderFactory {
             FeatureReaderParam::Tsv {
                 common_param,
                 param,
+                encoding,
             } => {
                 let compiled_common_param = CompiledCommonReaderParam {
                     expr: expr_engine
@@ -108,6 +111,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                     params: CompiledFeatureReaderParam::Tsv {
                         common_param: compiled_common_param,
                         param,
+                        encoding,
                     },
                 };
                 Ok(Box::new(process))
@@ -157,6 +161,12 @@ enum FeatureReaderParam {
         common_param: CommonReaderParam,
         #[serde(flatten)]
         param: csv::CsvReaderParam,
+        /// # Character Encoding
+        ///
+        /// Character encoding for the CSV file.
+        /// If not specified, defaults to UTF-8.
+        /// Supported: UTF-8, Shift-JIS, EUC-JP, Windows-1252, ISO-8859-1, etc.
+        encoding: Option<String>,
     },
     #[serde(rename = "tsv")]
     Tsv {
@@ -164,6 +174,12 @@ enum FeatureReaderParam {
         common_param: CommonReaderParam,
         #[serde(flatten)]
         param: csv::CsvReaderParam,
+        /// # Character Encoding
+        ///
+        /// Character encoding for the TSV file.
+        /// If not specified, defaults to UTF-8.
+        /// Supported: UTF-8, Shift-JIS, EUC-JP, Windows-1252, ISO-8859-1, etc.
+        encoding: Option<String>,
     },
     #[serde(rename = "json")]
     Json {
@@ -177,10 +193,12 @@ enum CompiledFeatureReaderParam {
     Csv {
         common_param: CompiledCommonReaderParam,
         param: csv::CsvReaderParam,
+        encoding: Option<String>,
     },
     Tsv {
         common_param: CompiledCommonReaderParam,
         param: csv::CsvReaderParam,
+        encoding: Option<String>,
     },
     Json {
         common_param: CompiledCommonReaderParam,
@@ -206,12 +224,14 @@ impl Processor for FeatureReader {
                     CompiledFeatureReaderParam::Csv {
                         common_param,
                         param,
+                        encoding,
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Comma,
                 global_params,
                 common_param,
                 param,
+                encoding.as_deref(),
                 ctx,
                 fw,
             )
@@ -222,12 +242,14 @@ impl Processor for FeatureReader {
                     CompiledFeatureReaderParam::Tsv {
                         common_param,
                         param,
+                        encoding,
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Tab,
                 global_params,
                 common_param,
                 param,
+                encoding.as_deref(),
                 ctx,
                 fw,
             )
