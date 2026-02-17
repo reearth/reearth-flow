@@ -311,6 +311,20 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             vec![entity]
         };
         for mut ent in flat_entities {
+            // Resolve xlink:href geometry references for this entity
+            {
+                let geom_store = ent.geometry_store.read().unwrap();
+                let nusamai_citygml::Value::Object(obj) = &mut ent.root else {
+                    continue;
+                };
+                if let nusamai_citygml::object::ObjectStereotype::Feature {
+                    ref mut geometries,
+                    ..
+                } = obj.stereotype
+                {
+                    geom_store.resolve_refs(geometries);
+                }
+            }
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
