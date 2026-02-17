@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -66,7 +67,7 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	})
 }
 
-func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (r *Job) FindByWorkspace(ctx context.Context, workspace accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	filter := bson.M{
 		"workspaceid": workspace.String(),
 		"$or": []bson.M{
@@ -102,7 +103,7 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pag
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 
-	c := mongodoc.NewJobConsumer([]id.WorkspaceID{workspace})
+	c := mongodoc.NewJobConsumer([]accountsid.WorkspaceID{workspace})
 
 	if pagination != nil && pagination.Page != nil {
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
@@ -152,7 +153,7 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pag
 	return c.Result, pageInfo, nil
 }
 
-func (r *Job) CountByWorkspace(ctx context.Context, ws id.WorkspaceID) (int, error) {
+func (r *Job) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
 	count, err := r.client.Count(ctx, bson.M{
 		"workspaceid": ws.String(),
 		"$or": []bson.M{

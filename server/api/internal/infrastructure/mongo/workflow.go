@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -51,7 +52,7 @@ func (r *Workflow) Save(ctx context.Context, workflow *workflow.Workflow) error 
 }
 
 func (r *Workflow) findOne(ctx context.Context, filter any, filterByWorkspaces bool) (*workflow.Workflow, error) {
-	var f []id.WorkspaceID
+	var f []accountsid.WorkspaceID
 	if filterByWorkspaces {
 		f = r.f.Readable
 	}

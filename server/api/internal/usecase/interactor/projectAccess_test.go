@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +22,7 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -39,10 +39,10 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	}
 
 	// Set up a workspace, project, and shared project access
-	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	pid1 := project.NewID()
-	prjPublic := project.New().ID(pid1).Workspace(workspace.ID(ws.ID())).Name("testproject1").UpdatedAt(time.Now()).MustBuild()
+	prjPublic := project.New().ID(pid1).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject1").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prjPublic)
 
 	paPublic, _ := projectAccess.New().
@@ -53,7 +53,7 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	_ = mem.ProjectAccess.Save(ctx, paPublic)
 
 	pid2 := project.NewID()
-	prjPrivate := project.New().ID(pid2).Workspace(workspace.ID(ws.ID())).Name("testproject2").UpdatedAt(time.Now()).MustBuild()
+	prjPrivate := project.New().ID(pid2).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject2").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prjPrivate)
 
 	paPrivate, _ := projectAccess.New().
@@ -107,7 +107,7 @@ func TestProjectAccess_Share(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -132,10 +132,10 @@ func TestProjectAccess_Share(t *testing.T) {
 	}
 
 	// Set up a workspace, project
-	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	pid := project.NewID()
-	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
+	prj := project.New().ID(pid).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prj)
 
 	tests := []struct {
@@ -184,7 +184,7 @@ func TestProjectAccess_Unshare(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -207,10 +207,10 @@ func TestProjectAccess_Unshare(t *testing.T) {
 	}
 
 	// Set up a workspace, project, and shared project access
-	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	pid := project.NewID()
-	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
+	prj := project.New().ID(pid).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prj)
 
 	pa, _ := projectAccess.New().

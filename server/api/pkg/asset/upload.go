@@ -3,7 +3,7 @@ package asset
 import (
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 )
 
 type Upload struct {
@@ -13,14 +13,14 @@ type Upload struct {
 	contentType     string
 	contentEncoding string
 	contentLength   int64
-	workspace       id.WorkspaceID
+	workspace       accountsid.WorkspaceID
 }
 
 func (u *Upload) UUID() string {
 	return u.uuid
 }
 
-func (u *Upload) Workspace() id.WorkspaceID {
+func (u *Upload) Workspace() accountsid.WorkspaceID {
 	return u.workspace
 }
 

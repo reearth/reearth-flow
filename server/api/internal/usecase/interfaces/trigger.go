@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
@@ -17,7 +18,7 @@ type CreateTriggerParam struct {
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
 	Variables    []variable.Variable
-	WorkspaceID  id.WorkspaceID
+	WorkspaceID  accountsid.WorkspaceID
 	DeploymentID id.DeploymentID
 }
 
@@ -55,7 +56,7 @@ type Trigger interface {
 	ExecuteTimeDrivenTrigger(context.Context, ExecuteTimeDrivenTriggerParam) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam, *string) ([]*trigger.Trigger, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*trigger.Trigger, *PageBasedInfo, error)
 	Create(context.Context, CreateTriggerParam) (*trigger.Trigger, error)
 	Update(context.Context, UpdateTriggerParam) (*trigger.Trigger, error)
 	Delete(context.Context, id.TriggerID) error

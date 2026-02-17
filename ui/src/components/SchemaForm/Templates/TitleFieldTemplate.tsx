@@ -14,6 +14,8 @@ import {
 } from "@flow/components";
 import { extractDescriptions } from "@flow/features/Editor/components/ParamsDialog/utils/extractDescriptions";
 
+import { ExtendedFormContext } from "./BaseInputTemplate";
+
 /** The `TitleField` is the template to use to render the title of a field
  *
  * @param props - The `TitleFieldProps` for this component
@@ -27,10 +29,13 @@ const TitleFieldTemplate = <
   title,
   required,
   schema,
+  registry,
 }: TitleFieldProps<T, S, F>) => {
+  const formContext = registry.formContext;
+  const { originalSchema } = (formContext as ExtendedFormContext) || {};
   // If the schema has a $schema property, it means it's the root title
   const isRootTitle = schema.$schema;
-  const descriptions = extractDescriptions(schema);
+  const descriptions = extractDescriptions(originalSchema);
   const hasDescriptions = Object.keys(descriptions).length > 0;
 
   return (
