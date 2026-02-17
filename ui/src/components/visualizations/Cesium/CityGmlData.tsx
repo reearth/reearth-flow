@@ -26,9 +26,14 @@ type Props = {
     features: CityGmlFeature[];
   } | null;
   selectedFeatureId?: string | null;
+  detailsOverlayOpen: boolean;
 };
 
-const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
+const CityGmlData: React.FC<Props> = ({
+  cityGmlData,
+  selectedFeatureId,
+  detailsOverlayOpen,
+}) => {
   const { viewer } = useCesium();
   const entitiesRef = useRef<Entity[]>([]);
   const featureMapRef = useRef<
@@ -112,7 +117,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
     }
 
     // Upgrade newly selected feature to highest available LOD
-    if (currentId) {
+    if (currentId && detailsOverlayOpen) {
       const entry = featureMapRef.current.get(currentId);
       if (entry && !entry.entity.lodSurfaces) {
         const lodPolygons = extractLodPolygons(entry.feature);
@@ -121,7 +126,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData, selectedFeatureId }) => {
         }
       }
     }
-  }, [selectedFeatureId, viewer]);
+  }, [selectedFeatureId, viewer, detailsOverlayOpen]);
 
   // Cleanup on unmount
   useEffect(() => {

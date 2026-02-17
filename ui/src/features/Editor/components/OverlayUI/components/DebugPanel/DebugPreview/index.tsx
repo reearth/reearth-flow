@@ -38,6 +38,7 @@ type Props = {
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   onShowFeatureDetailsOverlay: (value: boolean) => void;
+  detailsOverlayOpen: boolean;
   detectedGeometryType: string | null;
   visualizerType: "2d-map" | "3d-map" | "3d-model";
 };
@@ -53,6 +54,7 @@ const DebugPreview: React.FC<Props> = ({
   onSelectedFeature,
   onFlyToSelectedFeature,
   onShowFeatureDetailsOverlay,
+  detailsOverlayOpen,
   detectedGeometryType,
   visualizerType,
 }) => {
@@ -208,6 +210,7 @@ const DebugPreview: React.FC<Props> = ({
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
               selectedFeaturedId={selectedFeatureId}
+              detailsOverlayOpen={detailsOverlayOpen}
               onSelectedFeature={onSelectedFeature}
               onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
             />

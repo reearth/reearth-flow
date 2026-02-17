@@ -33,6 +33,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
+  detailsOverlayOpen: boolean;
   onSelectedFeature?: (featureId: string | null) => void;
   onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
@@ -42,6 +43,7 @@ const CesiumViewer: React.FC<Props> = ({
   fileType,
   viewerRef,
   selectedFeatureId,
+  detailsOverlayOpen,
   onSelectedFeature,
   onShowFeatureDetailsOverlay,
 }) => {
@@ -157,6 +159,7 @@ const CesiumViewer: React.FC<Props> = ({
             <CityGmlData
               cityGmlData={cityGmlData}
               selectedFeatureId={selectedFeatureId}
+              detailsOverlayOpen={detailsOverlayOpen}
             />
           )}
         </>
