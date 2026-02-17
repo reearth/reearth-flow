@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.6 - 2026-02-17
+
+### Misc
+
+#### 
+
+- Vv0.1.0 [`2f1cbd`](https://github.com/reearth/reearth-flow/commit/2f1cbd)
+
+### api
+
+#### 🔧 Bug Fixes
+
+- Switch Flow to the shared GraphQL client ([#1894](https://github.com/reearth/reearth-flow/pull/1894)) [`78d73d`](https://github.com/reearth/reearth-flow/commit/78d73d)
+
+### api,subsucriber
+
+#### 🔧 Bug Fixes
+
+- Upgrade go version ([#1923](https://github.com/reearth/reearth-flow/pull/1923)) [`c9559c`](https://github.com/reearth/reearth-flow/commit/c9559c)
+
+### engine
+
+#### 🚀 Features
+
+- Solar potential workflow ([#1924](https://github.com/reearth/reearth-flow/pull/1924)) [`0cf980`](https://github.com/reearth/reearth-flow/commit/0cf980)
+- Add PLATEAU4 quality check workflow for OtherConstruction (cons) ([#1919](https://github.com/reearth/reearth-flow/pull/1919)) [`5ac614`](https://github.com/reearth/reearth-flow/commit/5ac614)
+- Replace libxml DOM parsing with pure Rust streaming XML processing ([#1912](https://github.com/reearth/reearth-flow/pull/1912)) [`166166`](https://github.com/reearth/reearth-flow/commit/166166)
+- Center point replacer properly implemented ([#1913](https://github.com/reearth/reearth-flow/pull/1913)) [`dd92db`](https://github.com/reearth/reearth-flow/commit/dd92db)
+
+#### 🔧 Bug Fixes
+
+- Fix XML fragmenter producing corrupted output for UTF-8 BOM input ([#1922](https://github.com/reearth/reearth-flow/pull/1922)) [`8e8ea7`](https://github.com/reearth/reearth-flow/commit/8e8ea7)
+- Interior overlap false positive ([#1920](https://github.com/reearth/reearth-flow/pull/1920)) [`830a82`](https://github.com/reearth/reearth-flow/commit/830a82)
+- Fix tileset.json properties order and set rank_code&#x2F;rankOrg_code to number type ([#1917](https://github.com/reearth/reearth-flow/pull/1917)) [`f36739`](https://github.com/reearth/reearth-flow/commit/f36739)
+- Fix fld cesium tileset naming ([#1914](https://github.com/reearth/reearth-flow/pull/1914)) [`c81a8a`](https://github.com/reearth/reearth-flow/commit/c81a8a)
+
+#### Miscellaneous Tasks
+
+- Clean up unused XML schemas, libxml2 dependency ([#1918](https://github.com/reearth/reearth-flow/pull/1918)) [`c63f32`](https://github.com/reearth/reearth-flow/commit/c63f32)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Some expressions not seen as expressions ([#1921](https://github.com/reearth/reearth-flow/pull/1921)) [`b90097`](https://github.com/reearth/reearth-flow/commit/b90097)
+
+### 
+
+#### 
+
+- Vv0.1.0 [`2f1cbd`](https://github.com/reearth/reearth-flow/commit/2f1cbd)
+
 ## 0.1.0-alpha.5 - 2026-02-10
 
 ### api
