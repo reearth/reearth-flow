@@ -188,11 +188,17 @@ pub fn slice_to_tiles<E>(
                                 let ring_coords: Vec<_> = ring.iter_closed().collect();
                                 let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
                                 if ring_coords.len() != uv_coords.len() {
-                                    tracing::error!(
-                                        "ring[{}] coord count ({}) != uv coord count ({}): geometry/uv mismatch likely from an earlier processing stage",
+                                    eprintln!(
+                                        "MISMATCH ring[{}]: raw_geo={} raw_uv={} closed_geo={} closed_uv={} geo_first={:?} geo_last={:?} uv_first={:?} uv_last={:?}",
                                         ri,
+                                        ring.raw_coords().len(),
+                                        uv_ring.raw_coords().len(),
                                         ring_coords.len(),
                                         uv_coords.len(),
+                                        ring.raw_coords().first(),
+                                        ring.raw_coords().last(),
+                                        uv_ring.raw_coords().first(),
+                                        uv_ring.raw_coords().last(),
                                     );
                                 }
                                 for (c, uv) in ring_coords.iter().zip(

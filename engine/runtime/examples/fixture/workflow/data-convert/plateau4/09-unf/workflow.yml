@@ -185,6 +185,13 @@ graphs:
               method: rename
               value: city_name
 
+      - id: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+        name: HorizontalReprojector
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: "4326"
+
       - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         name: VerticalReprojector
         type: action
@@ -219,71 +226,13 @@ graphs:
             file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + ".zip")
 
       # DmGeometricAttribute processing
-      - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
-        name: AttributeManagerByDmGeometricAttribute
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: cityCode
-              method: rename
-              value: city_code
-            - attribute: cityName
-              method: rename
-              value: city_name
-            - attribute: package
-              method: rename
-              value: __package
-            - attribute: lod
-              method: remove
-            - attribute: gmlId
-              method: remove
-            - attribute: gmlPropertyName
-              method: remove
-            - attribute: fileIndex
-              method: remove
-            - attribute: root
-              method: remove
-            - attribute: cityGmlPath
-              method: remove
-            - attribute: admin
-              method: remove
-            - attribute: area
-              method: remove
-            - attribute: extension
-              method: remove
-            - attribute: dirRoot
-              method: remove
-            - attribute: gmlRootId
-              method: remove
-            - attribute: maxLod
-              method: remove
-            - attribute: dirSchemas
-              method: remove
-            - attribute: dirCodelists
-              method: remove
-            - attribute: path
-              method: remove
-            - attribute: name
-              method: remove
-            - attribute: udxDirs
-              method: remove
-            - attribute: featureType
-              method: remove
-            - attribute: gmlName
-              method: remove
-            - attribute: codelists
-              method: remove
-            - attribute: schemas
-              method: remove
-
       - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
         name: FeatureSorterDmGeometricAttribute
         type: action
         action: FeatureSorter
         with:
           attributes:
-            - __package
+            - package
           order: ascending
 
       - id: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
@@ -295,9 +244,9 @@ graphs:
             - attribute: meshcode
               valueAttribute: meshcode
             - attribute: city_code
-              valueAttribute: city_code
+              valueAttribute: cityCode
             - attribute: city_name
-              valueAttribute: city_name
+              valueAttribute: cityName
             - attribute: feature_type
               valueAttribute: feature_type
             - attribute: gml_id
@@ -348,15 +297,19 @@ graphs:
           maxZoom: 18
           extent: 65536
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes")
+            let key = env.get("__value")["feature_type"];
+            key.replace(":", "_");
+            file::join_path(env.get("workerArtifactPath"), key + "_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
+            let key = env.get("__value")["feature_type"];
+            key.replace(":", "_");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_" + key + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -446,9 +399,15 @@ graphs:
         to: 3713b42c-a3af-489f-91a5-d101c26fcaee
         fromPort: lod4
         toPort: default
-      # AttributeManagerByLod -> VerticalReprojector
+      # AttributeManagerByLod -> HorizontalReprojector
       - id: bf8df312-1461-4431-8134-010dd518d4a4
         from: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+        fromPort: default
+        toPort: default
+      # HorizontalReprojector -> VerticalReprojector
+      - id: d5e6f7a8-b9c0-1d2e-3f45-6789abcdef01
+        from: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
         to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         fromPort: default
         toPort: default
@@ -472,17 +431,11 @@ graphs:
         toPort: schema
 
       # DmGeometricAttribute flow
-      # LodSplitterWithDM(DmGeometricAttribute) -> AttributeManagerByDmGeometricAttribute
+      # LodSplitterWithDM(DmGeometricAttribute) -> FeatureSorterDmGeometricAttribute
       - id: 9bef0954-f6a8-4a02-8d41-8f1f24a72881
         from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-        to: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
-        fromPort: DmGeometricAttribute
-        toPort: default
-      # AttributeManagerByDmGeometricAttribute -> FeatureSorterDmGeometricAttribute
-      - id: 3d12bbd8-de35-4f96-9835-37c4589ff6a1
-        from: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
         to: 5ea849f7-c314-4460-ad98-50be3e2fe24d
-        fromPort: default
+        fromPort: DmGeometricAttribute
         toPort: default
       # FeatureSorterDmGeometricAttribute -> AttributeMapperDmGeometricAttribute
       - id: dfa3779b-517c-47ce-86e5-74bc74a0d2b7

@@ -337,6 +337,11 @@ pub(super) fn make_tile(
     for serialized_feat in serialized_feats {
         let feature: super::slice::SlicedFeature = serde_json::from_slice(serialized_feat)
             .map_err(|err| {
+                let json_str = String::from_utf8_lossy(serialized_feat);
+                eprintln!(
+                    "Failed to deserialize SlicedFeature: {err:?}\nRaw JSON (first 500 chars): {}",
+                    &json_str[..json_str.len().min(500)]
+                );
                 crate::errors::SinkError::MvtWriter(format!(
                     "Failed to deserialize a sliced feature: {err:?}"
                 ))
