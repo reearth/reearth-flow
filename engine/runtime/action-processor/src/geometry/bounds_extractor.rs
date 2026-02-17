@@ -27,8 +27,8 @@ pub struct Bounds {
     pub max_x: f64,
     pub min_y: f64,
     pub max_y: f64,
-    pub min_z: f64,
-    pub max_z: f64,
+    pub min_z: Option<f64>,
+    pub max_z: Option<f64>,
 }
 
 impl Bounds {
@@ -45,10 +45,14 @@ impl Bounds {
         AttributeValue::Number(Number::from_f64(self.max_y).unwrap_or_else(|| Number::from(0)))
     }
     fn min_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.min_z).unwrap_or_else(|| Number::from(0)))
+        AttributeValue::Number(
+            Number::from_f64(self.min_z.unwrap_or(0.0)).unwrap_or_else(|| Number::from(0)),
+        )
     }
     fn max_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.max_z).unwrap_or_else(|| Number::from(0)))
+        AttributeValue::Number(
+            Number::from_f64(self.max_z.unwrap_or(0.0)).unwrap_or_else(|| Number::from(0)),
+        )
     }
 }
 
@@ -172,14 +176,18 @@ impl Processor for BoundsExtractor {
                 self.params.ymax.clone().unwrap_or(Attribute::new("ymax")),
                 bounds.max_y_value(),
             );
-            new_feature.insert(
-                self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
-                bounds.min_z_value(),
-            );
-            new_feature.insert(
-                self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
-                bounds.max_z_value(),
-            );
+            if bounds.min_z.is_some() {
+                new_feature.insert(
+                    self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
+                    bounds.min_z_value(),
+                );
+            }
+            if bounds.max_z.is_some() {
+                new_feature.insert(
+                    self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
+                    bounds.max_z_value(),
+                );
+            }
 
             fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         } else {
@@ -209,8 +217,16 @@ impl BoundsExtractor {
                 cb.max_x = cb.max_x.max(nb.max_x);
                 cb.min_y = cb.min_y.min(nb.min_y);
                 cb.max_y = cb.max_y.max(nb.max_y);
-                cb.min_z = cb.min_z.min(nb.min_z);
-                cb.max_z = cb.max_z.max(nb.max_z);
+                cb.min_z = match (cb.min_z, nb.min_z) {
+                    (Some(a), Some(b)) => Some(a.min(b)),
+                    (Some(a), None) | (None, Some(a)) => Some(a),
+                    (None, None) => None,
+                };
+                cb.max_z = match (cb.max_z, nb.max_z) {
+                    (Some(a), Some(b)) => Some(a.max(b)),
+                    (Some(a), None) | (None, Some(a)) => Some(a),
+                    (None, None) => None,
+                };
                 Some(cb)
             }
             (None, Some(nb)) => Some(nb),
@@ -227,6 +243,7 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
+        let z_val = NumCast::from(coord.z).and_then(|z: f64| if z.is_finite() { Some(z) } else { None });
         Self::update_bounds(
             bounds,
             Some(Bounds {
@@ -234,8 +251,8 @@ impl BoundsExtractor {
                 max_x: NumCast::from(coord.x).unwrap(),
                 min_y: NumCast::from(coord.y).unwrap(),
                 max_y: NumCast::from(coord.y).unwrap(),
-                min_z: NumCast::from(coord.z).unwrap(),
-                max_z: NumCast::from(coord.z).unwrap(),
+                min_z: z_val,
+                max_z: z_val,
             }),
         )
     }
@@ -245,13 +262,14 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
+        let z_val = NumCast::from(point.z()).and_then(|z: f64| if z.is_finite() { Some(z) } else { None });
         Some(Bounds {
             min_x: NumCast::from(point.x()).unwrap(),
             max_x: NumCast::from(point.x()).unwrap(),
             min_y: NumCast::from(point.y()).unwrap(),
             max_y: NumCast::from(point.y()).unwrap(),
-            min_z: NumCast::from(point.z()).unwrap(),
-            max_z: NumCast::from(point.z()).unwrap(),
+            min_z: z_val,
+            max_z: z_val,
         })
     }
 
