@@ -65,6 +65,11 @@ export function convertFeatureToEntity(
       properties?.name || extractBuildingName(geometry) || "CityGML Feature",
   });
 
+  // DEM gets its own converter to prevent browser OOM from large TIN meshes
+  if (convertDemGeometry(entity, geometry, properties)) {
+    return entity;
+  }
+
   // Try config-driven 3D converter first (handles bldg, tran, brid, frn, veg)
   if (convertGeneric3DGeometry(entity, geometry, properties)) {
     return entity;
@@ -245,6 +250,122 @@ const CITYGML_3D_TYPES: CityGmlTypeConfig[] = [
       ),
   },
 ];
+
+function isDemFeature(properties: Record<string, any>): boolean {
+  return !!(
+    properties?.gmlName?.includes("dem:") ||
+    properties?.featureType?.includes("dem:") ||
+    properties?.metadata?.featureType?.includes("dem:") ||
+    properties?.["dem:class"] ||
+    properties?.["dem:type"] ||
+    properties?.cityGmlAttributes?.["dem:class"] ||
+    properties?.cityGmlAttributes?.["dem:type"]
+  );
+}
+
+/**
+ * DEM (Digital Elevation Model / TIN Relief) converter.
+ * DEM features can have tens of thousands of triangles. Rendering each as a
+ * separate Entity crashes the browser (Chrome OOM / Error 5). Instead this
+ * samples down to MAX_DEM_POLYGONS triangles and clamps them to ground so
+ * Cesium composites them with the terrain rather than holding all geometry
+ * in JS heap simultaneously.
+ */
+const MAX_DEM_POLYGONS = 150;
+
+function convertDemGeometry(
+  entity: EntityWithSurfaces,
+  geometry: CityGmlGeometry,
+  properties: Record<string, any>,
+): boolean {
+  if (!isDemFeature(properties)) return false;
+
+  const gmlGeometries =
+    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
+  if (!gmlGeometries || !Array.isArray(gmlGeometries)) return false;
+
+  // Collect all triangles/polygons from all LOD levels
+  const allPolygons: any[] = [];
+  for (const geom of gmlGeometries) {
+    if (Array.isArray(geom.polygons)) {
+      allPolygons.push(...geom.polygons);
+    }
+  }
+  if (allPolygons.length === 0) return false;
+
+  // Sample uniformly to stay under the polygon budget
+  const step = Math.max(1, Math.ceil(allPolygons.length / MAX_DEM_POLYGONS));
+  const sampledPolygons = allPolygons.filter((_, i) => i % step === 0);
+
+  const surfaces: Entity[] = [];
+  entity.surfaces = surfaces;
+
+  for (let i = 0; i < sampledPolygons.length; i++) {
+    const polygon = sampledPolygons[i];
+    if (!polygon.exterior || !Array.isArray(polygon.exterior)) continue;
+    const positions = convertCoordinatesToPositions(polygon.exterior);
+    if (positions.length < 3) continue;
+
+    const surfaceEntity = new Entity({
+      id: `${entity.id}_dem_${i}`,
+      polygon: new PolygonGraphics({
+        hierarchy: new ConstantProperty(new PolygonHierarchy(positions)),
+        material: new ColorMaterialProperty(Color.SANDYBROWN.withAlpha(0.7)),
+        outline: new ConstantProperty(false),
+        heightReference: new ConstantProperty(HeightReference.CLAMP_TO_GROUND),
+        perPositionHeight: new ConstantProperty(false),
+      }),
+    });
+
+    const bag = new PropertyBag(properties);
+    bag.addProperty("cityGmlType", "Digital Elevation Model");
+    surfaceEntity.properties = bag;
+    surfaces.push(surfaceEntity);
+  }
+
+  const featureId =
+    properties?.gmlId ||
+    properties?.id ||
+    properties?.metadata?.featureId ||
+    "Unknown";
+
+  const attrRows = Object.entries(properties?.cityGmlAttributes ?? {})
+    .map(
+      ([key, value]) => `
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 2px 8px 2px 0; font-weight: bold;">${key}:</td>
+        <td style="padding: 2px 0;">${value}</td>
+      </tr>`,
+    )
+    .join("");
+
+  entity.description = new ConstantProperty(`
+    <div style="font-family: sans-serif; line-height: 1.4;">
+      <h3 style="margin: 0 0 10px 0; color: #2c3e50;">CityGML Digital Elevation Model</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold; width: 40%;">ID:</td>
+          <td style="padding: 4px 0;">${featureId}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Total triangles:</td>
+          <td style="padding: 4px 0;">${allPolygons.length}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Rendered (sampled):</td>
+          <td style="padding: 4px 0;">${surfaces.length}</td>
+        </tr>
+        ${attrRows}
+      </table>
+    </div>`);
+
+  const propertyBag = new PropertyBag(properties);
+  propertyBag.addProperty("cityGmlType", "Digital Elevation Model");
+  propertyBag.addProperty("totalTriangles", allPolygons.length);
+  entity.properties = propertyBag;
+
+  return true;
+}
 
 /**
  * Generic 3D CityGML converter for brid, frn, veg (and future types).
