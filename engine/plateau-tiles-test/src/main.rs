@@ -3,9 +3,10 @@ mod align_mvt;
 mod cast_config;
 mod compare_attributes;
 mod runner;
-mod test_cesium_attributes;
-mod test_cesium_statistics;
+mod test_cesium;
 mod test_json_attributes;
+mod test_json_attributes_v2;
+mod test_json_object_key_order;
 mod test_mvt_attributes;
 mod test_mvt_lines;
 mod test_mvt_points;
@@ -17,9 +18,10 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
-use test_cesium_attributes::CesiumAttributesConfig;
-use test_cesium_statistics::CesiumStatisticsConfig;
+use test_cesium::CesiumConfig;
 use test_json_attributes::JsonFileConfig;
+use test_json_attributes_v2::JsonFileV2Config;
+use test_json_object_key_order::KeyOrderConfig;
 use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_lines::MvtLinesConfig;
 use test_mvt_points::MvtPointsConfig;
@@ -60,6 +62,8 @@ struct Tests {
     #[serde(default)]
     json_attributes: Option<HashMap<String, JsonFileConfig>>,
     #[serde(default)]
+    json_attributes_v2: Option<HashMap<String, JsonFileV2Config>>,
+    #[serde(default)]
     mvt_attributes: Option<MvtAttributesConfig>,
     #[serde(default)]
     mvt_polygons: Option<MvtPolygonsConfig>,
@@ -68,9 +72,9 @@ struct Tests {
     #[serde(default)]
     mvt_points: Option<MvtPointsConfig>,
     #[serde(default)]
-    cesium_attributes: Option<CesiumAttributesConfig>,
+    cesium: Option<CesiumConfig>,
     #[serde(default)]
-    cesium_statistics: Option<CesiumStatisticsConfig>,
+    json_object_key_order: Option<KeyOrderConfig>,
 }
 
 fn zip_dir(src_dir: &Path, zip_path: &Path) {
@@ -253,6 +257,12 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if let Some(cfg) = &tests.json_attributes_v2 {
+            run_test("json_attributes_v2", &relative_path_display, || {
+                test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
+            });
+        }
+
         if let Some(cfg) = &tests.mvt_attributes {
             run_test("mvt_attributes", &relative_path_display, || {
                 test_mvt_attributes::test_mvt_attributes(
@@ -281,20 +291,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
-        if let Some(cfg) = &tests.cesium_attributes {
-            run_test("cesium_attributes", &relative_path_display, || {
-                test_cesium_attributes::test_cesium_attributes(
-                    &fme_extracted_dir,
-                    &flow_extracted_dir,
-                    cfg,
-                )
+        if let Some(cfg) = &tests.cesium {
+            run_test("cesium", &relative_path_display, || {
+                test_cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
-        if let Some(cfg) = &tests.cesium_statistics {
-            run_test("cesium_statistics", &relative_path_display, || {
-                test_cesium_statistics::test_cesium_statistics(
-                    &fme_extracted_dir,
+        if let Some(cfg) = &tests.json_object_key_order {
+            run_test("json_object_key_order", &relative_path_display, || {
+                test_json_object_key_order::test_json_object_key_order(
+                    &flow_source_dir,
                     &flow_extracted_dir,
                     cfg,
                 )

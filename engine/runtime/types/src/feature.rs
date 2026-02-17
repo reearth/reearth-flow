@@ -7,7 +7,10 @@ use std::{
 
 use indexmap::IndexMap;
 use nutype::nutype;
-use reearth_flow_common::{str, xml::XmlXpathValue};
+use reearth_flow_common::{
+    str,
+    xml::{xpath_value_to_json, XmlXpathValue},
+};
 use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -105,7 +108,7 @@ impl From<Geometry> for Feature {
 
 impl From<XmlXpathValue> for Feature {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<Feature>::into(value.to_string().parse::<serde_json::Value>().unwrap())
+        std::convert::Into::<Feature>::into(xpath_value_to_json(&value))
     }
 }
 
@@ -371,12 +374,17 @@ impl Feature {
     }
 
     /// Extend attributes. Uses copy-on-write if shared.
-    pub fn extend(&mut self, attributes: HashMap<Attribute, AttributeValue>) {
+    /// Accepts any IntoIterator (HashMap, IndexMap, Vec, etc.) to preserve caller's ordering.
+    pub fn extend<I: IntoIterator<Item = (Attribute, AttributeValue)>>(&mut self, attributes: I) {
         Arc::make_mut(&mut self.attributes).extend(attributes);
     }
 
     /// Extend attributes from string keys. Uses copy-on-write if shared.
-    pub fn extend_attributes(&mut self, attributes: HashMap<String, AttributeValue>) {
+    /// Accepts any IntoIterator (HashMap, IndexMap, Vec, etc.) to preserve caller's ordering.
+    pub fn extend_attributes<I: IntoIterator<Item = (String, AttributeValue)>>(
+        &mut self,
+        attributes: I,
+    ) {
         Arc::make_mut(&mut self.attributes)
             .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
     }

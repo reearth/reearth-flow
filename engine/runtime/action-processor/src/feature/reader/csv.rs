@@ -1,6 +1,9 @@
-use std::{collections::HashMap, io::Cursor, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use reearth_flow_common::{csv::Delimiter, uri::Uri};
+use reearth_flow_common::csv::{
+    auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
+};
+use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
 };
@@ -18,6 +21,13 @@ use super::CompiledCommonReaderParam;
 pub struct CsvReaderParam {
     /// The offset of the first row to read
     offset: Option<usize>,
+    /// # Header Row Count
+    /// Number of consecutive rows that make up the header (default: 1).
+    /// When 0, no header rows are read and column names are auto-generated
+    /// as "column1", "column2", etc.
+    /// When greater than 1, column names are formed by joining non-empty values
+    /// from each header row with "_".
+    header_rows: Option<usize>,
 }
 
 pub(crate) fn read_csv(
@@ -25,6 +35,7 @@ pub(crate) fn read_csv(
     global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
     csv_params: &CsvReaderParam,
+    encoding: Option<&str>,
     ctx: ExecutorContext,
     fw: &ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
@@ -43,21 +54,22 @@ pub(crate) fn read_csv(
     let byte = storage
         .get_sync(input_path.path().as_path())
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
-    let cursor = Cursor::new(byte);
-    let mut rdr = csv::ReaderBuilder::new()
-        .flexible(true)
-        .has_headers(false)
-        .delimiter(delimiter.into())
-        .from_reader(cursor);
+
     let offset = csv_params.offset.unwrap_or(0);
-    let header = rdr
-        .deserialize()
-        .nth(offset)
-        .unwrap_or(Ok(Vec::<String>::new()))
-        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
+    let mut rdr = build_csv_reader(&byte, encoding, delimiter, offset)
+        .map_err(super::errors::FeatureProcessorError::FileCsvReader)?;
+
+    let header_rows = csv_params.header_rows.unwrap_or(1);
+    let mut header = read_merged_header(&mut rdr, header_rows)
+        .map_err(super::errors::FeatureProcessorError::FileCsvReader)?;
+
     for rd in rdr.deserialize() {
         let record: Vec<String> =
             rd.map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
+
+        if header_rows == 0 && header.is_empty() {
+            header = auto_generate_header(record.len());
+        }
         let row = record
             .iter()
             .enumerate()

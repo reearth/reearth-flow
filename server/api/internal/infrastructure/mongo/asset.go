@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -63,7 +64,7 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByWorkspace(ctx context.Context, wid id.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (r *Asset) FindByWorkspace(ctx context.Context, wid accountsid.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	var filter any = bson.M{
 		"workspace": wid.String(),
 	}
@@ -77,7 +78,7 @@ func (r *Asset) FindByWorkspace(ctx context.Context, wid id.WorkspaceID, uFilter
 	return r.paginate(ctx, filter, uFilter.Sort, uFilter.Pagination)
 }
 
-func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid id.WorkspaceID) (uint64, error) {
+func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountsid.WorkspaceID) (uint64, error) {
 	c, err := r.client.Client().Aggregate(ctx, []bson.M{
 		{"$match": bson.M{"workspace": wid.String()}},
 		{"$group": bson.M{"_id": nil, "size": bson.M{"$sum": "$size"}}},

@@ -8,7 +8,7 @@
 #
 # Input environment variables:
 # - dailySunDataPath: Path to CSV with daily sun data (columns: 年月日, 出, 入り)
-# - monthlyWeatherDataPath: Path to CSV with monthly weather data (columns: 年, 月, 日照時間(時間))
+# - monthlyWeatherDataPath: Path to Shift-JIS CSV with monthly weather data from JMA (multi-row header)
 #
 # Output: Features with year, month, monthlyDayTimeSumInHours, 日照時間(時間), sunnyRatio
 
@@ -23,7 +23,7 @@ nodes:
     type: action
     action: CsvReader
     with:
-      format: csv
+      format: tsv
       dataset: |
         env.get("dailySunDataPath")
 
@@ -92,6 +92,9 @@ nodes:
     action: CsvReader
     with:
       format: csv
+      encoding: Shift-JIS
+      offset: 3
+      headerRows: 2
       dataset: |
         env.get("monthlyWeatherDataPath")
 
@@ -107,12 +110,12 @@ nodes:
         # Copy 年 to year for merge compatibility
         - attribute: year
           expr: |
-            env.get("__value")["年月"].split("/")[0]
+            env.get("__value")["年"]
         # Copy 月 to month for merge compatibility
         - attribute: month
           expr: |
-            env.get("__value")["年月"].split("/")[1]
-        # Preserve 日照時間(時間) - actual sunshine hours
+            env.get("__value")["月"]
+        # Extract 日照時間(時間) - actual sunshine hours
         - attribute: 日照時間(時間)
           expr: |
             env.get("__value")["日照時間(時間)"]

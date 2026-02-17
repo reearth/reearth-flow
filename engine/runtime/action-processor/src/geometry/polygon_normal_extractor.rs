@@ -322,7 +322,7 @@ impl PolygonNormalExtractor {
             )?),
         );
         feature.attributes_mut().insert(
-            Attribute::new(format!("Slope{}", suffix.unwrap_or(""))),
+            Attribute::new(format!("slope{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.slope).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(
                     "Failed to convert slope to JSON number".to_string(),
@@ -331,7 +331,7 @@ impl PolygonNormalExtractor {
         );
 
         feature.attributes_mut().insert(
-            Attribute::new(format!("Azimuth{}", suffix.unwrap_or(""))),
+            Attribute::new(format!("azimuth{}", suffix.unwrap_or(""))),
             AttributeValue::Number(Number::from_f64(normal_result.azimuth).ok_or_else(|| {
                 GeometryProcessorError::PolygonNormalExtractor(
                     "Failed to convert azimuth to JSON number".to_string(),

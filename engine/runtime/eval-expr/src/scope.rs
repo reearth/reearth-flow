@@ -17,10 +17,6 @@ impl ScopeEnv {
     }
 
     pub fn set(&self, name: &str, value: Value) {
-        if self.engine.vars().contains_key(name) {
-            return self.engine.set(name, value);
-        }
-
         let mut vars = self.vars.write().unwrap();
         vars.entry(name.to_string())
             .and_modify(|i| *i = value.clone())
@@ -107,10 +103,6 @@ impl Scope {
     }
 
     pub fn set(&self, name: &str, value: Value) {
-        if self.engine.vars().contains_key(name) {
-            return self.engine.set(name, value);
-        }
-
         let mut vars = self.vars.write().unwrap();
         vars.entry(name.to_string())
             .and_modify(|i| *i = value.clone())
@@ -118,10 +110,6 @@ impl Scope {
     }
 
     pub fn remove(&self, name: &str) {
-        if self.engine.vars().contains_key(name) {
-            return self.engine.remove(name);
-        }
-
         let mut vars = self.vars.write().unwrap();
         vars.remove(name);
     }

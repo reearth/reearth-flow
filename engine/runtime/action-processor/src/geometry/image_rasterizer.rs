@@ -24,6 +24,44 @@ use super::errors::GeometryProcessorError;
 static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
 static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
 
+/// Overlap resolution strategy for rasterized pixels
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum OnOverlap {
+    TakeLast,
+    TakeFirst,
+    Max(Expr),
+    Min(Expr),
+    /// Saturating-add RGB channels of all overlapping polygons.
+    Sum,
+}
+
+#[derive(Debug, Clone)]
+enum OverlapValue {
+    Number(f64),
+    String(String),
+}
+
+impl PartialEq for OverlapValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (OverlapValue::Number(a), OverlapValue::Number(b)) => a.total_cmp(b).is_eq(),
+            (OverlapValue::String(a), OverlapValue::String(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl PartialOrd for OverlapValue {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (OverlapValue::Number(a), OverlapValue::Number(b)) => Some(a.total_cmp(b)),
+            (OverlapValue::String(a), OverlapValue::String(b)) => a.partial_cmp(b),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct ImageRasterizerFactory;
 
@@ -80,6 +118,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
         let process = ImageRasterizer {
             width: params.image_width,
             save_to: params.save_to,
+            on_overlap: params.on_overlap,
             evaluated_save_path: None,
             geometry_polygons: GeometryPolygons::new(),
             texture_coord_features: Vec::new(),
@@ -101,12 +140,18 @@ struct ImageRasterizerParam {
     /// Optional path expression to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
     save_to: Option<Expr>,
+
+    /// # On Overlap
+    /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.
+    #[serde(default)]
+    on_overlap: Option<OnOverlap>,
 }
 
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
     save_to: Option<Expr>,
+    on_overlap: Option<OnOverlap>,
     evaluated_save_path: Option<String>,
     geometry_polygons: GeometryPolygons,
     texture_coord_features: Vec<Feature>,
@@ -174,6 +219,7 @@ impl Default for ImageRasterizerParam {
         Self {
             image_width: default_image_width(),
             save_to: None,
+            on_overlap: None,
         }
     }
 }
@@ -205,7 +251,24 @@ impl Processor for ImageRasterizer {
         } else {
             // Features from default port are used to build the rasterized image
             // Extract color and geometry to accumulate in GeometryPolygons
-            if let Some(polygon) = extract_geometry_polygon_from_feature(feature) {
+            if let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) {
+                // Evaluate overlap expression if configured
+                if let Some(ref on_overlap) = self.on_overlap {
+                    if let Some(expr) = match on_overlap {
+                        OnOverlap::Max(e) | OnOverlap::Min(e) => Some(e),
+                        _ => None,
+                    } {
+                        let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
+                        if let Ok(val) = scope.eval::<f64>(expr.as_ref()) {
+                            polygon.overlap_value = Some(OverlapValue::Number(val));
+                        } else {
+                            let scope2 = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
+                            if let Ok(val) = scope2.eval::<String>(expr.as_ref()) {
+                                polygon.overlap_value = Some(OverlapValue::String(val));
+                            }
+                        }
+                    }
+                }
                 self.geometry_polygons.add_polygon(polygon);
             }
         }
@@ -231,7 +294,9 @@ impl Processor for ImageRasterizer {
         let height = boundary.calculate_height_from_boundary_ratio(width);
 
         // Draw the accumulated polygons to an image
-        let img = self.geometry_polygons.draw(width, height, true); // fill_area = true
+        let img = self
+            .geometry_polygons
+            .draw(width, height, true, &self.on_overlap);
 
         // Save the image using the helper function with the evaluated save_to path
         match save_image_with_path_option(&img, self.evaluated_save_path.clone()) {
@@ -392,6 +457,7 @@ struct GeometryPolygon {
     color_r: u8,
     color_g: u8,
     color_b: u8,
+    overlap_value: Option<OverlapValue>,
 }
 
 impl GeometryPolygon {
@@ -447,6 +513,7 @@ impl GeometryPolygon {
                 color_r: polygon.color_r,
                 color_g: polygon.color_g,
                 color_b: polygon.color_b,
+                overlap_value: polygon.overlap_value.clone(),
             }
         }
     }
@@ -469,10 +536,10 @@ impl GeometryPolygon {
 
             // Draw line between consecutive points
             let line_pixels = self.draw_line(
-                current.0.round() as u32,
-                current.1.round() as u32,
-                next.0.round() as u32,
-                next.1.round() as u32,
+                current.0.floor() as u32,
+                current.1.floor() as u32,
+                next.0.floor() as u32,
+                next.1.floor() as u32,
                 (
                     mapped_polygon.color_r,
                     mapped_polygon.color_g,
@@ -490,10 +557,10 @@ impl GeometryPolygon {
 
                 // Draw line between consecutive points
                 let line_pixels = self.draw_line(
-                    current.0.round() as u32,
-                    current.1.round() as u32,
-                    next.0.round() as u32,
-                    next.1.round() as u32,
+                    current.0.floor() as u32,
+                    current.1.floor() as u32,
+                    next.0.floor() as u32,
+                    next.1.floor() as u32,
                     (
                         mapped_polygon.color_r,
                         mapped_polygon.color_g,
@@ -575,8 +642,8 @@ impl GeometryPolygon {
         let mut max_x = 0u32;
 
         for &(x, y) in &polygon.exterior_coordinates {
-            let x_int = x.round() as u32;
-            let y_int = y.round() as u32;
+            let x_int = x.floor() as u32;
+            let y_int = y.floor() as u32;
 
             if y_int < min_y {
                 min_y = y_int;
@@ -596,43 +663,44 @@ impl GeometryPolygon {
         for y in min_y..=max_y {
             let mut intersections = Vec::new();
 
-            // Process exterior ring
+            // Process exterior ring using original float coordinates
+            // for correct interpolation consistent with texture sampling
             for i in 0..polygon.exterior_coordinates.len() {
                 let p1 = &polygon.exterior_coordinates[i];
                 let p2 =
                     &polygon.exterior_coordinates[(i + 1) % polygon.exterior_coordinates.len()];
 
-                let y1 = p1.1.round() as u32;
-                let y2 = p2.1.round() as u32;
+                let y1 = p1.1;
+                let y2 = p2.1;
+                let y_f = y as f64;
 
                 // Check if the edge crosses the current scanline
-                if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) && y2 != y1 {
-                    let x1 = p1.0;
-                    let x2 = p2.0;
-
+                if ((y1 <= y_f && y2 > y_f) || (y2 <= y_f && y1 > y_f))
+                    && (y2 - y1).abs() > f64::EPSILON
+                {
                     // Calculate intersection point
-                    let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
-                    intersections.push(x.round() as u32);
+                    let x = p1.0 + (y_f - y1) / (y2 - y1) * (p2.0 - p1.0);
+                    intersections.push(x.floor() as u32);
                 }
             }
 
-            // Process interior rings (holes)
+            // Process interior rings (holes) using original float coordinates
             for interior_ring in &polygon.interior_coordinates {
                 for i in 0..interior_ring.len() {
                     let p1 = &interior_ring[i];
                     let p2 = &interior_ring[(i + 1) % interior_ring.len()];
 
-                    let y1 = p1.1.round() as u32;
-                    let y2 = p2.1.round() as u32;
+                    let y1 = p1.1;
+                    let y2 = p2.1;
+                    let y_f = y as f64;
 
                     // Check if the edge crosses the current scanline
-                    if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) && y2 != y1 {
-                        let x1 = p1.0.round();
-                        let x2 = p2.0.round();
-
+                    if ((y1 <= y_f && y2 > y_f) || (y2 <= y_f && y1 > y_f))
+                        && (y2 - y1).abs() > f64::EPSILON
+                    {
                         // Calculate intersection point
-                        let x = x1 + (y as f64 - y1 as f64) / (y2 as f64 - y1 as f64) * (x2 - x1);
-                        intersections.push(x.round() as u32);
+                        let x = p1.0 + (y_f - y1) / (y2 - y1) * (p2.0 - p1.0);
+                        intersections.push(x.floor() as u32);
                     }
                 }
             }
@@ -775,7 +843,13 @@ impl GeometryPolygons {
     }
 
     // Draws the polygons to a PNG image with the specified width and height
-    fn draw(&self, width: u32, height: u32, fill_area: bool) -> image::RgbImage {
+    fn draw(
+        &self,
+        width: u32,
+        height: u32,
+        fill_area: bool,
+        on_overlap: &Option<OnOverlap>,
+    ) -> image::RgbImage {
         // Create a new image with white background
         let mut img = image::RgbImage::new(width, height);
 
@@ -793,15 +867,133 @@ impl GeometryPolygons {
         let mapping_fn =
             GeometryPolygon::create_mapping_function_to_png(geo_boundary, width, height);
 
-        // Generate pixels for each polygon and draw them on the image
-        for polygon in &self.polygons {
-            // Convert the polygon to image pixels using the mapping function
-            let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
-
-            // Draw each pixel on the image
-            for pixel in pixels {
-                if pixel.x < width && pixel.y < height {
-                    img.put_pixel(pixel.x, pixel.y, image::Rgb([pixel.r, pixel.g, pixel.b]));
+        match on_overlap {
+            Some(OnOverlap::TakeFirst) => {
+                // Track which pixels have been written
+                let mut written = vec![vec![false; height as usize]; width as usize];
+                for polygon in &self.polygons {
+                    let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
+                    for pixel in pixels {
+                        if pixel.x < width
+                            && pixel.y < height
+                            && !written[pixel.x as usize][pixel.y as usize]
+                        {
+                            img.put_pixel(
+                                pixel.x,
+                                pixel.y,
+                                image::Rgb([pixel.r, pixel.g, pixel.b]),
+                            );
+                            written[pixel.x as usize][pixel.y as usize] = true;
+                        }
+                    }
+                }
+            }
+            Some(OnOverlap::Max(_)) => {
+                // Track best (max) overlap value per pixel
+                let mut best: HashMap<(u32, u32), (OverlapValue, u8, u8, u8)> = HashMap::new();
+                for polygon in &self.polygons {
+                    let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
+                    let ov = polygon.overlap_value.clone();
+                    for pixel in pixels {
+                        if pixel.x >= width || pixel.y >= height {
+                            continue;
+                        }
+                        let key = (pixel.x, pixel.y);
+                        if let Some(ref val) = ov {
+                            if let Some(existing) = best.get(&key) {
+                                if val > &existing.0 {
+                                    best.insert(key, (val.clone(), pixel.r, pixel.g, pixel.b));
+                                }
+                            } else {
+                                best.insert(key, (val.clone(), pixel.r, pixel.g, pixel.b));
+                            }
+                        } else {
+                            // No overlap value - treat as last-wins fallback
+                            best.insert(
+                                key,
+                                (
+                                    OverlapValue::Number(f64::NEG_INFINITY),
+                                    pixel.r,
+                                    pixel.g,
+                                    pixel.b,
+                                ),
+                            );
+                        }
+                    }
+                }
+                for ((x, y), (_, r, g, b)) in &best {
+                    img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
+                }
+            }
+            Some(OnOverlap::Min(_)) => {
+                let mut best: HashMap<(u32, u32), (OverlapValue, u8, u8, u8)> = HashMap::new();
+                for polygon in &self.polygons {
+                    let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
+                    let ov = polygon.overlap_value.clone();
+                    for pixel in pixels {
+                        if pixel.x >= width || pixel.y >= height {
+                            continue;
+                        }
+                        let key = (pixel.x, pixel.y);
+                        if let Some(ref val) = ov {
+                            if let Some(existing) = best.get(&key) {
+                                if val < &existing.0 {
+                                    best.insert(key, (val.clone(), pixel.r, pixel.g, pixel.b));
+                                }
+                            } else {
+                                best.insert(key, (val.clone(), pixel.r, pixel.g, pixel.b));
+                            }
+                        } else {
+                            best.insert(
+                                key,
+                                (
+                                    OverlapValue::Number(f64::INFINITY),
+                                    pixel.r,
+                                    pixel.g,
+                                    pixel.b,
+                                ),
+                            );
+                        }
+                    }
+                }
+                for ((x, y), (_, r, g, b)) in &best {
+                    img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
+                }
+            }
+            Some(OnOverlap::Sum) => {
+                // Saturating-add RGB channels per pixel
+                for polygon in &self.polygons {
+                    let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
+                    for pixel in pixels {
+                        if pixel.x >= width || pixel.y >= height {
+                            continue;
+                        }
+                        let existing = img.get_pixel(pixel.x, pixel.y);
+                        img.put_pixel(
+                            pixel.x,
+                            pixel.y,
+                            image::Rgb([
+                                existing[0].saturating_add(pixel.r),
+                                existing[1].saturating_add(pixel.g),
+                                existing[2].saturating_add(pixel.b),
+                            ]),
+                        );
+                    }
+                }
+            }
+            // None or TakeLast - current behavior (last polygon overwrites)
+            _ => {
+                for polygon in &self.polygons {
+                    let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
+                    for pixel in pixels {
+                        if pixel.x < width && pixel.y < height {
+                            img.put_pixel(
+                                pixel.x,
+                                pixel.y,
+                                image::Rgb([pixel.r, pixel.g, pixel.b]),
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -870,6 +1062,7 @@ fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPo
                     color_r: r,
                     color_g: g,
                     color_b: b,
+                    overlap_value: None,
                 };
 
                 return Some(polygon);
@@ -983,8 +1176,7 @@ fn assign_texture_coordinates(
                 .iter()
                 .map(|v| {
                     let u = (v.x - min_x) / width;
-                    // Flip v coordinate: image origin is top-left, but geometry Y increases upward
-                    let v_coord = 1.0 - (v.y - min_y) / height;
+                    let v_coord = (v.y - min_y) / height;
                     Coordinate2D::new_(u.clamp(0.0, 1.0), v_coord.clamp(0.0, 1.0))
                 })
                 .collect();
@@ -999,7 +1191,7 @@ fn assign_texture_coordinates(
                         .iter()
                         .map(|v| {
                             let u = (v.x - min_x) / width;
-                            let v_coord = 1.0 - (v.y - min_y) / height;
+                            let v_coord = (v.y - min_y) / height;
                             Coordinate2D::new_(u.clamp(0.0, 1.0), v_coord.clamp(0.0, 1.0))
                         })
                         .collect();
@@ -1101,13 +1293,13 @@ mod tests {
         let width = 1000;
         let boundary = geometry_polygons.find_coordinates_boundary();
         let height = boundary.calculate_height_from_boundary_ratio(width);
-        let img = geometry_polygons.draw(width, height, true);
+        let img = geometry_polygons.draw(width, height, true, &None);
 
         // Save the image to verify it worked
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let cache_dir = std::path::Path::new(&home_dir)
-            .join(".cache")
-            .join("reearth-flow-test-images");
+        let base_dir = std::env::var_os("REEARTH_FLOW_TEST_IMAGE_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir);
+        let cache_dir = base_dir.join("reearth-flow-test-images");
 
         std::fs::create_dir_all(&cache_dir)
             .expect("Could not create cache directory for test images");

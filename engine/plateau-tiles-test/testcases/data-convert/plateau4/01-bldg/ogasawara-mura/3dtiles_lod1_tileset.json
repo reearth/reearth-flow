@@ -1,0 +1,141 @@
+{
+  "meshcode": {},
+  "feature_type": {},
+  "city_code": {},
+  "city_name": {},
+  "gml_id": {},
+  "attributes": {},
+  "core:creationDate": {},
+  "_lod": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "_lod_type": {},
+  "_x": {
+    "minimum": 142.1891207049428,
+    "maximum": 142.19103904416215
+  },
+  "_y": {
+    "minimum": 27.089365858873066,
+    "maximum": 27.0915273290045
+  },
+  "_xmin": {
+    "minimum": 142.18910232137011,
+    "maximum": 142.19095323602207
+  },
+  "_xmax": {
+    "minimum": 142.18913908851547,
+    "maximum": 142.1911248523022
+  },
+  "_ymin": {
+    "minimum": 27.089321818566095,
+    "maximum": 27.091487661069173
+  },
+  "_ymax": {
+    "minimum": 27.089409899180037,
+    "maximum": 27.09164303599194
+  },
+  "_zmin": {
+    "minimum": 1.929,
+    "maximum": 30.431
+  },
+  "_zmax": {
+    "minimum": 5.506,
+    "maximum": 35.635
+  },
+  "gml:name": {},
+  "bldg:class": {},
+  "bldg:usage": {},
+  "bldg:measuredHeight": {
+    "minimum": 2.922,
+    "maximum": 7.25
+  },
+  "bldg:storeysAboveGround": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "bldg:storeysBelowGround": {
+    "minimum": 0,
+    "maximum": 0
+  },
+  "bldg:address": {},
+  "uro:BuildingIDAttribute_uro:buildingID": {},
+  "uro:BuildingIDAttribute_uro:prefecture": {},
+  "uro:BuildingIDAttribute_uro:city": {},
+  "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": {
+    "minimum": 61.909,
+    "maximum": 374.743
+  },
+  "uro:BuildingDetailAttribute_uro:fireproofStructureType": {},
+  "uro:BuildingDetailAttribute_uro:urbanPlanType": {},
+  "uro:BuildingDetailAttribute_uro:landUseType": {},
+  "uro:BuildingDetailAttribute_uro:surveyYear": {
+    "minimum": 2022,
+    "maximum": 2022
+  },
+  "uro:geometrySrcDescLod1": {},
+  "uro:lod1HeightType": {},
+  "延べ面積換算係数": {},
+  "大字・町コード": {},
+  "町・丁目コード": {},
+  "13+区市町村コード+大字・町コード+町・丁目コード": {},
+  "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク": {},
+  "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード": {
+    "minimum": 2,
+    "maximum": 4
+  },
+  "津波浸水想定_南海トラフケース１（島しょ部）_浸水深": {
+    "minimum": 0.369,
+    "maximum": 2.976
+  },
+  "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク": {},
+  "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード": {
+    "minimum": 2,
+    "maximum": 4
+  },
+  "津波浸水想定_南海トラフケース２（島しょ部）_浸水深": {
+    "minimum": 0.736,
+    "maximum": 3.269
+  },
+  "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク": {},
+  "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード": {
+    "minimum": 2,
+    "maximum": 5
+  },
+  "津波浸水想定_南海トラフケース５（島しょ部）_浸水深": {
+    "minimum": 0.874,
+    "maximum": 5.727
+  },
+  "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク": {},
+  "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード": {
+    "minimum": 2,
+    "maximum": 4
+  },
+  "津波浸水想定_南海トラフケース６（島しょ部）_浸水深": {
+    "minimum": 0.806,
+    "maximum": 3.433
+  },
+  "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランク": {},
+  "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランクコード": {
+    "minimum": 3,
+    "maximum": 4
+  },
+  "津波浸水想定_南海トラフケース８（島しょ部）_浸水深": {
+    "minimum": 1.63,
+    "maximum": 3.601
+  },
+  "津波浸水想定_大正関東地震（島しょ部）_浸水ランク": {},
+  "津波浸水想定_大正関東地震（島しょ部）_浸水ランクコード": {
+    "minimum": 2,
+    "maximum": 2
+  },
+  "津波浸水想定_大正関東地震（島しょ部）_浸水深": {
+    "minimum": 0.827,
+    "maximum": 0.827
+  },
+  "土砂災害リスク_急傾斜地の崩落_区域区分": {},
+  "土砂災害リスク_急傾斜地の崩落_区域区分コード": {
+    "minimum": 1,
+    "maximum": 2
+  }
+}

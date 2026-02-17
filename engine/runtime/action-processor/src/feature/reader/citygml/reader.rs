@@ -21,7 +21,8 @@ use reearth_flow_runtime::{
     node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
-    geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
+    conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, metadata::Metadata,
+    Attribute, AttributeValue, Feature,
 };
 use url::Url;
 
@@ -290,6 +291,20 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             );
         }
         attributes.extend(base_attributes.clone());
+        // Check if the root entity has geometry refs before flattening.
+        // Features like uro:OtherConstruction have unresolved xlink:href Solid geometry,
+        // so the parser leaves geometry refs empty. In that case, all flattened entities
+        // need reconstruction from the shared geometry store.
+        let root_needs_reconstruction = {
+            let nusamai_citygml::Value::Object(obj) = &entity.root else {
+                continue;
+            };
+            matches!(
+                &obj.stereotype,
+                nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. }
+                    if geometries.is_empty()
+            )
+        };
         let flat_entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
@@ -343,9 +358,12 @@ fn parse_and_write_features<R: BufRead, W: Write>(
 
             let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
             let citygml_attributes = AttributeValue::Map(citygml_attributes);
-            let geometry: Geometry = ent.try_into().map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
+            let geometry: Geometry =
+                entity_to_geometry(ent, root_needs_reconstruction).map_err(|e| {
+                    crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!(
+                        "{e:?}"
+                    ))
+                })?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
             feature.insert("cityGmlAttributes", citygml_attributes);

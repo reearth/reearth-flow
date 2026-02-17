@@ -18,6 +18,7 @@ export type ExtendedFormContext = FormContextType & {
   onEditorOpen?: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onAssetsOpen?: (fieldContext: FieldContext) => void;
+  originalSchema?: any;
   actionName?: string;
 };
 
@@ -33,19 +34,24 @@ const BaseInputTemplate = <
 
   const formContext = registry.formContext as ExtendedFormContext;
 
-  const { onEditorOpen, onPythonEditorOpen, onAssetsOpen, actionName } =
-    formContext || {};
+  const {
+    onEditorOpen,
+    onPythonEditorOpen,
+    onAssetsOpen,
+    originalSchema,
+    actionName,
+  } = formContext || {};
 
   // Check if this field is marked as an Expr type in the UI schema
   let isExprField = uiSchema?.["ui:exprType"] === "rhai";
   let isPythonField = uiSchema?.["ui:exprType"] === "python";
 
-  // Fallback: detect expression types from schema
+  // Fallback: detect expression types from schema or originalSchema (for dynamic array items)
   if (!isExprField && !isPythonField) {
-    // Dynamically check if ANY definition in schema has this field name with Expr support
+    // Dynamically check if ANY definition in originalSchema has this field name with Expr support
     let hasExprSupport = false;
-    if (schema?.definitions) {
-      hasExprSupport = Object.values(schema.definitions).some(
+    if (originalSchema?.definitions) {
+      hasExprSupport = Object.values(originalSchema.definitions).some(
         (def: any) =>
           def?.properties?.[name]?.$ref === "#/definitions/Expr" ||
           def?.properties?.[name]?.allOf?.some(

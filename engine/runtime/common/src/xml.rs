@@ -1,27 +1,31 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use libxml::error::StructuredError;
-use libxml::parser::{Parser, ParserOptions};
-use libxml::schemas::SchemaValidationContext;
-use libxml::tree::document;
-use libxml::xpath::Context;
+use fastxml::error::StructuredError;
+use fastxml::schema::XmlSchemaValidationContext as InnerSchemaValidationContext;
+use fastxml::{
+    create_context as fastxml_create_context, create_safe_context as fastxml_create_safe_context,
+    evaluate as fastxml_evaluate, parse as fastxml_parse, NodeType,
+};
 use tracing::{debug, warn};
 
 use crate::str::to_hash;
 use crate::uri::Uri;
 
-pub type XmlDocument = document::Document;
-pub type XmlXpathValue = libxml::xpath::Object;
-pub type XmlContext = libxml::xpath::Context;
-pub type XmlNode = libxml::tree::Node;
-pub type XmlRoNode = libxml::readonly::RoNode;
-pub type XmlNamespace = libxml::tree::Namespace;
-pub type XmlNodeType = libxml::tree::NodeType;
-pub type XmlSchemaParserContext = libxml::schemas::SchemaParserContext;
+// Re-export types for compatibility
+pub use fastxml::error::StructuredError as XmlStructuredError;
+pub use fastxml::xpath::XPathResult as XmlXpathValue;
+pub use fastxml::Namespace as XmlNamespace;
+pub use fastxml::NodeType as XmlNodeType;
+pub use fastxml::XmlDocument;
+pub use fastxml::XmlNode;
+pub use fastxml::XmlRoNode;
+
+// Context type alias - fastxml provides this directly
+pub type XmlContext = fastxml::xpath::XmlContext;
 
 pub struct XmlSchemaValidationContext {
-    inner: parking_lot::RwLock<SchemaValidationContext>,
+    inner: parking_lot::RwLock<InnerSchemaValidationContext>,
     _marker: PhantomData<*mut ()>,
 }
 
@@ -29,7 +33,7 @@ unsafe impl Send for XmlSchemaValidationContext {}
 unsafe impl Sync for XmlSchemaValidationContext {}
 
 pub struct XmlSafeContext {
-    inner: parking_lot::RwLock<Context>,
+    inner: fastxml::xpath::XmlSafeContext,
     _marker: PhantomData<*mut ()>,
 }
 
@@ -45,8 +49,8 @@ pub struct XmlRoNamespace {
 impl From<XmlNamespace> for XmlRoNamespace {
     fn from(ns: XmlNamespace) -> Self {
         Self {
-            prefix: ns.get_prefix(),
-            href: ns.get_href(),
+            prefix: ns.get_prefix().to_string(),
+            href: ns.get_href().to_string(),
         }
     }
 }
@@ -66,41 +70,20 @@ impl XmlRoNamespace {
 }
 
 pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
-    let parser = Parser::default();
-    parser
-        .parse_string_with_options(
-            xml,
-            ParserOptions {
-                recover: false,
-                no_def_dtd: true,
-                no_error: true,
-                no_warning: false,
-                pedantic: true,
-                no_blanks: false,
-                no_net: false,
-                no_implied: false,
-                compact: true,
-                ignore_enc: false,
-                encoding: None,
-                huge: false,
-            },
-        )
-        .map_err(|e| crate::Error::Xml(format!("{e}")))
+    fastxml_parse(xml.as_ref()).map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
-    let context = create_context(document)?;
-    context
-        .evaluate(xpath.as_ref())
+    fastxml_evaluate(document, xpath.as_ref())
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
 }
 
 pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
-    let context = Context::new(document)
+    let mut context = fastxml_create_context(document)
         .map_err(|_| crate::Error::Xml("Failed to initialize xpath context".to_string()))?;
     let root = document
         .get_root_element()
-        .ok_or(crate::Error::Xml("No root element".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("{e}")))?;
 
     let ns_decls = root.get_namespace_declarations();
     debug!(
@@ -116,7 +99,7 @@ pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
             ns.get_href()
         );
         context
-            .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
+            .register_namespace(ns.get_prefix(), ns.get_href())
             .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
 
@@ -131,11 +114,11 @@ pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
 }
 
 pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeContext> {
-    let context = Context::new(document)
+    let context = fastxml_create_safe_context(document)
         .map_err(|_| crate::Error::Xml("Failed to initialize xpath context".to_string()))?;
     let root = document
         .get_root_element()
-        .ok_or(crate::Error::Xml("No root element".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("{e}")))?;
 
     let ns_decls = root.get_namespace_declarations();
     debug!(
@@ -151,7 +134,7 @@ pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeConte
             ns.get_href()
         );
         context
-            .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
+            .register_namespace(ns.get_prefix(), ns.get_href())
             .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
 
@@ -163,17 +146,84 @@ pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeConte
     }
 
     Ok(XmlSafeContext {
-        inner: parking_lot::RwLock::new(context),
+        inner: context,
         _marker: PhantomData,
     })
 }
 
 pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
-    xpath_value
-        .get_nodes_as_vec()
-        .iter()
-        .map(|node| node.get_content())
-        .collect()
+    fastxml::collect_text_values(xpath_value)
+}
+
+/// Convert XPathResult to serde_json::Value
+pub fn xpath_value_to_json(value: &XmlXpathValue) -> serde_json::Value {
+    match value {
+        XmlXpathValue::Boolean(b) => serde_json::Value::Bool(*b),
+        XmlXpathValue::Number(n) => {
+            // Use serde_json::Number::from_f64 to avoid panicking on non-finite floats (NaN/±inf).
+            // Fall back to Null when the number cannot be represented in JSON.
+            if let Some(num) = serde_json::Number::from_f64(*n) {
+                serde_json::Value::Number(num)
+            } else {
+                serde_json::Value::Null
+            }
+        }
+        XmlXpathValue::String(s) => serde_json::Value::String(s.clone()),
+        XmlXpathValue::Nodes(nodes) => {
+            let values: Vec<serde_json::Value> = nodes
+                .iter()
+                .map(|node| {
+                    // For nodeset, collect text content
+                    node.get_content()
+                        .map(serde_json::Value::String)
+                        .unwrap_or(serde_json::Value::Null)
+                })
+                .collect();
+            if values.len() == 1 {
+                values.into_iter().next().unwrap_or(serde_json::Value::Null)
+            } else {
+                serde_json::Value::Array(values)
+            }
+        }
+    }
+}
+
+/// Get nodes from XPathResult as a Vec
+/// This is a helper to provide the same API as the old libxml
+pub trait XPathResultExt {
+    fn get_nodes_as_vec(&self) -> Vec<XmlNode>;
+    fn get_readonly_nodes_as_vec(&self) -> Vec<XmlRoNode>;
+}
+
+impl XPathResultExt for XmlXpathValue {
+    fn get_nodes_as_vec(&self) -> Vec<XmlNode> {
+        match self {
+            XmlXpathValue::Nodes(nodes) => nodes.clone(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn get_readonly_nodes_as_vec(&self) -> Vec<XmlRoNode> {
+        match self {
+            XmlXpathValue::Nodes(nodes) => {
+                nodes.iter().cloned().map(XmlRoNode::from_node).collect()
+            }
+            _ => Vec::new(),
+        }
+    }
+}
+
+/// Convert XPathResult to a display string
+pub fn xpath_value_to_string(value: &XmlXpathValue) -> String {
+    match value {
+        XmlXpathValue::Boolean(b) => b.to_string(),
+        XmlXpathValue::Number(n) => n.to_string(),
+        XmlXpathValue::String(s) => s.clone(),
+        XmlXpathValue::Nodes(nodes) => {
+            let texts: Vec<String> = nodes.iter().filter_map(|node| node.get_content()).collect();
+            texts.join("")
+        }
+    }
 }
 
 pub fn collect_text_value(xpath_value: &XmlXpathValue) -> String {
@@ -187,23 +237,22 @@ pub fn collect_text_value(xpath_value: &XmlXpathValue) -> String {
 
 pub fn get_node_prefix(node: &XmlNode) -> String {
     match node.get_namespace() {
-        Some(ns) => ns.get_prefix(),
+        Some(ns) => ns.get_prefix().to_string(),
         None => "".to_string(),
     }
 }
 
 pub fn get_readonly_node_prefix(node: &XmlRoNode) -> String {
     match node.get_namespace() {
-        Some(ns) => ns.get_prefix(),
+        Some(ns) => ns.get_prefix().to_string(),
         None => "".to_string(),
     }
 }
 
 pub fn get_node_tag(node: &XmlNode) -> String {
-    match node.get_namespace() {
-        Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
-        None => node.get_name(),
-    }
+    // Use qname() to get the full qualified name including prefix,
+    // which preserves the original prefix even for undeclared namespaces.
+    node.qname().to_string()
 }
 
 pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
@@ -213,7 +262,7 @@ pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
         .unwrap_or_else(|| {
             let tag = get_node_tag(node);
             let mut key_values = node
-                .get_properties()
+                .get_attributes()
                 .iter()
                 .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>();
@@ -223,37 +272,33 @@ pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
 }
 
 pub fn get_readonly_node_tag(node: &XmlRoNode) -> String {
-    match node.get_namespace() {
-        Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
-        None => node.get_name(),
-    }
+    // Use qname() to get the full qualified name including prefix,
+    // which preserves the original prefix even for undeclared namespaces.
+    node.qname().to_string()
 }
 
 pub fn get_root_node(document: &XmlDocument) -> crate::Result<XmlNode> {
     document
         .get_root_element()
-        .ok_or(crate::Error::Xml("No root element".to_string()))
+        .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn get_root_readonly_node(document: &XmlDocument) -> crate::Result<XmlRoNode> {
     document
-        .get_root_readonly()
-        .ok_or(crate::Error::Xml("No root element".to_string()))
+        .get_root_element_ro()
+        .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
-    let doc =
-        parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{e}")))?;
-    Ok(doc.to_string())
+    fastxml::node_to_xml_string(document, node).map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn readonly_node_to_xml_string(
     document: &XmlDocument,
     node: &XmlRoNode,
 ) -> crate::Result<String> {
-    let doc =
-        parse(document.ronode_to_string(node)).map_err(|e| crate::Error::Xml(format!("{e}")))?;
-    Ok(doc.to_string())
+    fastxml::readonly_node_to_xml_string(document, node)
+        .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(String, String)>> {
@@ -266,6 +311,9 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(Stri
     for (key, value) in root.get_attributes().iter() {
         if key == "schemaLocation" {
             schema_locations = value.split_whitespace().map(|s| s.to_string()).collect();
+        } else if key == "noNamespaceSchemaLocation" {
+            // Handle xsi:noNamespaceSchemaLocation - use empty string for namespace
+            return Ok(vec![("".to_string(), value.to_string())]);
         }
     }
 
@@ -284,8 +332,7 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(Stri
 pub fn create_xml_schema_validation_context(
     schema_location: String,
 ) -> crate::Result<XmlSchemaValidationContext> {
-    let mut xsd_parser = XmlSchemaParserContext::from_file(schema_location.as_str());
-    let ctx = SchemaValidationContext::from_parser(&mut xsd_parser)
+    let ctx = fastxml::create_xml_schema_validation_context(schema_location)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
     Ok(XmlSchemaValidationContext {
         inner: parking_lot::RwLock::new(ctx),
@@ -296,9 +343,148 @@ pub fn create_xml_schema_validation_context(
 pub fn create_xml_schema_validation_context_from_buffer(
     schema: &[u8],
 ) -> crate::Result<XmlSchemaValidationContext> {
-    let mut xsd_parser = XmlSchemaParserContext::from_buffer(schema);
-    let ctx = SchemaValidationContext::from_parser(&mut xsd_parser)
+    let ctx = fastxml::create_xml_schema_validation_context_from_buffer(schema)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
+}
+
+/// Create schema validation context from multiple schema sources.
+/// This is useful when you have a wrapper schema that includes/imports other schemas.
+#[allow(dead_code)]
+pub fn create_xml_schema_validation_context_from_multiple(
+    schemas: &[(&str, &[u8])],
+) -> crate::Result<XmlSchemaValidationContext> {
+    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
+    use fastxml::schema::xsd::parse_xsd_multiple;
+
+    let compiled = parse_xsd_multiple(schemas)
+        .map_err(|e| crate::Error::Xml(format!("Failed to parse schemas: {e:?}")))?;
+    let ctx = FastXmlValidationContext::new(compiled);
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
+}
+
+/// Create schema validation context with automatic import resolution.
+///
+/// This function uses fastxml's built-in schema fetcher and resolver to:
+/// 1. Fetch the schema from the given URI (HTTP or local file)
+/// 2. Recursively resolve all xs:import and xs:include dependencies
+/// 3. Compile all schemas into a single validation context
+///
+/// # Arguments
+/// * `schema_uri` - The URI of the main schema (HTTP URL or local file path)
+/// * `base_dir` - Optional base directory for resolving relative paths
+///
+/// # Returns
+/// A compiled schema validation context with all dependencies resolved
+pub fn create_validation_context_with_imports(
+    schema_uri: &str,
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<XmlSchemaValidationContext> {
+    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
+    use fastxml::schema::xsd::parse_xsd_with_imports;
+
+    // Create fetcher with optional base directory
+    let fetcher = match base_dir {
+        Some(dir) => DefaultFetcher::with_base_dir(dir),
+        None => DefaultFetcher::new(),
+    };
+
+    // Fetch the main schema
+    let fetch_result = fetcher
+        .fetch(schema_uri)
+        .map_err(|e| crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", schema_uri)))?;
+
+    // Use the final URL (after redirects) as the base URI
+    let base_uri = &fetch_result.final_url;
+
+    // Parse with import resolution
+    let compiled =
+        parse_xsd_with_imports(&fetch_result.content, base_uri, &fetcher).map_err(|e| {
+            crate::Error::Xml(format!(
+                "Failed to parse schema with imports {}: {e:?}",
+                schema_uri
+            ))
+        })?;
+
+    let ctx = FastXmlValidationContext::new(compiled);
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
+}
+
+/// Create schema validation context for multiple schemas with automatic import resolution.
+///
+/// This function processes multiple schema locations and combines them into a single
+/// validation context. Each schema and its dependencies are resolved automatically.
+///
+/// # Arguments
+/// * `schema_locations` - List of (namespace, location) pairs from xsi:schemaLocation
+/// * `base_dir` - Optional base directory for resolving relative paths
+///
+/// # Returns
+/// A compiled schema validation context with all schemas and dependencies resolved
+pub fn create_validation_context_for_schema_locations(
+    schema_locations: &[(String, String)],
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<XmlSchemaValidationContext> {
+    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
+    use fastxml::schema::xsd::{
+        compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
+    };
+
+    if schema_locations.is_empty() {
+        return Err(crate::Error::Xml(
+            "No schema locations provided".to_string(),
+        ));
+    }
+
+    // Create fetcher with optional base directory
+    let fetcher = match base_dir {
+        Some(dir) => DefaultFetcher::with_base_dir(dir),
+        None => DefaultFetcher::new(),
+    };
+
+    // Collect all resolved schemas
+    let mut all_schemas: Vec<XsdSchema> = Vec::new();
+
+    for (_namespace, location) in schema_locations {
+        // Fetch the schema
+        let fetch_result = fetcher.fetch(location).map_err(|e| {
+            crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", location))
+        })?;
+
+        // Use the final URL (after redirects) as the base URI
+        let base_uri = &fetch_result.final_url;
+
+        // Parse with import resolution using a resolver
+        let mut resolver = SchemaResolver::new(&fetcher);
+        let schemas = resolver
+            .resolve_all(&fetch_result.content, base_uri)
+            .map_err(|e| {
+                crate::Error::Xml(format!(
+                    "Failed to resolve schema imports for {}: {e:?}",
+                    location
+                ))
+            })?;
+
+        all_schemas.extend(schemas);
+    }
+
+    // Compile all schemas together
+    let mut compiled = compile_schemas(all_schemas)
+        .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
+    register_builtin_types(&mut compiled);
+
+    let ctx = FastXmlValidationContext::new(compiled);
     Ok(XmlSchemaValidationContext {
         inner: parking_lot::RwLock::new(ctx),
         _marker: PhantomData,
@@ -317,20 +503,121 @@ pub fn validate_document_by_schema_context(
     document: &XmlDocument,
     xsd_validator: &XmlSchemaValidationContext,
 ) -> crate::Result<Vec<StructuredError>> {
-    match xsd_validator.inner.write().validate_document(document) {
-        Ok(_) => Ok(vec![]),
-        Err(e) => Ok(e),
+    match xsd_validator.inner.read().validate(document) {
+        Ok(errors) => Ok(errors),
+        Err(e) => Err(crate::Error::Xml(format!("Validation error: {e:?}"))),
     }
 }
 
-pub fn validate_node_by_schema_context(
-    node: &XmlNode,
-    xsd_validator: &XmlSchemaValidationContext,
-) -> crate::Result<Vec<StructuredError>> {
-    match xsd_validator.inner.write().validate_node(node) {
-        Ok(_) => Ok(vec![]),
-        Err(e) => Ok(e),
+// =============================================================================
+// Streaming Validation (StreamValidator) - Memory efficient
+// =============================================================================
+
+pub use fastxml::schema::types::CompiledSchema;
+
+/// Compile schemas for streaming validation using StreamValidator.
+/// This returns an Arc<CompiledSchema> that can be reused across multiple validations.
+pub fn compile_schema_for_streaming(
+    schema_locations: &[(String, String)],
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<std::sync::Arc<CompiledSchema>> {
+    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+    use fastxml::schema::xsd::{
+        compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
+    };
+
+    if schema_locations.is_empty() {
+        return Err(crate::Error::Xml(
+            "No schema locations provided".to_string(),
+        ));
     }
+
+    let fetcher = match base_dir {
+        Some(dir) => DefaultFetcher::with_base_dir(dir),
+        None => DefaultFetcher::new(),
+    };
+
+    let mut all_schemas: Vec<XsdSchema> = Vec::new();
+
+    for (_namespace, location) in schema_locations {
+        let fetch_result = fetcher.fetch(location).map_err(|e| {
+            crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", location))
+        })?;
+
+        let base_uri = &fetch_result.final_url;
+        let mut resolver = SchemaResolver::new(&fetcher);
+        let schemas = resolver
+            .resolve_all(&fetch_result.content, base_uri)
+            .map_err(|e| {
+                crate::Error::Xml(format!(
+                    "Failed to resolve schema imports for {}: {e:?}",
+                    location
+                ))
+            })?;
+
+        all_schemas.extend(schemas);
+    }
+
+    let mut compiled = compile_schemas(all_schemas)
+        .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
+    register_builtin_types(&mut compiled);
+
+    Ok(std::sync::Arc::new(compiled))
+}
+
+/// Validate XML using StreamValidator (streaming, memory-efficient).
+/// This function does NOT parse the XML into a DOM tree, significantly reducing memory usage.
+///
+/// # Arguments
+/// * `xml_bytes` - The XML content as bytes
+/// * `schema` - Compiled schema to validate against
+/// * `max_errors` - Maximum number of errors to collect (0 for unlimited)
+///
+/// # Returns
+/// Vector of validation errors, or error if validation setup failed
+pub fn validate_xml_streaming(
+    xml_bytes: &[u8],
+    schema: &std::sync::Arc<CompiledSchema>,
+    max_errors: usize,
+) -> crate::Result<Vec<StructuredError>> {
+    use fastxml::schema::validator::StreamValidator;
+    use std::io::{BufReader, Cursor};
+
+    let reader = BufReader::new(Cursor::new(xml_bytes));
+    let mut validator = StreamValidator::new(std::sync::Arc::clone(schema));
+
+    if max_errors > 0 {
+        validator = validator.with_max_errors(max_errors);
+    }
+
+    validator
+        .validate(reader)
+        .map_err(|e| crate::Error::Xml(format!("Streaming validation failed: {e:?}")))
+}
+
+/// Validate XML by automatically extracting schema location from the document.
+/// This is a convenience function that combines schema extraction and streaming validation.
+///
+/// # Arguments
+/// * `xml_bytes` - The XML content as bytes
+/// * `base_dir` - Optional base directory for resolving relative schema paths
+/// * `max_errors` - Maximum number of errors to collect (0 for unlimited)
+pub fn validate_xml_streaming_from_schema_location(
+    xml_bytes: &[u8],
+    base_dir: Option<&std::path::Path>,
+    max_errors: usize,
+) -> crate::Result<Vec<StructuredError>> {
+    // First, parse just enough to get schema locations (quick-xml based, not full DOM)
+    let doc = fastxml_parse(xml_bytes).map_err(|e| crate::Error::Xml(format!("{e}")))?;
+    let locations = parse_schema_locations(&doc)?;
+
+    if locations.is_empty() {
+        // No schema location - return empty (valid)
+        return Ok(Vec::new());
+    }
+
+    let schema = compile_schema_for_streaming(&locations, base_dir)?;
+    validate_xml_streaming(xml_bytes, &schema, max_errors)
 }
 
 pub fn find_nodes_by_xpath(
@@ -339,18 +626,12 @@ pub fn find_nodes_by_xpath(
     node: &XmlNode,
 ) -> crate::Result<Vec<XmlNode>> {
     let result = ctx
-        .node_evaluate(xpath, node)
+        .evaluate_from(xpath, node)
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
     let result = result
-        .get_nodes_as_vec()
+        .into_nodes()
         .into_iter()
-        .filter(|node| {
-            if let Some(node_type) = node.get_type() {
-                node_type == XmlNodeType::ElementNode
-            } else {
-                false
-            }
-        })
+        .filter(|node| node.get_type() == NodeType::Element)
         .collect::<Vec<_>>();
     Ok(result)
 }
@@ -360,19 +641,11 @@ pub fn find_readonly_nodes_by_xpath(
     xpath: &str,
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
-    let result = ctx
-        .node_evaluate_readonly(xpath, *node)
+    let result = fastxml::find_readonly_nodes_by_xpath(ctx, xpath, node)
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
     let result = result
-        .get_readonly_nodes_as_vec()
         .into_iter()
-        .filter(|node| {
-            if let Some(node_type) = node.get_type() {
-                node_type == XmlNodeType::ElementNode
-            } else {
-                false
-            }
-        })
+        .filter(|node| node.get_type() == NodeType::Element)
         .collect::<Vec<_>>();
     Ok(result)
 }
@@ -382,21 +655,11 @@ pub fn find_safe_readonly_nodes_by_xpath(
     xpath: &str,
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
-    let result = ctx
-        .inner
-        .read()
-        .node_evaluate_readonly(xpath, *node)
+    let result = fastxml::find_safe_readonly_nodes_by_xpath(&ctx.inner, xpath, node)
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
     let result = result
-        .get_readonly_nodes_as_vec()
         .into_iter()
-        .filter(|node| {
-            if let Some(node_type) = node.get_type() {
-                node_type == XmlNodeType::ElementNode
-            } else {
-                false
-            }
-        })
+        .filter(|node| node.get_type() == NodeType::Element)
         .collect::<Vec<_>>();
     Ok(result)
 }
@@ -443,9 +706,11 @@ mod tests {
     fn test_parse() {
         let xml = r#"<root><element>Test</element></root>"#;
         let document = parse(xml).unwrap();
+        let serialized = fastxml::serialize::document_to_xml_string(&document).unwrap();
+        // fastxml serializes without trailing newlines
         assert_eq!(
-            document.to_string(),
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root><element>Test</element></root>\n"
+            serialized,
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><element>Test</element></root>"
         );
     }
 
@@ -497,7 +762,7 @@ mod tests {
         let root = values.first().unwrap();
         let ctx = create_context(&document).unwrap();
         let result = ctx
-            .node_evaluate("//*[name()='gml:Definition']", root)
+            .evaluate_from("//*[name()='gml:Definition']", root)
             .unwrap();
         let result = result.get_nodes_as_vec();
         for node in result {
@@ -577,118 +842,6 @@ mod tests {
                                 <bldg:class codeSpace="../../codelists/Building_class.xml">3003</bldg:class>
                                 <bldg:usage codeSpace="../../codelists/Building_usage.xml">461</bldg:usage>
                                 <bldg:measuredHeight uom="m">4.6</bldg:measuredHeight>
-                                <bldg:lod0RoofEdge>
-                                        <gml:MultiSurface>
-                                                <gml:surfaceMember>
-                                                        <gml:Polygon>
-                                                                <gml:exterior>
-                                                                        <gml:LinearRing>
-                                                                                <gml:posList>35.37504090912612 139.8985740681761 0 35.37501086437582 139.89859169739964 0 35.37501767875842 139.8986090041047 0 35.37504772351121 139.89859137488614 0 35.37504090912612 139.8985740681761 0</gml:posList>
-                                                                        </gml:LinearRing>
-                                                                </gml:exterior>
-                                                        </gml:Polygon>
-                                                </gml:surfaceMember>
-                                        </gml:MultiSurface>
-                                </bldg:lod0RoofEdge>
-                                <bldg:lod1Solid>
-                                        <gml:Solid>
-                                                <gml:exterior>
-                                                        <gml:CompositeSurface>
-                                                                <gml:surfaceMember>
-                                                                        <gml:Polygon>
-                                                                                <gml:exterior>
-                                                                                        <gml:LinearRing>
-                                                                                                <gml:posList>35.37504090912612 139.8985740681761 3.721 35.37504772351121 139.89859137488614 3.721 35.37501767875842 139.8986090041047 3.721 35.37501086437582 139.89859169739964 3.721 35.37504090912612 139.8985740681761 3.721</gml:posList>
-                                                                                        </gml:LinearRing>
-                                                                                </gml:exterior>
-                                                                        </gml:Polygon>
-                                                                </gml:surfaceMember>
-                                                                <gml:surfaceMember>
-                                                                        <gml:Polygon>
-                                                                                <gml:exterior>
-                                                                                        <gml:LinearRing>
-                                                                                                <gml:posList>35.37504090912612 139.8985740681761 3.721 35.37501086437582 139.89859169739964 3.721 35.37501086437582 139.89859169739964 8.186 35.37504090912612 139.8985740681761 8.186 35.37504090912612 139.8985740681761 3.721</gml:posList>
-                                                                                        </gml:LinearRing>
-                                                                                </gml:exterior>
-                                                                        </gml:Polygon>
-                                                                </gml:surfaceMember>
-                                                                <gml:surfaceMember>
-                                                                        <gml:Polygon>
-                                                                                <gml:exterior>
-                                                                                        <gml:LinearRing>
-                                                                                                <gml:posList>35.37501086437582 139.89859169739964 3.721 35.37501767875842 139.8986090041047 3.721 35.37501767875842 139.8986090041047 8.186 35.37501086437582 139.89859169739964 8.186 35.37501086437582 139.89859169739964 3.721</gml:posList>
-                                                                                        </gml:LinearRing>
-                                                                                </gml:exterior>
-                                                                        </gml:Polygon>
-                                                                </gml:surfaceMember>
-                                                                <gml:surfaceMember>
-                                                                        <gml:Polygon>
-                                                                                <gml:exterior>
-                                                                                        <gml:LinearRing>
-                                                                                                <gml:posList>35.37501767875842 139.8986090041047 3.721 35.37504772351121 139.89859137488614 3.721 35.37504772351121 139.89859137488614 8.186 35.37501767875842 139.8986090041047 8.186 35.37501767875842 139.8986090041047 3.721</gml:posList>
-                                                                                        </gml:LinearRing>
-                                                                                </gml:exterior>
-                                                                        </gml:Polygon>
-                                                                </gml:surfaceMember>
-                                                                <gml:surfaceMember>
-                                                                        <gml:Polygon>
-                                                                                <gml:exterior>
-                                                                                        <gml:LinearRing>
-                                                                                                <gml:posList>35.37504772351121 139.89859137488614 3.721 35.37504090912612 139.8985740681761 3.721 35.37504090912612 139.8985740681761 8.186 35.37504772351121 139.89859137488614 8.186 35.37504772351121 139.89859137488614 3.721</gml:posList>
-                                                                                        </gml:LinearRing>
-                                                                                </gml:exterior>
-                                                                        </gml:Polygon>
-                                                                </gml:surfaceMember>
-                                                                <gml:surfaceMember>
-                                                                        <gml:Polygon>
-                                                                                <gml:exterior>
-                                                                                        <gml:LinearRing>
-                                                                                                <gml:posList>35.37504090912612 139.8985740681761 8.186 35.37501086437582 139.89859169739964 8.186 35.37501767875842 139.8986090041047 8.186 35.37504772351121 139.89859137488614 8.186 35.37504090912612 139.8985740681761 8.186</gml:posList>
-                                                                                        </gml:LinearRing>
-                                                                                </gml:exterior>
-                                                                        </gml:Polygon>
-                                                                </gml:surfaceMember>
-                                                        </gml:CompositeSurface>
-                                                </gml:exterior>
-                                        </gml:Solid>
-                                </bldg:lod1Solid>
-                                <uro:bldgDataQualityAttribute>
-                                        <uro:DataQualityAttribute>
-                                                <uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
-                                                <uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
-                                                <uro:geometrySrcDescLod2 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">999</uro:geometrySrcDescLod2>
-                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
-                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
-                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">400</uro:thematicSrcDesc>
-                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">700</uro:thematicSrcDesc>
-                                                <uro:appearanceSrcDescLod2 codeSpace="../../codelists/DataQualityAttribute_appearanceSrcDesc.xml">99</uro:appearanceSrcDescLod2>
-                                                <uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
-                                                <uro:publicSurveyDataQualityAttribute>
-                                                        <uro:PublicSurveyDataQualityAttribute>
-                                                                <uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
-                                                                <uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
-                                                                <uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">003</uro:publicSurveySrcDescLod0>
-                                                                <uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">012</uro:publicSurveySrcDescLod0>
-                                                                <uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
-                                                                <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
-                                                                <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">012</uro:publicSurveySrcDescLod1>
-                                                                <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
-                                                        </uro:PublicSurveyDataQualityAttribute>
-                                                </uro:publicSurveyDataQualityAttribute>
-                                        </uro:DataQualityAttribute>
-                                </uro:bldgDataQualityAttribute>
-                                <uro:bldgDisasterRiskAttribute>
-                                        <uro:TsunamiRiskAttribute>
-                                                <uro:description codeSpace="../../codelists/TsunamiRiskAttribute_description.xml">1</uro:description>
-                                                <uro:rank codeSpace="../../codelists/TsunamiRiskAttribute_rank.xml">1</uro:rank>
-                                                <uro:depth uom="m">0.147</uro:depth>
-                                        </uro:TsunamiRiskAttribute>
-                                </uro:bldgDisasterRiskAttribute>
-                                <uro:buildingDetailAttribute>
-                                        <uro:BuildingDetailAttribute>
-                                                <uro:surveyYear>2021</uro:surveyYear>
-                                        </uro:BuildingDetailAttribute>
-                                </uro:buildingDetailAttribute>
                                 <uro:buildingIDAttribute>
                                         <uro:BuildingIDAttribute>
                                                 <uro:buildingID>12206-bldg-51914</uro:buildingID>
@@ -696,11 +849,6 @@ mod tests {
                                                 <uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">12206</uro:city>
                                         </uro:BuildingIDAttribute>
                                 </uro:buildingIDAttribute>
-                                <uro:largeCustomerFacilityAttribute>
-                                        <uro:LargeCustomerFacilityAttribute>
-                                                <uro:surveyYear>2021</uro:surveyYear>
-                                        </uro:LargeCustomerFacilityAttribute>
-                                </uro:largeCustomerFacilityAttribute>
                         </bldg:Building>
         "#;
         let document = parse(xml).unwrap();
@@ -713,5 +861,144 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_namespace_uri_xpath_function() {
+        // Test that namespace-uri() and local-name() XPath functions work
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>36.6470041354812 137.05268308385453 0</gml:lowerCorner>
+            <gml:upperCorner>36.647798243275254 137.0537094956814 105.03314</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="bldg_test">
+            <core:creationDate>2025-03-21</core:creationDate>
+        </bldg:Building>
+    </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let document = parse(xml).unwrap();
+        let ctx = create_context(&document).unwrap();
+        let root = get_root_readonly_node(&document).unwrap();
+
+        // Test using namespace-uri() and local-name() XPath functions (supported in fastxml)
+        let result = find_readonly_nodes_by_xpath(
+            &ctx,
+            ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
+            &root,
+        );
+        println!("Result for namespace-uri() query: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "namespace-uri() XPath query failed: {:?}",
+            result.err()
+        );
+        let nodes = result.unwrap();
+        println!("Found {} nodes with namespace-uri() query", nodes.len());
+        assert_eq!(
+            nodes.len(),
+            1,
+            "Expected 1 Envelope node with namespace-uri(), found {}",
+            nodes.len()
+        );
+
+        // Also test the prefixed version for comparison
+        let result_prefixed = find_readonly_nodes_by_xpath(&ctx, ".//gml:Envelope", &root);
+        assert!(result_prefixed.is_ok(), "Prefixed XPath query failed");
+        assert_eq!(
+            result_prefixed.unwrap().len(),
+            1,
+            "Expected 1 Envelope node with prefix"
+        );
+
+        // Test get_child_nodes and get_readonly_node_tag
+        let envelope = &nodes[0];
+        let children = envelope.get_child_nodes();
+        println!("Envelope has {} children", children.len());
+        for child in children.iter() {
+            let tag = get_readonly_node_tag(child);
+            let node_type = child.get_type();
+            let ns_info = child
+                .get_namespace()
+                .map(|n| format!("{}={}", n.get_prefix(), n.get_href()));
+            println!(
+                "  Child: tag='{}', type={:?}, namespace={:?}",
+                tag, node_type, ns_info
+            );
+        }
+
+        // In fastxml, get_namespace() works correctly for child elements
+        let lower_corner = children
+            .iter()
+            .find(|&n| get_readonly_node_tag(n) == "gml:lowerCorner");
+        assert!(
+            lower_corner.is_some(),
+            "Should find gml:lowerCorner in Envelope children"
+        );
+
+        // Test get_attribute_ns for namespaced attributes
+        let building = find_readonly_nodes_by_xpath(&ctx, ".//bldg:Building", &root).unwrap();
+        assert_eq!(building.len(), 1, "Should find bldg:Building");
+        let building_node = &building[0];
+
+        // Test gml:id attribute - should work in fastxml
+        let gml_id = building_node.get_attribute_ns("id", "http://www.opengis.net/gml");
+        println!("gml:id via get_attribute_ns: {:?}", gml_id);
+        assert_eq!(
+            gml_id,
+            Some("bldg_test".to_string()),
+            "get_attribute_ns should return gml:id value"
+        );
+
+        // Also try regular get_attribute - returns local name as key in fastxml
+        let attrs = building_node.get_attributes();
+        println!("All attributes: {:?}", attrs);
+        assert!(
+            attrs.contains_key("id"),
+            "Attributes should contain 'id' key"
+        );
+
+        // Test that root node has proper namespace
+        let root_name = root.get_name();
+        let root_tag = get_readonly_node_tag(&root);
+        println!("Root name (get_name): {}", root_name);
+        println!("Root tag (get_readonly_node_tag): {}", root_tag);
+        let root_ns = root.get_namespace();
+        println!(
+            "Root namespace: {:?}",
+            root_ns
+                .as_ref()
+                .map(|n| format!("{}={}", n.get_prefix(), n.get_href()))
+        );
+
+        // In fastxml, get_namespace() returns correct namespace,
+        // so get_readonly_node_tag returns tag with prefix
+        assert_eq!(
+            root_tag, "core:CityModel",
+            "Root tag should have namespace prefix in fastxml"
+        );
+        assert!(root_ns.is_some(), "Root should have namespace");
+
+        // Test building node namespace
+        let building_name = building_node.get_name();
+        let building_tag = get_readonly_node_tag(building_node);
+        println!("Building name (get_name): {}", building_name);
+        println!("Building tag (get_readonly_node_tag): {}", building_tag);
+        let building_ns = building_node.get_namespace();
+        println!(
+            "Building namespace: {:?}",
+            building_ns
+                .as_ref()
+                .map(|n| format!("{}={}", n.get_prefix(), n.get_href()))
+        );
+        assert_eq!(
+            building_tag, "bldg:Building",
+            "Building tag should have namespace prefix in fastxml"
+        );
+        assert!(building_ns.is_some(), "Building should have namespace");
     }
 }
