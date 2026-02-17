@@ -9,10 +9,10 @@ use reearth_flow_types::{
     material::{self, Material},
     Feature, GeometryType,
 };
-use tracing;
 
 use super::{tiling, tiling::zxy_from_lng_lat};
 use crate::atlas::GltfFeature;
+use crate::zip_eq_logged::ZipEqLoggedExt;
 
 pub type TileZXYName = (u8, u32, u32);
 
@@ -65,18 +65,18 @@ pub fn slice_to_tiles<E>(
                 for (((poly, poly_uv), poly_mat), poly_tex) in entry
                     .polygons
                     .iter()
-                    .zip_eq(
+                    .zip_eq_logged(
                         city_gml
                             .polygon_uvs
                             .range(entry.pos as usize..(entry.pos + entry.len) as usize)
                             .into_iter(),
                     )
-                    .zip_eq(
+                    .zip_eq_logged(
                         city_gml.polygon_materials
                             [entry.pos as usize..(entry.pos + entry.len) as usize]
                             .iter(),
                     )
-                    .zip_eq(
+                    .zip_eq_logged(
                         city_gml.polygon_textures
                             [entry.pos as usize..(entry.pos + entry.len) as usize]
                             .iter(),
@@ -173,49 +173,22 @@ pub fn slice_to_tiles<E>(
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later
                                     });
-                            let poly_ring_count = poly.rings().count();
-                            let uv_ring_count = poly_uv.rings().count();
-                            if poly_ring_count != uv_ring_count {
-                                tracing::error!(
-                                    "polygon ring count ({}) != uv ring count ({}): geometry/uv mismatch likely from an earlier processing stage",
-                                    poly_ring_count,
-                                    uv_ring_count,
-                                );
-                            }
-                            for (ri, (ring, uv_ring)) in
-                                poly.rings().zip(poly_uv.rings()).enumerate()
-                            {
-                                let ring_coords: Vec<_> = ring.iter_closed().collect();
-                                let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
-                                if ring_coords.len() != uv_coords.len() {
-                                    eprintln!(
-                                        "MISMATCH ring[{}]: raw_geo={} raw_uv={} closed_geo={} closed_uv={} geo_first={:?} geo_last={:?} uv_first={:?} uv_last={:?}",
-                                        ri,
-                                        ring.raw_coords().len(),
-                                        uv_ring.raw_coords().len(),
-                                        ring_coords.len(),
-                                        uv_coords.len(),
-                                        ring.raw_coords().first(),
-                                        ring.raw_coords().last(),
-                                        uv_ring.raw_coords().first(),
-                                        uv_ring.raw_coords().last(),
+                            assert!(poly.rings().count() == poly_uv.rings().count());
+                            poly.rings().zip_eq_logged(poly_uv.rings()).enumerate().for_each(
+                                |(ri, (ring, uv_ring))| {
+                                    ring.iter_closed().zip_eq_logged(uv_ring.iter_closed()).for_each(
+                                        |(c, uv)| {
+                                            ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
+                                        },
                                     );
-                                }
-                                for (c, uv) in ring_coords.iter().zip(
-                                    uv_coords
-                                        .iter()
-                                        .chain(std::iter::repeat(&[0.0, 0.0]))
-                                        .take(ring_coords.len()),
-                                ) {
-                                    ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
-                                }
-                                if ri == 0 {
-                                    sliced_feature.polygons.add_exterior(ring_buffer.drain(..));
-                                    sliced_feature.polygon_material_ids.push(mat_idx as u32);
-                                } else {
-                                    sliced_feature.polygons.add_interior(ring_buffer.drain(..));
-                                }
-                            }
+                                    if ri == 0 {
+                                        sliced_feature.polygons.add_exterior(ring_buffer.drain(..));
+                                        sliced_feature.polygon_material_ids.push(mat_idx as u32);
+                                    } else {
+                                        sliced_feature.polygons.add_interior(ring_buffer.drain(..));
+                                    }
+                                },
+                            );
                         }
                     }
                 }
@@ -270,31 +243,13 @@ fn slice_polygon(
 
         // todo?: check interior bbox to optimize
 
-        for (ri, (ring, uv_ring)) in poly.rings().zip(poly_uv.rings()).enumerate() {
+        for (ri, (ring, uv_ring)) in poly.rings().zip_eq_logged(poly_uv.rings()).enumerate() {
             if ring.raw_coords().is_empty() {
                 continue;
             }
             ring_buffer.clear();
-            let ring_coords: Vec<_> = ring.iter_closed().collect();
-            let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
-            if ring_coords.len() != uv_coords.len() {
-                tracing::error!(
-                    "slice_polygon ring[{}] coord count ({}) != uv coord count ({}): geometry/uv mismatch likely from an earlier processing stage",
-                    ri,
-                    ring_coords.len(),
-                    uv_coords.len(),
-                );
-            }
-            ring_coords
-                .iter()
-                .zip(
-                    uv_coords
-                        .iter()
-                        .copied()
-                        .chain(std::iter::repeat([0.0, 0.0]))
-                        .take(ring_coords.len()),
-                )
-                .map(|(c, uv)| (*c, uv))
+            ring.iter_closed()
+                .zip_eq_logged(uv_ring.iter_closed())
                 .fold(None, |a, b| {
                     let Some((a, a_uv)) = a else { return Some(b) };
                     let (b, b_uv) = b;
@@ -350,7 +305,7 @@ fn slice_polygon(
 
     // Slice along X-axis
     let mut poly_buf: Polygon<[f64; 5]> = Polygon::new();
-    for (yi, y_sliced_poly) in y_range.zip_eq(y_sliced_polys.iter()) {
+    for (yi, y_sliced_poly) in y_range.zip_eq_logged(y_sliced_polys.iter()) {
         let x_iter = {
             let (min_x, max_x) = y_sliced_poly
                 .exterior()

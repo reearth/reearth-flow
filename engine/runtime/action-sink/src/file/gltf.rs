@@ -10,7 +10,6 @@ use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
 use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
-use itertools::Itertools;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
@@ -22,8 +21,6 @@ use reearth_flow_types::material::{self, Material};
 use reearth_flow_types::{Expr, GeometryType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tracing;
-
 use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 use tempfile::tempdir;
@@ -33,6 +30,7 @@ use crate::atlas::{
     encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export,
 };
 use crate::errors::SinkError;
+use crate::zip_eq_logged::ZipEqLoggedExt;
 
 #[derive(Debug, Clone, Default)]
 pub struct GltfWriterSinkFactory;
@@ -392,18 +390,18 @@ impl GltfWriter {
                     for (((poly, poly_uv), poly_mat), poly_tex) in entry
                         .polygons
                         .iter()
-                        .zip_eq(
+                        .zip_eq_logged(
                             city_gml
                                 .polygon_uvs
                                 .range(entry.pos as usize..(entry.pos + entry.len) as usize)
                                 .into_iter(),
                         )
-                        .zip_eq(
+                        .zip_eq_logged(
                             city_gml.polygon_materials
                                 [entry.pos as usize..(entry.pos + entry.len) as usize]
                                 .iter(),
                         )
-                        .zip_eq(
+                        .zip_eq_logged(
                             city_gml.polygon_textures
                                 [entry.pos as usize..(entry.pos + entry.len) as usize]
                                 .iter(),
@@ -432,49 +430,29 @@ impl GltfWriter {
                         };
                         let (mat_idx, _) = materials.insert_full(mat);
                         let mut ring_buffer: Vec<[f64; 5]> = Vec::new();
-                        let poly_ring_count = poly.rings().count();
-                        let uv_ring_count = poly_uv.rings().count();
-                        if poly_ring_count != uv_ring_count {
-                            tracing::error!(
-                                "polygon ring count ({}) != uv ring count ({}): geometry/uv mismatch likely from an earlier processing stage",
-                                poly_ring_count,
-                                uv_ring_count,
-                            );
-                        }
-                        for (ri, (ring, uv_ring)) in poly.rings().zip(poly_uv.rings()).enumerate() {
-                            let ring_coords: Vec<_> = ring.iter_closed().collect();
-                            let uv_coords: Vec<_> = uv_ring.iter_closed().collect();
-                            if ring_coords.len() != uv_coords.len() {
-                                tracing::error!(
-                                    "ring[{}] coord count ({}) != uv coord count ({}): geometry/uv mismatch likely from an earlier processing stage",
-                                    ri,
-                                    ring_coords.len(),
-                                    uv_coords.len(),
-                                );
-                            }
-                            for (c, uv) in ring_coords.iter().zip(
-                                uv_coords
-                                    .iter()
-                                    .chain(std::iter::repeat(&[0.0, 0.0]))
-                                    .take(ring_coords.len()),
-                            ) {
-                                let [lng, lat, height] = *c;
-                                ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
+                        poly.rings().zip_eq_logged(poly_uv.rings()).enumerate().for_each(
+                            |(ri, (ring, uv_ring))| {
+                                ring.iter_closed().zip_eq_logged(uv_ring.iter_closed()).for_each(
+                                    |(c, uv)| {
+                                        let [lng, lat, height] = c;
+                                        ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
 
-                                local_bvol.min_lng = local_bvol.min_lng.min(lng);
-                                local_bvol.max_lng = local_bvol.max_lng.max(lng);
-                                local_bvol.min_lat = local_bvol.min_lat.min(lat);
-                                local_bvol.max_lat = local_bvol.max_lat.max(lat);
-                                local_bvol.min_height = local_bvol.min_height.min(height);
-                                local_bvol.max_height = local_bvol.max_height.max(height);
-                            }
-                            if ri == 0 {
-                                class_feature.polygons.add_exterior(ring_buffer.drain(..));
-                                class_feature.polygon_material_ids.push(mat_idx as u32);
-                            } else {
-                                class_feature.polygons.add_interior(ring_buffer.drain(..));
-                            }
-                        }
+                                        local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                                        local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                                        local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                                        local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                                        local_bvol.min_height = local_bvol.min_height.min(height);
+                                        local_bvol.max_height = local_bvol.max_height.max(height);
+                                    },
+                                );
+                                if ri == 0 {
+                                    class_feature.polygons.add_exterior(ring_buffer.drain(..));
+                                    class_feature.polygon_material_ids.push(mat_idx as u32);
+                                } else {
+                                    class_feature.polygons.add_interior(ring_buffer.drain(..));
+                                }
+                            },
+                        );
                     }
                 }
                 GeometryType::Curve => {

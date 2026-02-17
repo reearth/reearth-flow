@@ -1,4 +1,5 @@
 mod atlas;
+mod zip_eq_logged;
 pub mod echo;
 pub mod errors;
 pub mod file;
