@@ -1,0 +1,682 @@
+id: a7c1d8e2-3b4f-5a6c-9d0e-f1234567890a
+name: PLATEAU4-DataConvert-09-unf-workflow
+entryGraphId: b8d2e9f3-4c5a-6b7d-0e1f-a2345678901b
+with:
+  cityGmlPath: null
+  codelistsPath: null
+  schemasPath: null
+  codelists: null
+  schemas: null
+  targetPackages:
+  - unf
+  workerArtifactPath: null
+graphs:
+- id: c6863b71-953b-4d15-af56-396fc93fc617
+  name: FolderAndfilePathReader
+  nodes:
+  - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+  - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      sourceDataset: |
+        env.get("__value").cityGmlPath
+      extractArchive: true
+      destPrefix: udx
+  - id: 9d04983e-e84e-4622-b0c6-827d7afad720
+    name: FeatureFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").extension == "gml"
+        outputPort: default
+  - id: 712e4c72-950d-466d-9598-19f299668e7e
+    name: PLATEAU4.UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    name: FeatureFilterByPackage
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
+  - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    name: FeatureCounterByUdxDirs
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      groupBy:
+      - udxDirs
+      outputAttribute: fileIndex
+  - id: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    name: CityCodeExtractor
+    type: action
+    action: PLATEAU4.CityCodeExtractor
+    with:
+      codelistsPathAttribute: dirCodelists
+      cityCodeAttribute: cityCode
+  - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+    name: OutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+  edges:
+  - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
+    from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    fromPort: default
+    toPort: default
+  - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
+    from: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    to: 9d04983e-e84e-4622-b0c6-827d7afad720
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
+    from: 9d04983e-e84e-4622-b0c6-827d7afad720
+    to: 712e4c72-950d-466d-9598-19f299668e7e
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
+    from: 712e4c72-950d-466d-9598-19f299668e7e
+    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
+    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    to: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    fromPort: default
+    toPort: default
+  - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
+    from: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    fromPort: default
+    toPort: default
+  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+    from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+    fromPort: default
+    toPort: default
+- id: 7e98d856-1438-4148-bdcb-91747ef2e405
+  name: PLATEAU3.LodSplitterWithDM
+  nodes:
+  - id: 5848465e-828f-4646-874e-e2f182b73714
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    name: DmGeometricAttributeFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__feature_type") == "uro:DmGeometricAttribute"
+        outputPort: DmGeometricAttribute
+  - id: 278ab965-ce22-473d-98c6-c7b381c38679
+    name: GeometryFilter
+    type: action
+    action: GeometryFilter
+    with:
+      filterType: none
+  - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    name: FeatureFilterByExceptSplit
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("exceptSplit") ?? false
+        outputPort: exceptSplit
+  - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+    name: GeometrySplitter
+    type: action
+    action: GeometrySplitter
+  - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    name: FeatureFilterByLod
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").lod == "0"
+        outputPort: lod0
+      - expr: |
+          env.get("__value").lod == "1"
+        outputPort: lod1
+      - expr: |
+          env.get("__value").lod == "2"
+        outputPort: lod2
+      - expr: |
+          env.get("__value").lod == "3"
+        outputPort: lod3
+      - expr: |
+          env.get("__value").lod == "4"
+        outputPort: lod4
+  - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
+    name: DmGeometricAttributeRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: DmGeometricAttribute
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
+    name: Lod0Router
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: lod0
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
+    name: Lod1Router
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: lod1
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
+    name: Lod2Router
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: lod2
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
+    name: Lod3Router
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: lod3
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
+    name: Lod4Router
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: lod4
+  edges:
+  - id: fcc0d596-9169-4289-9f35-07c8cbec6f10
+    from: 5848465e-828f-4646-874e-e2f182b73714
+    to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    fromPort: default
+    toPort: default
+  - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: 278ab965-ce22-473d-98c6-c7b381c38679
+    fromPort: unfiltered
+    toPort: default
+  - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: b1c2d3e4-f5a6-7890-bcde-f12345678901
+    fromPort: DmGeometricAttribute
+    toPort: default
+  - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
+    from: 278ab965-ce22-473d-98c6-c7b381c38679
+    to: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    fromPort: unfiltered
+    toPort: default
+  - id: ef2f1484-6173-4f34-85bc-58bc45e31bff
+    from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+    fromPort: unfiltered
+    toPort: default
+  - id: 111cc70e-e1ad-44f4-b4c8-82f7b1cf1309
+    from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+    to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    fromPort: default
+    toPort: default
+  - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
+    from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    fromPort: exceptSplit
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7780
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3320
+    fromPort: lod0
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7781
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3321
+    fromPort: lod1
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7782
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3322
+    fromPort: lod2
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7783
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3323
+    fromPort: lod3
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7784
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3324
+    fromPort: lod4
+    toPort: default
+- id: b8d2e9f3-4c5a-6b7d-0e1f-a2345678901b
+  name: entry_point
+  nodes:
+  - id: c9e3f0a4-5d6b-7c8e-1f2a-b3456789012c
+    name: FeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("cityGmlPath"),
+            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+            codelists: env.get("codelistsPath") ?? env.get("codelists"),
+            schemas: env.get("schemasPath") ?? env.get("schemas"),
+          },
+        ]
+  - id: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
+    name: FolderAndFilePathReader
+    type: subGraph
+    subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+  - id: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+    name: FeatureReaderByCityGml
+    type: action
+    action: FeatureCityGmlReader
+    with:
+      codelistsPath: env.get("__value").codelists
+      flatten: true
+      dataset: |
+        env.get("__value")["path"]
+  - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+    name: AttributeManagerDict
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: feature_type_without_prefix
+        method: create
+        value: |
+          env.get("__value")["featureType"].split(":")[1]
+  - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+    name: AttributeDuplicateFilterDict
+    type: action
+    action: AttributeDuplicateFilter
+    with:
+      filterBy:
+      - feature_type_without_prefix
+  - id: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+    name: AttributeConversionTableDict
+    type: action
+    action: AttributeConversionTable
+    with:
+      format: csv
+      inline: |
+        name,description
+        WaterPipe,管路（水道）
+        SewerPipe,管路（下水道）
+        ThermalPipe,管路（熱供給管）
+        OilGasChemicalsPipe,管路（ガス管）
+        Pipe,管路（その他）
+        Duct,保護設備（トラフ等）
+        TelecommunicationsCable,通信ケーブル
+        ElectricityCable,電気ケーブル
+        Cable,ケーブル（その他）
+        Appurtenance,設備(弁栓類）
+        Manhole,マンホール
+        Handhole,ハンドホール
+      rules:
+      - featureFroms:
+        - feature_type_without_prefix
+        featureTo: feature_type_ja
+        conversionTableKeys:
+        - name
+        conversionTableTo: description
+  - id: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
+    name: JsonWriterDict
+    type: action
+    action: JsonWriter
+    with:
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+      converter: |
+        #{
+          unf: env.get("__features").map(|f| #{
+            name: f.feature_type_without_prefix,
+            description: f.feature_type_ja
+          })
+        }
+  - id: 0f670054-828b-48d8-9672-dbc34247f2b3
+    name: AttributeManagerPreFlattener
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: meshcode
+        method: create
+        value: |
+          let file = file::extract_filename(env.get("__value")["path"]);
+          file.split("_")[0]
+      - attribute: gml_id
+        method: create
+        value: |
+          env.get("__feature_id") ?? env.get("__value")["gmlId"]
+      - attribute: feature_type
+        method: create
+        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
+        method: remove
+  - id: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    name: Flattener
+    type: action
+    action: PLATEAU4.AttributeFlattener
+  - id: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    name: LodSplitterWithDM
+    type: subGraph
+    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+  - id: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+    name: AttributeMapperFor3dTiles
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: city_code
+      - attribute: city_name
+        valueAttribute: city_name
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro:lodType
+        valueAttribute: uro:lodType
+  - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
+    name: AttributeManagerByLod
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: cityCode
+        method: rename
+        value: city_code
+      - attribute: cityName
+        method: rename
+        value: city_name
+  - id: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: '4326'
+  - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    name: VerticalReprojector
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToWgs84
+  - id: 782c6a8d-a772-4238-a32e-32caadbbb91f
+    name: Cesium3DTilesWriter
+    type: action
+    action: Cesium3DTilesWriter
+    with:
+      minZoom: 15
+      maxZoom: 18
+      attachTexture: true
+      dracoCompression: false
+      output: |
+        let artifact = env.get("workerArtifactPath");
+        let pkg = env.get("__value")["package"];
+        let ft = env.get("__value")["feature_type"].split(":").pop();
+        let lod = env.get("__value").lod;
+        file::join_path(artifact, pkg + "_" + ft + "_lod" + lod)
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let pkg = env.get("__value")["package"];
+        let ft = env.get("__value")["feature_type"].split(":").pop();
+        let lod = env.get("__value").lod;
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        if city_gml.ends_with("_" + pkg) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + ".zip")
+  - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+    name: FeatureSorterDmGeometricAttribute
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - package
+      order: ascending
+  - id: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+    name: AttributeMapperDmGeometricAttribute
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: __package
+        valueAttribute: package
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: cityCode
+      - attribute: city_name
+        valueAttribute: cityName
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: core_creationDate
+        valueAttribute: core:creationDate
+      - attribute: uro_geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro_lodType
+        valueAttribute: uro:lodType
+      - attribute: dm_feature_type
+        valueAttribute: dm_feature_type
+      - attribute: dm_attributes
+        valueAttribute: dm_attributes
+      - attribute: dm_dmCode
+        valueAttribute: dm_dmCode
+      - attribute: dm_dmCode_code
+        valueAttribute: dm_dmCode_code
+      - attribute: dm_geometryType
+        valueAttribute: dm_geometryType
+      - attribute: dm_geometryType_code
+        valueAttribute: dm_geometryType_code
+      - attribute: dm_mapLevel
+        valueAttribute: dm_mapLevel
+      - attribute: dm_mapLevel_code
+        valueAttribute: dm_mapLevel_code
+      - attribute: dm_shapeType
+        valueAttribute: dm_shapeType
+      - attribute: dm_shapeType_code
+        valueAttribute: dm_shapeType_code
+  - id: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+    name: HorizontalReprojectorDmGeometricAttribute
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: '4326'
+  - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    name: TwoDimensionForcerDmGeometricAttribute
+    type: action
+    action: TwoDimensionForcer
+  - id: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
+    name: MVTWriterDmGeometricAttribute
+    type: action
+    action: MVTWriter
+    with:
+      layerName: |
+        env.get("__value").feature_type.split(":")[1]
+      minZoom: 8
+      maxZoom: 18
+      extent: 65536
+      output: |
+        let feature_type = env.get("__value")["feature_type"];
+        let key = feature_type.split(":")[1];
+        let pkg = env.get("__value")["__package"];
+        file::join_path(env.get("workerArtifactPath"), pkg + "_" + key + "_dm_geometric_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let pkg = env.get("__value")["__package"];
+        let feature_type = env.get("__value")["feature_type"];
+        let key = feature_type.split(":")[1];
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        if city_gml.ends_with("_" + pkg) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_" + key + "_dm_geometric_attributes.zip")
+      skipUnexposedAttributes: true
+      colonToUnderscore: true
+  edges:
+  - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012345b6f
+    from: c9e3f0a4-5d6b-7c8e-1f2a-b3456789012c
+    to: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
+    fromPort: default
+    toPort: default
+  - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123456c7a
+    from: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
+    to: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+    fromPort: default
+    toPort: default
+  - id: c9e3f0a4-5d6b-7c8e-1f2a-b345d1c701e1
+    from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+    to: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+    fromPort: default
+    toPort: default
+  - id: d0f4a1b5-6e7c-8d9f-2a3b-c456d1c702e2
+    from: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+    to: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+    fromPort: default
+    toPort: default
+  - id: e1a5b2c6-7f8d-9e0a-3b4c-d567d1c703e3
+    from: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+    to: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+    fromPort: default
+    toPort: default
+  - id: f2b6c3d7-8a9e-0f1b-4c5d-e678d1c704e4
+    from: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+    to: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
+    fromPort: default
+    toPort: default
+  - id: ccb494b2-8908-4a01-ae38-918718315912
+    from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+    to: 0f670054-828b-48d8-9672-dbc34247f2b3
+    fromPort: default
+    toPort: default
+  - id: 19d12a4b-13d5-4a9f-ada5-24315b4d6392
+    from: 0f670054-828b-48d8-9672-dbc34247f2b3
+    to: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    fromPort: default
+    toPort: default
+  - id: b35b7683-5513-48d2-ad0d-241391323805
+    from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    to: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    fromPort: default
+    toPort: default
+  - id: 5bbab594-dc6d-4ecb-be5d-e6fd5006222f
+    from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+    fromPort: lod1
+    toPort: default
+  - id: e4a9a38d-bbcb-4ef1-bbfb-cb4cc6322a34
+    from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+    fromPort: lod2
+    toPort: default
+  - id: 520cdac3-22e4-487b-b326-a859bb5d38a7
+    from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+    fromPort: lod3
+    toPort: default
+  - id: 6e1f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+    fromPort: lod4
+    toPort: default
+  - id: bf8df312-1461-4431-8134-010dd518d4a4
+    from: 3713b42c-a3af-489f-91a5-d101c26fcaee
+    to: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+    fromPort: default
+    toPort: default
+  - id: d5e6f7a8-b9c0-1d2e-3f45-6789abcdef01
+    from: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    fromPort: default
+    toPort: default
+  - id: f251eb31-4ffd-4edf-a56c-f2dbd9eb0fc9
+    from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+    fromPort: default
+    toPort: default
+  - id: e9a3b0c4-5f6d-7e8a-1b2c-d345678c8000
+    from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    to: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+    fromPort: schema
+    toPort: default
+  - id: f0b4c1d5-6a7e-8f9b-2c3d-e456789d9000
+    from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+    to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+    fromPort: default
+    toPort: schema
+  - id: 9bef0954-f6a8-4a02-8d41-8f1f24a72881
+    from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+    to: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+    fromPort: DmGeometricAttribute
+    toPort: default
+  - id: dfa3779b-517c-47ce-86e5-74bc74a0d2b7
+    from: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+    to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+    fromPort: default
+    toPort: default
+  - id: b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890
+    from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+    to: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+    fromPort: default
+    toPort: default
+  - id: c3d4e5f6-a7b8-9012-c3d4-e5f6a7b89012
+    from: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+    to: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    fromPort: default
+    toPort: default
+  - id: a9683146-31ad-4dca-9903-947088c6731b
+    from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
+    fromPort: default
+    toPort: default
