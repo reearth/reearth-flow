@@ -540,6 +540,11 @@ impl GmlGeometry {
         for line in &mut self.line_strings {
             line.transform_horizontal(transform_fn)?;
         }
+        for point in &mut self.points {
+            let (new_x, new_y) = transform_fn(point.x, point.y)?;
+            point.x = new_x;
+            point.y = new_y;
+        }
         for composite in &mut self.composite_surfaces {
             composite.transform_horizontal(transform_fn)?;
         }
