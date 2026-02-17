@@ -325,6 +325,13 @@ graphs:
             - attribute: dm_shapeType_code
               valueAttribute: dm_shapeType_code
 
+      - id: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+        name: HorizontalReprojectorDmGeometricAttribute
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: "4326"
+
       - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
         name: TwoDimensionForcerDmGeometricAttribute
         type: action
@@ -483,9 +490,15 @@ graphs:
         to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
         fromPort: default
         toPort: default
-      # AttributeMapperDmGeometricAttribute -> TwoDimensionForcerDmGeometricAttribute
+      # AttributeMapperDmGeometricAttribute -> HorizontalReprojectorDmGeometricAttribute
       - id: b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890
         from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        to: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+        fromPort: default
+        toPort: default
+      # HorizontalReprojectorDmGeometricAttribute -> TwoDimensionForcerDmGeometricAttribute
+      - id: c3d4e5f6-a7b8-9012-c3d4-e5f6a7b89012
+        from: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
         to: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
         fromPort: default
         toPort: default
