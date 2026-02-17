@@ -174,21 +174,22 @@ pub fn slice_to_tiles<E>(
                                         materials: Default::default(), // set later
                                     });
                             assert!(poly.rings().count() == poly_uv.rings().count());
-                            poly.rings().zip_eq_logged(poly_uv.rings()).enumerate().for_each(
-                                |(ri, (ring, uv_ring))| {
-                                    ring.iter_closed().zip_eq_logged(uv_ring.iter_closed()).for_each(
-                                        |(c, uv)| {
+                            poly.rings()
+                                .zip_eq_logged(poly_uv.rings())
+                                .enumerate()
+                                .for_each(|(ri, (ring, uv_ring))| {
+                                    ring.iter_closed()
+                                        .zip_eq_logged(uv_ring.iter_closed())
+                                        .for_each(|(c, uv)| {
                                             ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
-                                        },
-                                    );
+                                        });
                                     if ri == 0 {
                                         sliced_feature.polygons.add_exterior(ring_buffer.drain(..));
                                         sliced_feature.polygon_material_ids.push(mat_idx as u32);
                                     } else {
                                         sliced_feature.polygons.add_interior(ring_buffer.drain(..));
                                     }
-                                },
-                            );
+                                });
                         }
                     }
                 }
