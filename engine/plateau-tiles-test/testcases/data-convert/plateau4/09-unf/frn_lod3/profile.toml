@@ -23,11 +23,8 @@ threshold = 0.001
 
 [filter.tree]
 "udx/unf/08EE752_unf_10169_sewer_op.gml" = [
-	# test each feature type
 	"unf_66ee89c0-50d9-4561-a99b-3b4e66842b2b",
 	"unf_ef397b53-7d2f-43d8-9398-6a2e91ee41e0",
 	"unf_1444d979-3842-4930-96c8-7662456b3e49",
 	"unf_1a6787c5-da82-4634-8d4e-7a7db46a0276",
-	# example that lod0Geometry is gml:Point
-	"unf_1444d979-3842-4930-96c8-7662456b3e49"
 ]
