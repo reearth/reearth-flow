@@ -32,21 +32,7 @@ cargo run -p plateau-tiles-test
 - 3D tiles v1.0 `.b3dm` output by FME is not supported. Use [3d-tiles-tool](https://github.com/CesiumGS/3d-tiles-tools) to upgrade it.
   - `3d-tiles-tools` has several [problems](https://github.com/reearth/reearth-flow/pull/1841) especially when testing tiles containing multiple features.
 - FME's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
-
-### Ignored differences in attribute test
-
-- ignore empty string vs Null difference: limitation of `3d-tiles-tools` upgrading when constructing `fme.zip`
-- ignore string vs int type difference: FME has implicit type conversion from string to integer
 - ignore bool vs int difference: FME outputs integer but using native bool is possibly better
-
-## Tests
-
-- `json_attributes` - Compare JSON outputs.
-- `mvt_attributes` - Compare MVT tile attributes.
-- `mvt_polygons` - Compare MVT polygon geometries using symmetric difference area.
-- `mvt_lines` - Compare MVT tiles linestrings and polygon outliers.
-- `cesium_attributes` - Compare 3D Tiles feature attributes.
-- `cesium_statistics` - Compare 3D Tiles triangle meshes from statistical values.
 
 ## Run single test
 
