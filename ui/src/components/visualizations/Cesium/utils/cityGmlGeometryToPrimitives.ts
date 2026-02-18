@@ -50,7 +50,7 @@ export type FeatureInstanceData = {
   absoluteInstanceIds: object[];
   /** GeometryInstance id objects stored in the shared groundPrimitive */
   groundInstanceIds: object[];
-  lodPrimitive: PrimitiveCollection | null;
+  lodPrimitiveCollection: PrimitiveCollection | null;
 };
 
 export type PrimitivesResult = {
@@ -263,7 +263,7 @@ export function convertFeatureCollectionToPrimitives(
       feature,
       absoluteInstanceIds: [],
       groundInstanceIds: [],
-      lodPrimitive: null,
+      lodPrimitiveCollection: null,
     };
 
     // ── DEM ─────────────────────────────────────────────────────────────────
@@ -490,10 +490,10 @@ export function convertFeatureCollectionToPrimitives(
 }
 
 /**
- * Create a LOD-upgrade Primitive for a single feature using LOD3 (fallback LOD2) geometry.
+ * Create a LOD-upgrade Primitive Collection for a single feature using LOD3 (fallback LOD2) geometry.
  * Returns null if no higher-LOD data is available.
  */
-export function createLodUpgradePrimitive(
+export function createLodUpgradePrimitiveCollection(
   feature: CityGmlFeature,
   typeConfig?: CityGmlTypeConfig,
 ): PrimitiveCollection | null {
@@ -544,9 +544,9 @@ export function createLodUpgradePrimitive(
 
   if (globalMinZ === Infinity) return null;
 
-  // const geometryInstances: GeometryInstance[] = [];
   const fillInstances: GeometryInstance[] = [];
   const outlineInstances: GeometryInstance[] = [];
+
   allPolygons.forEach((polygon, idx) => {
     if (!polygon.exterior || !Array.isArray(polygon.exterior)) return;
     const rawPositions = coordsToPositions(polygon.exterior);
@@ -564,23 +564,6 @@ export function createLodUpgradePrimitive(
       : (typeConfig?.color ?? Color.GRAY.withAlpha(0.8));
     const color = resolveAppearanceColor(globalIdx, geometry, defaultColor);
 
-    // geometryInstances.push(
-    //   new GeometryInstance({
-    //     id: {
-    //       _originalId: featureId,
-    //       featureId,
-    //       instanceId: `${featureId}_lod_${idx}`,
-    //     },
-    //     geometry: new PolygonGeometry({
-    //       polygonHierarchy: new PolygonHierarchy(positions),
-    //       perPositionHeight: true,
-    //     }),
-    //     attributes: {
-    //       color: ColorGeometryInstanceAttribute.fromColor(color),
-    //       show: new ShowGeometryInstanceAttribute(true),
-    //     },
-    //   }),
-    // );
     fillInstances.push(
       new GeometryInstance({
         id: { featureId, instanceId: `${featureId}_fill_lod_${idx}` },
@@ -618,8 +601,6 @@ export function createLodUpgradePrimitive(
     appearance: new PerInstanceColorAppearance({
       flat: true,
       translucent: true,
-      // optional polygonOffset if needed
-      // renderState: { polygonOffset: { enabled: true, factor: -1, units: -1 } }
     }),
   });
 

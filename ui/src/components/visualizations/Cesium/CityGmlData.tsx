@@ -1,11 +1,15 @@
-import { GroundPrimitive, Primitive, ShowGeometryInstanceAttribute } from "cesium";
+import {
+  GroundPrimitive,
+  Primitive,
+  ShowGeometryInstanceAttribute,
+} from "cesium";
 import { memo, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
 import {
   CITYGML_3D_TYPES,
   convertFeatureCollectionToPrimitives,
-  createLodUpgradePrimitive,
+  createLodUpgradePrimitiveCollection,
   type FeatureInstanceData,
 } from "./utils/cityGmlGeometryToPrimitives";
 
@@ -45,9 +49,9 @@ const CityGmlData: React.FC<Props> = ({
 
     // Remove any active LOD primitives first
     featureMapRef.current.forEach((entry) => {
-      if (entry.lodPrimitive) {
-        viewer.scene.primitives.remove(entry.lodPrimitive);
-        entry.lodPrimitive = null;
+      if (entry.lodPrimitiveCollection) {
+        viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
+        entry.lodPrimitiveCollection = null;
       }
     });
 
@@ -97,9 +101,9 @@ const CityGmlData: React.FC<Props> = ({
     }
 
     const revertLod = (entry: FeatureInstanceData) => {
-      if (entry.lodPrimitive) {
-        viewer.scene.primitives.remove(entry.lodPrimitive);
-        entry.lodPrimitive = null;
+      if (entry.lodPrimitiveCollection) {
+        viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
+        entry.lodPrimitiveCollection = null;
       }
       waitForPrimitive(absolutePrimitiveRef.current, () => {
         entry.absoluteInstanceIds.forEach((id) => {
@@ -111,17 +115,17 @@ const CityGmlData: React.FC<Props> = ({
     };
 
     const upgradeLod = (entry: FeatureInstanceData) => {
-      if (entry.lodPrimitive) return;
+      if (entry.lodPrimitiveCollection) return;
       const typeConfig = CITYGML_3D_TYPES.find((cfg) =>
         cfg.detect(entry.feature.properties),
       );
-      const lodPrimitive = createLodUpgradePrimitive(
+      const lodPrimitive = createLodUpgradePrimitiveCollection(
         entry.feature,
         typeConfig,
       );
       if (!lodPrimitive) return;
       viewer.scene.primitives.add(lodPrimitive);
-      entry.lodPrimitive = lodPrimitive;
+      entry.lodPrimitiveCollection = lodPrimitive;
       waitForPrimitive(absolutePrimitiveRef.current, () => {
         entry.absoluteInstanceIds.forEach((id) => {
           const attrs =
@@ -149,8 +153,8 @@ const CityGmlData: React.FC<Props> = ({
     return () => {
       if (viewer) {
         featureMapRef.current.forEach((entry) => {
-          if (entry.lodPrimitive) {
-            viewer.scene.primitives.remove(entry.lodPrimitive);
+          if (entry.lodPrimitiveCollection) {
+            viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
           }
         });
         viewer.scene.primitives.remove(absolutePrimitiveRef.current);
