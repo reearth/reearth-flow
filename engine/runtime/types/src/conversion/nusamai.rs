@@ -83,6 +83,7 @@ pub fn entity_to_geometry(
                     polygons.push(poly.into());
                 }
                 // Resolved xlink:href ranges
+                // TODO: implement resolving for other geometry types (requires upstream support in nusamai_citygml parser)
                 for &(start, end) in &geometry.resolved_ranges {
                     for idx_poly in geoms.multipolygon.iter_range(start as usize..end as usize) {
                         let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
