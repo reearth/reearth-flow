@@ -349,7 +349,7 @@ impl Processor for SolarPositionCalculator {
                 self.insert_solar_position_attributes(&mut new_feature, &position);
                 Self::insert_centroid_attributes(&mut new_feature, &centroid_3d);
                 new_feature.insert(
-                    "solar_time",
+                    "solarTime",
                     AttributeValue::String(
                         datetime.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
                     ),
@@ -394,7 +394,7 @@ impl Processor for SolarPositionCalculator {
                     self.insert_solar_position_attributes(&mut new_feature, &position);
                     Self::insert_centroid_attributes(&mut new_feature, &centroid_3d);
                     new_feature.insert(
-                        "solar_time",
+                        "solarTime",
                         AttributeValue::String(
                             current.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
                         ),
@@ -572,19 +572,19 @@ impl SolarPositionCalculator {
     /// Insert 3D centroid coordinates as attributes (in original source CRS).
     fn insert_centroid_attributes(feature: &mut Feature, centroid: &Centroid3D) {
         feature.insert(
-            "ray_origin_x",
+            "rayOriginX",
             AttributeValue::Number(
                 serde_json::Number::from_f64(centroid.x).unwrap_or(serde_json::Number::from(0)),
             ),
         );
         feature.insert(
-            "ray_origin_y",
+            "rayOriginY",
             AttributeValue::Number(
                 serde_json::Number::from_f64(centroid.y).unwrap_or(serde_json::Number::from(0)),
             ),
         );
         feature.insert(
-            "ray_origin_z",
+            "rayOriginZ",
             AttributeValue::Number(
                 serde_json::Number::from_f64(centroid.z).unwrap_or(serde_json::Number::from(0)),
             ),
@@ -720,19 +720,19 @@ impl SolarPositionCalculator {
                 let z = altitude_rad.sin(); // Up component
 
                 feature.insert(
-                    "solar_direction_x",
+                    "solarDirectionX",
                     AttributeValue::Number(
                         serde_json::Number::from_f64(x).unwrap_or(serde_json::Number::from(0)),
                     ),
                 );
                 feature.insert(
-                    "solar_direction_y",
+                    "solarDirectionY",
                     AttributeValue::Number(
                         serde_json::Number::from_f64(y).unwrap_or(serde_json::Number::from(0)),
                     ),
                 );
                 feature.insert(
-                    "solar_direction_z",
+                    "solarDirectionZ",
                     AttributeValue::Number(
                         serde_json::Number::from_f64(z).unwrap_or(serde_json::Number::from(0)),
                     ),
@@ -740,14 +740,14 @@ impl SolarPositionCalculator {
 
                 if matches!(&self.output_type, OutputType::Both) {
                     feature.insert(
-                        "solar_altitude",
+                        "solarAltitude",
                         AttributeValue::Number(
                             serde_json::Number::from_f64(position.altitude)
                                 .unwrap_or(serde_json::Number::from(0)),
                         ),
                     );
                     feature.insert(
-                        "solar_azimuth",
+                        "solarAzimuth",
                         AttributeValue::Number(
                             serde_json::Number::from_f64(position.azimuth)
                                 .unwrap_or(serde_json::Number::from(0)),
@@ -757,14 +757,14 @@ impl SolarPositionCalculator {
             }
             OutputType::AltitudeAndAzimuth => {
                 feature.insert(
-                    "solar_altitude",
+                    "solarAltitude",
                     AttributeValue::Number(
                         serde_json::Number::from_f64(position.altitude)
                             .unwrap_or(serde_json::Number::from(0)),
                     ),
                 );
                 feature.insert(
-                    "solar_azimuth",
+                    "solarAzimuth",
                     AttributeValue::Number(
                         serde_json::Number::from_f64(position.azimuth)
                             .unwrap_or(serde_json::Number::from(0)),

@@ -13,7 +13,7 @@ with:
   prcs: null
   startTime: null
   endTime: null
-  outputPath: null
+  workerArtifactPath: null
   outputReflection: false
   dailySunDataPath: null
   monthlyWeatherDataPath: null
@@ -388,7 +388,7 @@ graphs:
       codelistsPath: env.get("__value").codelists
       flatten: true
       dataset: |
-        env.get("__value")["cityGmlPath"]
+        env.get("__value")["path"]
   - id: 00000001-0000-0000-0000-00000000003a
     name: LodFilter
     type: action
@@ -431,7 +431,7 @@ graphs:
     action: FeatureCounter
     with:
       countStart: 0
-      outputAttribute: surface_id
+      outputAttribute: surfaceId
   - id: 00000001-0000-0000-0000-000000000005
     name: HorizontalReprojector
     type: action
@@ -494,7 +494,7 @@ graphs:
     action: FeatureCounter
     with:
       countStart: 0
-      outputAttribute: cell_id
+      outputAttribute: cellId
   - id: 00000001-0000-0000-0000-00000000000b
     name: SunPositionCalculator
     type: action
@@ -519,23 +519,23 @@ graphs:
       - attribute: year
         method: create
         value: |
-          let dt = env.get("__value")["solar_time"];
+          let dt = env.get("__value")["solarTime"];
           parse_int(dt.split("-")[0])
       - attribute: month
         method: create
         value: |
-          let dt = env.get("__value")["solar_time"];
+          let dt = env.get("__value")["solarTime"];
           parse_int(dt.split("-")[1])
       - attribute: date
         method: create
         value: |
-          let dt = env.get("__value")["solar_time"];
+          let dt = env.get("__value")["solarTime"];
           let day_part = dt.split("T")[0];
           parse_int(day_part.split("-")[2])
       - attribute: hour
         method: create
         value: |
-          let dt = env.get("__value")["solar_time"];
+          let dt = env.get("__value")["solarTime"];
           let time_part = dt.split("T")[1];
           parse_int(time_part.split(":")[0])
   - id: 00000001-0000-0000-0000-00000000000c
@@ -544,15 +544,58 @@ graphs:
     action: AreaCalculator
     with:
       areaType: slopedArea
-      outputAttribute: cell_area
+      outputAttribute: cellArea
       multiplier: 1.0
-  - id: 00000001-0000-0000-0000-000000000030
-    name: RayIdCounter
+  - id: 00000001-0000-0000-0000-000000000031
+    name: GeometryRemover
     type: action
-    action: FeatureCounter
+    action: GeometryRemover
+  - id: 00000001-0000-0000-0000-000000000032
+    name: PreRayAttributeMapper
+    type: action
+    action: AttributeMapper
     with:
-      countStart: 0
-      outputAttribute: ray_id
+      mappers:
+      - attribute: gmlId
+        expr: env.get("__value").gmlId
+      - attribute: surfaceId
+        expr: env.get("__value").surfaceId
+      - attribute: cellId
+        expr: env.get("__value").cellId
+      - attribute: year
+        expr: env.get("__value").year
+      - attribute: month
+        expr: env.get("__value").month
+      - attribute: slope
+        expr: env.get("__value").slope
+      - attribute: solarAltitude
+        expr: env.get("__value").solarAltitude
+      - attribute: solarTime
+        expr: env.get("__value").solarTime
+      - attribute: cellArea
+        expr: env.get("__value").cellArea
+      - attribute: cosTheta
+        expr: env.get("__value").cosTheta
+      - attribute: groundReflectivity
+        expr: env.get("__value").groundReflectivity
+      - attribute: rayOriginX
+        expr: env.get("__value").rayOriginX
+      - attribute: rayOriginY
+        expr: env.get("__value").rayOriginY
+      - attribute: rayOriginZ
+        expr: env.get("__value").rayOriginZ
+      - attribute: solarDirectionX
+        expr: env.get("__value").solarDirectionX
+      - attribute: solarDirectionY
+        expr: env.get("__value").solarDirectionY
+      - attribute: solarDirectionZ
+        expr: env.get("__value").solarDirectionZ
+      - attribute: normalX
+        expr: env.get("__value").normalX
+      - attribute: normalY
+        expr: env.get("__value").normalY
+      - attribute: normalZ
+        expr: env.get("__value").normalZ
   - id: 00000001-0000-0000-0000-000000000010
     name: RayIntersectorShadow
     type: action
@@ -565,12 +608,12 @@ graphs:
       tolerance: '0.01'
       outputGeometryType: lineSegmentToIntersection
       ray:
-        posX: ray_origin_x
-        posY: ray_origin_y
-        posZ: ray_origin_z
-        dirX: solar_direction_x
-        dirY: solar_direction_y
-        dirZ: solar_direction_z
+        posX: rayOriginX
+        posY: rayOriginY
+        posZ: rayOriginZ
+        dirX: solarDirectionX
+        dirY: solarDirectionY
+        dirZ: solarDirectionZ
   - id: 00000003-0000-0000-0000-000000000001
     name: SnowCSVReader
     type: action
@@ -622,12 +665,12 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: cos_theta
+      - attribute: cosTheta
         method: create
         value: |
-          let sdx = env.get("__value")["solar_direction_x"];
-          let sdy = env.get("__value")["solar_direction_y"];
-          let sdz = env.get("__value")["solar_direction_z"];
+          let sdx = env.get("__value")["solarDirectionX"];
+          let sdy = env.get("__value")["solarDirectionY"];
+          let sdz = env.get("__value")["solarDirectionZ"];
           let nx = env.get("__value")["normalX"];
           let ny = env.get("__value")["normalY"];
           let nz = env.get("__value")["normalZ"];
@@ -643,10 +686,10 @@ graphs:
         method: create
         value: |
           let p = env.get("monthlyTransmissivity")[env.get("__value").month - 1];
-          let h_rad = env.get("__value").solar_altitude * math::PI / 180.0;
+          let h_rad = env.get("__value").solarAltitude * math::PI / 180.0;
           let m = 1.0 / math::sin(h_rad);
           let beta_m = math::pow(p, m);
-          let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cos_theta * env.get("__value").cell_area;
+          let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cosTheta * env.get("__value").cellArea;
 
           let dN = 1 - beta_m;
           let dD = 1 - 1.4 * math::ln(p);
@@ -662,10 +705,10 @@ graphs:
         method: create
         value: |
           let p = 1.0 - env.get("monthlyTransmissivity")[env.get("__value").month - 1];
-          let h_rad = env.get("__value").solar_altitude * math::PI / 180.0;
+          let h_rad = env.get("__value").solarAltitude * math::PI / 180.0;
           let m = 1.0 / math::sin(h_rad);
           let beta_m = math::pow(p, m);
-          let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cos_theta * env.get("__value").cell_area;
+          let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cosTheta * env.get("__value").cellArea;
 
           let dN = 1 - beta_m;
           let dD = 1 - 1.4 * math::ln(p);
@@ -689,8 +732,8 @@ graphs:
       groupBy:
       - year
       - month
-      - cell_id
-      - surface_id
+      - cellId
+      - surfaceId
       - gmlId
       calculations:
       - newAttribute: radiationSunnySum
@@ -729,8 +772,8 @@ graphs:
     action: StatisticsCalculator
     with:
       groupBy:
-      - cell_id
-      - surface_id
+      - cellId
+      - surfaceId
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
@@ -746,7 +789,7 @@ graphs:
     action: StatisticsCalculator
     with:
       groupBy:
-      - surface_id
+      - surfaceId
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
@@ -762,9 +805,9 @@ graphs:
     action: FeatureMerger
     with:
       requestorAttribute:
-      - surface_id
+      - surfaceId
       supplierAttribute:
-      - surface_id
+      - surfaceId
   - id: 00000001-0000-0000-0000-000000000073
     name: AddSolarSchemaAttributes
     type: action
@@ -788,12 +831,12 @@ graphs:
         value: |
           env.get("endTime")
   - id: 00000001-0000-0000-0000-000000000070
-    name: NormalizeRadiation
+    name: NormalizeRadiationForColorMapping
     type: action
     action: AttributeManager
     with:
       operations:
-      - attribute: _normalized_t
+      - attribute: normalizedRadiation
         method: create
         value: |
           let start_str = env.get("startTime");
@@ -839,14 +882,14 @@ graphs:
       - attribute: color_r
         method: create
         value: |
-          let t = env.get("__value")["_normalized_t"] ?? 0.0;
+          let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
           let v = 4.0 * t - 1.0;
           let r = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
           math::round(255.0 * r)
       - attribute: color_g
         method: create
         value: |
-          let t = env.get("__value")["_normalized_t"] ?? 0.0;
+          let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
           let v1_raw = 4.0 * t;
           let v1 = if v1_raw < 0.0 { 0.0 } else if v1_raw > 1.0 { 1.0 } else { v1_raw };
           let v2_raw = 4.0 * t - 3.0;
@@ -855,7 +898,7 @@ graphs:
       - attribute: color_b
         method: create
         value: |
-          let t = env.get("__value")["_normalized_t"] ?? 0.0;
+          let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
           let v = 4.0 * t - 1.0;
           let clamped = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
           math::round(255.0 * (1.0 - clamped))
@@ -865,15 +908,15 @@ graphs:
     action: FeatureMerger
     with:
       requestorAttribute:
-      - cell_id
+      - cellId
       supplierAttribute:
-      - cell_id
+      - cellId
   - id: 00000001-0000-0000-0000-000000000069
     name: CellBoundsExtractor
     type: action
     action: BoundsExtractor
     with:
-      zmax: max-z
+      zmax: maxZ
   - id: 00000001-0000-0000-0000-00000000006a
     name: FilterRoofForTexture
     type: action
@@ -890,10 +933,10 @@ graphs:
     with:
       imageWidth: 2048
       saveTo: |
-        file::join_path(env.get("outputPath"), "roof_radiation_texture.png")
+        file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
       onOverlap:
         max: |
-          env.get("__value")["max-z"]
+          env.get("__value")["maxZ"]
   - id: 00000001-0000-0000-0000-000000000062
     name: TexturedHorizontalReprojector
     type: action
@@ -944,9 +987,9 @@ graphs:
       attachTexture: true
       dracoCompression: false
       output: |
-        file::join_path(env.get("outputPath"), "textured_roof_3dtiles")
+        file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
       compressOutput: |
-        file::join_path(env.get("outputPath"), "textured_roof_3dtiles.zip")
+        file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles.zip")
   - id: 00000004-0000-0000-0000-000000000010
     name: ReflectionOutputFilter
     type: action
@@ -963,39 +1006,18 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: reflect_dir_x
+      - attribute: reflectDirX
         method: create
         value: |
-          let ix = -env.get("__value")["solar_direction_x"];
-          let iy = -env.get("__value")["solar_direction_y"];
-          let iz = -env.get("__value")["solar_direction_z"];
-          let nx = env.get("__value")["normalX"];
-          let ny = env.get("__value")["normalY"];
-          let nz = env.get("__value")["normalZ"];
-          let dot = ix * nx + iy * ny + iz * nz;
-          ix - 2.0 * dot * nx
-      - attribute: reflect_dir_y
+          -env.get("__value")["solarDirectionX"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalX"]
+      - attribute: reflectDirY
         method: create
         value: |
-          let ix = -env.get("__value")["solar_direction_x"];
-          let iy = -env.get("__value")["solar_direction_y"];
-          let iz = -env.get("__value")["solar_direction_z"];
-          let nx = env.get("__value")["normalX"];
-          let ny = env.get("__value")["normalY"];
-          let nz = env.get("__value")["normalZ"];
-          let dot = ix * nx + iy * ny + iz * nz;
-          iy - 2.0 * dot * ny
-      - attribute: reflect_dir_z
+          -env.get("__value")["solarDirectionY"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalY"]
+      - attribute: reflectDirZ
         method: create
         value: |
-          let ix = -env.get("__value")["solar_direction_x"];
-          let iy = -env.get("__value")["solar_direction_y"];
-          let iz = -env.get("__value")["solar_direction_z"];
-          let nx = env.get("__value")["normalX"];
-          let ny = env.get("__value")["normalY"];
-          let nz = env.get("__value")["normalZ"];
-          let dot = ix * nx + iy * ny + iz * nz;
-          iz - 2.0 * dot * nz
+          -env.get("__value")["solarDirectionZ"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalZ"]
   - id: 00000001-0000-0000-0000-000000000014
     name: RayIntersectorReflect
     type: action
@@ -1009,23 +1031,23 @@ graphs:
       geomId: |
         env.get("__value")["gmlId"] ?? ""
       ray:
-        posX: ray_origin_x
-        posY: ray_origin_y
-        posZ: ray_origin_z
-        dirX: reflect_dir_x
-        dirY: reflect_dir_y
-        dirZ: reflect_dir_z
+        posX: rayOriginX
+        posY: rayOriginY
+        posZ: rayOriginZ
+        dirX: reflectDirX
+        dirY: reflectDirY
+        dirZ: reflectDirZ
   - id: 00000001-0000-0000-0000-00000000001b
     name: ReflectionBoundsExtractor
     type: action
     action: BoundsExtractor
     with:
-      xmin: reflect_hit_x
-      ymin: reflect_hit_y
-      zmin: reflect_hit_z
-      xmax: _reflect_xmax
-      ymax: _reflect_ymax
-      zmax: _reflect_zmax
+      xmin: reflectHitX
+      ymin: reflectHitY
+      zmin: reflectHitZ
+      xmax: _reflectXmax
+      ymax: _reflectYmax
+      zmax: _reflectZmax
   - id: 00000001-0000-0000-0000-000000000016
     name: ReflectionWriter
     type: action
@@ -1033,14 +1055,14 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "反射シミュレーション結果.csv")
+        file::join_path(env.get("workerArtifactPath"), "反射シミュレーション結果.csv")
   - id: 00000001-0000-0000-0000-0000000000d0
     name: RoofAreaCalculator
     type: action
     action: AreaCalculator
     with:
       areaType: slopedArea
-      outputAttribute: surface_area
+      outputAttribute: surfaceArea
       multiplier: 1.0
   - id: 00000001-0000-0000-0000-0000000000d1
     name: SurfaceAreaAggregator
@@ -1048,12 +1070,12 @@ graphs:
     action: StatisticsCalculator
     with:
       groupBy:
-      - surface_id
+      - surfaceId
       - gmlId
       calculations:
       - newAttribute: totalSurfaceArea
         expr: |
-          env.get("__value")["surface_area"]
+          env.get("__value")["surfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d2
     name: BuildingAreaAggregator
     type: action
@@ -1080,9 +1102,9 @@ graphs:
     action: FeatureMerger
     with:
       requestorAttribute:
-      - surface_id
+      - surfaceId
       supplierAttribute:
-      - surface_id
+      - surfaceId
   - id: 00000001-0000-0000-0000-0000000000c0
     name: BuildingRadiationAggregator
     type: action
@@ -1127,7 +1149,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "建物ポテンシャル推計結果.csv")
+        file::join_path(env.get("workerArtifactPath"), "建物ポテンシャル推計結果.csv")
   - id: 00000001-0000-0000-0000-0000000000c6
     name: SurfaceRadiationMapper
     type: action
@@ -1137,7 +1159,7 @@ graphs:
       - attribute: 建物ID
         expr: env.get("__value")["gmlId"]
       - attribute: 屋根ID
-        expr: env.get("__value")["surface_id"]
+        expr: env.get("__value")["surfaceId"]
       - attribute: 単位面積あたりの日射量(kWh/m2)
         expr: |
           let area = env.get("__value")["totalSurfaceArea"] ?? 0.0;
@@ -1155,7 +1177,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "面別日射量.csv")
+        file::join_path(env.get("workerArtifactPath"), "面別日射量.csv")
   - id: 00000001-0000-0000-0000-0000000000c7
     name: ReflectionMapper
     type: action
@@ -1165,23 +1187,23 @@ graphs:
       - attribute: 建物/土地ID
         expr: env.get("__value")["gmlId"] ?? ""
       - attribute: 屋根ID
-        expr: env.get("__value")["surface_id"] ?? ""
+        expr: env.get("__value")["surfaceId"] ?? ""
       - attribute: 日時
-        expr: env.get("__value")["solar_time"] ?? ""
+        expr: env.get("__value")["solarTime"] ?? ""
       - attribute: 反射元_座標.X(m)
-        expr: env.get("__value")["ray_origin_x"]
+        expr: env.get("__value")["rayOriginX"]
       - attribute: 反射元_座標.Y(m)
-        expr: env.get("__value")["ray_origin_y"]
+        expr: env.get("__value")["rayOriginY"]
       - attribute: 反射元_座標.Z(m)
-        expr: env.get("__value")["ray_origin_z"]
+        expr: env.get("__value")["rayOriginZ"]
       - attribute: 反射先_座標.X(m)
-        expr: env.get("__value")["reflect_hit_x"]
+        expr: env.get("__value")["reflectHitX"]
       - attribute: 反射先_座標.Y(m)
-        expr: env.get("__value")["reflect_hit_y"]
+        expr: env.get("__value")["reflectHitY"]
       - attribute: 反射先_座標.Z(m)
-        expr: env.get("__value")["reflect_hit_z"]
+        expr: env.get("__value")["reflectHitZ"]
       - attribute: 反射先
-        expr: env.get("__value")["geom_id"] ?? ""
+        expr: env.get("__value")["geomId"] ?? ""
   - id: 00000001-0000-0000-0000-0000000000c3
     name: AreaAggregator
     type: action
@@ -1222,7 +1244,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "集計結果.csv")
+        file::join_path(env.get("workerArtifactPath"), "集計結果.csv")
   - id: 00000001-0000-0000-0000-0000000000a0
     name: BoundsExtractorByLod1
     type: action
@@ -1264,9 +1286,9 @@ graphs:
       attachTexture: false
       dracoCompression: false
       output: |
-        file::join_path(env.get("outputPath"), "bldg_lod1")
+        file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
       compressOutput: |
-        file::join_path(env.get("outputPath"), "bldg_lod1.zip")
+        file::join_path(env.get("workerArtifactPath"), "bldg_lod1.zip")
   - id: 00000001-0000-0000-0000-0000000000a4
     name: BoundsExtractorByLod3
     type: action
@@ -1308,9 +1330,9 @@ graphs:
       attachTexture: false
       dracoCompression: false
       output: |
-        file::join_path(env.get("outputPath"), "bldg_lod3")
+        file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
       compressOutput: |
-        file::join_path(env.get("outputPath"), "bldg_lod3.zip")
+        file::join_path(env.get("workerArtifactPath"), "bldg_lod3.zip")
   - id: 00000001-0000-0000-0000-0000000000a8
     name: BoundsExtractorByLod4
     type: action
@@ -1352,9 +1374,9 @@ graphs:
       attachTexture: false
       dracoCompression: false
       output: |
-        file::join_path(env.get("outputPath"), "bldg_lod4")
+        file::join_path(env.get("workerArtifactPath"), "bldg_lod4")
       compressOutput: |
-        file::join_path(env.get("outputPath"), "bldg_lod4.zip")
+        file::join_path(env.get("workerArtifactPath"), "bldg_lod4.zip")
   edges:
   - id: e0000001-0000-0000-0000-000000000001
     from: 00000001-0000-0000-0000-000000000001
@@ -1433,6 +1455,11 @@ graphs:
     toPort: default
   - id: e0000001-0000-0000-0000-000000000029
     from: 00000001-0000-0000-0000-000000000029
+    to: 00000001-0000-0000-0000-00000000000c
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000040
+    from: 00000001-0000-0000-0000-00000000000c
     to: 00000001-0000-0000-0000-00000000000b
     fromPort: default
     toPort: default
@@ -1441,14 +1468,14 @@ graphs:
     to: 00000001-0000-0000-0000-000000000040
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-000000000040
+  - id: e0000001-0000-0000-0000-00000000000c
     from: 00000001-0000-0000-0000-000000000040
-    to: 00000001-0000-0000-0000-00000000000c
+    to: 00000001-0000-0000-0000-000000000031
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-00000000000c
-    from: 00000001-0000-0000-0000-00000000000c
-    to: 00000001-0000-0000-0000-000000000030
+  - id: e0000001-0000-0000-0000-000000000030
+    from: 00000001-0000-0000-0000-000000000031
+    to: 00000001-0000-0000-0000-000000000011
     fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-00000000000f
@@ -1457,24 +1484,24 @@ graphs:
     fromPort: passed
     toPort: geom
   - id: e0000001-0000-0000-0000-000000000010
-    from: 00000001-0000-0000-0000-000000000030
+    from: 00000001-0000-0000-0000-000000000032
     to: 00000001-0000-0000-0000-000000000010
     fromPort: default
     toPort: ray
   - id: e0000001-0000-0000-0000-000000000035
     from: 00000001-0000-0000-0000-000000000010
-    to: 00000003-0000-0000-0000-000000000004
-    fromPort: no_intersection
-    toPort: requestor
-  - id: e0000003-0000-0000-0000-000000000004
-    from: 00000003-0000-0000-0000-000000000004
-    to: 00000001-0000-0000-0000-000000000011
-    fromPort: merged
-    toPort: default
-  - id: e0000001-0000-0000-0000-00000000001c
-    from: 00000001-0000-0000-0000-000000000011
     to: 00000001-0000-0000-0000-00000000001d
+    fromPort: no_intersection
+    toPort: default
+  - id: e0000003-0000-0000-0000-000000000004
+    from: 00000001-0000-0000-0000-000000000011
+    to: 00000003-0000-0000-0000-000000000004
     fromPort: default
+    toPort: requestor
+  - id: e0000001-0000-0000-0000-00000000001c
+    from: 00000003-0000-0000-0000-000000000004
+    to: 00000001-0000-0000-0000-000000000032
+    fromPort: merged
     toPort: default
   - id: e0000001-0000-0000-0000-000000000050
     from: 00000001-0000-0000-0000-00000000001d
@@ -1512,9 +1539,9 @@ graphs:
     fromPort: default
     toPort: supplier
   - id: e0000001-0000-0000-0000-000000000013
-    from: 00000001-0000-0000-0000-000000000011
+    from: 00000001-0000-0000-0000-000000000010
     to: 00000004-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: no_intersection
     toPort: default
   - id: e0000004-0000-0000-0000-000000000011
     from: 00000004-0000-0000-0000-000000000010
