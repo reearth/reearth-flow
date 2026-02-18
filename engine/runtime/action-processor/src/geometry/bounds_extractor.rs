@@ -243,7 +243,8 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
-        let z_val = NumCast::from(coord.z).and_then(|z: f64| if z.is_finite() { Some(z) } else { None });
+        let z_val =
+            NumCast::from(coord.z).and_then(|z: f64| if z.is_finite() { Some(z) } else { None });
         Self::update_bounds(
             bounds,
             Some(Bounds {
@@ -262,7 +263,8 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
-        let z_val = NumCast::from(point.z()).and_then(|z: f64| if z.is_finite() { Some(z) } else { None });
+        let z_val =
+            NumCast::from(point.z()).and_then(|z: f64| if z.is_finite() { Some(z) } else { None });
         Some(Bounds {
             min_x: NumCast::from(point.x()).unwrap(),
             max_x: NumCast::from(point.x()).unwrap(),
