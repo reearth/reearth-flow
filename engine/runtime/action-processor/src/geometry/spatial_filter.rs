@@ -765,4 +765,185 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_merge_filter_attributes_onto_passed_candidate() {
+        let mut filter_attrs = Attributes::new();
+        filter_attrs.insert(
+            Attribute::new("zone"),
+            AttributeValue::String("commercial".to_string()),
+        );
+
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            filter_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: true,
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: None,
+            },
+            filters: vec![filter_feature],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            let ports = noop.send_ports.lock().unwrap();
+            assert_eq!(features.len(), 1);
+            assert_eq!(ports[0], *PASSED_PORT);
+            let zone = features[0].attributes.get(&Attribute::new("zone"));
+            assert_eq!(
+                zone,
+                Some(&AttributeValue::String("commercial".to_string())),
+                "Filter attribute 'zone' should be merged onto passed candidate"
+            );
+        }
+    }
+
+    #[test]
+    fn test_merge_filter_attributes_with_prefix() {
+        let mut filter_attrs = Attributes::new();
+        filter_attrs.insert(
+            Attribute::new("name"),
+            AttributeValue::String("zone_a".to_string()),
+        );
+
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            filter_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: true,
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: Some("filter_".to_string()),
+            },
+            filters: vec![filter_feature],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1);
+            let prefixed = features[0].attributes.get(&Attribute::new("filter_name"));
+            let unprefixed = features[0].attributes.get(&Attribute::new("name"));
+            assert_eq!(
+                prefixed,
+                Some(&AttributeValue::String("zone_a".to_string())),
+                "Attribute should appear under prefixed key"
+            );
+            assert!(
+                unprefixed.is_none(),
+                "Attribute should not appear under unprefixed key"
+            );
+        }
+    }
+
+    #[test]
+    fn test_merge_filter_attributes_not_applied_to_failed_candidate() {
+        let mut filter_attrs = Attributes::new();
+        filter_attrs.insert(
+            Attribute::new("zone"),
+            AttributeValue::String("commercial".to_string()),
+        );
+
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            filter_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        // Disjoint candidate: will not intersect the filter, so routed to failed port
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_disjoint_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: true,
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: None,
+            },
+            filters: vec![filter_feature],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            let ports = noop.send_ports.lock().unwrap();
+            assert_eq!(ports[0], *FAILED_PORT);
+            let zone = features[0].attributes.get(&Attribute::new("zone"));
+            assert!(
+                zone.is_none(),
+                "Filter attributes should not be merged onto failed candidates"
+            );
+        }
+    }
 }
