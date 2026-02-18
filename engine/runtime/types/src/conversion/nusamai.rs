@@ -84,10 +84,7 @@ pub fn entity_to_geometry(
                 }
                 // Resolved xlink:href ranges
                 for &(start, end) in &geometry.resolved_ranges {
-                    for idx_poly in geoms
-                        .multipolygon
-                        .iter_range(start as usize..end as usize)
-                    {
+                    for idx_poly in geoms.multipolygon.iter_range(start as usize..end as usize) {
                         let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                         polygons.push(poly.into());
                     }
