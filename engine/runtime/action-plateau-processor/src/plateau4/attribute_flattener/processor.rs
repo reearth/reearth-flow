@@ -140,7 +140,7 @@ type AttributeMap = HashMap<String, AttributeValue>;
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeFlattener {
     filter_existing_flatten_attributes: bool,
-    existing_flatten_attributes: HashSet<String>,
+    existing_flatten_attributes: HashMap<String, HashSet<String>>, // feature_type_key -> attribute names
     encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
@@ -597,6 +597,8 @@ impl AttributeFlattener {
                 }
 
                 self.existing_flatten_attributes
+                    .entry(lookup_key.to_string())
+                    .or_insert_with(HashSet::new)
                     .insert(attribute.attribute.clone());
                 feature.insert(attribute.attribute.clone(), new_attribute);
             }
@@ -711,11 +713,12 @@ impl AttributeFlattener {
         if let Some(flatten_attributes) =
             super::constants::FLATTEN_ATTRIBUTES.get(schema_lookup_key)
         {
+            let used_attributes = self.existing_flatten_attributes.get(feature_type_key);
             for attribute in flatten_attributes {
                 if self.filter_existing_flatten_attributes
-                    && !self
-                        .existing_flatten_attributes
-                        .contains(&attribute.attribute)
+                    && !used_attributes
+                        .map(|attrs| attrs.contains(&attribute.attribute))
+                        .unwrap_or(false)
                 {
                     continue;
                 }
