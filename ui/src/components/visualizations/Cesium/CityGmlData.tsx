@@ -1,14 +1,13 @@
-import { Entity } from "cesium";
+import { GroundPrimitive, Primitive, ShowGeometryInstanceAttribute } from "cesium";
 import { memo, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
 import {
-  convertFeatureToEntity,
-  extractLodPolygons,
-  updateLodFeature,
-  revertLodFeature,
-  type EntityWithSurfaces,
-} from "./utils/cityGmlGeometryConverter";
+  CITYGML_3D_TYPES,
+  convertFeatureCollectionToPrimitives,
+  createLodUpgradePrimitive,
+  type FeatureInstanceData,
+} from "./utils/cityGmlGeometryToPrimitives";
 
 type CityGmlFeature = {
   id?: string;
@@ -35,110 +34,127 @@ const CityGmlData: React.FC<Props> = ({
   detailsOverlayOpen,
 }) => {
   const { viewer } = useCesium();
-  const entitiesRef = useRef<Entity[]>([]);
-  const featureMapRef = useRef<
-    Map<string, { feature: CityGmlFeature; entity: EntityWithSurfaces }>
-  >(new Map());
+  const absolutePrimitiveRef = useRef<Primitive | null>(null);
+  const groundPrimitiveRef = useRef<GroundPrimitive | null>(null);
+  const featureMapRef = useRef<Map<string, FeatureInstanceData>>(new Map());
   const prevSelectedRef = useRef<string | null>(null);
 
-  // Process CityGML data and create entities (only on data change)
+  // Process CityGML data and create primitives (only on data change)
   useEffect(() => {
     if (!cityGmlData || !viewer) return;
 
-    // Revert any active LOD upgrades before clearing
-    featureMapRef.current.forEach(({ entity }) => {
-      revertLodFeature(entity, viewer);
-    });
-
-    entitiesRef.current.forEach((entity) => {
-      viewer.entities.remove(entity);
-    });
-
-    featureMapRef.current.clear();
-
-    const newEntities: Entity[] = [];
-
-    cityGmlData.features.forEach((feature) => {
-      const entity = convertFeatureToEntity(feature);
-      if (entity) {
-        // Add parent entity
-        viewer.entities.add(entity);
-        newEntities.push(entity);
-
-        // Add child surface entities
-        if (entity.surfaces) {
-          entity.surfaces.forEach((surfaceEntity) => {
-            viewer.entities.add(surfaceEntity);
-            newEntities.push(surfaceEntity);
-          });
-        }
-
-        // Add additional polygon entities (non-3D features like zones, land use)
-        const entityAny = entity as any;
-        if (entityAny.additionalPolygons) {
-          entityAny.additionalPolygons.forEach((additionalEntity: Entity) => {
-            viewer.entities.add(additionalEntity);
-            newEntities.push(additionalEntity);
-          });
-        }
-
-        // Track the primary entity by feature ID for LOD upgrades
-        const fid = feature.properties._originalId;
-        if (fid) {
-          featureMapRef.current.set(fid, { feature, entity });
-        }
+    // Remove any active LOD primitives first
+    featureMapRef.current.forEach((entry) => {
+      if (entry.lodPrimitive) {
+        viewer.scene.primitives.remove(entry.lodPrimitive);
+        entry.lodPrimitive = null;
       }
     });
 
-    entitiesRef.current = newEntities;
+    viewer.scene.primitives.remove(absolutePrimitiveRef.current);
+    viewer.scene.primitives.remove(groundPrimitiveRef.current);
 
-    // Zoom to entities if any were created
-    if (newEntities.length > 0) {
-      const removeListener = viewer.scene.postRender.addEventListener(() => {
-        removeListener();
-        viewer.zoomTo(viewer.entities);
-      });
+    featureMapRef.current.clear();
+    prevSelectedRef.current = null;
+
+    const { absolutePrimitive, groundPrimitive, featureMap, boundingSphere } =
+      convertFeatureCollectionToPrimitives(cityGmlData.features);
+
+    absolutePrimitiveRef.current = absolutePrimitive;
+    groundPrimitiveRef.current = groundPrimitive;
+    featureMapRef.current = featureMap;
+
+    if (absolutePrimitive) viewer.scene.primitives.add(absolutePrimitive);
+    if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
+
+    if (boundingSphere) {
+      viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
     }
   }, [cityGmlData, viewer]);
 
-  // Handle LOD upgrade/revert when selectedFeatureId changes
+  // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
     if (!viewer) return;
+
     const prevId = prevSelectedRef.current;
     const currentId = selectedFeatureId ?? null;
     prevSelectedRef.current = currentId;
 
+    function waitForPrimitive(
+      primitive: Primitive | null,
+      callback: () => void,
+    ) {
+      if (!primitive || !viewer) return;
+      if ((primitive as any).ready) {
+        callback();
+        return;
+      }
+      const remove = viewer.scene.postRender.addEventListener(() => {
+        if (!(primitive as any).ready) return;
+        remove();
+        callback();
+      });
+    }
+
+    const revertLod = (entry: FeatureInstanceData) => {
+      if (entry.lodPrimitive) {
+        viewer.scene.primitives.remove(entry.lodPrimitive);
+        entry.lodPrimitive = null;
+      }
+      waitForPrimitive(absolutePrimitiveRef.current, () => {
+        entry.absoluteInstanceIds.forEach((id) => {
+          const attrs =
+            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(id);
+          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(true);
+        });
+      });
+    };
+
+    const upgradeLod = (entry: FeatureInstanceData) => {
+      if (entry.lodPrimitive) return;
+      const typeConfig = CITYGML_3D_TYPES.find((cfg) =>
+        cfg.detect(entry.feature.properties),
+      );
+      const lodPrimitive = createLodUpgradePrimitive(
+        entry.feature,
+        typeConfig,
+      );
+      if (!lodPrimitive) return;
+      viewer.scene.primitives.add(lodPrimitive);
+      entry.lodPrimitive = lodPrimitive;
+      waitForPrimitive(absolutePrimitiveRef.current, () => {
+        entry.absoluteInstanceIds.forEach((id) => {
+          const attrs =
+            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(id);
+          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(false);
+        });
+      });
+    };
+
     // Revert previously selected feature back to LOD1
     if (prevId && prevId !== currentId) {
       const prevEntry = featureMapRef.current.get(prevId);
-      if (prevEntry) {
-        revertLodFeature(prevEntry.entity, viewer);
-      }
+      if (prevEntry) revertLod(prevEntry);
     }
 
     // Upgrade newly selected feature to highest available LOD
     if (currentId && detailsOverlayOpen) {
       const entry = featureMapRef.current.get(currentId);
-      if (entry && !entry.entity.lodSurfaces) {
-        const lodPolygons = extractLodPolygons(entry.feature);
-        if (lodPolygons && lodPolygons.length > 0) {
-          updateLodFeature(entry, lodPolygons, viewer);
-        }
-      }
+      if (entry) upgradeLod(entry);
     }
   }, [selectedFeatureId, viewer, detailsOverlayOpen]);
 
   // Cleanup on unmount
   useEffect(() => {
-    const featureMapSnapshot = featureMapRef.current;
     return () => {
       if (viewer) {
-        featureMapSnapshot.forEach(({ entity }) => {
-          revertLodFeature(entity, viewer);
+        featureMapRef.current.forEach((entry) => {
+          if (entry.lodPrimitive) {
+            viewer.scene.primitives.remove(entry.lodPrimitive);
+          }
         });
-        entitiesRef.current.forEach((entity) => {
-          viewer.entities.remove(entity);
-        });
+        viewer.scene.primitives.remove(absolutePrimitiveRef.current);
+        viewer.scene.primitives.remove(groundPrimitiveRef.current);
       }
     };
   }, [viewer]);
