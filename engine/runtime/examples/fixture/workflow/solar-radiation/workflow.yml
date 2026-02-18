@@ -14,7 +14,7 @@ with:
   prcs:
   startTime:
   endTime:
-  outputPath:
+  workerArtifactPath:
   outputReflection: false
   dailySunDataPath:
   monthlyWeatherDataPath:
@@ -139,7 +139,7 @@ graphs:
           codelistsPath: env.get("__value").codelists
           flatten: true
           dataset: |
-            env.get("__value")["cityGmlPath"]
+            env.get("__value")["path"]
 
       # Filter by LOD level: LOD2 → default (solar pipeline), LOD1/3/4 → separate 3DTiles writers, LOD0 → dropped
       - id: 00000001-0000-0000-0000-00000000003a
@@ -334,14 +334,58 @@ graphs:
           outputAttribute: cell_area
           multiplier: 1.0
 
-      # Counter to assign unique ray_id per (cell, timestep) for shadow merge
-      - id: 00000001-0000-0000-0000-000000000030
-        name: RayIdCounter
+      - id: 00000001-0000-0000-0000-000000000031
+        name: GeometryRemover
         type: action
-        action: FeatureCounter
+        action: GeometryRemover
+
+      # Restrict attributes before the ray port to reduce feature payload
+      - id: 00000001-0000-0000-0000-000000000032
+        name: PreRayAttributeMapper
+        type: action
+        action: AttributeMapper
         with:
-          countStart: 0
-          outputAttribute: ray_id
+          mappers:
+            - attribute: gmlId
+              expr: env.get("__value").gmlId
+            - attribute: surface_id
+              expr: env.get("__value").surface_id
+            - attribute: cell_id
+              expr: env.get("__value").cell_id
+            - attribute: year
+              expr: env.get("__value").year
+            - attribute: month
+              expr: env.get("__value").month
+            - attribute: slope
+              expr: env.get("__value").slope
+            - attribute: solar_altitude
+              expr: env.get("__value").solar_altitude
+            - attribute: solar_time
+              expr: env.get("__value").solar_time
+            - attribute: cell_area
+              expr: env.get("__value").cell_area
+            - attribute: cos_theta
+              expr: env.get("__value").cos_theta
+            - attribute: groundReflectivity
+              expr: env.get("__value").groundReflectivity
+            - attribute: ray_origin_x
+              expr: env.get("__value").ray_origin_x
+            - attribute: ray_origin_y
+              expr: env.get("__value").ray_origin_y
+            - attribute: ray_origin_z
+              expr: env.get("__value").ray_origin_z
+            - attribute: solar_direction_x
+              expr: env.get("__value").solar_direction_x
+            - attribute: solar_direction_y
+              expr: env.get("__value").solar_direction_y
+            - attribute: solar_direction_z
+              expr: env.get("__value").solar_direction_z
+            - attribute: normalX
+              expr: env.get("__value").normalX
+            - attribute: normalY
+              expr: env.get("__value").normalY
+            - attribute: normalZ
+              expr: env.get("__value").normalZ
 
       # ========================================
       # Section 5: Shadow Detection
@@ -750,7 +794,7 @@ graphs:
         with:
           imageWidth: 2048
           saveTo: |
-            file::join_path(env.get("outputPath"), "roof_radiation_texture.png")
+            file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
           onOverlap:
             max: |
               env.get("__value")["max-z"]
@@ -814,9 +858,9 @@ graphs:
           attachTexture: true
           dracoCompression: false
           output: |
-            file::join_path(env.get("outputPath"), "textured_roof_3dtiles")
+            file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
           compressOutput: |
-            file::join_path(env.get("outputPath"), "textured_roof_3dtiles.zip")
+            file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles.zip")
 
       # ========================================
       # Section 7: Reflection Computation
@@ -916,7 +960,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "反射シミュレーション結果.csv")
+            file::join_path(env.get("workerArtifactPath"), "反射シミュレーション結果.csv")
 
       # ========================================
       # Area Computation Branch (for CSV per-m2 values)
@@ -1034,7 +1078,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "建物ポテンシャル推計結果.csv")
+            file::join_path(env.get("workerArtifactPath"), "建物ポテンシャル推計結果.csv")
 
       # ========================================
       # CSV 4: Per-Surface Radiation
@@ -1070,7 +1114,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "面別日射量.csv")
+            file::join_path(env.get("workerArtifactPath"), "面別日射量.csv")
 
       # ========================================
       # CSV 5: Reflection — Map to Japanese column names
@@ -1152,7 +1196,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "集計結果.csv")
+            file::join_path(env.get("workerArtifactPath"), "集計結果.csv")
 
       # ========================================
       # Per-LOD 3D Tiles Output Pipelines (LOD1, LOD3, LOD4)
@@ -1203,9 +1247,9 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod1")
+            file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
           compressOutput: |
-            file::join_path(env.get("outputPath"), "bldg_lod1.zip")
+            file::join_path(env.get("workerArtifactPath"), "bldg_lod1.zip")
 
       # --- LOD3 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a4
@@ -1252,9 +1296,9 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod3")
+            file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
           compressOutput: |
-            file::join_path(env.get("outputPath"), "bldg_lod3.zip")
+            file::join_path(env.get("workerArtifactPath"), "bldg_lod3.zip")
 
       # --- LOD4 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a8
@@ -1301,9 +1345,9 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod4")
+            file::join_path(env.get("workerArtifactPath"), "bldg_lod4")
           compressOutput: |
-            file::join_path(env.get("outputPath"), "bldg_lod4.zip")
+            file::join_path(env.get("workerArtifactPath"), "bldg_lod4.zip")
 
     edges:
       # Section 1: CityGML Loading Pipeline
@@ -1412,9 +1456,16 @@ graphs:
         fromPort: default
         toPort: default
 
-      # GridCellIdCounter → SunPositionCalculator
+      # GridCellIdCounter → AreaCalculator (area computed once per cell, before timestep expansion)
       - id: e0000001-0000-0000-0000-000000000029
         from: 00000001-0000-0000-0000-000000000029
+        to: 00000001-0000-0000-0000-00000000000c
+        fromPort: default
+        toPort: default
+
+      # AreaCalculator → SunPositionCalculator
+      - id: e0000001-0000-0000-0000-000000000040
+        from: 00000001-0000-0000-0000-00000000000c
         to: 00000001-0000-0000-0000-00000000000b
         fromPort: default
         toPort: default
@@ -1426,20 +1477,19 @@ graphs:
         fromPort: default
         toPort: default
 
-      # ConvertDateTimeToIntegers → AreaCalculator
-      - id: e0000001-0000-0000-0000-000000000040
-        from: 00000001-0000-0000-0000-000000000040
-        to: 00000001-0000-0000-0000-00000000000c
-        fromPort: default
-        toPort: default
-
-      # AreaCalculator → RayIdCounter
+      # ConvertDateTimeToIntegers → GeometryRemover
       - id: e0000001-0000-0000-0000-00000000000c
-        from: 00000001-0000-0000-0000-00000000000c
-        to: 00000001-0000-0000-0000-000000000030
+        from: 00000001-0000-0000-0000-000000000040
+        to: 00000001-0000-0000-0000-000000000031
         fromPort: default
         toPort: default
 
+      # GeometryRemover → ComputeCosTheta
+      - id: e0000001-0000-0000-0000-000000000030
+        from: 00000001-0000-0000-0000-000000000031
+        to: 00000001-0000-0000-0000-000000000011
+        fromPort: default
+        toPort: default
 
       # Section 4: Ray Setup
       # Branch: Building geometries to ray intersector (from SpatialFilter output)
@@ -1449,9 +1499,9 @@ graphs:
         fromPort: passed
         toPort: geom
 
-      # RayIdCounter to ray intersector
+      # PreRayAttributeMapper → RayIntersectorShadow (ray)
       - id: e0000001-0000-0000-0000-000000000010
-        from: 00000001-0000-0000-0000-000000000030
+        from: 00000001-0000-0000-0000-000000000032
         to: 00000001-0000-0000-0000-000000000010
         fromPort: default
         toPort: ray
@@ -1459,25 +1509,25 @@ graphs:
 
 
 
-      # RayIntersector no_intersection → SnowFactorMerger (requestor)
+      # RayIntersector no_intersection → ComputeRadiation
       - id: e0000001-0000-0000-0000-000000000035
         from: 00000001-0000-0000-0000-000000000010
-        to: 00000003-0000-0000-0000-000000000004
+        to: 00000001-0000-0000-0000-00000000001d
         fromPort: no_intersection
-        toPort: requestor
-
-      # SnowFactorMerger (merged) → ComputeCosTheta
-      - id: e0000003-0000-0000-0000-000000000004
-        from: 00000003-0000-0000-0000-000000000004
-        to: 00000001-0000-0000-0000-000000000011
-        fromPort: merged
         toPort: default
 
-      # ComputeCosTheta → ComputeRadiation (direct, year/month already set by ConvertDateTimeToIntegers)
-      - id: e0000001-0000-0000-0000-00000000001c
+      # ComputeCosTheta → SnowFactorMerger (requestor)
+      - id: e0000003-0000-0000-0000-000000000004
         from: 00000001-0000-0000-0000-000000000011
-        to: 00000001-0000-0000-0000-00000000001d
+        to: 00000003-0000-0000-0000-000000000004
         fromPort: default
+        toPort: requestor
+
+      # SnowFactorMerger (merged) → PreRayAttributeMapper
+      - id: e0000001-0000-0000-0000-00000000001c
+        from: 00000003-0000-0000-0000-000000000004
+        to: 00000001-0000-0000-0000-000000000032
+        fromPort: merged
         toPort: default
 
       # Section 6b: Monthly Radiation with Cloud Factor edges
@@ -1532,11 +1582,11 @@ graphs:
         toPort: supplier
 
       # Section 7: Reflection Computation (conditional on outputReflection)
-      # ComputeCosTheta → ReflectionOutputFilter
+      # RayIntersector no_intersection → ReflectionOutputFilter
       - id: e0000001-0000-0000-0000-000000000013
-        from: 00000001-0000-0000-0000-000000000011
+        from: 00000001-0000-0000-0000-000000000010
         to: 00000004-0000-0000-0000-000000000010
-        fromPort: default
+        fromPort: no_intersection
         toPort: default
 
       # ReflectionOutputFilter → ComputeReflection (only when outputReflection=true)
