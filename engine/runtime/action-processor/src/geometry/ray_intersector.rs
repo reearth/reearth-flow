@@ -369,30 +369,31 @@ impl RayIntersector {
 
         let dir = self.ensure_temp_dir()?.clone();
 
-        // Flush ray buffer
+        // Flush ray buffer — each flush appends a new zstd frame to the file.
+        // zstd::Decoder handles concatenated frames by default in zstd 0.13+.
         for (pair_id, lines) in self.ray_buffer.drain() {
             let safe_name = sanitize_pair_id(&pair_id);
-            let path = dir.join("rays").join(format!("{safe_name}.jsonl"));
+            let path = dir.join("rays").join(format!("{safe_name}.jsonl.zst"));
             let file = File::options().create(true).append(true).open(&path)?;
-            let mut writer = BufWriter::new(file);
+            let mut encoder = zstd::Encoder::new(file, 1)?;
             for line in &lines {
-                writer.write_all(line.as_bytes())?;
-                writer.write_all(b"\n")?;
+                encoder.write_all(line.as_bytes())?;
+                encoder.write_all(b"\n")?;
             }
-            writer.flush()?;
+            encoder.finish()?;
         }
 
         // Flush geom buffer
         for (pair_id, lines) in self.geom_buffer.drain() {
             let safe_name = sanitize_pair_id(&pair_id);
-            let path = dir.join("geoms").join(format!("{safe_name}.jsonl"));
+            let path = dir.join("geoms").join(format!("{safe_name}.jsonl.zst"));
             let file = File::options().create(true).append(true).open(&path)?;
-            let mut writer = BufWriter::new(file);
+            let mut encoder = zstd::Encoder::new(file, 1)?;
             for line in &lines {
-                writer.write_all(line.as_bytes())?;
-                writer.write_all(b"\n")?;
+                encoder.write_all(line.as_bytes())?;
+                encoder.write_all(b"\n")?;
             }
-            writer.flush()?;
+            encoder.finish()?;
         }
 
         self.buffer_bytes = 0;
@@ -726,25 +727,27 @@ impl Processor for RayIntersector {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let pair_ids = std::mem::take(&mut self.pair_ids);
 
-        let intersection_path = dir.join("intersection.jsonl");
-        let no_intersection_path = dir.join("no_intersection.jsonl");
+        let intersection_path = dir.join("intersection.jsonl.zst");
+        let no_intersection_path = dir.join("no_intersection.jsonl.zst");
 
-        let mut intersection_writer = BufWriter::new(File::create(&intersection_path)?);
-        let mut no_intersection_writer = BufWriter::new(File::create(&no_intersection_path)?);
+        let mut intersection_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&intersection_path)?, 1)?);
+        let mut no_intersection_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&no_intersection_path)?, 1)?);
 
         let mut total_intersections = 0usize;
         let mut total_no_intersections = 0usize;
 
         for pair_id in &pair_ids {
             let safe_name = sanitize_pair_id(pair_id);
-            let ray_path = dir.join("rays").join(format!("{safe_name}.jsonl"));
-            let geom_path = dir.join("geoms").join(format!("{safe_name}.jsonl"));
+            let ray_path = dir.join("rays").join(format!("{safe_name}.jsonl.zst"));
+            let geom_path = dir.join("geoms").join(format!("{safe_name}.jsonl.zst"));
 
             // Load all geometry meshes and geom IDs for this pair
             let (geoms, geom_ids): (Vec<TriangularMesh<f64, f64>>, Vec<Option<String>>) =
                 if geom_path.exists() {
                     let file = File::open(&geom_path)?;
-                    let reader = BufReader::new(file);
+                    let reader = BufReader::new(zstd::Decoder::new(file)?);
                     let mut meshes = Vec::new();
                     let mut ids = Vec::new();
                     for line in reader.lines() {
@@ -768,7 +771,7 @@ impl Processor for RayIntersector {
             // If no geometries, emit all rays to no_intersection
             if geoms.is_empty() {
                 let file = File::open(&ray_path)?;
-                let reader = BufReader::new(file);
+                let reader = BufReader::new(zstd::Decoder::new(file)?);
                 for line in reader.lines() {
                     let line = line?;
                     if line.is_empty() {
@@ -797,7 +800,7 @@ impl Processor for RayIntersector {
 
             // Stream rays in chunks
             let file = File::open(&ray_path)?;
-            let reader = BufReader::new(file);
+            let reader = BufReader::new(zstd::Decoder::new(file)?);
             let mut chunk: Vec<DiskRayRecord> = Vec::new();
             let mut chunk_bytes: usize = 0;
 
@@ -904,8 +907,17 @@ impl Processor for RayIntersector {
             }
         }
 
+        // Finish the zstd streams (flush BufWriter buffer, then finalize the zstd frame)
         intersection_writer.flush()?;
+        intersection_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
         no_intersection_writer.flush()?;
+        no_intersection_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
 
         // Send output files
         if total_intersections > 0 {

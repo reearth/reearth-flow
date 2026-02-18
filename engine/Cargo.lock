@@ -6643,6 +6643,7 @@ dependencies = [
  "url",
  "uuid",
  "zip 8.1.0",
+ "zstd",
 ]
 
 [[package]]
@@ -7040,6 +7041,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "zstd",
 ]
 
 [[package]]
