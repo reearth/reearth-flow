@@ -9,7 +9,9 @@ import {
   PerInstanceColorAppearance,
   PolygonGeometry,
   PolygonHierarchy,
+  PolygonOutlineGeometry,
   Primitive,
+  PrimitiveCollection,
   ShowGeometryInstanceAttribute,
 } from "cesium";
 
@@ -48,7 +50,7 @@ export type FeatureInstanceData = {
   absoluteInstanceIds: object[];
   /** GeometryInstance id objects stored in the shared groundPrimitive */
   groundInstanceIds: object[];
-  lodPrimitive: Primitive | null;
+  lodPrimitive: PrimitiveCollection | null;
 };
 
 export type PrimitivesResult = {
@@ -494,7 +496,7 @@ export function convertFeatureCollectionToPrimitives(
 export function createLodUpgradePrimitive(
   feature: CityGmlFeature,
   typeConfig?: CityGmlTypeConfig,
-): Primitive | null {
+): PrimitiveCollection | null {
   const { geometry } = feature;
   const featureId: string = feature.properties?._originalId || feature.id || "";
 
@@ -542,8 +544,9 @@ export function createLodUpgradePrimitive(
 
   if (globalMinZ === Infinity) return null;
 
-  const geometryInstances: GeometryInstance[] = [];
-
+  // const geometryInstances: GeometryInstance[] = [];
+  const fillInstances: GeometryInstance[] = [];
+  const outlineInstances: GeometryInstance[] = [];
   allPolygons.forEach((polygon, idx) => {
     if (!polygon.exterior || !Array.isArray(polygon.exterior)) return;
     const rawPositions = coordsToPositions(polygon.exterior);
@@ -561,13 +564,26 @@ export function createLodUpgradePrimitive(
       : (typeConfig?.color ?? Color.GRAY.withAlpha(0.8));
     const color = resolveAppearanceColor(globalIdx, geometry, defaultColor);
 
-    geometryInstances.push(
+    // geometryInstances.push(
+    //   new GeometryInstance({
+    //     id: {
+    //       _originalId: featureId,
+    //       featureId,
+    //       instanceId: `${featureId}_lod_${idx}`,
+    //     },
+    //     geometry: new PolygonGeometry({
+    //       polygonHierarchy: new PolygonHierarchy(positions),
+    //       perPositionHeight: true,
+    //     }),
+    //     attributes: {
+    //       color: ColorGeometryInstanceAttribute.fromColor(color),
+    //       show: new ShowGeometryInstanceAttribute(true),
+    //     },
+    //   }),
+    // );
+    fillInstances.push(
       new GeometryInstance({
-        id: {
-          _originalId: featureId,
-          featureId,
-          instanceId: `${featureId}_lod_${idx}`,
-        },
+        id: { featureId, instanceId: `${featureId}_fill_lod_${idx}` },
         geometry: new PolygonGeometry({
           polygonHierarchy: new PolygonHierarchy(positions),
           perPositionHeight: true,
@@ -578,16 +594,45 @@ export function createLodUpgradePrimitive(
         },
       }),
     );
+
+    outlineInstances.push(
+      new GeometryInstance({
+        id: { featureId, instanceId: `${featureId}_outline_lod_${idx}` },
+        geometry: new PolygonOutlineGeometry({
+          polygonHierarchy: new PolygonHierarchy(positions),
+          perPositionHeight: true,
+        }),
+        attributes: {
+          color: ColorGeometryInstanceAttribute.fromColor(
+            Color.BLACK.withAlpha(0.8),
+          ),
+          show: new ShowGeometryInstanceAttribute(true),
+        },
+      }),
+    );
   });
 
-  if (geometryInstances.length === 0) return null;
-
-  return new Primitive({
-    geometryInstances,
+  if (fillInstances.length === 0 || outlineInstances.length === 0) return null;
+  const fillPrimitive = new Primitive({
+    geometryInstances: fillInstances,
     appearance: new PerInstanceColorAppearance({
+      flat: true,
       translucent: true,
-      flat: false,
+      // optional polygonOffset if needed
+      // renderState: { polygonOffset: { enabled: true, factor: -1, units: -1 } }
     }),
-    asynchronous: true,
   });
+
+  const outlinePrimitive = new Primitive({
+    geometryInstances: outlineInstances,
+    appearance: new PerInstanceColorAppearance({
+      flat: true,
+      translucent: true,
+    }),
+  });
+
+  const primitiveCollection = new PrimitiveCollection();
+  primitiveCollection.add(fillPrimitive);
+  primitiveCollection.add(outlinePrimitive);
+  return primitiveCollection;
 }
