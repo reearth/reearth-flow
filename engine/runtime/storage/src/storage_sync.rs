@@ -74,24 +74,43 @@ impl Storage {
                 let url_for_error = url.clone();
                 let handle = std::thread::spawn(move || -> Result<Bytes> {
                     let client = reqwest::blocking::Client::builder()
-                        .timeout(Duration::from_secs(30))
+                        .timeout(Duration::from_secs(600))
                         .build()
                         .map_err(|err| object_store::Error::Generic {
                             store: "HttpError",
                             source: Box::new(err),
                         })?;
-                    let res =
-                        client
-                            .get(url)
-                            .send()
-                            .map_err(|err| object_store::Error::Generic {
-                                store: "HttpError",
-                                source: Box::new(err),
-                            })?;
-                    let buf = res.bytes().map_err(|err| object_store::Error::Generic {
-                        store: "HttpError",
-                        source: Box::new(err),
+                    let res = client
+                        .get(url)
+                        .send()
+                        .map_err(|err| object_store::Error::Generic {
+                            store: "HttpError",
+                            source: Box::new(err),
+                        })?
+                        .error_for_status()
+                        .map_err(|err| object_store::Error::Generic {
+                            store: "HttpError",
+                            source: format!("HTTP request failed: {err}").into(),
+                        })?;
+
+                    let status = res.status();
+                    let content_length = res
+                        .content_length()
+                        .map(|l| {
+                            let len = l as f64 / 1024_f64.powi(2);
+                            format!("{len:.2} MB")
+                        })
+                        .unwrap_or_else(|| "unknown".to_string());
+                    let buf = res.bytes().map_err(|err| {
+                        let detail = format!(
+                            "failed to read response body (status={status}, content_length={content_length}): {err}",
+                        );
+                        object_store::Error::Generic {
+                            store: "HttpError",
+                            source: detail.into(),
+                        }
                     })?;
+
                     Ok(buf)
                 });
 
