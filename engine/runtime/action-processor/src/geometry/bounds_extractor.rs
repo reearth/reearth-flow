@@ -46,11 +46,11 @@ impl Bounds {
     }
     fn min_z_value(&self) -> Option<AttributeValue> {
         self.min_z
-            .and_then(|z| Number::from_f64(z).map(|n| AttributeValue::Number(n)))
+            .and_then(|z| Number::from_f64(z).map(AttributeValue::Number))
     }
     fn max_z_value(&self) -> Option<AttributeValue> {
         self.max_z
-            .and_then(|z| Number::from_f64(z).map(|n| AttributeValue::Number(n)))
+            .and_then(|z| Number::from_f64(z).map(AttributeValue::Number))
     }
 }
 
