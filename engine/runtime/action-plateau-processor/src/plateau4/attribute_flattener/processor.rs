@@ -598,7 +598,7 @@ impl AttributeFlattener {
 
                 self.existing_flatten_attributes
                     .entry(lookup_key.to_string())
-                    .or_insert_with(HashSet::new)
+                    .or_default()
                     .insert(attribute.attribute.clone());
                 feature.insert(attribute.attribute.clone(), new_attribute);
             }
