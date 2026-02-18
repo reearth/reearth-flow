@@ -97,6 +97,17 @@ pub struct SpatialFilterParams {
     /// Optional attribute name to store the number of matching filters
     #[serde(default)]
     pub output_match_count_attribute: Option<Attribute>,
+
+    /// # Merge Filter Attributes
+    /// If true, copy all attributes from matched filter feature(s) onto the candidate.
+    /// Only applies to features routed to the passed port.
+    #[serde(default)]
+    pub merge_filter_attributes: bool,
+
+    /// # Merged Attributes Prefix
+    /// Optional prefix applied to merged filter attribute names to avoid collisions.
+    #[serde(default)]
+    pub merged_attributes_prefix: Option<String>,
 }
 
 fn default_pass_on_multiple() -> bool {
@@ -109,6 +120,8 @@ impl Default for SpatialFilterParams {
             predicate: SpatialPredicate::Intersects,
             pass_on_multiple_matches: true,
             output_match_count_attribute: None,
+            merge_filter_attributes: false,
+            merged_attributes_prefix: None,
         }
     }
 }
@@ -236,6 +249,7 @@ impl Processor for SpatialFilter {
 struct TestResult {
     passed: bool,
     match_count: usize,
+    matched_filters: Vec<Feature>,
 }
 
 fn forward_result(
@@ -255,6 +269,18 @@ fn forward_result(
         );
     }
 
+    // Add merge filter attribute if configured
+    if params.merge_filter_attributes {
+        for filter in &result.matched_filters {
+            for (key, value) in filter.attributes.iter() {
+                let merged_key = match &params.merged_attributes_prefix {
+                    Some(prefix) => Attribute::new(format!("{}{}", prefix, key)),
+                    None => key.clone(),
+                };
+                feature.attributes_mut().insert(merged_key, value.clone());
+            }
+        }
+    }
     let port = if result.passed {
         PASSED_PORT.clone()
     } else {
@@ -272,6 +298,7 @@ fn test_2d_geometry(
     params: &SpatialFilterParams,
 ) -> TestResult {
     let mut match_count = 0;
+    let mut matched_filters: Vec<Feature> = Vec::new();
 
     for filter in filters {
         let filter_matches = match &filter.geometry.value {
@@ -303,20 +330,25 @@ fn test_2d_geometry(
                 return TestResult {
                     passed: true,
                     match_count,
+                    matched_filters: vec![filter.clone()],
                 };
+            } else {
+                // AND logic: accumulate matched filter for potential attribute merging
+                matched_filters.push(filter.clone());
             }
         } else if !params.pass_on_multiple_matches {
             // AND logic: return early on first non-match
             return TestResult {
                 passed: false,
                 match_count,
+                matched_filters: Vec::new(),
             };
         }
     }
 
     // If we get here:
     // - For OR logic (pass_on_multiple): no matches found, so fail
-    // - For AND logic (!pass_on_multiple): all matches passed, so pass
+    // - For AND logic (!pass_on_multiple): all filters matched, so pass
     TestResult {
         passed: if params.pass_on_multiple_matches {
             false
@@ -324,6 +356,7 @@ fn test_2d_geometry(
             match_count > 0
         },
         match_count,
+        matched_filters,
     }
 }
 
@@ -333,9 +366,10 @@ fn test_3d_geometry(
     params: &SpatialFilterParams,
 ) -> TestResult {
     let mut match_count = 0;
+    let mut matched_filters: Vec<Feature> = Vec::new();
 
     for filter in filters {
-        let matches = match &filter.geometry.value {
+        let filter_matches = match &filter.geometry.value {
             GeometryValue::FlowGeometry2D(filter_geo) => {
                 // Project 3D candidate to 2D (drop Z) and test against 2D filter
                 let candidate_2d: Geometry2D<f64> = candidate.clone().into();
@@ -355,18 +389,22 @@ fn test_3d_geometry(
             _ => false,
         };
 
-        if matches {
+        if filter_matches {
             match_count += 1;
             if params.pass_on_multiple_matches {
                 return TestResult {
                     passed: true,
                     match_count,
+                    matched_filters: vec![filter.clone()],
                 };
+            } else {
+                matched_filters.push(filter.clone());
             }
         } else if !params.pass_on_multiple_matches {
             return TestResult {
                 passed: false,
                 match_count,
+                matched_filters: Vec::new(),
             };
         }
     }
@@ -378,6 +416,7 @@ fn test_3d_geometry(
             match_count > 0
         },
         match_count,
+        matched_filters,
     }
 }
 
@@ -387,6 +426,7 @@ fn test_citygml_geometry(
     params: &SpatialFilterParams,
 ) -> TestResult {
     let mut match_count = 0;
+    let mut matched_filters: Vec<Feature> = Vec::new();
 
     // Extract all polygons from candidate CityGML
     let candidate_polygons: Vec<_> = candidate
@@ -399,11 +439,12 @@ fn test_citygml_geometry(
         return TestResult {
             passed: false,
             match_count: 0,
+            matched_filters: Vec::new(),
         };
     }
 
     for filter in filters {
-        let matches = match &filter.geometry.value {
+        let filter_matches = match &filter.geometry.value {
             GeometryValue::FlowGeometry2D(filter_geo) => {
                 // Project CityGML 3D polygons to 2D (drop Z) and test against 2D filter
                 candidate_polygons.iter().any(|poly| {
@@ -435,18 +476,22 @@ fn test_citygml_geometry(
             _ => false,
         };
 
-        if matches {
+        if filter_matches {
             match_count += 1;
             if params.pass_on_multiple_matches {
                 return TestResult {
                     passed: true,
                     match_count,
+                    matched_filters: vec![filter.clone()],
                 };
+            } else {
+                matched_filters.push(filter.clone());
             }
         } else if !params.pass_on_multiple_matches {
             return TestResult {
                 passed: false,
                 match_count,
+                matched_filters: Vec::new(),
             };
         }
     }
@@ -458,6 +503,7 @@ fn test_citygml_geometry(
             match_count > 0
         },
         match_count,
+        matched_filters,
     }
 }
 
@@ -586,6 +632,8 @@ mod tests {
                 predicate: SpatialPredicate::Intersects,
                 pass_on_multiple_matches: true,
                 output_match_count_attribute: None,
+                merge_filter_attributes: false,
+                merged_attributes_prefix: None,
             },
             filters: Vec::new(),
             candidates: Vec::new(),
@@ -637,6 +685,8 @@ mod tests {
                 predicate: SpatialPredicate::Disjoint,
                 pass_on_multiple_matches: true,
                 output_match_count_attribute: None,
+                merge_filter_attributes: false,
+                merged_attributes_prefix: None,
             },
             filters: Vec::new(),
             candidates: Vec::new(),
