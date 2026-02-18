@@ -156,7 +156,6 @@ export default () => {
           const geometry = selectedFeature.geometry;
 
           if (geometry?.type === "CityGmlGeometry") {
-            // CityGML uses Primitives — build a BoundingSphere from polygon vertices
             const gmlGeometries =
               geometry.gmlGeometries ||
               geometry.value?.cityGmlGeometry?.gmlGeometries;
@@ -194,7 +193,9 @@ export default () => {
 
             if (positions.length > 0) {
               const sphere = BoundingSphere.fromPoints(positions);
-              cesiumViewer.camera.flyToBoundingSphere(sphere, { duration: 1.5 });
+              cesiumViewer.camera.flyToBoundingSphere(sphere, {
+                duration: 1.5,
+              });
             }
           } else {
             // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
