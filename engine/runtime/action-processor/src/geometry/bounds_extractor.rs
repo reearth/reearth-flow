@@ -44,15 +44,13 @@ impl Bounds {
     fn max_y_value(&self) -> AttributeValue {
         AttributeValue::Number(Number::from_f64(self.max_y).unwrap_or_else(|| Number::from(0)))
     }
-    fn min_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(
-            Number::from_f64(self.min_z.unwrap_or(0.0)).unwrap_or_else(|| Number::from(0)),
-        )
+    fn min_z_value(&self) -> Option<AttributeValue> {
+        self.min_z
+            .and_then(|z| Number::from_f64(z).map(|n| AttributeValue::Number(n)))
     }
-    fn max_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(
-            Number::from_f64(self.max_z.unwrap_or(0.0)).unwrap_or_else(|| Number::from(0)),
-        )
+    fn max_z_value(&self) -> Option<AttributeValue> {
+        self.max_z
+            .and_then(|z| Number::from_f64(z).map(|n| AttributeValue::Number(n)))
     }
 }
 
@@ -176,16 +174,16 @@ impl Processor for BoundsExtractor {
                 self.params.ymax.clone().unwrap_or(Attribute::new("ymax")),
                 bounds.max_y_value(),
             );
-            if bounds.min_z.is_some() {
+            if let Some(min_z) = bounds.min_z_value() {
                 new_feature.insert(
                     self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
-                    bounds.min_z_value(),
+                    min_z,
                 );
             }
-            if bounds.max_z.is_some() {
+            if let Some(max_z) = bounds.max_z_value() {
                 new_feature.insert(
                     self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
-                    bounds.max_z_value(),
+                    max_z,
                 );
             }
 
