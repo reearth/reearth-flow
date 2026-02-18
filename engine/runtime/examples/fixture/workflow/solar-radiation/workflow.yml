@@ -182,14 +182,14 @@ graphs:
         type: action
         action: GeometryPartExtractor
 
-      # Assign stable surface_id per geometry part (before pipeline splits)
+      # Assign stable surfaceId per geometry part (before pipeline splits)
       - id: 00000001-0000-0000-0000-000000000041
         name: SurfaceIdCounter
         type: action
         action: FeatureCounter
         with:
           countStart: 0
-          outputAttribute: surface_id
+          outputAttribute: surfaceId
 
       - id: 00000001-0000-0000-0000-000000000005
         name: HorizontalReprojector
@@ -266,14 +266,14 @@ graphs:
                 env.get("__value")["featureType"] == "bldg:RoofSurface";
               outputPort: default
 
-      # Counter to assign stable cell_id per physical grid cell (before timestep expansion)
+      # Counter to assign stable cellId per physical grid cell (before timestep expansion)
       - id: 00000001-0000-0000-0000-000000000029
         name: GridCellIdCounter
         type: action
         action: FeatureCounter
         with:
           countStart: 0
-          outputAttribute: cell_id
+          outputAttribute: cellId
 
       # ========================================
       # Section 3: Solar Position Calculation
@@ -295,7 +295,7 @@ graphs:
             env.get("prcs")
           outputType: both
 
-      # Convert year, month, date, hour to integers from solar_time (RFC 3339)
+      # Convert year, month, date, hour to integers from solarTime (RFC 3339)
       - id: 00000001-0000-0000-0000-000000000040
         name: ConvertDateTimeToIntegers
         type: action
@@ -305,23 +305,23 @@ graphs:
             - attribute: year
               method: create
               value: |
-                let dt = env.get("__value")["solar_time"];
+                let dt = env.get("__value")["solarTime"];
                 parse_int(dt.split("-")[0])
             - attribute: month
               method: create
               value: |
-                let dt = env.get("__value")["solar_time"];
+                let dt = env.get("__value")["solarTime"];
                 parse_int(dt.split("-")[1])
             - attribute: date
               method: create
               value: |
-                let dt = env.get("__value")["solar_time"];
+                let dt = env.get("__value")["solarTime"];
                 let day_part = dt.split("T")[0];
                 parse_int(day_part.split("-")[2])
             - attribute: hour
               method: create
               value: |
-                let dt = env.get("__value")["solar_time"];
+                let dt = env.get("__value")["solarTime"];
                 let time_part = dt.split("T")[1];
                 parse_int(time_part.split(":")[0])
 
@@ -331,7 +331,7 @@ graphs:
         action: AreaCalculator
         with:
           areaType: slopedArea
-          outputAttribute: cell_area
+          outputAttribute: cellArea
           multiplier: 1.0
 
       - id: 00000001-0000-0000-0000-000000000031
@@ -348,38 +348,38 @@ graphs:
           mappers:
             - attribute: gmlId
               expr: env.get("__value").gmlId
-            - attribute: surface_id
-              expr: env.get("__value").surface_id
-            - attribute: cell_id
-              expr: env.get("__value").cell_id
+            - attribute: surfaceId
+              expr: env.get("__value").surfaceId
+            - attribute: cellId
+              expr: env.get("__value").cellId
             - attribute: year
               expr: env.get("__value").year
             - attribute: month
               expr: env.get("__value").month
             - attribute: slope
               expr: env.get("__value").slope
-            - attribute: solar_altitude
-              expr: env.get("__value").solar_altitude
-            - attribute: solar_time
-              expr: env.get("__value").solar_time
-            - attribute: cell_area
-              expr: env.get("__value").cell_area
-            - attribute: cos_theta
-              expr: env.get("__value").cos_theta
+            - attribute: solarAltitude
+              expr: env.get("__value").solarAltitude
+            - attribute: solarTime
+              expr: env.get("__value").solarTime
+            - attribute: cellArea
+              expr: env.get("__value").cellArea
+            - attribute: cosTheta
+              expr: env.get("__value").cosTheta
             - attribute: groundReflectivity
               expr: env.get("__value").groundReflectivity
-            - attribute: ray_origin_x
-              expr: env.get("__value").ray_origin_x
-            - attribute: ray_origin_y
-              expr: env.get("__value").ray_origin_y
-            - attribute: ray_origin_z
-              expr: env.get("__value").ray_origin_z
-            - attribute: solar_direction_x
-              expr: env.get("__value").solar_direction_x
-            - attribute: solar_direction_y
-              expr: env.get("__value").solar_direction_y
-            - attribute: solar_direction_z
-              expr: env.get("__value").solar_direction_z
+            - attribute: rayOriginX
+              expr: env.get("__value").rayOriginX
+            - attribute: rayOriginY
+              expr: env.get("__value").rayOriginY
+            - attribute: rayOriginZ
+              expr: env.get("__value").rayOriginZ
+            - attribute: solarDirectionX
+              expr: env.get("__value").solarDirectionX
+            - attribute: solarDirectionY
+              expr: env.get("__value").solarDirectionY
+            - attribute: solarDirectionZ
+              expr: env.get("__value").solarDirectionZ
             - attribute: normalX
               expr: env.get("__value").normalX
             - attribute: normalY
@@ -404,12 +404,12 @@ graphs:
           tolerance: "0.01"
           outputGeometryType: lineSegmentToIntersection
           ray:
-            posX: ray_origin_x
-            posY: ray_origin_y
-            posZ: ray_origin_z
-            dirX: solar_direction_x
-            dirY: solar_direction_y
-            dirZ: solar_direction_z
+            posX: rayOriginX
+            posY: rayOriginY
+            posZ: rayOriginZ
+            dirX: solarDirectionX
+            dirY: solarDirectionY
+            dirZ: solarDirectionZ
 
 
       # ========================================
@@ -477,12 +477,12 @@ graphs:
         with:
           operations:
             # cos(theta) = solar_dir · normal (dot product of unit vectors)
-            - attribute: cos_theta
+            - attribute: cosTheta
               method: create
               value: |
-                let sdx = env.get("__value")["solar_direction_x"];
-                let sdy = env.get("__value")["solar_direction_y"];
-                let sdz = env.get("__value")["solar_direction_z"];
+                let sdx = env.get("__value")["solarDirectionX"];
+                let sdy = env.get("__value")["solarDirectionY"];
+                let sdz = env.get("__value")["solarDirectionZ"];
                 let nx = env.get("__value")["normalX"];
                 let ny = env.get("__value")["normalY"];
                 let nz = env.get("__value")["normalZ"];
@@ -501,10 +501,10 @@ graphs:
               method: create
               value: |
                 let p = env.get("monthlyTransmissivity")[env.get("__value").month - 1];
-                let h_rad = env.get("__value").solar_altitude * math::PI / 180.0;
+                let h_rad = env.get("__value").solarAltitude * math::PI / 180.0;
                 let m = 1.0 / math::sin(h_rad);
                 let beta_m = math::pow(p, m);
-                let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cos_theta * env.get("__value").cell_area;
+                let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cosTheta * env.get("__value").cellArea;
 
                 let dN = 1 - beta_m;
                 let dD = 1 - 1.4 * math::ln(p);
@@ -521,10 +521,10 @@ graphs:
               method: create
               value: |
                 let p = 1.0 - env.get("monthlyTransmissivity")[env.get("__value").month - 1];
-                let h_rad = env.get("__value").solar_altitude * math::PI / 180.0;
+                let h_rad = env.get("__value").solarAltitude * math::PI / 180.0;
                 let m = 1.0 / math::sin(h_rad);
                 let beta_m = math::pow(p, m);
-                let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cos_theta * env.get("__value").cell_area;
+                let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cosTheta * env.get("__value").cellArea;
 
                 let dN = 1 - beta_m;
                 let dD = 1 - 1.4 * math::ln(p);
@@ -556,8 +556,8 @@ graphs:
           groupBy:
             - year
             - month
-            - cell_id
-            - surface_id
+            - cellId
+            - surfaceId
             - gmlId
           calculations:
             - newAttribute: radiationSunnySum
@@ -599,15 +599,15 @@ graphs:
       # Section 6c: Total Radiation Aggregation for 3D Tiles
       # ========================================
 
-      # Aggregate radiationPerMonth across all months per cell for unique cell_id in ImageRasterizer
+      # Aggregate radiationPerMonth across all months per cell for unique cellId in ImageRasterizer
       - id: 00000001-0000-0000-0000-000000000071
         name: TotalRadiationAggregator
         type: action
         action: StatisticsCalculator
         with:
           groupBy:
-            - cell_id
-            - surface_id
+            - cellId
+            - surfaceId
             - gmlId
           calculations:
             - newAttribute: totalSolarRadiation
@@ -625,7 +625,7 @@ graphs:
         action: StatisticsCalculator
         with:
           groupBy:
-            - surface_id
+            - surfaceId
             - gmlId
           calculations:
             - newAttribute: totalSolarRadiation
@@ -643,9 +643,9 @@ graphs:
         action: FeatureMerger
         with:
           requestorAttribute:
-            - surface_id
+            - surfaceId
           supplierAttribute:
-            - surface_id
+            - surfaceId
 
       # Add Japanese-named schema attributes for 3D Tiles output
       - id: 00000001-0000-0000-0000-000000000073
@@ -677,12 +677,12 @@ graphs:
 
       # Normalize radiation per day and by maxRadiationPerDay to get t in [0, 1]
       - id: 00000001-0000-0000-0000-000000000070
-        name: NormalizeRadiation
+        name: NormalizeRadiationForColorMapping
         type: action
         action: AttributeManager
         with:
           operations:
-            - attribute: _normalized_t
+            - attribute: normalizedRadiation
               method: create
               value: |
                 let start_str = env.get("startTime");
@@ -734,14 +734,14 @@ graphs:
             - attribute: color_r
               method: create
               value: |
-                let t = env.get("__value")["_normalized_t"] ?? 0.0;
+                let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
                 let v = 4.0 * t - 1.0;
                 let r = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
                 math::round(255.0 * r)
             - attribute: color_g
               method: create
               value: |
-                let t = env.get("__value")["_normalized_t"] ?? 0.0;
+                let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
                 let v1_raw = 4.0 * t;
                 let v1 = if v1_raw < 0.0 { 0.0 } else if v1_raw > 1.0 { 1.0 } else { v1_raw };
                 let v2_raw = 4.0 * t - 3.0;
@@ -750,7 +750,7 @@ graphs:
             - attribute: color_b
               method: create
               value: |
-                let t = env.get("__value")["_normalized_t"] ?? 0.0;
+                let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
                 let v = 4.0 * t - 1.0;
                 let clamped = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
                 math::round(255.0 * (1.0 - clamped))
@@ -763,17 +763,17 @@ graphs:
         action: FeatureMerger
         with:
           requestorAttribute:
-            - cell_id
+            - cellId
           supplierAttribute:
-            - cell_id
+            - cellId
 
-      # Extract bounds (especially max-z) before forcing to 2D
+      # Extract bounds (especially maxZ) before forcing to 2D
       - id: 00000001-0000-0000-0000-000000000069
         name: CellBoundsExtractor
         type: action
         action: BoundsExtractor
         with:
-          zmax: max-z
+          zmax: maxZ
 
       # Filter to keep only roof surfaces for texture assignment
       - id: 00000001-0000-0000-0000-00000000006a
@@ -797,7 +797,7 @@ graphs:
             file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
           onOverlap:
             max: |
-              env.get("__value")["max-z"]
+              env.get("__value")["maxZ"]
 
       # Reproject textured geometry from projected CRS to WGS84
       - id: 00000001-0000-0000-0000-000000000062
@@ -884,40 +884,19 @@ graphs:
         with:
           operations:
             # Reflection direction: R = I - 2(I·N)N where I is incident direction (opposite of solar)
-            # I = -solar_direction
-            - attribute: reflect_dir_x
+            # I = -solarDirection, I·N = -cosTheta, so R = -solarDirection + 2*cosTheta*normal
+            - attribute: reflectDirX
               method: create
               value: |
-                let ix = -env.get("__value")["solar_direction_x"];
-                let iy = -env.get("__value")["solar_direction_y"];
-                let iz = -env.get("__value")["solar_direction_z"];
-                let nx = env.get("__value")["normalX"];
-                let ny = env.get("__value")["normalY"];
-                let nz = env.get("__value")["normalZ"];
-                let dot = ix * nx + iy * ny + iz * nz;
-                ix - 2.0 * dot * nx
-            - attribute: reflect_dir_y
+                -env.get("__value")["solarDirectionX"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalX"]
+            - attribute: reflectDirY
               method: create
               value: |
-                let ix = -env.get("__value")["solar_direction_x"];
-                let iy = -env.get("__value")["solar_direction_y"];
-                let iz = -env.get("__value")["solar_direction_z"];
-                let nx = env.get("__value")["normalX"];
-                let ny = env.get("__value")["normalY"];
-                let nz = env.get("__value")["normalZ"];
-                let dot = ix * nx + iy * ny + iz * nz;
-                iy - 2.0 * dot * ny
-            - attribute: reflect_dir_z
+                -env.get("__value")["solarDirectionY"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalY"]
+            - attribute: reflectDirZ
               method: create
               value: |
-                let ix = -env.get("__value")["solar_direction_x"];
-                let iy = -env.get("__value")["solar_direction_y"];
-                let iz = -env.get("__value")["solar_direction_z"];
-                let nx = env.get("__value")["normalX"];
-                let ny = env.get("__value")["normalY"];
-                let nz = env.get("__value")["normalZ"];
-                let dot = ix * nx + iy * ny + iz * nz;
-                iz - 2.0 * dot * nz
+                -env.get("__value")["solarDirectionZ"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalZ"]
 
       - id: 00000001-0000-0000-0000-000000000014
         name: RayIntersectorReflect
@@ -933,12 +912,12 @@ graphs:
           geomId: |
             env.get("__value")["gmlId"] ?? ""
           ray:
-            posX: ray_origin_x
-            posY: ray_origin_y
-            posZ: ray_origin_z
-            dirX: reflect_dir_x
-            dirY: reflect_dir_y
-            dirZ: reflect_dir_z
+            posX: rayOriginX
+            posY: rayOriginY
+            posZ: rayOriginZ
+            dirX: reflectDirX
+            dirY: reflectDirY
+            dirZ: reflectDirZ
 
       # Extract intersection point coordinates (BoundsExtractor on a point)
       - id: 00000001-0000-0000-0000-00000000001b
@@ -946,12 +925,12 @@ graphs:
         type: action
         action: BoundsExtractor
         with:
-          xmin: reflect_hit_x
-          ymin: reflect_hit_y
-          zmin: reflect_hit_z
-          xmax: _reflect_xmax
-          ymax: _reflect_ymax
-          zmax: _reflect_zmax
+          xmin: reflectHitX
+          ymin: reflectHitY
+          zmin: reflectHitZ
+          xmax: _reflectXmax
+          ymax: _reflectYmax
+          zmax: _reflectZmax
 
       - id: 00000001-0000-0000-0000-000000000016
         name: ReflectionWriter
@@ -973,7 +952,7 @@ graphs:
         action: AreaCalculator
         with:
           areaType: slopedArea
-          outputAttribute: surface_area
+          outputAttribute: surfaceArea
           multiplier: 1.0
 
       # Aggregate area per surface (sum across split polygons within a surface)
@@ -983,12 +962,12 @@ graphs:
         action: StatisticsCalculator
         with:
           groupBy:
-            - surface_id
+            - surfaceId
             - gmlId
           calculations:
             - newAttribute: totalSurfaceArea
               expr: |
-                env.get("__value")["surface_area"]
+                env.get("__value")["surfaceArea"]
 
       # Aggregate area per building (sum across surfaces)
       - id: 00000001-0000-0000-0000-0000000000d2
@@ -1021,9 +1000,9 @@ graphs:
         action: FeatureMerger
         with:
           requestorAttribute:
-            - surface_id
+            - surfaceId
           supplierAttribute:
-            - surface_id
+            - surfaceId
 
       # ========================================
       # CSV 1: Building Solar Potential
@@ -1094,7 +1073,7 @@ graphs:
             - attribute: 建物ID
               expr: env.get("__value")["gmlId"]
             - attribute: 屋根ID
-              expr: env.get("__value")["surface_id"]
+              expr: env.get("__value")["surfaceId"]
             - attribute: 単位面積あたりの日射量(kWh/m2)
               expr: |
                 let area = env.get("__value")["totalSurfaceArea"] ?? 0.0;
@@ -1129,23 +1108,23 @@ graphs:
             - attribute: 建物/土地ID
               expr: env.get("__value")["gmlId"] ?? ""
             - attribute: 屋根ID
-              expr: env.get("__value")["surface_id"] ?? ""
+              expr: env.get("__value")["surfaceId"] ?? ""
             - attribute: 日時
-              expr: env.get("__value")["solar_time"] ?? ""
+              expr: env.get("__value")["solarTime"] ?? ""
             - attribute: 反射元_座標.X(m)
-              expr: env.get("__value")["ray_origin_x"]
+              expr: env.get("__value")["rayOriginX"]
             - attribute: 反射元_座標.Y(m)
-              expr: env.get("__value")["ray_origin_y"]
+              expr: env.get("__value")["rayOriginY"]
             - attribute: 反射元_座標.Z(m)
-              expr: env.get("__value")["ray_origin_z"]
+              expr: env.get("__value")["rayOriginZ"]
             - attribute: 反射先_座標.X(m)
-              expr: env.get("__value")["reflect_hit_x"]
+              expr: env.get("__value")["reflectHitX"]
             - attribute: 反射先_座標.Y(m)
-              expr: env.get("__value")["reflect_hit_y"]
+              expr: env.get("__value")["reflectHitY"]
             - attribute: 反射先_座標.Z(m)
-              expr: env.get("__value")["reflect_hit_z"]
+              expr: env.get("__value")["reflectHitZ"]
             - attribute: 反射先
-              expr: env.get("__value")["geom_id"] ?? ""
+              expr: env.get("__value")["geomId"] ?? ""
 
       # ========================================
       # CSV 6: Area Aggregation Results
@@ -1663,7 +1642,7 @@ graphs:
         fromPort: default
         toPort: supplier
 
-      # FilterRoofForTexture → SolarAttributeMerger (requestor - roof features with surface_id)
+      # FilterRoofForTexture → SolarAttributeMerger (requestor - roof features with surfaceId)
       - id: e0000001-0000-0000-0000-000000000075
         from: 00000001-0000-0000-0000-00000000006a
         to: 00000001-0000-0000-0000-000000000075
@@ -1695,14 +1674,14 @@ graphs:
         fromPort: default
         toPort: default
 
-      # GridCellIdCounter → CellGeometryMerger (requestor - original cell polygons with geometry and stable cell_id)
+      # GridCellIdCounter → CellGeometryMerger (requestor - original cell polygons with geometry and stable cellId)
       - id: e0000001-0000-0000-0000-000000000068
         from: 00000001-0000-0000-0000-000000000029
         to: 00000001-0000-0000-0000-000000000068
         fromPort: default
         toPort: requestor
 
-      # RadiationToColorMapper → CellGeometryMerger (supplier - colors by cell_id)
+      # RadiationToColorMapper → CellGeometryMerger (supplier - colors by cellId)
       - id: e0000001-0000-0000-0000-000000000069
         from: 00000001-0000-0000-0000-000000000060
         to: 00000001-0000-0000-0000-000000000068

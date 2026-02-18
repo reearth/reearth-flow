@@ -546,7 +546,7 @@ impl RayIntersector {
         output_feature.geometry = Arc::new(geometry);
 
         output_feature.attributes_mut().insert(
-            Attribute::new("ray_intersection_t"),
+            Attribute::new("distanceToIntersection"),
             AttributeValue::Number(
                 serde_json::Number::from_f64(hit.t).unwrap_or_else(|| serde_json::Number::from(0)),
             ),
@@ -554,7 +554,7 @@ impl RayIntersector {
 
         if let Some(id) = geom_id {
             output_feature.attributes_mut().insert(
-                Attribute::new("geom_id"),
+                Attribute::new("geomId"),
                 AttributeValue::String(id.to_string()),
             );
         }
