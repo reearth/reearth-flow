@@ -32,6 +32,7 @@ type ProcessedPolygon = {
   material: ColorMaterialProperty;
   minZ: number;
   maxZ: number;
+  rawPolygon: any;
 };
 
 type CityGmlGeometry = {
@@ -146,11 +147,66 @@ function processPolygons(buildingPolygons: any[]): ProcessedPolygon[] {
     });
 
     if (positions.length >= 3) {
-      results.push({ positions, surfaceType, material, minZ, maxZ });
+      results.push({
+        positions,
+        surfaceType,
+        material,
+        minZ,
+        maxZ,
+        rawPolygon: polygon,
+      });
     }
   });
 
   return results;
+}
+
+/**
+ * Resolve per-polygon appearance from CityGML texture or material data.
+ * Checks polygonTextures first (ImageMaterialProperty), then polygonMaterials
+ * (ColorMaterialProperty from diffuseColor/transparency), then returns fallback.
+ */
+function resolveAppearanceMaterial(
+  globalIndex: number,
+  geometry: CityGmlGeometry,
+  fallback: ColorMaterialProperty,
+): ColorMaterialProperty | ImageMaterialProperty {
+  // Texture appearance takes priority
+  const polygonTextures = geometry.polygonTextures;
+  const textures = geometry.textures;
+  if (
+    globalIndex >= 0 &&
+    Array.isArray(polygonTextures) &&
+    Array.isArray(textures)
+  ) {
+    const texIdx = polygonTextures[globalIndex];
+    if (texIdx != null && textures[texIdx]) {
+      const uri = textures[texIdx].uri;
+      if (uri) {
+        return new ImageMaterialProperty({ image: uri, transparent: true });
+      }
+    }
+  }
+
+  // Material (diffuse color) appearance
+  const polygonMaterials = geometry.polygonMaterials;
+  const materials = geometry.materials;
+  if (
+    globalIndex >= 0 &&
+    Array.isArray(polygonMaterials) &&
+    Array.isArray(materials) &&
+    materials.length > 0
+  ) {
+    const matIdx = polygonMaterials[globalIndex];
+    if (matIdx != null && materials[matIdx]) {
+      const mat = materials[matIdx];
+      const [r, g, b] = (mat.diffuseColor as number[]) ?? [1, 1, 1];
+      const alpha = 1 - ((mat.transparency as number) ?? 0);
+      return new ColorMaterialProperty(new Color(r, g, b, alpha));
+    }
+  }
+
+  return fallback;
 }
 
 // ── Generic 3D CityGML feature type config ──────────────────────────────────
@@ -410,7 +466,10 @@ function convertGeneric3DGeometry(
   const allPolygons: any[] = [];
   selectedGeometries.forEach((geom: any) => {
     if (geom.polygons && Array.isArray(geom.polygons)) {
-      allPolygons.push(...geom.polygons);
+      const baseIndex: number = geom.pos ?? 0;
+      geom.polygons.forEach((polygon: any, localIdx: number) => {
+        allPolygons.push({ ...polygon, _globalIndex: baseIndex + localIdx });
+      });
     }
   });
   if (allPolygons.length === 0) return false;
@@ -422,9 +481,15 @@ function convertGeneric3DGeometry(
   entity.surfaces = surfaces;
 
   processed.forEach((p, index) => {
-    const material = typeConfig.useSurfaceTypeColors
+    const globalIdx: number = p.rawPolygon?._globalIndex ?? -1;
+    const defaultMaterial = typeConfig.useSurfaceTypeColors
       ? p.material
       : new ColorMaterialProperty(typeConfig.color);
+    const material = resolveAppearanceMaterial(
+      globalIdx,
+      geometry,
+      defaultMaterial,
+    );
 
     const surfaceEntity = new Entity({
       id: `${entity.id}_${typeConfig.displayName.toLowerCase().replace(/\s/g, "")}_${index}`,
@@ -1045,7 +1110,10 @@ export function extractLodPolygons(
   const allPolygons: any[] = [];
   lodGeometries.forEach((geom: any) => {
     if (geom.polygons && Array.isArray(geom.polygons)) {
-      allPolygons.push(...geom.polygons);
+      const baseIndex: number = geom.pos ?? 0;
+      geom.polygons.forEach((polygon: any, localIdx: number) => {
+        allPolygons.push({ ...polygon, _globalIndex: baseIndex + localIdx });
+      });
     }
   });
 
@@ -1082,11 +1150,17 @@ export function updateLodFeature(
   lodPolygons
     .filter((p) => p.positions.length >= 3)
     .forEach((p, index) => {
-      const material = typeConfig?.useSurfaceTypeColors
+      const globalIdx: number = p.rawPolygon?._globalIndex ?? -1;
+      const defaultMaterial = typeConfig?.useSurfaceTypeColors
         ? p.material
         : new ColorMaterialProperty(
             typeConfig?.color ?? Color.GRAY.withAlpha(0.8),
           );
+      const material = resolveAppearanceMaterial(
+        globalIdx,
+        entry.feature.geometry,
+        defaultMaterial,
+      );
 
       const surfaceEntity = new Entity({
         id: `${entity.id}_lod_${index}`,
