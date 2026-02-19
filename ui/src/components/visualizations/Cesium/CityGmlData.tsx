@@ -130,7 +130,6 @@ const CityGmlData: React.FC<Props> = ({
         typeConfig,
       );
 
-      console.log("PRIMITIVE COLLECTION CREATED", lodPrimitive);
       if (!lodPrimitive) return;
       viewer.scene.primitives.add(lodPrimitive);
       entry.lodPrimitiveCollection = lodPrimitive;
