@@ -154,6 +154,11 @@ const CityGmlData: React.FC<Props> = ({
       if (prevEntry) revertLod(prevEntry);
     }
 
+    if (currentId && !detailsOverlayOpen) {
+      const entry = featureMapRef.current.get(currentId);
+      if (entry) revertLod(entry);
+    }
+
     // Upgrade newly selected feature to highest available LOD
     if (currentId && detailsOverlayOpen) {
       const entry = featureMapRef.current.get(currentId);
