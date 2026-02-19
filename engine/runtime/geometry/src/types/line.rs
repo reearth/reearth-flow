@@ -212,8 +212,8 @@ where
         }
     }
 
-    pub fn contains(&self, mut p: Coordinate<T, Z>) -> bool {
-        let epsilon = <T as NumCast>::from(1e-5).unwrap_or_default();
+    pub fn contains(&self, mut p: Coordinate<T, Z>, tolerance: Option<T>) -> bool {
+        let epsilon = tolerance.unwrap_or_else(|| <T as NumCast>::from(1e-5).unwrap_or_default());
         let mut line = *self;
         p = p - self.start;
         line.end = line.end - line.start;
@@ -509,7 +509,7 @@ mod tests {
             Coordinate::new__(1.0, 1.0, 1.0),
         ];
         for p in &points_contained {
-            assert!(line.contains(*p), "Point {p:?} should be contained");
+            assert!(line.contains(*p, None), "Point {p:?} should be contained");
         }
         let points_not_contained = [
             Coordinate::new__(1.0, 0.0, 0.0),
@@ -517,7 +517,10 @@ mod tests {
             Coordinate::new__(1.0, 1.1, 1.1),
         ];
         for p in &points_not_contained {
-            assert!(!line.contains(*p), "Point {p:?} should not be contained");
+            assert!(
+                !line.contains(*p, None),
+                "Point {p:?} should not be contained"
+            );
         }
     }
 }

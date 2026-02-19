@@ -1130,7 +1130,7 @@ impl TriangularMesh<f64> {
                     // need to check if the intersection point is on the edge of the triangle.
                     // if it is, then we need to remove the edge and add two new edges.
                     let mut divide_edge = |vv, ww, v, w| -> Result<(), String> {
-                        if Line3D::new_(vv, ww).contains(intersection[0]) {
+                        if Line3D::new_(vv, ww).contains(intersection[0], Some(tolerance)) {
                             let e_idx = edges.binary_search(&[v, w]).map_err(|_| {
                                 format!("Edge not found: edges: {edges:?}, v: {v}, w: {w}")
                             })?;
@@ -1154,7 +1154,7 @@ impl TriangularMesh<f64> {
                 } else {
                     vertices.push(intersection[1]);
                     let mut divide_edge = |vv, ww, v, w| -> Result<(), String> {
-                        if Line3D::new_(vv, ww).contains(intersection[1]) {
+                        if Line3D::new_(vv, ww).contains(intersection[1], Some(tolerance)) {
                             let e_idx = edges.binary_search(&[v, w]).map_err(|_| {
                                 format!("Edge not found: edges: {edges:?}, v: {v}, w: {w}")
                             })?;
@@ -1234,11 +1234,12 @@ impl TriangularMesh<f64> {
                 for i in 0..vertices.len() {
                     let v = &vertices[i];
                     let line = Line3D::new_(vertices[e[0]], vertices[e[1]]);
-                    if (vertices[e[0]] - *v).norm() < 1e-10 || (vertices[e[1]] - *v).norm() < 1e-10
-                    {
+                    let dist_to_start = (vertices[e[0]] - *v).norm();
+                    let dist_to_end = (vertices[e[1]] - *v).norm();
+                    if dist_to_start < tolerance || dist_to_end < tolerance {
                         continue;
                     }
-                    if line.contains(*v) {
+                    if line.contains(*v, Some(tolerance)) {
                         updated = true;
                         let new_edge = if e[1] < i { [e[1], i] } else { [i, e[1]] };
                         new_edges.push(new_edge);
@@ -1354,7 +1355,7 @@ impl TriangularMesh<f64> {
             // closure to compute the angle between two vectors.
             // These two vectors are assumed to be in the plane defined by `n` and return `None` if not.
             let angle = |a: Coordinate3D<f64>, b: Coordinate3D<f64>, o: Coordinate3D<f64>| {
-                let epsilon = 1e-10;
+                let epsilon = tolerance;
                 let oa = (a - o).normalize();
                 let ob = (b - o).normalize();
                 if n.dot(&oa).abs() > epsilon || n.dot(&ob).abs() > epsilon {
@@ -1401,7 +1402,7 @@ impl TriangularMesh<f64> {
                     .zip(right_polygon.iter().skip(2))
                     .filter_map(|((a, b), c)| angle(vertices[*c], vertices[*a], vertices[*b]))
                     .sum::<f64>();
-                while (angle_sum.abs() - std::f64::consts::TAU).abs() > 1e-5 {
+                while (angle_sum.abs() - std::f64::consts::TAU).abs() > tolerance {
                     let last_v = vertices[*right_polygon.last().unwrap()];
                     let second_last_v_idx = right_polygon[right_polygon.len() - 2];
                     let second_last_v = vertices[second_last_v_idx];
@@ -1438,7 +1439,7 @@ impl TriangularMesh<f64> {
                     .zip(left_polygon.iter().skip(2))
                     .filter_map(|((a, b), c)| angle(vertices[*c], vertices[*a], vertices[*b]))
                     .sum::<f64>();
-                while (angle_sum.abs() - std::f64::consts::TAU).abs() > 1e-5 {
+                while (angle_sum.abs() - std::f64::consts::TAU).abs() > tolerance {
                     let last_v = vertices[*left_polygon.last().unwrap()];
                     let second_last_v_idx = left_polygon[left_polygon.len() - 2];
                     let second_last_v = vertices[second_last_v_idx];

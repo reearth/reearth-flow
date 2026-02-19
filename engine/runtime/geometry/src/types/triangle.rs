@@ -162,7 +162,7 @@ where
 {
     pub fn boundary_contains(&self, p: &Coordinate3D<T>) -> bool {
         let lines = self.to_lines();
-        lines.iter().any(|line| line.contains(*p))
+        lines.iter().any(|line| line.contains(*p, None))
     }
 
     pub fn contains(&self, p: &Coordinate3D<T>) -> bool {
