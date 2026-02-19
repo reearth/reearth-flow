@@ -8274,6 +8274,21 @@
         "description": "Configure spatial relationship testing between filter and candidate geometries",
         "type": "object",
         "properties": {
+          "mergeFilterAttributes": {
+            "title": "Merge Filter Attributes",
+            "description": "If true, copy all attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port.",
+            "default": false,
+            "type": "boolean"
+          },
+          "mergedAttributesPrefix": {
+            "title": "Merged Attributes Prefix",
+            "description": "Optional prefix applied to merged filter attribute names to avoid collisions.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "outputMatchCountAttribute": {
             "title": "Output Match Count Attribute",
             "description": "Optional attribute name to store the number of matching filters",
