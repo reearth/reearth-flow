@@ -135,10 +135,10 @@ const CityGmlData: React.FC<Props> = ({
     if (absolutePrimitive) viewer.scene.primitives.add(absolutePrimitive);
     if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
 
-    if (boundingSphere && !selectedFeatureId) {
+    if (boundingSphere) {
       viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
     }
-  }, [cityGmlData, selectedFeatureId, viewer]);
+  }, [cityGmlData, viewer]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
