@@ -350,6 +350,17 @@ graphs:
           reprojectorType: jgd2011ToWgs84
 
       # LOD4 processing pipeline
+      - id: c4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80
+        name: FeatureFilterLod4Tunnel
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                let ft = env.get("__value").feature_type;
+                ft == "tun:Tunnel" || ft == "tun:TunnelPart"
+              outputPort: tunnel
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
         name: VerticalReprojectorByLod4
         type: action
@@ -590,10 +601,17 @@ graphs:
         toPort: default
 
       # LOD4 pipeline edges
+      # LodSplitterWithDmForDm (lod4) -> FeatureFilterLod4Tunnel
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
         from: c32a279d-97be-4584-b282-4d65627b1133
-        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+        to: c4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80
         fromPort: lod4
+        toPort: default
+      # FeatureFilterLod4Tunnel (unfiltered) -> VerticalReprojectorByLod4
+      - id: a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d
+        from: c4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+        fromPort: unfiltered
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6

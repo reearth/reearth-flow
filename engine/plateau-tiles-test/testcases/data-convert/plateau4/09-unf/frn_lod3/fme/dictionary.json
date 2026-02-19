@@ -1,0 +1,12 @@
+﻿{
+	"unf" : [
+		{
+			"name" : "SewerPipe",
+			"description" : "管路（下水道）"
+		},
+		{
+			"name" : "Manhole",
+			"description" : "マンホール"
+		}
+	]
+}

@@ -123,6 +123,8 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/07-brid-tun-cons/tun",
     "data-convert/plateau4/07-brid-tun-cons/cons",
     "data-convert/plateau4/08-ubld/ubld",
+    "data-convert/plateau4/09-unf/frn_lod3",
+    "data-convert/plateau4/09-unf/unf",
     "data-convert/plateau4/10-wtr/lod1",
     "data-convert/plateau4/11-gen/mvt",
 ];

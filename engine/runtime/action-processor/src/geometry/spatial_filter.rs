@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::algorithm::relate::Relate;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -189,12 +190,12 @@ impl Processor for SpatialFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         if self.filters.is_empty() {
-            // No filters provided, reject all candidates
+            // No filters provided, pass all candidates (no restrictions)
             for candidate in &self.candidates {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     candidate.clone(),
-                    REJECTED_PORT.clone(),
+                    PASSED_PORT.clone(),
                 ));
             }
             return Ok(());
@@ -273,23 +274,43 @@ fn test_2d_geometry(
     let mut match_count = 0;
 
     for filter in filters {
-        if let GeometryValue::FlowGeometry2D(filter_geo) = &filter.geometry.value {
-            if test_predicate_2d(candidate, filter_geo, &params.predicate) {
-                match_count += 1;
-                if params.pass_on_multiple_matches {
-                    // OR logic: return early on first match
-                    return TestResult {
-                        passed: true,
-                        match_count,
-                    };
-                }
-            } else if !params.pass_on_multiple_matches {
-                // AND logic: return early on first non-match
+        let filter_matches = match &filter.geometry.value {
+            GeometryValue::FlowGeometry2D(filter_geo) => {
+                test_predicate_2d(candidate, filter_geo, &params.predicate)
+            }
+            GeometryValue::FlowGeometry3D(filter_geo) => {
+                // Project 3D filter to 2D (drop Z) and test
+                let filter_2d: Geometry2D<f64> = filter_geo.clone().into();
+                test_predicate_2d(candidate, &filter_2d, &params.predicate)
+            }
+            GeometryValue::CityGmlGeometry(citygml) => {
+                // Project CityGML filter polygons to 2D and test
+                citygml.gml_geometries.iter().any(|gml| {
+                    gml.polygons.iter().any(|poly| {
+                        let poly_2d: Polygon2D<f64> = poly.clone().into();
+                        let filter_2d = Geometry2D::Polygon(poly_2d);
+                        test_predicate_2d(candidate, &filter_2d, &params.predicate)
+                    })
+                })
+            }
+            _ => false,
+        };
+
+        if filter_matches {
+            match_count += 1;
+            if params.pass_on_multiple_matches {
+                // OR logic: return early on first match
                 return TestResult {
-                    passed: false,
+                    passed: true,
                     match_count,
                 };
             }
+        } else if !params.pass_on_multiple_matches {
+            // AND logic: return early on first non-match
+            return TestResult {
+                passed: false,
+                match_count,
+            };
         }
     }
 
@@ -315,6 +336,11 @@ fn test_3d_geometry(
 
     for filter in filters {
         let matches = match &filter.geometry.value {
+            GeometryValue::FlowGeometry2D(filter_geo) => {
+                // Project 3D candidate to 2D (drop Z) and test against 2D filter
+                let candidate_2d: Geometry2D<f64> = candidate.clone().into();
+                test_predicate_2d(&candidate_2d, filter_geo, &params.predicate)
+            }
             GeometryValue::FlowGeometry3D(filter_geo) => {
                 test_predicate_3d(candidate, filter_geo, &params.predicate)
             }
@@ -378,6 +404,14 @@ fn test_citygml_geometry(
 
     for filter in filters {
         let matches = match &filter.geometry.value {
+            GeometryValue::FlowGeometry2D(filter_geo) => {
+                // Project CityGML 3D polygons to 2D (drop Z) and test against 2D filter
+                candidate_polygons.iter().any(|poly| {
+                    let poly_2d: Polygon2D<f64> = (*poly).clone().into();
+                    let candidate_geo = Geometry2D::Polygon(poly_2d);
+                    test_predicate_2d(&candidate_geo, filter_geo, &params.predicate)
+                })
+            }
             GeometryValue::FlowGeometry3D(filter_geo) => {
                 // Test if any candidate polygon matches the filter
                 candidate_polygons
@@ -676,8 +710,8 @@ mod tests {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 1);
             assert_eq!(
-                ports[0], *REJECTED_PORT,
-                "No filters should reject candidates"
+                ports[0], *PASSED_PORT,
+                "No filters should pass all candidates"
             );
         }
     }
