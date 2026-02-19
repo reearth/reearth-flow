@@ -219,15 +219,20 @@ where
         line.end = line.end - line.start;
         line.start = Coordinate::zero();
 
-        let line_len = line.end.norm();
-        let p_norm = p.norm();
-        let norm = if line_len < p_norm { p_norm } else { line_len };
-        line.end = line.end / norm;
-        p = p / norm;
-
         let dot = line.end.dot(&p);
-        let cross_norm = line.end.cross(&p).norm();
-        cross_norm < epsilon && dot > -epsilon && p_norm < line_len + epsilon
+        if dot < T::zero() {
+            return false;
+        }
+
+        let norm_squared = line.end.dot(&line.end);
+        let normal = p - line.end * (dot / norm_squared);
+
+        if normal.norm() > epsilon {
+            return false;
+        }
+
+        let parallel_norm = (p - normal).norm();
+        parallel_norm <= line.end.norm()
     }
 }
 

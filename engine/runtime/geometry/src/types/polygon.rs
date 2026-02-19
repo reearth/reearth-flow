@@ -254,11 +254,10 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 impl Polygon<f64> {
     // Merges all the rings (exterior and interiors) into a single closed LineString.
     pub fn into_merged_contour(
-        mut self,
+        self,
         tolerance: Option<f64>,
     ) -> Result<LineString<f64, f64>, String> {
         let tolerance = tolerance.unwrap_or(1e-6);
-        let norm = self.normalize_vertices_3d();
         let mut exterior = self.exterior;
         let len = self.interiors.len();
         let mut interiors = self.interiors.into_iter();
@@ -273,7 +272,6 @@ impl Polygon<f64> {
                 tolerance,
             )?;
         }
-        exterior.denormalize_vertices(norm);
         Ok(exterior)
     }
 

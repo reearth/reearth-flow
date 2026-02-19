@@ -1,6 +1,5 @@
 use crate::algorithm::contains::Contains;
 use crate::algorithm::triangle_intersection::{triangles_intersect, triangles_intersection};
-use crate::algorithm::utils::{denormalize_vertices, normalize_vertices};
 use crate::algorithm::{GeoFloat, GeoNum};
 use crate::types::coordinate::{are_coplanar, Coordinate};
 use crate::types::line_string::LineString3D;
@@ -287,7 +286,6 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     /// - The face does not intersect itself
     fn triangulate_face(face: LineString3D<T>) -> Result<Vec<[Coordinate3D<T>; 3]>, String> {
         let mut face = face.0;
-        let norm = normalize_vertices(&mut face);
         // face at least must be triangle
         if face.len() < 4 {
             return Err("Face must have at least 3 vertices")?;
@@ -434,10 +432,6 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             let new_next_idx = removed_vtx_idx % face.len();
             angles[new_prev_idx] = angles[new_prev_idx] + prev_angle;
             angles[new_next_idx] = angles[new_next_idx] + next_angle;
-        }
-
-        for t in triangles.iter_mut() {
-            denormalize_vertices(t, norm);
         }
 
         Ok(triangles)
@@ -1039,7 +1033,6 @@ impl TriangularMesh<f64> {
             .into_iter()
             .chain(vertices2.clone()) // TODO: remove clone
             .collect::<Vec<_>>();
-        let norm = normalize_vertices(&mut vertices);
         let triangles = triangles1
             .iter()
             .copied()
@@ -1227,6 +1220,15 @@ impl TriangularMesh<f64> {
         // Cut the edges further if there are vertices on the edge that are not from intersection.
         // This can happen when a vertex of one mesh is on the edge of another mesh.
         let mut updated = true;
+        // make sure no edge is shorter than the tolerance.
+        for edge in &edges {
+            if (vertices[edge[0]] - vertices[edge[1]]).norm() < tolerance {
+                return Err(format!(
+                    "Edge too short after cutting: edge: {:?}, vertices: {:?}",
+                    edge, vertices
+                ));
+            }
+        }
         while updated {
             updated = false;
             let mut new_edges = Vec::new();
@@ -1240,11 +1242,11 @@ impl TriangularMesh<f64> {
                         continue;
                     }
                     if line.contains(*v, Some(tolerance)) {
-                        updated = true;
                         let new_edge = if e[1] < i { [e[1], i] } else { [i, e[1]] };
+                        updated = true;
                         new_edges.push(new_edge);
                         e[1] = i;
-                        continue; // the same edge should not be split more than once.
+                        break; // the same edge should not be split more than once.
                     }
                 }
             }
@@ -1546,9 +1548,8 @@ impl TriangularMesh<f64> {
             poly.interiors_push(boundary);
         }
 
-        let mut out: TriangularMesh<f64> =
+        let out: TriangularMesh<f64> =
             TriangularMesh::try_from_polygons(polygons, Some(tolerance))?;
-        denormalize_vertices(&mut out.vertices, norm);
         Ok(out)
     }
 }
