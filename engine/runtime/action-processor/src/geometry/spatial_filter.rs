@@ -99,13 +99,17 @@ pub struct SpatialFilterParams {
     pub output_match_count_attribute: Option<Attribute>,
 
     /// # Merge Filter Attributes
-    /// If true, copy all attributes from matched filter feature(s) onto the candidate.
+    /// If true, copy attributes from matched filter feature(s) onto the candidate.
     /// Only applies to features routed to the passed port.
+    /// In OR mode (pass_on_multiple_matches: true), only the first matching filter's
+    /// attributes are merged. In AND mode, attributes from all matched filters are
+    /// merged in order; if multiple filters share a key, the last filter's value wins.
     #[serde(default)]
     pub merge_filter_attributes: bool,
 
     /// # Merged Attributes Prefix
     /// Optional prefix applied to merged filter attribute names to avoid collisions.
+    /// For example, a prefix of "filter_" turns a filter attribute "zone" into "filter_zone".
     #[serde(default)]
     pub merged_attributes_prefix: Option<String>,
 }
