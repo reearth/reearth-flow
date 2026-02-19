@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.91-slim-bookworm AS builder
+FROM rust:1.91-slim-trixie AS builder
 
 ARG NAME=reearth-flow
 WORKDIR /usr/src/${NAME}
@@ -43,7 +43,7 @@ RUN \
     --mount=type=bind,source=worker,target=worker \
     cargo build --package reearth-flow-worker --bin reearth-flow-worker --release && mv target/release/reearth-flow-worker /tmp/reearth-flow-worker
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
