@@ -1,4 +1,8 @@
 use std::collections::HashMap;
+use std::fmt;
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
 
 use rayon::prelude::*;
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
@@ -8,6 +12,7 @@ use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::types::rect::Rect2D;
+use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -24,6 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
 #[derive(Debug, Clone, Default)]
 pub struct GridDividerFactory;
@@ -92,8 +98,14 @@ impl ProcessorFactory for GridDividerFactory {
             unit_square_size,
             keep_square_only: param.keep_square_only.unwrap_or(false),
             group_by: param.group_by,
-            buffer: HashMap::new(),
             bounds_per_group: HashMap::new(),
+            group_map: HashMap::new(),
+            group_keys: Vec::new(),
+            group_count: 0,
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            temp_dir: None,
+            executor_id: None,
         };
 
         Ok(Box::new(processor))
@@ -115,13 +127,57 @@ pub struct GridDividerParam {
     pub group_by: Option<Vec<Attribute>>,
 }
 
-#[derive(Debug, Clone)]
 pub struct GridDivider {
     unit_square_size: f64,
     keep_square_only: bool,
     group_by: Option<Vec<Attribute>>,
-    buffer: HashMap<AttributeValue, Vec<Feature>>,
+
+    // Disk-backed state
     bounds_per_group: HashMap<AttributeValue, Rect2D<f64>>,
+    group_map: HashMap<AttributeValue, usize>,
+    group_keys: Vec<AttributeValue>,
+    group_count: usize,
+    buffer: HashMap<usize, Vec<String>>,
+    buffer_bytes: usize,
+    temp_dir: Option<PathBuf>,
+    executor_id: Option<uuid::Uuid>,
+}
+
+impl fmt::Debug for GridDivider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GridDivider")
+            .field("unit_square_size", &self.unit_square_size)
+            .field("group_count", &self.group_count)
+            .field("buffer_bytes", &self.buffer_bytes)
+            .field("temp_dir", &self.temp_dir)
+            .finish()
+    }
+}
+
+impl Clone for GridDivider {
+    fn clone(&self) -> Self {
+        Self {
+            unit_square_size: self.unit_square_size,
+            keep_square_only: self.keep_square_only,
+            group_by: self.group_by.clone(),
+            bounds_per_group: HashMap::new(),
+            group_map: HashMap::new(),
+            group_keys: Vec::new(),
+            group_count: 0,
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            temp_dir: None,
+            executor_id: None,
+        }
+    }
+}
+
+impl Drop for GridDivider {
+    fn drop(&mut self) {
+        if let Some(ref dir) = self.temp_dir {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
 }
 
 /// Represents a single grid cell
@@ -141,12 +197,60 @@ struct ClipResult {
     is_complete_square: bool,
 }
 
+/// Executor-specific engine cache folder for accumulating processors
+fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "processors")
+}
+
+impl GridDivider {
+    fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
+        if self.temp_dir.is_none() {
+            let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
+            let dir = engine_cache_dir(executor_id)
+                .join(format!("grid-divider-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&dir)?;
+            self.temp_dir = Some(dir);
+        }
+        Ok(self.temp_dir.as_ref().unwrap())
+    }
+
+    fn flush_buffer(&mut self) -> Result<(), BoxedError> {
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+
+        let dir = self.ensure_temp_dir()?.clone();
+
+        for (group_idx, lines) in self.buffer.drain() {
+            let path = dir.join(format!("group_{group_idx:06}.jsonl"));
+            let file = File::options().create(true).append(true).open(&path)?;
+            let mut writer = BufWriter::new(file);
+            for line in &lines {
+                writer.write_all(line.as_bytes())?;
+                writer.write_all(b"\n")?;
+            }
+            writer.flush()?;
+        }
+
+        self.buffer_bytes = 0;
+        Ok(())
+    }
+}
+
 impl Processor for GridDivider {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
@@ -155,12 +259,10 @@ impl Processor for GridDivider {
             return Ok(());
         }
 
-        // Try to get bounding rect from geometry
         let bounds_opt = get_geometry_bounds_2d(&geometry.value);
 
         match bounds_opt {
             Some(bounds) => {
-                // Compute group key from group_by attributes
                 let key = if let Some(group_by) = &self.group_by {
                     AttributeValue::Array(
                         group_by
@@ -178,11 +280,29 @@ impl Processor for GridDivider {
                     .and_modify(|existing| *existing = existing.merge(bounds))
                     .or_insert(bounds);
 
-                // Store feature in buffer
-                self.buffer.entry(key).or_default().push(feature.clone());
+                // Get or assign group index
+                let group_idx = if let Some(&idx) = self.group_map.get(&key) {
+                    idx
+                } else {
+                    let idx = self.group_count;
+                    self.group_map.insert(key.clone(), idx);
+                    self.group_keys.push(key);
+                    self.group_count += 1;
+                    idx
+                };
+
+                // Serialize feature to buffer
+                let json = serde_json::to_string(&feature).map_err(|e| {
+                    GeometryProcessorError::GridDivider(format!("Failed to serialize feature: {e}"))
+                })?;
+                self.buffer_bytes += json.len();
+                self.buffer.entry(group_idx).or_default().push(json);
+
+                if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                    self.flush_buffer()?;
+                }
             }
             None => {
-                // No valid bounds (geometry is not a polygon type or is empty)
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
         }
@@ -195,53 +315,157 @@ impl Processor for GridDivider {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Collect results from parallel processing
-        let results: Vec<(Feature, Port)> = self
-            .buffer
-            .par_iter()
-            .flat_map(|(key, features)| {
-                let bounds = match self.bounds_per_group.get(key) {
-                    Some(b) => b,
-                    None => return vec![],
-                };
+        // Flush remaining buffer
+        self.flush_buffer()?;
+        self.buffer = HashMap::new();
 
-                let grid_cells = generate_grid_cells(bounds, self.unit_square_size);
+        let dir = match &self.temp_dir {
+            Some(d) => d.clone(),
+            None => {
+                // No data was received
+                return Ok(());
+            }
+        };
 
-                features
+        let group_keys = std::mem::take(&mut self.group_keys);
+        let bounds_per_group = std::mem::take(&mut self.bounds_per_group);
+        let group_map = std::mem::take(&mut self.group_map);
+
+        let output_path = dir.join("output.jsonl");
+        let mut output_writer = BufWriter::new(File::create(&output_path)?);
+        let mut total_output = 0usize;
+
+        for key in &group_keys {
+            let group_idx = match group_map.get(key) {
+                Some(&idx) => idx,
+                None => continue,
+            };
+            let bounds = match bounds_per_group.get(key) {
+                Some(b) => b,
+                None => continue,
+            };
+
+            let group_path = dir.join(format!("group_{group_idx:06}.jsonl"));
+            if !group_path.exists() {
+                continue;
+            }
+
+            // Compute grid parameters from group bounds
+            let grid_origin_x = bounds.min().x;
+            let grid_origin_y = bounds.min().y;
+
+            let file = File::open(&group_path)?;
+            let reader = BufReader::new(file);
+
+            // Process features in parallel chunks
+            let mut chunk: Vec<Feature> = Vec::new();
+            let mut chunk_bytes: usize = 0;
+            let mut lines_iter = reader.lines();
+
+            loop {
+                let mut eof = false;
+                while chunk_bytes < ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                    match lines_iter.next() {
+                        Some(Ok(line)) => {
+                            if line.is_empty() {
+                                continue;
+                            }
+                            chunk_bytes += line.len();
+                            let feature: Feature = serde_json::from_str(&line)?;
+                            chunk.push(feature);
+                        }
+                        Some(Err(e)) => return Err(e.into()),
+                        None => {
+                            eof = true;
+                            break;
+                        }
+                    }
+                }
+
+                if chunk.is_empty() {
+                    break;
+                }
+
+                let unit_size = self.unit_square_size;
+                let keep_square_only = self.keep_square_only;
+                let group_by = &self.group_by;
+
+                // Process chunk in parallel
+                let results: Vec<Feature> = chunk
                     .par_iter()
                     .flat_map(|feature| {
+                        let feature_bounds = match get_geometry_bounds_2d(&feature.geometry.value) {
+                            Some(b) => b,
+                            None => return vec![],
+                        };
+
+                        // Compute overlapping cell range
+                        let min_col =
+                            ((feature_bounds.min().x - grid_origin_x) / unit_size).floor() as isize;
+                        let max_col =
+                            ((feature_bounds.max().x - grid_origin_x) / unit_size).ceil() as isize;
+                        let min_row =
+                            ((feature_bounds.min().y - grid_origin_y) / unit_size).floor() as isize;
+                        let max_row =
+                            ((feature_bounds.max().y - grid_origin_y) / unit_size).ceil() as isize;
+
+                        let min_col = min_col.max(0) as usize;
+                        let min_row = min_row.max(0) as usize;
+                        let max_col = max_col.max(0) as usize;
+                        let max_row = max_row.max(0) as usize;
+
                         let mut results = Vec::new();
+                        for row in min_row..max_row {
+                            for col in min_col..max_col {
+                                let cell = GridCell {
+                                    min_x: grid_origin_x + (col as f64) * unit_size,
+                                    min_y: grid_origin_y + (row as f64) * unit_size,
+                                    max_x: grid_origin_x + (col as f64 + 1.0) * unit_size,
+                                    max_y: grid_origin_y + (row as f64 + 1.0) * unit_size,
+                                    row,
+                                    col,
+                                };
 
-                        for cell in &grid_cells {
-                            // clip_geometry_by_cell returns Vec for CityGmlGeometry (one per polygon)
-                            for clip_result in clip_geometry_by_cell(&feature.geometry.value, cell)
-                            {
-                                // Skip non-complete squares if keep_square_only is set
-                                if self.keep_square_only && !clip_result.is_complete_square {
-                                    continue;
+                                for clip_result in
+                                    clip_geometry_by_cell(&feature.geometry.value, &cell)
+                                {
+                                    if keep_square_only && !clip_result.is_complete_square {
+                                        continue;
+                                    }
+                                    results.push(create_output_feature(
+                                        feature,
+                                        clip_result.geometry,
+                                        &cell,
+                                        group_by,
+                                    ));
                                 }
-
-                                let new_feature = create_output_feature(
-                                    feature,
-                                    clip_result.geometry,
-                                    cell,
-                                    &self.group_by,
-                                );
-                                results.push((new_feature, DEFAULT_PORT.clone()));
                             }
                         }
-
                         results
                     })
-                    .collect::<Vec<_>>()
-            })
-            .collect();
+                    .collect();
 
-        // Send all results
-        for (feature, port) in results {
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx, feature, port,
-            ));
+                // Write results to output file
+                for feature in &results {
+                    let json = serde_json::to_string(feature)?;
+                    output_writer.write_all(json.as_bytes())?;
+                    output_writer.write_all(b"\n")?;
+                }
+                total_output += results.len();
+
+                chunk.clear();
+                chunk_bytes = 0;
+
+                if eof {
+                    break;
+                }
+            }
+        }
+
+        output_writer.flush()?;
+
+        if total_output > 0 {
+            fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
         }
 
         Ok(())
@@ -286,42 +510,6 @@ fn get_geometry_bounds_2d(geometry: &GeometryValue) -> Option<Rect2D<f64>> {
         }
         GeometryValue::None => None,
     }
-}
-
-/// Generate grid cells covering the given bounding box
-fn generate_grid_cells(bounds: &Rect2D<f64>, unit_size: f64) -> Vec<GridCell> {
-    let min_x = bounds.min().x;
-    let min_y = bounds.min().y;
-    let max_x = bounds.max().x;
-    let max_y = bounds.max().y;
-
-    let width = max_x - min_x;
-    let height = max_y - min_y;
-
-    let cols = (width / unit_size).ceil() as usize;
-    let rows = (height / unit_size).ceil() as usize;
-
-    let mut cells = Vec::with_capacity(rows * cols);
-
-    for row in 0..rows {
-        for col in 0..cols {
-            let cell_min_x = min_x + (col as f64) * unit_size;
-            let cell_min_y = min_y + (row as f64) * unit_size;
-            let cell_max_x = cell_min_x + unit_size;
-            let cell_max_y = cell_min_y + unit_size;
-
-            cells.push(GridCell {
-                min_x: cell_min_x,
-                min_y: cell_min_y,
-                max_x: cell_max_x,
-                max_y: cell_max_y,
-                row,
-                col,
-            });
-        }
-    }
-
-    cells
 }
 
 /// Clip geometry by AABB cell
@@ -422,7 +610,6 @@ fn clip_citygml_geometry_per_polygon(
                 };
 
                 // Create placeholder UV polygon matching the structure of clipped_poly
-                // Each vertex gets placeholder UV coordinates (0.0, 0.0)
                 let uv_polygon = create_placeholder_uv_polygon(&clipped_poly);
 
                 let single_citygml = CityGmlGeometry {
@@ -443,18 +630,15 @@ fn clip_citygml_geometry_per_polygon(
 
         // Also process composite surfaces recursively
         for cs in &gml.composite_surfaces {
-            // Count total polygons in composite surface
             let poly_count = count_polygons_recursive(cs);
             let empty_uv_polygon = Polygon2D::new(
                 reearth_flow_geometry::types::line_string::LineString2D::new(vec![]),
                 vec![],
             );
 
-            // Clone and reset pos/len to match the new arrays
             let mut cs_clone = cs.clone();
             cs_clone.pos = 0;
             cs_clone.len = poly_count as u32;
-            // Also reset nested composite_surfaces recursively
             reset_pos_len_recursive(&mut cs_clone);
 
             let cs_citygml = CityGmlGeometry {
@@ -482,8 +666,6 @@ fn count_polygons_recursive(gml: &GmlGeometry) -> usize {
 }
 
 /// Reset pos/len fields recursively to match the polygon count
-/// This is needed when cloning a GmlGeometry to create a new CityGmlGeometry
-/// with fresh polygon_uvs/materials/textures arrays
 fn reset_pos_len_recursive(gml: &mut GmlGeometry) {
     let mut offset = gml.polygons.len() as u32;
     for cs in &mut gml.composite_surfaces {
@@ -496,11 +678,7 @@ fn reset_pos_len_recursive(gml: &mut GmlGeometry) {
 }
 
 /// Create a placeholder UV polygon that matches the ring structure of a 3D polygon.
-/// Each vertex gets placeholder UV coordinates (0.0, 0.0).
-/// This is needed because Cesium3DTilesWriter expects UV polygons to have the same
-/// number of rings and vertices as the corresponding 3D polygon.
 fn create_placeholder_uv_polygon(poly3d: &Polygon3D<f64>) -> Polygon2D<f64> {
-    // Create exterior ring with placeholder UVs
     let exterior_uv_coords: Vec<Coordinate2D<f64>> = poly3d
         .exterior()
         .0
@@ -509,7 +687,6 @@ fn create_placeholder_uv_polygon(poly3d: &Polygon3D<f64>) -> Polygon2D<f64> {
         .collect();
     let exterior_uv = LineString2D::new(exterior_uv_coords);
 
-    // Create interior rings with placeholder UVs
     let interior_uvs: Vec<LineString2D<f64>> = poly3d
         .interiors()
         .iter()
@@ -530,13 +707,9 @@ fn create_placeholder_uv_polygon(poly3d: &Polygon3D<f64>) -> Polygon2D<f64> {
 fn is_complete_square_2d(geo: &Geometry2D<f64>, cell: &GridCell) -> bool {
     match geo {
         Geometry2D::Polygon(poly) => is_complete_square_2d_polygon(poly, cell),
-        Geometry2D::MultiPolygon(mpoly) => {
-            // For multi-polygon, all polygons must be complete squares
-            // (though typically we'd have a single polygon per cell)
-            mpoly
-                .iter()
-                .all(|poly| is_complete_square_2d_polygon(poly, cell))
-        }
+        Geometry2D::MultiPolygon(mpoly) => mpoly
+            .iter()
+            .all(|poly| is_complete_square_2d_polygon(poly, cell)),
         _ => false,
     }
 }
@@ -554,18 +727,15 @@ fn is_complete_square_3d(geo: &Geometry3D<f64>, cell: &GridCell) -> bool {
 
 /// Check if a 2D polygon is a complete square matching the grid cell
 fn is_complete_square_2d_polygon(poly: &Polygon2D<f64>, cell: &GridCell) -> bool {
-    // A complete square has exactly 4 corners + closing point = 5 vertices
     let exterior = &poly.exterior().0;
     if exterior.len() != 5 {
         return false;
     }
 
-    // Must have no holes
     if !poly.interiors().is_empty() {
         return false;
     }
 
-    // Check that all 4 cell corners are present in the polygon
     let cell_corners = [
         (cell.min_x, cell.min_y),
         (cell.max_x, cell.min_y),
@@ -589,18 +759,15 @@ fn is_complete_square_2d_polygon(poly: &Polygon2D<f64>, cell: &GridCell) -> bool
 
 /// Check if a 3D polygon is a complete square matching the grid cell (in XY)
 fn is_complete_square_3d_polygon(poly: &Polygon3D<f64>, cell: &GridCell) -> bool {
-    // A complete square has exactly 4 corners + closing point = 5 vertices
     let exterior = &poly.exterior().0;
     if exterior.len() != 5 {
         return false;
     }
 
-    // Must have no holes
     if !poly.interiors().is_empty() {
         return false;
     }
 
-    // Check that all 4 cell corners are present in the polygon (XY only)
     let cell_corners = [
         (cell.min_x, cell.min_y),
         (cell.max_x, cell.min_y),
@@ -624,7 +791,6 @@ fn is_complete_square_3d_polygon(poly: &Polygon3D<f64>, cell: &GridCell) -> bool
 
 /// Clip a 2D polygon against an AABB using Sutherland-Hodgman algorithm
 fn clip_polygon_2d(polygon: &Polygon2D<f64>, cell: &GridCell) -> Option<Polygon2D<f64>> {
-    // First check if polygon bounding box overlaps with cell at all
     if let Some(poly_bounds) = polygon.bounding_rect() {
         let cell_bounds = Rect2D::new(
             Coordinate2D::new_(cell.min_x, cell.min_y),
@@ -635,7 +801,6 @@ fn clip_polygon_2d(polygon: &Polygon2D<f64>, cell: &GridCell) -> Option<Polygon2
         }
     }
 
-    // Clip exterior ring
     let exterior_coords: Vec<Coordinate2D<f64>> = polygon.exterior().0.to_vec();
     let clipped_exterior = clip_polygon_coords_2d(&exterior_coords, cell)?;
 
@@ -643,7 +808,6 @@ fn clip_polygon_2d(polygon: &Polygon2D<f64>, cell: &GridCell) -> Option<Polygon2
         return None;
     }
 
-    // Clip interior rings (holes)
     let clipped_interiors: Vec<LineString2D<f64>> = polygon
         .interiors()
         .iter()
@@ -663,7 +827,6 @@ fn clip_polygon_2d(polygon: &Polygon2D<f64>, cell: &GridCell) -> Option<Polygon2
 
 /// Clip a 3D polygon against an AABB using Sutherland-Hodgman algorithm (XY plane clipping with Z interpolation)
 fn clip_polygon_3d(polygon: &Polygon3D<f64>, cell: &GridCell) -> Option<Polygon3D<f64>> {
-    // First check if polygon bounding box overlaps with cell at all (in XY)
     if let Some(poly_bounds) = polygon.bounding_rect() {
         let poly_bounds_2d = Rect2D::from(poly_bounds);
         let cell_bounds = Rect2D::new(
@@ -675,7 +838,6 @@ fn clip_polygon_3d(polygon: &Polygon3D<f64>, cell: &GridCell) -> Option<Polygon3
         }
     }
 
-    // Clip exterior ring
     let exterior_coords: Vec<Coordinate3D<f64>> = polygon.exterior().0.to_vec();
     let clipped_exterior = clip_polygon_coords_3d(&exterior_coords, cell)?;
 
@@ -683,7 +845,6 @@ fn clip_polygon_3d(polygon: &Polygon3D<f64>, cell: &GridCell) -> Option<Polygon3
         return None;
     }
 
-    // Clip interior rings (holes)
     let clipped_interiors: Vec<LineString3D<f64>> = polygon
         .interiors()
         .iter()
@@ -748,7 +909,6 @@ fn clip_polygon_coords_2d(
     }
 
     if output.len() < 4 {
-        // Need at least 3 points + closing point
         return None;
     }
 
@@ -766,7 +926,6 @@ fn clip_polygon_coords_3d(
 
     let mut output = coords.to_vec();
 
-    // Remove last point if it duplicates the first (closing point)
     if output.len() > 1 && coords_equal_3d(&output[0], output.last().unwrap()) {
         output.pop();
     }
@@ -775,7 +934,6 @@ fn clip_polygon_coords_3d(
         return None;
     }
 
-    // Clip against each edge: left, right, bottom, top
     output = clip_against_edge_3d(output, Edge::Left(cell.min_x));
     if output.is_empty() {
         return None;
@@ -796,13 +954,11 @@ fn clip_polygon_coords_3d(
         return None;
     }
 
-    // Close the polygon
     if output.len() >= 3 && !coords_equal_3d(&output[0], output.last().unwrap()) {
         output.push(output[0]);
     }
 
     if output.len() < 4 {
-        // Need at least 3 points + closing point
         return None;
     }
 
@@ -904,21 +1060,16 @@ fn clip_against_edge_2d(polygon: Vec<Coordinate2D<f64>>, edge: Edge) -> Vec<Coor
 
         match (current_inside, next_inside) {
             (true, true) => {
-                // Both inside, add next
                 output.push(*next);
             }
             (true, false) => {
-                // Going out, add intersection
                 output.push(intersect_2d(current, next, edge));
             }
             (false, true) => {
-                // Coming in, add intersection and next
                 output.push(intersect_2d(current, next, edge));
                 output.push(*next);
             }
-            (false, false) => {
-                // Both outside, add nothing
-            }
+            (false, false) => {}
         }
     }
 
@@ -942,21 +1093,16 @@ fn clip_against_edge_3d(polygon: Vec<Coordinate3D<f64>>, edge: Edge) -> Vec<Coor
 
         match (current_inside, next_inside) {
             (true, true) => {
-                // Both inside, add next
                 output.push(*next);
             }
             (true, false) => {
-                // Going out, add intersection
                 output.push(intersect_3d(current, next, edge));
             }
             (false, true) => {
-                // Coming in, add intersection and next
                 output.push(intersect_3d(current, next, edge));
                 output.push(*next);
             }
-            (false, false) => {
-                // Both outside, add nothing
-            }
+            (false, false) => {}
         }
     }
 
@@ -990,10 +1136,8 @@ fn create_output_feature(
         original.metadata.clone(),
     );
 
-    // Preserve metadata (feature_type, feature_id, lod)
     new_feature.metadata = original.metadata.clone();
 
-    // Add grid cell metadata
     new_feature.insert(
         "_grid_row",
         AttributeValue::Number(serde_json::Number::from(cell.row as i64)),
@@ -1054,32 +1198,6 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_grid_cells() {
-        let bounds = Rect2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(10.0, 10.0));
-
-        let cells = generate_grid_cells(&bounds, 5.0);
-
-        assert_eq!(cells.len(), 4); // 2x2 grid
-
-        // Check first cell
-        assert_eq!(cells[0].row, 0);
-        assert_eq!(cells[0].col, 0);
-
-        // Check last cell
-        assert_eq!(cells[3].row, 1);
-        assert_eq!(cells[3].col, 1);
-    }
-
-    #[test]
-    fn test_generate_grid_cells_non_exact() {
-        let bounds = Rect2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(12.0, 12.0));
-
-        let cells = generate_grid_cells(&bounds, 5.0);
-
-        assert_eq!(cells.len(), 9); // 3x3 grid (ceil(12/5) = 3)
-    }
-
-    #[test]
     fn test_clip_polygon_2d_fully_inside() {
         let polygon = create_test_polygon_2d();
         let cell = GridCell {
@@ -1095,7 +1213,6 @@ mod tests {
         assert!(clipped.is_some());
 
         let clipped = clipped.unwrap();
-        // Should have approximately the same number of points
         assert_eq!(clipped.exterior().0.len(), 5);
     }
 
@@ -1115,7 +1232,6 @@ mod tests {
         assert!(clipped.is_some());
 
         let clipped = clipped.unwrap();
-        // Should be a 4-corner polygon (square) + closing point
         assert_eq!(clipped.exterior().0.len(), 5);
     }
 
@@ -1151,20 +1267,13 @@ mod tests {
         assert!(clipped.is_some());
 
         let clipped = clipped.unwrap();
-        // Check that Z values are interpolated
-        // At y=5 (halfway between y=0 and y=10), z should be interpolated from 5 to 15
-        // Expected z at y=5 should be 10 (midpoint)
         let z_values: Vec<f64> = clipped.exterior().0.iter().map(|c| c.z).collect();
 
-        // Verify Z values are present and interpolated
         assert!(!z_values.is_empty());
-        // Some Z values should be the original (5.0)
-        // Some should be interpolated (~10.0 at the clipped edge)
     }
 
     #[test]
     fn test_clip_polygon_with_hole() {
-        // Create polygon with a hole
         let exterior = LineString2D::new(vec![
             Coordinate2D::new_(0.0, 0.0),
             Coordinate2D::new_(20.0, 0.0),
@@ -1181,7 +1290,6 @@ mod tests {
         ]);
         let polygon = Polygon2D::new(exterior, vec![hole]);
 
-        // Clip with a cell that contains part of the hole
         let cell = GridCell {
             min_x: 0.0,
             min_y: 0.0,
@@ -1195,14 +1303,11 @@ mod tests {
         assert!(clipped.is_some());
 
         let clipped = clipped.unwrap();
-        // Should have exterior ring
         assert!(!clipped.exterior().0.is_empty());
-        // Hole should be partially clipped (may or may not be present depending on clipping)
     }
 
     #[test]
     fn test_is_complete_square() {
-        // A polygon that exactly matches the cell should be complete
         let cell = GridCell {
             min_x: 0.0,
             min_y: 0.0,
@@ -1212,7 +1317,6 @@ mod tests {
             col: 0,
         };
 
-        // Create a polygon that exactly matches the cell corners
         let complete_poly = Polygon2D::new(
             LineString2D::new(vec![
                 Coordinate2D::new_(0.0, 0.0),
@@ -1225,7 +1329,6 @@ mod tests {
         );
         assert!(is_complete_square_2d_polygon(&complete_poly, &cell));
 
-        // Create a polygon that does NOT match the cell corners (partial)
         let partial_poly = Polygon2D::new(
             LineString2D::new(vec![
                 Coordinate2D::new_(0.0, 0.0),
@@ -1238,7 +1341,6 @@ mod tests {
         );
         assert!(!is_complete_square_2d_polygon(&partial_poly, &cell));
 
-        // A triangle (3 corners + close) should not be complete
         let triangle = Polygon2D::new(
             LineString2D::new(vec![
                 Coordinate2D::new_(0.0, 0.0),
@@ -1275,7 +1377,6 @@ mod tests {
         assert!(bounds.is_some());
 
         let bounds = bounds.unwrap();
-        // Should only return 2D bounds
         assert!((bounds.min().x - 0.0).abs() < f64::EPSILON);
         assert!((bounds.min().y - 0.0).abs() < f64::EPSILON);
         assert!((bounds.max().x - 10.0).abs() < f64::EPSILON);
@@ -1304,18 +1405,15 @@ mod tests {
 
         let output = create_output_feature(&original, GeometryValue::None, &cell, &group_by);
 
-        // Should have all original attributes
         assert!(output
             .attributes
             .contains_key(&Attribute::new("group_attr")));
         assert!(output
             .attributes
             .contains_key(&Attribute::new("other_attr")));
-        // Should have grid metadata
         assert!(output.attributes.contains_key(&Attribute::new("_grid_row")));
         assert!(output.attributes.contains_key(&Attribute::new("_grid_col")));
 
-        // Check grid metadata values
         assert_eq!(
             output.attributes.get(&Attribute::new("_grid_row")),
             Some(&AttributeValue::Number(serde_json::Number::from(1)))

@@ -1,8 +1,17 @@
 use std::collections::HashMap;
+use std::io::{BufReader, Cursor};
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 use fastxml::error::StructuredError;
-use fastxml::schema::XmlSchemaValidationContext as InnerSchemaValidationContext;
+use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
+use fastxml::schema::validator::{
+    StreamValidator, XmlSchemaValidationContext as FastXmlValidationContext,
+};
+use fastxml::schema::xsd::{
+    compile_schemas, parse_xsd_multiple, parse_xsd_with_imports, register_builtin_types,
+    SchemaResolver, XsdSchema,
+};
 use fastxml::{
     create_context as fastxml_create_context, create_safe_context as fastxml_create_safe_context,
     evaluate as fastxml_evaluate, parse as fastxml_parse, NodeType,
@@ -25,7 +34,7 @@ pub use fastxml::XmlRoNode;
 pub type XmlContext = fastxml::xpath::XmlContext;
 
 pub struct XmlSchemaValidationContext {
-    inner: parking_lot::RwLock<InnerSchemaValidationContext>,
+    inner: parking_lot::RwLock<FastXmlValidationContext>,
     _marker: PhantomData<*mut ()>,
 }
 
@@ -357,9 +366,6 @@ pub fn create_xml_schema_validation_context_from_buffer(
 pub fn create_xml_schema_validation_context_from_multiple(
     schemas: &[(&str, &[u8])],
 ) -> crate::Result<XmlSchemaValidationContext> {
-    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
-    use fastxml::schema::xsd::parse_xsd_multiple;
-
     let compiled = parse_xsd_multiple(schemas)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schemas: {e:?}")))?;
     let ctx = FastXmlValidationContext::new(compiled);
@@ -386,10 +392,6 @@ pub fn create_validation_context_with_imports(
     schema_uri: &str,
     base_dir: Option<&std::path::Path>,
 ) -> crate::Result<XmlSchemaValidationContext> {
-    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
-    use fastxml::schema::xsd::parse_xsd_with_imports;
-
     // Create fetcher with optional base directory
     let fetcher = match base_dir {
         Some(dir) => DefaultFetcher::with_base_dir(dir),
@@ -435,55 +437,7 @@ pub fn create_validation_context_for_schema_locations(
     schema_locations: &[(String, String)],
     base_dir: Option<&std::path::Path>,
 ) -> crate::Result<XmlSchemaValidationContext> {
-    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-    use fastxml::schema::validator::XmlSchemaValidationContext as FastXmlValidationContext;
-    use fastxml::schema::xsd::{
-        compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
-    };
-
-    if schema_locations.is_empty() {
-        return Err(crate::Error::Xml(
-            "No schema locations provided".to_string(),
-        ));
-    }
-
-    // Create fetcher with optional base directory
-    let fetcher = match base_dir {
-        Some(dir) => DefaultFetcher::with_base_dir(dir),
-        None => DefaultFetcher::new(),
-    };
-
-    // Collect all resolved schemas
-    let mut all_schemas: Vec<XsdSchema> = Vec::new();
-
-    for (_namespace, location) in schema_locations {
-        // Fetch the schema
-        let fetch_result = fetcher.fetch(location).map_err(|e| {
-            crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", location))
-        })?;
-
-        // Use the final URL (after redirects) as the base URI
-        let base_uri = &fetch_result.final_url;
-
-        // Parse with import resolution using a resolver
-        let mut resolver = SchemaResolver::new(&fetcher);
-        let schemas = resolver
-            .resolve_all(&fetch_result.content, base_uri)
-            .map_err(|e| {
-                crate::Error::Xml(format!(
-                    "Failed to resolve schema imports for {}: {e:?}",
-                    location
-                ))
-            })?;
-
-        all_schemas.extend(schemas);
-    }
-
-    // Compile all schemas together
-    let mut compiled = compile_schemas(all_schemas)
-        .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
-    register_builtin_types(&mut compiled);
-
+    let compiled = compile_schemas_from_locations(schema_locations, base_dir)?;
     let ctx = FastXmlValidationContext::new(compiled);
     Ok(XmlSchemaValidationContext {
         inner: parking_lot::RwLock::new(ctx),
@@ -520,12 +474,16 @@ pub use fastxml::schema::types::CompiledSchema;
 pub fn compile_schema_for_streaming(
     schema_locations: &[(String, String)],
     base_dir: Option<&std::path::Path>,
-) -> crate::Result<std::sync::Arc<CompiledSchema>> {
-    use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-    use fastxml::schema::xsd::{
-        compile_schemas, register_builtin_types, SchemaResolver, XsdSchema,
-    };
+) -> crate::Result<Arc<CompiledSchema>> {
+    let compiled = compile_schemas_from_locations(schema_locations, base_dir)?;
+    Ok(Arc::new(compiled))
+}
 
+/// Fetch, resolve, and compile XSD schemas from schema location pairs.
+fn compile_schemas_from_locations(
+    schema_locations: &[(String, String)],
+    base_dir: Option<&std::path::Path>,
+) -> crate::Result<CompiledSchema> {
     if schema_locations.is_empty() {
         return Err(crate::Error::Xml(
             "No schema locations provided".to_string(),
@@ -562,7 +520,7 @@ pub fn compile_schema_for_streaming(
         .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
     register_builtin_types(&mut compiled);
 
-    Ok(std::sync::Arc::new(compiled))
+    Ok(compiled)
 }
 
 /// Validate XML using StreamValidator (streaming, memory-efficient).
@@ -577,14 +535,11 @@ pub fn compile_schema_for_streaming(
 /// Vector of validation errors, or error if validation setup failed
 pub fn validate_xml_streaming(
     xml_bytes: &[u8],
-    schema: &std::sync::Arc<CompiledSchema>,
+    schema: &Arc<CompiledSchema>,
     max_errors: usize,
 ) -> crate::Result<Vec<StructuredError>> {
-    use fastxml::schema::validator::StreamValidator;
-    use std::io::{BufReader, Cursor};
-
     let reader = BufReader::new(Cursor::new(xml_bytes));
-    let mut validator = StreamValidator::new(std::sync::Arc::clone(schema));
+    let mut validator = StreamValidator::new(Arc::clone(schema));
 
     if max_errors > 0 {
         validator = validator.with_max_errors(max_errors);

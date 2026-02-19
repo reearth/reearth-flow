@@ -61,21 +61,20 @@ fn calculate_equation_of_time(gamma: f64) -> f64 {
             - 0.04089 * (2.0 * gamma).sin())
 }
 
-/// Calculate hour angle from local standard time. Returns radians.
+/// Calculate hour angle from UTC datetime. Returns radians.
 ///
-/// Note: The datetime parameter is treated as local standard time (not UTC).
-/// The user provides time in their local timezone (e.g., JST for Japan),
-/// and this function calculates the solar time based on the difference
-/// between the location's longitude and the standard meridian.
+/// Converts UTC to local standard time using the standard meridian,
+/// then computes the solar hour angle.
 fn calculate_hour_angle(
-    datetime: DateTime<Utc>, // Actually local time, just stored as UTC type
+    datetime: DateTime<Utc>,
     longitude: f64,
     standard_meridian: f64,
     equation_of_time: f64,
 ) -> f64 {
-    // Input time IS local standard time (not UTC)
-    let local_time_minutes =
+    // Convert UTC to local standard time
+    let utc_minutes =
         datetime.hour() as f64 * 60.0 + datetime.minute() as f64 + datetime.second() as f64 / 60.0;
+    let local_time_minutes = utc_minutes + standard_meridian / 15.0 * 60.0;
 
     // Longitude correction for difference from standard meridian
     // 4 minutes per degree of longitude
@@ -113,13 +112,14 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
 
-    // Note: All times in these tests are LOCAL time (e.g., JST for Tokyo),
-    // stored as DateTime<Utc> for convenience (the Utc type is just a container).
+    // All times in these tests are UTC. The calculator converts to local
+    // standard time using the standard_meridian parameter.
+    // For Tokyo: standard_meridian = 135° → UTC+9 (JST)
 
     #[test]
     fn test_tokyo_summer_solstice_noon() {
-        // 12:00 JST (local time) on summer solstice
-        let datetime = Utc.with_ymd_and_hms(2024, 6, 21, 12, 0, 0).unwrap();
+        // 12:00 JST = 03:00 UTC on summer solstice
+        let datetime = Utc.with_ymd_and_hms(2024, 6, 21, 3, 0, 0).unwrap();
         let position = calculate_solar_position(35.6762, 139.6503, datetime, 135.0);
 
         assert!(
@@ -131,8 +131,8 @@ mod tests {
 
     #[test]
     fn test_night_time() {
-        // 00:00 JST (midnight local time)
-        let datetime = Utc.with_ymd_and_hms(2024, 6, 21, 0, 0, 0).unwrap();
+        // 00:00 JST (midnight) = 15:00 UTC (previous day)
+        let datetime = Utc.with_ymd_and_hms(2024, 6, 20, 15, 0, 0).unwrap();
         let position = calculate_solar_position(35.6762, 139.6503, datetime, 135.0);
 
         assert!(
@@ -143,8 +143,8 @@ mod tests {
 
     #[test]
     fn test_tokyo_winter_solstice_noon() {
-        // 12:00 JST (local time) on winter solstice
-        let datetime = Utc.with_ymd_and_hms(2024, 12, 21, 12, 0, 0).unwrap();
+        // 12:00 JST = 03:00 UTC on winter solstice
+        let datetime = Utc.with_ymd_and_hms(2024, 12, 21, 3, 0, 0).unwrap();
         let position = calculate_solar_position(35.6762, 139.6503, datetime, 135.0);
 
         assert!(
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_equator_equinox_noon() {
-        // 12:00 local time at equator on equinox
+        // 12:00 local time at equator (standard_meridian=0 → UTC+0), so 12:00 UTC
         let datetime = Utc.with_ymd_and_hms(2024, 3, 20, 12, 0, 0).unwrap();
         let position = calculate_solar_position(0.0, 0.0, datetime, 0.0);
 
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_azimuth_at_noon() {
-        // 12:00 local time at equator
+        // 12:00 UTC at equator (standard_meridian=0 → UTC+0)
         let datetime = Utc.with_ymd_and_hms(2024, 4, 15, 12, 0, 0).unwrap();
         let position = calculate_solar_position(0.0, 0.0, datetime, 0.0);
 
@@ -203,8 +203,8 @@ mod tests {
             position.altitude
         );
 
-        // 12:00 JST (local time) in Tokyo
-        let tokyo_noon = Utc.with_ymd_and_hms(2024, 4, 15, 12, 0, 0).unwrap();
+        // 12:00 JST = 03:00 UTC in Tokyo
+        let tokyo_noon = Utc.with_ymd_and_hms(2024, 4, 15, 3, 0, 0).unwrap();
         let tokyo_pos = calculate_solar_position(35.6762, 139.6503, tokyo_noon, 135.0);
 
         assert!(
@@ -216,10 +216,10 @@ mod tests {
 
     #[test]
     fn test_azimuth_morning_afternoon() {
-        // 9:00 JST (morning local time)
-        let morning = Utc.with_ymd_and_hms(2024, 6, 21, 9, 0, 0).unwrap();
-        // 15:00 JST (afternoon local time)
-        let afternoon = Utc.with_ymd_and_hms(2024, 6, 21, 15, 0, 0).unwrap();
+        // 9:00 JST = 00:00 UTC
+        let morning = Utc.with_ymd_and_hms(2024, 6, 21, 0, 0, 0).unwrap();
+        // 15:00 JST = 06:00 UTC
+        let afternoon = Utc.with_ymd_and_hms(2024, 6, 21, 6, 0, 0).unwrap();
 
         let morning_pos = calculate_solar_position(35.6762, 139.6503, morning, 135.0);
         let afternoon_pos = calculate_solar_position(35.6762, 139.6503, afternoon, 135.0);

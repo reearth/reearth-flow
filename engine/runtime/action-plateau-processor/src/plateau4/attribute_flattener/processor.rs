@@ -170,6 +170,7 @@ fn strip_parent_info(map: &mut HashMap<String, AttributeValue>) {
 // GYear fields that should be converted from string to number
 static GYEAR_FIELDS: &[&str] = &[
     "uro:surveyYear",
+    "uro:year",
     "bldg:yearOfConstruction",
     "bldg:yearOfDemolition",
     "uro:yearOpened",

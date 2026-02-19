@@ -2,10 +2,12 @@ use std::{collections::HashMap, sync::Arc, vec};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
+    coordinate::Coordinate2D,
     face::Face,
     geometry::{Geometry2D, Geometry3D},
-    line_string::LineString,
-    polygon::Polygon,
+    line_string::{LineString, LineString2D},
+    multi_polygon::MultiPolygon2D,
+    polygon::{Polygon, Polygon2D},
     solid::{Solid2D, Solid3D},
 };
 use reearth_flow_runtime::{
@@ -345,7 +347,7 @@ fn create_surface_feature_from_citygml_polygon(
         ty: original_gml_geo.ty,
         gml_trait: None, // Extracted geometry loses original trait semantics
         lod: original_gml_geo.lod,
-        pos: original_gml_geo.pos,
+        pos: 0, // Extracted single-polygon feature starts at index 0 in the flat arrays
     };
 
     // Calculate the material and texture indices for this specific polygon
@@ -365,7 +367,11 @@ fn create_surface_feature_from_citygml_polygon(
         } else {
             vec![None]
         },
-        polygon_uvs: Default::default(),
+        polygon_uvs: if global_poly_idx < original_citygml.polygon_uvs.0.len() {
+            MultiPolygon2D::new(vec![original_citygml.polygon_uvs.0[global_poly_idx].clone()])
+        } else {
+            MultiPolygon2D::new(vec![create_placeholder_uv_polygon(polygon)])
+        },
     };
 
     let mut surface_geometry = (*original_feature.geometry).clone();
@@ -388,4 +394,32 @@ fn calculate_global_polygon_index(
         global_idx += geo_feature.polygons.len();
     }
     global_idx + poly_idx
+}
+
+/// Create a placeholder UV polygon matching the ring structure of a 3D polygon.
+/// Each vertex gets (0.0, 0.0) UV coordinates.
+fn create_placeholder_uv_polygon(
+    poly3d: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
+) -> Polygon2D<f64> {
+    let exterior_uvs: Vec<Coordinate2D<f64>> = poly3d
+        .exterior()
+        .0
+        .iter()
+        .map(|_| Coordinate2D::new_(0.0, 0.0))
+        .collect();
+
+    let interior_uvs: Vec<LineString2D<f64>> = poly3d
+        .interiors()
+        .iter()
+        .map(|ring| {
+            let coords: Vec<Coordinate2D<f64>> = ring
+                .0
+                .iter()
+                .map(|_| Coordinate2D::new_(0.0, 0.0))
+                .collect();
+            LineString2D::new(coords)
+        })
+        .collect();
+
+    Polygon2D::new(LineString2D::new(exterior_uvs), interior_uvs)
 }
