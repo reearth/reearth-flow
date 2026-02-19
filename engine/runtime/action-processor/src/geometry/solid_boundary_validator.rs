@@ -255,18 +255,14 @@ impl Processor for SolidBoundaryValidator {
             return Ok(());
         }
 
-        // Check manifold condition
-        let result = if let Some(result) = {
-            let len = mesh.edges_violating_manifold_condition().len();
-            if len > 0 {
-                Some(ValidationResult {
-                    issue_count: len,
-                    issue: IssueType::NotA2Manifold,
-                })
-            } else {
-                None
-            }
-        } {
+        // Build deduplicated vertex index mapping for original polygon edges.
+        // This is used for manifold and orientation checks on the original
+        // (non-triangulated) boundary edges to avoid false positives from
+        // internal diagonal edges introduced by ear-clipping triangulation.
+        let (_vertices, indexed_faces) = Self::map_faces_to_vertex_indices(&faces);
+
+        // Check manifold condition on original polygon edges
+        let result = if let Some(result) = Self::check_manifold(&indexed_faces) {
             result
         }
         // Check connectivity
@@ -298,7 +294,7 @@ impl Processor for SolidBoundaryValidator {
             result
         }
         // Check face orientation
-        else if let Some(result) = Self::check_orientation(&faces, mesh.get_vertices()) {
+        else if let Some(result) = Self::check_orientation(&indexed_faces) {
             result
         }
         // No issues found
@@ -349,29 +345,73 @@ impl SolidBoundaryValidator {
         })
     }
 
-    fn check_orientation(
+    /// Deduplicate vertices across all faces and map each face to vertex indices.
+    fn map_faces_to_vertex_indices(
         faces: &[LineString3D<f64>],
-        vertices: &[Coordinate3D<f64>],
-    ) -> Option<ValidationResult> {
+    ) -> (Vec<Coordinate3D<f64>>, Vec<Vec<usize>>) {
         let epsilon = 1e-8;
-        if faces.is_empty() {
+        let mut vertices: Vec<Coordinate3D<f64>> = Vec::new();
+        let mut indexed_faces: Vec<Vec<usize>> = Vec::new();
+
+        for face in faces {
+            let mut face_indices = Vec::with_capacity(face.0.len());
+            for v in face.iter() {
+                let idx = vertices
+                    .iter()
+                    .position(|&vv| (vv - *v).norm() < epsilon)
+                    .unwrap_or_else(|| {
+                        vertices.push(*v);
+                        vertices.len() - 1
+                    });
+                face_indices.push(idx);
+            }
+            indexed_faces.push(face_indices);
+        }
+
+        (vertices, indexed_faces)
+    }
+
+    /// Check manifold condition on original polygon boundary edges.
+    ///
+    /// Every undirected edge in a closed (watertight) solid must be shared by
+    /// exactly 2 faces. This operates on the original polygon edges rather than
+    /// triangulated edges, avoiding false positives from internal diagonal edges
+    /// introduced by ear-clipping triangulation.
+    fn check_manifold(indexed_faces: &[Vec<usize>]) -> Option<ValidationResult> {
+        let mut edge_counts: HashMap<[usize; 2], usize> = HashMap::new();
+
+        for face in indexed_faces {
+            for edge in face.windows(2) {
+                // Skip degenerate edges where both endpoints map to the same vertex
+                if edge[0] == edge[1] {
+                    continue;
+                }
+                let key = if edge[0] < edge[1] {
+                    [edge[0], edge[1]]
+                } else {
+                    [edge[1], edge[0]]
+                };
+                *edge_counts.entry(key).or_insert(0) += 1;
+            }
+        }
+
+        let violation_count = edge_counts.values().filter(|&&c| c != 2).count();
+        if violation_count == 0 {
+            None
+        } else {
+            Some(ValidationResult {
+                issue_count: violation_count,
+                issue: IssueType::NotA2Manifold,
+            })
+        }
+    }
+
+    fn check_orientation(indexed_faces: &[Vec<usize>]) -> Option<ValidationResult> {
+        if indexed_faces.is_empty() {
             return None;
         }
         let mut directed_edges = Vec::new();
-        let faces = &faces
-            .iter()
-            .map(|f| {
-                f.iter()
-                    .map(|v| {
-                        vertices
-                            .iter()
-                            .position(|&vv| (vv - *v).norm() < epsilon)
-                            .unwrap()
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        for face in faces {
+        for face in indexed_faces {
             for edge in face.windows(2) {
                 if edge[0] < edge[1] {
                     let edge = [edge[0], edge[1]];
@@ -395,5 +435,131 @@ impl SolidBoundaryValidator {
                 issue: IssueType::WrongFaceOrientation,
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper: create a LineString3D from a slice of (x, y, z) tuples.
+    /// The ring is automatically closed (first vertex appended at end).
+    fn ring(pts: &[(f64, f64, f64)]) -> LineString3D<f64> {
+        let mut coords: Vec<Coordinate3D<f64>> = pts
+            .iter()
+            .map(|&(x, y, z)| Coordinate3D::new__(x, y, z))
+            .collect();
+        if let Some(&first) = coords.first() {
+            coords.push(first);
+        }
+        LineString3D::new(coords)
+    }
+
+    /// Unit cube faces (6 quads). Each face is a closed ring (5 vertices).
+    fn cube_faces() -> Vec<LineString3D<f64>> {
+        vec![
+            // bottom (z=0), CCW viewed from outside (CW from above)
+            ring(&[
+                (0.0, 0.0, 0.0),
+                (1.0, 0.0, 0.0),
+                (1.0, 1.0, 0.0),
+                (0.0, 1.0, 0.0),
+            ]),
+            // top (z=1), CCW viewed from outside
+            ring(&[
+                (0.0, 0.0, 1.0),
+                (0.0, 1.0, 1.0),
+                (1.0, 1.0, 1.0),
+                (1.0, 0.0, 1.0),
+            ]),
+            // front (y=0)
+            ring(&[
+                (0.0, 0.0, 0.0),
+                (0.0, 0.0, 1.0),
+                (1.0, 0.0, 1.0),
+                (1.0, 0.0, 0.0),
+            ]),
+            // back (y=1)
+            ring(&[
+                (0.0, 1.0, 0.0),
+                (1.0, 1.0, 0.0),
+                (1.0, 1.0, 1.0),
+                (0.0, 1.0, 1.0),
+            ]),
+            // left (x=0)
+            ring(&[
+                (0.0, 0.0, 0.0),
+                (0.0, 1.0, 0.0),
+                (0.0, 1.0, 1.0),
+                (0.0, 0.0, 1.0),
+            ]),
+            // right (x=1)
+            ring(&[
+                (1.0, 0.0, 0.0),
+                (1.0, 0.0, 1.0),
+                (1.0, 1.0, 1.0),
+                (1.0, 1.0, 0.0),
+            ]),
+        ]
+    }
+
+    /// Tetrahedron (4 triangular faces).
+    fn tetrahedron_faces() -> Vec<LineString3D<f64>> {
+        let a = (0.0, 0.0, 0.0);
+        let b = (1.0, 0.0, 0.0);
+        let c = (0.5, 1.0, 0.0);
+        let d = (0.5, 0.5, 1.0);
+        vec![
+            ring(&[a, c, b]), // bottom
+            ring(&[a, b, d]), // front
+            ring(&[b, c, d]), // right
+            ring(&[c, a, d]), // left
+        ]
+    }
+
+    #[test]
+    fn cube_manifold_passes() {
+        let faces = cube_faces();
+        let (_verts, indexed) = SolidBoundaryValidator::map_faces_to_vertex_indices(&faces);
+        assert!(
+            SolidBoundaryValidator::check_manifold(&indexed).is_none(),
+            "Closed cube should pass manifold check"
+        );
+    }
+
+    #[test]
+    fn tetrahedron_manifold_passes() {
+        let faces = tetrahedron_faces();
+        let (_verts, indexed) = SolidBoundaryValidator::map_faces_to_vertex_indices(&faces);
+        assert!(
+            SolidBoundaryValidator::check_manifold(&indexed).is_none(),
+            "Closed tetrahedron should pass manifold check"
+        );
+    }
+
+    #[test]
+    fn open_box_manifold_fails() {
+        // Remove top face from cube → open box with boundary edges shared by only 1 face
+        let mut faces = cube_faces();
+        faces.remove(1); // remove top
+        let (_verts, indexed) = SolidBoundaryValidator::map_faces_to_vertex_indices(&faces);
+        let result = SolidBoundaryValidator::check_manifold(&indexed);
+        assert!(
+            result.is_some(),
+            "Open box (missing top face) should fail manifold check"
+        );
+        let r = result.unwrap();
+        assert_eq!(r.issue, IssueType::NotA2Manifold);
+        assert!(r.issue_count > 0);
+    }
+
+    #[test]
+    fn cube_orientation_passes() {
+        let faces = cube_faces();
+        let (_verts, indexed) = SolidBoundaryValidator::map_faces_to_vertex_indices(&faces);
+        assert!(
+            SolidBoundaryValidator::check_orientation(&indexed).is_none(),
+            "Consistently oriented cube should pass orientation check"
+        );
     }
 }
