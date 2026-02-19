@@ -167,16 +167,17 @@ pub fn entity_to_geometry(
             polygons.push(poly.into());
         }
         if !polygons.is_empty() {
+            let polygon_count = polygons.len();
             let solid_gml = GmlGeometry {
                 id: entity.id.clone(),
-                len: polygons.len() as u32,
+                len: polygon_count as u32,
                 polygons,
                 feature_id: entity.id.clone(),
                 feature_type: entity.typename.clone(),
-                ..GmlGeometry::new(GeometryType::Solid, None)
+                ..GmlGeometry::new(crate::geometry::GeometryType::Solid, None)
             };
             gml_geometries = vec![solid_gml];
-            polygon_ranges = vec![(0, len)];
+            polygon_ranges = vec![(0, polygon_count as u32)];
         }
     }
 

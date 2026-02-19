@@ -606,7 +606,6 @@ fn clip_citygml_geometry_per_polygon(
                     line_strings: vec![],
                     feature_id: gml.feature_id.clone(),
                     feature_type: gml.feature_type.clone(),
-                    composite_surfaces: vec![],
                 };
 
                 // Create placeholder UV polygon matching the structure of clipped_poly
@@ -627,55 +626,11 @@ fn clip_citygml_geometry_per_polygon(
                 });
             }
         }
-
-        // Also process composite surfaces recursively
-        for cs in &gml.composite_surfaces {
-            let poly_count = count_polygons_recursive(cs);
-            let empty_uv_polygon = Polygon2D::new(
-                reearth_flow_geometry::types::line_string::LineString2D::new(vec![]),
-                vec![],
-            );
-
-            let mut cs_clone = cs.clone();
-            cs_clone.pos = 0;
-            cs_clone.len = poly_count as u32;
-            reset_pos_len_recursive(&mut cs_clone);
-
-            let cs_citygml = CityGmlGeometry {
-                gml_geometries: vec![cs_clone],
-                materials: citygml.materials.clone(),
-                textures: citygml.textures.clone(),
-                polygon_materials: vec![None; poly_count],
-                polygon_textures: vec![None; poly_count],
-                polygon_uvs: MultiPolygon2D::new(vec![empty_uv_polygon; poly_count]),
-            };
-            results.extend(clip_citygml_geometry_per_polygon(&cs_citygml, cell));
-        }
     }
 
     results
 }
 
-/// Count total polygons in a GmlGeometry recursively (including composite_surfaces)
-fn count_polygons_recursive(gml: &GmlGeometry) -> usize {
-    let mut count = gml.polygons.len();
-    for cs in &gml.composite_surfaces {
-        count += count_polygons_recursive(cs);
-    }
-    count
-}
-
-/// Reset pos/len fields recursively to match the polygon count
-fn reset_pos_len_recursive(gml: &mut GmlGeometry) {
-    let mut offset = gml.polygons.len() as u32;
-    for cs in &mut gml.composite_surfaces {
-        cs.pos = offset;
-        let cs_poly_count = count_polygons_recursive(cs) as u32;
-        cs.len = cs_poly_count;
-        reset_pos_len_recursive(cs);
-        offset += cs_poly_count;
-    }
-}
 
 /// Create a placeholder UV polygon that matches the ring structure of a 3D polygon.
 fn create_placeholder_uv_polygon(poly3d: &Polygon3D<f64>) -> Polygon2D<f64> {

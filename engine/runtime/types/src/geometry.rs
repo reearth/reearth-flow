@@ -529,7 +529,6 @@ pub struct GmlGeometry {
     pub points: Vec<Coordinate3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
-    pub composite_surfaces: Vec<GmlGeometry>,
 }
 
 impl GmlGeometry {
@@ -546,7 +545,6 @@ impl GmlGeometry {
             points: vec![],
             feature_id: None,
             feature_type: None,
-            composite_surfaces: vec![],
         }
     }
 
@@ -595,9 +593,6 @@ impl GmlGeometry {
             let (new_x, new_y) = transform_fn(point.x, point.y)?;
             point.x = new_x;
             point.y = new_y;
-        }
-        for composite in &mut self.composite_surfaces {
-            composite.transform_horizontal(transform_fn)?;
         }
         Ok(())
     }
@@ -704,7 +699,6 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             points: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
-            composite_surfaces: Vec::new(),
         }
     }
 }
@@ -740,13 +734,20 @@ mod tests {
         // Regression test: filter_by_lod should handle mixed polygon + curve geometries
         // without panicking on len vs polygons.len() mismatch
         let surface = GmlGeometry {
-            polygons: vec![Polygon3D::default(), Polygon3D::default()],
+            polygons: vec![
+                Polygon3D::new(LineString3D::new(vec![]), vec![]),
+                Polygon3D::new(LineString3D::new(vec![]), vec![]),
+            ],
             len: 2,
             ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
         let curve = GmlGeometry {
-            line_strings: vec![LineString3D::default(), LineString3D::default(), LineString3D::default()],
+            line_strings: vec![
+                LineString3D::new(vec![]),
+                LineString3D::new(vec![]),
+                LineString3D::new(vec![]),
+            ],
             len: 3,
             ..GmlGeometry::new(GeometryType::Curve, Some(2))
         };
