@@ -836,11 +836,8 @@ impl AttributeFlattener {
 
         // Collect all attribute keys that ended up on the feature for schema generation
         // This is done in one place after all processing (flattening, inheritance, etc.) is complete
-        let attribute_keys: HashSet<String> = feature
-            .attributes
-            .keys()
-            .map(|k| k.to_string())
-            .collect();
+        let attribute_keys: HashSet<String> =
+            feature.attributes.keys().map(|k| k.to_string()).collect();
         self.existing_flatten_attributes
             .entry(lookup_key)
             .or_insert_with(HashSet::new)
@@ -1509,10 +1506,18 @@ mod tests {
         let bldg_schema = flattener.generate_schema_feature("bldg/bldg:Building");
         let road_schema = flattener.generate_schema_feature("tran/tran:Road");
 
-        assert!(bldg_schema.attributes.contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
-        assert!(!road_schema.attributes.contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
-        assert!(road_schema.attributes.contains_key(&Attribute::new("tran:function".to_string())));
-        assert!(!bldg_schema.attributes.contains_key(&Attribute::new("tran:function".to_string())));
+        assert!(bldg_schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
+        assert!(!road_schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
+        assert!(road_schema
+            .attributes
+            .contains_key(&Attribute::new("tran:function".to_string())));
+        assert!(!bldg_schema
+            .attributes
+            .contains_key(&Attribute::new("tran:function".to_string())));
     }
 
     /// Test all attributes on processed feature are tracked
@@ -1528,7 +1533,11 @@ mod tests {
         let _ = flattener.flatten_feature(feature).unwrap();
         let schema = flattener.generate_schema_feature("bldg/bldg:Building");
 
-        assert!(schema.attributes.contains_key(&Attribute::new("bldg:class".to_string())));
-        assert!(schema.attributes.contains_key(&Attribute::new("bldg:usage".to_string())));
+        assert!(schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:class".to_string())));
+        assert!(schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:usage".to_string())));
     }
 }
