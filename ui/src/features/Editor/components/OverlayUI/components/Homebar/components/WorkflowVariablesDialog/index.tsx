@@ -220,10 +220,11 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     <>
       <Dialog open onOpenChange={handleCancel}>
         <DialogContent
-          className="h-[50vh]"
+          className="h-[50vh] focus-visible:outline-none"
           size="2xl"
           position="off-center"
           hideCloseButton
+          autoFocus={false}
           onInteractOutside={(e) => e.preventDefault()}>
           <div className="flex h-full flex-col">
             <DialogHeader>
