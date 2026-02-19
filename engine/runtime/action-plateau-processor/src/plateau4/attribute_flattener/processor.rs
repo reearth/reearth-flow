@@ -840,7 +840,7 @@ impl AttributeFlattener {
             feature.attributes.keys().map(|k| k.to_string()).collect();
         self.existing_flatten_attributes
             .entry(lookup_key)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .extend(attribute_keys);
 
         Ok(feature)
