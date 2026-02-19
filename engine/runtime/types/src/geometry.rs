@@ -727,17 +727,26 @@ impl GmlGeometryTrait {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_geometry::types::coordinate::Coordinate3D;
     use reearth_flow_geometry::types::line_string::LineString3D;
+
+    fn minimal_polygon() -> Polygon3D<f64> {
+        Polygon3D::new(
+            LineString3D::new(vec![
+                Coordinate3D::new__(0.0, 0.0, 0.0),
+                Coordinate3D::new__(1.0, 0.0, 0.0),
+                Coordinate3D::new__(0.0, 1.0, 0.0),
+            ]),
+            vec![],
+        )
+    }
 
     #[test]
     fn test_filter_by_lod_with_mixed_geometry_types() {
         // Regression test: filter_by_lod should handle mixed polygon + curve geometries
         // without panicking on len vs polygons.len() mismatch
         let surface = GmlGeometry {
-            polygons: vec![
-                Polygon3D::new(LineString3D::new(vec![]), vec![]),
-                Polygon3D::new(LineString3D::new(vec![]), vec![]),
-            ],
+            polygons: vec![minimal_polygon(), minimal_polygon()],
             len: 2,
             ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
