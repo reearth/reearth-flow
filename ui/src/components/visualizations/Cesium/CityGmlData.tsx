@@ -3,7 +3,7 @@ import {
   Primitive,
   ShowGeometryInstanceAttribute,
 } from "cesium";
-import { memo, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
 import {
@@ -42,6 +42,64 @@ const CityGmlData: React.FC<Props> = ({
   const groundPrimitiveRef = useRef<GroundPrimitive | null>(null);
   const featureMapRef = useRef<Map<string, FeatureInstanceData>>(new Map());
   const prevSelectedRef = useRef<string | null>(null);
+
+  const waitForPrimitive = useCallback(
+    (primitive: Primitive | null, callback: () => void) => {
+      if (!primitive || !viewer) return;
+      if ((primitive as any).ready) {
+        callback();
+        return;
+      }
+      const remove = viewer.scene.postRender.addEventListener(() => {
+        if (!(primitive as any).ready) return;
+        remove();
+        callback();
+      });
+    },
+    [viewer],
+  );
+
+  const revertLod = useCallback(
+    (entry: FeatureInstanceData) => {
+      if (entry.lodPrimitiveCollection && viewer) {
+        viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
+        entry.lodPrimitiveCollection = null;
+      }
+      waitForPrimitive(absolutePrimitiveRef.current, () => {
+        entry.absoluteInstanceIds.forEach((id) => {
+          const attrs =
+            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(id);
+          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(true);
+        });
+      });
+    },
+    [viewer, waitForPrimitive],
+  );
+
+  const upgradeLod = useCallback(
+    (entry: FeatureInstanceData) => {
+      if (entry.lodPrimitiveCollection) return;
+      const typeConfig = CITYGML_3D_TYPES.find((cfg) =>
+        cfg.detect(entry.feature.properties),
+      );
+      const lodPrimitive = createLodUpgradePrimitiveCollection(
+        entry.feature,
+        typeConfig,
+      );
+
+      if (!lodPrimitive || !viewer) return;
+      viewer.scene.primitives.add(lodPrimitive);
+      entry.lodPrimitiveCollection = lodPrimitive;
+      waitForPrimitive(absolutePrimitiveRef.current, () => {
+        entry.absoluteInstanceIds.forEach((id) => {
+          const attrs =
+            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(id);
+          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(false);
+        });
+      });
+    },
+    [viewer, waitForPrimitive],
+  );
 
   // Process CityGML data and create primitives (only on data change)
   useEffect(() => {
@@ -90,58 +148,6 @@ const CityGmlData: React.FC<Props> = ({
     const currentId = selectedFeatureId ?? null;
     prevSelectedRef.current = currentId;
 
-    function waitForPrimitive(
-      primitive: Primitive | null,
-      callback: () => void,
-    ) {
-      if (!primitive || !viewer) return;
-      if ((primitive as any).ready) {
-        callback();
-        return;
-      }
-      const remove = viewer.scene.postRender.addEventListener(() => {
-        if (!(primitive as any).ready) return;
-        remove();
-        callback();
-      });
-    }
-
-    const revertLod = (entry: FeatureInstanceData) => {
-      if (entry.lodPrimitiveCollection) {
-        viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
-        entry.lodPrimitiveCollection = null;
-      }
-      waitForPrimitive(absolutePrimitiveRef.current, () => {
-        entry.absoluteInstanceIds.forEach((id) => {
-          const attrs =
-            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(id);
-          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(true);
-        });
-      });
-    };
-
-    const upgradeLod = (entry: FeatureInstanceData) => {
-      if (entry.lodPrimitiveCollection) return;
-      const typeConfig = CITYGML_3D_TYPES.find((cfg) =>
-        cfg.detect(entry.feature.properties),
-      );
-      const lodPrimitive = createLodUpgradePrimitiveCollection(
-        entry.feature,
-        typeConfig,
-      );
-
-      if (!lodPrimitive) return;
-      viewer.scene.primitives.add(lodPrimitive);
-      entry.lodPrimitiveCollection = lodPrimitive;
-      waitForPrimitive(absolutePrimitiveRef.current, () => {
-        entry.absoluteInstanceIds.forEach((id) => {
-          const attrs =
-            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(id);
-          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(false);
-        });
-      });
-    };
-
     // Revert previously selected feature back to LOD1
     if (prevId && prevId !== currentId) {
       const prevEntry = featureMapRef.current.get(prevId);
@@ -153,7 +159,14 @@ const CityGmlData: React.FC<Props> = ({
       const entry = featureMapRef.current.get(currentId);
       if (entry) upgradeLod(entry);
     }
-  }, [selectedFeatureId, viewer, detailsOverlayOpen]);
+  }, [
+    selectedFeatureId,
+    viewer,
+    detailsOverlayOpen,
+    waitForPrimitive,
+    revertLod,
+    upgradeLod,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
