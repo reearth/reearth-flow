@@ -55,8 +55,14 @@ const CityGmlData: React.FC<Props> = ({
       }
     });
 
-    viewer.scene.primitives.remove(absolutePrimitiveRef.current);
-    viewer.scene.primitives.remove(groundPrimitiveRef.current);
+    if (absolutePrimitiveRef.current) {
+      viewer.scene.primitives.remove(absolutePrimitiveRef.current);
+      absolutePrimitiveRef.current = null;
+    }
+    if (groundPrimitiveRef.current) {
+      viewer.scene.primitives.remove(groundPrimitiveRef.current);
+      groundPrimitiveRef.current = null;
+    }
 
     featureMapRef.current.clear();
     prevSelectedRef.current = null;
@@ -123,6 +129,8 @@ const CityGmlData: React.FC<Props> = ({
         entry.feature,
         typeConfig,
       );
+
+      console.log("PRIMITIVE COLLECTION CREATED", lodPrimitive);
       if (!lodPrimitive) return;
       viewer.scene.primitives.add(lodPrimitive);
       entry.lodPrimitiveCollection = lodPrimitive;
