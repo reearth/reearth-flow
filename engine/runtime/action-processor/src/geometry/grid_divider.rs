@@ -631,7 +631,6 @@ fn clip_citygml_geometry_per_polygon(
     results
 }
 
-
 /// Create a placeholder UV polygon that matches the ring structure of a 3D polygon.
 fn create_placeholder_uv_polygon(poly3d: &Polygon3D<f64>) -> Polygon2D<f64> {
     let exterior_uv_coords: Vec<Coordinate2D<f64>> = poly3d
