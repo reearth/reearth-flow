@@ -1080,17 +1080,11 @@ mod tests {
         // Create a CityGML geometry with a polygon
         let gml_geometry = GmlGeometry {
             id: Some("test_gml".to_string()),
-            ty: GeometryType::Surface,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 1,
-            points: vec![],
             polygons: vec![polygon.clone()],
-            line_strings: vec![],
             feature_id: Some("feature1".to_string()),
             feature_type: Some("Building".to_string()),
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
         let citygml = CityGmlGeometry {
@@ -1138,17 +1132,11 @@ mod tests {
         // Create a CityGML geometry as the clipper
         let gml_clipper = GmlGeometry {
             id: Some("clipper_gml".to_string()),
-            ty: GeometryType::Surface,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 1,
-            points: vec![],
             polygons: vec![clip_polygon.clone()],
-            line_strings: vec![],
             feature_id: Some("clipper1".to_string()),
             feature_type: Some("Building".to_string()),
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
         let citygml_clipper = CityGmlGeometry {
@@ -1197,33 +1185,22 @@ mod tests {
         // Create a nested GML geometry (composite surface)
         let nested_gml = GmlGeometry {
             id: Some("nested_surface".to_string()),
-            ty: GeometryType::Surface,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 1,
-            points: vec![],
             polygons: vec![polygon1.clone()],
-            line_strings: vec![],
             feature_id: Some("nested_feature".to_string()),
             feature_type: Some("Wall".to_string()),
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
         // Create a parent GML geometry with composite surfaces
         let parent_gml = GmlGeometry {
             id: Some("parent_solid".to_string()),
-            ty: GeometryType::Solid,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 2,
-            points: vec![],
             polygons: vec![polygon2.clone()],
-            line_strings: vec![],
             feature_id: Some("parent_feature".to_string()),
             feature_type: Some("Building".to_string()),
             composite_surfaces: vec![nested_gml],
+            ..GmlGeometry::new(GeometryType::Solid, Some(2))
         };
 
         let citygml = CityGmlGeometry {
@@ -1278,17 +1255,11 @@ mod tests {
         // Create a Curve type GML geometry
         let curve_gml = GmlGeometry {
             id: Some("curve_gml".to_string()),
-            ty: GeometryType::Curve,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 1,
-            points: vec![],
-            polygons: vec![], // Curves don't have polygons
             line_strings: vec![line_string],
             feature_id: Some("curve_feature".to_string()),
             feature_type: Some("Road".to_string()),
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Curve, Some(2))
         };
 
         let citygml = CityGmlGeometry {
@@ -1336,48 +1307,31 @@ mod tests {
         // Create nested surface geometries (representing walls, roof, etc.)
         let wall1 = GmlGeometry {
             id: Some("wall1".to_string()),
-            ty: GeometryType::Surface,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 1,
-            points: vec![],
             polygons: vec![polygon1.clone()],
-            line_strings: vec![],
             feature_id: Some("wall1_feature".to_string()),
             feature_type: Some("WallSurface".to_string()),
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
         let wall2 = GmlGeometry {
             id: Some("wall2".to_string()),
-            ty: GeometryType::Surface,
-            gml_trait: None,
-            lod: Some(2),
             pos: 1,
             len: 1,
-            points: vec![],
             polygons: vec![polygon2.clone()],
-            line_strings: vec![],
             feature_id: Some("wall2_feature".to_string()),
             feature_type: Some("WallSurface".to_string()),
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
         // Create a Solid with composite surfaces
         let solid = GmlGeometry {
             id: Some("building_solid".to_string()),
-            ty: GeometryType::Solid,
-            gml_trait: None,
-            lod: Some(2),
-            pos: 0,
             len: 2,
-            points: vec![],
-            polygons: vec![], // Solid might not have direct polygons
-            line_strings: vec![],
             feature_id: Some("building".to_string()),
             feature_type: Some("Building".to_string()),
             composite_surfaces: vec![wall1, wall2],
+            ..GmlGeometry::new(GeometryType::Solid, Some(2))
         };
 
         let citygml = CityGmlGeometry {
