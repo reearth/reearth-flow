@@ -1,0 +1,55 @@
+{
+  "description": "Test for surface not closed errors",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "frn_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../plateau-citymodel/21201_gifu-shi_city_2025_citygml_1_op/21201_city_2025_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/frn",
+      "name": "frn_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/21201_gifu-shi_city_2025_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../plateau-citymodel/21201_gifu-shi_city_2025_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "04_都市設備_地物インスタンス数.csv",
+    "except": [
+      "Index"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_frn.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "04_都市設備_検査結果一覧.csv"
+    }
+  },
+  "expectResultOkFile": false
+}
