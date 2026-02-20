@@ -340,10 +340,9 @@ fn create_surface_feature_from_citygml_polygon(
         feature_id: original_gml_geo.feature_id.clone(),
         feature_type: original_gml_geo.feature_type.clone(),
         polygons: vec![polygon.clone()],
-        len: 1,                     // Single surface has length 1
-        composite_surfaces: vec![], // Single surface doesn't need composite surfaces
-        line_strings: vec![],       // Single surface doesn't need line strings
-        points: vec![],             // Single surface doesn't need points
+        len: 1,               // Single surface has length 1
+        line_strings: vec![], // Single surface doesn't need line strings
+        points: vec![],       // Single surface doesn't need points
         ty: original_gml_geo.ty,
         gml_trait: None, // Extracted geometry loses original trait semantics
         lod: original_gml_geo.lod,
