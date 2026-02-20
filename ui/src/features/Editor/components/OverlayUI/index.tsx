@@ -33,6 +33,7 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   selectedNodeIds: string[];
+  nodes: Node[];
   edges?: Edge[];
   canUndo: boolean;
   canRedo: boolean;
@@ -49,6 +50,7 @@ type OverlayUIProps = {
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
+  onEdgesAdd?: (edges: Edge[]) => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
   onLayoutChange: (
@@ -90,6 +92,7 @@ type OverlayUIProps = {
 const OverlayUI: React.FC<OverlayUIProps> = ({
   nodePickerOpen,
   selectedNodeIds,
+  nodes,
   edges,
   canUndo,
   canRedo,
@@ -108,6 +111,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onNodesAdd,
   onNodesChange,
   onNodePickerClose,
+  onEdgesAdd,
   onWorkflowUndo,
   onWorkflowRedo,
   onWorkflowChange,
@@ -241,7 +245,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <NodePickerDialog
           openedActionType={nodePickerOpen}
           isMainWorkflow={isMainWorkflow}
+          nodes={nodes}
           onNodesAdd={onNodesAdd}
+          onNodesChange={onNodesChange}
+          onEdgesAdd={onEdgesAdd}
           onClose={onNodePickerClose}
         />
       )}

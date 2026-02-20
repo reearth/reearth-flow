@@ -6,22 +6,28 @@ import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
-import { ActionNodeType, Node } from "@flow/types";
+import { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type ActionTypeFiltering = "all" | ActionNodeType;
 export default ({
   openedActionType,
   isMainWorkflow,
+  nodes,
   onNodesAdd,
+  onNodesChange,
+  onEdgesAdd,
   onClose,
 }: {
   openedActionType: {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
+  nodes: Node[];
   isMainWorkflow: boolean;
   onNodesAdd: (nodes: Node[]) => void;
+  onNodesChange?: (changes: NodeChange[]) => void;
+  onEdgesAdd?: (edges: Edge[]) => void;
   onClose: () => void;
 }) => {
   const t = useT();
@@ -92,6 +98,8 @@ export default ({
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
       const randomX = getRandomNumberInRange(50, 200);
       const randomY = getRandomNumberInRange(50, 200);
+      const selectedNodes = nodes.filter((n) => n.selected);
+      const lastSelectedNode = selectedNodes.at(-1);
       const newNode = await buildNewCanvasNode({
         position:
           openedActionType.position.x === 0 && openedActionType.position.y === 0
@@ -101,8 +109,19 @@ export default ({
               })
             : openedActionType.position,
         type: name,
+        lastSelectedNode,
+        onEdgesAdd,
       });
       if (!newNode) return;
+      selectedNodes.forEach((node) => {
+        onNodesChange?.([
+          {
+            type: "select",
+            id: node.id,
+            selected: false,
+          },
+        ]);
+      });
       onNodesAdd([newNode]);
       // TODO - add drop in batch support
       // onNodesChange(handleNodeDropInBatch(newNode, newNodes));

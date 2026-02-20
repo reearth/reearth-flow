@@ -4,13 +4,21 @@ import { JSONSchema7Definition } from "json-schema";
 import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
-import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
+import {
+  Edge,
+  nodeTypes,
+  type Action,
+  type Node,
+  type NodeType,
+} from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 type CreateNodeOptions = {
   position: XYPosition;
   type: string;
   officialName?: string;
+  lastSelectedNode?: Node;
+  onEdgesAdd?: (edges: Edge[]) => void;
 };
 
 type BaseNoteNode = {
@@ -58,6 +66,7 @@ const createBaseNode = ({
   data: {
     officialName: officialName || type,
   },
+  selected: true,
 });
 
 const createSpecializedNode = ({
@@ -80,6 +89,8 @@ const createSpecializedNode = ({
 const createActionNode = async (
   name: string,
   position: XYPosition,
+  lastSelectedNode?: Node,
+  onEdgesAdd?: (edges: Edge[]) => void,
 ): Promise<Node | null> => {
   const { api } = config();
   const action = await fetcher<Action>(`${api}/actions/${name}`);
@@ -107,7 +118,7 @@ const createActionNode = async (
     }
   }
 
-  return {
+  const newNode = {
     ...createBaseNode({ position, type: action.type }),
     // Needs measured, but at time of creation we don't know size yet.
     // 150x25 is base-size of GeneralNode.
@@ -122,15 +133,33 @@ const createActionNode = async (
       params: defaultParams,
     },
   };
+
+  if (lastSelectedNode) {
+    if (lastSelectedNode && onEdgesAdd) {
+      const newEdge: Edge = {
+        id: generateUUID(),
+        source: lastSelectedNode.id,
+        target: newNode.id,
+      };
+      onEdgesAdd([newEdge]);
+    }
+  }
+  return newNode;
 };
 
 export const buildNewCanvasNode = async ({
   position,
   type,
+  lastSelectedNode,
+  onEdgesAdd,
   officialName,
 }: CreateNodeOptions): Promise<Node | null> => {
   if (nodeTypes.includes(type as NodeType)) {
-    return createSpecializedNode({ position, type, officialName });
+    return createSpecializedNode({
+      position,
+      type,
+      officialName,
+    });
   }
-  return createActionNode(type, position);
+  return createActionNode(type, position, lastSelectedNode, onEdgesAdd);
 };

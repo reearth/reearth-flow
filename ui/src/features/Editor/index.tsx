@@ -122,6 +122,7 @@ export default function Editor({
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
             selectedNodeIds={selectedNodeIds}
+            nodes={nodes}
             edges={edges}
             project={currentProject}
             yDoc={yDoc}
@@ -143,6 +144,7 @@ export default function Editor({
             onNodesAdd={handleNodesAdd}
             onNodesChange={handleNodesChange}
             onNodePickerClose={handleNodePickerClose}
+            onEdgesAdd={handleEdgesAdd}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}
             onProjectShare={handleProjectShare}

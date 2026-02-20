@@ -13,7 +13,7 @@ import {
 } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { useT } from "@flow/lib/i18n";
-import type { ActionNodeType, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
 
 import useHooks from "./hooks";
 
@@ -26,14 +26,20 @@ type Props = {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
+  nodes: Node[];
   isMainWorkflow: boolean;
   onNodesAdd: (nodes: Node[]) => void;
+  onNodesChange?: (changes: NodeChange[]) => void;
+  onEdgesAdd?: (edges: Edge[]) => void;
   onClose: () => void;
 };
 
 const NodePickerDialog: React.FC<Props> = ({
   openedActionType,
+  nodes,
   onNodesAdd,
+  onNodesChange,
+  onEdgesAdd,
   onClose,
   isMainWorkflow,
 }) => {
@@ -50,7 +56,15 @@ const NodePickerDialog: React.FC<Props> = ({
     handleSingleClick,
     handleDoubleClick,
     handleActionByTypeChange,
-  } = useHooks({ openedActionType, isMainWorkflow, onNodesAdd, onClose });
+  } = useHooks({
+    openedActionType,
+    isMainWorkflow,
+    nodes,
+    onNodesAdd,
+    onNodesChange,
+    onEdgesAdd,
+    onClose,
+  });
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
