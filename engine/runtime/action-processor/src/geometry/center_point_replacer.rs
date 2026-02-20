@@ -197,20 +197,10 @@ mod tests {
     }
 
     fn make_gml_geometry(polygons: Vec<Polygon3D<f64>>) -> GmlGeometry {
-        let len = polygons.len() as u32;
         GmlGeometry {
-            id: None,
-            ty: GeometryType::Surface,
-            gml_trait: None,
-            lod: Some(1),
-            pos: 0,
-            len,
+            len: polygons.len() as u32,
             polygons,
-            line_strings: vec![],
-            points: vec![],
-            feature_id: None,
-            feature_type: None,
-            composite_surfaces: vec![],
+            ..GmlGeometry::new(GeometryType::Surface, Some(1))
         }
     }
 
