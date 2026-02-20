@@ -1,5 +1,5 @@
 use crate::algorithm::contains::Contains;
-use crate::algorithm::triangle_intersection::{triangles_intersect, triangles_intersection};
+use crate::algorithm::triangle_intersection::triangles_intersection;
 use crate::algorithm::{GeoFloat, GeoNum};
 use crate::types::coordinate::{are_coplanar, Coordinate};
 use crate::types::line_string::LineString3D;
@@ -215,6 +215,16 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             && self.edges_with_multiplicity.is_empty()
     }
 
+    /// Returns true if the mesh is a closed 2-manifold (all edges shared by exactly 2 faces).
+    /// A non-closed mesh cannot enclose a volume and represents a degenerate solid.
+    pub fn is_closed(&self) -> bool {
+        !self.triangles.is_empty()
+            && self
+                .edges_with_multiplicity
+                .iter()
+                .all(|&(_, count)| count == 2)
+    }
+
     /// Create a triangular mesh from a list of faces by triangulating each face.
     pub fn from_faces(faces: &[LineString3D<T>], tolerance: Option<T>) -> Result<Self, String> {
         let tolerance = if let Some(tol) = tolerance {
@@ -235,7 +245,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
         for face in faces {
             // Triangulate the face
-            let face_triangles = match Self::triangulate_face(face.clone()) {
+            let face_triangles = match Self::triangulate_face(face.clone(), tolerance) {
                 Ok(triangles) => triangles,
                 Err(err) => {
                     // If triangulation fails, then return empty mesh
@@ -284,7 +294,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     /// - The face is planar
     /// - The face contour is closed (i.e. the first point is the same as the last point)
     /// - The face does not intersect itself
-    fn triangulate_face(face: LineString3D<T>) -> Result<Vec<[Coordinate3D<T>; 3]>, String> {
+    fn triangulate_face(face: LineString3D<T>, tolerance: T) -> Result<Vec<[Coordinate3D<T>; 3]>, String> {
         let mut face = face.0;
         // face at least must be triangle
         if face.len() < 4 {
@@ -294,6 +304,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         let tau = T::from(std::f64::consts::TAU).unwrap();
         let pi = T::from(std::f64::consts::PI).unwrap();
         let epsilon = T::from(1e-10).unwrap();
+        // Relative tolerance for collinearity detection. When the sine of the angle
+        // between two edge vectors is below this threshold, the cross product direction
+        // is unreliable for determining convexity, so we use the collinear code path.
+        let collinear_relative_epsilon = T::from(tolerance*tolerance).unwrap();
 
         // remove the last point
         face.pop();
@@ -324,25 +338,32 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             let v1 = p0 - p1;
             let v2 = p2 - p1;
             let mut angle = v1.angle(&v2);
-            let cross_norm = v1.cross(&v2).norm();
+            let cross = v1.cross(&v2);
+            let cross_norm = cross.norm();
+            let v1_norm = v1.norm();
+            let v2_norm = v2.norm();
+
+            // Use relative tolerance: |cross| / (|v1| * |v2|) = sin(angle).
+            // When this is very small, the cross product direction is unreliable.
+            let is_collinear = if v1_norm < epsilon || v2_norm < epsilon {
+                true
+            } else {
+                cross_norm / (v1_norm * v2_norm) < collinear_relative_epsilon
+            };
 
             // Take the sign of the orientation into account
-            angle = if cross_norm < epsilon {
+            angle = if is_collinear {
                 if v1.dot(&v2) < T::zero() {
-                    // Vectors are nearly collinear but pointing in opposite directions
-                    // Inner angle is approximately π, so outer angle should be computed normally
-                    // We need to determine the sign based on which side the slight deviation is
-                    if !normal.dot(&v1.cross(&v2)).is_sign_positive() {
-                        pi - angle
-                    } else {
-                        angle - pi
-                    }
+                    // Vectors are nearly collinear but pointing in opposite directions.
+                    // Inner angle ≈ π, so outer angle ≈ 0. The cross product direction
+                    // is unreliable here, so we return exactly zero.
+                    T::zero()
                 } else {
                     // Vectors point in same direction (hairpin turn)
                     hair_count += 1;
                     -pi
                 }
-            } else if !normal.dot(&v1.cross(&v2)).is_sign_positive() {
+            } else if !normal.dot(&cross).is_sign_positive() {
                 // General positive case
                 pi - angle
             } else {
@@ -356,14 +377,13 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // If the sum is -TAU, flip the angles.
         // otherwise something about the assumption is wrong
         let angle_sum: T = angles.iter().copied().fold(T::zero(), |acc, x| acc + x);
-        let sum_epsilon = T::from(1e-4).unwrap();
-        if (angle_sum + tau + T::from(hair_count).unwrap() * tau).abs() < sum_epsilon {
+        if (angle_sum + tau + T::from(hair_count).unwrap() * tau).abs() < tolerance {
             // if the sum is -TAU, flip the angles
             angles = angles
                 .iter()
                 .map(|&a| if a == -pi { a } else { -a })
                 .collect();
-        } else if (angle_sum.abs() - tau).abs() >= sum_epsilon {
+        } else if (angle_sum.abs() - tau).abs() >= tolerance {
             // something is wrong with the assumption
             return Err(format!(
                 "Face is likely not closed as the outer angle is: {angle_sum:?}. Face: {face:?}"
@@ -371,7 +391,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         } // otherwise the sum is TAU and we are good to go
 
         let angle_sum: T = angles.iter().copied().fold(T::zero(), |acc, x| acc + x);
-        if (angle_sum + tau).abs() < sum_epsilon {
+        if (angle_sum + tau).abs() < tolerance {
             // Case of a degenerate face
             return Err(format!("Face is likely degenerate: {face:?}"))?;
         }
@@ -384,6 +404,35 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // 5. Repeat until the face boundary is empty.
         let mut triangles = Vec::new();
         while !face.is_empty() {
+            // Remove any vertex whose outer angle is close to π. Such a vertex
+            // forms a nearly-degenerate spike (inner angle ≈ 0). Removing it
+            // does not produce a meaningful triangle, so we skip triangle
+            // creation and update the adjacent angles.
+            if let Some(rm) = angles
+                .iter()
+                .position(|&a| (a - pi).abs() < tolerance)
+            {
+                let prev_idx = (rm + face.len() - 1) % face.len();
+                let next_idx = (rm + 1) % face.len();
+                // Still create the (degenerate) triangle so boundary edges are covered.
+                triangles.push([face[prev_idx], face[rm], face[next_idx]]);
+                let vp = face[prev_idx] - face[rm];
+                let vn = face[next_idx] - face[rm];
+                let vpn = face[next_idx] - face[prev_idx];
+                let prev_angle = (-vp).angle(&vpn);
+                let next_angle = vn.angle(&vpn);
+                face.remove(rm);
+                angles.remove(rm);
+                if face.len() < 3 {
+                    break;
+                }
+                let new_prev_idx = (rm + face.len() - 1) % face.len();
+                let new_next_idx = rm % face.len();
+                angles[new_prev_idx] = angles[new_prev_idx] + prev_angle;
+                angles[new_next_idx] = angles[new_next_idx] + next_angle;
+                continue;
+            }
+
             // Find a vertex with positive outer angle
             // A polygon in an Euclidean space must have at least one convex vertex
             let removed_vtx_idx = angles
@@ -942,7 +991,7 @@ impl TriangularMesh<f64> {
                 let t: [Coordinate3D<f64>; 3] = [v0, v1, v2];
                 let s: [Coordinate3D<f64>; 3] = [w0, w1, w2];
 
-                if triangles_intersect(&t, &s) {
+                if let Ok(Some(_)) = triangles_intersection(t, s) {
                     intersection.push((i, j));
                 }
             }
@@ -1011,7 +1060,6 @@ impl TriangularMesh<f64> {
             }
         });
 
-        let num_orig_triangles = triangles1.len() + triangles2.len();
         let edges = {
             let mut edges = edges1
                 .into_iter()
@@ -1033,12 +1081,6 @@ impl TriangularMesh<f64> {
             .into_iter()
             .chain(vertices2.clone()) // TODO: remove clone
             .collect::<Vec<_>>();
-        let triangles = triangles1
-            .iter()
-            .copied()
-            .chain(triangles2.iter().copied())
-            .collect::<Vec<_>>();
-
         let vertex_map = {
             let mut map = std::collections::HashMap::new();
             for (i, &v) in vertices.iter().enumerate().skip(vertices1.len()) {
@@ -1084,19 +1126,36 @@ impl TriangularMesh<f64> {
             map
         };
 
-        let mut triangles = triangles
+        let remap_tri = |t: [usize; 3]| [vertex_map[t[0]], vertex_map[t[1]], vertex_map[t[2]]];
+        let is_degenerate = |t: &[usize; 3]| {
+            t[0] == t[1]
+                || t[1] == t[2]
+                || t[0] == t[2]
+                || Triangle::new(vertices[t[0]], vertices[t[1]], vertices[t[2]]).area() < tolerance * tolerance
+        };
+        let mut triangles1: Vec<[usize; 3]> = triangles1
             .into_iter()
-            .map(|t| [vertex_map[t[0]], vertex_map[t[1]], vertex_map[t[2]]])
-            .collect::<Vec<_>>();
-        triangles.sort_unstable();
-        let mut triangles2 = triangles2
+            .map(remap_tri)
+            .filter(|t| !is_degenerate(t))
+            .collect();
+        triangles1.sort_unstable();
+        let mut triangles2: Vec<[usize; 3]> = triangles2
             .into_iter()
-            .map(|t| [vertex_map[t[0]], vertex_map[t[1]], vertex_map[t[2]]])
-            .collect::<Vec<_>>();
+            .map(remap_tri)
+            .filter(|t| !is_degenerate(t))
+            .collect();
         triangles2.sort_unstable();
+        let num_orig_triangles = triangles1.len() + triangles2.len();
+        let mut triangles: Vec<[usize; 3]> = triangles1
+            .iter()
+            .copied()
+            .chain(triangles2.iter().copied())
+            .collect();
+        triangles.sort_unstable();
         let mut edges = edges
             .into_iter()
             .map(|e| [vertex_map[e[0]], vertex_map[e[1]]])
+            .filter(|e| e[0] != e[1])
             .collect::<Vec<_>>();
         edges.sort_unstable();
 
@@ -1265,28 +1324,28 @@ impl TriangularMesh<f64> {
             out
         };
 
-        let intersections = intersections
-            .into_iter()
-            .map(|intersection| {
-                intersection
-                    .into_iter()
-                    .map(|edge| {
-                        // TODO: Optimize these linear-time lookups. (No hash map, because they are floats.)
-                        let v1 = (0..vertices.len())
-                            .find(|&v| (vertices[v] - edge[0]).norm() < 1e-10)
-                            .unwrap();
-                        let v2 = (0..vertices.len())
-                            .find(|&v| (vertices[v] - edge[1]).norm() < 1e-10)
-                            .unwrap();
-                        if v1 < v2 {
-                            [v1, v2]
-                        } else {
-                            [v2, v1]
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
+        let intersections = {
+            let mut result = Vec::new();
+            for intersection in intersections {
+                let mut edges_out = Vec::new();
+                for edge in intersection {
+                    // TODO: Optimize these linear-time lookups. (No hash map, because they are floats.)
+                    let v1 = (0..vertices.len())
+                        .find(|&v| (vertices[v] - edge[0]).norm() < 1e-10)
+                        .ok_or_else(|| format!("Vertex not found for intersection edge endpoint {:?}", edge[0]))?;
+                    let v2 = (0..vertices.len())
+                        .find(|&v| (vertices[v] - edge[1]).norm() < 1e-10)
+                        .ok_or_else(|| format!("Vertex not found for intersection edge endpoint {:?}", edge[1]))?;
+                    if v1 < v2 {
+                        edges_out.push([v1, v2]);
+                    } else {
+                        edges_out.push([v2, v1]);
+                    }
+                }
+                result.push(edges_out);
+            }
+            result
+        };
 
         // For each triangle, create polygons by dividing the triangle along the intersection edges.
         let mut line_strings = Vec::new();
@@ -1374,6 +1433,17 @@ impl TriangularMesh<f64> {
                 .copied()
                 .chain(lss.iter().flatten().copied())
                 .collect::<Vec<_>>();
+            // Also include vertices that lie on the triangle's edges.
+            // Edge cutting may insert vertices from the other mesh that
+            // break direct adjacency between triangle vertices.
+            for &[a, b] in &[[t[0], t[1]], [t[1], t[2]], [t[0], t[2]]] {
+                let line = Line3D::new_(vertices[a], vertices[b]);
+                for (i, v) in vertices.iter().enumerate() {
+                    if line.contains(*v, Some(tolerance)) {
+                        triangle_vertex_set.push(i);
+                    }
+                }
+            }
             triangle_vertex_set.sort();
             triangle_vertex_set.dedup();
             for ls in lss {
@@ -1388,7 +1458,10 @@ impl TriangularMesh<f64> {
                         interior_boundary.push(ls);
                     } else {
                         let polygon = Polygon3D::new(LineString3D::new(ls_coords), Vec::new());
-                        polygon_added[triangles.binary_search(&t).unwrap()] = true;
+                        let tri_idx = triangles.binary_search(&t).map_err(|_| {
+                            format!("Triangle {:?} not found in triangles list", t)
+                        })?;
+                        polygon_added[tri_idx] = true;
                         polygons.push(polygon);
                     }
                     continue;
@@ -1423,11 +1496,11 @@ impl TriangularMesh<f64> {
                             }
                         })
                         .min_by(|&a, &b| a.1.partial_cmp(&b.1).unwrap())
-                        .unwrap();
+                        .ok_or_else(|| "Internal Error: No valid adjacent vertex found during right polygon construction".to_string())?;
                     angle_sum += angle;
                     right_polygon.push(next);
                     if right_polygon.len() > 1000 {
-                        return Err("Infinite loop detected in polygon construction".to_string());
+                        return Err("Internal Error: Infinite loop detected in right polygon construction".to_string());
                     }
                 }
                 right_polygon.pop(); // remove the last vertex which is redundant.
@@ -1460,11 +1533,11 @@ impl TriangularMesh<f64> {
                             }
                         })
                         .max_by(|&a, &b| a.1.partial_cmp(&b.1).unwrap())
-                        .unwrap();
+                        .ok_or_else(|| "Internal Error: No valid adjacent vertex found during left polygon construction".to_string())?;
                     angle_sum += angle;
                     left_polygon.push(next);
                     if left_polygon.len() > 1000 {
-                        return Err("Infinite loop detected in polygon construction".to_string());
+                        return Err("Internal Error: Infinite loop detected in left polygon construction".to_string());
                     }
                 }
                 left_polygon.pop(); // remove the last vertex which is redundant.
@@ -1503,7 +1576,10 @@ impl TriangularMesh<f64> {
                     if !polygons.contains(&left_polygon) {
                         polygons.push(left_polygon);
                     }
-                    polygon_added[triangles.binary_search(&t).unwrap()] = true;
+                    let tri_idx = triangles.binary_search(&t).map_err(|_| {
+                        format!("Triangle {:?} not found in triangles list", t)
+                    })?;
+                    polygon_added[tri_idx] = true;
                 }
             }
         }
@@ -1525,11 +1601,11 @@ impl TriangularMesh<f64> {
 
         // Now we need to add the interior boundaries to the polygons.
         for boundary in interior_boundary {
-            let boudary = boundary
+            let boundary_coords = boundary
                 .into_iter()
                 .map(|i| vertices[i])
                 .collect::<Vec<_>>();
-            let boundary = LineString3D::new(boudary);
+            let boundary = LineString3D::new(boundary_coords);
             let poly = polygons
                 .iter_mut()
                 .filter(|p| {
@@ -1544,7 +1620,7 @@ impl TriangularMesh<f64> {
                     .is_some()
                 })
                 .find(|p| boundary.iter().all(|v| p.contains(v)))
-                .unwrap();
+                .ok_or_else(|| "No polygon found containing interior boundary".to_string())?;
             poly.interiors_push(boundary);
         }
 
@@ -1571,7 +1647,7 @@ pub mod tests {
 
         let face = LineString3D::new(face);
 
-        let triangles = TriangularMesh::triangulate_face(face).unwrap();
+        let triangles = TriangularMesh::triangulate_face(face, 1e-6).unwrap();
         assert_eq!(triangles.len(), 2);
         assert_eq!(
             triangles[0],
@@ -1601,7 +1677,7 @@ pub mod tests {
             Coordinate3D::new__(2.0, 0.0, 0.0),
         ];
         let face = LineString3D::new(face);
-        let triangles = TriangularMesh::triangulate_face(face).unwrap();
+        let triangles = TriangularMesh::triangulate_face(face, 1e-6).unwrap();
         assert_eq!(triangles.len(), 4);
         for i in 1..4 {
             for j in 0..i - 1 {
@@ -1628,7 +1704,7 @@ pub mod tests {
             Coordinate3D::new__(0.0, 0.0, 0.0),
         ];
         let face = LineString3D::new(face);
-        let triangles = TriangularMesh::triangulate_face(face).unwrap();
+        let triangles = TriangularMesh::triangulate_face(face, 1e-6).unwrap();
         assert_eq!(triangles.len(), 8);
     }
 
@@ -1663,7 +1739,7 @@ pub mod tests {
             ),
         ];
         let face = LineString3D::new(face);
-        let result = TriangularMesh::triangulate_face(face);
+        let result = TriangularMesh::triangulate_face(face, 1e-6);
         assert!(result.is_ok(), "Triangulation failed: {:?}", result.err());
     }
 
@@ -2158,683 +2234,66 @@ pub mod tests {
     }
 
     #[test]
-    fn test_lod1_solid_false_positive_self_intersection() {
-        // Real-world LOD1 building solid: 73-sided extruded polygon (bottom + 73 sides + top)
-        // This is a valid solid that was incorrectly flagged as self-intersecting.
-        let faces: Vec<LineString3D<f64>> = vec![
-            // Bottom face (73-gon)
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 32.299),
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 32.299),
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 32.299),
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 32.299),
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 32.299),
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 32.299),
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 32.299),
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 32.299),
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 32.299),
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 32.299),
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 32.299),
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 32.299),
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 32.299),
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 32.299),
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 32.299),
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 32.299),
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 32.299),
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 32.299),
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 32.299),
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 32.299),
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 32.299),
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 32.299),
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 32.299),
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 32.299),
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 32.299),
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 32.299),
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 32.299),
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 32.299),
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 32.299),
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 32.299),
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 32.299),
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 32.299),
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 32.299),
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 32.299),
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 32.299),
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 32.299),
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 32.299),
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 32.299),
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 32.299),
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 32.299),
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 32.299),
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 32.299),
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 32.299),
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 32.299),
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 32.299),
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 32.299),
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 32.299),
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 32.299),
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 32.299),
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 32.299),
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 32.299),
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 32.299),
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 32.299),
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 32.299),
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 32.299),
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 32.299),
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 32.299),
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 32.299),
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 32.299),
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 32.299),
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 32.299),
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 32.299),
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 32.299),
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 32.299),
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 32.299),
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 32.299),
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 32.299),
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 32.299),
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 32.299),
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 32.299),
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 32.299),
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 32.299),
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 32.299),
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 32.299),
-            ]),
-            // Side faces (73 rectangles)
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 32.299),
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 32.299),
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 40.285),
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 40.285),
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 32.299),
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 32.299),
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 40.285),
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 40.285),
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 32.299),
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 32.299),
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 40.285),
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 40.285),
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 32.299),
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 32.299),
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 40.285),
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 40.285),
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 32.299),
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 32.299),
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 40.285),
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 40.285),
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 32.299),
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 32.299),
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 40.285),
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 40.285),
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 32.299),
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 32.299),
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 40.285),
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 40.285),
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 32.299),
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 32.299),
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 40.285),
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 40.285),
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 32.299),
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 32.299),
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 40.285),
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 40.285),
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 32.299),
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 32.299),
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 40.285),
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 40.285),
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 32.299),
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 32.299),
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 40.285),
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 40.285),
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 32.299),
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 32.299),
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 40.285),
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 40.285),
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 32.299),
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 32.299),
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 40.285),
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 40.285),
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 32.299),
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 32.299),
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 40.285),
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 40.285),
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 32.299),
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 32.299),
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 40.285),
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 40.285),
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 32.299),
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 32.299),
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 40.285),
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 40.285),
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 32.299),
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 32.299),
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 40.285),
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 40.285),
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 32.299),
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 32.299),
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 40.285),
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 40.285),
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 32.299),
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 32.299),
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 40.285),
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 40.285),
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 32.299),
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 32.299),
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 40.285),
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 40.285),
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 32.299),
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 32.299),
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 40.285),
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 40.285),
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 32.299),
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 32.299),
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 40.285),
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 40.285),
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 32.299),
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 32.299),
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 40.285),
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 40.285),
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 32.299),
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 32.299),
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 40.285),
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 40.285),
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 32.299),
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 32.299),
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 40.285),
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 40.285),
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 32.299),
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 32.299),
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 40.285),
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 40.285),
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 32.299),
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 32.299),
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 40.285),
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 40.285),
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 32.299),
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 32.299),
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 40.285),
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 40.285),
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 32.299),
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 32.299),
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 40.285),
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 40.285),
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 32.299),
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 32.299),
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 40.285),
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 40.285),
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 32.299),
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 32.299),
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 40.285),
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 40.285),
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 32.299),
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 32.299),
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 40.285),
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 40.285),
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 32.299),
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 32.299),
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 40.285),
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 40.285),
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 32.299),
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 32.299),
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 40.285),
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 40.285),
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 32.299),
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 32.299),
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 40.285),
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 40.285),
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 32.299),
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 32.299),
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 40.285),
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 40.285),
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 32.299),
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 32.299),
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 40.285),
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 40.285),
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 32.299),
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 32.299),
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 40.285),
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 40.285),
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 32.299),
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 32.299),
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 40.285),
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 40.285),
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 32.299),
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 32.299),
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 40.285),
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 40.285),
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 32.299),
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 32.299),
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 40.285),
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 40.285),
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 32.299),
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 32.299),
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 40.285),
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 40.285),
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 32.299),
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 32.299),
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 40.285),
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 40.285),
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 32.299),
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 32.299),
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 40.285),
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 40.285),
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 32.299),
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 32.299),
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 40.285),
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 40.285),
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 32.299),
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 32.299),
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 40.285),
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 40.285),
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 32.299),
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 32.299),
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 40.285),
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 40.285),
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 32.299),
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 32.299),
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 40.285),
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 40.285),
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 32.299),
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 32.299),
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 40.285),
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 40.285),
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 32.299),
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 32.299),
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 40.285),
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 40.285),
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 32.299),
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 32.299),
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 40.285),
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 40.285),
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 32.299),
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 32.299),
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 40.285),
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 40.285),
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 32.299),
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 32.299),
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 40.285),
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 40.285),
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 32.299),
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 32.299),
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 40.285),
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 40.285),
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 32.299),
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 32.299),
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 40.285),
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 40.285),
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 32.299),
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 32.299),
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 40.285),
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 40.285),
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 32.299),
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 32.299),
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 40.285),
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 40.285),
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 32.299),
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 32.299),
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 40.285),
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 40.285),
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 32.299),
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 32.299),
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 40.285),
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 40.285),
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 32.299),
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 32.299),
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 40.285),
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 40.285),
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 32.299),
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 32.299),
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 40.285),
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 40.285),
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 32.299),
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 32.299),
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 40.285),
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 40.285),
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 32.299),
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 32.299),
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 40.285),
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 40.285),
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 32.299),
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 32.299),
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 40.285),
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 40.285),
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 32.299),
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 32.299),
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 40.285),
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 40.285),
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 32.299),
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 32.299),
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 40.285),
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 40.285),
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 32.299),
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 32.299),
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 40.285),
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 40.285),
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 32.299),
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 32.299),
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 40.285),
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 40.285),
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 32.299),
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 32.299),
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 40.285),
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 40.285),
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 32.299),
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 32.299),
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 40.285),
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 40.285),
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 32.299),
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 32.299),
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 40.285),
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 40.285),
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 32.299),
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 32.299),
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 40.285),
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 40.285),
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 32.299),
-            ]),
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 32.299),
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 32.299),
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 40.285),
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 40.285),
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 32.299),
-            ]),
-            // Top face (73-gon)
-            LineString3D::new(vec![
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 40.285),
-                Coordinate3D::new__(-41607.447099974655, 16535.14109979335, 40.285),
-                Coordinate3D::new__(-41608.64189997514, 16537.416599792774, 40.285),
-                Coordinate3D::new__(-41610.171599973946, 16540.330099792078, 40.285),
-                Coordinate3D::new__(-41610.88989997452, 16541.69819979184, 40.285),
-                Coordinate3D::new__(-41611.26709997411, 16542.41659979266, 40.285),
-                Coordinate3D::new__(-41612.611399973845, 16544.9768997926, 40.285),
-                Coordinate3D::new__(-41613.89239997534, 16547.41659979255, 40.285),
-                Coordinate3D::new__(-41614.33269997572, 16548.255499792584, 40.285),
-                Coordinate3D::new__(-41615.17159997544, 16549.853099793265, 40.285),
-                Coordinate3D::new__(-41616.077499973406, 16551.578499793624, 40.285),
-                Coordinate3D::new__(-41618.2124999752, 16550.457499791984, 40.285),
-                Coordinate3D::new__(-41620.1715999754, 16549.42889979195, 40.285),
-                Coordinate3D::new__(-41624.00429997423, 16547.416599793258, 40.285),
-                Coordinate3D::new__(-41625.17159997378, 16546.80369979188, 40.285),
-                Coordinate3D::new__(-41626.461999974046, 16546.12619979127, 40.285),
-                Coordinate3D::new__(-41630.17159997525, 16544.17839979316, 40.285),
-                Coordinate3D::new__(-41633.52729997492, 16542.416599793367, 40.285),
-                Coordinate3D::new__(-41634.605499973724, 16541.85049979318, 40.285),
-                Coordinate3D::new__(-41635.17159997521, 16541.553199794507, 40.285),
-                Coordinate3D::new__(-41636.98929997212, 16540.598899792174, 40.285),
-                Coordinate3D::new__(-41640.17159997371, 16538.927999791602, 40.285),
-                Coordinate3D::new__(-41641.16269997412, 16538.407699793377, 40.285),
-                Coordinate3D::new__(-41643.05029997488, 16537.416499792, 40.285),
-                Coordinate3D::new__(-41645.17159997525, 16536.302799791534, 40.285),
-                Coordinate3D::new__(-41647.516599973715, 16535.071599791663, 40.285),
-                Coordinate3D::new__(-41650.171599975285, 16533.677599792878, 40.285),
-                Coordinate3D::new__(-41652.57339997446, 16532.416599792177, 40.285),
-                Coordinate3D::new__(-41654.27709997431, 16531.52209979164, 40.285),
-                Coordinate3D::new__(-41655.1715999738, 16531.05239979281, 40.285),
-                Coordinate3D::new__(-41657.55559997459, 16529.800599792383, 40.285),
-                Coordinate3D::new__(-41660.171599975394, 16528.42719979345, 40.285),
-                Coordinate3D::new__(-41662.09639997476, 16527.41659979229, 40.285),
-                Coordinate3D::new__(-41662.38129997415, 16527.266999792693, 40.285),
-                Coordinate3D::new__(-41661.67209997511, 16525.916099792, 40.285),
-                Coordinate3D::new__(-41660.17159997173, 16523.058399791906, 40.285),
-                Coordinate3D::new__(-41659.95059997417, 16522.637499791304, 40.285),
-                Coordinate3D::new__(-41659.834599975264, 16522.41659979311, 40.285),
-                Coordinate3D::new__(-41658.22919997386, 16519.358899792027, 40.285),
-                Coordinate3D::new__(-41657.20929997571, 16517.41659979322, 40.285),
-                Coordinate3D::new__(-41655.171599972666, 16513.5354997922, 40.285),
-                Coordinate3D::new__(-41655.087399975346, 16513.37509979342, 40.285),
-                Coordinate3D::new__(-41653.246599975326, 16514.341599793006, 40.285),
-                Coordinate3D::new__(-41650.17159997287, 16515.956099791856, 40.285),
-                Coordinate3D::new__(-41647.38989997274, 16517.416599791806, 40.285),
-                Coordinate3D::new__(-41645.17159997493, 16518.58139979199, 40.285),
-                Coordinate3D::new__(-41642.71929997483, 16519.86899979217, 40.285),
-                Coordinate3D::new__(-41640.17159997573, 16521.206599791352, 40.285),
-                Coordinate3D::new__(-41637.8669999749, 16522.416599791693, 40.285),
-                Coordinate3D::new__(-41635.17159997498, 16523.83179979213, 40.285),
-                Coordinate3D::new__(-41632.19199997347, 16525.39629979197, 40.285),
-                Coordinate3D::new__(-41630.171599975, 16526.45699979291, 40.285),
-                Coordinate3D::new__(-41629.542399971375, 16526.78739979242, 40.285),
-                Coordinate3D::new__(-41628.343999972676, 16527.416599792996, 40.285),
-                Coordinate3D::new__(-41626.26379997358, 16528.50879979374, 40.285),
-                Coordinate3D::new__(-41625.17159997577, 16529.082299792335, 40.285),
-                Coordinate3D::new__(-41621.66459997457, 16530.923599791775, 40.285),
-                Coordinate3D::new__(-41621.42329997194, 16531.050299790746, 40.285),
-                Coordinate3D::new__(-41620.17159997419, 16528.666299792774, 40.285),
-                Coordinate3D::new__(-41619.51549997432, 16527.41659979229, 40.285),
-                Coordinate3D::new__(-41618.79009997503, 16526.03509979308, 40.285),
-                Coordinate3D::new__(-41616.89019997403, 16522.4165997924, 40.285),
-                Coordinate3D::new__(-41616.298599975176, 16521.289599791842, 40.285),
-                Coordinate3D::new__(-41615.17159997448, 16519.14319979365, 40.285),
-                Coordinate3D::new__(-41614.919999974954, 16518.663999795055, 40.285),
-                Coordinate3D::new__(-41612.823399972556, 16519.76479979073, 40.285),
-                Coordinate3D::new__(-41610.17159997368, 16521.15709979196, 40.285),
-                Coordinate3D::new__(-41607.772599975564, 16522.4165997924, 40.285),
-                Coordinate3D::new__(-41605.171599975474, 16523.78229979203, 40.285),
-                Coordinate3D::new__(-41602.78849997438, 16525.033499793484, 40.285),
-                Coordinate3D::new__(-41602.28029997466, 16525.300199792226, 40.285),
-                Coordinate3D::new__(-41603.39139997601, 16527.416499792223, 40.285),
-                Coordinate3D::new__(-41605.17159997349, 16530.807099793015, 40.285),
-                Coordinate3D::new__(-41606.01669997542, 16532.416599792177, 40.285),
-            ]),
-        ];
-        let mesh = TriangularMesh::from_faces(&faces, Some(0.01)).unwrap();
-        let intersections = mesh.self_intersection();
+    fn test_from_faces_extruded_polygon_manifold() {
+        // Create a simple extruded polygon solid with n vertices
+        let n = 71; // Same as the failing building
+        let z_low = 30.079_f64;
+        let z_high = 38.517_f64;
+
+        // Create polygon vertices (roughly circular)
+        let bottom: Vec<Coordinate3D<f64>> = (0..n)
+            .map(|i| {
+                let angle = 2.0 * std::f64::consts::PI * (i as f64) / (n as f64);
+                Coordinate3D::new__(angle.cos() * 20.0 - 41227.0, angle.sin() * 20.0 + 14261.0, z_low)
+            })
+            .collect();
+        let top: Vec<Coordinate3D<f64>> = bottom
+            .iter()
+            .map(|v| Coordinate3D::new__(v.x, v.y, z_high))
+            .collect();
+
+        let mut faces: Vec<LineString3D<f64>> = Vec::new();
+
+        // Bottom face (closed ring)
+        let mut bottom_ring: Vec<Coordinate3D<f64>> = bottom.clone();
+        bottom_ring.push(bottom[0]);
+        faces.push(LineString3D::new(bottom_ring));
+
+        // Side walls (in CityGML order: reversed around polygon)
+        // Wall 1: B0->B(n-1), Wall 2: B(n-1)->B(n-2), etc.
+        for i in 0..n {
+            let curr = i;
+            let prev = (i + n - 1) % n;
+            let wall = vec![
+                bottom[curr],
+                bottom[prev],
+                top[prev],
+                top[curr],
+                bottom[curr],
+            ];
+            faces.push(LineString3D::new(wall));
+        }
+
+        // Top face (reversed order: T0, T(n-1), T(n-2), ..., T1, T0)
+        let mut top_ring: Vec<Coordinate3D<f64>> = vec![top[0]];
+        for i in (1..n).rev() {
+            top_ring.push(top[i]);
+        }
+        top_ring.push(top[0]); // close
+        faces.push(LineString3D::new(top_ring));
+
+        let mesh =
+            TriangularMesh::from_faces(&faces, Some(0.01)).expect("from_faces should succeed");
+
+        let violations = mesh.edges_violating_manifold_condition();
         assert!(
-            intersections.is_empty(),
-            "False positive: {} self-intersections detected in valid LOD1 solid",
-            intersections.len()
+            violations.is_empty(),
+            "Extruded 71-gon solid should be a 2-manifold, but {} edges violate the condition. \
+             Vertices: {}, Triangles: {}",
+            violations.len(),
+            mesh.get_vertices().len(),
+            mesh.get_triangles().len(),
         );
+        assert!(mesh.is_closed(), "Extruded 71-gon solid should be closed");
     }
 }

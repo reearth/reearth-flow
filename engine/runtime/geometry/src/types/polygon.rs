@@ -286,10 +286,12 @@ impl Polygon<f64> {
         }
 
         let (mut x, mut y) = (usize::MAX, usize::MAX);
+
         'outer: for (i, &v) in exterior.iter().enumerate() {
             'inner: for (j, &w) in merging_interior.iter().enumerate() {
                 // check if the line segment vw intersects with any edge of the exterior ring and the interior rings
                 let e1: Line3D<f64> = Line::new_(v, w);
+                let mut rejected = false;
                 for e2 in exterior
                     .iter()
                     .copied()
@@ -300,8 +302,12 @@ impl Polygon<f64> {
                     }
                     let e2 = Line::new_(e2.0, e2.1);
                     if e1.intersection(&e2, tolerance).is_some() {
-                        continue 'inner;
+                        rejected = true;
+                        break;
                     }
+                }
+                if rejected {
+                    continue 'inner;
                 }
                 for e2 in merging_interior
                     .iter()
@@ -313,10 +319,14 @@ impl Polygon<f64> {
                     }
                     let e2 = Line::new_(e2.0, e2.1);
                     if e1.intersection(&e2, tolerance).is_some() {
-                        continue 'inner;
+                        rejected = true;
+                        break;
                     }
                 }
-                for interior in remaining_interiors {
+                if rejected {
+                    continue 'inner;
+                }
+                'remaining: for interior in remaining_interiors {
                     for e2 in interior
                         .iter()
                         .copied()
@@ -327,9 +337,13 @@ impl Polygon<f64> {
                         }
                         let e2 = Line::new_(e2.0, e2.1);
                         if e1.intersection(&e2, tolerance).is_some() {
-                            continue 'inner;
+                            rejected = true;
+                            break 'remaining;
                         }
                     }
+                }
+                if rejected {
+                    continue 'inner;
                 }
                 // check if `i` is not a vertex of adjacency greater than 2
                 if exterior
@@ -345,6 +359,14 @@ impl Polygon<f64> {
                 y = j;
                 break 'outer;
             }
+        }
+
+        if x == usize::MAX {
+            // This should never happen for valid polygons. Something must be wrong about the polygon.
+            return Err(
+                "Failed to find a valid connection between exterior and interior rings."
+                    .to_string(),
+            );
         }
 
         // The orientation of the interior rings must be opposite to that of the exterior ring.
