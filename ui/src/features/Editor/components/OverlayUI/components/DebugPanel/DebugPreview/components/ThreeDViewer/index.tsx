@@ -10,6 +10,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   cesiumViewerRef: React.RefObject<any>;
   selectedFeaturedId?: string | null;
+  detailsOverlayOpen: boolean;
   onSelectedFeature?: (featureId: string | null) => void;
   onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
@@ -20,6 +21,7 @@ const ThreeDViewer: React.FC<Props> = ({
   fileType,
   cesiumViewerRef,
   selectedFeaturedId,
+  detailsOverlayOpen,
   onSelectedFeature,
   onShowFeatureDetailsOverlay,
 }) => {
@@ -34,6 +36,7 @@ const ThreeDViewer: React.FC<Props> = ({
           fileType={fileType}
           viewerRef={cesiumViewerRef}
           selectedFeatureId={selectedFeaturedId}
+          detailsOverlayOpen={detailsOverlayOpen}
           onSelectedFeature={onSelectedFeature}
           onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
         />

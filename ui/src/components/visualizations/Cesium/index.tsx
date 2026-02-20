@@ -33,6 +33,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
+  detailsOverlayOpen: boolean;
   onSelectedFeature?: (featureId: string | null) => void;
   onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
@@ -42,6 +43,7 @@ const CesiumViewer: React.FC<Props> = ({
   fileType,
   viewerRef,
   selectedFeatureId,
+  detailsOverlayOpen,
   onSelectedFeature,
   onShowFeatureDetailsOverlay,
 }) => {
@@ -60,11 +62,14 @@ const CesiumViewer: React.FC<Props> = ({
       const pickedObject = cesiumViewer.scene.pick(movement.position);
 
       if (defined(pickedObject) && defined(pickedObject.id)) {
-        const entity = pickedObject.id;
-        const properties = entity.properties?.getValue?.();
-        if (properties?._originalId) {
+        const pickedId = pickedObject.id;
+        // Support both Entity (PropertyBag) and Primitive (plain object) ids
+        const originalId =
+          pickedId?.properties?.getValue?.()?.["_originalId"] ??
+          pickedId?._originalId;
+        if (originalId) {
           try {
-            onSelectedFeature(properties?._originalId);
+            onSelectedFeature(originalId);
           } catch (e) {
             console.error("Cesium viewer error:", e);
           }
@@ -85,11 +90,14 @@ const CesiumViewer: React.FC<Props> = ({
       const pickedObject = cesiumViewer.scene.pick(movement.position);
 
       if (defined(pickedObject) && defined(pickedObject.id)) {
-        const entity = pickedObject.id;
-        const properties = entity.properties?.getValue?.();
-        if (properties?._originalId) {
+        const pickedId = pickedObject.id;
+        // Support both Entity (PropertyBag) and Primitive (plain object) ids
+        const originalId =
+          pickedId?.properties?.getValue?.()?.["_originalId"] ??
+          pickedId?._originalId;
+        if (originalId) {
           try {
-            onSelectedFeature(properties?._originalId);
+            onSelectedFeature(originalId);
             onShowFeatureDetailsOverlay(true);
           } catch (e) {
             console.error("Cesium viewer error:", e);
@@ -153,7 +161,13 @@ const CesiumViewer: React.FC<Props> = ({
           )}
 
           {/* CityGML features */}
-          {cityGmlData && <CityGmlData cityGmlData={cityGmlData} />}
+          {cityGmlData && (
+            <CityGmlData
+              cityGmlData={cityGmlData}
+              selectedFeatureId={selectedFeatureId}
+              detailsOverlayOpen={detailsOverlayOpen}
+            />
+          )}
         </>
       )}
     </Viewer>
