@@ -239,9 +239,7 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
     ] as unknown as Transferable[]);
   } catch (err) {
     const requestId =
-      e?.data && typeof e.data.requestId === "number"
-        ? e.data.requestId
-        : -1;
+      e?.data && typeof e.data.requestId === "number" ? e.data.requestId : -1;
     self.postMessage({
       requestId,
       error: err instanceof Error ? err.message : String(err),
