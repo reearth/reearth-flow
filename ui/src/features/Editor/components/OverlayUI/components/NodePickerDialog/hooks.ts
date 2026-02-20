@@ -126,15 +126,14 @@ export default ({
         onEdgesAdd,
       });
       if (!newNode) return;
-      selectedNodes.forEach((node) => {
-        onNodesChange?.([
-          {
-            type: "select",
-            id: node.id,
-            selected: false,
-          },
-        ]);
-      });
+      if (selectedNodes.length) {
+        const nodesToDeselect: NodeChange[] = selectedNodes.map((node) => ({
+          type: "select",
+          id: node.id,
+          selected: false,
+        }));
+        onNodesChange?.(nodesToDeselect);
+      }
       onNodesAdd([newNode]);
 
       // TODO - add drop in batch support
