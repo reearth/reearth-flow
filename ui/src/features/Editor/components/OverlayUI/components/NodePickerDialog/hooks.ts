@@ -105,24 +105,15 @@ export default ({
       const randomY = getRandomNumberInRange(50, 200);
       const selectedNodes = nodes.filter((n) => n.selected);
       const lastSelectedNode = selectedNodes.at(-1);
-      let position;
+      const outgoingEdges = lastSelectedNode
+        ? edges?.filter((e) => e.source === lastSelectedNode.id)
+        : undefined;
 
+      let position;
       if (lastSelectedNode) {
-        // Move new node to the right of the last selected node
-        const outgoingEdges = edges?.filter(
-          (e) => e.source === lastSelectedNode.id,
-        );
-        if (outgoingEdges?.length) {
-          position = {
-            x: lastSelectedNode.position.x + 125,
-            y: lastSelectedNode.position.y + 75,
-          };
-        } else {
-          position = {
-            x: lastSelectedNode.position.x + 250, // 250px to the right (adjust as needed)
-            y: lastSelectedNode.position.y,
-          };
-        }
+        position = outgoingEdges?.length
+          ? { x: lastSelectedNode.position.x + 125, y: lastSelectedNode.position.y + 75 }
+          : { x: lastSelectedNode.position.x + 250, y: lastSelectedNode.position.y };
       } else if (
         openedActionType.position.x === 0 &&
         openedActionType.position.y === 0
@@ -135,28 +126,17 @@ export default ({
         position = openedActionType.position;
       }
 
-      const newNode = await buildNewCanvasNode({
-        position,
-        type: name,
-      });
+      const newNode = await buildNewCanvasNode({ position, type: name });
       if (!newNode) return;
+
       if (lastSelectedNode) {
-        const outgoingEdges = edges?.filter(
-          (e) => e.source === lastSelectedNode.id,
-        );
-        const newEdge: Edge = {
-          id: generateUUID(),
-          source: lastSelectedNode.id,
-          target: newNode.id,
-        };
-        onEdgesAdd?.([newEdge]);
+        onEdgesAdd?.([{ id: generateUUID(), source: lastSelectedNode.id, target: newNode.id }]);
 
         if (outgoingEdges?.length && newNode.type !== "writer") {
           const removeChanges: EdgeChange[] = outgoingEdges.map((e) => ({
             id: e.id,
             type: "remove" as const,
           }));
-
           const addChanges: EdgeChange[] = outgoingEdges.map((e) => ({
             type: "add" as const,
             item: {
@@ -167,7 +147,6 @@ export default ({
               targetHandle: e.targetHandle ?? null,
             },
           }));
-
           onEdgesChange?.([...removeChanges, ...addChanges]);
         }
       }
