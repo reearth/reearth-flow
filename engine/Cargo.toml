@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.303"
+version = "0.0.304"
 
 [profile.dev]
 opt-level = 0
@@ -110,7 +110,7 @@ crossbeam-channel = "0.5.15"
 crossbeam-utils = "0.8.21"
 csv = "1.4.0"
 directories = "6.0.0"
-draco-oxide = "0.1.0-alpha.4"
+draco-oxide = "0.1.0-alpha.5"
 earcut = "0.4.4"
 encoding_rs = "0.8"
 flate2 = "1.1.5"
