@@ -100,13 +100,22 @@ const CityGmlData: React.FC<Props> = ({
       const resultPromise = buildLodGeometry(entry.feature, typeConfig);
       if (!resultPromise) return;
 
-      const result = await resultPromise;
+      let result;
+      try {
+        result = await resultPromise;
+      } catch {
+        // Worker error or cancellation — nothing to do
+        return;
+      }
 
-      // After await: check if this entry is still relevant (user may have switched)
+      // After await: re-check if this entry is still relevant (user may have switched)
       if (!viewer || entry.lodPrimitiveCollection) return;
 
       const lodPrimitive = buildLodPrimitiveCollection(result, featureId);
       if (!lodPrimitive) return;
+
+      // Final check before adding to scene
+      if (entry.lodPrimitiveCollection) return;
 
       viewer.scene.primitives.add(lodPrimitive);
       entry.lodPrimitiveCollection = lodPrimitive;

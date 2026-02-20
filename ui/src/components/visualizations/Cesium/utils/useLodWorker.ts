@@ -181,9 +181,15 @@ function prepareWorkerInput(
 export function useLodWorker() {
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
-  const pendingRef = useRef<Map<number, (result: WorkerOutput) => void>>(
-    new Map(),
-  );
+  const pendingRef = useRef<
+    Map<
+      number,
+      {
+        resolve: (result: WorkerOutput) => void;
+        reject: (reason: Error) => void;
+      }
+    >
+  >(new Map());
 
   // Create worker on mount, terminate on unmount
   useEffect(() => {
@@ -193,14 +199,25 @@ export function useLodWorker() {
     );
     const pending = pendingRef.current;
 
-    worker.onmessage = (e: MessageEvent<WorkerOutput>) => {
+    worker.onmessage = (e: MessageEvent<WorkerOutput & { error?: string }>) => {
       const { requestId } = e.data;
-      const resolve = pending.get(requestId);
-      if (resolve) {
-        pending.delete(requestId);
-        resolve(e.data);
+      const entry = pending.get(requestId);
+      if (!entry) return; // stale/cancelled request — silently drop
+      pending.delete(requestId);
+
+      if (e.data.error) {
+        entry.reject(new Error(e.data.error));
+      } else {
+        entry.resolve(e.data);
       }
-      // If no resolver found, this was a stale/cancelled request — silently drop
+    };
+
+    worker.onerror = (event) => {
+      // Reject all pending promises so callers don't hang
+      for (const [, entry] of pending) {
+        entry.reject(new Error(event.message || "Worker error"));
+      }
+      pending.clear();
     };
 
     workerRef.current = worker;
@@ -208,6 +225,10 @@ export function useLodWorker() {
     return () => {
       worker.terminate();
       workerRef.current = null;
+      // Reject any remaining pending promises
+      for (const [, entry] of pending) {
+        entry.reject(new Error("Worker terminated"));
+      }
       pending.clear();
     };
   }, []);
@@ -224,8 +245,8 @@ export function useLodWorker() {
       const prepared = prepareWorkerInput(feature, typeConfig, requestId);
       if (!prepared) return null;
 
-      return new Promise<WorkerOutput>((resolve) => {
-        pendingRef.current.set(requestId, resolve);
+      return new Promise<WorkerOutput>((resolve, reject) => {
+        pendingRef.current.set(requestId, { resolve, reject });
         worker.postMessage(prepared.input);
       });
     },
@@ -235,6 +256,10 @@ export function useLodWorker() {
   const cancelPending = useCallback(() => {
     // Increment request ID so any in-flight responses are ignored
     requestIdRef.current++;
+    // Reject pending promises so callers don't hang
+    for (const [, entry] of pendingRef.current) {
+      entry.reject(new Error("Cancelled"));
+    }
     pendingRef.current.clear();
   }, []);
 

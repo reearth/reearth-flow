@@ -75,7 +75,7 @@ function estimateSize(value: unknown): number {
 function stringifyItem(item: unknown, indent: string, depth = 0): string {
   if (item == null) return "null";
   if (typeof item !== "object") {
-    return typeof item === "string" ? `"${item}"` : String(item);
+    return typeof item === "string" ? JSON.stringify(item) : String(item);
   }
   if (Array.isArray(item)) {
     if (item.length === 0) return "[]";
@@ -166,7 +166,12 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
 
   const openRawInNewWindow = useCallback((label: string, value: unknown) => {
     const resolved = resolveValue(value);
-    const json = JSON.stringify(resolved, null, 2);
+    let json: string;
+    try {
+      json = JSON.stringify(resolved, null, 2);
+    } catch {
+      json = String(resolved);
+    }
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.title = label;

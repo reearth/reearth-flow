@@ -139,7 +139,7 @@ function buildFillPrimitive(
       );
     }
 
-    const [r, gb, bl, a] = groupColors[g];
+    const [r, g2, b, a] = groupColors[g];
 
     instances.push(
       new GeometryInstance({
@@ -160,7 +160,7 @@ function buildFillPrimitive(
         })(),
         attributes: {
           color: ColorGeometryInstanceAttribute.fromColor(
-            new Color(r, gb, bl, a),
+            new Color(r, g2, b, a),
           ),
           show: new ShowGeometryInstanceAttribute(true),
         },

@@ -63,33 +63,6 @@ function geodeticToEcef(
   return [x, y, z];
 }
 
-/** ECEF Cartesian → geodetic (lon/lat radians, height meters).
- *  Uses Bowring's iterative method (1 iteration is sufficient for cm accuracy). */
-function ecefToGeodetic(
-  x: number,
-  y: number,
-  z: number,
-): [number, number, number] {
-  const p = Math.sqrt(x * x + y * y);
-  const lon = Math.atan2(y, x);
-
-  // Initial estimate using Bowring's method
-  const theta = Math.atan2(z * WGS84_A, p * WGS84_B);
-  const sinTheta = Math.sin(theta);
-  const cosTheta = Math.cos(theta);
-  const e2b = (WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_B * WGS84_B);
-  const lat = Math.atan2(
-    z + e2b * WGS84_B * sinTheta * sinTheta * sinTheta,
-    p - WGS84_E2 * WGS84_A * cosTheta * cosTheta * cosTheta,
-  );
-
-  const sinLat = Math.sin(lat);
-  const N = WGS84_A / Math.sqrt(1 - WGS84_E2 * sinLat * sinLat);
-  const height = p / Math.cos(lat) - N;
-
-  return [lon, lat, height];
-}
-
 /** Read a coordinate from either {x,y,z} object or [x,y,z] array form. */
 function readCoord(c: CoordInput): [number, number, number] {
   if (Array.isArray(c)) {
@@ -123,20 +96,17 @@ function processPolygons(input: WorkerInput): WorkerOutput {
 
     for (const coord of ext) {
       const [lon, lat, z] = readCoord(coord);
-      if (lon === 0 && lat === 0) continue;
-      // Convert to ECEF, then normalize height by subtracting globalMinZ
-      const rawEcef = geodeticToEcef(lon, lat, z);
-      const [lonRad, latRad, h] = ecefToGeodetic(
-        rawEcef[0],
-        rawEcef[1],
-        rawEcef[2],
-      );
-      const adjustedH = (h || 0) - globalMinZ;
-      const finalEcef = geodeticToEcef(
-        lonRad / DEG_TO_RAD,
-        latRad / DEG_TO_RAD,
-        adjustedH,
-      );
+      if (
+        !Number.isFinite(lon) ||
+        !Number.isFinite(lat) ||
+        lat < -90 ||
+        lat > 90 ||
+        lon < -180 ||
+        lon > 180
+      )
+        continue;
+      // Convert directly to ECEF with normalized height (subtract globalMinZ)
+      const finalEcef = geodeticToEcef(lon, lat, z - globalMinZ);
       ecefPositions.push(finalEcef[0], finalEcef[1], finalEcef[2]);
       validCount++;
     }
@@ -256,14 +226,25 @@ function projectToPlane(positions: number[], vertexCount: number): number[] {
 // ── Worker message handler ───────────────────────────────────────────────────
 
 self.onmessage = (e: MessageEvent<WorkerInput>) => {
-  const result = processPolygons(e.data);
+  try {
+    const result = processPolygons(e.data);
 
-  // Transfer ownership of ArrayBuffers (zero-copy)
-  self.postMessage(result, [
-    result.fillPositions.buffer,
-    result.fillIndices.buffer,
-    result.fillColors.buffer,
-    result.outlinePositions.buffer,
-    result.outlineIndices.buffer,
-  ] as unknown as Transferable[]);
+    // Transfer ownership of ArrayBuffers (zero-copy)
+    self.postMessage(result, [
+      result.fillPositions.buffer,
+      result.fillIndices.buffer,
+      result.fillColors.buffer,
+      result.outlinePositions.buffer,
+      result.outlineIndices.buffer,
+    ] as unknown as Transferable[]);
+  } catch (err) {
+    const requestId =
+      e?.data && typeof e.data.requestId === "number"
+        ? e.data.requestId
+        : -1;
+    self.postMessage({
+      requestId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 };
