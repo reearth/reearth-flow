@@ -1,4 +1,4 @@
-import { Edge, NodeChange, type XYPosition } from "@xyflow/react";
+import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
@@ -51,6 +51,7 @@ type OverlayUIProps = {
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
   onEdgesAdd?: (edges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
   onLayoutChange: (
@@ -112,6 +113,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onNodesChange,
   onNodePickerClose,
   onEdgesAdd,
+  onEdgesChange,
   onWorkflowUndo,
   onWorkflowRedo,
   onWorkflowChange,
@@ -246,9 +248,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           openedActionType={nodePickerOpen}
           isMainWorkflow={isMainWorkflow}
           nodes={nodes}
+          edges={edges}
           onNodesAdd={onNodesAdd}
           onNodesChange={onNodesChange}
           onEdgesAdd={onEdgesAdd}
+          onEdgesChange={onEdgesChange}
           onClose={onNodePickerClose}
         />
       )}

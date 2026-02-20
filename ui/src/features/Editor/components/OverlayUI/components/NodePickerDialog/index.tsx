@@ -13,6 +13,8 @@ import {
 } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { useT } from "@flow/lib/i18n";
+import { EdgeChange } from "@xyflow/react";
+
 import type { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
 
 import useHooks from "./hooks";
@@ -27,19 +29,23 @@ type Props = {
     nodeType: ActionNodeType;
   };
   nodes: Node[];
+  edges?: Edge[];
   isMainWorkflow: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesAdd?: (edges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
   onClose: () => void;
 };
 
 const NodePickerDialog: React.FC<Props> = ({
   openedActionType,
   nodes,
+  edges,
   onNodesAdd,
   onNodesChange,
   onEdgesAdd,
+  onEdgesChange,
   onClose,
   isMainWorkflow,
 }) => {
@@ -60,9 +66,11 @@ const NodePickerDialog: React.FC<Props> = ({
     openedActionType,
     isMainWorkflow,
     nodes,
+    edges,
     onNodesAdd,
     onNodesChange,
     onEdgesAdd,
+    onEdgesChange,
     onClose,
   });
   return (

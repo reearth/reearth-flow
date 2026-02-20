@@ -1,4 +1,4 @@
-import { useReactFlow, XYPosition } from "@xyflow/react";
+import { EdgeChange, useReactFlow, XYPosition } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
@@ -7,6 +7,7 @@ import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
 import { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
+import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type ActionTypeFiltering = "all" | ActionNodeType;
@@ -14,9 +15,11 @@ export default ({
   openedActionType,
   isMainWorkflow,
   nodes,
+  edges,
   onNodesAdd,
   onNodesChange,
   onEdgesAdd,
+  onEdgesChange,
   onClose,
 }: {
   openedActionType: {
@@ -24,10 +27,12 @@ export default ({
     nodeType: ActionNodeType;
   };
   nodes: Node[];
+  edges?: Edge[];
   isMainWorkflow: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesAdd?: (edges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
   onClose: () => void;
 }) => {
   const t = useT();
@@ -101,12 +106,23 @@ export default ({
       const selectedNodes = nodes.filter((n) => n.selected);
       const lastSelectedNode = selectedNodes.at(-1);
       let position;
+
       if (lastSelectedNode) {
         // Move new node to the right of the last selected node
-        position = {
-          x: lastSelectedNode.position.x + 250, // 250px to the right (adjust as needed)
-          y: lastSelectedNode.position.y,
-        };
+        const outgoingEdges = edges?.filter(
+          (e) => e.source === lastSelectedNode.id,
+        );
+        if (outgoingEdges?.length) {
+          position = {
+            x: lastSelectedNode.position.x + 125,
+            y: lastSelectedNode.position.y + 75,
+          };
+        } else {
+          position = {
+            x: lastSelectedNode.position.x + 250, // 250px to the right (adjust as needed)
+            y: lastSelectedNode.position.y,
+          };
+        }
       } else if (
         openedActionType.position.x === 0 &&
         openedActionType.position.y === 0
@@ -126,6 +142,32 @@ export default ({
         onEdgesAdd,
       });
       if (!newNode) return;
+
+      if (lastSelectedNode && edges?.length) {
+        const outgoingEdges = edges.filter(
+          (e) => e.source === lastSelectedNode.id,
+        );
+        if (outgoingEdges.length) {
+          const removeChanges: EdgeChange[] = outgoingEdges.map((e) => ({
+            id: e.id,
+            type: "remove" as const,
+          }));
+
+          const addChanges: EdgeChange[] = outgoingEdges.map((e) => ({
+            type: "add" as const,
+            item: {
+              id: generateUUID(),
+              source: newNode.id,
+              target: e.target,
+              sourceHandle: e.sourceHandle ?? null,
+              targetHandle: e.targetHandle ?? null,
+            },
+          }));
+
+          onEdgesChange?.([...removeChanges, ...addChanges]);
+        }
+      }
+
       if (selectedNodes.length) {
         const nodesToDeselect: NodeChange[] = selectedNodes.map((node) => ({
           type: "select",
