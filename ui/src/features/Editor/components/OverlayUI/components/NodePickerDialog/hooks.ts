@@ -138,16 +138,20 @@ export default ({
       const newNode = await buildNewCanvasNode({
         position,
         type: name,
-        lastSelectedNode,
-        onEdgesAdd,
       });
       if (!newNode) return;
-
-      if (lastSelectedNode && edges?.length) {
-        const outgoingEdges = edges.filter(
+      if (lastSelectedNode) {
+        const outgoingEdges = edges?.filter(
           (e) => e.source === lastSelectedNode.id,
         );
-        if (outgoingEdges.length) {
+        const newEdge: Edge = {
+          id: generateUUID(),
+          source: lastSelectedNode.id,
+          target: newNode.id,
+        };
+        onEdgesAdd?.([newEdge]);
+
+        if (outgoingEdges?.length && newNode.type !== "writer") {
           const removeChanges: EdgeChange[] = outgoingEdges.map((e) => ({
             id: e.id,
             type: "remove" as const,
