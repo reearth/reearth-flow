@@ -72,11 +72,7 @@ function estimateSize(value: unknown): number {
 
 /** Stringify a value with depth limiting (used for representative items in previews).
  *  Beyond maxDepth, nested structures are shown as `Array(N)` / `Object(N keys)`. */
-function stringifyItem(
-  item: unknown,
-  indent: string,
-  depth = 0,
-): string {
+function stringifyItem(item: unknown, indent: string, depth = 0): string {
   if (item == null) return "null";
   if (typeof item !== "object") {
     return typeof item === "string" ? `"${item}"` : String(item);
@@ -86,20 +82,15 @@ function stringifyItem(
     if (depth >= MAX_STRINGIFY_DEPTH) return `Array(${item.length})`;
     const shown = item.slice(0, MAX_ARRAY_ITEMS);
     const inner = shown
-      .map(
-        (el) =>
-          `${indent}  ${stringifyItem(el, indent + "  ", depth + 1)}`,
-      )
+      .map((el) => `${indent}  ${stringifyItem(el, indent + "  ", depth + 1)}`)
       .join(",\n");
     const remaining = item.length - MAX_ARRAY_ITEMS;
-    const suffix =
-      remaining > 0 ? `,\n${indent}  ... (${remaining} more)` : "";
+    const suffix = remaining > 0 ? `,\n${indent}  ... (${remaining} more)` : "";
     return `[\n${inner}${suffix}\n${indent}]`;
   }
   const entries = Object.entries(item);
   if (entries.length === 0) return "{}";
-  if (depth >= MAX_STRINGIFY_DEPTH)
-    return `Object(${entries.length} keys)`;
+  if (depth >= MAX_STRINGIFY_DEPTH) return `Object(${entries.length} keys)`;
   const inner = entries
     .map(
       ([k, v]) =>
@@ -337,7 +328,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             variant="ghost"
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => openRawInNewWindow(`Feature ${processedFeature.id}`, feature)}>
+            onClick={() =>
+              openRawInNewWindow(`Feature ${processedFeature.id}`, feature)
+            }>
             <ArrowSquareOutIcon size={12} />
             {t("View all raw")}
           </Button>
