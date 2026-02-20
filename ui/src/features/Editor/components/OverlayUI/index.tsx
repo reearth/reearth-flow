@@ -248,6 +248,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           openedActionType={nodePickerOpen}
           isMainWorkflow={isMainWorkflow}
           nodes={nodes}
+          selectedNodeIds={selectedNodeIds}
           edges={edges}
           onNodesAdd={onNodesAdd}
           onNodesChange={onNodesChange}

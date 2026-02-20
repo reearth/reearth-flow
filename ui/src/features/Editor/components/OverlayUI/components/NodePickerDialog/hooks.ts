@@ -15,6 +15,7 @@ export default ({
   openedActionType,
   isMainWorkflow,
   nodes,
+  selectedNodeIds,
   edges,
   onNodesAdd,
   onNodesChange,
@@ -27,6 +28,7 @@ export default ({
     nodeType: ActionNodeType;
   };
   nodes: Node[];
+  selectedNodeIds: string[];
   edges?: Edge[];
   isMainWorkflow: boolean;
   onNodesAdd: (nodes: Node[]) => void;
@@ -103,8 +105,10 @@ export default ({
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
       const randomX = getRandomNumberInRange(50, 200);
       const randomY = getRandomNumberInRange(50, 200);
-      const selectedNodes = nodes.filter((n) => n.selected);
-      const lastSelectedNode = selectedNodes.at(-1);
+      const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
+      const lastSelectedNode = nodes.find(
+        (n) => n.id === selectedNodeIds[selectedNodeIds.length - 1],
+      );
       const outgoingEdges = lastSelectedNode
         ? edges?.filter((e) => e.source === lastSelectedNode.id)
         : undefined;
@@ -136,15 +140,22 @@ export default ({
       if (!newNode) return;
 
       if (lastSelectedNode) {
-        onEdgesAdd?.([
-          {
-            id: generateUUID(),
-            source: lastSelectedNode.id,
-            target: newNode.id,
-          },
-        ]);
+        if (lastSelectedNode.type !== "writer" && newNode.type !== "reader") {
+          onEdgesAdd?.([
+            {
+              id: generateUUID(),
+              source: lastSelectedNode.id,
+              target: newNode.id,
+            },
+          ]);
+        }
 
-        if (outgoingEdges?.length && newNode.type !== "writer") {
+        if (
+          outgoingEdges?.length &&
+          lastSelectedNode.type !== "writer" &&
+          newNode.type !== "writer" &&
+          newNode.type !== "reader"
+        ) {
           const removeChanges: EdgeChange[] = outgoingEdges.map((e) => ({
             id: e.id,
             type: "remove" as const,
