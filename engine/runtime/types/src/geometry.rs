@@ -121,31 +121,41 @@ impl CityGmlGeometry {
         self.gml_geometries
             .iter()
             .map(|feature| {
-                let pos = feature.pos as usize;
-                let len = feature.len as usize;
+                let is_polygon_geometry = matches!(
+                    feature.ty,
+                    crate::geometry::GeometryType::Solid
+                        | crate::geometry::GeometryType::Surface
+                        | crate::geometry::GeometryType::Triangle
+                );
 
-                // Extract only the relevant slice of polygon_materials for this geometry
-                let polygon_materials = if pos + len <= self.polygon_materials.len() {
-                    self.polygon_materials[pos..pos + len].to_vec()
+                let (polygon_materials, polygon_textures, polygon_uvs) = if is_polygon_geometry {
+                    let pos = feature.pos as usize;
+                    let len = feature.len as usize;
+
+                    let materials = if pos + len <= self.polygon_materials.len() {
+                        self.polygon_materials[pos..pos + len].to_vec()
+                    } else {
+                        Vec::new()
+                    };
+
+                    let textures = if pos + len <= self.polygon_textures.len() {
+                        self.polygon_textures[pos..pos + len].to_vec()
+                    } else {
+                        Vec::new()
+                    };
+
+                    let uvs = if pos + len <= self.polygon_uvs.0.len() {
+                        MultiPolygon2D::new(self.polygon_uvs.0[pos..pos + len].to_vec())
+                    } else {
+                        MultiPolygon2D::default()
+                    };
+
+                    (materials, textures, uvs)
                 } else {
-                    Vec::new()
+                    // Non-polygon geometries don't have materials/textures/UVs
+                    (Vec::new(), Vec::new(), MultiPolygon2D::default())
                 };
 
-                // Extract only the relevant slice of polygon_textures for this geometry
-                let polygon_textures = if pos + len <= self.polygon_textures.len() {
-                    self.polygon_textures[pos..pos + len].to_vec()
-                } else {
-                    Vec::new()
-                };
-
-                // Extract only the relevant slice of polygon_uvs for this geometry
-                let polygon_uvs = if pos + len <= self.polygon_uvs.0.len() {
-                    MultiPolygon2D::new(self.polygon_uvs.0[pos..pos + len].to_vec())
-                } else {
-                    MultiPolygon2D::default()
-                };
-
-                // Clone the feature and reset pos to 0 since it's now the only geometry
                 let mut cloned_feature = feature.clone();
                 cloned_feature.pos = 0;
 
@@ -291,15 +301,39 @@ impl CityGmlGeometry {
             let pos = gml_geom.pos as usize;
             let len = gml_geom.len as usize;
 
-            // Verify that polygon count matches len - this is critical for data consistency
-            // len represents the number of polygons in polygon_materials/textures/uvs arrays
-            // polygons.len() is the actual count of Polygon3D objects
-            if gml_geom.polygons.len() != len {
+            // Verify that the geometry count matches len - this is critical for data consistency
+            // len represents the number of items in the primary geometry arrays
+            // (polygons for Solid/Surface/Triangle, line_strings for Curve, points for Point)
+            let actual_count = match gml_geom.ty {
+                crate::geometry::GeometryType::Solid
+                | crate::geometry::GeometryType::Surface
+                | crate::geometry::GeometryType::Triangle => gml_geom.polygons.len(),
+                crate::geometry::GeometryType::Curve => gml_geom.line_strings.len(),
+                crate::geometry::GeometryType::Point => gml_geom.points.len(),
+            };
+
+            if actual_count != len {
                 tracing::warn!(
-                    "Skipping geometry with mismatched counts: polygons.len()={} != len={}",
-                    gml_geom.polygons.len(),
-                    len
+                    "Skipping geometry with mismatched counts: actual_count={} != len={} (type={:?})",
+                    actual_count,
+                    len,
+                    gml_geom.ty
                 );
+                continue;
+            }
+
+            // Non-polygon geometries don't have materials/textures/UVs
+            let is_polygon_geometry = matches!(
+                gml_geom.ty,
+                crate::geometry::GeometryType::Solid
+                    | crate::geometry::GeometryType::Surface
+                    | crate::geometry::GeometryType::Triangle
+            );
+
+            if !is_polygon_geometry {
+                let mut cloned_geom = gml_geom.clone();
+                cloned_geom.pos = 0; // pos is unused for non-polygon geometries
+                filtered_gml_geometries.push(cloned_geom);
                 continue;
             }
 
@@ -495,10 +529,25 @@ pub struct GmlGeometry {
     pub points: Vec<Coordinate3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
-    pub composite_surfaces: Vec<GmlGeometry>,
 }
 
 impl GmlGeometry {
+    pub fn new(ty: GeometryType, lod: Option<u8>) -> Self {
+        Self {
+            id: None,
+            ty,
+            gml_trait: None,
+            lod,
+            pos: 0,
+            len: 0,
+            polygons: vec![],
+            line_strings: vec![],
+            points: vec![],
+            feature_id: None,
+            feature_type: None,
+        }
+    }
+
     pub fn name(&self) -> &str {
         self.ty.name()
     }
@@ -544,9 +593,6 @@ impl GmlGeometry {
             let (new_x, new_y) = transform_fn(point.x, point.y)?;
             point.x = new_x;
             point.y = new_y;
-        }
-        for composite in &mut self.composite_surfaces {
-            composite.transform_horizontal(transform_fn)?;
         }
         Ok(())
     }
@@ -653,7 +699,6 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             points: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
-            composite_surfaces: Vec::new(),
         }
     }
 }
@@ -676,5 +721,61 @@ impl GmlGeometryTrait {
             }),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_geometry::types::coordinate::Coordinate3D;
+    use reearth_flow_geometry::types::line_string::LineString3D;
+
+    fn minimal_polygon() -> Polygon3D<f64> {
+        Polygon3D::new(
+            LineString3D::new(vec![
+                Coordinate3D::new__(0.0, 0.0, 0.0),
+                Coordinate3D::new__(1.0, 0.0, 0.0),
+                Coordinate3D::new__(0.0, 1.0, 0.0),
+            ]),
+            vec![],
+        )
+    }
+
+    #[test]
+    fn test_filter_by_lod_with_mixed_geometry_types() {
+        // Regression test: filter_by_lod should handle mixed polygon + curve geometries
+        // without panicking on len vs polygons.len() mismatch
+        let surface = GmlGeometry {
+            polygons: vec![minimal_polygon(), minimal_polygon()],
+            len: 2,
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
+        };
+
+        let curve = GmlGeometry {
+            line_strings: vec![
+                LineString3D::new(vec![]),
+                LineString3D::new(vec![]),
+                LineString3D::new(vec![]),
+            ],
+            len: 3,
+            ..GmlGeometry::new(GeometryType::Curve, Some(2))
+        };
+
+        let geom = CityGmlGeometry {
+            gml_geometries: vec![surface, curve],
+            materials: vec![],
+            textures: vec![],
+            polygon_materials: vec![None, None],
+            polygon_textures: vec![None, None],
+            polygon_uvs: MultiPolygon2D::default(),
+        };
+
+        let filtered = geom.filter_by_lod(|g| g.lod == Some(2));
+
+        assert_eq!(filtered.gml_geometries.len(), 2);
+        assert_eq!(filtered.gml_geometries[0].ty, GeometryType::Surface);
+        assert_eq!(filtered.gml_geometries[0].pos, 0);
+        assert_eq!(filtered.gml_geometries[1].ty, GeometryType::Curve);
+        assert_eq!(filtered.gml_geometries[1].pos, 0);
     }
 }
