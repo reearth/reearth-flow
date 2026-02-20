@@ -77,6 +77,46 @@ struct Tests {
     json_object_key_order: Option<KeyOrderConfig>,
 }
 
+fn pack_inputs(
+    test_path: &Path,
+    output_dir: &Path,
+    zip_stem: &str,
+) -> HashMap<&'static str, PathBuf> {
+    tracing::debug!("packing citymodel zip...");
+
+    let citymodel_udx_dir = test_path.join("citymodel/udx");
+    assert!(citymodel_udx_dir.exists());
+    let citymodel = output_dir.join(format!("{}.zip", zip_stem));
+    zip_dir(&citymodel_udx_dir, &citymodel);
+
+    let mut inputs = HashMap::new();
+    inputs.insert("citymodel", citymodel);
+
+    let codelists_dir = test_path.join("citymodel/codelists");
+    if codelists_dir.exists() {
+        let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
+        zip_dir(&codelists_dir, &path);
+        inputs.insert("codelists", path);
+    }
+
+    let schemas_dir = test_path.join("citymodel/schemas");
+    if schemas_dir.exists() {
+        let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
+        zip_dir(&schemas_dir, &path);
+        inputs.insert("schemas", path);
+    }
+
+    inputs
+}
+
+fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
+    let citymodel = test_path.join("citymodel");
+    assert!(citymodel.exists(), "citymodel dir not found: {}", citymodel.display());
+    let mut inputs = HashMap::new();
+    inputs.insert("citymodel", citymodel);
+    inputs
+}
+
 fn zip_dir(src_dir: &Path, zip_path: &Path) {
     let file = fs::File::create(zip_path).unwrap();
     let mut zip = ZipWriter::new(file);
@@ -182,33 +222,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let _ = fs::remove_dir_all(&output_dir);
         fs::create_dir_all(&output_dir).unwrap();
 
-        tracing::debug!("packing citymodel zip...");
-        let zip_stem = profile
-            .citygml_zip_name
-            .strip_suffix(".zip")
-            .unwrap_or(&profile.citygml_zip_name);
-
-        // Create citymodel zip (zip only the udx subdirectory)
-        let citymodel_udx_dir = test_path.join("citymodel/udx");
-        assert!(citymodel_udx_dir.exists());
-        let citymodel_path = output_dir.join(zip_stem.to_string() + ".zip");
-        zip_dir(&citymodel_udx_dir, &citymodel_path);
-
-        // Create codelists zip if directory exists (symlinked from artifacts)
-        let codelist_dir = test_path.join("citymodel/codelists");
-        let codelist_path = codelist_dir.exists().then(|| {
-            let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
-            zip_dir(&codelist_dir, &path);
-            path
-        });
-
-        // Create schemas zip if directory exists (symlinked from artifacts)
-        let schemas_dir = test_path.join("citymodel/schemas");
-        let schemas_path = schemas_dir.exists().then(|| {
-            let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
-            zip_dir(&schemas_dir, &path);
-            path
-        });
+        let no_pack = env::var("PLATEAU_TILES_TEST_NO_PACK").ok().as_deref() == Some("1");
+        let inputs = if no_pack {
+            direct_inputs(&test_path)
+        } else {
+            let zip_stem = profile
+                .citygml_zip_name
+                .strip_suffix(".zip")
+                .unwrap_or(&profile.citygml_zip_name);
+            pack_inputs(&test_path, &output_dir, zip_stem)
+        };
 
         info!(
             "Starting run: {} to {}",
@@ -219,10 +242,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         runner::run_workflow(
             &workflow_path,
-            &citymodel_path,
+            &inputs["citymodel"],
             &output_dir,
-            codelist_path.as_deref(),
-            schemas_path.as_deref(),
+            inputs.get("codelists").map(PathBuf::as_path),
+            inputs.get("schemas").map(PathBuf::as_path),
         );
 
         let elapsed = start_time.elapsed();
