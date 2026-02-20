@@ -109,7 +109,7 @@ export default ({
         ? edges?.filter((e) => e.source === lastSelectedNode.id)
         : undefined;
 
-      let position;
+      let position: XYPosition;
       if (lastSelectedNode) {
         position = outgoingEdges?.length
           ? {
