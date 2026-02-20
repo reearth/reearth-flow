@@ -1684,9 +1684,9 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide"
-version = "0.1.0-alpha.4"
+version = "0.1.0-alpha.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acbad1ec71b929aa0766554fdea06b3862ca8658ad8482aa0f803182760c2ae5"
+checksum = "5a37bd567a310ee98389174647a70561d68c65e939a0df310ca5eb69bfcfeb09"
 dependencies = [
  "base64 0.21.7",
  "draco-nd-vector",
@@ -1694,7 +1694,12 @@ dependencies = [
  "faer",
  "gltf 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.25.9",
+<<<<<<< Updated upstream
  "indexmap 2.13.0",
+=======
+ "indexmap 2.12.1",
+ "kiddo",
+>>>>>>> Stashed changes
  "lazy_static",
  "paste",
  "remain",
