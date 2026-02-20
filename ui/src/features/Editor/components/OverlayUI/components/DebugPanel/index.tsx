@@ -276,6 +276,7 @@ const DebugPanel: React.FC = () => {
                           onShowFeatureDetailsOverlay={
                             handleShowFeatureDetailsOverlay
                           }
+                          detailsOverlayOpen={detailsOverlayOpen}
                           // Data detection props
                           detectedGeometryType={detectedGeometryType}
                           visualizerType={visualizerType}
