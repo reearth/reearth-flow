@@ -6158,6 +6158,7 @@ __metadata:
     "@testing-library/jest-dom": "npm:6.9.1"
     "@testing-library/react": "npm:16.3.2"
     "@turf/bbox": "npm:7.3.3"
+    "@types/earcut": "npm:3.0.0"
     "@types/file-saver": "npm:2.0.7"
     "@types/js-yaml": "npm:4.0.9"
     "@types/jsdom": "npm:27.0.0"
@@ -6176,6 +6177,7 @@ __metadata:
     cmdk: "npm:1.1.1"
     date-fns: "npm:4.1.0"
     del-cli: "npm:7.0.0"
+    earcut: "npm:3.0.2"
     embla-carousel-react: "npm:8.6.0"
     eslint: "npm:9.39.2"
     eslint-config-reearth: "npm:0.3.8"
@@ -7366,6 +7368,13 @@ __metadata:
   version: 1.4.10
   resolution: "@types/draco3d@npm:1.4.10"
   checksum: 10c0/431e333b2fd67e2b081e8697e71dfb82a125fc04b2cbfa0205e4d521719d3749c964b2bf82bb7944ba0a12e5bc3d9afe387a58e68b195d838fcdbc65c8572a35
+  languageName: node
+  linkType: hard
+
+"@types/earcut@npm:3.0.0":
+  version: 3.0.0
+  resolution: "@types/earcut@npm:3.0.0"
+  checksum: 10c0/3c03e66bebb9b2408934f3ba4c3e9de37847166047fd64c23efd1bb9e127ed9330a9c61b03f3dc6cee060cb3b7e0a19689ee983d08defc93ca387a17b96e9499
   languageName: node
   linkType: hard
 
@@ -10149,17 +10158,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"earcut@npm:3.0.2, earcut@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "earcut@npm:3.0.2"
+  checksum: 10c0/3d76da3d8a935244d59713edc70de71cdb5326a80b31c5c5cb96bc5b61f56b86ed35f032fffb66be7a4558e06efe1e94934f43ba6ca1b6c2af1420e87dd7ad71
+  languageName: node
+  linkType: hard
+
 "earcut@npm:^3.0.0":
   version: 3.0.1
   resolution: "earcut@npm:3.0.1"
   checksum: 10c0/cc1d3ed87a08db1a601b3b836bfb2fe22c8f923dfcfcd7419c64a5d4c270ac6d966d8d1e673cc699f8d69dc32bce84fd6d87136c49431fa35057bd7141627769
-  languageName: node
-  linkType: hard
-
-"earcut@npm:^3.0.2":
-  version: 3.0.2
-  resolution: "earcut@npm:3.0.2"
-  checksum: 10c0/3d76da3d8a935244d59713edc70de71cdb5326a80b31c5c5cb96bc5b61f56b86ed35f032fffb66be7a4558e06efe1e94934f43ba6ca1b6c2af1420e87dd7ad71
   languageName: node
   linkType: hard
 
