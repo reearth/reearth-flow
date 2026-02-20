@@ -320,7 +320,7 @@ impl GeometrySplitter {
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Collect all polygons from gml_geometries and composite_surfaces
+        // Collect all polygons from gml_geometries
         let polygons = Self::collect_all_polygons(geometry_feature);
 
         if polygons.is_empty() {
@@ -376,7 +376,6 @@ impl GeometrySplitter {
                 line_strings: vec![],
                 feature_id: geometry_feature.feature_id.clone(),
                 feature_type: geometry_feature.feature_type.clone(),
-                composite_surfaces: vec![],
             };
 
             let single_citygml = CityGmlGeometry {
@@ -422,14 +421,7 @@ impl GeometrySplitter {
     fn collect_all_polygons(
         gml: &GmlGeometry,
     ) -> Vec<reearth_flow_geometry::types::polygon::Polygon3D<f64>> {
-        let mut polygons = gml.polygons.clone();
-
-        // Recursively collect from composite_surfaces
-        for cs in &gml.composite_surfaces {
-            polygons.extend(Self::collect_all_polygons(cs));
-        }
-
-        polygons
+        gml.polygons.clone()
     }
 
     /// Create a placeholder UV polygon that matches the ring structure of a 3D polygon.
