@@ -140,7 +140,12 @@ function prepareWorkerInput(
 
   // Build color tuple for type config
   const typeColorTuple: [number, number, number, number] = typeConfig
-    ? [typeConfig.color.red, typeConfig.color.green, typeConfig.color.blue, typeConfig.color.alpha]
+    ? [
+        typeConfig.color.red,
+        typeConfig.color.green,
+        typeConfig.color.blue,
+        typeConfig.color.alpha,
+      ]
     : GRAY_COLOR;
 
   // Convert to worker polygon format

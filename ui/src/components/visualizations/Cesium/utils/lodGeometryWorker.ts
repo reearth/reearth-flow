@@ -5,8 +5,7 @@ import earcut from "earcut";
 // Matches Cesium.Ellipsoid.WGS84 exactly.
 const WGS84_A = 6378137.0; // semi-major axis (meters)
 const WGS84_B = 6356752.3142451793; // semi-minor axis (meters)
-const WGS84_E2 =
-  (WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_A * WGS84_A); // first eccentricity squared
+const WGS84_E2 = (WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_A * WGS84_A); // first eccentricity squared
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -127,9 +126,17 @@ function processPolygons(input: WorkerInput): WorkerOutput {
       if (lon === 0 && lat === 0) continue;
       // Convert to ECEF, then normalize height by subtracting globalMinZ
       const rawEcef = geodeticToEcef(lon, lat, z);
-      const [lonRad, latRad, h] = ecefToGeodetic(rawEcef[0], rawEcef[1], rawEcef[2]);
+      const [lonRad, latRad, h] = ecefToGeodetic(
+        rawEcef[0],
+        rawEcef[1],
+        rawEcef[2],
+      );
       const adjustedH = (h || 0) - globalMinZ;
-      const finalEcef = geodeticToEcef(lonRad / DEG_TO_RAD, latRad / DEG_TO_RAD, adjustedH);
+      const finalEcef = geodeticToEcef(
+        lonRad / DEG_TO_RAD,
+        latRad / DEG_TO_RAD,
+        adjustedH,
+      );
       ecefPositions.push(finalEcef[0], finalEcef[1], finalEcef[2]);
       validCount++;
     }

@@ -131,7 +131,11 @@ function buildFillPrimitive(
     const cartesians: Cartesian3[] = [];
     for (let i = 0; i < newIdx; i++) {
       cartesians.push(
-        new Cartesian3(posArray[i * 3], posArray[i * 3 + 1], posArray[i * 3 + 2]),
+        new Cartesian3(
+          posArray[i * 3],
+          posArray[i * 3 + 1],
+          posArray[i * 3 + 2],
+        ),
       );
     }
 
@@ -155,7 +159,9 @@ function buildFillPrimitive(
           });
         })(),
         attributes: {
-          color: ColorGeometryInstanceAttribute.fromColor(new Color(r, gb, bl, a)),
+          color: ColorGeometryInstanceAttribute.fromColor(
+            new Color(r, gb, bl, a),
+          ),
           show: new ShowGeometryInstanceAttribute(true),
         },
       }),
