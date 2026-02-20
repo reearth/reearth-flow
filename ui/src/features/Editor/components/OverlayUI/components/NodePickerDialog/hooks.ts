@@ -112,8 +112,14 @@ export default ({
       let position;
       if (lastSelectedNode) {
         position = outgoingEdges?.length
-          ? { x: lastSelectedNode.position.x + 125, y: lastSelectedNode.position.y + 75 }
-          : { x: lastSelectedNode.position.x + 250, y: lastSelectedNode.position.y };
+          ? {
+              x: lastSelectedNode.position.x + 125,
+              y: lastSelectedNode.position.y + 75,
+            }
+          : {
+              x: lastSelectedNode.position.x + 250,
+              y: lastSelectedNode.position.y,
+            };
       } else if (
         openedActionType.position.x === 0 &&
         openedActionType.position.y === 0
@@ -130,7 +136,13 @@ export default ({
       if (!newNode) return;
 
       if (lastSelectedNode) {
-        onEdgesAdd?.([{ id: generateUUID(), source: lastSelectedNode.id, target: newNode.id }]);
+        onEdgesAdd?.([
+          {
+            id: generateUUID(),
+            source: lastSelectedNode.id,
+            target: newNode.id,
+          },
+        ]);
 
         if (outgoingEdges?.length && newNode.type !== "writer") {
           const removeChanges: EdgeChange[] = outgoingEdges.map((e) => ({
