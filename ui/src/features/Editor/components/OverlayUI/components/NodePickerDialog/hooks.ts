@@ -100,14 +100,27 @@ export default ({
       const randomY = getRandomNumberInRange(50, 200);
       const selectedNodes = nodes.filter((n) => n.selected);
       const lastSelectedNode = selectedNodes.at(-1);
+      let position;
+      if (lastSelectedNode) {
+        // Move new node to the right of the last selected node
+        position = {
+          x: lastSelectedNode.position.x + 250, // 250px to the right (adjust as needed)
+          y: lastSelectedNode.position.y,
+        };
+      } else if (
+        openedActionType.position.x === 0 &&
+        openedActionType.position.y === 0
+      ) {
+        position = screenToFlowPosition({
+          x: window.innerWidth / 2 + randomX,
+          y: window.innerHeight / 2 - randomY,
+        });
+      } else {
+        position = openedActionType.position;
+      }
+
       const newNode = await buildNewCanvasNode({
-        position:
-          openedActionType.position.x === 0 && openedActionType.position.y === 0
-            ? screenToFlowPosition({
-                x: window.innerWidth / 2 + randomX,
-                y: window.innerHeight / 2 - randomY,
-              })
-            : openedActionType.position,
+        position,
         type: name,
         lastSelectedNode,
         onEdgesAdd,
@@ -123,6 +136,7 @@ export default ({
         ]);
       });
       onNodesAdd([newNode]);
+
       // TODO - add drop in batch support
       // onNodesChange(handleNodeDropInBatch(newNode, newNodes));
       onClose();

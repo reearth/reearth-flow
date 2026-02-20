@@ -135,15 +135,14 @@ const createActionNode = async (
   };
 
   if (lastSelectedNode) {
-    if (lastSelectedNode && onEdgesAdd) {
-      const newEdge: Edge = {
-        id: generateUUID(),
-        source: lastSelectedNode.id,
-        target: newNode.id,
-      };
-      onEdgesAdd([newEdge]);
-    }
+    const newEdge: Edge = {
+      id: generateUUID(),
+      source: lastSelectedNode.id,
+      target: newNode.id,
+    };
+    onEdgesAdd?.([newEdge]);
   }
+
   return newNode;
 };
 
