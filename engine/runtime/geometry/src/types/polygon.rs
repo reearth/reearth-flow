@@ -8,6 +8,7 @@ use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
+use core::f64;
 use std::hash::{Hash, Hasher};
 
 use crate::algorithm::contains::Contains;
@@ -286,9 +287,15 @@ impl Polygon<f64> {
         }
 
         let (mut x, mut y) = (usize::MAX, usize::MAX);
+        let mut d = f64::INFINITY;
 
-        'outer: for (i, &v) in exterior.iter().enumerate() {
-            'inner: for (j, &w) in merging_interior.iter().enumerate() {
+        for (i, &w) in merging_interior.iter().enumerate() {
+            for (j, &v) in exterior.iter().enumerate() {
+                let dist = (v - w).norm();
+                if dist > d {
+                    continue;
+                }
+
                 // check if the line segment vw intersects with any edge of the exterior ring and the interior rings
                 let e1: Line3D<f64> = Line::new_(v, w);
                 let mut rejected = false;
@@ -307,7 +314,7 @@ impl Polygon<f64> {
                     }
                 }
                 if rejected {
-                    continue 'inner;
+                    continue;
                 }
                 for e2 in merging_interior
                     .iter()
@@ -324,7 +331,7 @@ impl Polygon<f64> {
                     }
                 }
                 if rejected {
-                    continue 'inner;
+                    continue;
                 }
                 'remaining: for interior in remaining_interiors {
                     for e2 in interior
@@ -343,7 +350,7 @@ impl Polygon<f64> {
                     }
                 }
                 if rejected {
-                    continue 'inner;
+                    continue;
                 }
                 // check if `i` is not a vertex of adjacency greater than 2
                 if exterior
@@ -353,11 +360,11 @@ impl Polygon<f64> {
                     .count()
                     > 1
                 {
-                    continue 'inner;
+                    continue;
                 }
                 x = i;
                 y = j;
-                break 'outer;
+                d = dist;
             }
         }
 
@@ -393,12 +400,12 @@ impl Polygon<f64> {
 
         let mut out = Vec::with_capacity(exterior.len() + merging_interior.len() + 1);
         let mut ext_first = exterior.0;
-        let ext_split = ext_first[x];
-        let ext_second = ext_first.split_off(x + 1);
+        let ext_split = ext_first[y];
+        let ext_second = ext_first.split_off(y + 1);
         out.extend(ext_first);
 
         merging_interior.0.pop(); // remove duplicated last point
-        merging_interior.0.rotate_left(y);
+        merging_interior.0.rotate_left(x);
         merging_interior.0.push(merging_interior.0[0]); // close the ring again
         if are_orientations_opposite {
             out.extend(merging_interior.0);

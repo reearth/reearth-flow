@@ -2,9 +2,8 @@ use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    algorithm::utils::{denormalize_vertices, normalize_vertices},
     types::{
-        coordinate::Coordinate,
+        coordinate::{are_coplanar, Coordinate},
         coordnum::CoordNum,
         solid::{Solid, Solid3D},
         triangle::Triangle,
@@ -84,8 +83,9 @@ impl CSG<f64, f64> {
     pub fn evaluate(self, tolerance: f64) -> Result<Solid3D<f64>, String> {
         let right = self.right.evaluate(tolerance)?;
         let left = self.left.evaluate(tolerance)?;
-        let mut right = right.as_triangle_mesh(Some(tolerance))?;
-        let mut left = left.as_triangle_mesh(Some(tolerance))?;
+        let right = right.as_triangle_mesh(Some(tolerance))?;
+        let left = left.as_triangle_mesh(Some(tolerance))?;
+
         let mut union = left.clone().union(right.clone(), tolerance)?;
         let two_manifolds = union.into_2_manifolds_with_boundaries();
         let mut result_faces = Vec::new();
@@ -97,6 +97,21 @@ impl CSG<f64, f64> {
             if two_manifold.is_empty() {
                 continue;
             }
+
+            // Skip manifold components whose vertices are all coplanar — these are flat
+            // artifacts from shared faces between adjacent (touching) solids, not true
+            // volumetric intersections.
+            {
+                let component_vertices: Vec<_> = two_manifold
+                    .iter()
+                    .flatten()
+                    .map(|&i| union.get_vertices()[i])
+                    .collect();
+                if are_coplanar(&component_vertices, tolerance).is_some() {
+                    continue;
+                }
+            }
+
             let t = two_manifold
                 .iter()
                 .map(|t| {
@@ -131,7 +146,7 @@ impl CSG<f64, f64> {
                             left.get_vertices()[w[1]],
                             left.get_vertices()[w[2]],
                         );
-                        tri.contains(&v) || tri.boundary_contains(&v)
+                        tri.contains(&v) || tri.boundary_contains(&v, Some(tolerance))
                     })
                 });
 
@@ -146,7 +161,7 @@ impl CSG<f64, f64> {
                             right.get_vertices()[w[1]],
                             right.get_vertices()[w[2]],
                         );
-                        tri.contains(&v) || tri.boundary_contains(&v)
+                        tri.contains(&v) || tri.boundary_contains(&v, Some(tolerance))
                     })
                 });
 

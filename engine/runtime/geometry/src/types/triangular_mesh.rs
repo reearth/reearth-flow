@@ -233,22 +233,33 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             T::from(1e-6).unwrap() // Default tolerance
         };
         let mut out = Self::default();
-        let mut vertices = Vec::new();
+
+        // Collect all unique vertices using exact comparison
+        let mut vertices: Vec<Coordinate3D<T>> = Vec::new();
+        let vertex_cmp = |a: &Coordinate3D<T>, b: &Coordinate3D<T>| {
+            let x_cmp = a.x.partial_cmp(&b.x).unwrap();
+            if x_cmp != std::cmp::Ordering::Equal {
+                return x_cmp;
+            }
+            let y_cmp = a.y.partial_cmp(&b.y).unwrap();
+            if y_cmp != std::cmp::Ordering::Equal {
+                return y_cmp;
+            }
+            a.z.partial_cmp(&b.z).unwrap()
+        };
         for v in faces.iter().flat_map(|f| f.0.iter()) {
-            if vertices
-                .iter()
-                .all(|&existing_v: &Coordinate3D<T>| (existing_v - *v).norm() >= tolerance)
-            {
+            if v.x.is_finite() && v.y.is_finite() && v.z.is_finite() {
                 vertices.push(*v);
             }
         }
+        vertices.sort_unstable_by(vertex_cmp);
+        vertices.dedup();
 
-        for face in faces {
+        for face in faces.iter() {
             // Triangulate the face
             let face_triangles = match Self::triangulate_face(face.clone(), tolerance) {
                 Ok(triangles) => triangles,
                 Err(err) => {
-                    // If triangulation fails, then return empty mesh
                     return Err(format!(
                         "Failed to triangulate face: {face:?}\n, error: {err}",
                     ));
@@ -258,19 +269,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             for triangle in face_triangles {
                 let mut tri_indices = [0usize; 3];
                 for (i, &vertex) in triangle.iter().enumerate() {
-                    // Get or insert vertex index
-                    let vertex_index = match vertices
-                        .iter()
-                        .position(|&v| (v - vertex).norm() < tolerance)
-                    {
-                        Some(idx) => idx,
-                        None => {
-                            let idx = out.vertices.len();
-                            out.vertices.push(vertex);
-                            idx
-                        }
-                    };
-
+                    // Look up vertex index by exact match
+                    let vertex_index = vertices
+                        .binary_search_by(|v| vertex_cmp(v, &vertex))
+                        .unwrap();
                     tri_indices[i] = vertex_index;
                 }
 
@@ -279,6 +281,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
                 out.triangles.push(tri_indices);
             }
         }
+
         out.vertices = vertices;
 
         out.edges_with_multiplicity = Self::compute_edges_with_multiplicity(&out.triangles);
@@ -286,6 +289,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // Sort triangles for consistent representation
         out.triangles.sort_unstable();
         out.triangles.dedup();
+
         Ok(out)
     }
 
@@ -404,57 +408,54 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // 5. Repeat until the face boundary is empty.
         let mut triangles = Vec::new();
         while !face.is_empty() {
-            // Remove any vertex whose outer angle is close to π. Such a vertex
-            // forms a nearly-degenerate spike (inner angle ≈ 0). Removing it
-            // does not produce a meaningful triangle, so we skip triangle
-            // creation and update the adjacent angles.
-            if let Some(rm) = angles
-                .iter()
-                .position(|&a| (a - pi).abs() < tolerance)
-            {
-                let prev_idx = (rm + face.len() - 1) % face.len();
-                let next_idx = (rm + 1) % face.len();
-                // Still create the (degenerate) triangle so boundary edges are covered.
-                triangles.push([face[prev_idx], face[rm], face[next_idx]]);
-                let vp = face[prev_idx] - face[rm];
-                let vn = face[next_idx] - face[rm];
-                let vpn = face[next_idx] - face[prev_idx];
-                let prev_angle = (-vp).angle(&vpn);
-                let next_angle = vn.angle(&vpn);
-                face.remove(rm);
-                angles.remove(rm);
-                if face.len() < 3 {
-                    break;
-                }
-                let new_prev_idx = (rm + face.len() - 1) % face.len();
-                let new_next_idx = rm % face.len();
-                angles[new_prev_idx] = angles[new_prev_idx] + prev_angle;
-                angles[new_next_idx] = angles[new_next_idx] + next_angle;
-                continue;
-            }
-
             // Find a vertex with positive outer angle
             // A polygon in an Euclidean space must have at least one convex vertex
-            let removed_vtx_idx = angles
+            let convex_candidates: Vec<(usize, T)> = angles
                 .iter()
                 .enumerate()
                 .filter(|&(_i, &a)| a > epsilon)
-                .map(|(i, _a)| i)
-                .find(|&i| {
+                .map(|(i, &a)| (i, a))
+                .collect();
+            let filtered_candidates: Vec<(usize, T)> = convex_candidates
+                .iter()
+                .copied()
+                .collect();
+            let removed_vtx_idx = {
+                let mut max_angle_idx = usize::MAX;
+                let mut max_angle = T::zero();
+                for &(i, a) in &filtered_candidates {
                     let t = Triangle::new(
                         face[(i + face.len() - 1) % face.len()],
                         face[i],
                         face[(i + 1) % face.len()],
                     );
-                    (i + 2..).take(face.len() - 3).all(|j: usize| {
+                    let is_valid = (i + 2..).take(face.len() - 3).all(|j: usize| {
                         let j = face[j % face.len()];
                         (t.0 - j).norm() < epsilon
                             || (t.1 - j).norm() < epsilon
                             || (t.2 - j).norm() < epsilon
-                            || !t.contains(&j) && !t.boundary_contains(&j)
-                    })
-                })
-                .ok_or("No convex vertex found")?;
+                            || !t.contains(&j) && !t.boundary_contains(&j, Some(tolerance/T::from(2.0).unwrap()))
+                    });
+                    if is_valid && a > max_angle {
+                        max_angle = a;
+                        max_angle_idx = i;
+                        if a > T::from(0.5).unwrap() {
+                            break;
+                        }
+                    }
+                };
+                if max_angle_idx != usize::MAX {
+                    Some(max_angle_idx)
+                } else {
+                    None
+                }
+            };
+            let removed_vtx_idx = match removed_vtx_idx {
+                Some(idx) => idx,
+                None => {
+                    return Err(format!("No convex vertex found. face_len={}", face.len()));
+                }
+            };
 
             // Create a triangle with the two adjacent vertices
             let prev_idx = (removed_vtx_idx + face.len() - 1) % face.len();
@@ -1357,7 +1358,7 @@ impl TriangularMesh<f64> {
                 let mut next_vertex = |line_str_coords: &Vec<usize>| {
                     let last_vertex = *line_str_coords.last().unwrap();
                     let t = Triangle::new(vertices[t[0]], vertices[t[1]], vertices[t[2]]);
-                    if t.boundary_contains(&vertices[last_vertex]) {
+                    if t.boundary_contains(&vertices[last_vertex], Some(tolerance)) {
                         return None;
                     }
                     let pos = intersection.iter().position(|e| e.contains(&last_vertex));

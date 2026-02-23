@@ -207,12 +207,7 @@ impl Processor for SolidBoundaryValidator {
             }
         };
 
-        // Extract vertices, edges, and triangles from the solid
-        // Use a much smaller tolerance for vertex merging than the geometric tolerance.
-        // The geometric tolerance can cause non-adjacent but spatially close vertices
-        // to merge, corrupting the topology and producing false manifold violations.
-        let vertex_merge_tolerance = tolerance * 0.01;
-        let mesh = match TriangularMesh::from_faces(&faces, Some(vertex_merge_tolerance)) {
+        let mesh = match TriangularMesh::from_faces(&faces, Some(tolerance)) {
             Ok(mesh) => mesh,
             Err(_) => {
                 // Some faces failed triangulation (e.g., non-planar faces).
@@ -221,12 +216,11 @@ impl Processor for SolidBoundaryValidator {
                 let valid_faces: Vec<_> = faces
                     .iter()
                     .filter(|face| {
-                        TriangularMesh::from_faces(&[(*face).clone()], Some(vertex_merge_tolerance))
-                            .is_ok()
+                        TriangularMesh::from_faces(&[(*face).clone()], Some(tolerance)).is_ok()
                     })
                     .cloned()
                     .collect();
-                match TriangularMesh::from_faces(&valid_faces, Some(vertex_merge_tolerance)) {
+                match TriangularMesh::from_faces(&valid_faces, Some(tolerance)) {
                     Ok(mesh) => mesh,
                     Err(_) => {
                         // Even valid faces can't build a mesh
