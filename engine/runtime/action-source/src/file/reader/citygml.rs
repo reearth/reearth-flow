@@ -171,11 +171,11 @@ async fn parse_tree_reader<R: BufRead>(
 
         for mut ent in entities {
             transformer.transform(&mut ent);
-            
+
             // Extract appearance data BEFORE try_into() consumes ent
             let appearance_member_data =
                 convert_appearance_store_to_attribute_value(&ent.appearance_store.read().unwrap());
-            
+
             let geometry: Geometry = ent
                 .try_into()
                 .map_err(|e| crate::errors::SourceError::CityGmlFileReader(format!("{e:?}")))?;
@@ -222,21 +222,27 @@ fn convert_appearance_store_to_attribute_value(
                 // This ensures target.uri references the surface (Polygon) ID,
                 // while the ring attribute references the ring (LinearRing) ID
                 let mut all_targets = Vec::new();
-                for (theme_name, theme) in &appearance_store.themes {
+                for (_theme_name, theme) in &appearance_store.themes {
                     // Iterate through surface-to-rings mapping
                     for (surface_id, ring_ids) in &theme.surface_id_to_rings {
                         for ring_id in ring_ids {
                             // Look up the texture index and coordinates for this ring
-                            if let Some((tex_idx, line_string)) = theme.ring_id_to_texture.get(ring_id) {
+                            if let Some((tex_idx, line_string)) =
+                                theme.ring_id_to_texture.get(ring_id)
+                            {
                                 if *tex_idx == idx as u32 {
                                     let mut target_map = HashMap::new();
-                                    
+
                                     // Use SURFACE ID for target URI (correct!)
                                     let uri = format!("#{}", surface_id.0);
-                                    target_map.insert("uri".to_string(), AttributeValue::String(uri));
-                                    
+                                    target_map
+                                        .insert("uri".to_string(), AttributeValue::String(uri));
+
                                     // Use RING ID for the ring attribute (correct!)
-                                    target_map.insert("ring".to_string(), AttributeValue::String(format!("#{}", ring_id.0)));
+                                    target_map.insert(
+                                        "ring".to_string(),
+                                        AttributeValue::String(format!("#{}", ring_id.0)),
+                                    );
 
                                     // Add texture coordinates from the line string
                                     let mut coord_strings = Vec::new();
