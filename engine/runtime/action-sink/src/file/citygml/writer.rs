@@ -169,7 +169,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     /// Check if an element name is a geometry element (not an attribute)
     fn is_geometry_element(name: &str) -> bool {
-        let local_name = name.split(':').last().unwrap_or(name).to_lowercase();
+        let local_name = name.split(':').next_back().unwrap_or(name).to_lowercase();
         matches!(local_name.as_str(),
             "groundsurface" | "roofsurface" | "wallsurface" | "interiorwallsurface" |
             "ceilingsurface" | "floorsurface" | "outersurface" | "closuresurface" |
@@ -180,7 +180,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
     /// Check if an element should be nested inside another element (not written as top-level)
     /// These are sub-types that the reader extracts but should not be written as separate elements
     fn is_nested_attribute(name: &str) -> bool {
-        let local_name = name.split(':').last().unwrap_or(name);
+        let local_name = name.split(':').next_back().unwrap_or(name);
         matches!(local_name,
             "TsunamiRiskAttribute" | "InlandFloodingRiskAttribute" | 
             "HighTideRiskAttribute" | "ReservoirFloodingRiskAttribute" |
