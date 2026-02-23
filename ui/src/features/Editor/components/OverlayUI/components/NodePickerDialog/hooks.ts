@@ -17,6 +17,7 @@ export default ({
   nodes,
   selectedNodeIds,
   edges,
+  openNodePickerViaShortcut,
   onNodesAdd,
   onNodesChange,
   onEdgesAdd,
@@ -31,6 +32,7 @@ export default ({
   selectedNodeIds: string[];
   edges?: Edge[];
   isMainWorkflow: boolean;
+  openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesAdd?: (edges: Edge[]) => void;
@@ -114,7 +116,7 @@ export default ({
         : undefined;
 
       let position: XYPosition;
-      if (lastSelectedNode) {
+      if (lastSelectedNode && openNodePickerViaShortcut) {
         position = outgoingEdges?.length
           ? {
               x: lastSelectedNode.position.x + 125,
@@ -139,7 +141,7 @@ export default ({
       const newNode = await buildNewCanvasNode({ position, type: name });
       if (!newNode) return;
 
-      if (lastSelectedNode) {
+      if (lastSelectedNode && openNodePickerViaShortcut) {
         if (lastSelectedNode.type !== "writer" && newNode.type !== "reader") {
           onEdgesAdd?.([
             {

@@ -31,6 +31,7 @@ type Props = {
   selectedNodeIds: string[];
   edges?: Edge[];
   isMainWorkflow: boolean;
+  openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesAdd?: (edges: Edge[]) => void;
@@ -43,6 +44,7 @@ const NodePickerDialog: React.FC<Props> = ({
   nodes,
   selectedNodeIds,
   edges,
+  openNodePickerViaShortcut,
   onNodesAdd,
   onNodesChange,
   onEdgesAdd,
@@ -69,6 +71,7 @@ const NodePickerDialog: React.FC<Props> = ({
     nodes,
     selectedNodeIds,
     edges,
+    openNodePickerViaShortcut,
     onNodesAdd,
     onNodesChange,
     onEdgesAdd,

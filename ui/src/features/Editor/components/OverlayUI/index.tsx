@@ -47,6 +47,7 @@ type OverlayUIProps = {
   }[];
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
+  openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
@@ -109,6 +110,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   openWorkflows,
   currentWorkflowId,
   customDebugRunWorkflowVariables,
+  openNodePickerViaShortcut,
   onNodesAdd,
   onNodesChange,
   onNodePickerClose,
@@ -250,6 +252,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           nodes={nodes}
           selectedNodeIds={selectedNodeIds}
           edges={edges}
+          openNodePickerViaShortcut={openNodePickerViaShortcut}
           onNodesAdd={onNodesAdd}
           onNodesChange={onNodesChange}
           onEdgesAdd={onEdgesAdd}
