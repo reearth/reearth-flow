@@ -237,7 +237,7 @@ struct CompiledParam {
 
 fn read_features_from_file(path: &Path) -> Result<Vec<Feature>, BoxedError> {
     let file = File::open(path)?;
-    let reader = BufReader::new(file);
+    let reader = BufReader::new(zstd::Decoder::new(file)?);
     let mut features = Vec::new();
     for line in reader.lines() {
         let line = line?;
@@ -271,14 +271,14 @@ impl FeatureMerger {
         self.temp_dir
             .as_ref()
             .unwrap()
-            .join(format!("requestor/{idx:06}.jsonl"))
+            .join(format!("requestor/{idx:06}.jsonl.zst"))
     }
 
     fn supplier_file_path(&self, idx: usize) -> PathBuf {
         self.temp_dir
             .as_ref()
             .unwrap()
-            .join(format!("supplier/{idx:06}.jsonl"))
+            .join(format!("supplier/{idx:06}.jsonl.zst"))
     }
 
     fn write_feature_to_requestor(
@@ -324,28 +324,29 @@ impl FeatureMerger {
 
         self.ensure_temp_dir()?;
 
-        // Flush requestor buffer
+        // Flush requestor buffer — each flush appends a new zstd frame to the file.
+        // zstd::Decoder handles concatenated frames by default in zstd 0.13+.
         for (idx, entries) in std::mem::take(&mut self.requestor_buffer) {
             let path = self.requestor_file_path(idx);
             let file = File::options().create(true).append(true).open(path)?;
-            let mut writer = BufWriter::new(file);
+            let mut encoder = zstd::Encoder::new(file, 1)?;
             for feature_json in entries {
-                writer.write_all(feature_json.as_bytes())?;
-                writer.write_all(b"\n")?;
+                encoder.write_all(feature_json.as_bytes())?;
+                encoder.write_all(b"\n")?;
             }
-            writer.flush()?;
+            encoder.finish()?;
         }
 
         // Flush supplier buffer
         for (idx, entries) in std::mem::take(&mut self.supplier_buffer) {
             let path = self.supplier_file_path(idx);
             let file = File::options().create(true).append(true).open(path)?;
-            let mut writer = BufWriter::new(file);
+            let mut encoder = zstd::Encoder::new(file, 1)?;
             for feature_json in entries {
-                writer.write_all(feature_json.as_bytes())?;
-                writer.write_all(b"\n")?;
+                encoder.write_all(feature_json.as_bytes())?;
+                encoder.write_all(b"\n")?;
             }
-            writer.flush()?;
+            encoder.finish()?;
         }
 
         self.buffer_bytes = 0;
@@ -537,10 +538,12 @@ impl Processor for FeatureMerger {
             None => return Ok(()),
         };
 
-        let merged_path = temp_dir.join("output_merged.jsonl");
-        let unmerged_path = temp_dir.join("output_unmerged.jsonl");
-        let mut merged_writer = BufWriter::new(File::create(&merged_path)?);
-        let mut unmerged_writer = BufWriter::new(File::create(&unmerged_path)?);
+        let merged_path = temp_dir.join("output_merged.jsonl.zst");
+        let unmerged_path = temp_dir.join("output_unmerged.jsonl.zst");
+        let mut merged_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&merged_path)?, 1)?);
+        let mut unmerged_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&unmerged_path)?, 1)?);
         let mut merged_count: usize = 0;
         let mut unmerged_count: usize = 0;
 
@@ -572,9 +575,15 @@ impl Processor for FeatureMerger {
         }
 
         merged_writer.flush()?;
+        merged_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
         unmerged_writer.flush()?;
-        drop(merged_writer);
-        drop(unmerged_writer);
+        unmerged_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
 
         let context = ctx.as_context();
 

@@ -1519,7 +1519,7 @@ graphs:
         toPort: default
 
       # Section 4: Ray Setup
-      # Branch: Building geometries to ray intersector (from SpatialFilter output)
+      # Branch: Building geometries to ray intersector
       - id: e0000001-0000-0000-0000-00000000000f
         from: 00000004-0000-0000-0000-000000000003
         to: 00000004-0000-0000-0000-000000000004
@@ -1630,9 +1630,9 @@ graphs:
 
       # Building geometries to reflection ray intersector
       - id: e0000001-0000-0000-0000-000000000014
-        from: 00000004-0000-0000-0000-000000000003
+        from: 00000001-0000-0000-0000-000000000005
         to: 00000001-0000-0000-0000-000000000014
-        fromPort: passed
+        fromPort: default
         toPort: geom
 
       # Reflection rays to ray intersector
