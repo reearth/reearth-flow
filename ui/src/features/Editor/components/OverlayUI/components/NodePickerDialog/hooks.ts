@@ -187,6 +187,18 @@ export default ({
       // TODO - add drop in batch support
       // onNodesChange(handleNodeDropInBatch(newNode, newNodes));
       onClose();
+
+      const focusNewNode = () => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-id="${newNode.id}"]`,
+        );
+        if (el) {
+          el.focus();
+        } else {
+          requestAnimationFrame(focusNewNode);
+        }
+      };
+      requestAnimationFrame(focusNewNode);
     },
   );
 
