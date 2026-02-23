@@ -744,6 +744,84 @@ Transform Feature Attributes Using Expressions and Mappings
 ### Category
 * Attribute
 
+## AttributeRangeMapper
+### Type
+* processor
+### Description
+Map attribute values to ranges and assign corresponding output values
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeRangeMapper Parameters",
+  "type": "object",
+  "required": [
+    "inputAttribute",
+    "outputAttribute",
+    "rangeTable"
+  ],
+  "properties": {
+    "defaultValue": {
+      "title": "Default Value",
+      "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+    },
+    "inputAttribute": {
+      "title": "Input Attribute",
+      "description": "The attribute to evaluate for range mapping",
+      "type": "string"
+    },
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "The attribute to store the mapped value",
+      "type": "string"
+    },
+    "rangeTable": {
+      "title": "Range Lookup Table",
+      "description": "List of ranges and their corresponding output values",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/RangeEntry"
+      }
+    }
+  },
+  "definitions": {
+    "RangeEntry": {
+      "title": "Range Entry",
+      "type": "object",
+      "required": [
+        "from",
+        "outputValue",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "title": "From (Minimum)",
+          "description": "The minimum value of the range (inclusive)",
+          "type": "number",
+          "format": "double"
+        },
+        "outputValue": {
+          "title": "Output Value",
+          "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+        },
+        "to": {
+          "title": "To (Maximum)",
+          "description": "The maximum value of the range (exclusive unless it's the last range)",
+          "type": "number",
+          "format": "double"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## BoundaryExtractor
 ### Type
 * processor

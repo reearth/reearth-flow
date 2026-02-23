@@ -37,6 +37,10 @@
       "description": "Maps attributes"
     },
     {
+      "name": "AttributeRangeMapper",
+      "description": "Map attribute values to ranges and assign corresponding output values"
+    },
+    {
       "name": "BoundsExtractor",
       "description": "Bounds Extractor"
     },

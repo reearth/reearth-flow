@@ -39,6 +39,10 @@ pub(super) enum AttributeProcessorError {
     ConversionTableFactory(String),
     #[error("Attribute ConversionTable error: {0}")]
     ConversionTable(String),
+    #[error("Attribute RangeMapper Factory error: {0}")]
+    RangeMapperFactory(String),
+    #[error("Attribute RangeMapper error: {0}")]
+    RangeMapper(String),
 }
 
 #[allow(dead_code)]

@@ -37,6 +37,10 @@
       "description": "Transform Feature Attributes Using Expressions and Mappings"
     },
     {
+      "name": "AttributeRangeMapper",
+      "description": "Mapper les valeurs d'attributs aux plages et attribuer les valeurs de sortie correspondantes"
+    },
+    {
       "name": "BoundsExtractor",
       "description": "Extract Bounding Box Coordinates from Feature Geometry"
     },
