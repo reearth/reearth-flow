@@ -4,8 +4,8 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 
 use super::converter::{
-    format_pos_list, AppearanceData, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement,
-    GmlSurface, TargetData, TextureData,
+    format_pos_list, AppearanceData, BoundingEnvelope, CityGmlAttribute, CityObjectType,
+    GeometryEntry, GmlElement, GmlSurface, TargetData, TextureData,
 };
 use crate::errors::SinkError;
 
@@ -31,6 +31,8 @@ const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:app", "http://www.opengis.net/citygml/appearance/2.0"),
     ("xmlns:xlink", "http://www.w3.org/1999/xlink"),
     ("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
+    // PLATEAU Urban Object extension (uro)
+    ("xmlns:uro", "https://www.geospatial.jp/iur/uro/3.1"),
 ];
 
 pub struct CityGmlXmlWriter<W: Write> {
@@ -108,6 +110,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         city_type: CityObjectType,
         geometries: &[GeometryEntry],
         gml_id: Option<&str>,
+        attributes: &[CityGmlAttribute],
     ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
@@ -123,6 +126,11 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(city_obj_elem))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        // Write attributes before geometry
+        if !attributes.is_empty() {
+            self.write_citygml_attributes(attributes)?;
+        }
+
         for entry in geometries {
             self.write_lod_geometry(city_type, entry)?;
         }
@@ -134,6 +142,289 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        Ok(())
+    }
+
+    /// Write CityGML attributes as XML elements
+    fn write_citygml_attributes(
+        &mut self,
+        attributes: &[CityGmlAttribute],
+    ) -> Result<(), SinkError> {
+        for attr in attributes {
+            // Skip geometry-related attributes that are not actual attributes
+            // These include surface elements like groundSurface, roofSurface, wallSurface
+            // which are part of the geometry structure, not attributes
+            if Self::is_geometry_element(&attr.name) {
+                continue;
+            }
+            // Skip nested attributes that should be inside parent elements
+            // The reader flattens these, but they should not be written as top-level elements
+            if Self::is_nested_attribute(&attr.name) {
+                continue;
+            }
+            self.write_attribute_value(&attr.name, &attr.value, attr.code_space.as_deref(), attr.uom.as_deref())?;
+        }
+        Ok(())
+    }
+
+    /// Check if an element name is a geometry element (not an attribute)
+    fn is_geometry_element(name: &str) -> bool {
+        let local_name = name.split(':').last().unwrap_or(name).to_lowercase();
+        matches!(local_name.as_str(),
+            "groundsurface" | "roofsurface" | "wallsurface" | "interiorwallsurface" |
+            "ceilingsurface" | "floorsurface" | "outersurface" | "closuresurface" |
+            "lod0roofedge" | "lod0groundsurface"
+        )
+    }
+
+    /// Check if an element should be nested inside another element (not written as top-level)
+    /// These are sub-types that the reader extracts but should not be written as separate elements
+    fn is_nested_attribute(name: &str) -> bool {
+        let local_name = name.split(':').last().unwrap_or(name);
+        matches!(local_name,
+            "TsunamiRiskAttribute" | "InlandFloodingRiskAttribute" | 
+            "HighTideRiskAttribute" | "ReservoirFloodingRiskAttribute" |
+            "RiverFloodingRiskAttribute" | "LandSlideRiskAttribute"
+        )
+    }
+
+    /// Mapping from type names to property names
+    /// The reader stores type names but the schema requires specific property names
+    fn type_name_to_property_name(name: &str) -> String {
+        match name {
+            // uro namespace - Building related attributes
+            "uro:DataQualityAttribute" => "uro:bldgDataQualityAttribute".to_string(),
+            "uro:InlandFloodingRiskAttribute" => "uro:bldgDisasterRiskAttribute".to_string(),
+            // These already match
+            "uro:BuildingDetailAttribute" => "uro:buildingDetailAttribute".to_string(),
+            "uro:BuildingIDAttribute" => "uro:buildingIDAttribute".to_string(),
+            // For other names, normalize (lowercase first letter)
+            _ => Self::normalize_element_name(name),
+        }
+    }
+
+    /// Convert element name to CityGML schema compliant format
+    /// The reader normalizes names to start with lowercase (camelCase)
+    /// e.g., "uro:BuildingDetailAttribute" -> "uro:buildingDetailAttribute"
+    fn normalize_element_name(name: &str) -> String {
+        if let Some(colon_pos) = name.find(':') {
+            let prefix = &name[..colon_pos + 1];
+            let local_name = &name[colon_pos + 1..];
+            
+            // Convert first character of local name to lowercase
+            if let Some(first_char) = local_name.chars().next() {
+                let normalized = first_char.to_lowercase().to_string() + &local_name[first_char.len_utf8()..];
+                return format!("{}{}", prefix, normalized);
+            }
+        }
+        // For names without prefix, just lowercase the first char
+        if let Some(first_char) = name.chars().next() {
+            return first_char.to_lowercase().to_string() + &name[first_char.len_utf8()..];
+        }
+        name.to_string()
+    }
+
+    /// Write a single attribute value recursively
+    /// Element names are normalized to comply with CityGML schema (camelCase)
+    fn write_attribute_value(
+        &mut self,
+        name: &str,
+        value: &reearth_flow_types::AttributeValue,
+        code_space: Option<&str>,
+        uom: Option<&str>,
+    ) -> Result<(), SinkError> {
+        use reearth_flow_types::AttributeValue;
+        
+        // Normalize element name for CityGML schema compliance
+        let normalized_name = Self::normalize_element_name(name);
+        
+        match value {
+            AttributeValue::Null => {
+                // Write empty element for null values
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                if let Some(u) = uom {
+                    elem.push_attribute(("uom", u));
+                }
+                self.writer.write_event(Event::Empty(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Bool(v) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                self.writer.write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                let text = if *v { "true" } else { "false" };
+                self.writer.write_event(Event::Text(BytesText::new(text)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer.write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Number(n) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                if let Some(u) = uom {
+                    elem.push_attribute(("uom", u));
+                }
+                self.writer.write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer.write_event(Event::Text(BytesText::new(&n.to_string())))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer.write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::String(s) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                if let Some(u) = uom {
+                    elem.push_attribute(("uom", u));
+                }
+                self.writer.write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer.write_event(Event::Text(BytesText::new(s)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer.write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::DateTime(dt) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                self.writer.write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                let formatted = dt.to_rfc3339();
+                self.writer.write_event(Event::Text(BytesText::new(&formatted)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer.write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Array(arr) => {
+                // For arrays of complex types (Maps), we need two levels of wrapping:
+                // 1. Property element (e.g., uro:bldgDataQualityAttribute)
+                // 2. Type wrapper element (e.g., uro:DataQualityAttribute)
+                if arr.len() == 1 && matches!(&arr[0], AttributeValue::Map(_)) {
+                    // Get property name from type name mapping
+                    // The input 'name' is the type name from the reader (e.g., uro:BuildingDetailAttribute)
+                    let property_name = Self::type_name_to_property_name(name);
+                    
+                    // Write property element
+                    self.writer.write_event(Event::Start(BytesStart::new(&property_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                    
+                    // Type name is the original name (capitalized) from the reader
+                    // e.g., uro:BuildingDetailAttribute, uro:DataQualityAttribute
+                    let type_name = name.to_string();
+                    
+                    // Write type wrapper element
+                    self.writer.write_event(Event::Start(BytesStart::new(&type_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                    
+                    // Write the children directly from the Map
+                    // Need to combine _code values with their base elements
+                    if let AttributeValue::Map(map) = &arr[0] {
+                        // First pass: collect codeSpace and uom values
+                        let mut child_code_spaces: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                        let mut child_uoms: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                        for (child_name, child_value) in map.iter() {
+                            let child_lower = child_name.to_lowercase();
+                            if child_lower.ends_with("_codespace") {
+                                if let AttributeValue::String(cs) = child_value {
+                                    child_code_spaces.insert(child_name[..child_name.len() - 10].to_string(), cs.clone());
+                                }
+                            } else if child_lower.ends_with("_uom") {
+                                if let AttributeValue::String(u) = child_value {
+                                    child_uoms.insert(child_name[..child_name.len() - 4].to_string(), u.clone());
+                                }
+                            }
+                        }
+                        
+                        // Second pass: write base attributes (skipping _code, _codespace, _uom)
+                        let mut processed_children = std::collections::HashSet::new();
+                        for (child_name, child_value) in map.iter() {
+                            let child_lower = child_name.to_lowercase();
+                            // Skip metadata keys
+                            if child_lower.ends_with("_codespace") || child_lower.ends_with("_uom") {
+                                continue;
+                            }
+                            
+                            // Get base name (without _code suffix)
+                            let base_child_name = if child_name.ends_with("_code") {
+                                child_name[..child_name.len() - 5].to_string()
+                            } else {
+                                child_name.clone()
+                            };
+                            
+                            // Skip if already processed (when both base and _code exist)
+                            if processed_children.contains(&base_child_name) {
+                                continue;
+                            }
+                            processed_children.insert(base_child_name.clone());
+                            
+                            // Determine the value to use (code value if available)
+                            let final_value = if child_name.ends_with("_code") {
+                                child_value.clone()
+                            } else {
+                                let code_key = format!("{}_code", child_name);
+                                if let Some(code_value) = map.get(&code_key) {
+                                    code_value.clone()
+                                } else {
+                                    child_value.clone()
+                                }
+                            };
+                            
+                            // Get codeSpace and uom for this child
+                            let child_cs = child_code_spaces.get(&base_child_name).cloned();
+                            let child_u = child_uoms.get(&base_child_name).cloned();
+                            
+                            self.write_attribute_value(&base_child_name, &final_value, child_cs.as_deref(), child_u.as_deref())?;
+                        }
+                    }
+                    
+                    // Close type wrapper element
+                    self.writer.write_event(Event::End(BytesEnd::new(&type_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                    
+                    // Close property element
+                    self.writer.write_event(Event::End(BytesEnd::new(&property_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                } else {
+                    // Default: write each element with the same tag name
+                    for item in arr {
+                        self.write_attribute_value(name, item, code_space, uom)?;
+                    }
+                }
+            }
+            AttributeValue::Map(map) => {
+                // For maps (complex types), create a wrapper element and write children
+                self.writer.write_event(Event::Start(BytesStart::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                
+                // Write each child element
+                for (child_name, child_value) in map {
+                    // Skip metadata keys (codeSpace, uom)
+                    let lower_name = child_name.to_lowercase();
+                    if lower_name.ends_with("_codespace") || lower_name.ends_with("_uom") {
+                        continue;
+                    }
+                    self.write_attribute_value(child_name, child_value, None, None)?;
+                }
+                
+                self.writer.write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Bytes(_) => {
+                // Skip binary data for now
+            }
+        }
         Ok(())
     }
 

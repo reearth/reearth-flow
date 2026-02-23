@@ -3,7 +3,7 @@ use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
 #[derive(Debug, Clone)]
 pub struct GeometryEntry {
@@ -30,8 +30,6 @@ pub struct AppearanceData {
     pub textures: Vec<TextureData>, // Each texture with its associated targets
     pub themes: Vec<String>,
 }
-
-use reearth_flow_types::Attribute;
 
 /// Extract appearance data from feature attributes
 pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
@@ -392,6 +390,109 @@ impl BoundingEnvelope {
     pub fn upper_corner_str(&self) -> String {
         format!("{} {} {}", self.upper.y, self.upper.x, self.upper.z)
     }
+}
+
+/// Represents a CityGML attribute entry to be written to XML
+#[derive(Debug, Clone)]
+pub struct CityGmlAttribute {
+    /// Full name including namespace prefix (e.g., "bldg:class", "uro:buildingID")
+    pub name: String,
+    /// The attribute value
+    pub value: AttributeValue,
+    /// Optional codeSpace attribute for Code types
+    pub code_space: Option<String>,
+    /// Optional uom attribute for Measure types
+    pub uom: Option<String>,
+}
+
+/// Extract cityGmlAttributes from feature
+/// Groups related attributes (base, _code, _codeSpace, _uom) into single CityGmlAttribute entries
+pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
+    let attr_key = Attribute::new("cityGmlAttributes");
+    let Some(AttributeValue::Map(attrs_map)) = feature.attributes.get(&attr_key) else {
+        return Vec::new();
+    };
+
+    // First pass: collect metadata (codeSpace and uom) for base attributes
+    let mut code_spaces: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut uoms: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    
+    for (key, value) in attrs_map.iter() {
+        let lower_key = key.to_lowercase();
+        
+        // Extract codeSpace values
+        if lower_key.ends_with("_codespace") {
+            let base_key = &key[..key.len() - 10];
+            if let AttributeValue::String(cs) = value {
+                code_spaces.insert(base_key.to_string(), cs.clone());
+            }
+        }
+        // Extract uom values  
+        else if lower_key.ends_with("_uom") {
+            let base_key = &key[..key.len() - 4];
+            if let AttributeValue::String(u) = value {
+                uoms.insert(base_key.to_string(), u.clone());
+            }
+        }
+    }
+    
+    // Second pass: build CityGmlAttribute entries for base attributes
+    let mut attributes = Vec::new();
+    let mut processed_bases = std::collections::HashSet::new();
+    
+    for (key, value) in attrs_map.iter() {
+        let lower_key = key.to_lowercase();
+        
+        // Skip metadata keys - they will be attached to base attributes
+        if lower_key.ends_with("_codespace") || lower_key.ends_with("_uom") {
+            continue;
+        }
+        
+        // Get the base name (without _code suffix if present)
+        let (base_name, is_code_value) = if key.ends_with("_code") {
+            (key[..key.len() - 5].to_string(), true)
+        } else {
+            (key.clone(), false)
+        };
+        
+        // Skip if we've already processed this base (can happen if both base and _code exist)
+        if processed_bases.contains(&base_name) {
+            continue;
+        }
+        processed_bases.insert(base_name.clone());
+        
+        // Determine the value to use for this attribute
+        let final_value = if is_code_value {
+            // This is a _code key, use it directly
+            value.clone()
+        } else {
+            // This is a base key - check if there's a _code variant
+            let code_key = format!("{}_code", key);
+            if let Some(code_value) = attrs_map.get(&code_key) {
+                // Use the code value instead of the human-readable value
+                code_value.clone()
+            } else {
+                // No code variant, use the base value
+                value.clone()
+            }
+        };
+        
+        // Get codeSpace and uom for this base attribute
+        let code_space = code_spaces.get(&base_name).cloned();
+        let uom = uoms.get(&base_name).cloned();
+        
+        attributes.push(CityGmlAttribute {
+            name: base_name,
+            value: final_value,
+            code_space,
+            uom,
+        });
+    }
+    
+    // Sort attributes to ensure consistent output
+    attributes.sort_by(|a, b| a.name.cmp(&b.name));
+    
+    attributes
 }
 
 #[cfg(test)]

@@ -21,8 +21,8 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 use converter::{
-    compute_envelope, convert_citygml_geometry, extract_appearance_data, BoundingEnvelope,
-    CityObjectType,
+    compute_envelope, convert_citygml_geometry, extract_appearance_data,
+    extract_citygml_attributes, BoundingEnvelope, CityObjectType,
 };
 use writer::CityGmlXmlWriter;
 
@@ -242,11 +242,16 @@ impl Sink for CityGmlWriterSink {
                 tracing::debug!("CityGmlWriter: feature {} - geometry converted, {} entries", idx, geometries.len());
 
                 let gml_id_str = feature.id.to_string();
+                tracing::debug!("CityGmlWriter: feature {} - extracting attributes...", idx);
+                let attributes = extract_citygml_attributes(feature);
+                tracing::debug!("CityGmlWriter: feature {} - extracted {} attributes", idx, attributes.len());
+                
                 tracing::debug!("CityGmlWriter: feature {} - writing city object (gml_id={})...", idx, gml_id_str);
                 xml_writer.write_city_object(
                     city_type,
                     &geometries,
                     Some(gml_id_str.as_str()),
+                    &attributes,
                 )?;
                 tracing::debug!("CityGmlWriter: feature {} - city object written", idx);
                 
