@@ -202,15 +202,46 @@ impl Sink for CityGmlWriterSink {
             xml_writer.write_header(self.envelope.as_ref())?;
             tracing::info!("CityGmlWriter: header written");
 
-            // Collect global appearance data from all features (they should share the same global appearance)
-            let global_appearance = self.buffer.iter().find_map(|f| {
-                let app_data = extract_appearance_data(f);
-                app_data.filter(|a| !a.textures.is_empty())
-            });
+            // Collect global appearance data from all features
+            // Each feature may have appearance data, so we need to merge them all
+            let mut all_textures = Vec::new();
+            let mut all_themes = std::collections::HashSet::new();
+            let mut found_appearance = false;
+            
+            for feature in &self.buffer {
+                if let Some(app_data) = extract_appearance_data(feature) {
+                    if !app_data.textures.is_empty() {
+                        found_appearance = true;
+                        all_textures.extend(app_data.textures);
+                        for theme in app_data.themes {
+                            all_themes.insert(theme);
+                        }
+                    }
+                }
+            }
+            
+            // Deduplicate textures by URI to avoid duplicates
+            let mut seen_uris = std::collections::HashSet::new();
+            let unique_textures: Vec<_> = all_textures.into_iter()
+                .filter(|t| seen_uris.insert(t.uri.clone()))
+                .collect();
+            
+            let global_appearance = if found_appearance {
+                Some(converter::AppearanceData {
+                    textures: unique_textures,
+                    themes: all_themes.into_iter().collect(),
+                })
+            } else {
+                None
+            };
 
             // Write global appearances at CityModel level (before city objects)
             if let Some(ref appearance_data) = global_appearance {
-                tracing::info!("CityGmlWriter: writing global appearances...");
+                tracing::info!(
+                    "CityGmlWriter: writing global appearances ({} textures, {} themes)...",
+                    appearance_data.textures.len(),
+                    appearance_data.themes.len()
+                );
                 xml_writer.write_global_appearances(appearance_data)?;
                 tracing::info!("CityGmlWriter: global appearances written");
             } else {

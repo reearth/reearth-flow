@@ -137,7 +137,7 @@ async fn parse_tree_reader<R: BufRead>(
             _ => AttributeValue::Map(attributes),
         };
         let city_gml_attributes = city_gml_attributes.flatten();
-        let gml_id = entity.root.id();
+        let gml_id = entity.root.id().map(|s| s.to_string());
         let name = entity.root.typename();
         let attributes = HashMap::<Attribute, AttributeValue>::from([
             (Attribute::new("cityGmlAttributes"), city_gml_attributes),
@@ -148,7 +148,7 @@ async fn parse_tree_reader<R: BufRead>(
             ),
             (
                 Attribute::new("gmlId"),
-                gml_id
+                gml_id.clone()
                     .map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
             ),
@@ -159,7 +159,7 @@ async fn parse_tree_reader<R: BufRead>(
         ]);
         let lod = LodMask::find_lods_by_citygml_value(&entity.root);
         let metadata = Metadata {
-            feature_id: gml_id.map(|id| id.to_string()),
+            feature_id: gml_id.clone(),
             feature_type: name.map(|name| name.to_string()),
             lod: Some(lod),
         };
@@ -262,6 +262,46 @@ fn convert_appearance_store_to_attribute_value(
 
                                     all_targets.push(AttributeValue::Map(target_map));
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // If no targets were created from surface_id_to_rings, fall back to using
+                // ring_id_to_texture directly. This happens when merge_global transfers
+                // ring_id_to_texture but not surface_id_to_rings.
+                if all_targets.is_empty() {
+                    for (_theme_name, theme) in &appearance_store.themes {
+                        for (ring_id, (tex_idx, line_string)) in &theme.ring_id_to_texture {
+                            if *tex_idx == idx as u32 {
+                                let mut target_map = HashMap::new();
+
+                                // When surface_id_to_rings is not available, use ring ID as both uri and ring
+                                // The ring ID references the LinearRing gml:id
+                                let uri = format!("#{}", ring_id.0);
+                                target_map.insert("uri".to_string(), AttributeValue::String(uri));
+                                target_map.insert(
+                                    "ring".to_string(),
+                                    AttributeValue::String(format!("#{}", ring_id.0)),
+                                );
+
+                                // Add texture coordinates from the line string
+                                let mut coord_strings = Vec::new();
+                                for point in line_string.iter() {
+                                    coord_strings.push(format!("{} {}", point[0], point[1]));
+                                }
+                                if !coord_strings.is_empty() {
+                                    let tex_coords: Vec<AttributeValue> = coord_strings
+                                        .iter()
+                                        .map(|coord| AttributeValue::String(coord.clone()))
+                                        .collect();
+                                    target_map.insert(
+                                        "textureCoordinates".to_string(),
+                                        AttributeValue::Array(tex_coords),
+                                    );
+                                }
+
+                                all_targets.push(AttributeValue::Map(target_map));
                             }
                         }
                     }
