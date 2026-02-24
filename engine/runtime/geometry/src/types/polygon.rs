@@ -251,15 +251,6 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     }
 }
 
-// TODO: The old `into_merged_contour` approach (merging exterior/interior rings into a
-// single closed contour before triangulation) was removed in favour of earcut's native
-// hole support in `TriangularMesh::try_from_polygons`. The CSG coplanarity filter that
-// replaced its role in solid validation is a heuristic: it drops flat manifold components
-// assuming they are shared-face artifacts rather than true volumetric intersections.
-// A proper fix would use volume-based filtering (e.g. compare bounding-box volumes or
-// signed volumes of the components) so that degenerate flat components are reliably
-// distinguished from valid thin-solid intersections.
-
 impl Polygon3D<f64> {
     pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
         self.exterior.transform_inplace(jgd2wgs);
