@@ -12667,6 +12667,270 @@
 			"json_path": "uro:DataQualityAttribute uro:lodType"
 		}
 	],
+	"unf/uro:WaterPipe": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:SewerPipe": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:ThermalPipe": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:OilGasChemicalsPipe": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:Pipe": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:Duct": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:TelecommunicationsCable": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:ElectricityCable": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:Cable": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:Appurtenance": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:Manhole": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
+	"unf/uro:Handhole": [
+		{
+			"attribute": "core:creationDate",
+			"data_type": "date",
+			"json_path": "core:creationDate"
+		},
+		{
+			"attribute": "uro:year",
+			"data_type": "int16",
+			"json_path": "uro:year"
+		},
+		{
+			"attribute": "uro:geometrySrcDescLod1",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+		},
+		{
+			"attribute": "uro:lodType",
+			"data_type": "buffer",
+			"json_path": "uro:DataQualityAttribute uro:lodType"
+		}
+	],
 	"veg/veg:PlantCover": [
 		{
 			"attribute": "core:creationDate",

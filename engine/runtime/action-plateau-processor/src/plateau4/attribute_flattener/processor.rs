@@ -140,7 +140,7 @@ type AttributeMap = HashMap<String, AttributeValue>;
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeFlattener {
     filter_existing_flatten_attributes: bool,
-    existing_flatten_attributes: HashSet<String>,
+    existing_flatten_attributes: HashMap<String, HashSet<String>>, // feature_type_key -> attribute names
     encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
@@ -170,6 +170,7 @@ fn strip_parent_info(map: &mut HashMap<String, AttributeValue>) {
 // GYear fields that should be converted from string to number
 static GYEAR_FIELDS: &[&str] = &[
     "uro:surveyYear",
+    "uro:year",
     "bldg:yearOfConstruction",
     "bldg:yearOfDemolition",
     "uro:yearOpened",
@@ -595,8 +596,6 @@ impl AttributeFlattener {
                     continue;
                 }
 
-                self.existing_flatten_attributes
-                    .insert(attribute.attribute.clone());
                 feature.insert(attribute.attribute.clone(), new_attribute);
             }
         }
@@ -710,11 +709,12 @@ impl AttributeFlattener {
         if let Some(flatten_attributes) =
             super::constants::FLATTEN_ATTRIBUTES.get(schema_lookup_key)
         {
+            let used_attributes = self.existing_flatten_attributes.get(feature_type_key);
             for attribute in flatten_attributes {
                 if self.filter_existing_flatten_attributes
-                    && !self
-                        .existing_flatten_attributes
-                        .contains(&attribute.attribute)
+                    && !used_attributes
+                        .map(|attrs| attrs.contains(&attribute.attribute))
+                        .unwrap_or(false)
                 {
                     continue;
                 }
@@ -833,6 +833,16 @@ impl AttributeFlattener {
                 attributes.swap_remove(key);
             }
         }
+
+        // Collect all attribute keys that ended up on the feature for schema generation
+        // This is done in one place after all processing (flattening, inheritance, etc.) is complete
+        let attribute_keys: HashSet<String> =
+            feature.attributes.keys().map(|k| k.to_string()).collect();
+        self.existing_flatten_attributes
+            .entry(lookup_key)
+            .or_default()
+            .extend(attribute_keys);
+
         Ok(feature)
     }
 
@@ -1476,5 +1486,58 @@ mod tests {
                 survey_year
             ),
         }
+    }
+
+    /// Test attribute tracking is per feature type
+    #[test]
+    fn test_attribute_tracking_per_feature_type() {
+        let building_attrs = citygml_attrs_from_json(r#"{"bldg:measuredHeight": 10.5}"#);
+        let building = create_test_feature("b1", "bldg:Building", "bldg", building_attrs, "m.gml");
+        let road_attrs = citygml_attrs_from_json(r#"{"tran:function": "道路"}"#);
+        let road = create_test_feature("t1", "tran:Road", "tran", road_attrs, "m.gml");
+
+        let mut flattener = AttributeFlattener {
+            filter_existing_flatten_attributes: true,
+            ..Default::default()
+        };
+        let _ = flattener.flatten_feature(building).unwrap();
+        let _ = flattener.flatten_feature(road).unwrap();
+
+        let bldg_schema = flattener.generate_schema_feature("bldg/bldg:Building");
+        let road_schema = flattener.generate_schema_feature("tran/tran:Road");
+
+        assert!(bldg_schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
+        assert!(!road_schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
+        assert!(road_schema
+            .attributes
+            .contains_key(&Attribute::new("tran:function".to_string())));
+        assert!(!bldg_schema
+            .attributes
+            .contains_key(&Attribute::new("tran:function".to_string())));
+    }
+
+    /// Test all attributes on processed feature are tracked
+    #[test]
+    fn test_all_final_attributes_tracked() {
+        let attrs = citygml_attrs_from_json(r#"{"bldg:class": "普通建物", "bldg:usage": "住宅"}"#);
+        let feature = create_test_feature("b1", "bldg:Building", "bldg", attrs, "m.gml");
+
+        let mut flattener = AttributeFlattener {
+            filter_existing_flatten_attributes: true,
+            ..Default::default()
+        };
+        let _ = flattener.flatten_feature(feature).unwrap();
+        let schema = flattener.generate_schema_feature("bldg/bldg:Building");
+
+        assert!(schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:class".to_string())));
+        assert!(schema
+            .attributes
+            .contains_key(&Attribute::new("bldg:usage".to_string())));
     }
 }

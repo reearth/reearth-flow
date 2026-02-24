@@ -13,7 +13,6 @@ use atlas_packer::texture::{DownsampleFactor, PolygonMappedTexture};
 use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
 use indexmap::IndexSet;
-use itertools::Itertools;
 use reearth_flow_gltf::{calculate_normal, Primitives};
 use reearth_flow_types::{
     material::{self, Material},
@@ -21,6 +20,8 @@ use reearth_flow_types::{
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
+
+use crate::zip_eq_logged::ZipEqLoggedExt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
@@ -59,7 +60,7 @@ where
         for (poly_count, (mat, poly)) in feature
             .polygons
             .iter()
-            .zip_eq(feature.polygon_material_ids.iter())
+            .zip_eq_logged(feature.polygon_material_ids.iter())
             .map(move |(poly, orig_mat_id)| {
                 (feature.materials[*orig_mat_id as usize].clone(), poly)
             })
@@ -152,7 +153,7 @@ where
         for (poly_count, (mut mat, mut poly)) in feature
             .polygons
             .iter()
-            .zip_eq(feature.polygon_material_ids.iter())
+            .zip_eq_logged(feature.polygon_material_ids.iter())
             .map(move |(poly, orig_mat_id)| {
                 (feature.materials[*orig_mat_id as usize].clone(), poly)
             })

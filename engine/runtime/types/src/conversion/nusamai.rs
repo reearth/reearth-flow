@@ -57,7 +57,14 @@ pub fn entity_to_geometry(
                 GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
             )
         })
-        .map(|g| (g.pos, g.pos + g.len))
+        .flat_map(|g| {
+            let inline = if g.len > 0 {
+                vec![(g.pos, g.pos + g.len)]
+            } else {
+                vec![]
+            };
+            inline.into_iter().chain(g.resolved_ranges.iter().copied())
+        })
         .collect();
 
     // Build gml_geometries with local pos/len (relative to this feature's polygon arrays)
@@ -67,6 +74,7 @@ pub fn entity_to_geometry(
         match geometry.ty {
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 let mut polygons = Vec::<Polygon3D<f64>>::new();
+                // Inline polygons
                 for idx_poly in geoms
                     .multipolygon
                     .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
@@ -74,7 +82,16 @@ pub fn entity_to_geometry(
                     let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                     polygons.push(poly.into());
                 }
+                // Resolved xlink:href ranges
+                // TODO: implement resolving for other geometry types (requires upstream support in nusamai_citygml parser)
+                for &(start, end) in &geometry.resolved_ranges {
+                    for idx_poly in geoms.multipolygon.iter_range(start as usize..end as usize) {
+                        let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                        polygons.push(poly.into());
+                    }
+                }
                 let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                geometry_feature.len = polygons.len() as u32;
                 geometry_feature.polygons.extend(polygons);
                 Some(geometry_feature)
             }
@@ -115,9 +132,20 @@ pub fn entity_to_geometry(
     };
     for geometry in geometries.iter() {
         if let Some(mut gml_geo) = operation(geometry) {
-            // Update pos to be local (relative to this feature's arrays)
-            gml_geo.pos = local_pos;
-            local_pos += gml_geo.len;
+            // Update pos to be local (relative to this feature's polygon arrays)
+            // Only polygon geometries use pos to index into polygon_materials/textures/uvs
+            let is_polygon_geometry = matches!(
+                geometry.ty,
+                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
+            );
+
+            if is_polygon_geometry {
+                gml_geo.pos = local_pos;
+                local_pos += gml_geo.len;
+            } else {
+                gml_geo.pos = 0; // unused for non-polygon geometries
+            }
+
             gml_geometries.push(gml_geo);
         }
     }
@@ -139,23 +167,17 @@ pub fn entity_to_geometry(
             polygons.push(poly.into());
         }
         if !polygons.is_empty() {
-            let len = polygons.len() as u32;
+            let polygon_count = polygons.len();
             let solid_gml = GmlGeometry {
                 id: entity.id.clone(),
-                ty: GeometryType::Solid.into(),
-                gml_trait: None,
-                lod: None, // LOD is already set as feature attribute by reader
-                pos: 0,
-                len,
-                points: vec![],
+                len: polygon_count as u32,
                 polygons,
-                line_strings: vec![],
                 feature_id: entity.id.clone(),
                 feature_type: entity.typename.clone(),
-                composite_surfaces: vec![],
+                ..GmlGeometry::new(crate::geometry::GeometryType::Solid, None)
             };
             gml_geometries = vec![solid_gml];
-            polygon_ranges = vec![(0, len)];
+            polygon_ranges = vec![(0, polygon_count as u32)];
         }
     }
 

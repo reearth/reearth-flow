@@ -14,6 +14,7 @@ with:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - !include ../../../../graphs/lod_splitter_with_dm.yml
+
   - id: b8d2e9f3-4c5a-6b7d-0e1f-a2345678901b
     name: entry_point
     nodes:
@@ -27,7 +28,6 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
               },
@@ -44,49 +44,76 @@ graphs:
         action: FeatureCityGmlReader
         with:
           codelistsPath: env.get("__value").codelists
-          flatten: false
-          dataset: |
-            env.get("__value")["path"]
-
-      - id: f2b6c3d7-8a9e-0f1b-4c5d-e6789012345f
-        name: FeatureSorter
-        type: action
-        action: FeatureSorter
-        with:
-          attributes:
-            - path
-          order: ascending
-
-      - id: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        name: AttributeFlattener
-        type: action
-        action: PLATEAU4.AttributeFlattener
-
-      - id: b4d8e5f9-0c1a-2b3d-6e7f-a89012345671
-        name: AttributeMapperForMerger
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-            - attribute: gml_id
-              valueAttribute: gml_id
-            - attribute: attributes
-              valueAttribute: attributes
-
-      # DM Branch - parallel branch for DmGeometricAttribute processing
-      - id: c5e9f6a0-1d2b-3c4e-7f8a-b90123456782
-        name: FeatureReaderByCityGmlForDm
-        type: action
-        action: FeatureCityGmlReader
-        with:
-          codelistsPath: env.get("__value").codelists
-          format: citygml
           flatten: true
           dataset: |
             env.get("__value")["path"]
 
-      - id: d6f0a7b1-2e3c-4d5f-8a9b-c01234567893
-        name: AttributeManagerPreFlattenerForDm
+      # Dictionary branch
+      - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
+        name: AttributeManagerDict
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: feature_type_without_prefix
+              method: create
+              value: |
+                env.get("__value")["featureType"].split(":")[1]
+
+      - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - feature_type_without_prefix
+
+      - id: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
+        name: AttributeConversionTableDict
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: |
+            name,description
+            WaterPipe,管路（水道）
+            SewerPipe,管路（下水道）
+            ThermalPipe,管路（熱供給管）
+            OilGasChemicalsPipe,管路（ガス管）
+            Pipe,管路（その他）
+            Duct,保護設備（トラフ等）
+            TelecommunicationsCable,通信ケーブル
+            ElectricityCable,電気ケーブル
+            Cable,ケーブル（その他）
+            Appurtenance,設備(弁栓類）
+            Manhole,マンホール
+            Handhole,ハンドホール
+          rules:
+            - featureFroms:
+                - feature_type_without_prefix
+              featureTo: feature_type_ja
+              conversionTableKeys:
+                - name
+              conversionTableTo: description
+
+      - id: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              unf: env.get("__features").map(|f| #{
+                name: f.feature_type_without_prefix,
+                description: f.feature_type_ja
+              })
+            }
+
+      # Main processing branch
+      - id: 0f670054-828b-48d8-9672-dbc34247f2b3
+        name: AttributeManagerPreFlattener
         type: action
         action: AttributeManager
         with:
@@ -103,62 +130,50 @@ graphs:
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
 
-      - id: e7a1b8c2-3f4d-5e6a-9b0c-d12345678904
-        name: AttributeFlattenerForDm
+      - id: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+        name: Flattener
         type: action
         action: PLATEAU4.AttributeFlattener
 
-      - id: f8b2c9d3-4a5e-6f7b-0c1d-e23456789015
-        name: LodSplitterWithDmForDm
+      - id: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        name: LodSplitterWithDM
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
-      - id: a9c3d0e4-5b6f-7a8c-1d2e-f34567890126
-        name: AttributeMapper
+      # Schema processing for 3D tiles
+      - id: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        name: AttributeMapperFor3dTiles
         type: action
         action: AttributeMapper
         with:
           mappers:
-            - multipleExpr: |
-                let result = #{};
-                let val = env.get("__value");
-                let exclude = [
-                  "package", "fileIndex", "extension", "root", "gmlRootId", "udxDirs", "cityGmlPath",
-                  "schemas", "dirCodelists", "dirSchemas", "gmlName", "codelists", "maxLod", "dirRoot",
-                  "path", "cityCode", "cityName", "gmlId"
-                ];
-                for key in val.keys() {
-                  if !exclude.contains(key) {
-                    result[key] = val[key];
-                  }
-                }
-                result
-            - attribute: gml_id
-              valueAttribute: gmlId
+            - attribute: attributes
+              valueAttribute: attributes
             - attribute: meshcode
-              expr: |
-                file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
-            - attribute: feature_type
-              expr: |
-                env.get("__feature_type")
+              valueAttribute: meshcode
             - attribute: city_code
-              valueAttribute: cityCode
+              valueAttribute: city_code
             - attribute: city_name
-              valueAttribute: cityName
-            - attribute: __package
-              valueAttribute: package
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: uro:lodType
+              valueAttribute: uro:lodType
 
-      - id: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
-        name: FeatureLodFilter
-        type: action
-        action: FeatureLodFilter
-        with:
-          filterKey: city_code
-
-      # DmGeometricAttribute processing pipeline
-      - id: c1e5f2a6-7d8b-9c0e-3f4a-b56789012348
-        name: AttributeManagerByDmGeometricAttribute
+      # Unified LOD processing
+      - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        name: AttributeManagerByLod
         type: action
         action: AttributeManager
         with:
@@ -169,474 +184,289 @@ graphs:
             - attribute: cityName
               method: rename
               value: city_name
-            - attribute: package
-              method: rename
-              value: __package
-            - attribute: baseCityCode
-              method: remove
-            - attribute: lod
-              method: remove
-            - attribute: gmlId
-              method: remove
-            - attribute: gmlPropertyName
-              method: remove
-            - attribute: fileIndex
-              method: remove
-            - attribute: root
-              method: remove
-            - attribute: cityGmlPath
-              method: remove
-            - attribute: admin
-              method: remove
-            - attribute: area
-              method: remove
-            - attribute: extension
-              method: remove
-            - attribute: dirRoot
-              method: remove
-            - attribute: gmlRootId
-              method: remove
-            - attribute: maxLod
-              method: remove
-            - attribute: dirSchemas
-              method: remove
-            - attribute: dirCodelists
-              method: remove
-            - attribute: path
-              method: remove
-            - attribute: name
-              method: remove
-            - attribute: udxDirs
-              method: remove
-            - attribute: featureType
-              method: remove
-            - attribute: gmlName
-              method: remove
-            - attribute: codelists
-              method: remove
-            - attribute: schemas
-              method: remove
 
-      - id: d2f6a3b7-8e9c-0d1f-4a5b-c67890123459
-        name: FeatureMergerForAttributes
+      - id: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+        name: HorizontalReprojector
         type: action
-        action: FeatureMerger
+        action: HorizontalReprojector
         with:
-          requestorAttribute:
-            - gml_id
-          supplierAttribute:
-            - gml_id
+          targetEpsgCode: "4326"
 
-      - id: e3a7b4c8-9f0d-1e2a-5b6c-d7890123456a
+      - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+        name: VerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: 782c6a8d-a772-4238-a32e-32caadbbb91f
+        name: Cesium3DTilesWriter
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          dracoCompression: false
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["package"];
+            let ft = env.get("__value")["feature_type"].split(":").pop();
+            let lod = env.get("__value").lod;
+            file::join_path(artifact, pkg + "_" + ft + "_lod" + lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["package"];
+            let ft = env.get("__value")["feature_type"].split(":").pop();
+            let lod = env.get("__value").lod;
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + ".zip")
+
+      # DmGeometricAttribute processing
+      - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
         name: FeatureSorterDmGeometricAttribute
         type: action
         action: FeatureSorter
         with:
           attributes:
-            - __package
+            - package
           order: ascending
 
-      - id: f4b8c5d9-0a1e-2f3b-6c7d-e8901234567b
+      - id: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        name: AttributeMapperDmGeometricAttribute
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: __package
+              valueAttribute: package
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: core_creationDate
+              valueAttribute: core:creationDate
+            - attribute: uro_geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: uro_lodType
+              valueAttribute: uro:lodType
+            - attribute: dm_feature_type
+              valueAttribute: dm_feature_type
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+
+      - id: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+        name: HorizontalReprojectorDmGeometricAttribute
+        type: action
+        action: HorizontalReprojector
+        with:
+          targetEpsgCode: "4326"
+
+      - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
         name: TwoDimensionForcerDmGeometricAttribute
         type: action
         action: TwoDimensionForcer
 
-      - id: a5c9d6e0-1b2f-3a4c-7d8e-f9012345678c
+      - id: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
         name: MVTWriterDmGeometricAttribute
         type: action
         action: MVTWriter
         with:
           layerName: |
-            "UndergroundFacility"
+            env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
           extent: 65536
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes")
+            let feature_type = env.get("__value")["feature_type"];
+            let key = feature_type.split(":")[1];
+            let pkg = env.get("__value")["__package"];
+            file::join_path(env.get("workerArtifactPath"), pkg + "_" + key + "_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
+            let feature_type = env.get("__value")["feature_type"];
+            let key = feature_type.split(":")[1];
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
             if city_gml.ends_with("_" + pkg) {
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
-            file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
+            file::join_path(artifact, city_gml + "_" + pkg + "_" + key + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
-      # LOD1 processing pipeline
-      - id: b6d0e7f1-2c3a-4b5d-8e9f-a0123456789d
-        name: VerticalReprojectorByLod1
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
-      # LOD2 processing pipeline
-      - id: c7e1f8a2-3d4b-5c6e-9f0a-b123456789ae
-        name: VerticalReprojectorByLod2
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
-      # LOD3 processing pipeline
-      - id: d8f2a9b3-4e5c-6d7f-0a1b-c23456789b0f
-        name: VerticalReprojectorByLod3
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
-      # LOD4 processing pipeline
-      - id: e9a3b0c4-5f6d-7e8a-1b2c-d34567890c1a
-        name: VerticalReprojectorByLod4
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
-      # 3D Tiles Writers
-      - id: f0b4c1d5-6a7e-8f9b-2c3d-e45678901d2b
-        name: cesium3DTilesWriterByLod1
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
-          dracoCompression: false
-          output: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            file::join_path(artifact, pkg + "_" + ft + "_lod1")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_" + pkg) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-            }
-            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod1.zip")
-
-      - id: a1c5d2e6-7b8f-9a0c-3d4e-f56789012e3c
-        name: cesium3DTilesWriterByLod2
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
-          dracoCompression: false
-          output: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            file::join_path(artifact, pkg + "_" + ft + "_lod2")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_" + pkg) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-            }
-            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod2.zip")
-
-      - id: b2d6e3f7-8c9a-0b1d-4e5f-a67890123f4d
-        name: cesium3DTilesWriterByLod3
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
-          dracoCompression: false
-          output: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            file::join_path(artifact, pkg + "_" + ft + "_lod3")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_" + pkg) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-            }
-            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod3.zip")
-
-      - id: c3e7f4a8-9d0b-1c2e-5f6a-b78901234a5e
-        name: cesium3DTilesWriterByLod4
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
-          dracoCompression: false
-          output: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            file::join_path(artifact, pkg + "_" + ft + "_lod4")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let pkg = env.get("__value")["__package"];
-            let ft = env.get("__value")["feature_type"].split(":").pop();
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_" + pkg) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-            }
-            file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod4.zip")
-
-      - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
-        name: AttributeManagerDict
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: feature_type_without_prefix
-              method: create
-              value: |
-                env.get("__value")["featureType"].split(":")[1]
-      - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
-        name: AttributeDuplicateFilterDict
-        type: action
-        action: AttributeDuplicateFilter
-        with:
-          filterBy:
-            - feature_type_without_prefix
-      - id: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
-        name: AttributeConversionTableDict
-        type: action
-        action: AttributeConversionTable
-        with:
-          format: csv
-          inline: |
-            name,description
-            WaterPipe,上水道管
-            SewerPipe,下水道管
-            ThermalPipe,熱供給管
-            OilGasChemicalsPipe,ガス・石油・化学物質管
-            Pipe,その他の管
-            Duct,ダクト
-            TelecommunicationsCable,通信ケーブル
-            ElectricityCable,電力ケーブル
-            Cable,その他のケーブル
-            Appurtenance,付属物
-            Manhole,マンホール
-            Handhole,ハンドホール
-          rules:
-            - featureFroms:
-                - feature_type_without_prefix
-              featureTo: feature_type_ja
-              conversionTableKeys:
-                - name
-              conversionTableTo: description
-      - id: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
-        name: JsonWriterDict
-        type: action
-        action: JsonWriter
-        with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
-          converter: |
-            #{
-              unf: env.get("__features").map(|f| #{
-                name: f.feature_type_without_prefix,
-                description: f.feature_type_ja
-              })
-            }
-
     edges:
-      # Main processing pipeline
+      # FeatureCreator -> FolderAndFilePathReader
       - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012345b6f
         from: c9e3f0a4-5d6b-7c8e-1f2a-b3456789012c
         to: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
         fromPort: default
         toPort: default
+
+      # FolderAndFilePathReader -> FeatureReaderByCityGml
       - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123456c7a
         from: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
         to: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
         fromPort: default
         toPort: default
-      - id: f6b0c7d1-2a3e-4f5b-8c9d-e01234567d8b
-        from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
-        to: f2b6c3d7-8a9e-0f1b-4c5d-e6789012345f
-        fromPort: default
-        toPort: default
-      - id: a7c1d8e2-3b4f-5a6c-9d0e-f12345678e9c
-        from: f2b6c3d7-8a9e-0f1b-4c5d-e6789012345f
-        to: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        fromPort: default
-        toPort: default
-      - id: b8d2e9f3-4c5a-6b7d-0e1f-a23456789f0d
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: a9c3d0e4-5b6f-7a8c-1d2e-f34567890126
-        fromPort: default
-        toPort: default
-      # AttributeMapper -> FeatureLodFilter
-      - id: c9e3f0a4-5d6b-7c8e-1f2a-b345678901ae
-        from: a9c3d0e4-5b6f-7a8c-1d2e-f34567890126
-        to: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
-        fromPort: default
-        toPort: default
-      # AttributeMapper -> AttributeMapperForMerger
-      - id: d0f4a1b5-6e7c-8d9f-2a3b-c456789012bf
-        from: a9c3d0e4-5b6f-7a8c-1d2e-f34567890126
-        to: b4d8e5f9-0c1a-2b3d-6e7f-a89012345671
-        fromPort: default
-        toPort: default
 
-      # DM Branch edges (parallel branch with flatten: true)
-      - id: e1a5b2c6-7f8d-9e0a-3b4c-d567890123c0
-        from: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
-        to: c5e9f6a0-1d2b-3c4e-7f8a-b90123456782
-        fromPort: default
-        toPort: default
-      - id: f2b6c3d7-8a9e-0f1b-4c5d-e678901234d1
-        from: c5e9f6a0-1d2b-3c4e-7f8a-b90123456782
-        to: d6f0a7b1-2e3c-4d5f-8a9b-c01234567893
-        fromPort: default
-        toPort: default
-      - id: a3c7d4e8-9b0f-1a2c-5d6e-f7890123e4e2
-        from: d6f0a7b1-2e3c-4d5f-8a9b-c01234567893
-        to: e7a1b8c2-3f4d-5e6a-9b0c-d12345678904
-        fromPort: default
-        toPort: default
-      - id: b4d8e5f9-0c1a-2b3d-6e7f-a890123f5f30
-        from: e7a1b8c2-3f4d-5e6a-9b0c-d12345678904
-        to: f8b2c9d3-4a5e-6f7b-0c1d-e23456789015
-        fromPort: default
-        toPort: default
-      # LodSplitterWithDm DmGeometricAttribute -> AttributeManager
-      - id: c5e9f6a0-1d2b-3c4e-7f8a-b9012345a604
-        from: f8b2c9d3-4a5e-6f7b-0c1d-e23456789015
-        to: c1e5f2a6-7d8b-9c0e-3f4a-b56789012348
-        fromPort: DmGeometricAttribute
-        toPort: default
-
-      # AttributeManagerByDmGeometricAttribute -> FeatureMerger (requestor)
-      - id: d6f0a7b1-2e3c-4d5f-8a9b-c01234b7b500
-        from: c1e5f2a6-7d8b-9c0e-3f4a-b56789012348
-        to: d2f6a3b7-8e9c-0d1f-4a5b-c67890123459
-        fromPort: default
-        toPort: requestor
-      # AttributeMapperForMerger -> FeatureMerger (supplier)
-      - id: e7a1b8c2-3f4d-5e6a-9b0c-d1234c8c6000
-        from: b4d8e5f9-0c1a-2b3d-6e7f-a89012345671
-        to: d2f6a3b7-8e9c-0d1f-4a5b-c67890123459
-        fromPort: default
-        toPort: supplier
-      # FeatureMerger (merged) -> FeatureSorterDmGeometricAttribute
-      - id: f8b2c9d3-4a5e-6f7b-0c1d-e2345d9d7000
-        from: d2f6a3b7-8e9c-0d1f-4a5b-c67890123459
-        to: e3a7b4c8-9f0d-1e2a-5b6c-d7890123456a
-        fromPort: merged
-        toPort: default
-      - id: a9c3d0e4-5b6f-7a8c-1d2e-f3456e0e8000
-        from: e3a7b4c8-9f0d-1e2a-5b6c-d7890123456a
-        to: f4b8c5d9-0a1e-2f3b-6c7d-e8901234567b
-        fromPort: default
-        toPort: default
-      - id: b0d4e1f5-6c7a-8b9d-2e3f-a4567f1f9000
-        from: f4b8c5d9-0a1e-2f3b-6c7d-e8901234567b
-        to: a5c9d6e0-1b2f-3a4c-7d8e-f9012345678c
-        fromPort: default
-        toPort: default
-
-      # LOD1 pipeline edges
-      - id: c1e5f2a6-7d8b-9c0e-3f4a-b567890120a0
-        from: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
-        to: b6d0e7f1-2c3a-4b5d-8e9f-a0123456789d
-        fromPort: up_to_lod1
-        toPort: default
-      - id: d2f6a3b7-8e9c-0d1f-4a5b-c678901231b1
-        from: b6d0e7f1-2c3a-4b5d-8e9f-a0123456789d
-        to: f0b4c1d5-6a7e-8f9b-2c3d-e45678901d2b
-        fromPort: default
-        toPort: default
-
-      # LOD2 pipeline edges
-      - id: e3a7b4c8-9f0d-1e2a-5b6c-d789012342c2
-        from: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
-        to: c7e1f8a2-3d4b-5c6e-9f0a-b123456789ae
-        fromPort: up_to_lod2
-        toPort: default
-      - id: f4b8c5d9-0a1e-2f3b-6c7d-e890123453d3
-        from: c7e1f8a2-3d4b-5c6e-9f0a-b123456789ae
-        to: a1c5d2e6-7b8f-9a0c-3d4e-f56789012e3c
-        fromPort: default
-        toPort: default
-
-      # LOD3 pipeline edges
-      - id: a5c9d6e0-1b2f-3a4c-7d8e-f901234564e4
-        from: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
-        to: d8f2a9b3-4e5c-6d7f-0a1b-c23456789b0f
-        fromPort: up_to_lod3
-        toPort: default
-      - id: b6d0e7f1-2c3a-4b5d-8e9f-a012345675f5
-        from: d8f2a9b3-4e5c-6d7f-0a1b-c23456789b0f
-        to: b2d6e3f7-8c9a-0b1d-4e5f-a67890123f4d
-        fromPort: default
-        toPort: default
-
-      # LOD4 pipeline edges
-      - id: c7e1f8a2-3d4b-5c6e-9f0a-b12345686a60
-        from: b0d4e1f5-6c7a-8b9d-2e3f-a45678901237
-        to: e9a3b0c4-5f6d-7e8a-1b2c-d34567890c1a
-        fromPort: up_to_lod4
-        toPort: default
-      - id: d8f2a9b3-4e5c-6d7f-0a1b-c2345697b700
-        from: e9a3b0c4-5f6d-7e8a-1b2c-d34567890c1a
-        to: c3e7f4a8-9d0b-1c2e-5f6a-b78901234a5e
-        fromPort: default
-        toPort: default
-
-      # Schema connections (AttributeFlattener schema -> all Cesium3DTilesWriters)
-      - id: e9a3b0c4-5f6d-7e8a-1b2c-d345678c8000
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: f0b4c1d5-6a7e-8f9b-2c3d-e45678901d2b
-        fromPort: schema
-        toPort: schema
-      - id: f0b4c1d5-6a7e-8f9b-2c3d-e456789d9000
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: a1c5d2e6-7b8f-9a0c-3d4e-f56789012e3c
-        fromPort: schema
-        toPort: schema
-      - id: a1c5d2e6-7b8f-9a0c-3d4e-f5678901e000
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: b2d6e3f7-8c9a-0b1d-4e5f-a67890123f4d
-        fromPort: schema
-        toPort: schema
-      - id: b2d6e3f7-8c9a-0b1d-4e5f-a6789012f100
-        from: a3c7d4e8-9b0f-1a2c-5d6e-f78901234560
-        to: c3e7f4a8-9d0b-1c2e-5f6a-b78901234a5e
-        fromPort: schema
-        toPort: schema
-
-      # Dictionary branch edges (parallel branch for dictionary.json)
+      # Dictionary branch edges
+      # FeatureReaderByCityGml -> AttributeManagerDict
       - id: c9e3f0a4-5d6b-7c8e-1f2a-b345d1c701e1
         from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
         to: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
         fromPort: default
         toPort: default
+      # AttributeManagerDict -> AttributeDuplicateFilterDict
       - id: d0f4a1b5-6e7c-8d9f-2a3b-c456d1c702e2
         from: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
         to: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
         fromPort: default
         toPort: default
+      # AttributeDuplicateFilterDict -> AttributeConversionTableDict
       - id: e1a5b2c6-7f8d-9e0a-3b4c-d567d1c703e3
         from: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
         to: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
         fromPort: default
         toPort: default
+      # AttributeConversionTableDict -> JsonWriterDict
       - id: f2b6c3d7-8a9e-0f1b-4c5d-e678d1c704e4
         from: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
         to: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
+        fromPort: default
+        toPort: default
+
+      # Main processing branch edges
+      # FeatureReaderByCityGml -> AttributeManagerPreFlattener
+      - id: ccb494b2-8908-4a01-ae38-918718315912
+        from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+        to: 0f670054-828b-48d8-9672-dbc34247f2b3
+        fromPort: default
+        toPort: default
+      # AttributeManagerPreFlattener -> Flattener
+      - id: 19d12a4b-13d5-4a9f-ada5-24315b4d6392
+        from: 0f670054-828b-48d8-9672-dbc34247f2b3
+        to: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+        fromPort: default
+        toPort: default
+      # Flattener -> LodSplitterWithDM
+      - id: b35b7683-5513-48d2-ad0d-241391323805
+        from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+        to: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        fromPort: default
+        toPort: default
+
+      # Unified LOD pipeline edges
+      # LodSplitterWithDM(lod1) -> AttributeManagerByLod
+      - id: 5bbab594-dc6d-4ecb-be5d-e6fd5006222f
+        from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: lod1
+        toPort: default
+      # LodSplitterWithDM(lod2) -> AttributeManagerByLod
+      - id: e4a9a38d-bbcb-4ef1-bbfb-cb4cc6322a34
+        from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: lod2
+        toPort: default
+      # LodSplitterWithDM(lod3) -> AttributeManagerByLod
+      - id: 520cdac3-22e4-487b-b326-a859bb5d38a7
+        from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: lod3
+        toPort: default
+      # LodSplitterWithDM(lod4) -> AttributeManagerByLod
+      - id: 6e1f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+        from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        to: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        fromPort: lod4
+        toPort: default
+      # AttributeManagerByLod -> HorizontalReprojector
+      - id: bf8df312-1461-4431-8134-010dd518d4a4
+        from: 3713b42c-a3af-489f-91a5-d101c26fcaee
+        to: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+        fromPort: default
+        toPort: default
+      # HorizontalReprojector -> VerticalReprojector
+      - id: d5e6f7a8-b9c0-1d2e-3f45-6789abcdef01
+        from: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
+        to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+        fromPort: default
+        toPort: default
+      # VerticalReprojector -> Cesium3DTilesWriter
+      - id: f251eb31-4ffd-4edf-a56c-f2dbd9eb0fc9
+        from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+        to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+        fromPort: default
+        toPort: default
+
+      # Schema flow: Flattener(schema) -> AttributeMapperFor3dTiles(default) -> Cesium3DTilesWriter(schema)
+      - id: e9a3b0c4-5f6d-7e8a-1b2c-d345678c8000
+        from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+        to: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        fromPort: schema
+        toPort: default
+      - id: f0b4c1d5-6a7e-8f9b-2c3d-e456789d9000
+        from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+        to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+        fromPort: default
+        toPort: schema
+
+      # DmGeometricAttribute flow
+      # LodSplitterWithDM(DmGeometricAttribute) -> FeatureSorterDmGeometricAttribute
+      - id: 9bef0954-f6a8-4a02-8d41-8f1f24a72881
+        from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
+        to: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # FeatureSorterDmGeometricAttribute -> AttributeMapperDmGeometricAttribute
+      - id: dfa3779b-517c-47ce-86e5-74bc74a0d2b7
+        from: 5ea849f7-c314-4460-ad98-50be3e2fe24d
+        to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        fromPort: default
+        toPort: default
+      # AttributeMapperDmGeometricAttribute -> HorizontalReprojectorDmGeometricAttribute
+      - id: b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890
+        from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+        to: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+        fromPort: default
+        toPort: default
+      # HorizontalReprojectorDmGeometricAttribute -> TwoDimensionForcerDmGeometricAttribute
+      - id: c3d4e5f6-a7b8-9012-c3d4-e5f6a7b89012
+        from: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+        to: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcerDmGeometricAttribute -> MVTWriterDmGeometricAttribute
+      - id: a9683146-31ad-4dca-9903-947088c6731b
+        from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+        to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
         fromPort: default
         toPort: default

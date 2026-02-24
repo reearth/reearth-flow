@@ -8248,6 +8248,21 @@ Filter Features by Spatial Relationship
   "description": "Configure spatial relationship testing between filter and candidate geometries",
   "type": "object",
   "properties": {
+    "mergeFilterAttributes": {
+      "title": "Merge Filter Attributes",
+      "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+      "default": false,
+      "type": "boolean"
+    },
+    "mergedAttributesPrefix": {
+      "title": "Merged Attributes Prefix",
+      "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\".",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
       "description": "Optional attribute name to store the number of matching filters",
