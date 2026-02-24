@@ -111,7 +111,11 @@ fn pack_inputs(
 
 fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
     let citymodel = test_path.join("citymodel");
-    assert!(citymodel.exists(), "citymodel dir not found: {}", citymodel.display());
+    assert!(
+        citymodel.exists(),
+        "citymodel dir not found: {}",
+        citymodel.display()
+    );
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
     inputs

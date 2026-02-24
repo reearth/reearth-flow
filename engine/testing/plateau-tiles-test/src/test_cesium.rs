@@ -295,8 +295,7 @@ fn compare_detail_level(
     let flow_total_area =
         compute_total_area(&flow_level.triangles, &flow_geometries.vertex_positions);
     if flow_total_area == 0.0 {
-        let fme_bbox =
-            compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+        let fme_bbox = compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
         let bbox_diagonal = ((fme_bbox.1.x - fme_bbox.0.x).powi(2)
             + (fme_bbox.1.y - fme_bbox.0.y).powi(2)
             + (fme_bbox.1.z - fme_bbox.0.z).powi(2))
@@ -353,14 +352,12 @@ fn compare_detail_level(
 
     if !skip.contains(&GeometryTest::MassCenter) {
         // Compute centroids directly from vertex positions
-        let fme_centroid =
-            compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions).map_err(|e| {
-                format!("ident '{}': failed to compute FME centroid: {}", ident, e)
-            })?;
+        let fme_centroid = compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)
+            .map_err(|e| format!("ident '{}': failed to compute FME centroid: {}", ident, e))?;
         let flow_centroid =
-            compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions).map_err(|e| {
-                format!("ident '{}': failed to compute Flow centroid: {}", ident, e)
-            })?;
+            compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions).map_err(
+                |e| format!("ident '{}': failed to compute Flow centroid: {}", ident, e),
+            )?;
 
         // if vertices have max error r, centroids can differ by at most r
         let centroid_error_bound = fme_error + flow_error;

@@ -192,7 +192,10 @@ pub fn entity_to_geometry(
     }
 
     // Calculate total polygon count for this feature
-    let total_polygons: usize = polygon_ranges.iter().map(|(s, e, _)| (e - s) as usize).sum();
+    let total_polygons: usize = polygon_ranges
+        .iter()
+        .map(|(s, e, _)| (e - s) as usize)
+        .sum();
 
     let mut geometry_entity = CityGmlGeometry::new(
         gml_geometries,
