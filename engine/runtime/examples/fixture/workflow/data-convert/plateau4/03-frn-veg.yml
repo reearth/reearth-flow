@@ -487,7 +487,6 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      dracoCompression: false
       output: |
         file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").lod)
       compressOutput: |
@@ -716,7 +715,6 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      dracoCompression: false
       output: |
         file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").lod)
       compressOutput: |
@@ -937,7 +935,6 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      dracoCompression: false
       output: |
         file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").lod)
       compressOutput: |
