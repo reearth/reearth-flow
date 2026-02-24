@@ -6,12 +6,13 @@ import {
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
+import { buildLodPrimitiveCollection } from "./utils/buildLodPrimitives";
 import {
   CITYGML_3D_TYPES,
   convertFeatureCollectionToPrimitives,
-  createLodUpgradePrimitiveCollection,
   type FeatureInstanceData,
 } from "./utils/cityGmlGeometryToPrimitives";
+import { useLodWorker } from "./utils/useLodWorker";
 
 type CityGmlFeature = {
   id?: string;
@@ -32,6 +33,8 @@ type Props = {
   detailsOverlayOpen: boolean;
 };
 
+const WAIT_FOR_PRIMITIVE_TIMEOUT_MS = 10_000;
+
 const CityGmlData: React.FC<Props> = ({
   cityGmlData,
   selectedFeatureId,
@@ -42,6 +45,7 @@ const CityGmlData: React.FC<Props> = ({
   const groundPrimitiveRef = useRef<GroundPrimitive | null>(null);
   const featureMapRef = useRef<Map<string, FeatureInstanceData>>(new Map());
   const prevSelectedRef = useRef<string | null>(null);
+  const { buildLodGeometry, cancelPending } = useLodWorker();
 
   const waitForPrimitive = useCallback(
     (primitive: Primitive | null, callback: () => void) => {
@@ -50,10 +54,16 @@ const CityGmlData: React.FC<Props> = ({
         callback();
         return;
       }
+      const startTime = Date.now();
       const remove = viewer.scene.postRender.addEventListener(() => {
-        if (!(primitive as any).ready) return;
-        remove();
-        callback();
+        if ((primitive as any).ready) {
+          remove();
+          callback();
+          return;
+        }
+        if (Date.now() - startTime > WAIT_FOR_PRIMITIVE_TIMEOUT_MS) {
+          remove();
+        }
       });
     },
     [viewer],
@@ -77,19 +87,39 @@ const CityGmlData: React.FC<Props> = ({
   );
 
   const upgradeLod = useCallback(
-    (entry: FeatureInstanceData) => {
+    async (entry: FeatureInstanceData) => {
       if (entry.lodPrimitiveCollection) return;
       const typeConfig = CITYGML_3D_TYPES.find((cfg) =>
         cfg.detect(entry.feature.properties),
       );
-      const lodPrimitive = createLodUpgradePrimitiveCollection(
-        entry.feature,
-        typeConfig,
-      );
 
-      if (!lodPrimitive || !viewer) return;
+      const featureId =
+        entry.feature.properties?._originalId || entry.feature.id || "";
+
+      // Send heavy work to the web worker
+      const resultPromise = buildLodGeometry(entry.feature, typeConfig);
+      if (!resultPromise) return;
+
+      let result;
+      try {
+        result = await resultPromise;
+      } catch {
+        // Worker error or cancellation — nothing to do
+        return;
+      }
+
+      // After await: re-check if this entry is still relevant (user may have switched)
+      if (!viewer || entry.lodPrimitiveCollection) return;
+
+      const lodPrimitive = buildLodPrimitiveCollection(result, featureId);
+      if (!lodPrimitive) return;
+
+      // Final check before adding to scene
+      if (entry.lodPrimitiveCollection) return;
+
       viewer.scene.primitives.add(lodPrimitive);
       entry.lodPrimitiveCollection = lodPrimitive;
+
       waitForPrimitive(absolutePrimitiveRef.current, () => {
         entry.absoluteInstanceIds.forEach((id) => {
           const attrs =
@@ -98,12 +128,15 @@ const CityGmlData: React.FC<Props> = ({
         });
       });
     },
-    [viewer, waitForPrimitive],
+    [viewer, waitForPrimitive, buildLodGeometry],
   );
 
   // Process CityGML data and create primitives (only on data change)
   useEffect(() => {
     if (!cityGmlData || !viewer) return;
+
+    // Cancel any in-flight worker requests
+    cancelPending();
 
     // Remove any active LOD primitives first
     featureMapRef.current.forEach((entry) => {
@@ -138,7 +171,7 @@ const CityGmlData: React.FC<Props> = ({
     if (boundingSphere) {
       viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
     }
-  }, [cityGmlData, viewer]);
+  }, [cityGmlData, viewer, cancelPending]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
@@ -150,11 +183,13 @@ const CityGmlData: React.FC<Props> = ({
 
     // Revert previously selected feature back to LOD1
     if (prevId && prevId !== currentId) {
+      cancelPending();
       const prevEntry = featureMapRef.current.get(prevId);
       if (prevEntry) revertLod(prevEntry);
     }
 
     if (currentId && !detailsOverlayOpen) {
+      cancelPending();
       const entry = featureMapRef.current.get(currentId);
       if (entry) revertLod(entry);
     }
@@ -171,11 +206,13 @@ const CityGmlData: React.FC<Props> = ({
     waitForPrimitive,
     revertLod,
     upgradeLod,
+    cancelPending,
   ]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      cancelPending();
       if (viewer) {
         featureMapRef.current.forEach((entry) => {
           if (entry.lodPrimitiveCollection) {
@@ -186,7 +223,7 @@ const CityGmlData: React.FC<Props> = ({
         viewer.scene.primitives.remove(groundPrimitiveRef.current);
       }
     };
-  }, [viewer]);
+  }, [viewer, cancelPending]);
 
   return null;
 };
