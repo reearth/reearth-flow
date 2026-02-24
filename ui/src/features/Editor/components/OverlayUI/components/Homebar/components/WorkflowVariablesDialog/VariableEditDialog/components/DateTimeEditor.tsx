@@ -14,9 +14,26 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   const config = (variable.config as DateTimeConfig) || {};
 
   const handleDefaultValueChange = (value: string) => {
+    let storedValue = value;
+
+    // datetime-local input returns YYYY-MM-DDTHH:MM — add seconds and local timezone
+    if (allowTime && value && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+      const offset = -new Date().getTimezoneOffset(); // minutes ahead of UTC
+      if (offset === 0) {
+        storedValue = `${value}:00Z`;
+      } else {
+        const sign = offset >= 0 ? "+" : "-";
+        const h = Math.floor(Math.abs(offset) / 60)
+          .toString()
+          .padStart(2, "0");
+        const m = (Math.abs(offset) % 60).toString().padStart(2, "0");
+        storedValue = `${value}:00${sign}${h}:${m}`;
+      }
+    }
+
     onUpdate({
       ...variable,
-      defaultValue: value,
+      defaultValue: storedValue,
     });
   };
 
