@@ -148,7 +148,8 @@ async fn parse_tree_reader<R: BufRead>(
             ),
             (
                 Attribute::new("gmlId"),
-                gml_id.clone()
+                gml_id
+                    .clone()
                     .map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
             ),

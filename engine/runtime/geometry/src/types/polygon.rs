@@ -75,7 +75,11 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         }
     }
 
-    pub fn new_with_id(mut exterior: LineString<T, Z>, mut interiors: Vec<LineString<T, Z>>, id: Option<String>) -> Self {
+    pub fn new_with_id(
+        mut exterior: LineString<T, Z>,
+        mut interiors: Vec<LineString<T, Z>>,
+        id: Option<String>,
+    ) -> Self {
         exterior.close();
         for interior in &mut interiors {
             interior.close();

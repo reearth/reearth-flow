@@ -207,7 +207,7 @@ impl Sink for CityGmlWriterSink {
             let mut all_textures = Vec::new();
             let mut all_themes = std::collections::HashSet::new();
             let mut found_appearance = false;
-            
+
             for feature in &self.buffer {
                 if let Some(app_data) = extract_appearance_data(feature) {
                     if !app_data.textures.is_empty() {
@@ -219,13 +219,14 @@ impl Sink for CityGmlWriterSink {
                     }
                 }
             }
-            
+
             // Deduplicate textures by URI to avoid duplicates
             let mut seen_uris = std::collections::HashSet::new();
-            let unique_textures: Vec<_> = all_textures.into_iter()
+            let unique_textures: Vec<_> = all_textures
+                .into_iter()
                 .filter(|t| seen_uris.insert(t.uri.clone()))
                 .collect();
-            
+
             let global_appearance = if found_appearance {
                 Some(converter::AppearanceData {
                     textures: unique_textures,
@@ -294,7 +295,11 @@ impl Sink for CityGmlWriterSink {
                     .get(&reearth_flow_types::Attribute::new("gmlId"))
                     .and_then(|v| {
                         if let reearth_flow_types::AttributeValue::String(s) = v {
-                            if !s.is_empty() { Some(s.clone()) } else { None }
+                            if !s.is_empty() {
+                                Some(s.clone())
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
