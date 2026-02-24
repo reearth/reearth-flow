@@ -5,7 +5,7 @@ use quick_xml::Writer;
 
 use super::converter::{
     format_pos_list, AppearanceData, BoundingEnvelope, CityGmlAttribute, CityObjectType,
-    GeometryEntry, GmlElement, GmlSurface, TargetData, TextureData,
+    GeometryEntry, GmlElement, GmlSurface, SurfaceType, TargetData, TextureData,
 };
 use crate::errors::SinkError;
 
@@ -131,8 +131,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
             self.write_citygml_attributes(attributes)?;
         }
 
-        for entry in geometries {
-            self.write_lod_geometry(city_type, entry)?;
+        // For Buildings, group LOD2 geometry entries to write proper structure
+        if city_type == CityObjectType::Building {
+            self.write_building_geometry(city_type, geometries)?;
+        } else {
+            for entry in geometries {
+                self.write_lod_geometry(city_type, entry)?;
+            }
         }
 
         self.writer
@@ -142,6 +147,94 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        Ok(())
+    }
+
+    /// Write geometry for Buildings with proper LOD2 structure
+    /// Groups all LOD2 surfaces together for boundedBy, lod2Solid, and lod2MultiSurface
+    fn write_building_geometry(
+        &mut self,
+        city_type: CityObjectType,
+        geometries: &[GeometryEntry],
+    ) -> Result<(), SinkError> {
+        let ns = city_type.namespace_prefix();
+        
+        // Separate LOD2 MultiSurface entries from other geometry
+        let (lod2_entries, other_entries): (Vec<_>, Vec<_>) = geometries
+            .iter()
+            .partition(|e| e.lod == 2 && matches!(&e.element, GmlElement::MultiSurface { .. }));
+        
+        // Write non-LOD2 geometry normally
+        for entry in &other_entries {
+            self.write_lod_geometry(city_type, entry)?;
+        }
+        
+        // Collect all LOD2 surfaces
+        let mut all_lod2_surfaces: Vec<&GmlSurface> = Vec::new();
+        let mut lod2_multi_surface_id: Option<&str> = None;
+        
+        for entry in &lod2_entries {
+            if let GmlElement::MultiSurface { id, surfaces } = &entry.element {
+                all_lod2_surfaces.extend(surfaces.iter());
+                if lod2_multi_surface_id.is_none() {
+                    lod2_multi_surface_id = id.as_deref();
+                }
+            }
+        }
+        
+        // Write LOD2 structure if we have surfaces
+        if !all_lod2_surfaces.is_empty() {
+            // Collect surface IDs for references
+            let surface_ids: Vec<&str> = all_lod2_surfaces
+                .iter()
+                .filter_map(|s| s.id.as_deref())
+                .collect();
+            
+            // Write boundedBy for each surface
+            for surface in &all_lod2_surfaces {
+                self.write_bounded_by_surface(ns, surface)?;
+            }
+            
+            // Write lod2Solid with all surface references (only if we have a complete solid)
+            // Original file only has lod2Solid for some buildings - we write it when we have multiple surfaces
+            if !surface_ids.is_empty() {
+                self.write_lod2_solid_with_refs(ns, 2, &surface_ids)?;
+            }
+            
+            // Write lod2MultiSurface with xlink:href references
+            let lod_elem = format!("{}:lod2MultiSurface", ns);
+            self.writer
+                .write_event(Event::Start(BytesStart::new(&lod_elem)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            
+            let mut ms = BytesStart::new("gml:MultiSurface");
+            if let Some(gml_id) = lod2_multi_surface_id {
+                ms.push_attribute(("gml:id", gml_id));
+            }
+            ms.push_attribute(("srsName", self.srs_name.as_str()));
+            ms.push_attribute(("srsDimension", "3"));
+            self.writer
+                .write_event(Event::Start(ms))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            
+            // Write surfaceMember with xlink:href for each surface
+            for surface_id in &surface_ids {
+                let mut surface_member = BytesStart::new("gml:surfaceMember");
+                surface_member.push_attribute(("xlink:href", format!("#{}", surface_id).as_str()));
+                self.writer
+                    .write_event(Event::Empty(surface_member))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            
+            self.writer
+                .write_event(Event::End(BytesEnd::new("gml:MultiSurface")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            
+            self.writer
+                .write_event(Event::End(BytesEnd::new(&lod_elem)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+        
         Ok(())
     }
 
@@ -655,6 +748,127 @@ impl<W: Write> CityGmlXmlWriter<W> {
                     .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Write a boundedBy element wrapping a surface
+    fn write_bounded_by_surface(
+        &mut self,
+        ns: &str,
+        surface: &GmlSurface,
+    ) -> Result<(), SinkError> {
+        // Start boundedBy element
+        self.writer
+            .write_event(Event::Start(BytesStart::new(format!("{}:boundedBy", ns))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Generate a gml:id for the boundary surface
+        let boundary_id = surface
+            .id
+            .as_ref()
+            .map(|s| format!("bnd_{}", s))
+            .unwrap_or_else(|| self.generate_gml_id("bnd"));
+        
+        // Get the correct surface type element name
+        let surface_type_name = surface.surface_type.element_name();
+        let surface_elem_name = format!("{}:{}", ns, surface_type_name);
+        
+        // Start surface element with gml:id attribute
+        let mut surface_elem = BytesStart::new(&surface_elem_name);
+        surface_elem.push_attribute(("gml:id", boundary_id.as_str()));
+        self.writer
+            .write_event(Event::Start(surface_elem))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write lod2MultiSurface inside the boundary surface
+        self.writer
+            .write_event(Event::Start(BytesStart::new(format!("{}:lod2MultiSurface", ns))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write the actual surface as a MultiSurface with one member
+        self.writer
+            .write_event(Event::Start(BytesStart::new("gml:MultiSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.write_surface_member(surface)?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:MultiSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(format!("{}:lod2MultiSurface", ns))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(&surface_elem_name)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(format!("{}:boundedBy", ns))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Write lod2Solid with xlink:href references to surfaces
+    fn write_lod2_solid_with_refs(
+        &mut self,
+        ns: &str,
+        lod: u8,
+        surface_ids: &[&str],
+    ) -> Result<(), SinkError> {
+        let solid_elem = format!("{}:lod{}Solid", ns, lod);
+        self.writer
+            .write_event(Event::Start(BytesStart::new(&solid_elem)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write Solid
+        let mut solid = BytesStart::new("gml:Solid");
+        solid.push_attribute(("srsName", self.srs_name.as_str()));
+        solid.push_attribute(("srsDimension", "3"));
+        self.writer
+            .write_event(Event::Start(solid))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write exterior
+        self.writer
+            .write_event(Event::Start(BytesStart::new("gml:exterior")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write CompositeSurface
+        self.writer
+            .write_event(Event::Start(BytesStart::new("gml:CompositeSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write surfaceMember with xlink:href for each surface
+        for surface_id in surface_ids {
+            let mut surface_member = BytesStart::new("gml:surfaceMember");
+            surface_member.push_attribute((
+                "xlink:href",
+                format!("#{}", surface_id).as_str(),
+            ));
+            self.writer
+                .write_event(Event::Empty(surface_member))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:CompositeSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:exterior")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:Solid")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(&solid_elem)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
     }

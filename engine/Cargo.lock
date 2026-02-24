@@ -4354,6 +4354,9 @@ name = "lz4_flex"
 version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08ab2867e3eeeca90e844d1940eab391c9dc5228783db2ed999acbc0a9ed375a"
+dependencies = [
+ "twox-hash",
+]
 
 [[package]]
 name = "lzma-rust"
@@ -4393,7 +4396,6 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4927,8 +4929,7 @@ dependencies = [
 
 [[package]]
 name = "nusamai-citygml"
-version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
+version = "0.0.313"
 dependencies = [
  "ahash 0.8.12",
  "chrono",
@@ -4949,10 +4950,10 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
 dependencies = [
  "chrono",
  "flatgeom",
+ "glob",
  "serde",
  "serde_json",
 ]
@@ -4960,9 +4961,9 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
 dependencies = [
  "byteorder",
+ "glob",
  "nusamai-gltf-json",
  "serde_json",
 ]
@@ -4970,9 +4971,9 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
 dependencies = [
  "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1)",
+ "glob",
  "serde",
  "serde_json",
  "serde_repr",
@@ -4980,26 +4981,29 @@ dependencies = [
 
 [[package]]
 name = "nusamai-plateau"
-version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
+version = "0.0.313"
 dependencies = [
+ "bincode",
  "chrono",
+ "clap",
  "flatgeom",
  "hashbrown 0.15.5",
  "indexmap 2.13.0",
  "log",
+ "lz4_flex",
  "nusamai-citygml",
  "once_cell",
  "quick-xml 0.37.5",
  "serde",
+ "serde_json",
  "stretto",
  "url",
+ "zstd",
 ]
 
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.25#b23c636ad2e6c9c7c19b84d0ad1fdcedd6555f39"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.18",
@@ -9808,6 +9812,12 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "twox-hash"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typed-path"

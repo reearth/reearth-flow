@@ -133,24 +133,72 @@ pub enum GmlElement {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SurfaceType {
+    GroundSurface,
+    RoofSurface,
+    WallSurface,
+    ClosureSurface,
+    FloorSurface,
+    CeilingSurface,
+    InteriorWallSurface,
+    OuterCeilingSurface,
+    OuterFloorSurface,
+    Unknown,
+}
+
+impl SurfaceType {
+    pub fn from_property(property: Option<nusamai_citygml::PropertyType>) -> Self {
+        use nusamai_citygml::PropertyType;
+        match property {
+            Some(PropertyType::Lod0FootPrint) => Self::GroundSurface,
+            Some(PropertyType::Lod0RoofEdge) => Self::RoofSurface,
+            _ => Self::Unknown,
+        }
+    }
+    
+    pub fn element_name(&self) -> &'static str {
+        match self {
+            Self::GroundSurface => "GroundSurface",
+            Self::RoofSurface => "RoofSurface",
+            Self::WallSurface => "WallSurface",
+            Self::ClosureSurface => "ClosureSurface",
+            Self::FloorSurface => "FloorSurface",
+            Self::CeilingSurface => "CeilingSurface",
+            Self::InteriorWallSurface => "InteriorWallSurface",
+            Self::OuterCeilingSurface => "OuterCeilingSurface",
+            Self::OuterFloorSurface => "OuterFloorSurface",
+            Self::Unknown => "WallSurface", // Default to WallSurface
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<Coordinate3D<f64>>,
     pub interiors: Vec<Vec<Coordinate3D<f64>>>,
+    pub surface_type: SurfaceType,
 }
 
-impl From<&Polygon3D<f64>> for GmlSurface {
-    fn from(polygon: &Polygon3D<f64>) -> Self {
+impl GmlSurface {
+    pub fn from_polygon_with_type(polygon: &Polygon3D<f64>, surface_type: SurfaceType) -> Self {
         Self {
-            id: None,
+            id: polygon.id.clone(),
             exterior: polygon.exterior().0.clone(),
             interiors: polygon
                 .interiors()
                 .iter()
                 .map(|ring| ring.0.clone())
                 .collect(),
+            surface_type,
         }
+    }
+}
+
+impl From<&Polygon3D<f64>> for GmlSurface {
+    fn from(polygon: &Polygon3D<f64>) -> Self {
+        Self::from_polygon_with_type(polygon, SurfaceType::Unknown)
     }
 }
 
@@ -297,7 +345,36 @@ pub fn convert_citygml_geometry(
         .collect()
 }
 
+fn surface_type_from_feature_type(feature_type: &Option<String>) -> SurfaceType {
+    match feature_type.as_deref() {
+        Some(ft) => {
+            if ft.contains("GroundSurface") {
+                SurfaceType::GroundSurface
+            } else if ft.contains("RoofSurface") {
+                SurfaceType::RoofSurface
+            } else if ft.contains("WallSurface") {
+                SurfaceType::WallSurface
+            } else if ft.contains("ClosureSurface") {
+                SurfaceType::ClosureSurface
+            } else if ft.contains("FloorSurface") {
+                SurfaceType::FloorSurface
+            } else if ft.contains("CeilingSurface") {
+                SurfaceType::CeilingSurface
+            } else if ft.contains("OuterFloorSurface") {
+                SurfaceType::OuterFloorSurface
+            } else if ft.contains("OuterCeilingSurface") {
+                SurfaceType::OuterCeilingSurface
+            } else {
+                SurfaceType::Unknown
+            }
+        }
+        None => SurfaceType::Unknown,
+    }
+}
+
 fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
+    let surface_type = surface_type_from_feature_type(&gml_geom.feature_type);
+    
     match gml_geom.ty {
         GeometryType::Solid => {
             if gml_geom.polygons.is_empty() {
@@ -305,7 +382,11 @@ fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
             }
             Some(GmlElement::Solid {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom.polygons.iter().map(GmlSurface::from).collect(),
+                surfaces: gml_geom
+                    .polygons
+                    .iter()
+                    .map(|p| GmlSurface::from_polygon_with_type(p, surface_type))
+                    .collect(),
             })
         }
         GeometryType::Surface | GeometryType::Triangle => {
@@ -314,7 +395,11 @@ fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
             }
             Some(GmlElement::MultiSurface {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom.polygons.iter().map(GmlSurface::from).collect(),
+                surfaces: gml_geom
+                    .polygons
+                    .iter()
+                    .map(|p| GmlSurface::from_polygon_with_type(p, surface_type))
+                    .collect(),
             })
         }
         GeometryType::Curve => {

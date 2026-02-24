@@ -75,12 +75,21 @@ pub fn entity_to_geometry(
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 let mut polygons = Vec::<Polygon3D<f64>>::new();
                 // Inline polygons
-                for idx_poly in geoms
+                for (local_idx, idx_poly) in geoms
                     .multipolygon
-                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize).enumerate()
                 {
                     let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                    polygons.push(poly.into());
+                    let mut polygon: Polygon3D<f64> = poly.into();
+                    // Get the global polygon index and lookup the ring ID (exterior ring's gml:id)
+                    let global_poly_idx = geometry.pos as usize + local_idx;
+                    if let Some(ring_ids) = geoms.ring_ids.get(global_poly_idx) {
+                        if let Some(ring_id) = ring_ids {
+                            // The ring_id already includes the "UUID_" prefix from nusamai
+                            polygon.id = Some(format!("{}", ring_id.0));
+                        }
+                    }
+                    polygons.push(polygon);
                 }
                 // Resolved xlink:href ranges
                 // TODO: implement resolving for other geometry types (requires upstream support in nusamai_citygml parser)
