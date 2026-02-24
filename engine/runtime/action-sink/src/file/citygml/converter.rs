@@ -56,7 +56,8 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                         if let Some(AttributeValue::Array(target_array)) = tex_map.get("targets") {
                             for target in target_array {
                                 if let AttributeValue::Map(target_map) = target {
-                                    if let Some(AttributeValue::String(target_uri)) = target_map.get("uri")
+                                    if let Some(AttributeValue::String(target_uri)) =
+                                        target_map.get("uri")
                                     {
                                         let mut texture_coords = Vec::new();
 
@@ -72,7 +73,9 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                                         }
 
                                         // Extract ring ID if available (new field)
-                                        let ring_id = if let Some(AttributeValue::String(ring)) = target_map.get("ring") {
+                                        let ring_id = if let Some(AttributeValue::String(ring)) =
+                                            target_map.get("ring")
+                                        {
                                             ring.clone()
                                         } else {
                                             // Fallback: extract from URI (backward compatibility)
@@ -108,10 +111,7 @@ pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
                 }
             }
 
-            Some(AppearanceData {
-                textures,
-                themes,
-            })
+            Some(AppearanceData { textures, themes })
         }
         _ => None,
     }
@@ -158,7 +158,7 @@ impl SurfaceType {
             _ => Self::Unknown,
         }
     }
-    
+
     pub fn element_name(&self) -> &'static str {
         match self {
             Self::GroundSurface => "GroundSurface",
@@ -200,13 +200,13 @@ impl GmlSurface {
             ring_ids: vec![polygon.id.clone()],
         }
     }
-    
+
     /// Get the exterior ring ID
     #[allow(dead_code)]
     pub fn exterior_ring_id(&self) -> Option<&str> {
         self.ring_ids.first().and_then(|id| id.as_deref())
     }
-    
+
     /// Get the interior ring ID at index
     #[allow(dead_code)]
     pub fn interior_ring_id(&self, idx: usize) -> Option<&str> {
@@ -392,20 +392,20 @@ fn surface_type_from_feature_type(feature_type: &Option<String>) -> SurfaceType 
 
 fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
     let surface_type = surface_type_from_feature_type(&gml_geom.feature_type);
-    
+
     // Build surfaces with ring IDs if available
     let mut surfaces = Vec::new();
     for (idx, polygon) in gml_geom.polygons.iter().enumerate() {
         let mut surface = GmlSurface::from_polygon_with_type(polygon, surface_type);
-        
+
         // Set ring IDs if available
         if let Some(ring_ids) = gml_geom.polygon_ring_ids.get(idx) {
             surface.ring_ids = ring_ids.clone();
         }
-        
+
         surfaces.push(surface);
     }
-    
+
     match gml_geom.ty {
         GeometryType::Solid => {
             if surfaces.is_empty() {
@@ -522,12 +522,13 @@ pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
     };
 
     // First pass: collect metadata (codeSpace and uom) for base attributes
-    let mut code_spaces: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut code_spaces: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     let mut uoms: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    
+
     for (key, value) in attrs_map.iter() {
         let lower_key = key.to_lowercase();
-        
+
         // Extract codeSpace values
         if lower_key.ends_with("_codespace") {
             let base_key = &key[..key.len() - 10];
@@ -535,7 +536,7 @@ pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
                 code_spaces.insert(base_key.to_string(), cs.clone());
             }
         }
-        // Extract uom values  
+        // Extract uom values
         else if lower_key.ends_with("_uom") {
             let base_key = &key[..key.len() - 4];
             if let AttributeValue::String(u) = value {
@@ -543,32 +544,32 @@ pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
             }
         }
     }
-    
+
     // Second pass: build CityGmlAttribute entries for base attributes
     let mut attributes = Vec::new();
     let mut processed_bases = std::collections::HashSet::new();
-    
+
     for (key, value) in attrs_map.iter() {
         let lower_key = key.to_lowercase();
-        
+
         // Skip metadata keys - they will be attached to base attributes
         if lower_key.ends_with("_codespace") || lower_key.ends_with("_uom") {
             continue;
         }
-        
+
         // Get the base name (without _code suffix if present)
         let (base_name, is_code_value) = if key.ends_with("_code") {
             (key[..key.len() - 5].to_string(), true)
         } else {
             (key.clone(), false)
         };
-        
+
         // Skip if we've already processed this base (can happen if both base and _code exist)
         if processed_bases.contains(&base_name) {
             continue;
         }
         processed_bases.insert(base_name.clone());
-        
+
         // Determine the value to use for this attribute
         let final_value = if is_code_value {
             // This is a _code key, use it directly
@@ -584,11 +585,11 @@ pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
                 value.clone()
             }
         };
-        
+
         // Get codeSpace and uom for this base attribute
         let code_space = code_spaces.get(&base_name).cloned();
         let uom = uoms.get(&base_name).cloned();
-        
+
         attributes.push(CityGmlAttribute {
             name: base_name,
             value: final_value,
@@ -596,10 +597,10 @@ pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
             uom,
         });
     }
-    
+
     // Sort attributes to ensure consistent output
     attributes.sort_by(|a, b| a.name.cmp(&b.name));
-    
+
     attributes
 }
 

@@ -87,19 +87,20 @@ pub fn entity_to_geometry(
                 // Inline polygons
                 for (local_idx, idx_poly) in geoms
                     .multipolygon
-                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize).enumerate()
+                    .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                    .enumerate()
                 {
                     let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                     let mut polygon: Polygon3D<f64> = poly.into();
-                    
+
                     // Get the global polygon index
                     let global_poly_idx = geometry.pos as usize + local_idx;
-                    
+
                     // Get all ring IDs for this polygon (exterior + interiors)
                     let ring_start = polygon_to_ring_start[global_poly_idx];
                     let num_rings = idx_poly.rings().count();
                     let mut ring_ids: Vec<Option<String>> = Vec::with_capacity(num_rings);
-                    
+
                     for i in 0..num_rings {
                         if let Some(Some(ring_id)) = geoms.ring_ids.get(ring_start + i) {
                             ring_ids.push(Some(ring_id.0.to_string()));
@@ -107,12 +108,12 @@ pub fn entity_to_geometry(
                             ring_ids.push(None);
                         }
                     }
-                    
+
                     // Set the polygon ID to the exterior ring ID (first ring)
                     if let Some(first_id) = ring_ids.first().cloned().flatten() {
                         polygon.id = Some(first_id);
                     }
-                    
+
                     polygons.push(polygon);
                     polygon_ring_ids.push(ring_ids);
                 }
