@@ -67,6 +67,15 @@ pub fn entity_to_geometry(
         })
         .collect();
 
+    // Build a lookup table: polygon_index -> starting_ring_index
+    // This maps each polygon to its starting position in the ring_ids array
+    let mut polygon_to_ring_start: Vec<usize> = Vec::with_capacity(geoms.multipolygon.len());
+    let mut cumulative_rings = 0;
+    for poly_idx in 0..geoms.multipolygon.len() {
+        polygon_to_ring_start.push(cumulative_rings);
+        cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
+    }
+
     // Build gml_geometries with local pos/len (relative to this feature's polygon arrays)
     let mut gml_geometries = Vec::<GmlGeometry>::new();
     let mut local_pos: u32 = 0;
@@ -74,6 +83,7 @@ pub fn entity_to_geometry(
         match geometry.ty {
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 let mut polygons = Vec::<Polygon3D<f64>>::new();
+                let mut polygon_ring_ids: Vec<Vec<Option<String>>> = Vec::new();
                 // Inline polygons
                 for (local_idx, idx_poly) in geoms
                     .multipolygon
@@ -81,13 +91,30 @@ pub fn entity_to_geometry(
                 {
                     let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                     let mut polygon: Polygon3D<f64> = poly.into();
-                    // Get the global polygon index and lookup the ring ID (exterior ring's gml:id)
+                    
+                    // Get the global polygon index
                     let global_poly_idx = geometry.pos as usize + local_idx;
-                    if let Some(Some(ring_id)) = geoms.ring_ids.get(global_poly_idx) {
-                        // The ring_id already includes the "UUID_" prefix from nusamai
-                        polygon.id = Some(ring_id.0.to_string());
+                    
+                    // Get all ring IDs for this polygon (exterior + interiors)
+                    let ring_start = polygon_to_ring_start[global_poly_idx];
+                    let num_rings = idx_poly.rings().count();
+                    let mut ring_ids: Vec<Option<String>> = Vec::with_capacity(num_rings);
+                    
+                    for i in 0..num_rings {
+                        if let Some(Some(ring_id)) = geoms.ring_ids.get(ring_start + i) {
+                            ring_ids.push(Some(ring_id.0.to_string()));
+                        } else {
+                            ring_ids.push(None);
+                        }
                     }
+                    
+                    // Set the polygon ID to the exterior ring ID (first ring)
+                    if let Some(first_id) = ring_ids.first().cloned().flatten() {
+                        polygon.id = Some(first_id);
+                    }
+                    
                     polygons.push(polygon);
+                    polygon_ring_ids.push(ring_ids);
                 }
                 // Resolved xlink:href ranges
                 // TODO: implement resolving for other geometry types (requires upstream support in nusamai_citygml parser)
@@ -110,6 +137,7 @@ pub fn entity_to_geometry(
                 let mut geometry_feature = GmlGeometry::from(geometry.clone());
                 geometry_feature.len = polygons.len() as u32;
                 geometry_feature.polygons.extend(polygons);
+                geometry_feature.polygon_ring_ids = polygon_ring_ids;
                 Some(geometry_feature)
             }
             GeometryType::Curve => {

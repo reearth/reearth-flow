@@ -1062,6 +1062,8 @@ mod tests {
             polygons: vec![polygon.clone()],
             feature_id: Some("feature1".to_string()),
             feature_type: Some("Building".to_string()),
+            composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
             ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
@@ -1114,6 +1116,8 @@ mod tests {
             polygons: vec![clip_polygon.clone()],
             feature_id: Some("clipper1".to_string()),
             feature_type: Some("Building".to_string()),
+            composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
             ..GmlGeometry::new(GeometryType::Surface, Some(2))
         };
 
@@ -1133,6 +1137,82 @@ mod tests {
             })],
             candidates: vec![make_feature(Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
+                ..Default::default()
+            })],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+
+        let result = clipper.finish(ctx, &fw);
+        assert!(result.is_ok());
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let ports = noop.send_ports.lock().unwrap();
+            // Should have sent features to both inside and outside ports
+            assert!(ports.contains(&*INSIDE_PORT));
+            assert!(ports.contains(&*OUTSIDE_PORT));
+        }
+    }
+
+    #[test]
+    fn test_clipper_with_citygml_composite_surfaces() {
+        use reearth_flow_types::{GeometryType, GmlGeometry};
+
+        let polygon1 = create_test_polygon_3d();
+        let polygon2 = create_clipper_polygon_3d();
+        let clip_polygon = create_clipper_polygon_3d();
+
+        // Create a nested GML geometry (composite surface)
+        let nested_gml = GmlGeometry {
+            id: Some("nested_surface".to_string()),
+            ty: GeometryType::Surface,
+            gml_trait: None,
+            lod: Some(2),
+            pos: 0,
+            len: 1,
+            points: vec![],
+            polygons: vec![polygon1.clone()],
+            line_strings: vec![],
+            feature_id: Some("nested_feature".to_string()),
+            feature_type: Some("Wall".to_string()),
+            composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
+        };
+
+        // Create a parent GML geometry with composite surfaces
+        let parent_gml = GmlGeometry {
+            id: Some("parent_solid".to_string()),
+            ty: GeometryType::Solid,
+            gml_trait: None,
+            lod: Some(2),
+            pos: 0,
+            len: 2,
+            points: vec![],
+            polygons: vec![polygon2.clone()],
+            line_strings: vec![],
+            feature_id: Some("parent_feature".to_string()),
+            feature_type: Some("Building".to_string()),
+            composite_surfaces: vec![nested_gml],
+        };
+
+        let citygml = CityGmlGeometry {
+            gml_geometries: vec![parent_gml],
+            materials: vec![],
+            textures: vec![],
+            polygon_materials: vec![],
+            polygon_textures: vec![],
+            polygon_uvs: Default::default(),
+        };
+
+        let mut clipper = Clipper {
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
+                ..Default::default()
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml),
                 ..Default::default()
             })],
         };
@@ -1173,7 +1253,8 @@ mod tests {
             line_strings: vec![line_string],
             feature_id: Some("curve_feature".to_string()),
             feature_type: Some("Road".to_string()),
-            ..GmlGeometry::new(GeometryType::Curve, Some(2))
+            composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
         };
 
         let citygml = CityGmlGeometry {
@@ -1208,6 +1289,99 @@ mod tests {
             // Curve geometry with line_strings should be sent to inside port as-is
             // since we can't clip line strings the same way as polygons
             assert!(ports.contains(&*INSIDE_PORT));
+        }
+    }
+
+    #[test]
+    fn test_clipper_with_citygml_solid_with_nested_surfaces() {
+        use reearth_flow_types::{GeometryType, GmlGeometry};
+
+        let polygon1 = create_test_polygon_3d();
+        let polygon2 = create_clipper_polygon_3d();
+
+        // Create nested surface geometries (representing walls, roof, etc.)
+        let wall1 = GmlGeometry {
+            id: Some("wall1".to_string()),
+            ty: GeometryType::Surface,
+            gml_trait: None,
+            lod: Some(2),
+            pos: 0,
+            len: 1,
+            points: vec![],
+            polygons: vec![polygon1.clone()],
+            line_strings: vec![],
+            feature_id: Some("wall1_feature".to_string()),
+            feature_type: Some("WallSurface".to_string()),
+            composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
+        };
+
+        let wall2 = GmlGeometry {
+            id: Some("wall2".to_string()),
+            ty: GeometryType::Surface,
+            gml_trait: None,
+            lod: Some(2),
+            pos: 1,
+            len: 1,
+            points: vec![],
+            polygons: vec![polygon2.clone()],
+            line_strings: vec![],
+            feature_id: Some("wall2_feature".to_string()),
+            feature_type: Some("WallSurface".to_string()),
+            composite_surfaces: vec![],
+        };
+
+        // Create a Solid with composite surfaces
+        let solid = GmlGeometry {
+            id: Some("building_solid".to_string()),
+            ty: GeometryType::Solid,
+            gml_trait: None,
+            lod: Some(2),
+            pos: 0,
+            len: 2,
+            points: vec![],
+            polygons: vec![], // Solid might not have direct polygons
+            line_strings: vec![],
+            feature_id: Some("building".to_string()),
+            feature_type: Some("Building".to_string()),
+            composite_surfaces: vec![wall1, wall2],
+            polygon_ring_ids: vec![],
+        };
+
+        let citygml = CityGmlGeometry {
+            gml_geometries: vec![solid],
+            materials: vec![],
+            textures: vec![],
+            polygon_materials: vec![],
+            polygon_textures: vec![],
+            polygon_uvs: Default::default(),
+        };
+
+        let clip_polygon = create_clipper_polygon_3d();
+
+        let mut clipper = Clipper {
+            clippers: vec![make_feature(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(clip_polygon)),
+                ..Default::default()
+            })],
+            candidates: vec![make_feature(Geometry {
+                value: GeometryValue::CityGmlGeometry(citygml),
+                ..Default::default()
+            })],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+
+        let result = clipper.finish(ctx, &fw);
+        assert!(result.is_ok());
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let ports = noop.send_ports.lock().unwrap();
+            // Should process nested surfaces and send results
+            assert!(ports.contains(&*INSIDE_PORT));
+            assert!(ports.contains(&*OUTSIDE_PORT));
         }
     }
 

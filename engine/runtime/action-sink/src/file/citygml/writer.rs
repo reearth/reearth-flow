@@ -935,21 +935,23 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(polygon))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        // Exterior ring
+        // Exterior ring - get ring ID from surface.ring_ids[0]
+        let exterior_ring_id = surface.ring_ids.first().and_then(|id| id.as_deref());
         self.writer
             .write_event(Event::Start(BytesStart::new("gml:exterior")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-        self.write_linear_ring(&surface.exterior)?;
+        self.write_linear_ring(&surface.exterior, exterior_ring_id)?;
         self.writer
             .write_event(Event::End(BytesEnd::new("gml:exterior")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        // Interior rings (holes)
-        for interior in &surface.interiors {
+        // Interior rings (holes) - get ring IDs from surface.ring_ids[1..]
+        for (idx, interior) in surface.interiors.iter().enumerate() {
+            let interior_ring_id = surface.ring_ids.get(idx + 1).and_then(|id| id.as_deref());
             self.writer
                 .write_event(Event::Start(BytesStart::new("gml:interior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            self.write_linear_ring(interior)?;
+            self.write_linear_ring(interior, interior_ring_id)?;
             self.writer
                 .write_event(Event::End(BytesEnd::new("gml:interior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -968,9 +970,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
     fn write_linear_ring(
         &mut self,
         coords: &[reearth_flow_geometry::types::coordinate::Coordinate3D<f64>],
+        ring_id: Option<&str>,
     ) -> Result<(), SinkError> {
+        let mut linear_ring = BytesStart::new("gml:LinearRing");
+        if let Some(id) = ring_id {
+            linear_ring.push_attribute(("gml:id", id));
+        }
         self.writer
-            .write_event(Event::Start(BytesStart::new("gml:LinearRing")))
+            .write_event(Event::Start(linear_ring))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         self.write_text_element("gml:posList", &format_pos_list(coords))?;

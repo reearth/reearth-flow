@@ -181,6 +181,8 @@ pub struct GmlSurface {
     pub exterior: Vec<Coordinate3D<f64>>,
     pub interiors: Vec<Vec<Coordinate3D<f64>>>,
     pub surface_type: SurfaceType,
+    /// Ring IDs for exterior and interior rings (for texture coordinate references)
+    pub ring_ids: Vec<Option<String>>,
 }
 
 impl GmlSurface {
@@ -194,7 +196,21 @@ impl GmlSurface {
                 .map(|ring| ring.0.clone())
                 .collect(),
             surface_type,
+            // Initialize with empty ring_ids - will be populated from exterior ring id
+            ring_ids: vec![polygon.id.clone()],
         }
+    }
+    
+    /// Get the exterior ring ID
+    #[allow(dead_code)]
+    pub fn exterior_ring_id(&self) -> Option<&str> {
+        self.ring_ids.first().and_then(|id| id.as_deref())
+    }
+    
+    /// Get the interior ring ID at index
+    #[allow(dead_code)]
+    pub fn interior_ring_id(&self, idx: usize) -> Option<&str> {
+        self.ring_ids.get(idx + 1).and_then(|id| id.as_deref())
     }
 }
 
@@ -377,31 +393,36 @@ fn surface_type_from_feature_type(feature_type: &Option<String>) -> SurfaceType 
 fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
     let surface_type = surface_type_from_feature_type(&gml_geom.feature_type);
     
+    // Build surfaces with ring IDs if available
+    let mut surfaces = Vec::new();
+    for (idx, polygon) in gml_geom.polygons.iter().enumerate() {
+        let mut surface = GmlSurface::from_polygon_with_type(polygon, surface_type);
+        
+        // Set ring IDs if available
+        if let Some(ring_ids) = gml_geom.polygon_ring_ids.get(idx) {
+            surface.ring_ids = ring_ids.clone();
+        }
+        
+        surfaces.push(surface);
+    }
+    
     match gml_geom.ty {
         GeometryType::Solid => {
-            if gml_geom.polygons.is_empty() {
+            if surfaces.is_empty() {
                 return None;
             }
             Some(GmlElement::Solid {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom
-                    .polygons
-                    .iter()
-                    .map(|p| GmlSurface::from_polygon_with_type(p, surface_type))
-                    .collect(),
+                surfaces,
             })
         }
         GeometryType::Surface | GeometryType::Triangle => {
-            if gml_geom.polygons.is_empty() {
+            if surfaces.is_empty() {
                 return None;
             }
             Some(GmlElement::MultiSurface {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom
-                    .polygons
-                    .iter()
-                    .map(|p| GmlSurface::from_polygon_with_type(p, surface_type))
-                    .collect(),
+                surfaces,
             })
         }
         GeometryType::Curve => {

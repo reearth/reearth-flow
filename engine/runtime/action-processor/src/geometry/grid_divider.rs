@@ -606,6 +606,8 @@ fn clip_citygml_geometry_per_polygon(
                     line_strings: vec![],
                     feature_id: gml.feature_id.clone(),
                     feature_type: gml.feature_type.clone(),
+                    composite_surfaces: vec![],
+                    polygon_ring_ids: vec![],
                 };
 
                 // Create placeholder UV polygon matching the structure of clipped_poly
