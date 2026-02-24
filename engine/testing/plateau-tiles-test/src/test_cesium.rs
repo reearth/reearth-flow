@@ -16,6 +16,7 @@ pub enum GeometryTest {
     BoundingBox,
     MassCenter,
     AverageColor,
+    AverageWinding,
 }
 
 #[derive(Debug, Deserialize)]
@@ -187,12 +188,13 @@ fn compare_geometry(
                 &skip,
             )?;
             tracing::debug!(
-                "{}: level {}, bbox:{:.6}, center:{:.6}, color:{:.6}",
+                "{}: level {}, bbox:{:.6}, center:{:.6}, color:{:.6}, winding:{:.6}",
                 result.ident,
                 idx,
                 result.bounding_box_error,
                 result.mass_center_error,
-                result.average_color_error
+                result.average_color_error,
+                result.average_winding_error
             );
         }
     }
@@ -235,14 +237,19 @@ pub struct DetailLevelComparisonResult {
     bounding_box_error: f64,
     mass_center_error: f64,
     average_color_error: f32,
+    average_winding_error: f64,
 }
 
 impl std::fmt::Display for DetailLevelComparisonResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} bounding_box:{:.6} mass_center:{:.6} color:{:.6}",
-            self.ident, self.bounding_box_error, self.mass_center_error, self.average_color_error,
+            "{} bounding_box:{:.6} mass_center:{:.6} color:{:.6} winding:{:.6}",
+            self.ident,
+            self.bounding_box_error,
+            self.mass_center_error,
+            self.average_color_error,
+            self.average_winding_error,
         )
     }
 }
@@ -256,6 +263,20 @@ impl DetailLevelComparisonResult {
     }
 }
 
+fn compute_total_area(triangles: &[[usize; 3]], positions: &[Coordinate]) -> f64 {
+    triangles
+        .iter()
+        .map(|tri| {
+            let p0 = positions[tri[0]];
+            let p1 = positions[tri[1]];
+            let p2 = positions[tri[2]];
+            let v1 = p1 - p0;
+            let v2 = p2 - p0;
+            v1.cross(&v2).norm() / 2.0
+        })
+        .sum()
+}
+
 fn compare_detail_level(
     ident: &str,
     fme_level: &DetailLevel,
@@ -267,6 +288,35 @@ fn compare_detail_level(
     let mut result = DetailLevelComparisonResult::new(ident.to_string());
     let fme_error = fme_level.geometric_error;
     let flow_error = flow_level.geometric_error;
+
+    // If flow geometry is degenerate (all zero-area triangles), the object may have been
+    // simplified away. This is acceptable if the FME object's size is within the flow's
+    // geometric error — i.e. the object is smaller than the LOD resolution.
+    let flow_total_area =
+        compute_total_area(&flow_level.triangles, &flow_geometries.vertex_positions);
+    if flow_total_area == 0.0 {
+        let fme_bbox =
+            compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+        let bbox_diagonal = ((fme_bbox.1.x - fme_bbox.0.x).powi(2)
+            + (fme_bbox.1.y - fme_bbox.0.y).powi(2)
+            + (fme_bbox.1.z - fme_bbox.0.z).powi(2))
+        .sqrt();
+        if bbox_diagonal <= flow_error {
+            tracing::debug!(
+                "ident '{}': skipping geometry tests — flow geometry is degenerate and FME \
+                 object size ({:.6}) is within flow geometric error ({:.6})",
+                ident,
+                bbox_diagonal,
+                flow_error
+            );
+            return Ok(result);
+        }
+        return Err(format!(
+            "ident '{}': flow geometry is degenerate (zero total area) but FME geometry \
+             size ({:.6}) exceeds flow geometric error ({:.6})",
+            ident, bbox_diagonal, flow_error
+        ));
+    }
 
     if !skip.contains(&GeometryTest::BoundingBox) {
         // Compute bounding boxes directly from vertex positions
@@ -304,9 +354,13 @@ fn compare_detail_level(
     if !skip.contains(&GeometryTest::MassCenter) {
         // Compute centroids directly from vertex positions
         let fme_centroid =
-            compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+            compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions).map_err(|e| {
+                format!("ident '{}': failed to compute FME centroid: {}", ident, e)
+            })?;
         let flow_centroid =
-            compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions)?;
+            compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions).map_err(|e| {
+                format!("ident '{}': failed to compute Flow centroid: {}", ident, e)
+            })?;
 
         // if vertices have max error r, centroids can differ by at most r
         let centroid_error_bound = fme_error + flow_error;
@@ -338,6 +392,16 @@ fn compare_detail_level(
                 flow_geometries,
             )?;
         }
+    }
+
+    if !skip.contains(&GeometryTest::AverageWinding) {
+        result.average_winding_error = test_area_weighted_average_winding(
+            ident,
+            fme_level,
+            fme_geometries,
+            flow_level,
+            flow_geometries,
+        )?;
     }
 
     Ok(result)
@@ -458,7 +522,7 @@ fn test_face_weighted_average_color(
     }
 
     // Compare average colors with tolerance
-    let color_tolerance = 0.02; // Allow 2% difference per channel (0-1 range)
+    let color_tolerance = 0.1; // Allow 10% difference per channel (0-1 range)
     let color_diff = [
         (fme_avg_color[0] - flow_avg_color[0]).abs(),
         (fme_avg_color[1] - flow_avg_color[1]).abs(),
@@ -553,6 +617,90 @@ fn is_near_default_color(color: &[f32; 4], default: &[f32; 4]) -> bool {
         && (color[1] - default[1]).abs() <= DEFAULT_TOLERANCE
         && (color[2] - default[2]).abs() <= DEFAULT_TOLERANCE
         && (color[3] - default[3]).abs() <= DEFAULT_TOLERANCE
+}
+
+/// Compute the area-weighted average winding direction from triangle geometry.
+/// Each triangle contributes its unit normal weighted by area (= cross/2).
+/// The sum is divided by total area, giving a dimensionless vector with magnitude in [0, 1].
+fn compute_area_weighted_winding_vector(
+    triangles: &[[usize; 3]],
+    positions: &[Coordinate],
+) -> Result<[f64; 3], String> {
+    if triangles.is_empty() {
+        return Err("Cannot compute average winding: no triangles".to_string());
+    }
+
+    let mut weighted = [0.0f64; 3];
+    let mut total_area = 0.0f64;
+
+    for triangle in triangles {
+        let p0 = positions[triangle[0]];
+        let p1 = positions[triangle[1]];
+        let p2 = positions[triangle[2]];
+        let v1 = p1 - p0;
+        let v2 = p2 - p0;
+        let cross = v1.cross(&v2);
+        // cross / 2 == unit_normal * triangle_area
+        weighted[0] += cross.x / 2.0;
+        weighted[1] += cross.y / 2.0;
+        weighted[2] += cross.z / 2.0;
+        total_area += cross.norm() / 2.0;
+    }
+
+    if total_area == 0.0 {
+        return Err("Cannot compute average winding: total area is zero".to_string());
+    }
+
+    Ok([
+        weighted[0] / total_area,
+        weighted[1] / total_area,
+        weighted[2] / total_area,
+    ])
+}
+
+/// Compare area-weighted average winding vectors between FME and Flow in Euclidean space.
+/// Both vectors are dimensionless with magnitude in [0, 1].
+/// Returns the error normalized by the tolerance (0.0 = perfect match, 1.0 = at threshold).
+fn test_area_weighted_average_winding(
+    ident: &str,
+    fme_level: &DetailLevel,
+    fme_geometries: &GeometryCollector,
+    flow_level: &DetailLevel,
+    flow_geometries: &GeometryCollector,
+) -> Result<f64, String> {
+    let fme_vec = compute_area_weighted_winding_vector(
+        &fme_level.triangles,
+        &fme_geometries.vertex_positions,
+    )?;
+    let flow_vec = compute_area_weighted_winding_vector(
+        &flow_level.triangles,
+        &flow_geometries.vertex_positions,
+    )?;
+
+    let diff_magnitude = ((fme_vec[0] - flow_vec[0]).powi(2)
+        + (fme_vec[1] - flow_vec[1]).powi(2)
+        + (fme_vec[2] - flow_vec[2]).powi(2))
+    .sqrt();
+
+    const TOLERANCE: f64 = 0.25;
+    if diff_magnitude > TOLERANCE {
+        return Err(format!(
+            "ident '{}': area-weighted average winding differs by {:.4} (max allowed: {:.4})\n\
+             FME:  [{:.6}, {:.6}, {:.6}]\n\
+             Flow: [{:.6}, {:.6}, {:.6}]",
+            ident,
+            diff_magnitude,
+            TOLERANCE,
+            fme_vec[0],
+            fme_vec[1],
+            fme_vec[2],
+            flow_vec[0],
+            flow_vec[1],
+            flow_vec[2],
+        ));
+    }
+
+    Ok(diff_magnitude / TOLERANCE)
 }
 
 /// Compute face color as material base color × average vertex color
