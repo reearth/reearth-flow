@@ -6847,6 +6847,7 @@ dependencies = [
  "bvh",
  "bytes",
  "clipper-sys",
+ "earcut",
  "flatgeom",
  "float_next_after",
  "geo-buffer",

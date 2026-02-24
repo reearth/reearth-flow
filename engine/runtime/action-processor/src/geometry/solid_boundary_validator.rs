@@ -3,7 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate3D, line_string::LineString3D, triangular_mesh::TriangularMesh,
+    coordinate::Coordinate3D, line_string::LineString3D, polygon::Polygon3D,
+    triangular_mesh::TriangularMesh,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -154,13 +155,11 @@ impl Processor for SolidBoundaryValidator {
             return Ok(());
         }
 
-        // Extract solid faces from feature
-        let faces: Vec<reearth_flow_geometry::types::line_string::LineString> = match &geometry
-            .value
-        {
+        // Extract faces and build triangular mesh from feature geometry
+        let (mesh, faces) = match &geometry.value {
             GeometryValue::FlowGeometry3D(geom) => {
                 if let Some(solid) = geom.as_solid() {
-                    solid
+                    let faces: Vec<LineString3D<f64>> = solid
                         .all_faces()
                         .into_iter()
                         .map(|f| {
@@ -168,83 +167,67 @@ impl Processor for SolidBoundaryValidator {
                                 .map(|v| Coordinate3D::new__(v.x, v.y, v.z))
                                 .collect()
                         })
-                        .collect::<Vec<_>>()
+                        .collect();
+                    let mesh = TriangularMesh::from_faces(&faces, Some(tolerance));
+                    (mesh, faces)
                 } else {
-                    // Not a solid geometry.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 }
             }
             GeometryValue::CityGmlGeometry(gml_geom) => {
                 if gml_geom.gml_geometries.len() > 1 {
-                    return Err(Box::new(GeometryProcessorError::SolidBoundaryValidatorFactory(
-                        "Multiple geometries detected, but only one solid can be validated at a time.".to_string(),
-                    )));
+                    return Err(Box::new(
+                        GeometryProcessorError::SolidBoundaryValidatorFactory(
+                            "Multiple geometries detected, but only one solid can be validated at a time.".to_string(),
+                        ),
+                    ));
                 }
 
                 let Some(geom) = gml_geom.gml_geometries.first() else {
-                    // No geometry given.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 };
 
                 if geom.ty.name() != "Solid" {
-                    // Not a solid geometry.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 }
 
-                let mut polygons = Vec::new();
-                for p in &geom.polygons {
-                    polygons.push(p.clone().into_merged_contour(Some(tolerance))?);
-                }
-                polygons
+                let polygons: Vec<Polygon3D<f64>> = geom.polygons.clone();
+                // Collect exterior rings for orientation checking
+                let faces: Vec<LineString3D<f64>> = polygons
+                    .iter()
+                    .map(|p| p.exterior().clone())
+                    .collect();
+                let mesh = TriangularMesh::try_from_polygons(polygons, Some(tolerance));
+                (mesh, faces)
             }
             _ => {
-                // Not a solid geometry, send to rejected port
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                 return Ok(());
             }
         };
 
-        let mesh = match TriangularMesh::from_faces(&faces, Some(tolerance)) {
+        let mesh = match mesh {
             Ok(mesh) => mesh,
             Err(_) => {
-                // Some faces failed triangulation (e.g., non-planar faces).
-                // Retry with only faces that can be triangulated.
-                // Missing faces will be caught by subsequent validation checks.
-                let valid_faces: Vec<_> = faces
-                    .iter()
-                    .filter(|face| {
-                        TriangularMesh::from_faces(&[(*face).clone()], Some(tolerance)).is_ok()
-                    })
-                    .cloned()
-                    .collect();
-                match TriangularMesh::from_faces(&valid_faces, Some(tolerance)) {
-                    Ok(mesh) => mesh,
-                    Err(_) => {
-                        // Even valid faces can't build a mesh
-                        let mut feature = feature.clone();
-                        feature.attributes_mut().insert(
-                            Attribute::new("solid_boundary_issues"),
-                            AttributeValue::from(
-                                serde_json::to_value(&ValidationResult {
-                                    issue_count: 1,
-                                    issue: IssueType::SurfaceIssue,
-                                })
-                                .unwrap(),
-                            ),
-                        );
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()),
-                        );
-                        return Ok(());
-                    }
-                }
+                let mut feature = feature.clone();
+                feature.attributes_mut().insert(
+                    Attribute::new("solid_boundary_issues"),
+                    AttributeValue::from(
+                        serde_json::to_value(&ValidationResult {
+                            issue_count: 1,
+                            issue: IssueType::SurfaceIssue,
+                        })
+                        .unwrap(),
+                    ),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+                return Ok(());
             }
         };
         if mesh.is_empty() {
-            // If triangulation fails, send to rejected port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         }

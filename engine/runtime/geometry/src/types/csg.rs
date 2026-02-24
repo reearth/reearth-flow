@@ -1,13 +1,11 @@
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    types::{
-        coordinate::{are_coplanar, Coordinate},
-        coordnum::CoordNum,
-        solid::{Solid, Solid3D},
-        triangle::Triangle,
-    },
+use crate::types::{
+    coordinate::{are_coplanar, Coordinate},
+    coordnum::CoordNum,
+    solid::{Solid, Solid3D},
+    triangle::Triangle,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
