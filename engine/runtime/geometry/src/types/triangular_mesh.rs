@@ -14,7 +14,15 @@ use earcut::{utils3d::project3d_to_2d, Earcut};
 use num_traits::{Float, FromPrimitive, NumCast};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
-use std::vec;
+
+/// Canonical lexicographic ordering for `Coordinate3D<T>`, used to sort and
+/// binary-search the shared vertex list in all `TriangularMesh` constructors.
+fn coord3d_cmp<T: CoordNum>(a: &Coordinate3D<T>, b: &Coordinate3D<T>) -> std::cmp::Ordering {
+    a.x.partial_cmp(&b.x)
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then_with(|| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal))
+        .then_with(|| a.z.partial_cmp(&b.z).unwrap_or(std::cmp::Ordering::Equal))
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct TriangularMesh<T: CoordNum, Z: CoordNum = T> {
@@ -91,25 +99,15 @@ impl TriangularMesh<f64, f64> {
             .filter(|v| v.x.is_finite() && v.y.is_finite() && v.z.is_finite())
             .copied()
             .collect::<Vec<_>>();
-        let vertex_cmp = |a: &Coordinate3D<f64>, b: &Coordinate3D<f64>| {
-            let x_cmp = a.x.partial_cmp(&b.x).unwrap();
-            if x_cmp != std::cmp::Ordering::Equal {
-                return x_cmp;
-            }
-            let y_cmp = a.y.partial_cmp(&b.y).unwrap();
-            if y_cmp != std::cmp::Ordering::Equal {
-                return y_cmp;
-            }
-            a.z.partial_cmp(&b.z).unwrap()
-        };
-        vertices.sort_unstable_by(vertex_cmp);
+        vertices.sort_unstable_by(coord3d_cmp);
         vertices.dedup();
         for triangle in trinangles {
             let mut tri_indices = [0usize; 3];
             for (i, &vertex) in triangle.iter().enumerate() {
-                // Get or insert vertex index
+                // Every vertex in `triangle` came from `trinangles`, which was used to
+                // build `vertices`, so binary_search is guaranteed to succeed.
                 let vertex_index = vertices
-                    .binary_search_by(|v| vertex_cmp(v, &vertex))
+                    .binary_search_by(|v| coord3d_cmp(v, &vertex))
                     .unwrap();
                 tri_indices[i] = vertex_index;
             }
@@ -227,38 +225,37 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     }
 
     /// Create a triangular mesh from a list of faces by triangulating each face.
-    pub fn from_faces(faces: &[LineString3D<T>], tolerance: Option<T>) -> Result<Self, String> {
-        let tolerance = if let Some(tol) = tolerance {
-            tol
-        } else {
-            T::from(1e-6).unwrap() // Default tolerance
-        };
+    ///
+    /// The `tolerance` parameter is accepted for API compatibility; vertex deduplication
+    /// uses exact coordinate comparison and earcut handles tessellation internally.
+    pub fn from_faces(faces: &[LineString3D<T>], _tolerance: Option<T>) -> Result<Self, String> {
         let mut out = Self::default();
 
-        // Collect all unique vertices using exact comparison
+        // Collect all unique vertices using exact comparison (sort + dedup).
         let mut vertices: Vec<Coordinate3D<T>> = Vec::new();
-        let vertex_cmp = |a: &Coordinate3D<T>, b: &Coordinate3D<T>| {
-            let x_cmp = a.x.partial_cmp(&b.x).unwrap();
-            if x_cmp != std::cmp::Ordering::Equal {
-                return x_cmp;
-            }
-            let y_cmp = a.y.partial_cmp(&b.y).unwrap();
-            if y_cmp != std::cmp::Ordering::Equal {
-                return y_cmp;
-            }
-            a.z.partial_cmp(&b.z).unwrap()
-        };
         for v in faces.iter().flat_map(|f| f.0.iter()) {
             if v.x.is_finite() && v.y.is_finite() && v.z.is_finite() {
                 vertices.push(*v);
             }
         }
-        vertices.sort_unstable_by(vertex_cmp);
+        vertices.sort_unstable_by(coord3d_cmp);
         vertices.dedup();
+
+        // Reuse earcut allocations across all faces.
+        let mut earcutter = Earcut::<T>::new();
+        let mut buf3d: Vec<[T; 3]> = Vec::new();
+        let mut buf2d: Vec<[T; 2]> = Vec::new();
+        let mut index_buf: Vec<u32> = Vec::new();
 
         for face in faces.iter() {
             // Triangulate the face
-            let face_triangles = match Self::triangulate_face(face.clone(), tolerance) {
+            let face_triangles = match Self::triangulate_face(
+                face.clone(),
+                &mut earcutter,
+                &mut buf3d,
+                &mut buf2d,
+                &mut index_buf,
+            ) {
                 Ok(triangles) => triangles,
                 Err(err) => {
                     return Err(format!(
@@ -270,9 +267,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             for triangle in face_triangles {
                 let mut tri_indices = [0usize; 3];
                 for (i, &vertex) in triangle.iter().enumerate() {
-                    // Look up vertex index by exact match
+                    // Every vertex returned by triangulate_face originates from the face
+                    // ring collected into `vertices` above, so binary_search always succeeds.
                     let vertex_index = vertices
-                        .binary_search_by(|v| vertex_cmp(v, &vertex))
+                        .binary_search_by(|v| coord3d_cmp(v, &vertex))
                         .unwrap();
                     tri_indices[i] = vertex_index;
                 }
@@ -301,7 +299,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     /// - The face does not intersect itself
     fn triangulate_face(
         face: LineString3D<T>,
-        _tolerance: T,
+        earcutter: &mut Earcut<T>,
+        buf3d: &mut Vec<[T; 3]>,
+        buf2d: &mut Vec<[T; 2]>,
+        index_buf: &mut Vec<u32>,
     ) -> Result<Vec<[Coordinate3D<T>; 3]>, String> {
         let mut face = face.0;
         // face at least must be triangle
@@ -318,20 +319,18 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         }
 
         // Convert Coordinate3D<T> to [T; 3] buffer for earcut
-        let buf3d: Vec<[T; 3]> = face.iter().map(|c| [c.x, c.y, c.z]).collect();
+        buf3d.clear();
+        buf3d.extend(face.iter().map(|c| [c.x, c.y, c.z]));
         let num_outer = buf3d.len();
 
         // Project 3D polygon onto best-fit 2D plane
-        let mut buf2d: Vec<[T; 2]> = Vec::new();
-        if !project3d_to_2d(&buf3d, num_outer, &mut buf2d) {
+        if !project3d_to_2d(buf3d, num_outer, buf2d) {
             return Err("Failed to project 3D face to 2D for triangulation".to_string());
         }
 
         // Run earcut triangulation (no holes for single-ring faces)
-        let mut earcutter = Earcut::new();
-        let mut index_buf: Vec<u32> = Vec::new();
         let hole_indices: Vec<u32> = Vec::new();
-        earcutter.earcut(buf2d.iter().cloned(), &hole_indices, &mut index_buf);
+        earcutter.earcut(buf2d.iter().cloned(), &hole_indices, index_buf);
 
         // Map triangle indices back to Coordinate3D triples
         let triangles: Vec<[Coordinate3D<T>; 3]> = index_buf
@@ -732,24 +731,17 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 }
 
 impl TriangularMesh<f64> {
+    /// Triangulates a collection of polygons (with optional holes) and builds a mesh.
+    ///
+    /// The `_tolerance` parameter is accepted for API compatibility; vertex deduplication
+    /// uses exact coordinate comparison and earcut handles tessellation internally.
     pub fn try_from_polygons(
         faces: Vec<Polygon3D<f64>>,
         _tolerance: Option<f64>,
     ) -> Result<Self, String> {
         let mut out = Self::default();
-        let vertex_cmp = |a: &Coordinate3D<f64>, b: &Coordinate3D<f64>| {
-            let x_cmp = a.x.partial_cmp(&b.x).unwrap();
-            if x_cmp != std::cmp::Ordering::Equal {
-                return x_cmp;
-            }
-            let y_cmp = a.y.partial_cmp(&b.y).unwrap();
-            if y_cmp != std::cmp::Ordering::Equal {
-                return y_cmp;
-            }
-            a.z.partial_cmp(&b.z).unwrap()
-        };
 
-        // Collect all unique vertices
+        // Collect all unique vertices (exterior + interior rings) using exact comparison.
         let mut vertices: Vec<Coordinate3D<f64>> = Vec::new();
         for polygon in &faces {
             for v in polygon.exterior().0.iter().chain(
@@ -763,7 +755,7 @@ impl TriangularMesh<f64> {
                 }
             }
         }
-        vertices.sort_unstable_by(vertex_cmp);
+        vertices.sort_unstable_by(coord3d_cmp);
         vertices.dedup();
 
         let mut earcutter = Earcut::new();
@@ -783,8 +775,10 @@ impl TriangularMesh<f64> {
             for triangle in face_triangles {
                 let mut tri_indices = [0usize; 3];
                 for (i, &vertex) in triangle.iter().enumerate() {
+                    // Every vertex originates from a polygon ring collected into
+                    // `vertices` above, so binary_search is guaranteed to succeed.
                     let vertex_index = vertices
-                        .binary_search_by(|v| vertex_cmp(v, &vertex))
+                        .binary_search_by(|v| coord3d_cmp(v, &vertex))
                         .unwrap();
                     tri_indices[i] = vertex_index;
                 }
@@ -1644,6 +1638,12 @@ impl TriangularMesh<f64> {
 pub mod tests {
     use super::*;
 
+    /// Convenience constructor for the four mutable buffers that `triangulate_face` expects.
+    #[allow(clippy::type_complexity)]
+    fn earcut_buffers() -> (Earcut<f64>, Vec<[f64; 3]>, Vec<[f64; 2]>, Vec<u32>) {
+        (Earcut::new(), Vec::new(), Vec::new(), Vec::new())
+    }
+
     #[test]
     fn test_triangulate_face() {
         // Simple square face
@@ -1657,7 +1657,9 @@ pub mod tests {
 
         let face = LineString3D::new(face);
 
-        let triangles = TriangularMesh::triangulate_face(face, 1e-6).unwrap();
+        let (mut ec, mut b3, mut b2, mut ib) = earcut_buffers();
+        let triangles =
+            TriangularMesh::triangulate_face(face, &mut ec, &mut b3, &mut b2, &mut ib).unwrap();
         assert_eq!(triangles.len(), 2);
 
         // face whose boundary contains edges with multiplicity > 1.
@@ -1671,7 +1673,8 @@ pub mod tests {
             Coordinate3D::new__(2.0, 0.0, 0.0),
         ];
         let face = LineString3D::new(face);
-        let triangles = TriangularMesh::triangulate_face(face, 1e-6).unwrap();
+        let triangles =
+            TriangularMesh::triangulate_face(face, &mut ec, &mut b3, &mut b2, &mut ib).unwrap();
         assert_eq!(triangles.len(), 4);
         for i in 1..4 {
             for j in 0..i - 1 {
@@ -1698,7 +1701,8 @@ pub mod tests {
             Coordinate3D::new__(0.0, 0.0, 0.0),
         ];
         let face = LineString3D::new(face);
-        let triangles = TriangularMesh::triangulate_face(face, 1e-6).unwrap();
+        let triangles =
+            TriangularMesh::triangulate_face(face, &mut ec, &mut b3, &mut b2, &mut ib).unwrap();
         assert_eq!(triangles.len(), 8);
     }
 
@@ -1733,7 +1737,8 @@ pub mod tests {
             ),
         ];
         let face = LineString3D::new(face);
-        let result = TriangularMesh::triangulate_face(face, 1e-6);
+        let (mut ec, mut b3, mut b2, mut ib) = earcut_buffers();
+        let result = TriangularMesh::triangulate_face(face, &mut ec, &mut b3, &mut b2, &mut ib);
         assert!(result.is_ok(), "Triangulation failed: {:?}", result.err());
     }
 
@@ -2273,5 +2278,42 @@ pub mod tests {
             mesh.get_triangles().len(),
         );
         assert!(mesh.is_closed(), "Extruded 71-gon solid should be closed");
+    }
+
+    #[test]
+    fn test_try_from_polygons_with_hole() {
+        // Square exterior with a square hole — the mesh must be a valid 2-manifold
+        // when the top and bottom caps are added to close the solid.
+        let exterior = LineString3D::new(vec![
+            Coordinate3D::new__(0.0_f64, 0.0, 0.0),
+            Coordinate3D::new__(4.0, 0.0, 0.0),
+            Coordinate3D::new__(4.0, 4.0, 0.0),
+            Coordinate3D::new__(0.0, 4.0, 0.0),
+            Coordinate3D::new__(0.0, 0.0, 0.0),
+        ]);
+        let interior = LineString3D::new(vec![
+            Coordinate3D::new__(1.0, 1.0, 0.0),
+            Coordinate3D::new__(1.0, 3.0, 0.0),
+            Coordinate3D::new__(3.0, 3.0, 0.0),
+            Coordinate3D::new__(3.0, 1.0, 0.0),
+            Coordinate3D::new__(1.0, 1.0, 0.0),
+        ]);
+        let polygon = Polygon3D::new(exterior, vec![interior]);
+        let mesh = TriangularMesh::try_from_polygons(vec![polygon], None)
+            .expect("try_from_polygons should succeed with a holed polygon");
+
+        // A single face with a hole triangulates to a ring of triangles — not zero.
+        assert!(
+            !mesh.get_triangles().is_empty(),
+            "Holed polygon must produce triangles"
+        );
+        // All triangles must reference valid vertex indices.
+        let n = mesh.get_vertices().len();
+        for t in mesh.get_triangles() {
+            assert!(
+                t[0] < n && t[1] < n && t[2] < n,
+                "Triangle has out-of-bounds index"
+            );
+        }
     }
 }

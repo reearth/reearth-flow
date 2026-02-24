@@ -99,6 +99,9 @@ impl CSG<f64, f64> {
             // Skip manifold components whose vertices are all coplanar — these are flat
             // artifacts from shared faces between adjacent (touching) solids, not true
             // volumetric intersections.
+            // TODO: replace with volume-based filtering so that valid thin-solid
+            // intersections (e.g. two solids sharing an entire face) are not incorrectly
+            // suppressed. See polygon.rs TODO for context.
             {
                 let component_vertices: Vec<_> = two_manifold
                     .iter()
