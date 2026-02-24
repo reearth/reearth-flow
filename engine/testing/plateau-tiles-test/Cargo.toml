@@ -1,0 +1,39 @@
+[package]
+name = "plateau-tiles-test"
+version = "0.1.78"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+toml.workspace = true
+bytes.workspace = true
+gltf.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-gltf.workspace = true
+reearth-flow-runner.workspace = true
+reearth-flow-types.workspace = true
+reearth-flow-action-source.workspace = true
+reearth-flow-action-sink.workspace = true
+reearth-flow-action-processor.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
+reearth-flow-action-log.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-geometry.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["chrono"] }
+uuid.workspace = true
+yaml-include = "0.7"
+walkdir.workspace = true
+zip.workspace = true
+tinymvt.workspace = true
+prost.workspace = true
+indexmap.workspace = true
+
+[[bin]]
+name = "plateau-tiles-test"
+path = "src/main.rs"

@@ -1,0 +1,52 @@
+{
+  "description": "Test quality check for surface orientation errors (clockwise instead of counter-clockwise) in generic city object",
+  "workflowPath": "quality-check/plateau4/13-gen/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "gen_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/40223_koga-shi_city_2024_citygml_1_op/40223_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6670
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/gen",
+      "name": "gen_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/40223_koga-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/40223_koga-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "13_汎用都市オブジェクト_面の向き不正.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_gen.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "13_汎用都市オブジェクト_検査結果一覧.csv"
+    }
+  },
+  "expectResultOkFile": false
+}
