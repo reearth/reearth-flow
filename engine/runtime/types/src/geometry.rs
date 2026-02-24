@@ -529,6 +529,11 @@ pub struct GmlGeometry {
     pub points: Vec<Coordinate3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
+    pub composite_surfaces: Vec<GmlGeometry>,
+    /// Ring IDs for each polygon (exterior + interior rings)
+    /// Maps 1:1 with polygons, each entry is a vector of ring IDs
+    #[serde(default)]
+    pub polygon_ring_ids: Vec<Vec<Option<String>>>,
 }
 
 impl GmlGeometry {
@@ -545,6 +550,8 @@ impl GmlGeometry {
             points: vec![],
             feature_id: None,
             feature_type: None,
+            composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
         }
     }
 
@@ -699,6 +706,8 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             points: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
+            composite_surfaces: Vec::new(),
+            polygon_ring_ids: Vec::new(),
         }
     }
 }
