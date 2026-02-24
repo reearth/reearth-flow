@@ -226,6 +226,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let _ = fs::remove_dir_all(&output_dir);
         fs::create_dir_all(&output_dir).unwrap();
 
+        // do not pack gml, codelists, schemas into zip if PLATEAU_TILES_TEST_NO_PACK=1 for quick local tests
         let no_pack = env::var("PLATEAU_TILES_TEST_NO_PACK").ok().as_deref() == Some("1");
         let inputs = if no_pack {
             direct_inputs(&test_path)
