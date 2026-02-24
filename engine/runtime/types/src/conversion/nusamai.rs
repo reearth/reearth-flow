@@ -83,11 +83,9 @@ pub fn entity_to_geometry(
                     let mut polygon: Polygon3D<f64> = poly.into();
                     // Get the global polygon index and lookup the ring ID (exterior ring's gml:id)
                     let global_poly_idx = geometry.pos as usize + local_idx;
-                    if let Some(ring_ids) = geoms.ring_ids.get(global_poly_idx) {
-                        if let Some(ring_id) = ring_ids {
-                            // The ring_id already includes the "UUID_" prefix from nusamai
-                            polygon.id = Some(format!("{}", ring_id.0));
-                        }
+                    if let Some(Some(ring_id)) = geoms.ring_ids.get(global_poly_idx) {
+                        // The ring_id already includes the "UUID_" prefix from nusamai
+                        polygon.id = Some(ring_id.0.to_string());
                     }
                     polygons.push(polygon);
                 }
