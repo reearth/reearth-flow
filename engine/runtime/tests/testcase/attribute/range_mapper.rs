@@ -21,7 +21,11 @@ fn test_attribute_range_mapper() {
         }
     }
 
-    assert!(output.exists(), "Output file was not created at {:?}", output);
+    assert!(
+        output.exists(),
+        "Output file was not created at {:?}",
+        output
+    );
 
     // Read and verify content
     let content = std::fs::read_to_string(&output).expect("Failed to read output");
