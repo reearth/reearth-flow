@@ -288,7 +288,18 @@ impl Sink for CityGmlWriterSink {
                     geometries.len()
                 );
 
-                let gml_id_str = feature.id.to_string();
+                // Get the original gml:id from attributes if available, otherwise fall back to feature.id
+                let gml_id_str = feature
+                    .attributes
+                    .get(&reearth_flow_types::Attribute::new("gmlId"))
+                    .and_then(|v| {
+                        if let reearth_flow_types::AttributeValue::String(s) = v {
+                            if !s.is_empty() { Some(s.clone()) } else { None }
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| feature.id.to_string());
                 tracing::debug!("CityGmlWriter: feature {} - extracting attributes...", idx);
                 let attributes = extract_citygml_attributes(feature);
                 tracing::debug!(
