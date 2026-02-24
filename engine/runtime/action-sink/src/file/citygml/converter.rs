@@ -134,6 +134,7 @@ pub enum GmlElement {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum SurfaceType {
     GroundSurface,
     RoofSurface,
@@ -147,6 +148,7 @@ pub enum SurfaceType {
     Unknown,
 }
 
+#[allow(dead_code)]
 impl SurfaceType {
     pub fn from_property(property: Option<nusamai_citygml::PropertyType>) -> Self {
         use nusamai_citygml::PropertyType;
