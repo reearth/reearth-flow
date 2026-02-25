@@ -12,6 +12,7 @@ use reearth_flow_types::AttributeValue;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::warn;
 
 use super::errors::AttributeProcessorError;
 
@@ -109,7 +110,7 @@ pub struct RangeEntry {
     pub from: f64,
 
     /// # To (Maximum)
-    /// The maximum value of the range (exclusive unless it's the last range)
+    /// The maximum value of the range (exclusive)
     pub to: f64,
 
     /// # Output Value
@@ -152,8 +153,16 @@ impl Processor for AttributeRangeMapper {
 
                 if is_in_range {
                     // Convert Value to AttributeValue
-                    if let Ok(attr_value) = serde_json::from_value(range.output_value.clone()) {
-                        feature.insert(self.params.output_attribute.clone(), attr_value);
+                    match serde_json::from_value(range.output_value.clone()) {
+                        Ok(attr_value) => {
+                            feature.insert(self.params.output_attribute.clone(), attr_value);
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to deserialize range output value for attribute '{}': {}. Feature will pass through without output attribute.",
+                                self.params.output_attribute, e
+                            );
+                        }
                     }
                     matched = true;
                     break;
@@ -163,16 +172,32 @@ impl Processor for AttributeRangeMapper {
             // Apply default value if no range matched
             if !matched {
                 if let Some(default_value) = &self.params.default_value {
-                    if let Ok(attr_value) = serde_json::from_value(default_value.clone()) {
-                        feature.insert(self.params.output_attribute.clone(), attr_value);
+                    match serde_json::from_value(default_value.clone()) {
+                        Ok(attr_value) => {
+                            feature.insert(self.params.output_attribute.clone(), attr_value);
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to deserialize default value for attribute '{}': {}. Feature will pass through without output attribute.",
+                                self.params.output_attribute, e
+                            );
+                        }
                     }
                 }
             }
         } else {
             // If input value is not numeric, apply default value
             if let Some(default_value) = &self.params.default_value {
-                if let Ok(attr_value) = serde_json::from_value(default_value.clone()) {
-                    feature.insert(self.params.output_attribute.clone(), attr_value);
+                match serde_json::from_value(default_value.clone()) {
+                    Ok(attr_value) => {
+                        feature.insert(self.params.output_attribute.clone(), attr_value);
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to deserialize default value for attribute '{}': {}. Feature will pass through without output attribute.",
+                            self.params.output_attribute, e
+                        );
+                    }
                 }
             }
         }

@@ -806,7 +806,7 @@ Map attribute values to ranges and assign corresponding output values
         },
         "to": {
           "title": "To (Maximum)",
-          "description": "The maximum value of the range (exclusive unless it's the last range)",
+          "description": "The maximum value of the range (exclusive)",
           "type": "number",
           "format": "double"
         }
