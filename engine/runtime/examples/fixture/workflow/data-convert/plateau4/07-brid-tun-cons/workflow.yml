@@ -193,7 +193,7 @@ graphs:
                 file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
             - attribute: feature_type
               expr: |
-                env.get("__citygml_feature_type")
+                env.get("__value")["__citygml_feature_type"]
             - attribute: city_code
               valueAttribute: cityCode
             - attribute: city_name

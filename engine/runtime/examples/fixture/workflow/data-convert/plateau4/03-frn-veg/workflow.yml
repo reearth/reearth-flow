@@ -170,7 +170,7 @@ graphs:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
             - expr: |
-                env.get("__citygml_feature_type") == "frn:CityFurniture"
+                env.get("__value")["__citygml_feature_type"] == "frn:CityFurniture"
               outputPort: frn_CityFurniture_schema
 
       - id: bbccddee-2222-3333-4444-555566667777
@@ -395,7 +395,7 @@ graphs:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
             - expr: |
-                env.get("__citygml_feature_type") == "veg:SolitaryVegetationObject"
+                env.get("__value")["__citygml_feature_type"] == "veg:SolitaryVegetationObject"
               outputPort: veg_SolitaryVegetationObject_schema
 
       - id: 22bb33cc-4444-5555-6666-777788889999
@@ -655,7 +655,7 @@ graphs:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
             - expr: |
-                env.get("__citygml_feature_type") == "veg:PlantCover"
+                env.get("__value")["__citygml_feature_type"] == "veg:PlantCover"
               outputPort: veg_PlantCover_schema
 
       - id: 44dd55ee-6666-7777-8888-999900001111

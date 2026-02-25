@@ -98,10 +98,10 @@ fn align_mvt_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)
     let map2 = load_mvt_attr(dir2)?;
 
     tracing::debug!(
-        "Loaded MVT attributes: {:?} from {:?}, {:?} from {:?}",
-        map1.keys(),
+        "Loaded MVT attributes: {} from {:?}, {} from {:?}",
+        map1.len(),
         dir1,
-        map2.keys(),
+        map2.len(),
         dir2
     );
 

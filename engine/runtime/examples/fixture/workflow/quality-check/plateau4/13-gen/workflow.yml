@@ -241,7 +241,7 @@ graphs:
           calculations:
             - newAttribute: GenericCityObject
               expr: |
-                if env.get("__citygml_feature_type") == "gen:GenericCityObject" {
+                if env.get("__value")["__citygml_feature_type"] == "gen:GenericCityObject" {
                   1
                 } else {
                   0
