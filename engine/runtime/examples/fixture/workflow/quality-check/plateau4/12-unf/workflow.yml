@@ -178,7 +178,7 @@ graphs:
             - attribute: featureTypeName
               method: create
               value: |
-                let ft = env.get("__feature_type") ?? "";
+                let ft = env.get("__citygml_feature_type") ?? "";
                 if ft.contains(":") {
                   ft.split(":")[1]
                 } else {

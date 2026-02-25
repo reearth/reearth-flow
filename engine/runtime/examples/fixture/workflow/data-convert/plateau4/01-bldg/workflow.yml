@@ -119,7 +119,7 @@ graphs:
             - attribute: _lod
               method: create
               value: |
-                env.get("__lod")
+                env.get("__citygml_lodmask")
             - attribute: _lod_type
               method: create
               value: |
@@ -127,7 +127,7 @@ graphs:
             - attribute: feature_type
               method: create
               value: |
-                env.get("__feature_type")
+                env.get("__citygml_feature_type")
             - attribute: path
               method: rename
               value: "_path"
