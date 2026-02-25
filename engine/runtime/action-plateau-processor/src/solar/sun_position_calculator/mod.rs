@@ -793,6 +793,13 @@ fn parse_time_string(time_str: &str) -> Result<DateTime<Utc>, SolarPositionError
     //   "YYYY-MM-DD+HH:MM"    → midnight in the given timezone
     //   "YYYY-MM-DD-HH:MM"    → midnight in the given timezone
     if !time_str.contains('T') {
+        if time_str.len() < 10 {
+            return Err(SolarPositionError::TimeParse(format!(
+                "Invalid time format '{}'. Expected RFC 3339 (e.g., '2025-01-11T00:00:00Z') \
+                 or date-only (e.g., '2025-01-11' or '2025-01-11+09:00')",
+                time_str
+            )));
+        }
         let normalized = if time_str.len() == 10 {
             // Plain date, assume UTC.
             format!("{}T00:00:00Z", time_str)
@@ -896,6 +903,13 @@ mod tests {
         assert_eq!(dt.hour(), 0);
         assert_eq!(dt.minute(), 0);
         assert_eq!(dt.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_time_string_too_short() {
+        assert!(parse_time_string("2024-06-2").is_err());
+        assert!(parse_time_string("abc").is_err());
+        assert!(parse_time_string("").is_err());
     }
 
     #[test]
