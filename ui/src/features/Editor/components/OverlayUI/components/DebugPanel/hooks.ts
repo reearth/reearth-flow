@@ -387,7 +387,6 @@ export default () => {
     outputDataForDownload,
     selectedOutputData,
     // enableClustering,
-    selectedFeature,
     selectedFeatureId,
     detailsOverlayOpen,
     detailsFeature,

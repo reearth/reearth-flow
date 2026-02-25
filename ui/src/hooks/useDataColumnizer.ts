@@ -15,6 +15,7 @@ function serializeValue(value: any): string {
 // from degrading render performance.
 const DISPLAY_MAX_CHARS = 100;
 function truncateDisplayValue(str: string): string {
+  if (!str) return "";
   if (str.length <= DISPLAY_MAX_CHARS) return str;
   return str.slice(0, DISPLAY_MAX_CHARS) + "…";
 }

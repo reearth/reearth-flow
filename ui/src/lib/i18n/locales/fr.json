@@ -174,6 +174,7 @@
   "2D Viewer Could Not Be Loaded. Check if the data is valid.": "Le visiteur 2D n'a pas pu être chargé. Vérifiez si les données sont valides.",
   "2D Viewer": "Visiteur 2D",
   "Center Data": "Centrer les données",
+  "Fly to Selected Feature": "Volez vers la fonctionnalité sélectionnée",
   "3D Viewer": "Visiteur 3D",
   "3D Model Viewer": "Visiteur de modèles 3D",
   "Reset Camera": "Réinitialiser la caméra",

@@ -1,4 +1,5 @@
 import {
+  CornersOutIcon,
   DotsThreeVerticalIcon,
   GlobeIcon,
   MapPinAreaIcon,
@@ -61,10 +62,6 @@ const DebugPreview: React.FC<Props> = ({
   const t = useT();
   const threeJSViewerRef = useRef<ThreeJSViewerRef>(null);
 
-  const handleResetClick = useCallback(() => {
-    threeJSViewerRef.current?.resetCamera();
-  }, []);
-
   const { featureMap, processedOutputData } = useMemo(() => {
     if (!selectedOutputData?.features) {
       return { featureMap: null, processedOutputData: selectedOutputData };
@@ -123,8 +120,15 @@ const DebugPreview: React.FC<Props> = ({
     return converted;
   }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
 
-  const { handleMapLoad } = useHooks({
+  const {
+    handleMapLoad,
+    handleThreeDViewerReset,
+    handleThreeJsReset,
+    setCityGmlBoundingSphere,
+  } = useHooks({
     mapRef,
+    cesiumViewerRef,
+    threeJSViewerRef,
     selectedOutputData,
     convertedSelectedFeature,
   });
@@ -157,18 +161,17 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {/* {fileType === "geojson" && (
-                    <DropdownMenuCheckboxItem
-                      checked={enableClustering}
-                      onCheckedChange={(checked) =>
-                        onEnableClusteringChange(!!checked)
-                      }>
-                      {t("Enable Clustering")}
-                    </DropdownMenuCheckboxItem>
-                  )} */}
                   <DropdownMenuItem onClick={() => handleMapLoad(true)}>
-                    <TargetIcon />
+                    <CornersOutIcon />
                     {t("Center Data")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!convertedSelectedFeature}
+                    onClick={() =>
+                      onFlyToSelectedFeature?.(convertedSelectedFeature)
+                    }>
+                    <TargetIcon />
+                    {t("Fly to Selected Feature")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -192,16 +195,42 @@ const DebugPreview: React.FC<Props> = ({
         <div className="h-full">
           {/* 3D Viewer Header */}
           <div className="py-1">
-            <div className="flex items-center gap-1 rounded-md px-3 py-2">
-              <GlobeIcon size={16} />
-              <p className="text-sm font-medium select-none">
-                {t("3D Viewer")}
-              </p>
-              {detectedGeometryType && (
-                <span className="rounded px-2 py-1 text-xs text-muted-foreground">
-                  {detectedGeometryType}
-                </span>
-              )}
+            <div className="flex w-full justify-between p-1">
+              <div className="flex items-center gap-1 rounded-md px-3 py-2">
+                <GlobeIcon size={16} />
+                <p className="text-sm font-medium select-none">
+                  {t("3D Viewer")}
+                </p>
+                {detectedGeometryType && (
+                  <span className="rounded px-2 py-1 text-xs text-muted-foreground">
+                    {detectedGeometryType}
+                  </span>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    className="w-[25px]"
+                    tooltipText={t("Additional actions")}
+                    tooltipOffset={12}
+                    icon={<DotsThreeVerticalIcon size={18} />}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleThreeDViewerReset}>
+                    <CornersOutIcon />
+                    {t("Center Data")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!convertedSelectedFeature}
+                    onClick={() =>
+                      onFlyToSelectedFeature?.(convertedSelectedFeature)
+                    }>
+                    <TargetIcon />
+                    {t("Fly to Selected Feature")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div className="h-[calc(100%-55px)]" id="cesiumContainer">
@@ -213,6 +242,7 @@ const DebugPreview: React.FC<Props> = ({
               detailsOverlayOpen={detailsOverlayOpen}
               onSelectedFeature={onSelectedFeature}
               onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
+              setCityGmlBoundingSphere={setCityGmlBoundingSphere}
             />
           </div>
         </div>
@@ -242,7 +272,7 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleResetClick}>
+                  <DropdownMenuItem onClick={handleThreeJsReset}>
                     <TargetIcon />
                     {t("Reset Camera")}
                   </DropdownMenuItem>

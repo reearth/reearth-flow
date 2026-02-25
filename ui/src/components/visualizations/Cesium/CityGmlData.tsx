@@ -1,4 +1,5 @@
 import {
+  BoundingSphere,
   GroundPrimitive,
   Primitive,
   ShowGeometryInstanceAttribute,
@@ -31,6 +32,7 @@ type Props = {
   } | null;
   selectedFeatureId?: string | null;
   detailsOverlayOpen: boolean;
+  setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
 };
 
 const WAIT_FOR_PRIMITIVE_TIMEOUT_MS = 10_000;
@@ -39,6 +41,7 @@ const CityGmlData: React.FC<Props> = ({
   cityGmlData,
   selectedFeatureId,
   detailsOverlayOpen,
+  setCityGmlBoundingSphere,
 }) => {
   const { viewer } = useCesium();
   const absolutePrimitiveRef = useRef<Primitive | null>(null);
@@ -170,8 +173,9 @@ const CityGmlData: React.FC<Props> = ({
 
     if (boundingSphere) {
       viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
+      setCityGmlBoundingSphere(boundingSphere);
     }
-  }, [cityGmlData, viewer, cancelPending]);
+  }, [cityGmlData, viewer, cancelPending, setCityGmlBoundingSphere]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {

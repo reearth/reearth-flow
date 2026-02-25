@@ -1,16 +1,25 @@
 import bbox from "@turf/bbox";
+import { BoundingSphere } from "cesium";
 import { LngLatBounds } from "maplibre-gl";
-import { useCallback } from "react";
+import { RefObject, useCallback, useState } from "react";
+
+import { ThreeJSViewerRef } from "@flow/components/visualizations/ThreeJS";
 
 export default ({
   mapRef,
+  cesiumViewerRef,
+  threeJSViewerRef,
   selectedOutputData,
   convertedSelectedFeature,
 }: {
   mapRef: any;
+  cesiumViewerRef: RefObject<any>;
+  threeJSViewerRef: RefObject<ThreeJSViewerRef | null>;
   selectedOutputData: any;
   convertedSelectedFeature: any;
 }) => {
+  const [cityGmlBoundingSphere, setCityGmlBoundingSphere] =
+    useState<BoundingSphere | null>(null);
   const handleMapLoad = useCallback(
     (onCenter?: boolean) => {
       if (mapRef.current && selectedOutputData) {
@@ -51,7 +60,29 @@ export default ({
     [mapRef, selectedOutputData, convertedSelectedFeature],
   );
 
+  const handleThreeDViewerReset = useCallback(() => {
+    if (cesiumViewerRef?.current?.cesiumElement) {
+      const cesiumViewer = cesiumViewerRef.current.cesiumElement;
+
+      if (cesiumViewer) {
+        // Handle cityGml primitives
+        if (cityGmlBoundingSphere) {
+          cesiumViewer.camera.flyToBoundingSphere(cityGmlBoundingSphere, {
+            duration: 1.5,
+          });
+        }
+      }
+    }
+  }, [cesiumViewerRef, cityGmlBoundingSphere]);
+
+  const handleThreeJsReset = useCallback(() => {
+    threeJSViewerRef.current?.resetCamera();
+  }, [threeJSViewerRef]);
+
   return {
     handleMapLoad,
+    handleThreeDViewerReset,
+    handleThreeJsReset,
+    setCityGmlBoundingSphere,
   };
 };

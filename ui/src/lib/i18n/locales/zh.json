@@ -174,6 +174,7 @@
   "2D Viewer Could Not Be Loaded. Check if the data is valid.": "2D查看器无法加载。请检查数据是否有效。",
   "2D Viewer": "2D查看器",
   "Center Data": "中心数据",
+  "Fly to Selected Feature": "飞到选定的特征",
   "3D Viewer": "3D查看器",
   "3D Model Viewer": "3D模型查看器",
   "Reset Camera": "重置相机",
