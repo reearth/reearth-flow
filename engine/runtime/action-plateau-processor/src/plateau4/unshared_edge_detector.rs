@@ -118,12 +118,10 @@ impl ProcessorFactory for UnsharedEdgeDetectorFactory {
         };
 
         if param.tolerance <= 0.0 {
-            return Err(PlateauProcessorError::UnsharedEdgeDetectorFactory(
-                format!(
-                    "tolerance must be positive, got {}",
-                    param.tolerance
-                ),
-            )
+            return Err(PlateauProcessorError::UnsharedEdgeDetectorFactory(format!(
+                "tolerance must be positive, got {}",
+                param.tolerance
+            ))
             .into());
         }
 
