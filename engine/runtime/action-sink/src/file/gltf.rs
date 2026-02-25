@@ -367,7 +367,7 @@ impl GltfWriter {
         city_gml: &reearth_flow_types::geometry::CityGmlGeometry,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
-        let Some(feature_type) = feature.metadata.feature_type.clone() else {
+        let Some(feature_type) = feature.feature_type() else {
             return Err(SinkError::GltfWriter("Feature type is missing".to_string()).into());
         };
         let mut materials: IndexSet<Material> = IndexSet::new();
@@ -513,9 +513,7 @@ impl GltfWriter {
         use flatgeom::Polygon3 as FlatPolygon3;
 
         let feature_type = feature
-            .metadata
-            .feature_type
-            .clone()
+            .feature_type()
             .unwrap_or_else(|| "Building".to_string());
 
         // Convert Polygon3D to flatgeom::Polygon format [x, y, z, u, v]
@@ -594,9 +592,7 @@ impl GltfWriter {
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
         let feature_type = feature
-            .metadata
-            .feature_type
-            .clone()
+            .feature_type()
             .unwrap_or_else(|| "Building".to_string());
 
         // Extract all faces from the solid

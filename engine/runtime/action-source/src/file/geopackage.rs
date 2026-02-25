@@ -19,9 +19,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{
-    metadata::Metadata, Attribute, AttributeValue, Feature, Geometry, GeometryValue,
-};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -1226,7 +1224,7 @@ async fn read_layer_tiles(
         let geometry = create_tile_bounds_geometry(bounds);
 
         let feature =
-            Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::default());
+            Feature::new_with_attributes_and_geometry(attributes, geometry);
         features.push(feature);
     }
 

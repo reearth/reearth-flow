@@ -21,7 +21,10 @@ use reearth_flow_runtime::{
     node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
-    conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, metadata::Metadata,
+    conversion::nusamai::entity_to_geometry,
+    geometry::Geometry,
+    lod::LodMask,
+    metadata::{CITYGML_FEATURE_TYPE_KEY, CITYGML_GML_ID_KEY, CITYGML_LOD_MASK_KEY},
     Attribute, AttributeValue, Feature,
 };
 use url::Url;
@@ -258,11 +261,9 @@ fn parse_and_write_features<R: BufRead, W: Write>(
         let gml_id = entity.root.id();
         let name = entity.root.typename();
         let lod = LodMask::find_lods_by_citygml_value(&entity.root);
-        let metadata = Metadata {
-            feature_id: gml_id.map(|id| id.to_string()),
-            feature_type: name.map(|name| name.to_string()),
-            lod: Some(lod),
-        };
+        let citygml_gml_id = gml_id.map(|id| id.to_string());
+        let citygml_feature_type = name.map(|name| name.to_string());
+        let citygml_lod = lod.to_u8();
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (
                 Attribute::new("featureType"),
@@ -381,15 +382,14 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
             feature.insert("cityGmlAttributes", citygml_attributes);
-            let mut child_metadata = metadata.clone();
-            if flatten {
-                if child_lod.highest_lod().is_some() {
-                    child_metadata.lod = Some(child_lod);
-                }
-                child_metadata.feature_id = child_id;
-                child_metadata.feature_type = child_typename;
+            {
+                let eff_lod = if flatten && child_lod.highest_lod().is_some() { child_lod.to_u8() } else { citygml_lod };
+                let eff_id = if flatten { child_id.or_else(|| citygml_gml_id.clone()) } else { citygml_gml_id.clone() };
+                let eff_type = if flatten { child_typename.or_else(|| citygml_feature_type.clone()) } else { citygml_feature_type.clone() };
+                if let Some(id) = eff_id { feature.insert(CITYGML_GML_ID_KEY, AttributeValue::String(id)); }
+                if let Some(ft) = eff_type { feature.insert(CITYGML_FEATURE_TYPE_KEY, AttributeValue::String(ft)); }
+                feature.insert(CITYGML_LOD_MASK_KEY, AttributeValue::Number(serde_json::Number::from(eff_lod)));
             }
-            feature.metadata = child_metadata;
 
             serde_json::to_writer(&mut *writer, &feature).map_err(|e| {
                 crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))

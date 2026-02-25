@@ -301,7 +301,7 @@ fn packet_to_features(
     let geometry = extract_geometry(packet, force_2d)?;
     if let Some(geom) = geometry {
         let mut feature =
-            Feature::new_with_attributes_and_geometry(base_attributes, geom, Default::default());
+            Feature::new_with_attributes_and_geometry(base_attributes, geom);
         // Capture extra CZML properties for roundtrip
         extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
         Ok(vec![feature])
@@ -424,7 +424,6 @@ fn build_timeseries_features(
                 let mut feature = Feature::new_with_attributes_and_geometry(
                     base_attributes.clone(),
                     geom,
-                    Default::default(),
                 );
                 add_interpolation_attributes(&mut feature, ts);
                 extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
@@ -440,7 +439,6 @@ fn build_timeseries_features(
                 let mut feature = Feature::new_with_attributes_and_geometry(
                     base_attributes.clone(),
                     geom,
-                    Default::default(),
                 );
 
                 let timestamp = sample_timestamp(sample, ts.epoch.as_deref());
@@ -470,7 +468,6 @@ fn build_timeseries_features(
             let mut feature = Feature::new_with_attributes_and_geometry(
                 base_attributes.clone(),
                 geom,
-                Default::default(),
             );
 
             let timeseries: Vec<Value> = ts

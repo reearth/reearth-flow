@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{metadata::Metadata, Attribute, AttributeValue, Attributes, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -500,13 +500,13 @@ impl AttributeFlattener {
                 "dm_attributes".to_string(),
                 AttributeValue::String(json_string),
             );
-            if let Some(feature_type) = feature.metadata.feature_type.as_ref() {
+            if let Some(feature_type) = feature.feature_type() {
                 feature.insert(
                     "dm_feature_type".to_string(),
                     AttributeValue::String(
                         feature_type
                             .strip_prefix("uro:")
-                            .unwrap_or(feature_type)
+                            .unwrap_or(&feature_type)
                             .to_string(),
                     ),
                 );
@@ -758,11 +758,7 @@ impl AttributeFlattener {
             .nth(1)
             .unwrap_or(feature_type_key)
             .to_string();
-        feature.metadata = Metadata {
-            feature_id: None,
-            feature_type: Some(schema_feature_type),
-            lod: None,
-        };
+        feature.update_feature_type(schema_feature_type);
         feature
     }
 
@@ -987,7 +983,7 @@ mod tests {
         feature.insert("package", AttributeValue::String(package.to_string()));
         feature.insert("path", AttributeValue::String(path.to_string()));
         feature.insert("cityGmlAttributes", AttributeValue::Map(citygml_attributes));
-        feature.metadata.feature_type = Some(feature_type.to_string());
+        feature.update_feature_type(feature_type.to_string());
         feature
     }
 

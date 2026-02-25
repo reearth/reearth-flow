@@ -235,7 +235,7 @@ async fn read_shapefile(
         let attributes = convert_record_to_attributes(record);
 
         let feature =
-            Feature::new_with_attributes_and_geometry(attributes, geometry, Default::default());
+            Feature::new_with_attributes_and_geometry(attributes, geometry);
 
         sender
             .send((

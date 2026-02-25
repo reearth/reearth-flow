@@ -921,7 +921,7 @@ fn polygon_to_czml_polygon(poly: &Polygon3D<f64>) -> CzmlPolygon {
 }
 
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
-    let Some(parent_id) = feature.metadata.feature_id.clone() else {
+    let Some(parent_id) = feature.feature_id() else {
         ctx.event_hub
             .warn_log(None, "Feature does not have a feature_id".to_string());
         return vec![];
@@ -1001,7 +1001,6 @@ mod tests {
                     lon, lat, height,
                 ))),
             },
-            Default::default(),
         )
     }
 

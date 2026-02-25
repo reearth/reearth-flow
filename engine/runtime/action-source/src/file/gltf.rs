@@ -335,7 +335,7 @@ async fn send_feature(
     );
 
     let feature =
-        Feature::new_with_attributes_and_geometry(attributes, geometry, Default::default());
+        Feature::new_with_attributes_and_geometry(attributes, geometry);
 
     sender
         .send((

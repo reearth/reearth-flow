@@ -140,7 +140,6 @@ impl TryFrom<geojson::Feature> for Feature {
                 epsg: Some(epsg),
                 value: geometry,
             }),
-            metadata: Default::default(),
         })
     }
 }

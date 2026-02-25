@@ -1087,10 +1087,7 @@ fn create_output_feature(
     let mut new_feature = Feature::new_with_attributes_and_geometry(
         (*original.attributes).clone(),
         new_geometry,
-        original.metadata.clone(),
     );
-
-    new_feature.metadata = original.metadata.clone();
 
     new_feature.insert(
         "_grid_row",

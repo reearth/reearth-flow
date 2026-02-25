@@ -1263,7 +1263,6 @@ fn assign_texture_coordinates(
     let updated_feature = Feature::new_with_attributes_and_geometry(
         (*feature.attributes).clone(),
         new_geometry,
-        feature.metadata.clone(),
     );
 
     Ok(updated_feature)

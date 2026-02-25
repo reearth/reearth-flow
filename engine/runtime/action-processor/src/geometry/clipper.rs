@@ -608,7 +608,7 @@ mod tests {
     use crate::tests::utils::create_default_execute_context;
 
     fn make_feature(geometry: Geometry) -> Feature {
-        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry, Default::default())
+        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry)
     }
 
     fn create_test_polygon_2d() -> Polygon2D<f64> {
