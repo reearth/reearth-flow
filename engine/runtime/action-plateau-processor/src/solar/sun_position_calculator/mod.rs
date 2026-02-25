@@ -157,7 +157,9 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
 pub enum SolarPositionCalculatorParam {
     #[serde(rename_all = "camelCase")]
     Time {
-        /// Time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z")
+        /// Time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z") or
+        /// date-only format (e.g., "2025-01-11" or "2025-01-11+09:00"). When hours, minutes,
+        /// and seconds are omitted they default to zero.
         time: Expr,
         /// Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).
         source_epsg: Expr,
@@ -173,9 +175,13 @@ pub enum SolarPositionCalculatorParam {
     },
     #[serde(rename_all = "camelCase")]
     Duration {
-        /// Start time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z")
+        /// Start time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z") or
+        /// date-only format (e.g., "2025-01-11" or "2025-01-11+09:00"). When hours, minutes,
+        /// and seconds are omitted they default to zero.
         start: Expr,
-        /// End time expression evaluating to RFC 3339 format (e.g., "2025-01-12T00:00:00Z")
+        /// End time expression evaluating to RFC 3339 format (e.g., "2025-01-12T00:00:00Z") or
+        /// date-only format (e.g., "2025-01-12" or "2025-01-12+09:00"). When hours, minutes,
+        /// and seconds are omitted they default to zero.
         end: Expr,
         /// Step value expression evaluating to an integer
         step: Expr,
@@ -776,15 +782,42 @@ impl SolarPositionCalculator {
 }
 
 fn parse_time_string(time_str: &str) -> Result<DateTime<Utc>, SolarPositionError> {
-    // Parse RFC 3339 format (e.g., "2025-01-11T00:00:00Z")
-    DateTime::parse_from_rfc3339(time_str)
-        .map(|dt| dt.with_timezone(&Utc))
-        .map_err(|e| {
-            SolarPositionError::TimeParse(format!(
-                "Invalid time format '{}'. Expected RFC 3339 format (e.g., '2025-01-11T00:00:00Z'): {}",
-                time_str, e
-            ))
-        })
+    // Try full RFC 3339 format first (e.g., "2025-01-11T00:00:00Z").
+    if let Ok(dt) = DateTime::parse_from_rfc3339(time_str) {
+        return Ok(dt.with_timezone(&Utc));
+    }
+
+    // Accept date-only formats where hours, minutes, and seconds default to zero:
+    //   "YYYY-MM-DD"          → midnight UTC
+    //   "YYYY-MM-DDZ"         → midnight UTC
+    //   "YYYY-MM-DD+HH:MM"    → midnight in the given timezone
+    //   "YYYY-MM-DD-HH:MM"    → midnight in the given timezone
+    if !time_str.contains('T') {
+        let normalized = if time_str.len() == 10 {
+            // Plain date, assume UTC.
+            format!("{}T00:00:00Z", time_str)
+        } else {
+            // Date followed by a timezone indicator; insert time between them.
+            let (date_part, tz_part) = time_str.split_at(10);
+            format!("{}T00:00:00{}", date_part, tz_part)
+        };
+
+        return DateTime::parse_from_rfc3339(&normalized)
+            .map(|dt| dt.with_timezone(&Utc))
+            .map_err(|e| {
+                SolarPositionError::TimeParse(format!(
+                    "Invalid time format '{}'. Expected RFC 3339 (e.g., '2025-01-11T00:00:00Z') \
+                     or date-only (e.g., '2025-01-11' or '2025-01-11+09:00'): {}",
+                    time_str, e
+                ))
+            });
+    }
+
+    Err(SolarPositionError::TimeParse(format!(
+        "Invalid time format '{}'. Expected RFC 3339 (e.g., '2025-01-11T00:00:00Z') \
+         or date-only (e.g., '2025-01-11' or '2025-01-11+09:00')",
+        time_str
+    )))
 }
 
 #[cfg(test)]
@@ -823,9 +856,46 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_time_string_missing_parts() {
+    fn test_parse_time_string_date_only_utc() {
+        // "YYYY-MM-DD" → midnight UTC (hours, minutes, seconds default to 0)
         let result = parse_time_string("2024-06-21");
-        assert!(result.is_err());
+        assert!(result.is_ok(), "date-only format should be accepted");
+        let dt = result.unwrap();
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.month(), 6);
+        assert_eq!(dt.day(), 21);
+        assert_eq!(dt.hour(), 0);
+        assert_eq!(dt.minute(), 0);
+        assert_eq!(dt.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_time_string_date_only_with_offset() {
+        // "YYYY-MM-DD+09:00" → midnight JST = 15:00 UTC on the previous day
+        let result = parse_time_string("2024-06-21+09:00");
+        assert!(result.is_ok(), "date-only with offset should be accepted");
+        let dt = result.unwrap();
+        // 2024-06-21T00:00:00+09:00 == 2024-06-20T15:00:00Z
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.month(), 6);
+        assert_eq!(dt.day(), 20);
+        assert_eq!(dt.hour(), 15);
+        assert_eq!(dt.minute(), 0);
+        assert_eq!(dt.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_time_string_date_only_with_z() {
+        // "YYYY-MM-DDZ" → midnight UTC
+        let result = parse_time_string("2024-06-21Z");
+        assert!(result.is_ok(), "date-only with Z suffix should be accepted");
+        let dt = result.unwrap();
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.month(), 6);
+        assert_eq!(dt.day(), 21);
+        assert_eq!(dt.hour(), 0);
+        assert_eq!(dt.minute(), 0);
+        assert_eq!(dt.second(), 0);
     }
 
     #[test]
