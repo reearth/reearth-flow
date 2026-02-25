@@ -306,7 +306,6 @@ where
     )?;
 
     // Export atlas textures
-    eprintln!("dimensions = ({}, {})", config.width(), config.height());
     packed.export(
         exporter,
         atlas_path.as_ref(),
