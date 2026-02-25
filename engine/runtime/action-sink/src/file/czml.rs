@@ -111,7 +111,9 @@ pub(crate) struct CzmlWriterParam {
     pub(super) time_field: Option<Attribute>,
     /// # Epoch
     /// ISO 8601 datetime used as the base time for numeric time offsets in
-    /// the output CZML.  If omitted the first timestamp encountered is used.
+    /// the output CZML. If omitted and all time values are numeric, a default
+    /// epoch (1970-01-01T00:00:00Z) is automatically used to enable timeseries
+    /// visualization with numeric time offsets.
     pub(super) epoch: Option<String>,
     /// # Interpolation Algorithm
     /// Algorithm used by Cesium to interpolate between time-tagged samples.
@@ -544,7 +546,26 @@ fn build_entity_packet(
     params: &CzmlWriterParam,
 ) -> Result<Value, BoxedError> {
     let time_field = params.time_field.as_ref().unwrap();
-    let epoch = params.epoch.clone();
+
+    // Check if all time values are numeric
+    let all_numeric_times = features.iter().all(|f| {
+        if let Some(time_val) = f.get(time_field) {
+            attribute_value_to_string(time_val).parse::<f64>().is_ok()
+        } else {
+            true // Empty values don't disqualify numeric mode
+        }
+    });
+
+    // Auto-generate epoch for numeric time values if not provided
+    let epoch = if params.epoch.is_some() {
+        params.epoch.clone()
+    } else if all_numeric_times {
+        // Use a default epoch for numeric time values
+        // Using a fixed epoch makes the CZML time values consistent
+        Some("1970-01-01T00:00:00Z".to_string())
+    } else {
+        None
+    };
 
     let mut sorted: Vec<&Feature> = features.to_vec();
     sorted.sort_by(|a, b| {
@@ -556,7 +577,15 @@ fn build_entity_packet(
             .get(time_field)
             .map(attribute_value_to_string)
             .unwrap_or_default();
-        ta.cmp(&tb)
+
+        // For numeric comparison, parse and compare as numbers
+        if all_numeric_times {
+            let na = ta.parse::<f64>().unwrap_or(0.0);
+            let nb = tb.parse::<f64>().unwrap_or(0.0);
+            na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+        } else {
+            ta.cmp(&tb)
+        }
     });
 
     let mut cartographic_degrees: Vec<Value> = Vec::new();
@@ -583,7 +612,9 @@ fn build_entity_packet(
         }
         last_time = Some(time_str.clone());
 
+        // Convert time values to proper format
         let time_value: Value = if epoch.is_some() {
+            // With epoch, prefer numeric values
             if let Ok(n) = time_str.parse::<f64>() {
                 serde_json::json!(n)
             } else if let Some(offset) = parse_epoch_offset_timestamp(&time_str) {
@@ -592,6 +623,7 @@ fn build_entity_packet(
                 serde_json::json!(time_str)
             }
         } else {
+            // Without epoch, must use ISO 8601 strings
             serde_json::json!(time_str)
         };
 
@@ -704,6 +736,7 @@ fn parse_epoch_offset_timestamp(s: &str) -> Option<f64> {
 
 /// Convert an epoch-relative timestamp to ISO 8601 for CZML `availability`.
 fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String {
+    // Handle epoch offset format like "2024-01-01T00:00:00Z+120s"
     if let Some(offset) = parse_epoch_offset_timestamp(ts) {
         if let Some(epoch_str) = epoch {
             if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
@@ -712,6 +745,17 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
             }
         }
     }
+
+    // Handle pure numeric strings like "155" when epoch is provided
+    if let Ok(offset) = ts.parse::<f64>() {
+        if let Some(epoch_str) = epoch {
+            if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
+                let result = epoch_dt + chrono::Duration::seconds(offset as i64);
+                return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+            }
+        }
+    }
+
     ts.to_string()
 }
 
@@ -1040,5 +1084,60 @@ mod tests {
 
         assert_eq!(czml[1]["id"], "vehicle-a");
         assert_eq!(czml[2]["id"], "static-poi");
+    }
+
+    #[test]
+    fn test_build_entity_packet_numeric_times() {
+        // Test with numeric time values and no explicit epoch
+        let params = CzmlWriterParam {
+            output: Expr::new("/tmp/test.czml".to_string()),
+            group_by: None,
+            time_field: Some(Attribute::new("timestamp")),
+            epoch: None, // No explicit epoch - should auto-generate
+            interpolation_algorithm: InterpolationAlgorithm::Linear,
+            interpolation_degree: 1,
+            group_timeseries_by: Some(Attribute::new("entityId")),
+        };
+
+        let mut f1 = make_feature_3d(139.7, 35.7, 0.0);
+        f1.insert(
+            Attribute::new("timestamp"),
+            AttributeValue::String("0".into()), // Numeric string
+        );
+        f1.insert(
+            Attribute::new("entityId"),
+            AttributeValue::String("test1".into()),
+        );
+
+        let mut f2 = make_feature_3d(139.8, 35.8, 100.0);
+        f2.insert(
+            Attribute::new("timestamp"),
+            AttributeValue::String("60".into()), // Numeric string (60 seconds later)
+        );
+        f2.insert(
+            Attribute::new("entityId"),
+            AttributeValue::String("test1".into()),
+        );
+
+        let features_ref: Vec<&Feature> = vec![&f1, &f2];
+        let packet = build_entity_packet("test1", &features_ref, &params).unwrap();
+
+        assert_eq!(packet["id"], "test1");
+        // Should have auto-generated epoch
+        assert_eq!(packet["position"]["epoch"], "1970-01-01T00:00:00Z");
+
+        let coords = packet["position"]["cartographicDegrees"]
+            .as_array()
+            .unwrap();
+        assert_eq!(coords.len(), 8);
+
+        // Time values should be numeric
+        assert_eq!(coords[0].as_f64().unwrap(), 0.0);
+        assert_eq!(coords[4].as_f64().unwrap(), 60.0);
+
+        // Availability should be ISO 8601 format
+        let avail = packet["availability"].as_str().unwrap();
+        assert!(avail.contains("1970-01-01T00:00:00Z"));
+        assert!(avail.contains("1970-01-01T00:01:00Z"));
     }
 }
