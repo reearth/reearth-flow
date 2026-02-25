@@ -63,7 +63,7 @@ graphs:
             - attribute: gml_id
               method: create
               value: |
-                env.get("__citygml_gml_id") ?? env.get("__value")["gmlId"]
+                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]

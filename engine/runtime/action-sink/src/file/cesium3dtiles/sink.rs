@@ -103,6 +103,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 compress_output,
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
+                schema_key: params.schema_key.unwrap_or_else(|| "__citygml_feature_type".to_string()),
+                group_by: params.group_by.unwrap_or_else(|| "__citygml_feature_type".to_string()),
             },
         };
         Ok(Box::new(sink))
@@ -144,6 +146,16 @@ pub struct Cesium3DTilesWriterParam {
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Schema Key
+    /// Attribute key whose value is used to match data features with schema features
+    /// for attribute filtering and type casting. Defaults to `__citygml_feature_type`.
+    /// This attribute is excluded from output.
+    pub(super) schema_key: Option<String>,
+    /// # Group By
+    /// Attribute key whose value determines the output filename: all features sharing
+    /// the same value are written to the same file. Defaults to `__citygml_feature_type`.
+    /// This attribute is excluded from output.
+    pub(super) group_by: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +167,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
+    pub(super) schema_key: String,
+    pub(super) group_by: String,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -183,11 +197,6 @@ impl Sink for Cesium3DTilesWriter {
 
 impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
-        let Some(feature_type) = &ctx.feature.feature_type() else {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Failed to get feature type".to_string(),
-            ));
-        };
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
             return Err(SinkError::Cesium3DTilesWriter(
@@ -203,6 +212,18 @@ impl Cesium3DTilesWriter {
                 "Unsupported input".to_string(),
             ));
         }
+
+        // Derive the buffer/file grouping key from the group_by attribute.
+        let group_by_value = ctx
+            .feature
+            .get(&self.params.group_by)
+            .and_then(|v| v.as_string())
+            .ok_or_else(|| {
+                SinkError::Cesium3DTilesWriter(format!(
+                    "Failed to get '{}' attribute for group_by",
+                    self.params.group_by
+                ))
+            })?;
 
         let output = self.params.output.clone();
         let scope = ctx
@@ -223,10 +244,20 @@ impl Cesium3DTilesWriter {
         };
 
         let feature = {
-            let mut attrs = crate::schema::filter_and_cast_attributes(&ctx.feature, &self.schema);
-            if self.params.skip_unexposed_attributes {
-                attrs.retain(|k, _| !k.as_ref().starts_with("__"));
-            }
+            let mut attrs = crate::schema::filter_and_cast_attributes(
+                &ctx.feature,
+                &self.schema,
+                Some(self.params.schema_key.as_str()),
+            );
+            let skip_unexp = self.params.skip_unexposed_attributes;
+            let schema_key = self.params.schema_key.as_str();
+            let group_by = self.params.group_by.as_str();
+            attrs.retain(|k, _| {
+                let key = k.as_ref();
+                !(skip_unexp && key.starts_with("__"))
+                    && key != schema_key
+                    && key != group_by
+            });
             let mut feature = ctx.feature.clone();
             feature.attributes = Arc::new(attrs);
             feature
@@ -234,7 +265,7 @@ impl Cesium3DTilesWriter {
 
         let buffer = self
             .buffer
-            .entry((output, feature_type.clone(), compress_output.clone()))
+            .entry((output, group_by_value, compress_output.clone()))
             .or_default();
         buffer.push(feature);
         Ok(())
@@ -242,11 +273,21 @@ impl Cesium3DTilesWriter {
 
     fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let feature = &ctx.feature;
-        let Some(feature_type) = &feature.feature_type() else {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Failed to get feature type".to_string(),
-            ));
-        };
+
+        // Determine the schema type name from the schema_key attribute.
+        let schema_type = feature
+            .get(&self.params.schema_key)
+            .and_then(|v| v.as_string())
+            .ok_or_else(|| {
+                SinkError::Cesium3DTilesWriter(format!(
+                    "Failed to get '{}' attribute for schema_key",
+                    self.params.schema_key
+                ))
+            })?;
+
+        let skip_unexp = self.params.skip_unexposed_attributes;
+        let schema_key = self.params.schema_key.as_str();
+        let group_by = self.params.group_by.as_str();
 
         let mut sanitized_feature = feature.clone();
         sanitized_feature.attributes = Arc::new(
@@ -254,14 +295,17 @@ impl Cesium3DTilesWriter {
                 .attributes
                 .iter()
                 .filter(|(k, _)| {
-                    !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+                    let key = k.as_ref();
+                    !(skip_unexp && key.starts_with("__"))
+                        && key != schema_key
+                        && key != group_by
                 })
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect(),
         );
 
         let typedef: TypeDef = (&sanitized_feature).into();
-        self.schema.types.insert(feature_type.clone(), typedef);
+        self.schema.types.insert(schema_type, typedef);
         Ok(())
     }
 
@@ -289,17 +333,17 @@ impl Cesium3DTilesWriter {
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
-        let mut features = Vec::new();
         let mut schema: Schema = self.schema.clone();
-        for (feature_type, upstream) in upstream {
-            let Some(feature) = upstream.first() else {
+        let mut grouped_features: Vec<(String, Vec<Feature>)> = Vec::new();
+        for (typename, features_for_type) in upstream {
+            let Some(feature) = features_for_type.first() else {
                 continue;
             };
-            if !schema.types.contains_key(feature_type) {
+            if !schema.types.contains_key(typename) {
                 let typedef: TypeDef = feature.into();
-                schema.types.insert(feature_type.clone(), typedef);
+                schema.types.insert(typename.clone(), typedef);
             }
-            features.extend(upstream.clone().into_iter());
+            grouped_features.push((typename.clone(), features_for_type.clone()));
         }
 
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
@@ -311,9 +355,11 @@ impl Cesium3DTilesWriter {
             {
                 let ctx = ctx.clone();
                 s.spawn(move || {
+                    let feature_count: usize =
+                        grouped_features.iter().map(|(_, fs)| fs.len()).sum();
                     let now = time::Instant::now();
                     let result = super::pipeline::geometry_slicing_stage(
-                        &features,
+                        &grouped_features,
                         tile_id_conv,
                         sender_sliced,
                         min_zoom,
@@ -333,7 +379,7 @@ impl Cesium3DTilesWriter {
                         None,
                         format!(
                             "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
-                            features.len(),
+                            feature_count,
                             now.elapsed(),
                             output
                         ),

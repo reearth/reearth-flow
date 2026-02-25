@@ -227,6 +227,7 @@ impl Sink for MVTWriter {
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
+
                 let buffer = self.buffer.entry((output, compress_output)).or_default();
                 buffer.push((feature.clone(), layer_name));
             }
@@ -286,7 +287,7 @@ impl MVTWriter {
                 .iter()
                 .map(|(feature, layer_name)| {
                     let mut new_attrs =
-                        crate::schema::filter_and_cast_attributes(feature, &self.schema);
+                        crate::schema::filter_and_cast_attributes(feature, &self.schema, None);
                     if self.params.skip_unexposed_attributes {
                         new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
                     }
