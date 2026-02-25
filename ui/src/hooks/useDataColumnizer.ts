@@ -3,13 +3,21 @@ import { useCallback, useEffect, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
-// Helper function to format cell values with truncation
+// Helper function to format cell values with truncation and to prevent large data from causing performance issues in the table
+
 function formatCellValue(value: any): string {
   if (value === undefined) return "-";
-
-  const formatted = JSON.stringify(value);
-
-  return formatted;
+  if (value === null) return "null";
+  if (typeof value === "string") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    const items = value.slice(0, 5);
+    return JSON.stringify(items);
+  }
+  if (Object.keys(value) && Object.keys(value).length > 5) {
+    const shownEntries = Object.keys(value).slice(0, 5);
+    return `{${shownEntries.join(", ")}}`;
+  }
+  return String(value);
 }
 
 export default ({
@@ -61,6 +69,7 @@ export default ({
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
+                cell: (info: any) => formatCellValue(info.getValue()),
               }) as ColumnDef<any>,
           ),
           ...Array.from(allProps).map(
@@ -71,6 +80,7 @@ export default ({
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
+                cell: (info: any) => formatCellValue(info.getValue()),
               }) as ColumnDef<any>,
           ),
         ];
@@ -79,17 +89,15 @@ export default ({
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
           ...Object.fromEntries(
-            Array.from(allGeometry).map((geometry) => {
-              return [
-                `geometry${geometry}`,
-                formatCellValue(feature.geometry?.[geometry] || null),
-              ];
-            }),
+            Array.from(allGeometry).map((geometry) => [
+              `geometry${geometry}`,
+              feature.geometry?.[geometry] ?? null,
+            ]),
           ),
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `attributes${prop}`,
-              formatCellValue(feature.properties?.[prop] ?? null),
+              feature.properties?.[prop] ?? null,
             ]),
           ),
         }));
