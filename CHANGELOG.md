@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.7 - 2026-02-24
+
+### engine
+
+#### 🚀 Features
+
+- Add merge filter attributes to SpatialFilter [FLOW-T-133] ([#1936](https://github.com/reearth/reearth-flow/pull/1936)) [`bdd5bd`](https://github.com/reearth/reearth-flow/commit/bdd5bd)
+- Implement xlink:href parsing and update tests ([#1928](https://github.com/reearth/reearth-flow/pull/1928)) [`19c99e`](https://github.com/reearth/reearth-flow/commit/19c99e)
+
+#### 🔧 Bug Fixes
+
+- Fix featureLodSplitter and nusamai wrong UV with mixed geometry type ([#1935](https://github.com/reearth/reearth-flow/pull/1935)) [`bc481e`](https://github.com/reearth/reearth-flow/commit/bc481e)
+- PLATEAU4 flattener existing attribute tracing per feature type ([#1933](https://github.com/reearth/reearth-flow/pull/1933)) [`d11ddd`](https://github.com/reearth/reearth-flow/commit/d11ddd)
+- Update PROJ database by upgrading Docker image ([#1932](https://github.com/reearth/reearth-flow/pull/1932)) [`cc420e`](https://github.com/reearth/reearth-flow/commit/cc420e)
+- Increase HTTP timeout and improve error diagnostics ([#1931](https://github.com/reearth/reearth-flow/pull/1931)) [`6c3f86`](https://github.com/reearth/reearth-flow/commit/6c3f86)
+- Solar workflow minor fixes ([#1930](https://github.com/reearth/reearth-flow/pull/1930)) [`984163`](https://github.com/reearth/reearth-flow/commit/984163)
+- Update Bounds struct to use Option for min_z and max_z values ([#1929](https://github.com/reearth/reearth-flow/pull/1929)) [`6ed142`](https://github.com/reearth/reearth-flow/commit/6ed142)
+- Implement underground facility data-convert workflow and add test ([#1911](https://github.com/reearth/reearth-flow/pull/1911)) [`d302a1`](https://github.com/reearth/reearth-flow/commit/d302a1)
+
+#### ✨ Refactor
+
+- Refactor XML schema compilation to eliminate duplication ([#1926](https://github.com/reearth/reearth-flow/pull/1926)) [`99990c`](https://github.com/reearth/reearth-flow/commit/99990c)
+
+#### Miscellaneous Tasks
+
+- Draco version update ([#1940](https://github.com/reearth/reearth-flow/pull/1940)) [`f1daa1`](https://github.com/reearth/reearth-flow/commit/f1daa1)
+- Remove .cargo&#x2F;config.toml ([#1925](https://github.com/reearth/reearth-flow/pull/1925)) [`d8ea3a`](https://github.com/reearth/reearth-flow/commit/d8ea3a)
+
+### ui
+
+#### 🚀 Features
+
+- Enhance CityGML data handling with LOD worker integration [FLOW-FE-408] ([#1939](https://github.com/reearth/reearth-flow/pull/1939)) [`ccb6c5`](https://github.com/reearth/reearth-flow/commit/ccb6c5)
+- LOD Switcher In Feature Details [FLOW-FE-390] ([#1915](https://github.com/reearth/reearth-flow/pull/1915)) [`653d6b`](https://github.com/reearth/reearth-flow/commit/653d6b)
+
 ## 0.1.0-alpha.6 - 2026-02-17
 
 ### Misc
