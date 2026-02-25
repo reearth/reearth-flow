@@ -1488,6 +1488,137 @@
       ]
     },
     {
+      "name": "CoordinateExtractor",
+      "type": "processor",
+      "description": "Extracts coordinates from geometry vertices into feature attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Coordinate Extractor Parameters",
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "defaultZValue": {
+            "title": "Default Z Value",
+            "description": "Z value to use for 2D geometries that have no Z coordinate.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "mode": {
+            "title": "Extraction Mode",
+            "description": "How to extract coordinates from geometry vertices.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateExtractionMode"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "CoordinateExtractionMode": {
+            "description": "Extraction mode: determines how coordinates are output.",
+            "oneOf": [
+              {
+                "description": "Extract all vertices into a list attribute.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "coordinatesListName": {
+                    "title": "Coordinates List Name",
+                    "description": "Name of the list attribute that will store coordinate objects (default: \"_indices\")",
+                    "default": "_indices",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Attribute"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "allCoordinates"
+                    ]
+                  }
+                }
+              },
+              {
+                "description": "Extract a single vertex by index.",
+                "type": "object",
+                "required": [
+                  "coordinateIndex",
+                  "type"
+                ],
+                "properties": {
+                  "coordinateIndex": {
+                    "title": "Coordinate Index",
+                    "description": "Index of the coordinate to extract. 0 = first vertex, negative values count from end (-1 = last).",
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "specifyCoordinate"
+                    ]
+                  },
+                  "xAttribute": {
+                    "title": "X Attribute Name",
+                    "description": "Name of the X coordinate attribute (default: \"_x\")",
+                    "default": "_x",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Attribute"
+                      }
+                    ]
+                  },
+                  "yAttribute": {
+                    "title": "Y Attribute Name",
+                    "description": "Name of the Y coordinate attribute (default: \"_y\")",
+                    "default": "_y",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Attribute"
+                      }
+                    ]
+                  },
+                  "zAttribute": {
+                    "title": "Z Attribute Name",
+                    "description": "Name of the Z coordinate attribute (default: \"_z\")",
+                    "default": "_z",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Attribute"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CsvReader",
       "type": "source",
       "description": "Lee características de un archivo CSV",
