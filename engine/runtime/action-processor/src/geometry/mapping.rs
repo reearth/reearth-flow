@@ -15,6 +15,7 @@ use super::{
     closed_curve_filter::ClosedCurveFilterFactory,
     coercer::GeometryCoercerFactory,
     convex_hull_accumulator::ConvexHullAccumulatorFactory,
+    coordinate_extractor::CoordinateExtractorFactory,
     csg::{CSGBuilderFactory, CSGEvaluatorFactory},
     dimension_filter::DimensionFilterFactory,
     dissolver::DissolverFactory,
@@ -108,6 +109,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<ImageRasterizerFactory>::default(),
         Box::<GridDividerFactory>::default(),
         Box::<Rotator3DFactory>::default(),
+        Box::<CoordinateExtractorFactory>::default(),
     ];
     factories
         .into_iter()
