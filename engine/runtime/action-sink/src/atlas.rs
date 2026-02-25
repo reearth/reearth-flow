@@ -495,6 +495,62 @@ mod tests {
     }
 
     #[test]
+    // test 16384x1 texture which crashes webP if included in atlas
+    fn test_large_texture_skipped_from_atlas() {
+        use atlas_packer::export::WebpAtlasExporter;
+        use atlas_packer::texture::cache::TextureCache;
+
+        let temp_dir = TempDir::new().unwrap();
+        // 16384x1: width+height >= 2048, exceeds WebP's 16383px limit
+        let texture_path = create_test_texture(temp_dir.path(), "large.jpg", 16384, 1);
+        let feature = create_test_feature(
+            &texture_path,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
+        let features = vec![&feature];
+        let packer = Mutex::new(AtlasPacker::default());
+        let texture_size_cache = TextureSizeCache::new();
+        let texture_cache = TextureCache::new(200_000_000);
+        let texture_id_gen = |fid: usize, pid: usize| format!("tex_{}_{}", fid, pid);
+
+        load_textures_into_packer(
+            &features,
+            &packer,
+            &texture_size_cache,
+            &texture_id_gen,
+            0.0,
+            false,
+        )
+        .expect("load textures");
+
+        let atlas_dir = temp_dir.path().join("atlas");
+        std::fs::create_dir(&atlas_dir).unwrap();
+
+        let (primitives, _) = process_geometry_with_atlas_export(
+            &features,
+            packer,
+            (16384, 1),
+            WebpAtlasExporter::default(),
+            &atlas_dir,
+            &texture_cache,
+            texture_id_gen,
+        )
+        .expect("process geometry");
+
+        // Without the fix: panics in WebpAtlasExporter, or mat points to .webp atlas
+        // With the fix: texture skipped, mat retains original .jpg
+        let (mat, _) = primitives.iter().next().unwrap();
+        assert!(mat
+            .base_texture
+            .as_ref()
+            .unwrap()
+            .uri
+            .to_string()
+            .ends_with(".jpg"));
+    }
+
+    #[test]
     fn test_process_geometry_with_atlas_export_uv_mapping() {
         use atlas_packer::export::PngAtlasExporter;
         use image::{ImageBuffer, Rgb, RgbImage};
