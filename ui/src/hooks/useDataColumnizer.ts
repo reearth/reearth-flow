@@ -13,9 +13,18 @@ function formatCellValue(value: any): string {
     const items = value.slice(0, 5);
     return JSON.stringify(items);
   }
-  if (Object.keys(value) && Object.keys(value).length > 5) {
-    const shownEntries = Object.keys(value).slice(0, 5);
-    return `{${shownEntries.join(", ")}}`;
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value);
+    if (keys.length > 5) {
+      const shownObject: Record<string, unknown> = {};
+      keys.slice(0, 5).forEach((key) => {
+        shownObject[key] = (value as any)[key];
+      });
+      const remainingCount = keys.length - 5;
+      const suffix = remainingCount > 0 ? ` ... (+${remainingCount} keys)` : "";
+      return JSON.stringify(shownObject) + suffix;
+    }
+    return JSON.stringify(value);
   }
   return String(value);
 }
