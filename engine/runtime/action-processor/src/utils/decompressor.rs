@@ -1,5 +1,5 @@
 use std::{
-    io::{Cursor, Read, Seek},
+    io::{Read, Seek},
     path::Path,
     sync::Arc,
 };
@@ -31,22 +31,11 @@ pub(crate) fn extract_archive(
     if let Some(ext) = source_dataset.path().as_path().extension() {
         if let Some(ext) = ext.to_str() {
             if ["7z", "7zip"].contains(&ext) {
-                let storage = storage_resolver.resolve(source_dataset).map_err(|e| {
-                    super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Failed to resolve `source_dataset` error: {e}"
-                    ))
-                })?;
-                let bytes = storage
-                    .get_sync(source_dataset.path().as_path())
-                    .map_err(|e| {
-                        super::errors::ProcessorUtilError::Decompressor(format!(
-                            "Failed to get `source_dataset` error: {e}"
-                        ))
-                    })?;
-                return extract_sevenz(bytes, root_output_path);
+                let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
+                return extract_sevenz(file, root_output_path);
             }
             if ext == "zip" {
-                let file = get_zip_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
+                let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
                 return extract_zip(file, root_output_path, root_output_storage);
             }
         }
@@ -56,13 +45,13 @@ pub(crate) fn extract_archive(
     ))
 }
 
-/// Returns a seekable `File` handle for the ZIP at `source`.
+/// Returns a seekable `File` handle for the archive at `source`.
 ///
 /// - **Local (`file://`)**: opens the file directly — zero extra memory.
-/// - **Remote (GCS, HTTP, …)**: downloads via storage, writes to an anonymous
-///   temporary file, drops the in-memory `Bytes` immediately, then returns the
-///   seekable temp file.  The temp file is deleted automatically when dropped.
-fn get_zip_file_handle(
+/// - **Remote (GCS, HTTP, …)**: streams via storage into an anonymous
+///   temporary file and returns it rewound to offset 0.  The temp file is
+///   deleted automatically when dropped.
+fn get_archive_file_handle(
     source: &Uri,
     storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<std::fs::File> {
@@ -70,7 +59,7 @@ fn get_zip_file_handle(
         let local_path = source.path();
         return std::fs::File::open(&local_path).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
-                "Failed to open local zip file '{local_path:?}': {e}"
+                "Failed to open local archive '{local_path:?}': {e}"
             ))
         });
     }
@@ -191,13 +180,12 @@ fn extract_zip<R: Read + Seek>(
     Ok(file_paths)
 }
 
-fn extract_sevenz(
-    bytes: bytes::Bytes,
+fn extract_sevenz<R: Read + Seek>(
+    reader: R,
     root_output_path: &Uri,
 ) -> super::errors::Result<Vec<FilePath>> {
     let mut entries = Vec::<Uri>::new();
-    let cursor = Cursor::new(bytes);
-    decompress_with_extract_fn(cursor, root_output_path.as_path(), |entry, reader, dest| {
+    decompress_with_extract_fn(reader, root_output_path.as_path(), |entry, reader, dest| {
         if !entry.is_directory {
             let dest_uri = Uri::try_from(dest.clone()).map_err(|e| {
                 reearth_flow_sevenz::Error::Unknown(format!("Failed to convert `dest` to URI: {e}"))
