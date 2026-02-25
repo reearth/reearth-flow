@@ -220,18 +220,16 @@ impl Processor for CoordinateExtractor {
 
                 let index = *coordinate_index;
                 let resolved = if index < 0 {
-                    let positive = (-index) as usize;
-                    if positive > coords.len() {
-                        None
-                    } else {
-                        Some(coords.len() - positive)
+                    let positive = index.checked_abs().and_then(|v| usize::try_from(v).ok());
+                    match positive {
+                        Some(p) if p <= coords.len() => Some(coords.len() - p),
+                        _ => None,
                     }
                 } else {
-                    let idx = index as usize;
-                    if idx < coords.len() {
-                        Some(idx)
-                    } else {
-                        None
+                    let idx = usize::try_from(index).ok();
+                    match idx {
+                        Some(i) if i < coords.len() => Some(i),
+                        _ => None,
                     }
                 };
 

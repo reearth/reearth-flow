@@ -265,12 +265,12 @@ impl Display for AttributeValue {
 }
 
 impl TryFrom<f64> for AttributeValue {
-    type Error = &'static str;
+    type Error = error::Error;
 
     fn try_from(value: f64) -> Result<Self, Self::Error> {
         Number::from_f64(value)
             .map(AttributeValue::Number)
-            .ok_or("f64 value is NaN or infinite")
+            .ok_or_else(|| error::Error::validate("f64 value is NaN or infinite"))
     }
 }
 
