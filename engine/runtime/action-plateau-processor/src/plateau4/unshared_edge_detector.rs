@@ -117,6 +117,16 @@ impl ProcessorFactory for UnsharedEdgeDetectorFactory {
             UnsharedEdgeDetectorParam::default()
         };
 
+        if param.tolerance <= 0.0 {
+            return Err(PlateauProcessorError::UnsharedEdgeDetectorFactory(
+                format!(
+                    "tolerance must be positive, got {}",
+                    param.tolerance
+                ),
+            )
+            .into());
+        }
+
         Ok(Box::new(UnsharedEdgeDetector {
             tolerance: param.tolerance,
             executor_id: None,
