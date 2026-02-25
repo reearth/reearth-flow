@@ -502,7 +502,7 @@ mod tests {
         use atlas_packer::texture::cache::TextureCache;
 
         let temp_dir = TempDir::new().unwrap();
-        // 16384x1: width+height >= 2048, exceeds WebP's 16383px limit
+        // 16384x1: width+height >= 4096, exceeds WebP's 16383px limit
         let texture_path = create_test_texture(temp_dir.path(), "large.jpg", 16384, 1);
         let feature = create_test_feature(
             &texture_path,
