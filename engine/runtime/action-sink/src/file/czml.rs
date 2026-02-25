@@ -36,7 +36,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Export features as CZML for Cesium visualization, with support for time-dynamic entities and timeseries positions"
+        "Export features as CZML for Cesium visualization. Supports static entities and time-animated timeseries. Configure timeField, groupTimeseriesBy, and epoch (for numeric times) to enable animation."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -94,6 +94,35 @@ pub(crate) struct CzmlWriter {
 ///
 /// Configuration for writing geographic features to CZML files. Supports both
 /// static entities and time-dynamic entities with interpolated position samples.
+///
+/// ## Timeseries Configuration
+///
+/// To create time-animated entities in Cesium, configure all three parameters:
+/// 1. `timeField` - Attribute containing time values
+/// 2. `groupTimeseriesBy` - Attribute to group features into entities
+/// 3. `epoch` (optional) - Base time for numeric offsets
+///
+/// ### Example with ISO 8601 timestamps:
+/// ```yaml
+/// - action: CzmlWriter
+///   with:
+///     output: "vehicles.czml"
+///     timeField: "timestamp"           # Contains "2024-01-01T00:00:00Z", etc.
+///     groupTimeseriesBy: "vehicleId"   # Groups by vehicle ID
+///     interpolationAlgorithm: "LAGRANGE"
+///     interpolationDegree: 5
+/// ```
+///
+/// ### Example with numeric time offsets:
+/// ```yaml
+/// - action: CzmlWriter
+///   with:
+///     output: "sensors.czml"
+///     timeField: "timeOffset"          # Contains numeric values: 0, 60, 120, etc.
+///     groupTimeseriesBy: "sensorId"
+///     epoch: "2024-01-01T00:00:00Z"    # Base time for offsets
+///     interpolationAlgorithm: "LINEAR"
+/// ```
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CzmlWriterParam {
@@ -104,16 +133,42 @@ pub(crate) struct CzmlWriterParam {
     /// Attributes used to group features into separate CZML files
     pub(super) group_by: Option<Vec<Attribute>>,
     /// # Time Field
-    /// Attribute containing the timestamp (ISO 8601 string or numeric seconds
-    /// since epoch) for each feature. When set together with
-    /// `groupTimeseriesBy`, features sharing the same group key are combined
-    /// into a single CZML entity with time-tagged position samples.
+    /// Attribute containing the timestamp for each feature. Supports two formats:
+    /// - **ISO 8601 strings**: e.g., "2024-01-01T00:00:00Z", "2024-01-01T12:30:45+09:00"
+    /// - **Numeric values**: Seconds as offset from epoch (e.g., "0", "60", "120.5")
+    ///
+    /// When set together with `groupTimeseriesBy`, features sharing the same
+    /// group key are combined into a single CZML entity with time-tagged position
+    /// samples for animation in Cesium.
+    ///
+    /// **Example workflow configuration:**
+    /// ```yaml
+    /// - action: CzmlWriter
+    ///   with:
+    ///     output: "output.czml"
+    ///     timeField: "timestamp"
+    ///     groupTimeseriesBy: "vehicleId"
+    ///     epoch: "2024-01-01T00:00:00Z"  # Required for numeric time values
+    /// ```
     pub(super) time_field: Option<Attribute>,
     /// # Epoch
-    /// ISO 8601 datetime used as the base time for numeric time offsets in
-    /// the output CZML. If omitted and all time values are numeric, a default
-    /// epoch (1970-01-01T00:00:00Z) is automatically used to enable timeseries
-    /// visualization with numeric time offsets.
+    /// Reference time (ISO 8601 format) used as the base for numeric time offsets.
+    ///
+    /// **When to use:**
+    /// - Required when `timeField` contains numeric values (e.g., "0", "60", "3600")
+    /// - Optional when `timeField` contains ISO 8601 datetime strings
+    ///
+    /// **Format:** ISO 8601 datetime string with timezone
+    /// - Examples: "2024-01-01T00:00:00Z", "2024-06-15T09:00:00+09:00"
+    ///
+    /// **Auto-detection:** If omitted and all time values are numeric, automatically
+    /// defaults to Unix epoch "1970-01-01T00:00:00Z". For custom time ranges,
+    /// explicitly set this parameter to your desired base time.
+    ///
+    /// **Example:**
+    /// ```yaml
+    /// epoch: "2024-01-01T00:00:00Z"  # Time value "60" means 2024-01-01T00:01:00Z
+    /// ```
     pub(super) epoch: Option<String>,
     /// # Interpolation Algorithm
     /// Algorithm used by Cesium to interpolate between time-tagged samples.
