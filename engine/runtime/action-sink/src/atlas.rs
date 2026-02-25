@@ -92,6 +92,12 @@ where
                 })?;
                 let texture_size = texture_size_cache.get_or_insert(&texture_uri);
 
+                // Skip atlas packing for large textures; the original file bytes
+                // will be embedded directly (avoids WebP encoder dimension limits)
+                if texture_size.0 + texture_size.1 >= 4096 {
+                    continue;
+                }
+
                 let downsample_scale = if limit_texture_resolution {
                     reearth_flow_common::texture::get_texture_downsample_scale_of_polygon(
                         &original_vertices,
@@ -300,6 +306,7 @@ where
     )?;
 
     // Export atlas textures
+    eprintln!("dimensions = ({}, {})", config.width(), config.height());
     packed.export(
         exporter,
         atlas_path.as_ref(),
