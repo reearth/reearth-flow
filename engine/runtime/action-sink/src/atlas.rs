@@ -23,6 +23,9 @@ use url::Url;
 
 use crate::zip_eq_logged::ZipEqLoggedExt;
 
+// Textures with width+height >= this are embedded as-is, skipping lossy reencoding
+const ATLAS_SKIP_DIMENSION_SUM: u32 = 4096;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
     // polygons [x, y, z, u, v]
@@ -92,9 +95,7 @@ where
                 })?;
                 let texture_size = texture_size_cache.get_or_insert(&texture_uri);
 
-                // Skip atlas packing for large textures; the original file bytes
-                // will be embedded directly (avoids WebP encoder dimension limits)
-                if texture_size.0 + texture_size.1 >= 4096 {
+                if texture_size.0 + texture_size.1 >= ATLAS_SKIP_DIMENSION_SUM {
                     continue;
                 }
 
