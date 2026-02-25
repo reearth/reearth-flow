@@ -39,7 +39,7 @@ RUN \
     --mount=type=bind,source=runtime,target=runtime \
     --mount=type=bind,source=cli,target=cli \
     --mount=type=bind,source=plateau-gis-quality-checker,target=plateau-gis-quality-checker \
-    --mount=type=bind,source=plateau-tiles-test,target=plateau-tiles-test \
+    --mount=type=bind,source=testing/plateau-tiles-test,target=testing/plateau-tiles-test \
     --mount=type=bind,source=worker,target=worker \
     cargo build --package reearth-flow-worker --bin reearth-flow-worker --release && mv target/release/reearth-flow-worker /tmp/reearth-flow-worker
 
