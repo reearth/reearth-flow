@@ -97,10 +97,11 @@ pub(crate) struct CzmlWriter {
 ///
 /// ## Timeseries Configuration
 ///
-/// To create time-animated entities in Cesium, configure all three parameters:
+/// To create time-animated entities in Cesium, configure at least the first two
+/// parameters below; configure `epoch` only when using numeric time offsets:
 /// 1. `timeField` - Attribute containing time values
 /// 2. `groupTimeseriesBy` - Attribute to group features into entities
-/// 3. `epoch` (optional) - Base time for numeric offsets
+/// 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets
 ///
 /// ### Example with ISO 8601 timestamps:
 /// ```yaml
@@ -148,15 +149,15 @@ pub(crate) struct CzmlWriterParam {
     ///     output: "output.czml"
     ///     timeField: "timestamp"
     ///     groupTimeseriesBy: "vehicleId"
-    ///     epoch: "2024-01-01T00:00:00Z"  # Required for numeric time values
+    ///     epoch: "2024-01-01T00:00:00Z"  # Optional for numeric times (auto-defaults to Unix epoch)
     /// ```
     pub(super) time_field: Option<Attribute>,
     /// # Epoch
     /// Reference time (ISO 8601 format) used as the base for numeric time offsets.
     ///
     /// **When to use:**
-    /// - Required when `timeField` contains numeric values (e.g., "0", "60", "3600")
-    /// - Optional when `timeField` contains ISO 8601 datetime strings
+    /// - Optional but recommended when `timeField` contains numeric values (e.g., "0", "60", "3600")
+    /// - Not needed when `timeField` contains ISO 8601 datetime strings
     ///
     /// **Format:** ISO 8601 datetime string with timezone
     /// - Examples: "2024-01-01T00:00:00Z", "2024-06-15T09:00:00+09:00"
@@ -562,13 +563,42 @@ fn build_timeseries_czml(
         }
     }
     if all_timestamps.len() >= 2 {
-        all_timestamps.sort();
+        // Check if all timestamps are numeric
+        let all_numeric = all_timestamps.iter().all(|ts| {
+            if let Ok(n) = ts.parse::<f64>() {
+                n.is_finite()
+            } else {
+                false
+            }
+        });
+
+        // Sort timestamps (numeric or string)
+        if all_numeric {
+            all_timestamps.sort_by(|a, b| {
+                let na = a.parse::<f64>().unwrap();
+                let nb = b.parse::<f64>().unwrap();
+                na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        } else {
+            all_timestamps.sort();
+        }
+
         let start = &all_timestamps[0];
         let end = &all_timestamps[all_timestamps.len() - 1];
-        let availability = format!("{start}/{end}");
+
+        // Convert numeric times to ISO 8601 for clock if epoch is available
+        let (start_iso, end_iso) = if all_numeric && params.epoch.is_some() {
+            let start_iso = strip_epoch_offset_for_availability(start, params.epoch.as_deref());
+            let end_iso = strip_epoch_offset_for_availability(end, params.epoch.as_deref());
+            (start_iso, end_iso)
+        } else {
+            (start.clone(), end.clone())
+        };
+
+        let availability = format!("{start_iso}/{end_iso}");
         doc["clock"] = serde_json::json!({
             "interval": availability,
-            "currentTime": start,
+            "currentTime": start_iso,
             "multiplier": 1,
             "range": "LOOP_STOP",
             "step": "SYSTEM_CLOCK_MULTIPLIER",
@@ -602,12 +632,20 @@ fn build_entity_packet(
 ) -> Result<Value, BoxedError> {
     let time_field = params.time_field.as_ref().unwrap();
 
-    // Check if all time values are numeric
+    // Check if all time values are numeric (finite numbers) and present
     let all_numeric_times = features.iter().all(|f| {
         if let Some(time_val) = f.get(time_field) {
-            attribute_value_to_string(time_val).parse::<f64>().is_ok()
+            let time_str = attribute_value_to_string(time_val);
+            if time_str.is_empty() {
+                return false; // Empty times disqualify numeric mode
+            }
+            if let Ok(n) = time_str.parse::<f64>() {
+                n.is_finite() // Reject NaN/Inf
+            } else {
+                false
+            }
         } else {
-            true // Empty values don't disqualify numeric mode
+            false // Missing time values disqualify numeric mode
         }
     });
 
@@ -635,8 +673,9 @@ fn build_entity_packet(
 
         // For numeric comparison, parse and compare as numbers
         if all_numeric_times {
-            let na = ta.parse::<f64>().unwrap_or(0.0);
-            let nb = tb.parse::<f64>().unwrap_or(0.0);
+            // Safe to unwrap since all_numeric_times guarantees valid finite numbers
+            let na = ta.parse::<f64>().unwrap();
+            let nb = tb.parse::<f64>().unwrap();
             na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
         } else {
             ta.cmp(&tb)
@@ -668,17 +707,23 @@ fn build_entity_packet(
         last_time = Some(time_str.clone());
 
         // Convert time values to proper format
-        let time_value: Value = if epoch.is_some() {
-            // With epoch, prefer numeric values
+        // Use numeric samples only if all times are numeric to avoid mixing types
+        let time_value: Value = if all_numeric_times {
+            // Emit numeric time samples
             if let Ok(n) = time_str.parse::<f64>() {
+                if !n.is_finite() {
+                    // Skip features with NaN/Inf in numeric mode
+                    continue;
+                }
                 serde_json::json!(n)
             } else if let Some(offset) = parse_epoch_offset_timestamp(&time_str) {
                 serde_json::json!(offset)
             } else {
-                serde_json::json!(time_str)
+                // Skip features with invalid numeric time
+                continue;
             }
         } else {
-            // Without epoch, must use ISO 8601 strings
+            // Emit ISO 8601 string time samples
             serde_json::json!(time_str)
         };
 
@@ -803,10 +848,22 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
 
     // Handle pure numeric strings like "155" when epoch is provided
     if let Ok(offset) = ts.parse::<f64>() {
+        // Reject NaN/Inf
+        if !offset.is_finite() {
+            return ts.to_string();
+        }
         if let Some(epoch_str) = epoch {
             if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
-                let result = epoch_dt + chrono::Duration::seconds(offset as i64);
-                return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+                // Preserve fractional seconds by converting to milliseconds
+                let millis = (offset * 1000.0) as i64;
+                let result = epoch_dt + chrono::Duration::milliseconds(millis);
+                // Use seconds format for whole seconds, millis for fractional
+                let format = if offset.fract() == 0.0 {
+                    chrono::SecondsFormat::Secs
+                } else {
+                    chrono::SecondsFormat::Millis
+                };
+                return result.to_rfc3339_opts(format, true);
             }
         }
     }
