@@ -1223,8 +1223,7 @@ async fn read_layer_tiles(
         let bounds = calculate_tile_bounds(zoom, col, tile_row);
         let geometry = create_tile_bounds_geometry(bounds);
 
-        let feature =
-            Feature::new_with_attributes_and_geometry(attributes, geometry);
+        let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
         features.push(feature);
     }
 

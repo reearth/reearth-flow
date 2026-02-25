@@ -6,7 +6,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{lod::LodMask, metadata::CITYGML_LOD_MASK_KEY, Attribute, AttributeValue, Feature};
+use reearth_flow_types::{
+    lod::LodMask, metadata::CITYGML_LOD_MASK_KEY, Attribute, AttributeValue, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

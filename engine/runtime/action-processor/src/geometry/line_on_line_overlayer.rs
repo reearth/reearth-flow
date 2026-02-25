@@ -322,8 +322,7 @@ impl LineOnLineOverlayer {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone())),
                 ..Default::default()
             };
-            let feature =
-                Feature::new_with_attributes_and_geometry(attributes, geometry);
+            let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
             overlaid.line.push(feature);
         }
 
@@ -346,8 +345,7 @@ impl LineOnLineOverlayer {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords))),
                 ..Default::default()
             };
-            let feature =
-                Feature::new_with_attributes_and_geometry(attributes, geometry);
+            let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
             overlaid.point.push(feature);
         }
 

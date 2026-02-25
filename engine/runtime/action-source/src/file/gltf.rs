@@ -334,8 +334,7 @@ async fn send_feature(
         AttributeValue::Number(serde_json::Number::from(primitive_count)),
     );
 
-    let feature =
-        Feature::new_with_attributes_and_geometry(attributes, geometry);
+    let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
 
     sender
         .send((

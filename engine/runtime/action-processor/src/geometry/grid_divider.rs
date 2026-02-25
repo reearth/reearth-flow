@@ -1084,10 +1084,8 @@ fn create_output_feature(
         epsg: original.geometry.epsg,
         value: clipped_geometry,
     };
-    let mut new_feature = Feature::new_with_attributes_and_geometry(
-        (*original.attributes).clone(),
-        new_geometry,
-    );
+    let mut new_feature =
+        Feature::new_with_attributes_and_geometry((*original.attributes).clone(), new_geometry);
 
     new_feature.insert(
         "_grid_row",

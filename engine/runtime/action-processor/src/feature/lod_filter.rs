@@ -8,7 +8,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{lod::LodMask, metadata::CITYGML_LOD_MASK_KEY, Attribute, AttributeValue, Feature};
+use reearth_flow_types::{
+    lod::LodMask, metadata::CITYGML_LOD_MASK_KEY, Attribute, AttributeValue, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -118,7 +120,11 @@ impl Processor for FeatureLodFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(lod) = feature.get(CITYGML_LOD_MASK_KEY).and_then(|v| v.as_i64()).map(|v| LodMask::from_u8(v as u8)) else {
+        let Some(lod) = feature
+            .get(CITYGML_LOD_MASK_KEY)
+            .and_then(|v| v.as_i64())
+            .map(|v| LodMask::from_u8(v as u8))
+        else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
         };
@@ -175,7 +181,11 @@ impl FeatureLodFilter {
         feature: &Feature,
         lod_count: &LodCount,
     ) {
-        let Some(lod) = feature.get(CITYGML_LOD_MASK_KEY).and_then(|v| v.as_i64()).map(|v| LodMask::from_u8(v as u8)) else {
+        let Some(lod) = feature
+            .get(CITYGML_LOD_MASK_KEY)
+            .and_then(|v| v.as_i64())
+            .map(|v| LodMask::from_u8(v as u8))
+        else {
             fw.send(ctx.as_executor_context(feature.clone(), UNFILTERED_PORT.clone()));
             return;
         };
@@ -218,7 +228,12 @@ impl FeatureLodFilter {
         let mut filtered_feature = feature.clone();
 
         // Calculate the actual LOD to use based on feature's available LODs
-        let actual_lod = if let Some(lod_mask) = feature.get(CITYGML_LOD_MASK_KEY).and_then(|v| v.as_i64()).map(|v| LodMask::from_u8(v as u8)).as_ref() {
+        let actual_lod = if let Some(lod_mask) = feature
+            .get(CITYGML_LOD_MASK_KEY)
+            .and_then(|v| v.as_i64())
+            .map(|v| LodMask::from_u8(v as u8))
+            .as_ref()
+        {
             // Find the maximum LOD that doesn't exceed max_lod
             let mut best_lod = None;
             for lod in 0..=max_lod {
@@ -243,7 +258,10 @@ impl FeatureLodFilter {
             if filtered_feature.get(CITYGML_LOD_MASK_KEY).is_some() {
                 let mut new_lod_mask = LodMask::default();
                 new_lod_mask.add_lod(target_lod);
-                filtered_feature.insert(CITYGML_LOD_MASK_KEY, AttributeValue::Number(serde_json::Number::from(new_lod_mask.to_u8())));
+                filtered_feature.insert(
+                    CITYGML_LOD_MASK_KEY,
+                    AttributeValue::Number(serde_json::Number::from(new_lod_mask.to_u8())),
+                );
             }
         }
 

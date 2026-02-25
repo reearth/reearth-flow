@@ -624,8 +624,7 @@ mod tests {
             AttributeValue::String("pyramid".to_string()),
         );
 
-        let feature =
-            Feature::new_with_attributes_and_geometry(attributes, geometry);
+        let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
 
         features.push(feature);
 

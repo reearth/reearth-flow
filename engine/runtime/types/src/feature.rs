@@ -462,8 +462,7 @@ impl Feature {
     }
 
     pub fn feature_id(&self) -> Option<String> {
-        self.get(CITYGML_GML_ID_KEY)
-            .and_then(|v| v.as_string())
+        self.get(CITYGML_GML_ID_KEY).and_then(|v| v.as_string())
     }
 
     pub fn feature_type(&self) -> Option<String> {
@@ -485,7 +484,10 @@ impl Feature {
     }
 
     pub fn update_feature_type(&mut self, feature_type: String) {
-        self.insert(CITYGML_FEATURE_TYPE_KEY, AttributeValue::String(feature_type));
+        self.insert(
+            CITYGML_FEATURE_TYPE_KEY,
+            AttributeValue::String(feature_type),
+        );
     }
 
     pub fn update_feature_id(&mut self, feature_id: String) {

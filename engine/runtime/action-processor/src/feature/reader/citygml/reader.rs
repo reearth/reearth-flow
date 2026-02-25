@@ -383,12 +383,31 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             feature.extend(attributes);
             feature.insert("cityGmlAttributes", citygml_attributes);
             {
-                let eff_lod = if flatten && child_lod.highest_lod().is_some() { child_lod.to_u8() } else { citygml_lod };
-                let eff_id = if flatten { child_id.or_else(|| citygml_gml_id.clone()) } else { citygml_gml_id.clone() };
-                let eff_type = if flatten { child_typename.or_else(|| citygml_feature_type.clone()) } else { citygml_feature_type.clone() };
-                if let Some(id) = eff_id { feature.insert(CITYGML_GML_ID_KEY, AttributeValue::String(id)); }
-                if let Some(ft) = eff_type { feature.insert(CITYGML_FEATURE_TYPE_KEY, AttributeValue::String(ft)); }
-                feature.insert(CITYGML_LOD_MASK_KEY, AttributeValue::Number(serde_json::Number::from(eff_lod)));
+                let eff_lod = if flatten && child_lod.highest_lod().is_some() {
+                    child_lod.to_u8()
+                } else {
+                    citygml_lod
+                };
+                let eff_id = if flatten {
+                    child_id.or_else(|| citygml_gml_id.clone())
+                } else {
+                    citygml_gml_id.clone()
+                };
+                let eff_type = if flatten {
+                    child_typename.or_else(|| citygml_feature_type.clone())
+                } else {
+                    citygml_feature_type.clone()
+                };
+                if let Some(id) = eff_id {
+                    feature.insert(CITYGML_GML_ID_KEY, AttributeValue::String(id));
+                }
+                if let Some(ft) = eff_type {
+                    feature.insert(CITYGML_FEATURE_TYPE_KEY, AttributeValue::String(ft));
+                }
+                feature.insert(
+                    CITYGML_LOD_MASK_KEY,
+                    AttributeValue::Number(serde_json::Number::from(eff_lod)),
+                );
             }
 
             serde_json::to_writer(&mut *writer, &feature).map_err(|e| {

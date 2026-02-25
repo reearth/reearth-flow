@@ -1260,10 +1260,8 @@ fn assign_texture_coordinates(
         epsg: feature.geometry.epsg,
         value: GeometryValue::CityGmlGeometry(updated_citygml),
     };
-    let updated_feature = Feature::new_with_attributes_and_geometry(
-        (*feature.attributes).clone(),
-        new_geometry,
-    );
+    let updated_feature =
+        Feature::new_with_attributes_and_geometry((*feature.attributes).clone(), new_geometry);
 
     Ok(updated_feature)
 }
