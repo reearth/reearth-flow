@@ -1,10 +1,10 @@
 use std::{
-    io::{Cursor, Read},
+    io::{Cursor, Read, Seek},
     path::Path,
     sync::Arc,
 };
 
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::uri::{Protocol, Uri};
 use reearth_flow_sevenz::{decompress_with_extract_fn, default_entry_extract_fn};
 use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
 use reearth_flow_types::FilePath;
@@ -23,42 +23,90 @@ pub(crate) fn extract_archive(
     root_output_path: &Uri,
     storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<Vec<FilePath>> {
-    let storage = storage_resolver.resolve(source_dataset).map_err(|e| {
-        super::errors::ProcessorUtilError::Decompressor(format!(
-            "Failed to resolve `source_dataset` error: {e}"
-        ))
-    })?;
     let root_output_storage = storage_resolver.resolve(root_output_path).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
             "Failed to resolve `root_output_path` error: {e}"
         ))
     })?;
-    let bytes = storage
-        .get_sync(source_dataset.path().as_path())
-        .map_err(|e| {
-            super::errors::ProcessorUtilError::Decompressor(format!(
-                "Failed to get `source_dataset` error: {e}"
-            ))
-        })?;
     if let Some(ext) = source_dataset.path().as_path().extension() {
         if let Some(ext) = ext.to_str() {
             if ["7z", "7zip"].contains(&ext) {
+                let storage = storage_resolver.resolve(source_dataset).map_err(|e| {
+                    super::errors::ProcessorUtilError::Decompressor(format!(
+                        "Failed to resolve `source_dataset` error: {e}"
+                    ))
+                })?;
+                let bytes = storage
+                    .get_sync(source_dataset.path().as_path())
+                    .map_err(|e| {
+                        super::errors::ProcessorUtilError::Decompressor(format!(
+                            "Failed to get `source_dataset` error: {e}"
+                        ))
+                    })?;
                 return extract_sevenz(bytes, root_output_path);
             }
+            if ext == "zip" {
+                let file = get_zip_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
+                return extract_zip(file, root_output_path, root_output_storage);
+            }
         }
-        return extract_zip(bytes, root_output_path, root_output_storage);
     }
     Err(super::errors::ProcessorUtilError::Decompressor(
         "Unsupported archive format".to_string(),
     ))
 }
 
-fn extract_zip(
-    bytes: bytes::Bytes,
+/// Returns a seekable `File` handle for the ZIP at `source`.
+///
+/// - **Local (`file://`)**: opens the file directly — zero extra memory.
+/// - **Remote (GCS, HTTP, …)**: downloads via storage, writes to an anonymous
+///   temporary file, drops the in-memory `Bytes` immediately, then returns the
+///   seekable temp file.  The temp file is deleted automatically when dropped.
+fn get_zip_file_handle(
+    source: &Uri,
+    storage_resolver: Arc<StorageResolver>,
+) -> super::errors::Result<std::fs::File> {
+    if matches!(source.protocol(), Protocol::File) {
+        let local_path = source.path();
+        return std::fs::File::open(&local_path).map_err(|e| {
+            super::errors::ProcessorUtilError::Decompressor(format!(
+                "Failed to open local zip file '{local_path:?}': {e}"
+            ))
+        });
+    }
+    // Remote: stream directly into an anonymous temp file — the full archive
+    // never lives in memory.
+    let storage = storage_resolver.resolve(source).map_err(|e| {
+        super::errors::ProcessorUtilError::Decompressor(format!(
+            "Failed to resolve `source_dataset` error: {e}"
+        ))
+    })?;
+    let mut tmp = tempfile::tempfile().map_err(|e| {
+        super::errors::ProcessorUtilError::Decompressor(format!(
+            "Failed to create temporary file: {e}"
+        ))
+    })?;
+    storage
+        .stream_to_file_sync(source.path().as_path(), &mut tmp)
+        .map_err(|e| {
+            super::errors::ProcessorUtilError::Decompressor(format!(
+                "Failed to stream archive to temporary file: {e}"
+            ))
+        })?;
+    std::io::Seek::seek(&mut tmp, std::io::SeekFrom::Start(0)).map_err(|e| {
+        super::errors::ProcessorUtilError::Decompressor(format!(
+            "Failed to rewind temporary file: {e}"
+        ))
+    })?;
+    Ok(tmp)
+}
+
+fn extract_zip<R: Read + Seek>(
+    reader: R,
     root_output_path: &Uri,
     storage: Arc<Storage>,
 ) -> super::errors::Result<Vec<FilePath>> {
-    let mut zip_archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| {
+    let mut zip_archive = zip::ZipArchive::new(reader).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
             "Failed to open `source_dataset` as zip archive: {e}"
         ))
@@ -206,7 +254,10 @@ mod tests {
         let storage_resolver = Arc::new(StorageResolver::new());
         let storage = storage_resolver.resolve(&root_uri).unwrap();
 
-        let result = extract_zip(bytes::Bytes::from(buf), &root_uri, storage);
+        let mut tmp = tempfile::tempfile().unwrap();
+        std::io::Write::write_all(&mut tmp, &buf).unwrap();
+        std::io::Seek::seek(&mut tmp, std::io::SeekFrom::Start(0)).unwrap();
+        let result = extract_zip(tmp, &root_uri, storage);
         assert!(result.is_ok());
 
         // Verify file extracted to folder/file.txt, not "folder\file.txt"
