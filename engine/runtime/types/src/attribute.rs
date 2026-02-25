@@ -264,6 +264,16 @@ impl Display for AttributeValue {
     }
 }
 
+impl TryFrom<f64> for AttributeValue {
+    type Error = &'static str;
+
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        Number::from_f64(value)
+            .map(AttributeValue::Number)
+            .ok_or("f64 value is NaN or infinite")
+    }
+}
+
 impl From<serde_json::Value> for AttributeValue {
     fn from(value: serde_json::Value) -> Self {
         match value {
