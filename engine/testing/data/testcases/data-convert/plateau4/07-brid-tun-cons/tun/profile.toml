@@ -1,0 +1,17 @@
+citygml_zip_name = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.cesium.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+# the lod4 features/subfeatures are further simplified manually to speed up the test
+[filter.tree]
+"udx/tun/" = ["53393690_tun_6697_40_op.gml", "53393690_tun_6697_40_appearance/"]

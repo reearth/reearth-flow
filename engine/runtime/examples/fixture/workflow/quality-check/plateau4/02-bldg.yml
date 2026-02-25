@@ -4055,6 +4055,15 @@ graphs:
     action: OutputRouter
     with:
       routingPort: errorCountLod1SolidIssues
+  - id: e0f1a2b3-c4d5-4e6f-8a7b-8c9d0e1f2a3b
+    name: FeatureFilterSolidGeometry
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").gmlPropertyName.ends_with("Solid")
+        outputPort: solid
   - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     name: GeometryExtractorSolidIntersection
     type: action
@@ -4075,6 +4084,7 @@ graphs:
       generateList: list
       groupBy:
       - lod
+      tolerance: 0.01
   - id: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
     name: FeatureFilterSolidIntersectionOverlap
     type: action
@@ -4557,23 +4567,28 @@ graphs:
     toPort: default
   - id: 82f70cb1-eff7-4c90-82dc-6bf5568d69d6
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: e0f1a2b3-c4d5-4e6f-8a7b-8c9d0e1f2a3b
     fromPort: lod1
     toPort: default
   - id: 93f81dc2-f008-5db1-93ed-7cf6679e7ae7
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: e0f1a2b3-c4d5-4e6f-8a7b-8c9d0e1f2a3b
     fromPort: lod2
     toPort: default
   - id: a4f92ed3-f119-6ec2-a4fe-8df7789e8bf8
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: e0f1a2b3-c4d5-4e6f-8a7b-8c9d0e1f2a3b
     fromPort: lod3
     toPort: default
   - id: b5fa3fe4-f22a-7fd3-b5ff-9ef889af9cf9
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: e0f1a2b3-c4d5-4e6f-8a7b-8c9d0e1f2a3b
     fromPort: lod4
+    toPort: default
+  - id: d1e2f3a4-b5c6-4d7e-9f8a-0b1c2d3e4f5a
+    from: e0f1a2b3-c4d5-4e6f-8a7b-8c9d0e1f2a3b
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    fromPort: solid
     toPort: default
   - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
     from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
