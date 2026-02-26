@@ -177,7 +177,7 @@ const CityGmlData: React.FC<Props> = ({
       viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
       setCityGmlBoundingSphere(boundingSphere);
     }
-  }, [cityGmlData, viewer, cancelPending, setCityGmlBoundingSphere]);
+  }, [cityGmlData, viewer, setCityGmlBoundingSphere, cancelPending]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
@@ -232,10 +232,27 @@ const CityGmlData: React.FC<Props> = ({
   }, [viewer, cancelPending]);
 
   useEffect(() => {
-    if (viewer && absolutePrimitiveRef.current) {
-      absolutePrimitiveRef.current.show = !showSelectedFeatureOnly;
-    }
-  }, [viewer, showSelectedFeatureOnly]);
+    if (!viewer) return;
+
+    waitForPrimitive(absolutePrimitiveRef.current, () => {
+      featureMapRef.current.forEach((entry, id) => {
+        const isSelected = id === selectedFeatureId;
+
+        if (entry.lodPrimitiveCollection) return;
+
+        const shouldShow = !showSelectedFeatureOnly || isSelected;
+        entry.absoluteInstanceIds.forEach((instanceId) => {
+          const attrs =
+            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(
+              instanceId,
+            );
+          if (attrs) {
+            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
+          }
+        });
+      });
+    });
+  }, [viewer, showSelectedFeatureOnly, selectedFeatureId, waitForPrimitive]);
 
   return null;
 };

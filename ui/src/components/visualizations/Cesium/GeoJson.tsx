@@ -43,6 +43,8 @@ const GeoJsonData: React.FC<Props> = ({
         data={geoJsonData}
         onLoad={(geoJsonDataSource) => {
           dataSourceRef.current = geoJsonDataSource;
+          // Ensure entity visibility respects the current selection state on load
+
           if (viewer) {
             if (dataSourceKey === 1 && !selectedFeatureId) {
               viewer.zoomTo(geoJsonDataSource.entities);
@@ -56,6 +58,15 @@ const GeoJsonData: React.FC<Props> = ({
               }
             }
           }
+          geoJsonDataSource.entities.values.forEach((entity: Entity) => {
+            if (showSelectedFeatureOnly) {
+              const props = entity.properties?.getValue?.();
+              const id = props?._originalId ?? entity.id;
+              entity.show = id === selectedFeatureId;
+            } else {
+              entity.show = true;
+            }
+          });
         }}
       />
     )
