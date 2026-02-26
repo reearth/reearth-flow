@@ -47,10 +47,6 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
         ("city_name".to_string(), AttributeValue::default_string()),
         ("gml_id".to_string(), AttributeValue::default_string()),
         ("attributes".to_string(), AttributeValue::default_string()),
-        (
-            "core:creationDate".to_string(),
-            AttributeValue::default_string(),
-        ),
     ]
 });
 static BLDG_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {

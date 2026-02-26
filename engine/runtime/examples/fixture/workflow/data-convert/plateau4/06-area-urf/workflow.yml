@@ -82,12 +82,6 @@ graphs:
         action: AttributeManager
         with:
           operations:
-          - attribute: featureId
-            method: remove
-          - attribute: featureParentId
-            method: remove
-          - attribute: geometryName
-            method: remove
           - attribute: cityCode
             method: rename
             value: city_code
@@ -97,45 +91,9 @@ graphs:
           - attribute: lod
             method: rename
             value: __lod
-          - attribute: gmlId
-            method: remove
-          - attribute: gmlPropertyName
-            method: remove
-          - attribute: fileIndex
-            method: remove
-          - attribute: root
-            method: remove
-          - attribute: cityGmlPath
-            method: remove
-          - attribute: admin
-            method: remove
-          - attribute: area
-            method: remove
           - attribute: package
             method: rename
             value: __package
-          - attribute: extension
-            method: remove
-          - attribute: dirRoot
-            method: remove
-          - attribute: gmlRootId
-            method: remove
-          - attribute: maxLod
-            method: remove
-          - attribute: dirSchemas
-            method: remove
-          - attribute: dirCodelists
-            method: remove
-          - attribute: path
-            method: remove
-          - attribute: name
-            method: remove
-          - attribute: udxDirs
-            method: remove
-          - attribute: featureType
-            method: remove
-          - attribute: gmlName
-            method: remove
 
       - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
         name: FilterUrfPackage
@@ -292,3 +250,9 @@ graphs:
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
+      # AttributeFlattener -> MvtWriter (schema)
+      - id: 9314a900-1ffc-a149-2820-e0c55201b345
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: schema
+        toPort: schema
