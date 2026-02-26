@@ -1482,6 +1482,137 @@ Generate Convex Hull Polygons from Grouped Features
 ### Category
 * Geometry
 
+## CoordinateExtractor
+### Type
+* processor
+### Description
+Extracts coordinates from geometry vertices into feature attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Extractor Parameters",
+  "type": "object",
+  "required": [
+    "mode"
+  ],
+  "properties": {
+    "defaultZValue": {
+      "title": "Default Z Value",
+      "description": "Z value to use for 2D geometries that have no Z coordinate.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "mode": {
+      "title": "Extraction Mode",
+      "description": "How to extract coordinates from geometry vertices.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateExtractionMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "CoordinateExtractionMode": {
+      "description": "Extraction mode: determines how coordinates are output.",
+      "oneOf": [
+        {
+          "description": "Extract all vertices into a list attribute.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "coordinatesListName": {
+              "title": "Coordinates List Name",
+              "description": "Name of the list attribute that will store coordinate objects (default: \"_indices\")",
+              "default": "_indices",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "allCoordinates"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Extract a single vertex by index.",
+          "type": "object",
+          "required": [
+            "coordinateIndex",
+            "type"
+          ],
+          "properties": {
+            "coordinateIndex": {
+              "title": "Coordinate Index",
+              "description": "Index of the coordinate to extract. 0 = first vertex, negative values count from end (-1 = last).",
+              "type": "integer",
+              "format": "int64"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "specifyCoordinate"
+              ]
+            },
+            "xAttribute": {
+              "title": "X Attribute Name",
+              "description": "Name of the X coordinate attribute (default: \"_x\")",
+              "default": "_x",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "yAttribute": {
+              "title": "Y Attribute Name",
+              "description": "Name of the Y coordinate attribute (default: \"_y\")",
+              "default": "_y",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "zAttribute": {
+              "title": "Z Attribute Name",
+              "description": "Name of the Z coordinate attribute (default: \"_z\")",
+              "default": "_z",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## CsvReader
 ### Type
 * source
@@ -1901,13 +2032,13 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
 ### Type
 * sink
 ### Description
-Export features as CZML for Cesium visualization, with support for time-dynamic entities and timeseries positions
+Export features as CZML for Cesium visualization. Supports static entities and time-animated timeseries. Configure timeField, groupTimeseriesBy, and epoch (for numeric times) to enable animation.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CzmlWriter Parameters",
-  "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.",
+  "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```",
   "type": "object",
   "required": [
     "output"
@@ -1915,7 +2046,7 @@ Export features as CZML for Cesium visualization, with support for time-dynamic 
   "properties": {
     "epoch": {
       "title": "Epoch",
-      "description": "ISO 8601 datetime used as the base time for numeric time offsets in the output CZML.  If omitted the first timestamp encountered is used.",
+      "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
       "type": [
         "string",
         "null"
@@ -1973,7 +2104,7 @@ Export features as CZML for Cesium visualization, with support for time-dynamic 
     },
     "timeField": {
       "title": "Time Field",
-      "description": "Attribute containing the timestamp (ISO 8601 string or numeric seconds since epoch) for each feature. When set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples.",
+      "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -7176,7 +7307,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
           ]
         },
         "time": {
-          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\")",
+          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -7203,7 +7334,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
       ],
       "properties": {
         "end": {
-          "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\")",
+          "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\") or date-only format (e.g., \"2025-01-12\" or \"2025-01-12+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -7245,7 +7376,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
           ]
         },
         "start": {
-          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\")",
+          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"

@@ -686,30 +686,24 @@ graphs:
               method: create
               value: |
                 let start_str = env.get("startTime");
-                let s_parts = start_str.split("T");
-                let s_date_parts = s_parts[0].split("-");
+                let s_date_parts = start_str.split("-");
                 let s_year = parse_float(s_date_parts[0]);
                 let s_month = parse_float(s_date_parts[1]);
-                let s_day_val = parse_float(s_date_parts[2]);
-                let s_time_parts = s_parts[1].split(":");
-                let s_hour = parse_float(s_time_parts[0]);
+                let s_day_val = parse_float(s_date_parts[2][..2]);
                 let s_a = math::floor((14.0 - s_month) / 12.0);
                 let s_y = s_year + 4800.0 - s_a;
                 let s_m = s_month + 12.0 * s_a - 3.0;
                 let s_jdn = s_day_val + math::floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math::floor(s_y / 4.0) - math::floor(s_y / 100.0) + math::floor(s_y / 400.0) - 32045.0;
                 let end_str = env.get("endTime");
-                let e_parts = end_str.split("T");
-                let e_date_parts = e_parts[0].split("-");
+                let e_date_parts = end_str.split("-");
                 let e_year = parse_float(e_date_parts[0]);
                 let e_month = parse_float(e_date_parts[1]);
-                let e_day_val = parse_float(e_date_parts[2]);
-                let e_time_parts = e_parts[1].split(":");
-                let e_hour = parse_float(e_time_parts[0]);
+                let e_day_val = parse_float(e_date_parts[2][..2]);
                 let e_a = math::floor((14.0 - e_month) / 12.0);
                 let e_y = e_year + 4800.0 - e_a;
                 let e_m = e_month + 12.0 * e_a - 3.0;
                 let e_jdn = e_day_val + math::floor((153.0 * e_m + 2.0) / 5.0) + 365.0 * e_y + math::floor(e_y / 4.0) - math::floor(e_y / 100.0) + math::floor(e_y / 400.0) - 32045.0;
-                let num_days_raw = (e_jdn - s_jdn) + (e_hour - s_hour) / 24.0;
+                let num_days_raw = e_jdn - s_jdn;
                 let num_days = if num_days_raw <= 0.0 { 1.0 } else { num_days_raw };
                 let dt = env.get("__value")["totalSolarRadiation"] ?? 0.0;
                 let max_rad = env.get("maxRadiationPerDay") ?? 7.5;

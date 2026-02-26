@@ -427,9 +427,10 @@ impl GeometryCoercer {
                 }
                 CoerceTarget::TriangularMesh => {
                     for polygon in geo_feature.polygons.iter() {
-                        let face = polygon.clone().into_merged_contour(None)?;
-                        let triangular_mesh =
-                            TriangularMesh::<f64, f64>::from_faces(&[face], None)?;
+                        let triangular_mesh = TriangularMesh::<f64, f64>::try_from_polygons(
+                            vec![polygon.clone()],
+                            None,
+                        )?;
                         geometries.push(Geometry3D::TriangularMesh(triangular_mesh));
                     }
                     let geo = if let Some(first) = geometries.first() {

@@ -33,4 +33,5 @@ logs/
 /*.sh
 
 # Test-generated temporary files
-runtime/examples/fixture/testdata/**/*_.zip
+testing/data/testcases/**/*.zip
+testing/data/results/

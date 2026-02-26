@@ -1,0 +1,60 @@
+{
+  "description": "Test quality check for discontinuous composite surface",
+  "workflowPath": "quality-check/plateau4/12-unf/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "unf_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/15202_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6676
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/unf",
+      "name": "unf_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "12_地下埋設物_不連続なCompositeSurface.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_unf.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "12_地下埋設物_検査結果一覧.csv",
+      "excludeColumns": [
+        "立体のその他のエラー"
+      ],
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
+      ]
+    }
+  },
+  "expectResultOkFile": false
+}

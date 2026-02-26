@@ -36,7 +36,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Export features as CZML for Cesium visualization, with support for time-dynamic entities and timeseries positions"
+        "Export features as CZML for Cesium visualization. Supports static entities and time-animated timeseries. Configure timeField, groupTimeseriesBy, and epoch (for numeric times) to enable animation."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -94,6 +94,36 @@ pub(crate) struct CzmlWriter {
 ///
 /// Configuration for writing geographic features to CZML files. Supports both
 /// static entities and time-dynamic entities with interpolated position samples.
+///
+/// ## Timeseries Configuration
+///
+/// To create time-animated entities in Cesium, configure at least the first two
+/// parameters below; configure `epoch` only when using numeric time offsets:
+/// 1. `timeField` - Attribute containing time values
+/// 2. `groupTimeseriesBy` - Attribute to group features into entities
+/// 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets
+///
+/// ### Example with ISO 8601 timestamps:
+/// ```yaml
+/// - action: CzmlWriter
+///   with:
+///     output: "vehicles.czml"
+///     timeField: "timestamp"           # Contains "2024-01-01T00:00:00Z", etc.
+///     groupTimeseriesBy: "vehicleId"   # Groups by vehicle ID
+///     interpolationAlgorithm: "LAGRANGE"
+///     interpolationDegree: 5
+/// ```
+///
+/// ### Example with numeric time offsets:
+/// ```yaml
+/// - action: CzmlWriter
+///   with:
+///     output: "sensors.czml"
+///     timeField: "timeOffset"          # Contains numeric values: 0, 60, 120, etc.
+///     groupTimeseriesBy: "sensorId"
+///     epoch: "2024-01-01T00:00:00Z"    # Base time for offsets
+///     interpolationAlgorithm: "LINEAR"
+/// ```
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CzmlWriterParam {
@@ -104,14 +134,42 @@ pub(crate) struct CzmlWriterParam {
     /// Attributes used to group features into separate CZML files
     pub(super) group_by: Option<Vec<Attribute>>,
     /// # Time Field
-    /// Attribute containing the timestamp (ISO 8601 string or numeric seconds
-    /// since epoch) for each feature. When set together with
-    /// `groupTimeseriesBy`, features sharing the same group key are combined
-    /// into a single CZML entity with time-tagged position samples.
+    /// Attribute containing the timestamp for each feature. Supports two formats:
+    /// - **ISO 8601 strings**: e.g., "2024-01-01T00:00:00Z", "2024-01-01T12:30:45+09:00"
+    /// - **Numeric values**: Seconds as offset from epoch (e.g., "0", "60", "120.5")
+    ///
+    /// When set together with `groupTimeseriesBy`, features sharing the same
+    /// group key are combined into a single CZML entity with time-tagged position
+    /// samples for animation in Cesium.
+    ///
+    /// **Example workflow configuration:**
+    /// ```yaml
+    /// - action: CzmlWriter
+    ///   with:
+    ///     output: "output.czml"
+    ///     timeField: "timestamp"
+    ///     groupTimeseriesBy: "vehicleId"
+    ///     epoch: "2024-01-01T00:00:00Z"  # Optional for numeric times (auto-defaults to Unix epoch)
+    /// ```
     pub(super) time_field: Option<Attribute>,
     /// # Epoch
-    /// ISO 8601 datetime used as the base time for numeric time offsets in
-    /// the output CZML.  If omitted the first timestamp encountered is used.
+    /// Reference time (ISO 8601 format) used as the base for numeric time offsets.
+    ///
+    /// **When to use:**
+    /// - Optional but recommended when `timeField` contains numeric values (e.g., "0", "60", "3600")
+    /// - Not needed when `timeField` contains ISO 8601 datetime strings
+    ///
+    /// **Format:** ISO 8601 datetime string with timezone
+    /// - Examples: "2024-01-01T00:00:00Z", "2024-06-15T09:00:00+09:00"
+    ///
+    /// **Auto-detection:** If omitted and all time values are numeric, automatically
+    /// defaults to Unix epoch "1970-01-01T00:00:00Z". For custom time ranges,
+    /// explicitly set this parameter to your desired base time.
+    ///
+    /// **Example:**
+    /// ```yaml
+    /// epoch: "2024-01-01T00:00:00Z"  # Time value "60" means 2024-01-01T00:01:00Z
+    /// ```
     pub(super) epoch: Option<String>,
     /// # Interpolation Algorithm
     /// Algorithm used by Cesium to interpolate between time-tagged samples.
@@ -505,13 +563,42 @@ fn build_timeseries_czml(
         }
     }
     if all_timestamps.len() >= 2 {
-        all_timestamps.sort();
+        // Check if all timestamps are numeric
+        let all_numeric = all_timestamps.iter().all(|ts| {
+            if let Ok(n) = ts.parse::<f64>() {
+                n.is_finite()
+            } else {
+                false
+            }
+        });
+
+        // Sort timestamps (numeric or string)
+        if all_numeric {
+            all_timestamps.sort_by(|a, b| {
+                let na = a.parse::<f64>().unwrap();
+                let nb = b.parse::<f64>().unwrap();
+                na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        } else {
+            all_timestamps.sort();
+        }
+
         let start = &all_timestamps[0];
         let end = &all_timestamps[all_timestamps.len() - 1];
-        let availability = format!("{start}/{end}");
+
+        // Convert numeric times to ISO 8601 for clock if epoch is available
+        let (start_iso, end_iso) = if all_numeric && params.epoch.is_some() {
+            let start_iso = strip_epoch_offset_for_availability(start, params.epoch.as_deref());
+            let end_iso = strip_epoch_offset_for_availability(end, params.epoch.as_deref());
+            (start_iso, end_iso)
+        } else {
+            (start.clone(), end.clone())
+        };
+
+        let availability = format!("{start_iso}/{end_iso}");
         doc["clock"] = serde_json::json!({
             "interval": availability,
-            "currentTime": start,
+            "currentTime": start_iso,
             "multiplier": 1,
             "range": "LOOP_STOP",
             "step": "SYSTEM_CLOCK_MULTIPLIER",
@@ -544,7 +631,34 @@ fn build_entity_packet(
     params: &CzmlWriterParam,
 ) -> Result<Value, BoxedError> {
     let time_field = params.time_field.as_ref().unwrap();
-    let epoch = params.epoch.clone();
+
+    // Check if all time values are numeric (finite numbers) and present
+    let all_numeric_times = features.iter().all(|f| {
+        if let Some(time_val) = f.get(time_field) {
+            let time_str = attribute_value_to_string(time_val);
+            if time_str.is_empty() {
+                return false; // Empty times disqualify numeric mode
+            }
+            if let Ok(n) = time_str.parse::<f64>() {
+                n.is_finite() // Reject NaN/Inf
+            } else {
+                false
+            }
+        } else {
+            false // Missing time values disqualify numeric mode
+        }
+    });
+
+    // Auto-generate epoch for numeric time values if not provided
+    let epoch = if params.epoch.is_some() {
+        params.epoch.clone()
+    } else if all_numeric_times {
+        // Use a default epoch for numeric time values
+        // Using a fixed epoch makes the CZML time values consistent
+        Some("1970-01-01T00:00:00Z".to_string())
+    } else {
+        None
+    };
 
     let mut sorted: Vec<&Feature> = features.to_vec();
     sorted.sort_by(|a, b| {
@@ -556,7 +670,16 @@ fn build_entity_packet(
             .get(time_field)
             .map(attribute_value_to_string)
             .unwrap_or_default();
-        ta.cmp(&tb)
+
+        // For numeric comparison, parse and compare as numbers
+        if all_numeric_times {
+            // Safe to unwrap since all_numeric_times guarantees valid finite numbers
+            let na = ta.parse::<f64>().unwrap();
+            let nb = tb.parse::<f64>().unwrap();
+            na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+        } else {
+            ta.cmp(&tb)
+        }
     });
 
     let mut cartographic_degrees: Vec<Value> = Vec::new();
@@ -583,15 +706,24 @@ fn build_entity_packet(
         }
         last_time = Some(time_str.clone());
 
-        let time_value: Value = if epoch.is_some() {
+        // Convert time values to proper format
+        // Use numeric samples only if all times are numeric to avoid mixing types
+        let time_value: Value = if all_numeric_times {
+            // Emit numeric time samples
             if let Ok(n) = time_str.parse::<f64>() {
+                if !n.is_finite() {
+                    // Skip features with NaN/Inf in numeric mode
+                    continue;
+                }
                 serde_json::json!(n)
             } else if let Some(offset) = parse_epoch_offset_timestamp(&time_str) {
                 serde_json::json!(offset)
             } else {
-                serde_json::json!(time_str)
+                // Skip features with invalid numeric time
+                continue;
             }
         } else {
+            // Emit ISO 8601 string time samples
             serde_json::json!(time_str)
         };
 
@@ -704,6 +836,7 @@ fn parse_epoch_offset_timestamp(s: &str) -> Option<f64> {
 
 /// Convert an epoch-relative timestamp to ISO 8601 for CZML `availability`.
 fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String {
+    // Handle epoch offset format like "2024-01-01T00:00:00Z+120s"
     if let Some(offset) = parse_epoch_offset_timestamp(ts) {
         if let Some(epoch_str) = epoch {
             if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
@@ -712,6 +845,29 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
             }
         }
     }
+
+    // Handle pure numeric strings like "155" when epoch is provided
+    if let Ok(offset) = ts.parse::<f64>() {
+        // Reject NaN/Inf
+        if !offset.is_finite() {
+            return ts.to_string();
+        }
+        if let Some(epoch_str) = epoch {
+            if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
+                // Preserve fractional seconds by converting to milliseconds
+                let millis = (offset * 1000.0) as i64;
+                let result = epoch_dt + chrono::Duration::milliseconds(millis);
+                // Use seconds format for whole seconds, millis for fractional
+                let format = if offset.fract() == 0.0 {
+                    chrono::SecondsFormat::Secs
+                } else {
+                    chrono::SecondsFormat::Millis
+                };
+                return result.to_rfc3339_opts(format, true);
+            }
+        }
+    }
+
     ts.to_string()
 }
 
@@ -1040,5 +1196,60 @@ mod tests {
 
         assert_eq!(czml[1]["id"], "vehicle-a");
         assert_eq!(czml[2]["id"], "static-poi");
+    }
+
+    #[test]
+    fn test_build_entity_packet_numeric_times() {
+        // Test with numeric time values and no explicit epoch
+        let params = CzmlWriterParam {
+            output: Expr::new("/tmp/test.czml".to_string()),
+            group_by: None,
+            time_field: Some(Attribute::new("timestamp")),
+            epoch: None, // No explicit epoch - should auto-generate
+            interpolation_algorithm: InterpolationAlgorithm::Linear,
+            interpolation_degree: 1,
+            group_timeseries_by: Some(Attribute::new("entityId")),
+        };
+
+        let mut f1 = make_feature_3d(139.7, 35.7, 0.0);
+        f1.insert(
+            Attribute::new("timestamp"),
+            AttributeValue::String("0".into()), // Numeric string
+        );
+        f1.insert(
+            Attribute::new("entityId"),
+            AttributeValue::String("test1".into()),
+        );
+
+        let mut f2 = make_feature_3d(139.8, 35.8, 100.0);
+        f2.insert(
+            Attribute::new("timestamp"),
+            AttributeValue::String("60".into()), // Numeric string (60 seconds later)
+        );
+        f2.insert(
+            Attribute::new("entityId"),
+            AttributeValue::String("test1".into()),
+        );
+
+        let features_ref: Vec<&Feature> = vec![&f1, &f2];
+        let packet = build_entity_packet("test1", &features_ref, &params).unwrap();
+
+        assert_eq!(packet["id"], "test1");
+        // Should have auto-generated epoch
+        assert_eq!(packet["position"]["epoch"], "1970-01-01T00:00:00Z");
+
+        let coords = packet["position"]["cartographicDegrees"]
+            .as_array()
+            .unwrap();
+        assert_eq!(coords.len(), 8);
+
+        // Time values should be numeric
+        assert_eq!(coords[0].as_f64().unwrap(), 0.0);
+        assert_eq!(coords[4].as_f64().unwrap(), 60.0);
+
+        // Availability should be ISO 8601 format
+        let avail = packet["availability"].as_str().unwrap();
+        assert!(avail.contains("1970-01-01T00:00:00Z"));
+        assert!(avail.contains("1970-01-01T00:01:00Z"));
     }
 }
