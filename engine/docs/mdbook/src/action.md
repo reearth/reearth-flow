@@ -7307,7 +7307,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
           ]
         },
         "time": {
-          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\")",
+          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -7334,7 +7334,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
       ],
       "properties": {
         "end": {
-          "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\")",
+          "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\") or date-only format (e.g., \"2025-01-12\" or \"2025-01-12+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -7376,7 +7376,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
           ]
         },
         "start": {
-          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\")",
+          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
           "allOf": [
             {
               "$ref": "#/definitions/Expr"
