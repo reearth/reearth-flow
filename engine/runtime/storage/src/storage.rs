@@ -355,4 +355,27 @@ mod tests {
         let expected_files = vec![&p1, &p2];
         assert_eq!(locations, expected_files);
     }
+
+    #[test]
+    fn test_stream_to_file_sync() {
+        use std::io::{Read, Seek, SeekFrom};
+
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram://"), op);
+
+        let data = b"hello, world!";
+        storage
+            .put_sync(Path::new("/data/test.bin"), Bytes::from_static(data))
+            .unwrap();
+
+        let mut tmp = tempfile::tempfile().unwrap();
+        storage
+            .stream_to_file_sync(Path::new("/data/test.bin"), &mut tmp)
+            .unwrap();
+
+        tmp.seek(SeekFrom::Start(0)).unwrap();
+        let mut buf = Vec::new();
+        tmp.read_to_end(&mut buf).unwrap();
+        assert_eq!(buf, data);
+    }
 }
