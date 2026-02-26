@@ -514,6 +514,10 @@ impl AttributeFlattener {
             // DmGeometricAttribute uses parent attributes (the real feature) as inner attributes
             // add common attributes AFTER swapping with parent attributes
             Self::insert_common_attributes(feature, &mut parent_attr);
+            // replace feature_type with attributes["featureType"]
+            if let Some(feature_type) = feature.get("featureType") {
+                feature.update_feature_type(feature_type.to_string());
+            }
             parent_attr
         } else {
             // add common attributes BEFORE caching and building ancestors

@@ -148,7 +148,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          env.get("__feature_type") == "uro:DmGeometricAttribute"
+          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -555,6 +555,42 @@ graphs:
     name: TwoDimensionForcerDmGeometricAttribute
     type: action
     action: TwoDimensionForcer
+  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+    name: AttributeManagerDmGeometricAttributeDefault
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: dm_feature_type
+        method: create
+        value: '""'
+      - attribute: dm_attributes
+        method: create
+        value: '""'
+      - attribute: dm_dmCode
+        method: create
+        value: '""'
+      - attribute: dm_dmCode_code
+        method: create
+        value: '""'
+      - attribute: dm_geometryType
+        method: create
+        value: '""'
+      - attribute: dm_geometryType_code
+        method: create
+        value: '""'
+      - attribute: dm_mapLevel
+        method: create
+        value: '""'
+      - attribute: dm_mapLevel_code
+        method: create
+        value: '""'
+      - attribute: dm_shapeType
+        method: create
+        value: '""'
+      - attribute: dm_shapeType_code
+        method: create
+        value: '""'
   - id: d4e5f6a7-b8c9-0123-def1-234567890123
     name: MVTWriterDmGeometricAttribute
     type: action
@@ -711,6 +747,11 @@ graphs:
     toPort: schema
   - id: c1080814-9c4f-4583-b2d4-b4c6a06577a5
     from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
-    to: d4e5f6a7-b8c9-0123-def1-234567890123
+    to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
     fromPort: schema
+    toPort: default
+  - id: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
+    from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+    to: d4e5f6a7-b8c9-0123-def1-234567890123
+    fromPort: default
     toPort: schema
