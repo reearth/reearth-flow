@@ -64,13 +64,23 @@ export default ({
   const handleThreeDViewerReset = useCallback(() => {
     if (cesiumViewerRef?.current?.cesiumElement) {
       const cesiumViewer = cesiumViewerRef.current.cesiumElement;
-
       if (cesiumViewer) {
         // Handle cityGml primitives
         if (cityGmlBoundingSphere) {
           cesiumViewer.camera.flyToBoundingSphere(cityGmlBoundingSphere, {
             duration: 1.5,
           });
+        } else if (cesiumViewer.dataSources.length > 0) {
+          // Zoom to all entities
+          const allEntities: any[] = [];
+          for (let i = 0; i < cesiumViewer.dataSources.length; i++) {
+            allEntities.push(
+              ...cesiumViewer.dataSources.get(i).entities.values,
+            );
+          }
+          if (allEntities.length > 0) {
+            cesiumViewer.zoomTo(allEntities);
+          }
         }
       }
     }

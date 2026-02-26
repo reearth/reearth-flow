@@ -166,6 +166,7 @@ const CesiumViewer: React.FC<Props> = ({
             <GeoJsonData
               geoJsonData={geoJsonData}
               selectedFeatureId={selectedFeatureId}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
             />
           )}
 
