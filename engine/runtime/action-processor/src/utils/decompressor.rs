@@ -49,8 +49,7 @@ pub(crate) fn extract_archive(
 ///
 /// - **Local (`file://`)**: opens the file directly — zero extra memory.
 /// - **Remote (GCS, HTTP, …)**: streams via storage into an anonymous
-///   temporary file and returns it rewound to offset 0.  The temp file is
-///   deleted automatically when dropped.
+///   temporary file and returns it rewound to offset 0.
 fn get_archive_file_handle(
     source: &Uri,
     storage_resolver: Arc<StorageResolver>,
@@ -63,8 +62,7 @@ fn get_archive_file_handle(
             ))
         });
     }
-    // Remote: stream directly into an anonymous temp file — the full archive
-    // never lives in memory.
+    // Remote: stream directly into an anonymous temp file.
     let storage = storage_resolver.resolve(source).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
             "Failed to resolve `source_dataset` error: {e}"
