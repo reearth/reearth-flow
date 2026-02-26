@@ -9,6 +9,8 @@ use object_store::Result;
 use reearth_flow_common::uri::Protocol;
 use reearth_flow_common::uri::Uri;
 
+use tracing::debug;
+
 use crate::storage::format_object_store_error;
 use crate::storage::Storage;
 
@@ -273,6 +275,22 @@ impl Storage {
                         .map_err(|e| std::io::Error::other(format!("{e}")))?
                         .error_for_status()
                         .map_err(|e| std::io::Error::other(format!("HTTP request failed: {e}")))?;
+
+                    let status = res.status();
+                    let content_length = res
+                        .content_length()
+                        .map(|l| {
+                            let len = l as f64 / 1024_f64.powi(2);
+                            format!("{len:.2} MB")
+                        })
+                        .unwrap_or_else(|| "unknown".to_string());
+                    debug!(
+                        %url,
+                        %status,
+                        content_length,
+                        "streaming HTTP response to file"
+                    );
+
                     std::io::copy(&mut res, &mut dest_clone)
                 });
                 handle
