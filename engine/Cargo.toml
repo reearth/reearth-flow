@@ -261,5 +261,6 @@ uuid = { version = "1.21.0", features = [
 wait-timeout = "0.2"
 walkdir = "2.5.0"
 wkt = "0.14.0"
+yaml-include = "0.8.1"
 zip = "8.1.0"
 zstd = "0.13.3"

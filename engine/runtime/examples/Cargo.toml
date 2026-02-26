@@ -36,7 +36,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
-yaml-include = "0.8.1"
+yaml-include.workspace = true
 
 [[example]]
 name = "example_main"
