@@ -120,19 +120,46 @@ pub fn entity_to_geometry(
                 // Resolved xlink:href ranges
                 // TODO: implement resolving for other geometry types (requires upstream support in nusamai_citygml parser)
                 for &(start, end, flip) in &geometry.resolved_ranges {
-                    for idx_poly in geoms.multipolygon.iter_range(start as usize..end as usize) {
+                    for (rel_idx, idx_poly) in geoms
+                        .multipolygon
+                        .iter_range(start as usize..end as usize)
+                        .enumerate()
+                    {
+                        let global_poly_idx = start as usize + rel_idx;
                         let poly: Polygon3D<f64> =
                             idx_poly.transform(|c| geoms.vertices[*c as usize]).into();
-                        if flip {
+
+                        // Get ring IDs for this resolved polygon
+                        let ring_start = polygon_to_ring_start[global_poly_idx];
+                        let num_rings = idx_poly.rings().count();
+                        let mut ring_ids: Vec<Option<String>> = Vec::with_capacity(num_rings);
+
+                        for i in 0..num_rings {
+                            if let Some(Some(ring_id)) = geoms.ring_ids.get(ring_start + i) {
+                                ring_ids.push(Some(ring_id.0.to_string()));
+                            } else {
+                                ring_ids.push(None);
+                            }
+                        }
+
+                        let mut polygon = if flip {
                             let (mut exterior, mut interiors) = poly.into_inner();
                             exterior.reverse_inplace();
                             for interior in interiors.iter_mut() {
                                 interior.reverse_inplace();
                             }
-                            polygons.push(Polygon3D::new(exterior, interiors));
+                            Polygon3D::new(exterior, interiors)
                         } else {
-                            polygons.push(poly);
+                            poly
+                        };
+
+                        // Set polygon ID from exterior ring ID
+                        if let Some(first_id) = ring_ids.first().cloned().flatten() {
+                            polygon.id = Some(first_id);
                         }
+
+                        polygons.push(polygon);
+                        polygon_ring_ids.push(ring_ids);
                     }
                 }
                 let mut geometry_feature = GmlGeometry::from(geometry.clone());
