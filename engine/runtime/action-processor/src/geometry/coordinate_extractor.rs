@@ -680,7 +680,6 @@ mod tests {
                 value,
                 ..Default::default()
             },
-            Default::default(),
         )
     }
 

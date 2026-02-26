@@ -32,24 +32,20 @@ nodes:
   - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
     name: AttributeManagerInvalidSpatialAttrType
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
+      mappers:
         - attribute: Folder
-          method: create
-          value: |
+          expr: |
             env.get("__value").udxDirs ?? ""
         - attribute: Index
-          method: create
-          value: |
+          expr: |
             env.get("__value").fileIndex ?? 0
         - attribute: Filename
-          method: create
-          value: |
+          expr: |
             env.get("__value").gmlFilename ?? ""
         - attribute: FeatureType
-          method: create
-          value: |
+          expr: |
             let ft = env.get("__value").featureType ?? "WaterBody";
             if ft.contains(":") {
               ft.split(":")[1]
@@ -57,55 +53,14 @@ nodes:
               ft
             }
         - attribute: LOD
-          method: create
-          value: |
+          expr: |
             env.get("__value").lod ?? "1"
         - attribute: "gml:id"
-          method: create
-          value: |
+          expr: |
             env.get("__value").gmlId ?? ""
         - attribute: "無効な空間属性の型"
-          method: create
-          value: |
-            // Get actual geometry type from geometryName attribute (set by GeometrySplitter)
+          expr: |
             env.get("__value").geometryName ?? "Unknown"
-        # Remove all extra attributes
-        - attribute: udxDirs
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: gmlFilename
-          method: remove
-        - attribute: featureType
-          method: remove
-        - attribute: lod
-          method: remove
-        - attribute: gmlId
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: gmlPropertyName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: maxLod
-          method: remove
 
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
     name: FeatureWriterInvalidSpatialAttr

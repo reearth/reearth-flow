@@ -48,10 +48,10 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath: value.codelists
           flatten: true
           dataset: |
-            env.get("__value")["path"]
+            value["path"]
 
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         name: AttributeManagerPreFlattener
@@ -62,15 +62,15 @@ graphs:
             - attribute: meshcode
               method: create
               value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
+                let file = file::extract_filename(value["path"]);
                 file.split("_")[0]
             - attribute: gml_id
               method: create
               value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+                value["__citygml_gml_id"] ?? value["gmlId"]
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value: value["featureType"] ?? value["gmlName"]
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -180,11 +180,11 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3")
+            file::join_path(env.get("workerArtifactPath"), value.__package + "_lod3")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let pkg = env.get("__value").__package;
+            let pkg = value.__package;
             let suffix = "_" + pkg;
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -264,17 +264,17 @@ graphs:
         action: MVTWriter
         with:
           layerName: |
-            env.get("__value").feature_type.split(":")[1]
+            value.feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 16
           extent: 65536
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
+            file::join_path(env.get("workerArtifactPath"), value.__package + "_lod" + value.__lod)
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let pkg = env.get("__value").__package;
-            let lod = env.get("__value").__lod;
+            let pkg = value.__package;
+            let lod = value.__lod;
             let suffix = "_" + pkg;
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -356,16 +356,16 @@ graphs:
         action: MVTWriter
         with:
           layerName: |
-            env.get("__value").feature_type.split(":")[1]
+            value.feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
           extent: 65536
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes")
+            file::join_path(env.get("workerArtifactPath"), value.__package + "_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let pkg = env.get("__value").__package;
+            let pkg = value.__package;
             let suffix = "_" + pkg;
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
