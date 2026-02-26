@@ -424,6 +424,8 @@ graphs:
         valueAttribute: uro:geometrySrcDescLod1
       - attribute: uro:lodType
         valueAttribute: uro:lodType
+      - attribute: __citygml_feature_type
+        valueAttribute: __citygml_feature_type
   - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
     name: AttributeManagerByLod
     type: action

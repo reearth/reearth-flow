@@ -406,7 +406,8 @@ impl Feature {
                 .map(|(k, v)| (k.clone().into_inner(), v.clone().into()))
                 .collect::<serde_json::Map<_, _>>(),
         );
-        scope.set("__value", value);
+        scope.set("__value", value.clone());
+        scope.set_dynamic("value", &value);
         if let Some(with) = with {
             for (k, v) in with {
                 scope.set(k, v.clone());

@@ -132,6 +132,8 @@ graphs:
               valueAttribute: uro:scale
             - attribute: uro:geometrySrcDescLod1
               valueAttribute: uro:geometrySrcDescLod1
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector

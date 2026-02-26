@@ -59,6 +59,11 @@ impl Scope {
         self.scope.write().unwrap().set_or_push(name, v.clone());
     }
 
+    pub fn set_dynamic(&self, name: &str, value: &Value) {
+        let dynamic = crate::utils::value_to_dynamic(value);
+        self.scope.write().unwrap().set_or_push(name, dynamic);
+    }
+
     pub fn append(&self, vars: &Vars) {
         for (name, v) in vars {
             self.set(name, v.clone());

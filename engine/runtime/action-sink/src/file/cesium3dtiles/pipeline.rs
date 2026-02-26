@@ -53,8 +53,9 @@ pub(super) fn geometry_slicing_stage(
                 max_zoom,
                 attach_texture,
                 |(z, x, y), feature| {
-                    let bytes = serde_json::to_vec(&feature)
-                        .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
+                    let bytes = serde_json::to_vec(&feature).map_err(|e| {
+                        crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
+                    })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                     let serialized_feature = (tile_id, typename.clone(), bytes);
                     sender_sliced.send(serialized_feature).map_err(|e| {

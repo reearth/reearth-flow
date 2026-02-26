@@ -103,8 +103,12 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 compress_output,
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
-                schema_key: params.schema_key.unwrap_or_else(|| "__citygml_feature_type".to_string()),
-                group_by: params.group_by.unwrap_or_else(|| "__citygml_feature_type".to_string()),
+                schema_key: params
+                    .schema_key
+                    .unwrap_or_else(|| "__citygml_feature_type".to_string()),
+                group_by: params
+                    .group_by
+                    .unwrap_or_else(|| "__citygml_feature_type".to_string()),
             },
         };
         Ok(Box::new(sink))
@@ -179,7 +183,7 @@ impl Sink for Cesium3DTilesWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         match &ctx.port {
             port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
-            port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx)?,
+            port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx),
             port => {
                 return Err(
                     SinkError::Cesium3DTilesWriter(format!("Unknown port with: {port:?}")).into(),
@@ -254,9 +258,7 @@ impl Cesium3DTilesWriter {
             let group_by = self.params.group_by.as_str();
             attrs.retain(|k, _| {
                 let key = k.as_ref();
-                !(skip_unexp && key.starts_with("__"))
-                    && key != schema_key
-                    && key != group_by
+                !(skip_unexp && key.starts_with("__")) && key != schema_key && key != group_by
             });
             let mut feature = ctx.feature.clone();
             feature.attributes = Arc::new(attrs);
@@ -271,19 +273,20 @@ impl Cesium3DTilesWriter {
         Ok(())
     }
 
-    fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
+    fn process_schema(&mut self, ctx: &ExecutorContext) {
         let feature = &ctx.feature;
 
         // Determine the schema type name from the schema_key attribute.
-        let schema_type = feature
+        let Some(schema_type) = feature
             .get(&self.params.schema_key)
             .and_then(|v| v.as_string())
-            .ok_or_else(|| {
-                SinkError::Cesium3DTilesWriter(format!(
-                    "Failed to get '{}' attribute for schema_key",
-                    self.params.schema_key
-                ))
-            })?;
+        else {
+            tracing::warn!(
+                "Failed to get '{}' attribute for schema_key",
+                self.params.schema_key
+            );
+            return;
+        };
 
         let skip_unexp = self.params.skip_unexposed_attributes;
         let schema_key = self.params.schema_key.as_str();
@@ -296,9 +299,7 @@ impl Cesium3DTilesWriter {
                 .iter()
                 .filter(|(k, _)| {
                     let key = k.as_ref();
-                    !(skip_unexp && key.starts_with("__"))
-                        && key != schema_key
-                        && key != group_by
+                    !(skip_unexp && key.starts_with("__")) && key != schema_key && key != group_by
                 })
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect(),
@@ -306,7 +307,6 @@ impl Cesium3DTilesWriter {
 
         let typedef: TypeDef = (&sanitized_feature).into();
         self.schema.types.insert(schema_type, typedef);
-        Ok(())
     }
 
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
