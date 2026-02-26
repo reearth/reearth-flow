@@ -1,6 +1,7 @@
 import {
   CornersOutIcon,
   DotsThreeVerticalIcon,
+  EyeIcon,
   GlobeIcon,
   MapPinAreaIcon,
   TargetIcon,
@@ -121,9 +122,11 @@ const DebugPreview: React.FC<Props> = ({
   }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
 
   const {
+    showSelectedFeatureOnly,
     handleMapLoad,
     handleThreeDViewerReset,
     handleThreeJsReset,
+    handleShowSelectedFeatureOnly,
     setCityGmlBoundingSphere,
   } = useHooks({
     mapRef,
@@ -173,6 +176,14 @@ const DebugPreview: React.FC<Props> = ({
                     <TargetIcon />
                     {t("Fly to Selected Feature")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!convertedSelectedFeature}
+                    onClick={handleShowSelectedFeatureOnly}>
+                    <EyeIcon />
+                    {showSelectedFeatureOnly
+                      ? t("Show All Features")
+                      : t("Show Selected Feature Only")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -184,6 +195,7 @@ const DebugPreview: React.FC<Props> = ({
               enableClustering={false}
               convertedSelectedFeature={convertedSelectedFeature}
               mapRef={mapRef}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
               onMapLoad={handleMapLoad}
               onSelectedFeature={onSelectedFeature}
               onFlyToSelectedFeature={onFlyToSelectedFeature}
@@ -229,6 +241,14 @@ const DebugPreview: React.FC<Props> = ({
                     <TargetIcon />
                     {t("Fly to Selected Feature")}
                   </DropdownMenuItem>
+                  {/* <DropdownMenuItem
+                    disabled={!convertedSelectedFeature}
+                    onClick={handleShowSelectedFeatureOnly}>
+                    <EyeIcon />
+                    {showSelectedFeatureOnly
+                      ? t("Show All Features")
+                      : t("Show Selected Feature Only")}
+                  </DropdownMenuItem> */}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

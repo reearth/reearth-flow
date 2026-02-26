@@ -175,6 +175,8 @@
   "2D Viewer": "2D查看器",
   "Center Data": "中心数据",
   "Fly to Selected Feature": "飞到选定的特征",
+  "Show All Features": "显示所有特征",
+  "Show Selected Feature Only": "仅显示选定特征",
   "3D Viewer": "3D查看器",
   "3D Model Viewer": "3D模型查看器",
   "Reset Camera": "重置相机",

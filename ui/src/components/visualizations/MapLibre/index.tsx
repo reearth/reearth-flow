@@ -14,6 +14,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
   convertedSelectedFeature?: any;
+  showSelectedFeatureOnly: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   onMapLoad: (onCenter?: boolean) => void;
   onSelectedFeature: (value: any) => void;
@@ -27,6 +28,7 @@ const MapLibre: React.FC<Props> = ({
   fileType,
   enableClustering,
   convertedSelectedFeature,
+  showSelectedFeatureOnly,
   mapRef,
   onMapLoad,
   onSelectedFeature,
@@ -77,6 +79,7 @@ const MapLibre: React.FC<Props> = ({
             fileContent={fileContent}
             enableClustering={enableClustering}
             selectedFeatureId={convertedSelectedFeature?.id}
+            showSelectedFeatureOnly={showSelectedFeatureOnly}
           />
         )}
       </Map>

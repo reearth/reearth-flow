@@ -175,6 +175,8 @@
   "2D Viewer": "2Dビューア",
   "Center Data": "データを中央に配置",
   "Fly to Selected Feature": "選択したフィーチャーに移動",
+  "Show All Features": "すべてのフィーチャーを表示",
+  "Show Selected Feature Only": "選択したフィーチャーのみ表示",
   "3D Viewer": "3Dビューア",
   "3D Model Viewer": "3Dモデルビューア",
   "Reset Camera": "カメラをリセット",

@@ -1,7 +1,7 @@
 import bbox from "@turf/bbox";
 import { BoundingSphere } from "cesium";
 import { LngLatBounds } from "maplibre-gl";
-import { RefObject, useCallback, useState } from "react";
+import { RefObject, useCallback, useEffect, useState } from "react";
 
 import { ThreeJSViewerRef } from "@flow/components/visualizations/ThreeJS";
 
@@ -20,6 +20,7 @@ export default ({
 }) => {
   const [cityGmlBoundingSphere, setCityGmlBoundingSphere] =
     useState<BoundingSphere | null>(null);
+  const [showSelectedFeatureOnly, setShowSelectedFeatureOnly] = useState(false);
   const handleMapLoad = useCallback(
     (onCenter?: boolean) => {
       if (mapRef.current && selectedOutputData) {
@@ -79,10 +80,22 @@ export default ({
     threeJSViewerRef.current?.resetCamera();
   }, [threeJSViewerRef]);
 
+  const handleShowSelectedFeatureOnly = useCallback(() => {
+    setShowSelectedFeatureOnly((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    if (!convertedSelectedFeature) {
+      setShowSelectedFeatureOnly(false);
+    }
+  }, [convertedSelectedFeature]);
+
   return {
+    showSelectedFeatureOnly,
     handleMapLoad,
     handleThreeDViewerReset,
     handleThreeJsReset,
+    handleShowSelectedFeatureOnly,
     setCityGmlBoundingSphere,
   };
 };
