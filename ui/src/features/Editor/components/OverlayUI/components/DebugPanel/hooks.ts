@@ -209,6 +209,24 @@ export default () => {
             );
             if (matchingEntities.length > 0) {
               cesiumViewer.zoomTo(matchingEntities);
+            } else {
+              // Search in data sources as fallback
+              for (let i = 0; i < cesiumViewer.dataSources.length; i++) {
+                const dataSource = cesiumViewer.dataSources.get(i);
+                const matching = dataSource.entities.values.filter(
+                  (entity: any) => {
+                    const props = entity.properties?.getValue?.();
+                    return (
+                      props?._originalId === featureId ||
+                      entity.id === featureId
+                    );
+                  },
+                );
+                if (matching.length > 0) {
+                  cesiumViewer.zoomTo(matching);
+                  break;
+                }
+              }
             }
           }
         } catch (err) {
