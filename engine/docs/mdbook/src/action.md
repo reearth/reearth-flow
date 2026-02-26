@@ -1239,6 +1239,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attribute key whose value determines the output filename: all features sharing the same value are written to the same file. Defaults to `__citygml_feature_type`. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "maxZoom": {
       "title": "Maximum Zoom Level",
       "description": "Maximum zoom level for tile generation (0-24)",
@@ -1260,6 +1268,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         {
           "$ref": "#/definitions/Expr"
         }
+      ]
+    },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value is used to match data features with schema features for attribute filtering and type casting. Defaults to `__citygml_feature_type`. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
       ]
     },
     "skipUnexposedAttributes": {
