@@ -342,14 +342,14 @@ pub(super) fn write_prj(
     epsg: u16,
 ) -> Result<(), std::io::Error> {
     let wkt = repo.get_wkt(epsg);
-    if wkt.is_none() {
-        return Err(std::io::Error::new(
+    if let Some(wkt) = wkt {
+        writer.write_all(wkt.as_bytes())?;
+        writer.flush()?;
+        Ok(())
+    } else {
+        Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             format!("Invalid EPSG code: {epsg}"),
-        ));
-    } else {
-        writer.write_all(wkt.unwrap().as_bytes())?;
+        ))
     }
-    writer.flush()?;
-    Ok(())
 }

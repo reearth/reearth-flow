@@ -1,6 +1,6 @@
 [package]
 name = "workflow-tests"
-version = "0.1.178"
+version = "0.1.179"
 edition = "2021"
 
 [[bin]]
@@ -28,7 +28,7 @@ tracing-subscriber.workspace = true
 anyhow = "1.0"
 pretty_assertions.workspace = true
 uuid.workspace = true
-yaml-include = "0.7"
+yaml-include.workspace = true
 tempfile.workspace = true
 jsonpath_lib.workspace = true
 csv.workspace = true
