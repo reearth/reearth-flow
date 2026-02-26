@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.308"
+version = "0.0.314"
 
 [profile.dev]
 opt-level = 0
@@ -191,7 +191,7 @@ regex = "1.12.2"
 reqwest = { version = "0.12.24", default-features = false, features = [
   "blocking",
   "multipart",
-  "rustls-tls",
+  "rustls-tls-native-roots",
 ] }
 rhai = { version = "1.23.6", features = [
   "internals",
