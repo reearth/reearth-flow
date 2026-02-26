@@ -241,14 +241,14 @@ const DebugPreview: React.FC<Props> = ({
                     <TargetIcon />
                     {t("Fly to Selected Feature")}
                   </DropdownMenuItem>
-                  {/* <DropdownMenuItem
+                  <DropdownMenuItem
                     disabled={!convertedSelectedFeature}
                     onClick={handleShowSelectedFeatureOnly}>
                     <EyeIcon />
                     {showSelectedFeatureOnly
                       ? t("Show All Features")
                       : t("Show Selected Feature Only")}
-                  </DropdownMenuItem> */}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -260,6 +260,7 @@ const DebugPreview: React.FC<Props> = ({
               cesiumViewerRef={cesiumViewerRef}
               selectedFeaturedId={selectedFeatureId}
               detailsOverlayOpen={detailsOverlayOpen}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
               onSelectedFeature={onSelectedFeature}
               onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
               setCityGmlBoundingSphere={setCityGmlBoundingSphere}

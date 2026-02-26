@@ -39,6 +39,7 @@ type Props = {
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
   detailsOverlayOpen: boolean;
+  showSelectedFeatureOnly: boolean;
   onSelectedFeature?: (featureId: string | null) => void;
   onShowFeatureDetailsOverlay: (value: boolean) => void;
   setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
@@ -50,6 +51,7 @@ const CesiumViewer: React.FC<Props> = ({
   viewerRef,
   selectedFeatureId,
   detailsOverlayOpen,
+  showSelectedFeatureOnly,
   onSelectedFeature,
   onShowFeatureDetailsOverlay,
   setCityGmlBoundingSphere,
@@ -174,6 +176,7 @@ const CesiumViewer: React.FC<Props> = ({
               setCityGmlBoundingSphere={setCityGmlBoundingSphere}
               selectedFeatureId={selectedFeatureId}
               detailsOverlayOpen={detailsOverlayOpen}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
             />
           )}
         </>

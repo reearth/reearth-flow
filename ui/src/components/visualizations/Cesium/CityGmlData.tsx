@@ -32,6 +32,7 @@ type Props = {
   } | null;
   selectedFeatureId?: string | null;
   detailsOverlayOpen: boolean;
+  showSelectedFeatureOnly: boolean;
   setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
 };
 
@@ -41,6 +42,7 @@ const CityGmlData: React.FC<Props> = ({
   cityGmlData,
   selectedFeatureId,
   detailsOverlayOpen,
+  showSelectedFeatureOnly,
   setCityGmlBoundingSphere,
 }) => {
   const { viewer } = useCesium();
@@ -228,6 +230,12 @@ const CityGmlData: React.FC<Props> = ({
       }
     };
   }, [viewer, cancelPending]);
+
+  useEffect(() => {
+    if (viewer && absolutePrimitiveRef.current) {
+      absolutePrimitiveRef.current.show = !showSelectedFeatureOnly;
+    }
+  }, [viewer, showSelectedFeatureOnly]);
 
   return null;
 };
