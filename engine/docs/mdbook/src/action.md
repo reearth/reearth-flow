@@ -4024,8 +4024,7 @@ Validate Feature Geometry Quality
         {
           "type": "string",
           "enum": [
-            "duplicatePoints",
-            "corruptGeometry"
+            "duplicatePoints"
           ]
         },
         {
@@ -4036,6 +4035,23 @@ Validate Feature Geometry Quality
           "properties": {
             "duplicateConsecutivePoints": {
               "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
+          "type": "object",
+          "required": [
+            "corruptGeometry"
+          ],
+          "properties": {
+            "corruptGeometry": {
+              "type": [
+                "number",
+                "null"
+              ],
               "format": "double"
             }
           },
