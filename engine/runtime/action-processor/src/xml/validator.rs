@@ -458,23 +458,39 @@ impl XmlValidator {
 
             let mut all_schemas: Vec<XsdSchema> = Vec::new();
             for (_namespace, location) in &schema_locations {
-                let fetch_result = fetcher.fetch(location).map_err(|e| {
-                    XmlProcessorError::Validator(format!(
-                        "Failed to fetch schema {}: {e:?}",
-                        location
-                    ))
-                })?;
+                // Per W3C spec, xsi:schemaLocation URLs are hints.
+                // Remote schemas that are unreachable (404, DNS failure, etc.)
+                // are skipped. This may cause false positives if the skipped
+                // schema defines types used elsewhere.
+                let is_remote = location.starts_with("http://") || location.starts_with("https://");
+
+                let fetch_result = match fetcher.fetch(location) {
+                    Ok(r) => r,
+                    Err(e) if is_remote => {
+                        tracing::warn!(url = %location, "Skipping unreachable remote schema");
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(XmlProcessorError::Validator(format!(
+                            "Failed to fetch schema {location}: {e:?}"
+                        )));
+                    }
+                };
 
                 let base_uri = &fetch_result.final_url;
                 let mut resolver = SchemaResolver::new(&fetcher);
-                let schemas = resolver
-                    .resolve_all(&fetch_result.content, base_uri)
-                    .map_err(|e| {
-                        XmlProcessorError::Validator(format!(
-                            "Failed to resolve schema imports for {}: {e:?}",
-                            location
-                        ))
-                    })?;
+                let schemas = match resolver.resolve_all(&fetch_result.content, base_uri) {
+                    Ok(s) => s,
+                    Err(e) if is_remote => {
+                        tracing::warn!(url = %location, "Skipping unresolvable remote schema");
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(XmlProcessorError::Validator(format!(
+                            "Failed to resolve schema imports for {location}: {e:?}"
+                        )));
+                    }
+                };
                 all_schemas.extend(schemas);
             }
 
