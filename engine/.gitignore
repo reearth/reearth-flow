@@ -33,4 +33,5 @@ logs/
 /*.sh
 
 # Test-generated temporary files
+testing/data/testcases/quality-check/**/*.zip
 testing/data/results/
