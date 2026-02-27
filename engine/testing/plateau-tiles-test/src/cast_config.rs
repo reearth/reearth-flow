@@ -28,6 +28,7 @@ pub fn convert_casts(
                 "int" => CastConfig::Int,
                 "json" => CastConfig::Json,
                 "ignore_both" => CastConfig::IgnoreBoth,
+                "ordered_dict" => CastConfig::OrderedDict,
                 _ => return Err(format!("Unknown cast type: {}", s)),
             },
             CastConfigValue::ComplexListToDict {

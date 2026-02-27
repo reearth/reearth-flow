@@ -81,6 +81,7 @@ pub enum CastConfig {
     Json,
     ListToDict { key: String },
     IgnoreBoth,
+    OrderedDict,
 }
 
 /// Returns only the structural casts (Json, ListToDict, IgnoreBoth) that need
@@ -93,7 +94,10 @@ pub fn structural_casts(casts: &HashMap<String, CastConfig>) -> HashMap<String, 
         .filter(|(_, v)| {
             matches!(
                 v,
-                CastConfig::Json | CastConfig::ListToDict { .. } | CastConfig::IgnoreBoth
+                CastConfig::Json
+                    | CastConfig::ListToDict { .. }
+                    | CastConfig::IgnoreBoth
+                    | CastConfig::OrderedDict
             )
         })
         .map(|(k, v)| (k.clone(), v.clone()))
@@ -254,6 +258,7 @@ impl AttributeComparer {
                     }
                 }
                 CastConfig::IgnoreBoth => Value::Null,
+                CastConfig::OrderedDict => value,
             }
         } else {
             value
@@ -261,6 +266,45 @@ impl AttributeComparer {
     }
 
     fn compare_recurse(&mut self, key: &str, mut v1: Value, mut v2: Value) {
+        // OrderedDict: compare Value::Object entries in insertion order, using key names for
+        // nested cast lookups. Handled before other casts to avoid borrow conflicts.
+        if matches!(self.casts.get(key), Some(CastConfig::OrderedDict)) {
+            if let (Value::Object(m1), Value::Object(m2)) = (&v1, &v2) {
+                let e1: Vec<_> = m1.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                let e2: Vec<_> = m2.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                if e1.len() != e2.len() {
+                    self.mismatches.push((
+                        self.identifier.clone(),
+                        key.to_string(),
+                        v1.clone(),
+                        v2.clone(),
+                    ));
+                } else {
+                    for (idx, ((k1, val1), (k2, val2))) in e1.into_iter().zip(e2).enumerate() {
+                        let child_key = if key.is_empty() {
+                            format!(".{k1}")
+                        } else {
+                            format!("{key}.{k1}")
+                        };
+                        if k1 != k2 {
+                            self.mismatches.push((
+                                self.identifier.clone(),
+                                format!("{key}[{idx}]"),
+                                Value::String(k1),
+                                Value::String(k2),
+                            ));
+                        } else {
+                            self.compare_recurse(&child_key, val1, val2);
+                        }
+                    }
+                }
+            } else {
+                self.mismatches
+                    .push((self.identifier.clone(), key.to_string(), v1, v2));
+            }
+            return;
+        }
+
         if let Some(cast) = self.casts.get(key) {
             match cast {
                 CastConfig::IgnoreBoth => {
@@ -426,6 +470,26 @@ pub fn analyze_attributes(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn test_ordered_dict_order_mismatch() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+
+        let v1 = json!({"a": 1, "b": 2});
+        let v2 = json!({"b": 2, "a": 1});
+        assert!(analyze_attributes("test", &v1, &v2, casts, HashMap::new()).is_err());
+    }
+
+    #[test]
+    fn test_ordered_dict_length_mismatch() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+
+        let v1 = json!({"a": 1, "b": 2});
+        let v2 = json!({"a": 1});
+        assert!(analyze_attributes("test", &v1, &v2, casts, HashMap::new()).is_err());
+    }
 
     #[test]
     fn test_cast_string_match() {

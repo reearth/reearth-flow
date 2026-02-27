@@ -1610,7 +1610,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          env.get("__feature_type") == "uro:DmGeometricAttribute"
+          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
