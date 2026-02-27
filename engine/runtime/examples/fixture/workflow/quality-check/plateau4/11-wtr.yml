@@ -2990,7 +2990,7 @@ graphs:
       calculations:
       - newAttribute: WaterBody
         expr: |
-          if env.get("__feature_type") == "wtr:WaterBody" {
+          if env.get("__value")["__citygml_feature_type"] == "wtr:WaterBody" {
             1
           } else {
             0
