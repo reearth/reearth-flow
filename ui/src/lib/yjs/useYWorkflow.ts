@@ -62,6 +62,11 @@ export default ({
     ) => {
       const { inputRouter, outputRouter } = routers;
 
+      const parentPath = computeWorkflowPath(rawWorkflows, currentWorkflowId);
+      const newSubworkflowPath = parentPath
+        ? `${parentPath}.${workflowId}`
+        : workflowId;
+
       const inputNodeId = generateUUID();
       // newInputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newInputNode: Node = {
@@ -74,6 +79,7 @@ export default ({
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
+          workflowPath: newSubworkflowPath,
         },
       };
 
@@ -89,6 +95,7 @@ export default ({
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
+          workflowPath: newSubworkflowPath,
         },
       };
 
@@ -115,7 +122,7 @@ export default ({
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
           subworkflowId: workflowId,
-          workflowPath: computeWorkflowPath(rawWorkflows, currentWorkflowId),
+          workflowPath: parentPath,
         },
         selected: true,
       });
