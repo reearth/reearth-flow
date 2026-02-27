@@ -49,6 +49,7 @@ type Props = {
   onDebugRunStop: () => Promise<void>;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
+  refetchWorkflowVariables: () => void;
 };
 
 const DebugActionBar: React.FC<Props> = ({
@@ -62,6 +63,7 @@ const DebugActionBar: React.FC<Props> = ({
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
   onDebugRunVariableValueChange,
+  refetchWorkflowVariables,
 }) => {
   const t = useT();
   const {
@@ -80,6 +82,7 @@ const DebugActionBar: React.FC<Props> = ({
   } = useHooks({
     onDebugRunStart,
     onDebugRunStop,
+    refetchWorkflowVariables,
     customDebugRunWorkflowVariables,
   });
   return (
