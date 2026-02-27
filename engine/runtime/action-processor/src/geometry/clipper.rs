@@ -173,19 +173,37 @@ impl Processor for Clipper {
             .chain(clip_regions3d_from_citygml)
             .collect();
         if clip_regions2d.is_empty() && clip_regions3d.is_empty() {
-            for candidate in &self.candidates {
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    candidate.clone(),
-                    REJECTED_PORT.clone(),
-                ));
-            }
+            // No clip regions - send clippers to REJECTED_PORT
             for clip in &self.clippers {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     clip.clone(),
                     REJECTED_PORT.clone(),
                 ));
+            }
+            // For candidates, try to process them (Curve geometries with line_strings
+            // should still be processed even without clip regions)
+            for candidate in &self.candidates {
+                let geometry = candidate.geometry.value.clone();
+                match geometry {
+                    GeometryValue::CityGmlGeometry(citygml) => {
+                        handle_citygml_geometry(
+                            &citygml,
+                            &clip_regions3d,
+                            candidate,
+                            &candidate.geometry,
+                            &ctx,
+                            fw,
+                        );
+                    }
+                    _ => {
+                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                            &ctx,
+                            candidate.clone(),
+                            REJECTED_PORT.clone(),
+                        ));
+                    }
+                }
             }
             return Ok(());
         }
@@ -493,6 +511,22 @@ fn process_gml_geometry(
         outside_polygons.extend(outsides);
     }
 
+    // Process composite surfaces recursively (for Solid type geometries)
+    let mut inside_composite_surfaces = Vec::new();
+    let mut outside_composite_surfaces = Vec::new();
+    for composite in &gml_geometry.composite_surfaces {
+        let mut composite_inside = Vec::new();
+        let mut composite_outside = Vec::new();
+        process_gml_geometry(
+            composite,
+            clip_regions,
+            &mut composite_inside,
+            &mut composite_outside,
+        );
+        inside_composite_surfaces.extend(composite_inside);
+        outside_composite_surfaces.extend(composite_outside);
+    }
+
     // Process line_strings if they exist (for Curve type geometries)
     // Note: Line strings cannot be clipped in the same way as polygons,
     // so we keep them as-is
@@ -505,9 +539,12 @@ fn process_gml_geometry(
         && !line_strings.is_empty();
 
     // Create new GML geometries for inside results
-    if !inside_polygons.is_empty() || is_curve_without_polygons {
+    let has_inside_polygons = !inside_polygons.is_empty();
+    let has_inside_composites = !inside_composite_surfaces.is_empty();
+    if has_inside_polygons || has_inside_composites || is_curve_without_polygons {
         let mut inside_gml = gml_geometry.clone();
         inside_gml.polygons = inside_polygons;
+        inside_gml.composite_surfaces = inside_composite_surfaces;
         // Keep line_strings as-is for Curve type geometries
         if gml_geometry.ty == reearth_flow_types::GeometryType::Curve {
             inside_gml.line_strings = line_strings.clone();
@@ -516,9 +553,12 @@ fn process_gml_geometry(
     }
 
     // Create new GML geometries for outside results
-    if !outside_polygons.is_empty() {
+    let has_outside_polygons = !outside_polygons.is_empty();
+    let has_outside_composites = !outside_composite_surfaces.is_empty();
+    if has_outside_polygons || has_outside_composites {
         let mut outside_gml = gml_geometry.clone();
         outside_gml.polygons = outside_polygons;
+        outside_gml.composite_surfaces = outside_composite_surfaces;
         // Line strings are not included in outside results for non-Curve types
         if is_curve_without_polygons {
             outside_gml.line_strings = line_strings;
@@ -1236,7 +1276,7 @@ mod tests {
     #[test]
     fn test_clipper_with_citygml_curve_geometry() {
         use reearth_flow_geometry::types::line_string::LineString3D;
-        use reearth_flow_types::GmlGeometry;
+        use reearth_flow_types::{GeometryType, GmlGeometry};
 
         let clip_polygon = create_clipper_polygon_3d();
 
@@ -1250,6 +1290,7 @@ mod tests {
         // Create a Curve type GML geometry
         let curve_gml = GmlGeometry {
             id: Some("curve_gml".to_string()),
+            ty: GeometryType::Curve,
             len: 1,
             line_strings: vec![line_string],
             feature_id: Some("curve_feature".to_string()),
