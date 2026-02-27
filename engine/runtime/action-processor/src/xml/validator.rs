@@ -838,4 +838,23 @@ mod tests {
             }
         });
     }
+
+    #[test]
+    fn test_xml_validator_schema_unreachable_url_should_not_error() {
+        // xsi:schemaLocation URLs are hints per W3C spec.
+        // When a remote schema URL is unreachable (404, etc.), the validator
+        // should skip it and succeed instead of routing to the failed port.
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns="http://example.com/test"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://example.com/test http://example.invalid/nonexistent.xsd">
+    <element>test</element>
+</root>"#;
+
+        let (port, _features) = run_validator_test(xml_content, ValidationType::SyntaxAndSchema);
+        assert_eq!(
+            port, *SUCCESS_PORT,
+            "Should succeed when remote schema URL is unreachable"
+        );
+    }
 }
