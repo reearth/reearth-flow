@@ -3,12 +3,118 @@ use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
 #[derive(Debug, Clone)]
 pub struct GeometryEntry {
     pub lod: u8,
     pub property: Option<PropertyType>,
     pub element: GmlElement,
+}
+
+#[derive(Debug, Clone)]
+pub struct TargetData {
+    pub uri: String,                      // Surface ID (Polygon gml:id)
+    pub ring: String,                     // Ring ID (LinearRing gml:id)
+    pub texture_coordinates: Vec<String>, // List of texture coordinate pairs as strings
+}
+
+#[derive(Debug, Clone)]
+pub struct TextureData {
+    pub uri: String,
+    pub targets: Vec<TargetData>, // Targets associated with this specific texture
+}
+
+#[derive(Debug, Clone)]
+pub struct AppearanceData {
+    pub textures: Vec<TextureData>, // Each texture with its associated targets
+    pub themes: Vec<String>,
+}
+
+/// Extract appearance data from feature attributes
+pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
+    let appearance_attr = Attribute::new("appearanceMember");
+    let appearance_member = feature.attributes.get(&appearance_attr)?;
+
+    match appearance_member {
+        AttributeValue::Map(map) => {
+            let mut textures = Vec::new();
+            let mut themes = Vec::new();
+
+            // Extract textures with their associated targets
+            if let Some(AttributeValue::Array(tex_array)) = map.get("textures") {
+                for tex in tex_array {
+                    if let AttributeValue::Map(tex_map) = tex {
+                        let uri = if let Some(AttributeValue::String(uri)) = tex_map.get("uri") {
+                            uri.clone()
+                        } else {
+                            continue; // Skip textures without URI
+                        };
+
+                        // Extract targets specific to this texture
+                        let mut texture_targets = Vec::new();
+                        if let Some(AttributeValue::Array(target_array)) = tex_map.get("targets") {
+                            for target in target_array {
+                                if let AttributeValue::Map(target_map) = target {
+                                    if let Some(AttributeValue::String(target_uri)) =
+                                        target_map.get("uri")
+                                    {
+                                        let mut texture_coords = Vec::new();
+
+                                        // Extract texture coordinates if available
+                                        if let Some(AttributeValue::Array(coord_array)) =
+                                            target_map.get("textureCoordinates")
+                                        {
+                                            for coord in coord_array {
+                                                if let AttributeValue::String(coord_str) = coord {
+                                                    texture_coords.push(coord_str.clone());
+                                                }
+                                            }
+                                        }
+
+                                        // Extract ring ID if available (new field)
+                                        let ring_id = if let Some(AttributeValue::String(ring)) =
+                                            target_map.get("ring")
+                                        {
+                                            ring.clone()
+                                        } else {
+                                            // Fallback: extract from URI (backward compatibility)
+                                            target_uri.clone()
+                                        };
+
+                                        texture_targets.push(TargetData {
+                                            uri: target_uri.clone(),
+                                            ring: ring_id,
+                                            texture_coordinates: texture_coords,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        textures.push(TextureData {
+                            uri,
+                            targets: texture_targets,
+                        });
+                    }
+                }
+            }
+
+            // Extract themes
+            if let Some(AttributeValue::Array(theme_array)) = map.get("themes") {
+                for theme in theme_array {
+                    if let AttributeValue::Map(theme_map) = theme {
+                        if let Some(AttributeValue::String(name)) = theme_map.get("name") {
+                            themes.push(name.clone());
+                        }
+                    }
+                }
+            }
+
+            Some(AppearanceData { textures, themes })
+        }
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -27,24 +133,90 @@ pub enum GmlElement {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum SurfaceType {
+    GroundSurface,
+    RoofSurface,
+    WallSurface,
+    ClosureSurface,
+    FloorSurface,
+    CeilingSurface,
+    InteriorWallSurface,
+    OuterCeilingSurface,
+    OuterFloorSurface,
+    Unknown,
+}
+
+#[allow(dead_code)]
+impl SurfaceType {
+    pub fn from_property(property: Option<nusamai_citygml::PropertyType>) -> Self {
+        use nusamai_citygml::PropertyType;
+        match property {
+            Some(PropertyType::Lod0FootPrint) => Self::GroundSurface,
+            Some(PropertyType::Lod0RoofEdge) => Self::RoofSurface,
+            _ => Self::Unknown,
+        }
+    }
+
+    pub fn element_name(&self) -> &'static str {
+        match self {
+            Self::GroundSurface => "GroundSurface",
+            Self::RoofSurface => "RoofSurface",
+            Self::WallSurface => "WallSurface",
+            Self::ClosureSurface => "ClosureSurface",
+            Self::FloorSurface => "FloorSurface",
+            Self::CeilingSurface => "CeilingSurface",
+            Self::InteriorWallSurface => "InteriorWallSurface",
+            Self::OuterCeilingSurface => "OuterCeilingSurface",
+            Self::OuterFloorSurface => "OuterFloorSurface",
+            Self::Unknown => "WallSurface", // Default to WallSurface
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<Coordinate3D<f64>>,
     pub interiors: Vec<Vec<Coordinate3D<f64>>>,
+    pub surface_type: SurfaceType,
+    /// Ring IDs for exterior and interior rings (for texture coordinate references)
+    pub ring_ids: Vec<Option<String>>,
 }
 
-impl From<&Polygon3D<f64>> for GmlSurface {
-    fn from(polygon: &Polygon3D<f64>) -> Self {
+impl GmlSurface {
+    pub fn from_polygon_with_type(polygon: &Polygon3D<f64>, surface_type: SurfaceType) -> Self {
         Self {
-            id: None,
+            id: polygon.id.clone(),
             exterior: polygon.exterior().0.clone(),
             interiors: polygon
                 .interiors()
                 .iter()
                 .map(|ring| ring.0.clone())
                 .collect(),
+            surface_type,
+            // Initialize with empty ring_ids - will be populated from exterior ring id
+            ring_ids: vec![polygon.id.clone()],
         }
+    }
+
+    /// Get the exterior ring ID
+    #[allow(dead_code)]
+    pub fn exterior_ring_id(&self) -> Option<&str> {
+        self.ring_ids.first().and_then(|id| id.as_deref())
+    }
+
+    /// Get the interior ring ID at index
+    #[allow(dead_code)]
+    pub fn interior_ring_id(&self, idx: usize) -> Option<&str> {
+        self.ring_ids.get(idx + 1).and_then(|id| id.as_deref())
+    }
+}
+
+impl From<&Polygon3D<f64>> for GmlSurface {
+    fn from(polygon: &Polygon3D<f64>) -> Self {
+        Self::from_polygon_with_type(polygon, SurfaceType::Unknown)
     }
 }
 
@@ -191,24 +363,66 @@ pub fn convert_citygml_geometry(
         .collect()
 }
 
+fn surface_type_from_feature_type(feature_type: &Option<String>) -> SurfaceType {
+    match feature_type.as_deref() {
+        Some(ft) => {
+            if ft.contains("GroundSurface") {
+                SurfaceType::GroundSurface
+            } else if ft.contains("RoofSurface") {
+                SurfaceType::RoofSurface
+            } else if ft.contains("WallSurface") {
+                SurfaceType::WallSurface
+            } else if ft.contains("ClosureSurface") {
+                SurfaceType::ClosureSurface
+            } else if ft.contains("FloorSurface") {
+                SurfaceType::FloorSurface
+            } else if ft.contains("CeilingSurface") {
+                SurfaceType::CeilingSurface
+            } else if ft.contains("OuterFloorSurface") {
+                SurfaceType::OuterFloorSurface
+            } else if ft.contains("OuterCeilingSurface") {
+                SurfaceType::OuterCeilingSurface
+            } else {
+                SurfaceType::Unknown
+            }
+        }
+        None => SurfaceType::Unknown,
+    }
+}
+
 fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
+    let surface_type = surface_type_from_feature_type(&gml_geom.feature_type);
+
+    // Build surfaces with ring IDs if available
+    let mut surfaces = Vec::new();
+    for (idx, polygon) in gml_geom.polygons.iter().enumerate() {
+        let mut surface = GmlSurface::from_polygon_with_type(polygon, surface_type);
+
+        // Set ring IDs if available
+        if let Some(ring_ids) = gml_geom.polygon_ring_ids.get(idx) {
+            surface.ring_ids = ring_ids.clone();
+        }
+
+        surfaces.push(surface);
+    }
+
     match gml_geom.ty {
         GeometryType::Solid => {
-            if gml_geom.polygons.is_empty() {
+            if surfaces.is_empty() {
                 return None;
             }
             Some(GmlElement::Solid {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom.polygons.iter().map(GmlSurface::from).collect(),
+                surfaces,
             })
         }
         GeometryType::Surface | GeometryType::Triangle => {
-            if gml_geom.polygons.is_empty() {
+            if surfaces.is_empty() {
                 return None;
             }
             Some(GmlElement::MultiSurface {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom.polygons.iter().map(GmlSurface::from).collect(),
+                surfaces,
             })
         }
         GeometryType::Curve => {
@@ -284,6 +498,110 @@ impl BoundingEnvelope {
     pub fn upper_corner_str(&self) -> String {
         format!("{} {} {}", self.upper.y, self.upper.x, self.upper.z)
     }
+}
+
+/// Represents a CityGML attribute entry to be written to XML
+#[derive(Debug, Clone)]
+pub struct CityGmlAttribute {
+    /// Full name including namespace prefix (e.g., "bldg:class", "uro:buildingID")
+    pub name: String,
+    /// The attribute value
+    pub value: AttributeValue,
+    /// Optional codeSpace attribute for Code types
+    pub code_space: Option<String>,
+    /// Optional uom attribute for Measure types
+    pub uom: Option<String>,
+}
+
+/// Extract cityGmlAttributes from feature
+/// Groups related attributes (base, _code, _codeSpace, _uom) into single CityGmlAttribute entries
+pub fn extract_citygml_attributes(feature: &Feature) -> Vec<CityGmlAttribute> {
+    let attr_key = Attribute::new("cityGmlAttributes");
+    let Some(AttributeValue::Map(attrs_map)) = feature.attributes.get(&attr_key) else {
+        return Vec::new();
+    };
+
+    // First pass: collect metadata (codeSpace and uom) for base attributes
+    let mut code_spaces: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+    let mut uoms: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
+    for (key, value) in attrs_map.iter() {
+        let lower_key = key.to_lowercase();
+
+        // Extract codeSpace values
+        if lower_key.ends_with("_codespace") {
+            let base_key = &key[..key.len() - 10];
+            if let AttributeValue::String(cs) = value {
+                code_spaces.insert(base_key.to_string(), cs.clone());
+            }
+        }
+        // Extract uom values
+        else if lower_key.ends_with("_uom") {
+            let base_key = &key[..key.len() - 4];
+            if let AttributeValue::String(u) = value {
+                uoms.insert(base_key.to_string(), u.clone());
+            }
+        }
+    }
+
+    // Second pass: build CityGmlAttribute entries for base attributes
+    let mut attributes = Vec::new();
+    let mut processed_bases = std::collections::HashSet::new();
+
+    for (key, value) in attrs_map.iter() {
+        let lower_key = key.to_lowercase();
+
+        // Skip metadata keys - they will be attached to base attributes
+        if lower_key.ends_with("_codespace") || lower_key.ends_with("_uom") {
+            continue;
+        }
+
+        // Get the base name (without _code suffix if present)
+        let (base_name, is_code_value) = if key.ends_with("_code") {
+            (key[..key.len() - 5].to_string(), true)
+        } else {
+            (key.clone(), false)
+        };
+
+        // Skip if we've already processed this base (can happen if both base and _code exist)
+        if processed_bases.contains(&base_name) {
+            continue;
+        }
+        processed_bases.insert(base_name.clone());
+
+        // Determine the value to use for this attribute
+        let final_value = if is_code_value {
+            // This is a _code key, use it directly
+            value.clone()
+        } else {
+            // This is a base key - check if there's a _code variant
+            let code_key = format!("{}_code", key);
+            if let Some(code_value) = attrs_map.get(&code_key) {
+                // Use the code value instead of the human-readable value
+                code_value.clone()
+            } else {
+                // No code variant, use the base value
+                value.clone()
+            }
+        };
+
+        // Get codeSpace and uom for this base attribute
+        let code_space = code_spaces.get(&base_name).cloned();
+        let uom = uoms.get(&base_name).cloned();
+
+        attributes.push(CityGmlAttribute {
+            name: base_name,
+            value: final_value,
+            code_space,
+            uom,
+        });
+    }
+
+    // Sort attributes to ensure consistent output
+    attributes.sort_by(|a, b| a.name.cmp(&b.name));
+
+    attributes
 }
 
 #[cfg(test)]

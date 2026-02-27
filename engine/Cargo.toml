@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.316"
+version = "0.0.317"
 
 [profile.dev]
 opt-level = 0
@@ -68,16 +68,23 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.25", features = [
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", branch = "feature/citygmlwriter-add-appearance", features = [
   "serde",
   "serde_json",
 ] }
-nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.25" }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.25" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.25", features = [
+nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", branch = "feature/citygmlwriter-add-appearance" }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", branch = "feature/citygmlwriter-add-appearance" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", branch = "feature/citygmlwriter-add-appearance", features = [
   "serde",
 ] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.25" }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", branch = "feature/citygmlwriter-add-appearance" }
+
+# nusamai-citygml = { path = "tmp/plateau-gis-converter/nusamai-citygml", features = ["serde", "serde_json"] }
+# nusamai-czml = { path = "tmp/plateau-gis-converter/nusamai-czml" }
+# nusamai-gltf = { path = "tmp/plateau-gis-converter/nusamai-gltf" }
+# nusamai-plateau = { path = "tmp/plateau-gis-converter/nusamai-plateau", features = ["serde"] }
+# nusamai-projection = { path = "tmp/plateau-gis-converter/nusamai-projection" }
+
 nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.25" }
 
 Inflector = "0.11.4"

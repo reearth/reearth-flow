@@ -346,7 +346,9 @@ fn create_surface_feature_from_citygml_polygon(
         ty: original_gml_geo.ty,
         gml_trait: None, // Extracted geometry loses original trait semantics
         lod: original_gml_geo.lod,
-        pos: 0, // Extracted single-polygon feature starts at index 0 in the flat arrays
+        pos: original_gml_geo.pos,
+        polygon_ring_ids: vec![], // Ring IDs not preserved in extracted geometry
+        composite_surfaces: vec![], // Composite surfaces not preserved in extracted geometry
     };
 
     // Calculate the material and texture indices for this specific polygon

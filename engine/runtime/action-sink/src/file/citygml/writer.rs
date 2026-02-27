@@ -4,7 +4,8 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 
 use super::converter::{
-    format_pos_list, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSurface,
+    format_pos_list, AppearanceData, BoundingEnvelope, CityGmlAttribute, CityObjectType,
+    GeometryEntry, GmlElement, GmlSurface, TargetData, TextureData,
 };
 use crate::errors::SinkError;
 
@@ -30,6 +31,8 @@ const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:app", "http://www.opengis.net/citygml/appearance/2.0"),
     ("xmlns:xlink", "http://www.w3.org/1999/xlink"),
     ("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
+    // PLATEAU Urban Object extension (uro)
+    ("xmlns:uro", "https://www.geospatial.jp/iur/uro/3.1"),
 ];
 
 pub struct CityGmlXmlWriter<W: Write> {
@@ -107,6 +110,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         city_type: CityObjectType,
         geometries: &[GeometryEntry],
         gml_id: Option<&str>,
+        attributes: &[CityGmlAttribute],
     ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
@@ -122,8 +126,18 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(city_obj_elem))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        for entry in geometries {
-            self.write_lod_geometry(city_type, entry)?;
+        // Write attributes before geometry
+        if !attributes.is_empty() {
+            self.write_citygml_attributes(attributes)?;
+        }
+
+        // For Buildings, group LOD2 geometry entries to write proper structure
+        if city_type == CityObjectType::Building {
+            self.write_building_geometry(city_type, geometries)?;
+        } else {
+            for entry in geometries {
+                self.write_lod_geometry(city_type, entry)?;
+            }
         }
 
         self.writer
@@ -131,6 +145,585 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         self.writer
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Write geometry for Buildings with proper LOD2 structure
+    /// Groups all LOD2 surfaces together for boundedBy, lod2Solid, and lod2MultiSurface
+    fn write_building_geometry(
+        &mut self,
+        city_type: CityObjectType,
+        geometries: &[GeometryEntry],
+    ) -> Result<(), SinkError> {
+        let ns = city_type.namespace_prefix();
+
+        // Separate LOD2 MultiSurface entries from other geometry
+        let (lod2_entries, other_entries): (Vec<_>, Vec<_>) = geometries
+            .iter()
+            .partition(|e| e.lod == 2 && matches!(&e.element, GmlElement::MultiSurface { .. }));
+
+        // Write non-LOD2 geometry normally
+        for entry in &other_entries {
+            self.write_lod_geometry(city_type, entry)?;
+        }
+
+        // Collect all LOD2 surfaces
+        let mut all_lod2_surfaces: Vec<&GmlSurface> = Vec::new();
+
+        for entry in &lod2_entries {
+            if let GmlElement::MultiSurface { surfaces, .. } = &entry.element {
+                all_lod2_surfaces.extend(surfaces.iter());
+            }
+        }
+
+        // Write LOD2 structure if we have surfaces
+        if !all_lod2_surfaces.is_empty() {
+            // Collect surface IDs for references
+            let surface_ids: Vec<&str> = all_lod2_surfaces
+                .iter()
+                .filter_map(|s| s.id.as_deref())
+                .collect();
+
+            // Write lod2Solid BEFORE boundedBy (matches original file structure)
+            // Original file only has lod2Solid for buildings with complete solid geometry
+            if surface_ids.len() >= 3 {
+                self.write_lod2_solid_with_refs(ns, 2, &surface_ids)?;
+            }
+
+            // Write boundedBy for each surface (comes after lod2Solid)
+            for surface in &all_lod2_surfaces {
+                self.write_bounded_by_surface(ns, surface)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Write CityGML attributes as XML elements
+    fn write_citygml_attributes(
+        &mut self,
+        attributes: &[CityGmlAttribute],
+    ) -> Result<(), SinkError> {
+        for attr in attributes {
+            // Skip geometry-related attributes that are not actual attributes
+            // These include surface elements like groundSurface, roofSurface, wallSurface
+            // which are part of the geometry structure, not attributes
+            if Self::is_geometry_element(&attr.name) {
+                continue;
+            }
+            // Skip nested attributes that should be inside parent elements
+            // The reader flattens these, but they should not be written as top-level elements
+            if Self::is_nested_attribute(&attr.name) {
+                continue;
+            }
+            self.write_attribute_value(
+                &attr.name,
+                &attr.value,
+                attr.code_space.as_deref(),
+                attr.uom.as_deref(),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Check if an element name is a geometry element (not an attribute)
+    fn is_geometry_element(name: &str) -> bool {
+        let local_name = name.split(':').next_back().unwrap_or(name).to_lowercase();
+        matches!(
+            local_name.as_str(),
+            "groundsurface"
+                | "roofsurface"
+                | "wallsurface"
+                | "interiorwallsurface"
+                | "ceilingsurface"
+                | "floorsurface"
+                | "outersurface"
+                | "closuresurface"
+                | "lod0roofedge"
+                | "lod0groundsurface"
+        )
+    }
+
+    /// Check if an element should be nested inside another element (not written as top-level)
+    /// These are sub-types that the reader extracts but should not be written as separate elements
+    fn is_nested_attribute(name: &str) -> bool {
+        let local_name = name.split(':').next_back().unwrap_or(name);
+        matches!(
+            local_name,
+            "TsunamiRiskAttribute"
+                | "InlandFloodingRiskAttribute"
+                | "HighTideRiskAttribute"
+                | "ReservoirFloodingRiskAttribute"
+                | "RiverFloodingRiskAttribute"
+                | "LandSlideRiskAttribute"
+        )
+    }
+
+    /// Mapping from type names to property names
+    /// The reader stores type names but the schema requires specific property names
+    fn type_name_to_property_name(name: &str) -> String {
+        match name {
+            // uro namespace - Building related attributes
+            "uro:DataQualityAttribute" => "uro:bldgDataQualityAttribute".to_string(),
+            "uro:InlandFloodingRiskAttribute" => "uro:bldgDisasterRiskAttribute".to_string(),
+            // These already match
+            "uro:BuildingDetailAttribute" => "uro:buildingDetailAttribute".to_string(),
+            "uro:BuildingIDAttribute" => "uro:buildingIDAttribute".to_string(),
+            // For other names, normalize (lowercase first letter)
+            _ => Self::normalize_element_name(name),
+        }
+    }
+
+    /// Convert element name to CityGML schema compliant format
+    /// The reader normalizes names to start with lowercase (camelCase)
+    /// e.g., "uro:BuildingDetailAttribute" -> "uro:buildingDetailAttribute"
+    fn normalize_element_name(name: &str) -> String {
+        if let Some(colon_pos) = name.find(':') {
+            let prefix = &name[..colon_pos + 1];
+            let local_name = &name[colon_pos + 1..];
+
+            // Convert first character of local name to lowercase
+            if let Some(first_char) = local_name.chars().next() {
+                let normalized =
+                    first_char.to_lowercase().to_string() + &local_name[first_char.len_utf8()..];
+                return format!("{}{}", prefix, normalized);
+            }
+        }
+        // For names without prefix, just lowercase the first char
+        if let Some(first_char) = name.chars().next() {
+            return first_char.to_lowercase().to_string() + &name[first_char.len_utf8()..];
+        }
+        name.to_string()
+    }
+
+    /// Write a single attribute value recursively
+    /// Element names are normalized to comply with CityGML schema (camelCase)
+    fn write_attribute_value(
+        &mut self,
+        name: &str,
+        value: &reearth_flow_types::AttributeValue,
+        code_space: Option<&str>,
+        uom: Option<&str>,
+    ) -> Result<(), SinkError> {
+        use reearth_flow_types::AttributeValue;
+
+        // Normalize element name for CityGML schema compliance
+        let normalized_name = Self::normalize_element_name(name);
+
+        match value {
+            AttributeValue::Null => {
+                // Write empty element for null values
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                if let Some(u) = uom {
+                    elem.push_attribute(("uom", u));
+                }
+                self.writer
+                    .write_event(Event::Empty(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Bool(v) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                self.writer
+                    .write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                let text = if *v { "true" } else { "false" };
+                self.writer
+                    .write_event(Event::Text(BytesText::new(text)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Number(n) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                if let Some(u) = uom {
+                    elem.push_attribute(("uom", u));
+                }
+                self.writer
+                    .write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::Text(BytesText::new(&n.to_string())))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::String(s) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                if let Some(u) = uom {
+                    elem.push_attribute(("uom", u));
+                }
+                self.writer
+                    .write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::Text(BytesText::new(s)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::DateTime(dt) => {
+                let mut elem = BytesStart::new(&normalized_name);
+                if let Some(cs) = code_space {
+                    elem.push_attribute(("codeSpace", cs));
+                }
+                self.writer
+                    .write_event(Event::Start(elem))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                let formatted = dt.to_rfc3339();
+                self.writer
+                    .write_event(Event::Text(BytesText::new(&formatted)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Array(arr) => {
+                // For arrays of complex types (Maps), we need two levels of wrapping:
+                // 1. Property element (e.g., uro:bldgDataQualityAttribute)
+                // 2. Type wrapper element (e.g., uro:DataQualityAttribute)
+                if arr.len() == 1 && matches!(&arr[0], AttributeValue::Map(_)) {
+                    // Get property name from type name mapping
+                    // The input 'name' is the type name from the reader (e.g., uro:BuildingDetailAttribute)
+                    let property_name = Self::type_name_to_property_name(name);
+
+                    // Write property element
+                    self.writer
+                        .write_event(Event::Start(BytesStart::new(&property_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+                    // Type name is the original name (capitalized) from the reader
+                    // e.g., uro:BuildingDetailAttribute, uro:DataQualityAttribute
+                    let type_name = name.to_string();
+
+                    // Write type wrapper element
+                    self.writer
+                        .write_event(Event::Start(BytesStart::new(&type_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+                    // Write the children directly from the Map
+                    // Need to combine _code values with their base elements
+                    if let AttributeValue::Map(map) = &arr[0] {
+                        // First pass: collect codeSpace and uom values
+                        let mut child_code_spaces: std::collections::HashMap<String, String> =
+                            std::collections::HashMap::new();
+                        let mut child_uoms: std::collections::HashMap<String, String> =
+                            std::collections::HashMap::new();
+                        for (child_name, child_value) in map.iter() {
+                            let child_lower = child_name.to_lowercase();
+                            if child_lower.ends_with("_codespace") {
+                                if let AttributeValue::String(cs) = child_value {
+                                    child_code_spaces.insert(
+                                        child_name[..child_name.len() - 10].to_string(),
+                                        cs.clone(),
+                                    );
+                                }
+                            } else if child_lower.ends_with("_uom") {
+                                if let AttributeValue::String(u) = child_value {
+                                    child_uoms.insert(
+                                        child_name[..child_name.len() - 4].to_string(),
+                                        u.clone(),
+                                    );
+                                }
+                            }
+                        }
+
+                        // Second pass: write base attributes (skipping _code, _codespace, _uom)
+                        let mut processed_children = std::collections::HashSet::new();
+                        for (child_name, child_value) in map.iter() {
+                            let child_lower = child_name.to_lowercase();
+                            // Skip metadata keys
+                            if child_lower.ends_with("_codespace") || child_lower.ends_with("_uom")
+                            {
+                                continue;
+                            }
+
+                            // Get base name (without _code suffix)
+                            let base_child_name = if child_name.ends_with("_code") {
+                                child_name[..child_name.len() - 5].to_string()
+                            } else {
+                                child_name.clone()
+                            };
+
+                            // Skip if already processed (when both base and _code exist)
+                            if processed_children.contains(&base_child_name) {
+                                continue;
+                            }
+                            processed_children.insert(base_child_name.clone());
+
+                            // Determine the value to use (code value if available)
+                            let final_value = if child_name.ends_with("_code") {
+                                child_value.clone()
+                            } else {
+                                let code_key = format!("{}_code", child_name);
+                                if let Some(code_value) = map.get(&code_key) {
+                                    code_value.clone()
+                                } else {
+                                    child_value.clone()
+                                }
+                            };
+
+                            // Get codeSpace and uom for this child
+                            let child_cs = child_code_spaces.get(&base_child_name).cloned();
+                            let child_u = child_uoms.get(&base_child_name).cloned();
+
+                            self.write_attribute_value(
+                                &base_child_name,
+                                &final_value,
+                                child_cs.as_deref(),
+                                child_u.as_deref(),
+                            )?;
+                        }
+                    }
+
+                    // Close type wrapper element
+                    self.writer
+                        .write_event(Event::End(BytesEnd::new(&type_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+                    // Close property element
+                    self.writer
+                        .write_event(Event::End(BytesEnd::new(&property_name)))
+                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                } else {
+                    // Default: write each element with the same tag name
+                    for item in arr {
+                        self.write_attribute_value(name, item, code_space, uom)?;
+                    }
+                }
+            }
+            AttributeValue::Map(map) => {
+                // For maps (complex types), create a wrapper element and write children
+                self.writer
+                    .write_event(Event::Start(BytesStart::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+                // Write each child element
+                for (child_name, child_value) in map {
+                    // Skip metadata keys (codeSpace, uom)
+                    let lower_name = child_name.to_lowercase();
+                    if lower_name.ends_with("_codespace") || lower_name.ends_with("_uom") {
+                        continue;
+                    }
+                    self.write_attribute_value(child_name, child_value, None, None)?;
+                }
+
+                self.writer
+                    .write_event(Event::End(BytesEnd::new(&normalized_name)))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            AttributeValue::Bytes(_) => {
+                // Skip binary data for now
+            }
+        }
+        Ok(())
+    }
+
+    /// Write global appearance members at CityModel level (before city objects)
+    pub fn write_global_appearances(
+        &mut self,
+        appearance_data: &AppearanceData,
+    ) -> Result<(), SinkError> {
+        let total_targets: usize = appearance_data
+            .textures
+            .iter()
+            .map(|t| t.targets.len())
+            .sum();
+        tracing::info!(
+            "write_global_appearances: textures={}, themes={}, total_targets={}",
+            appearance_data.textures.len(),
+            appearance_data.themes.len(),
+            total_targets
+        );
+
+        // Only write appearance members if there are textures
+        if !appearance_data.textures.is_empty() {
+            // Start appearance member
+            self.writer
+                .write_event(Event::Start(BytesStart::new("app:appearanceMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Start Appearance
+            self.writer
+                .write_event(Event::Start(BytesStart::new("app:Appearance")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Write theme if available
+            for theme_name in &appearance_data.themes {
+                self.write_text_element("app:theme", theme_name)?;
+            }
+
+            // Write each texture as a surface data member (with its own targets)
+            for texture_data in &appearance_data.textures {
+                self.write_surface_data_member(texture_data)?;
+            }
+
+            // Close Appearance
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:Appearance")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Close appearanceMember
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:appearanceMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    fn write_surface_data_member(&mut self, texture_data: &TextureData) -> Result<(), SinkError> {
+        tracing::debug!(
+            "write_surface_data_member: texture_uri={}, targets={}",
+            texture_data.uri,
+            texture_data.targets.len()
+        );
+
+        // Extract just the directory and filename part from the full URI
+        let path_parts: Vec<&str> = texture_data.uri.split('/').collect();
+        let simplified_path = if path_parts.len() >= 2 {
+            // Take the last two parts: directory and filename
+            format!(
+                "{}/{}",
+                path_parts[path_parts.len() - 2],
+                path_parts[path_parts.len() - 1]
+            )
+        } else {
+            // If there are less than 2 parts, just use the original
+            texture_data.uri.to_string()
+        };
+
+        // Write surface data member with ParameterizedTexture
+        self.writer
+            .write_event(Event::Start(BytesStart::new("app:surfaceDataMember")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new("app:ParameterizedTexture")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write image URI with just the directory and filename
+        self.write_text_element("app:imageURI", &simplified_path)?;
+
+        // Write mime type (assuming jpg for now, could be extracted from URI extension)
+        let mime_type = if simplified_path.ends_with(".png") {
+            "image/png"
+        } else if simplified_path.ends_with(".gif") {
+            "image/gif"
+        } else {
+            "image/jpg"
+        };
+        self.write_text_element("app:mimeType", mime_type)?;
+
+        // Write target elements specific to this texture only
+        if !texture_data.targets.is_empty() {
+            tracing::debug!(
+                "write_surface_data_member: writing {} targets for this texture",
+                texture_data.targets.len()
+            );
+            for target in &texture_data.targets {
+                self.write_target_element(target)?;
+            }
+        }
+
+        // Close ParameterizedTexture
+        self.writer
+            .write_event(Event::End(BytesEnd::new("app:ParameterizedTexture")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Close surfaceDataMember
+        self.writer
+            .write_event(Event::End(BytesEnd::new("app:surfaceDataMember")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_target_element(&mut self, target: &TargetData) -> Result<(), SinkError> {
+        tracing::debug!(
+            "write_target_element: uri={}, coords_count={}",
+            target.uri,
+            target.texture_coordinates.len()
+        );
+
+        // Start target element with URI attribute
+        let mut target_start = BytesStart::new("app:target");
+        target_start.push_attribute(("uri", target.uri.as_str()));
+        self.writer
+            .write_event(Event::Start(target_start))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write texture coordinate list if available
+        if !target.texture_coordinates.is_empty() {
+            tracing::debug!(
+                "write_target_element: writing TexCoordList with {} coordinates",
+                target.texture_coordinates.len()
+            );
+            self.writer
+                .write_event(Event::Start(BytesStart::new("app:TexCoordList")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            // Join all texture coordinates into a single space-separated string
+            // CityGML requires the first and last coordinate to be the same (closed loop)
+            tracing::debug!("write_target_element: joining coordinates...");
+            let mut coord_string = target.texture_coordinates.join(" ");
+
+            // Append the first coordinate at the end to close the loop
+            if let Some(first_coord) = target.texture_coordinates.first() {
+                coord_string.push(' ');
+                coord_string.push_str(first_coord);
+            }
+
+            tracing::debug!(
+                "write_target_element: joined {} bytes of coordinates",
+                coord_string.len()
+            );
+
+            // Use the ring field directly (which contains the ring ID, not surface ID)
+            // The ring attribute must have a # prefix to be valid LocalId reference
+            let ring_ref = if target.ring.starts_with('#') {
+                target.ring.clone()
+            } else {
+                format!("#{}", target.ring)
+            };
+
+            let mut tex_coord = BytesStart::new("app:textureCoordinates");
+            tex_coord.push_attribute(("ring", ring_ref.as_str()));
+            self.writer
+                .write_event(Event::Start(tex_coord))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            self.writer
+                .write_event(Event::Text(BytesText::new(&coord_string)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:textureCoordinates")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:TexCoordList")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+
+        // Close target element
+        self.writer
+            .write_event(Event::End(BytesEnd::new("app:target")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
@@ -179,6 +772,130 @@ impl<W: Write> CityGmlXmlWriter<W> {
                     .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Write a boundedBy element wrapping a surface
+    fn write_bounded_by_surface(
+        &mut self,
+        ns: &str,
+        surface: &GmlSurface,
+    ) -> Result<(), SinkError> {
+        // Start boundedBy element
+        self.writer
+            .write_event(Event::Start(BytesStart::new(format!("{}:boundedBy", ns))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Generate a gml:id for the boundary surface
+        let boundary_id = surface
+            .id
+            .as_ref()
+            .map(|s| format!("bnd_{}", s))
+            .unwrap_or_else(|| self.generate_gml_id("bnd"));
+
+        // Get the correct surface type element name
+        let surface_type_name = surface.surface_type.element_name();
+        let surface_elem_name = format!("{}:{}", ns, surface_type_name);
+
+        // Start surface element with gml:id attribute
+        let mut surface_elem = BytesStart::new(&surface_elem_name);
+        surface_elem.push_attribute(("gml:id", boundary_id.as_str()));
+        self.writer
+            .write_event(Event::Start(surface_elem))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write lod2MultiSurface inside the boundary surface
+        self.writer
+            .write_event(Event::Start(BytesStart::new(format!(
+                "{}:lod2MultiSurface",
+                ns
+            ))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write the actual surface as a MultiSurface with one member
+        self.writer
+            .write_event(Event::Start(BytesStart::new("gml:MultiSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.write_surface_member(surface)?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:MultiSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(format!(
+                "{}:lod2MultiSurface",
+                ns
+            ))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(&surface_elem_name)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(format!("{}:boundedBy", ns))))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Write lod2Solid with xlink:href references to surfaces
+    fn write_lod2_solid_with_refs(
+        &mut self,
+        ns: &str,
+        lod: u8,
+        surface_ids: &[&str],
+    ) -> Result<(), SinkError> {
+        let solid_elem = format!("{}:lod{}Solid", ns, lod);
+        self.writer
+            .write_event(Event::Start(BytesStart::new(&solid_elem)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write Solid
+        let mut solid = BytesStart::new("gml:Solid");
+        solid.push_attribute(("srsName", self.srs_name.as_str()));
+        solid.push_attribute(("srsDimension", "3"));
+        self.writer
+            .write_event(Event::Start(solid))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write exterior
+        self.writer
+            .write_event(Event::Start(BytesStart::new("gml:exterior")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write CompositeSurface
+        self.writer
+            .write_event(Event::Start(BytesStart::new("gml:CompositeSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Write surfaceMember with xlink:href for each surface
+        for surface_id in surface_ids {
+            let mut surface_member = BytesStart::new("gml:surfaceMember");
+            surface_member.push_attribute(("xlink:href", format!("#{}", surface_id).as_str()));
+            self.writer
+                .write_event(Event::Empty(surface_member))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:CompositeSurface")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:exterior")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:Solid")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(&solid_elem)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
     }
@@ -282,21 +999,23 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(polygon))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        // Exterior ring
+        // Exterior ring - get ring ID from surface.ring_ids[0]
+        let exterior_ring_id = surface.ring_ids.first().and_then(|id| id.as_deref());
         self.writer
             .write_event(Event::Start(BytesStart::new("gml:exterior")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-        self.write_linear_ring(&surface.exterior)?;
+        self.write_linear_ring(&surface.exterior, exterior_ring_id)?;
         self.writer
             .write_event(Event::End(BytesEnd::new("gml:exterior")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        // Interior rings (holes)
-        for interior in &surface.interiors {
+        // Interior rings (holes) - get ring IDs from surface.ring_ids[1..]
+        for (idx, interior) in surface.interiors.iter().enumerate() {
+            let interior_ring_id = surface.ring_ids.get(idx + 1).and_then(|id| id.as_deref());
             self.writer
                 .write_event(Event::Start(BytesStart::new("gml:interior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            self.write_linear_ring(interior)?;
+            self.write_linear_ring(interior, interior_ring_id)?;
             self.writer
                 .write_event(Event::End(BytesEnd::new("gml:interior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -315,9 +1034,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
     fn write_linear_ring(
         &mut self,
         coords: &[reearth_flow_geometry::types::coordinate::Coordinate3D<f64>],
+        ring_id: Option<&str>,
     ) -> Result<(), SinkError> {
+        let mut linear_ring = BytesStart::new("gml:LinearRing");
+        if let Some(id) = ring_id {
+            linear_ring.push_attribute(("gml:id", id));
+        }
         self.writer
-            .write_event(Event::Start(BytesStart::new("gml:LinearRing")))
+            .write_event(Event::Start(linear_ring))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         self.write_text_element("gml:posList", &format_pos_list(coords))?;
@@ -388,5 +1112,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::End(BytesEnd::new("core:CityModel")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         Ok(())
+    }
+
+    /// Flush the underlying writer to ensure all data is written.
+    pub fn flush(&mut self) -> Result<(), SinkError> {
+        self.writer
+            .get_mut()
+            .flush()
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))
     }
 }
