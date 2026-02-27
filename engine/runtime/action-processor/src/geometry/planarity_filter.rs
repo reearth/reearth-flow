@@ -17,7 +17,6 @@ use reearth_flow_types::{AttributeValue, Expr, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::debug;
 
 use super::errors::GeometryProcessorError;
 
@@ -141,64 +140,26 @@ impl Processor for PlanarityFilter {
         // Evaluate the threshold expression
         let threshold = self.evaluate_threshold(feature, &ctx)?;
 
-        let gml_id = feature
-            .get("gmlId")
-            .or_else(|| feature.get("gml_id"))
-            .map(|v| format!("{v:?}"))
-            .unwrap_or_else(|| "<none>".to_string());
-        let feature_type = feature
-            .get("featureType")
-            .or_else(|| feature.get("feature_type"))
-            .map(|v| format!("{v:?}"))
-            .unwrap_or_else(|| "<none>".to_string());
-        let lod = feature
-            .get("lod")
-            .map(|v| format!("{v:?}"))
-            .unwrap_or_else(|| "<none>".to_string());
-
-        debug!(
-            gml_id = %gml_id,
-            feature_type = %feature_type,
-            lod = %lod,
-            filter_type = ?self.filter_type,
-            threshold = threshold,
-            "PlanarityFilter: processing feature"
-        );
-
         if geometry.is_empty() {
-            debug!(gml_id = %gml_id, "PlanarityFilter: empty geometry → notplanarity");
             send_feature_as_non_planar_surface(feature, &ctx, fw);
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
-                debug!(gml_id = %gml_id, "PlanarityFilter: None geometry → notplanarity");
                 send_feature_as_non_planar_surface(feature, &ctx, fw);
             }
             GeometryValue::FlowGeometry2D(_) => {
                 // 2D geometry is always coplanar (it's 2D)
-                debug!(gml_id = %gml_id, "PlanarityFilter: 2D geometry → planarity (always coplanar)");
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), PLANARITY_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geometry) => {
                 let points: Vec<Coordinate3D<f64>> = geometry.coords_iter().collect();
-                debug!(
-                    gml_id = %gml_id,
-                    point_count = points.len(),
-                    "PlanarityFilter: FlowGeometry3D"
-                );
                 let is_planar = match self.filter_type {
                     PlanarityFilterType::Covariance => are_points_coplanar(&points, threshold),
                     PlanarityFilterType::Height => check_planarity_height(points, threshold),
                 };
 
                 if let Some(result) = is_planar {
-                    debug!(
-                        gml_id = %gml_id,
-                        normal = ?[result.normal.x(), result.normal.y(), result.normal.z()],
-                        center = ?[result.center.x(), result.center.y(), result.center.z()],
-                        "PlanarityFilter: FlowGeometry3D → planarity"
-                    );
                     let mut feature = feature.clone();
                     let mut insert_number = |key: &str, value: f64| {
                         feature.insert(
@@ -217,66 +178,29 @@ impl Processor for PlanarityFilter {
                     insert_number("pointOnSurfaceZ", result.center.z());
                     fw.send(ctx.new_with_feature_and_port(feature, PLANARITY_PORT.clone()));
                 } else {
-                    debug!(gml_id = %gml_id, "PlanarityFilter: FlowGeometry3D → notplanarity");
                     send_feature_as_non_planar_surface(feature, &ctx, fw);
                 }
             }
             GeometryValue::CityGmlGeometry(geometry) => {
-                let num_gml_geoms = geometry.gml_geometries.len();
                 // We support only single-polygon geometries for planarity check
-                if num_gml_geoms != 1 {
-                    debug!(
-                        gml_id = %gml_id,
-                        num_gml_geometries = num_gml_geoms,
-                        "PlanarityFilter: CityGML geometry has != 1 gml_geometries → notplanarity"
-                    );
+                if geometry.gml_geometries.len() != 1 {
                     send_feature_as_non_planar_surface(feature, &ctx, fw);
                     return Ok(());
                 };
                 let geometry = &geometry.gml_geometries[0];
-                let num_polygons = geometry.polygons.len();
-                if num_polygons != 1 {
-                    debug!(
-                        gml_id = %gml_id,
-                        num_polygons = num_polygons,
-                        "PlanarityFilter: CityGML gml_geometry has != 1 polygons → notplanarity"
-                    );
+                if geometry.polygons.len() != 1 {
                     send_feature_as_non_planar_surface(feature, &ctx, fw);
                     return Ok(());
                 };
                 let polygon = &geometry.polygons[0];
-                let exterior_count = polygon.exterior().len();
-                let interior_count = polygon.interiors().len();
-                let interior_ring_sizes: Vec<usize> =
-                    polygon.interiors().iter().map(|r| r.len()).collect();
-                debug!(
-                    gml_id = %gml_id,
-                    exterior_vertex_count = exterior_count,
-                    interior_ring_count = interior_count,
-                    interior_ring_sizes = ?interior_ring_sizes,
-                    filter_type = ?self.filter_type,
-                    threshold = threshold,
-                    "PlanarityFilter: CityGML single polygon"
-                );
                 match self.filter_type {
                     PlanarityFilterType::Covariance => {
                         let points: Vec<Coordinate3D<f64>> = polygon.coords_iter().collect();
                         let is_planar = are_points_coplanar(&points, threshold);
                         let Some(result) = is_planar else {
-                            debug!(
-                                gml_id = %gml_id,
-                                point_count = points.len(),
-                                "PlanarityFilter: CityGML Covariance → notplanarity"
-                            );
                             send_feature_as_non_planar_surface(feature, &ctx, fw);
                             return Ok(());
                         };
-                        debug!(
-                            gml_id = %gml_id,
-                            normal = ?[result.normal.x(), result.normal.y(), result.normal.z()],
-                            center = ?[result.center.x(), result.center.y(), result.center.z()],
-                            "PlanarityFilter: CityGML Covariance → planarity"
-                        );
                         let mut feature = feature.clone();
                         let mut insert_number = |key: &str, value: f64| {
                             feature.insert(
@@ -297,23 +221,11 @@ impl Processor for PlanarityFilter {
                     }
                     PlanarityFilterType::Height => {
                         let check_points: Vec<Coordinate3D<f64>> = polygon.coords_iter().collect();
-                        let point_count = check_points.len();
                         let is_planar = check_planarity_height(check_points, threshold);
                         let Some(result) = is_planar else {
-                            debug!(
-                                gml_id = %gml_id,
-                                point_count = point_count,
-                                "PlanarityFilter: CityGML Height → notplanarity"
-                            );
                             send_feature_as_non_planar_surface(feature, &ctx, fw);
                             return Ok(());
                         };
-                        debug!(
-                            gml_id = %gml_id,
-                            normal = ?[result.normal.x(), result.normal.y(), result.normal.z()],
-                            center = ?[result.center.x(), result.center.y(), result.center.z()],
-                            "PlanarityFilter: CityGML Height → planarity"
-                        );
                         let mut feature = feature.clone();
                         let mut insert_number = |key: &str, value: f64| {
                             feature.insert(
