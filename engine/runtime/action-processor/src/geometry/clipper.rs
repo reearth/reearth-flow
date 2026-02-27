@@ -1195,6 +1195,7 @@ mod tests {
             feature_id: Some("parent_feature".to_string()),
             feature_type: Some("Building".to_string()),
             composite_surfaces: vec![nested_gml],
+            ..Default::default()
         };
 
         let citygml = CityGmlGeometry {
@@ -1255,6 +1256,7 @@ mod tests {
             feature_type: Some("Road".to_string()),
             composite_surfaces: vec![],
             polygon_ring_ids: vec![],
+            ..Default::default()
         };
 
         let citygml = CityGmlGeometry {
@@ -1329,6 +1331,7 @@ mod tests {
             feature_id: Some("wall2_feature".to_string()),
             feature_type: Some("WallSurface".to_string()),
             composite_surfaces: vec![],
+            polygon_ring_ids: vec![],
         };
 
         // Create a Solid with composite surfaces

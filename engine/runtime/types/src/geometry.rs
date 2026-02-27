@@ -515,7 +515,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct GmlGeometry {
     pub id: Option<String>,
     #[serde(rename = "type")]
@@ -606,8 +606,10 @@ impl GmlGeometry {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Default)]
 pub enum GeometryType {
     /// Polygons (solids)
+    #[default]
     Solid,
     /// Polygons (surfaces)
     Surface,
