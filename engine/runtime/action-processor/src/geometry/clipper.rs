@@ -1236,7 +1236,7 @@ mod tests {
     #[test]
     fn test_clipper_with_citygml_curve_geometry() {
         use reearth_flow_geometry::types::line_string::LineString3D;
-        use reearth_flow_types::{GeometryType, GmlGeometry};
+        use reearth_flow_types::GmlGeometry;
 
         let clip_polygon = create_clipper_polygon_3d();
 
