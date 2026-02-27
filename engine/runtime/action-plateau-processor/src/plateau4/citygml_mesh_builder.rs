@@ -469,6 +469,7 @@ impl CityGmlMeshBuilder {
                     let ab = (b - a).norm();
                     let ac = (c - a).norm();
                     let bc = (c - b).norm();
+
                     let is_degenerate = (ab + ac).abs_diff_eq(&bc, EPSILON)
                         || (ab + bc).abs_diff_eq(&ac, EPSILON)
                         || (ac + bc).abs_diff_eq(&ab, EPSILON);

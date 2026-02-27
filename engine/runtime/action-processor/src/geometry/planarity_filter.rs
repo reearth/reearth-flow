@@ -17,6 +17,7 @@ use reearth_flow_types::{AttributeValue, Expr, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::debug;
 
 use super::errors::GeometryProcessorError;
 
@@ -140,26 +141,64 @@ impl Processor for PlanarityFilter {
         // Evaluate the threshold expression
         let threshold = self.evaluate_threshold(feature, &ctx)?;
 
+        let gml_id = feature
+            .get("gmlId")
+            .or_else(|| feature.get("gml_id"))
+            .map(|v| format!("{v:?}"))
+            .unwrap_or_else(|| "<none>".to_string());
+        let feature_type = feature
+            .get("featureType")
+            .or_else(|| feature.get("feature_type"))
+            .map(|v| format!("{v:?}"))
+            .unwrap_or_else(|| "<none>".to_string());
+        let lod = feature
+            .get("lod")
+            .map(|v| format!("{v:?}"))
+            .unwrap_or_else(|| "<none>".to_string());
+
+        debug!(
+            gml_id = %gml_id,
+            feature_type = %feature_type,
+            lod = %lod,
+            filter_type = ?self.filter_type,
+            threshold = threshold,
+            "PlanarityFilter: processing feature"
+        );
+
         if geometry.is_empty() {
+            debug!(gml_id = %gml_id, "PlanarityFilter: empty geometry → notplanarity");
             send_feature_as_non_planar_surface(feature, &ctx, fw);
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
+                debug!(gml_id = %gml_id, "PlanarityFilter: None geometry → notplanarity");
                 send_feature_as_non_planar_surface(feature, &ctx, fw);
             }
             GeometryValue::FlowGeometry2D(_) => {
                 // 2D geometry is always coplanar (it's 2D)
+                debug!(gml_id = %gml_id, "PlanarityFilter: 2D geometry → planarity (always coplanar)");
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), PLANARITY_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geometry) => {
                 let points: Vec<Coordinate3D<f64>> = geometry.coords_iter().collect();
+                debug!(
+                    gml_id = %gml_id,
+                    point_count = points.len(),
+                    "PlanarityFilter: FlowGeometry3D"
+                );
                 let is_planar = match self.filter_type {
                     PlanarityFilterType::Covariance => are_points_coplanar(&points, threshold),
                     PlanarityFilterType::Height => check_planarity_height(points, threshold),
                 };
 
                 if let Some(result) = is_planar {
+                    debug!(
+                        gml_id = %gml_id,
+                        normal = ?[result.normal.x(), result.normal.y(), result.normal.z()],
+                        center = ?[result.center.x(), result.center.y(), result.center.z()],
+                        "PlanarityFilter: FlowGeometry3D → planarity"
+                    );
                     let mut feature = feature.clone();
                     let mut insert_number = |key: &str, value: f64| {
                         feature.insert(
@@ -178,29 +217,66 @@ impl Processor for PlanarityFilter {
                     insert_number("pointOnSurfaceZ", result.center.z());
                     fw.send(ctx.new_with_feature_and_port(feature, PLANARITY_PORT.clone()));
                 } else {
+                    debug!(gml_id = %gml_id, "PlanarityFilter: FlowGeometry3D → notplanarity");
                     send_feature_as_non_planar_surface(feature, &ctx, fw);
                 }
             }
             GeometryValue::CityGmlGeometry(geometry) => {
+                let num_gml_geoms = geometry.gml_geometries.len();
                 // We support only single-polygon geometries for planarity check
-                if geometry.gml_geometries.len() != 1 {
+                if num_gml_geoms != 1 {
+                    debug!(
+                        gml_id = %gml_id,
+                        num_gml_geometries = num_gml_geoms,
+                        "PlanarityFilter: CityGML geometry has != 1 gml_geometries → notplanarity"
+                    );
                     send_feature_as_non_planar_surface(feature, &ctx, fw);
                     return Ok(());
                 };
                 let geometry = &geometry.gml_geometries[0];
-                if geometry.polygons.len() != 1 {
+                let num_polygons = geometry.polygons.len();
+                if num_polygons != 1 {
+                    debug!(
+                        gml_id = %gml_id,
+                        num_polygons = num_polygons,
+                        "PlanarityFilter: CityGML gml_geometry has != 1 polygons → notplanarity"
+                    );
                     send_feature_as_non_planar_surface(feature, &ctx, fw);
                     return Ok(());
                 };
                 let polygon = &geometry.polygons[0];
+                let exterior_count = polygon.exterior().len();
+                let interior_count = polygon.interiors().len();
+                let interior_ring_sizes: Vec<usize> =
+                    polygon.interiors().iter().map(|r| r.len()).collect();
+                debug!(
+                    gml_id = %gml_id,
+                    exterior_vertex_count = exterior_count,
+                    interior_ring_count = interior_count,
+                    interior_ring_sizes = ?interior_ring_sizes,
+                    filter_type = ?self.filter_type,
+                    threshold = threshold,
+                    "PlanarityFilter: CityGML single polygon"
+                );
                 match self.filter_type {
                     PlanarityFilterType::Covariance => {
                         let points: Vec<Coordinate3D<f64>> = polygon.coords_iter().collect();
                         let is_planar = are_points_coplanar(&points, threshold);
                         let Some(result) = is_planar else {
+                            debug!(
+                                gml_id = %gml_id,
+                                point_count = points.len(),
+                                "PlanarityFilter: CityGML Covariance → notplanarity"
+                            );
                             send_feature_as_non_planar_surface(feature, &ctx, fw);
                             return Ok(());
                         };
+                        debug!(
+                            gml_id = %gml_id,
+                            normal = ?[result.normal.x(), result.normal.y(), result.normal.z()],
+                            center = ?[result.center.x(), result.center.y(), result.center.z()],
+                            "PlanarityFilter: CityGML Covariance → planarity"
+                        );
                         let mut feature = feature.clone();
                         let mut insert_number = |key: &str, value: f64| {
                             feature.insert(
@@ -221,11 +297,23 @@ impl Processor for PlanarityFilter {
                     }
                     PlanarityFilterType::Height => {
                         let check_points: Vec<Coordinate3D<f64>> = polygon.coords_iter().collect();
+                        let point_count = check_points.len();
                         let is_planar = check_planarity_height(check_points, threshold);
                         let Some(result) = is_planar else {
+                            debug!(
+                                gml_id = %gml_id,
+                                point_count = point_count,
+                                "PlanarityFilter: CityGML Height → notplanarity"
+                            );
                             send_feature_as_non_planar_surface(feature, &ctx, fw);
                             return Ok(());
                         };
+                        debug!(
+                            gml_id = %gml_id,
+                            normal = ?[result.normal.x(), result.normal.y(), result.normal.z()],
+                            center = ?[result.center.x(), result.center.y(), result.center.z()],
+                            "PlanarityFilter: CityGML Height → planarity"
+                        );
                         let mut feature = feature.clone();
                         let mut insert_number = |key: &str, value: f64| {
                             feature.insert(
@@ -403,43 +491,65 @@ fn check_planarity_height(
     }
 }
 
-/// Compute the minimum height of a convex hull
-/// The minimum height is the smallest perpendicular distance between two parallel supporting planes
+/// Compute the minimum height of a convex hull.
+///
+/// Tests two families of candidate normal directions:
+/// 1. **Face normals** — the normal of each hull triangle.
+/// 2. **Edge-edge cross products** — for every pair of hull edges, their cross product
+///    gives a candidate normal perpendicular to both edges.  For a convex polytope the
+///    true minimum width is achieved either along a face normal *or* along a direction
+///    that is the cross product of two antipodal edges, so testing all edge pairs yields
+///    the correct minimum.
 fn compute_convex_hull_min_height(
     vertices: &[reearth_flow_geometry::types::coordinate::Coordinate<f64, f64>],
     triangles: &[[usize; 3]],
 ) -> f64 {
+    // Helper: project all vertices onto `unit_normal` and return the range (max - min).
+    let range_along =
+        |unit_normal: reearth_flow_geometry::types::coordinate::Coordinate<f64, f64>| -> f64 {
+            let mut min_proj = f64::MAX;
+            let mut max_proj = f64::NEG_INFINITY;
+            for v in vertices {
+                let proj = v.dot(&unit_normal);
+                min_proj = min_proj.min(proj);
+                max_proj = max_proj.max(proj);
+            }
+            max_proj - min_proj
+        };
+
     let mut min_height = f64::MAX;
 
+    // Collect every edge direction vector from the hull triangles.
+    let mut edges = Vec::with_capacity(triangles.len() * 3);
     for tri in triangles {
-        let a = vertices[tri[0]];
-        let b = vertices[tri[1]];
-        let c = vertices[tri[2]];
+        for k in 0..3 {
+            edges.push(vertices[tri[(k + 1) % 3]] - vertices[tri[k]]);
+        }
+    }
 
-        // Compute face normal
-        let ab = b - a;
-        let ac = c - a;
+    // --- Test 1: face normals ---
+    for tri in triangles {
+        let ab = vertices[tri[1]] - vertices[tri[0]];
+        let ac = vertices[tri[2]] - vertices[tri[0]];
         let normal = ab.cross(&ac);
         let norm = normal.norm();
-
         if norm < 1e-10 {
-            continue; // Degenerate triangle
+            continue;
         }
+        min_height = min_height.min(range_along(normal / norm));
+    }
 
-        let unit_normal = normal / norm;
-
-        // Find the extent of all vertices along this normal direction
-        let mut min_proj = f64::MAX;
-        let mut max_proj = f64::MIN;
-
-        for v in vertices {
-            let proj = v.dot(&unit_normal);
-            min_proj = min_proj.min(proj);
-            max_proj = max_proj.max(proj);
+    // --- Test 2: edge-edge cross products ---
+    // For each pair of edges, the cross product is a candidate normal direction.
+    for i in 0..edges.len() {
+        for j in (i + 1)..edges.len() {
+            let normal = edges[i].cross(&edges[j]);
+            let norm = normal.norm();
+            if norm < 1e-10 {
+                continue; // Parallel edges — cross product is degenerate, skip.
+            }
+            min_height = min_height.min(range_along(normal / norm));
         }
-
-        let height = max_proj - min_proj;
-        min_height = min_height.min(height);
     }
 
     min_height

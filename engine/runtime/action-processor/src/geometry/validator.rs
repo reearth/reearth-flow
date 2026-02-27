@@ -90,8 +90,9 @@ pub enum ValidationType {
     DuplicatePoints,
     #[serde(rename = "duplicateConsecutivePoints")]
     DuplicateConsecutivePoints(f64),
+    /// Corrupt geometry check with optional tolerance for interior/exterior ring intersection.
     #[serde(rename = "corruptGeometry")]
-    CorruptGeometry,
+    CorruptGeometry(Option<f64>),
     /// Self-intersection check with optional tolerance.
     /// If tolerance is None or 0.0, exact intersection check is performed.
     /// If tolerance > 0.0, intersections within tolerance distance are ignored.
@@ -110,8 +111,8 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
                     tolerance,
                 )
             }
-            ValidationType::CorruptGeometry => {
-                reearth_flow_geometry::validation::ValidationType::CorruptGeometry
+            ValidationType::CorruptGeometry(tolerance) => {
+                reearth_flow_geometry::validation::ValidationType::CorruptGeometry(tolerance)
             }
             ValidationType::SelfIntersection(tolerance) => {
                 reearth_flow_geometry::validation::ValidationType::SelfIntersection(tolerance)
