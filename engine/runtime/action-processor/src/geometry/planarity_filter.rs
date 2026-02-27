@@ -403,43 +403,65 @@ fn check_planarity_height(
     }
 }
 
-/// Compute the minimum height of a convex hull
-/// The minimum height is the smallest perpendicular distance between two parallel supporting planes
+/// Compute the minimum height of a convex hull.
+///
+/// Tests two families of candidate normal directions:
+/// 1. **Face normals** — the normal of each hull triangle.
+/// 2. **Edge-edge cross products** — for every pair of hull edges, their cross product
+///    gives a candidate normal perpendicular to both edges.  For a convex polytope the
+///    true minimum width is achieved either along a face normal *or* along a direction
+///    that is the cross product of two antipodal edges, so testing all edge pairs yields
+///    the correct minimum.
 fn compute_convex_hull_min_height(
     vertices: &[reearth_flow_geometry::types::coordinate::Coordinate<f64, f64>],
     triangles: &[[usize; 3]],
 ) -> f64 {
+    // Helper: project all vertices onto `unit_normal` and return the range (max - min).
+    let range_along =
+        |unit_normal: reearth_flow_geometry::types::coordinate::Coordinate<f64, f64>| -> f64 {
+            let mut min_proj = f64::MAX;
+            let mut max_proj = f64::NEG_INFINITY;
+            for v in vertices {
+                let proj = v.dot(&unit_normal);
+                min_proj = min_proj.min(proj);
+                max_proj = max_proj.max(proj);
+            }
+            max_proj - min_proj
+        };
+
     let mut min_height = f64::MAX;
 
+    // Collect every edge direction vector from the hull triangles.
+    let mut edges = Vec::with_capacity(triangles.len() * 3);
     for tri in triangles {
-        let a = vertices[tri[0]];
-        let b = vertices[tri[1]];
-        let c = vertices[tri[2]];
+        for k in 0..3 {
+            edges.push(vertices[tri[(k + 1) % 3]] - vertices[tri[k]]);
+        }
+    }
 
-        // Compute face normal
-        let ab = b - a;
-        let ac = c - a;
+    // --- Test 1: face normals ---
+    for tri in triangles {
+        let ab = vertices[tri[1]] - vertices[tri[0]];
+        let ac = vertices[tri[2]] - vertices[tri[0]];
         let normal = ab.cross(&ac);
         let norm = normal.norm();
-
         if norm < 1e-10 {
-            continue; // Degenerate triangle
+            continue;
         }
+        min_height = min_height.min(range_along(normal / norm));
+    }
 
-        let unit_normal = normal / norm;
-
-        // Find the extent of all vertices along this normal direction
-        let mut min_proj = f64::MAX;
-        let mut max_proj = f64::MIN;
-
-        for v in vertices {
-            let proj = v.dot(&unit_normal);
-            min_proj = min_proj.min(proj);
-            max_proj = max_proj.max(proj);
+    // --- Test 2: edge-edge cross products ---
+    // For each pair of edges, the cross product is a candidate normal direction.
+    for i in 0..edges.len() {
+        for j in (i + 1)..edges.len() {
+            let normal = edges[i].cross(&edges[j]);
+            let norm = normal.norm();
+            if norm < 1e-10 {
+                continue; // Parallel edges — cross product is degenerate, skip.
+            }
+            min_height = min_height.min(range_along(normal / norm));
         }
-
-        let height = max_proj - min_proj;
-        min_height = min_height.min(height);
     }
 
     min_height
