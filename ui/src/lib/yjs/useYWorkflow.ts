@@ -122,7 +122,7 @@ export default ({
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
           subworkflowId: workflowId,
-          workflowPath: computeWorkflowPath(rawWorkflows, currentWorkflowId),
+          workflowPath: parentPath,
         },
         selected: true,
       });
