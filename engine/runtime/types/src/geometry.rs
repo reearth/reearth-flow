@@ -605,8 +605,7 @@ impl GmlGeometry {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq, Default)]
 pub enum GeometryType {
     /// Polygons (solids)
     #[default]
