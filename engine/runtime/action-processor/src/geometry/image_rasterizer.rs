@@ -23,6 +23,7 @@ use super::errors::GeometryProcessorError;
 
 static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
 static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
+static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureBounds"));
 
 /// Overlap resolution strategy for rasterized pixels
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -87,7 +88,11 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), TEXTURED_PORT.clone()]
+        vec![
+            DEFAULT_PORT.clone(),
+            TEXTURED_PORT.clone(),
+            BOUNDS_PORT.clone(),
+        ]
     }
 
     fn build(
@@ -305,6 +310,49 @@ impl Processor for ImageRasterizer {
                     None,
                     format!("ImageRasterizer saved image to: {:?}", saved_path),
                 );
+
+                // Emit the texture bounding box so downstream processors (e.g.,
+                // CityGmlAttributeInserter) can use the same UV reference frame.
+                {
+                    let min_x = boundary.left_down.x;
+                    let max_x = boundary.right_down.x;
+                    let min_y = boundary.left_down.y;
+                    let max_y = boundary.left_up.y;
+                    let mut bounds_feature = Feature::new_with_attributes(Attributes::default());
+                    bounds_feature.insert(
+                        "textureMinX",
+                        reearth_flow_types::AttributeValue::Number(
+                            serde_json::Number::from_f64(min_x)
+                                .unwrap_or(serde_json::Number::from(0)),
+                        ),
+                    );
+                    bounds_feature.insert(
+                        "textureMinY",
+                        reearth_flow_types::AttributeValue::Number(
+                            serde_json::Number::from_f64(min_y)
+                                .unwrap_or(serde_json::Number::from(0)),
+                        ),
+                    );
+                    bounds_feature.insert(
+                        "textureMaxX",
+                        reearth_flow_types::AttributeValue::Number(
+                            serde_json::Number::from_f64(max_x)
+                                .unwrap_or(serde_json::Number::from(0)),
+                        ),
+                    );
+                    bounds_feature.insert(
+                        "textureMaxY",
+                        reearth_flow_types::AttributeValue::Number(
+                            serde_json::Number::from_f64(max_y)
+                                .unwrap_or(serde_json::Number::from(0)),
+                        ),
+                    );
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        bounds_feature,
+                        BOUNDS_PORT.clone(),
+                    ));
+                }
 
                 // If we have features waiting for texture coordinates, process them
                 if !self.texture_coord_features.is_empty() {
