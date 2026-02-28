@@ -79,7 +79,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           />
         )}
       </EdgeLabelRenderer>
-      {jobStatus === "completed" && (
+      {jobStatus === "completed" && hasIntermediateData && (
         <path
           className="stroke-success"
           d={edgePath}
