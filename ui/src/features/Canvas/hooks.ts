@@ -165,15 +165,15 @@ export default ({
     switch (handler.keys?.join("")) {
       case "r":
         event.preventDefault();
-        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "reader");
+        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
         break;
       case "t":
         event.preventDefault();
-        onNodePickerOpen?.({ x: 0, y: 0 }, "transformer");
+        onNodePickerOpen?.({ x: 0, y: 0 }, "transformer", true);
         break;
       case "w":
         event.preventDefault();
-        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "writer");
+        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
         break;
       case "c":
         if (hasModifier) onCopy?.();

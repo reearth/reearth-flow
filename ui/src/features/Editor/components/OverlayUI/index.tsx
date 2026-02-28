@@ -1,4 +1,4 @@
-import { Edge, NodeChange, type XYPosition } from "@xyflow/react";
+import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
@@ -33,6 +33,7 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   selectedNodeIds: string[];
+  nodes: Node[];
   edges?: Edge[];
   canUndo: boolean;
   canRedo: boolean;
@@ -46,9 +47,12 @@ type OverlayUIProps = {
   }[];
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
+  openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
+  onEdgesAdd?: (edges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
   onLayoutChange: (
@@ -90,6 +94,7 @@ type OverlayUIProps = {
 const OverlayUI: React.FC<OverlayUIProps> = ({
   nodePickerOpen,
   selectedNodeIds,
+  nodes,
   edges,
   canUndo,
   canRedo,
@@ -105,9 +110,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   openWorkflows,
   currentWorkflowId,
   customDebugRunWorkflowVariables,
+  openNodePickerViaShortcut,
   onNodesAdd,
   onNodesChange,
   onNodePickerClose,
+  onEdgesAdd,
+  onEdgesChange,
   onWorkflowUndo,
   onWorkflowRedo,
   onWorkflowChange,
@@ -241,7 +249,14 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <NodePickerDialog
           openedActionType={nodePickerOpen}
           isMainWorkflow={isMainWorkflow}
+          nodes={nodes}
+          selectedNodeIds={selectedNodeIds}
+          edges={edges}
+          openNodePickerViaShortcut={openNodePickerViaShortcut}
           onNodesAdd={onNodesAdd}
+          onNodesChange={onNodesChange}
+          onEdgesAdd={onEdgesAdd}
+          onEdgesChange={onEdgesChange}
           onClose={onNodePickerClose}
         />
       )}
