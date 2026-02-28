@@ -1,0 +1,132 @@
+id: 4c5d6e7f-h8i9-0123-4567-890abcdef3
+name: PLATEAU4.SurfaceValidator2D
+nodes:
+- id: 4d5e6f7g-i9j0-1234-5678-90abcdef3
+  name: InputRouter
+  type: action
+  action: InputRouter
+  with:
+    routingPort: default
+- id: 5e6f7g8h-j0k1-2345-6789-0abcdef4
+  name: GeometryFilterSurface
+  type: action
+  action: GeometryFilter
+  with:
+    geometryTypes:
+    - surface
+- id: 6f7g8h9i-k1l2-3456-7890-abcdef5
+  name: GeometryPartExtractor
+  type: action
+  action: GeometryPartExtractor
+  with:
+    geometryQuery: |
+      for $geom in //geometry
+      where $geom/@fme_geometry_type = 'IFMEFace'
+      return number($geom/@fme_id)
+- id: 7g8h9i0j-l2m3-4567-890a-bcdef6
+  name: PLATEAU4.SurfaceValidator2D
+  type: action
+  action: PLATEAU4.SurfaceValidator2D
+  with:
+    destinationGeometryType: area
+    duplicatePointsTolerance: 0.01
+    ringIntersectionTolerance: 0.01
+    selfIntersectionTolerance: automatic
+- id: 8h9i0j1k-m3n4-5678-90ab-cdef7
+  name: StatisticsCalculator
+  type: action
+  action: StatisticsCalculator
+  with:
+    calculations:
+    - newAttribute: surface_issue_count
+      operation: count
+      sourceAttribute: gml_id
+    groupBy:
+    - file_index
+    - lod
+    - feature_type
+    - folder_package
+- id: 9i0j1k2l-n4o5-6789-0abc-def8
+  name: StatisticsCalculatorIncorrectOrientation
+  type: action
+  action: StatisticsCalculator
+  with:
+    calculations:
+    - newAttribute: num_incorrect_orientation
+      operation: count
+      sourceAttribute: gml_id
+    groupBy:
+    - file_index
+    - lod
+    - feature_type
+    - folder_package
+- id: aj1k2l3m-o5p6-7890-abcd-efg9
+  name: AttributeRenamer
+  type: action
+  action: AttributeRenamer
+  with:
+    operations:
+    - attribute: surface_issue_count
+      method: rename
+      newName: _surface_issues
+- id: bk2l3m4n-p6q7-8901-bcde-fgh0
+  name: AttributeRenamerIncorrectOrientation
+  type: action
+  action: AttributeRenamer
+  with:
+    operations:
+    - attribute: num_incorrect_orientation
+      method: rename
+      newName: _num_incorrect_orientation
+- id: cl3m4n5o-q7r8-9012-cdef-ghi1
+  name: OutputRouter
+  type: action
+  action: OutputRouter
+  with:
+    routingPort: default
+edges:
+- id: dm4n5o6p-r8s9-0123-defg-hij2
+  from: 4d5e6f7g-i9j0-1234-5678-90abcdef3
+  to: 5e6f7g8h-j0k1-2345-6789-0abcdef4
+  fromPort: default
+  toPort: default
+- id: en5o6p7q-s9t0-1234-efgh-ijk3
+  from: 5e6f7g8h-j0k1-2345-6789-0abcdef4
+  to: 6f7g8h9i-k1l2-3456-7890-abcdef5
+  fromPort: surface
+  toPort: default
+- id: fo6p7q8r-t0u1-2345-fghi-jkl4
+  from: 6f7g8h9i-k1l2-3456-7890-abcdef5
+  to: 7g8h9i0j-l2m3-4567-890a-bcdef6
+  fromPort: extracted
+  toPort: default
+- id: gp7q8r9s-u1v2-3456-ghij-klm5
+  from: 7g8h9i0j-l2m3-4567-890a-bcdef6
+  to: 8h9i0j1k-m3n4-5678-90ab-cdef7
+  fromPort: invalidFaces
+  toPort: default
+- id: hq8r9s0t-v2w3-4567-hijk-lmn6
+  from: 7g8h9i0j-l2m3-4567-890a-bcdef6
+  to: 9i0j1k2l-n4o5-6789-0abc-def8
+  fromPort: incorrectOrientation
+  toPort: default
+- id: ir9s0t1u-w3x4-5678-ijkl-mno7
+  from: 8h9i0j1k-m3n4-5678-90ab-cdef7
+  to: aj1k2l3m-o5p6-7890-abcd-efg9
+  fromPort: default
+  toPort: default
+- id: js0t1u2v-x4y5-6789-jklm-opq8
+  from: 9i0j1k2l-n4o5-6789-0abc-def8
+  to: bk2l3m4n-p6q7-8901-bcde-fgh0
+  fromPort: default
+  toPort: default
+- id: kt1u2v3w-y5z6-7890-klmn-pqr9
+  from: aj1k2l3m-o5p6-7890-abcd-efg9
+  to: cl3m4n5o-q7r8-9012-cdef-ghi1
+  fromPort: default
+  toPort: default
+- id: lu2v3w4x-z6a7-8901-lmno-qrs0
+  from: bk2l3m4n-p6q7-8901-bcde-fgh0
+  to: cl3m4n5o-q7r8-9012-cdef-ghi1
+  fromPort: default
+  toPort: default

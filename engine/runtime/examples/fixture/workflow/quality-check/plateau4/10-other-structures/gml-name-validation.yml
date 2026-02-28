@@ -1,0 +1,146 @@
+id: a0j1k2l3-n4o5-6789-0abc-def9
+name: PLATEAU4.GmlNameValidation
+nodes:
+- id: a1k2l3m4-o5p6-7890-1bcd-efa0
+  name: InputRouter
+  type: action
+  action: InputRouter
+  with:
+    routingPort: default
+- id: b2l3m4n5-p6q7-8901-2cde-fab1
+  name: XMLXPathExtractor
+  type: action
+  action: XMLXPathExtractor
+  with:
+    xpathExpression: |
+      declare namespace gml="http://www.opengis.net/gml";
+      declare namespace gen="http://www.opengis.net/citygml/generics/2.0";
+      (
+        data(//@gml:id),
+        data(//gml:name),
+        data(//gml:name/@codeSpace)
+      )
+    sourceAttribute: xml_fragment
+- id: c3m4n5o6-q7r8-9012-3def-abc2
+  name: XMLFragmenter
+  type: action
+  action: XMLFragmenter
+  with:
+    embeddedExpressions: GenericCityObject
+    sourceType: xmlFile
+    sourceFile: |
+      env.get("__value")["_gml_path"]
+- id: d4n5o6p7-r8s9-0123-4efg-bcd3
+  name: AttributeManagerExtractFields
+  type: action
+  action: AttributeManager
+  with:
+    operations:
+    - attribute: gml_id
+      method: create
+      value: |
+        env.get("__value")["_results{0}"]
+    - attribute: gml_name
+      method: create
+      value: |
+        env.get("__value")["_results{1}"]
+    - attribute: codeSpace
+      method: create
+      value: |
+        env.get("__value")["_results{2}"]
+- id: e5o6p7q8-s9t0-1234-5fgh-cde4
+  name: TesterGmlNameValidation
+  type: action
+  action: Tester
+  with:
+    conditions:
+    - attribute: codeSpace
+      operator: isMissing
+      value: ""
+      outputPort: failed
+    - attribute: codeSpace
+      operator: equals
+      value: ""
+      outputPort: failed
+    defaultOutputPort: passed
+- id: f6p7q8r9-t0u1-2345-6ghi-def5
+  name: StatisticsCalculatorGmlNameErrors
+  type: action
+  action: StatisticsCalculator
+  with:
+    calculations:
+    - newAttribute: gml_name_errors
+      operation: count
+      sourceAttribute: gml_id
+    groupBy:
+    - file_index
+- id: g7q8r9s0-u1v2-3456-7hij-efg6
+  name: FeatureMergerGmlName
+  type: action
+  action: FeatureMerger
+  with:
+    requestorAttributeValue: |
+      env.get("__value").file_index
+    supplierAttributeValue: |
+      env.get("__value").file_index
+- id: h8r9s0t1-v2w3-4567-8ijk-fgh7
+  name: AttributeManagerGmlNameResults
+  type: action
+  action: AttributeManager
+  with:
+    operations:
+    - attribute: "has_uncoded_gml_name"
+      method: create
+      value: |
+        if env.get("__value").gml_name_errors > 0 {
+          1
+        } else {
+          0
+        }
+- id: i9s0t1u2-w3x4-5678-9jkl-ghi8
+  name: OutputRouter
+  type: action
+  action: OutputRouter
+  with:
+    routingPort: default
+edges:
+- id: j0t1u2v3-x4y5-6789-0klm-hij9
+  from: a1k2l3m4-o5p6-7890-1bcd-efa0
+  to: c3m4n5o6-q7r8-9012-3def-abc2
+  fromPort: default
+  toPort: default
+- id: k1u2v3w4-y5z6-7890-1lmn-ijk0
+  from: c3m4n5o6-q7r8-9012-3def-abc2
+  to: d4n5o6p7-r8s9-0123-4efg-bcd3
+  fromPort: fragments
+  toPort: default
+- id: l2v3w4x5-z6a7-8901-2mno-jkl1
+  from: d4n5o6p7-r8s9-0123-4efg-bcd3
+  to: e5o6p7q8-s9t0-1234-5fgh-cde4
+  fromPort: default
+  toPort: default
+- id: m3w4x5y6-a7b8-9012-3nop-klm2
+  from: e5o6p7q8-s9t0-1234-5fgh-cde4
+  to: f6p7q8r9-t0u1-2345-6ghi-def5
+  fromPort: failed
+  toPort: default
+- id: n4x5y6z7-b8c9-0123-4opq-lmn3
+  from: f6p7q8r9-t0u1-2345-6ghi-def5
+  to: g7q8r9s0-u1v2-3456-7hij-efg6
+  fromPort: summary
+  toPort: supplier
+- id: o5y6z7a8-c9d0-1234-5pqr-mno4
+  from: a1k2l3m4-o5p6-7890-1bcd-efa0
+  to: g7q8r9s0-u1v2-3456-7hij-efg6
+  fromPort: default
+  toPort: requestor
+- id: p6z7a8b9-d0e1-2345-6qrs-nop5
+  from: g7q8r9s0-u1v2-3456-7hij-efg6
+  to: h8r9s0t1-v2w3-4567-8ijk-fgh7
+  fromPort: merged
+  toPort: default
+- id: q7a8b9c0-e1f2-3456-7rst-opq6
+  from: h8r9s0t1-v2w3-4567-8ijk-fgh7
+  to: i9s0t1u2-w3x4-5678-9jkl-ghi8
+  fromPort: default
+  toPort: default
