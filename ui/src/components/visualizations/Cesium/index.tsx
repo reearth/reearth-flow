@@ -1,5 +1,10 @@
 // import { Viewer as CesiumViewerType } from "cesium";
-import { defined, SceneMode, ScreenSpaceEventType } from "cesium";
+import {
+  BoundingSphere,
+  defined,
+  SceneMode,
+  ScreenSpaceEventType,
+} from "cesium";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScreenSpaceEvent,
@@ -34,8 +39,10 @@ type Props = {
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
   detailsOverlayOpen: boolean;
+  showSelectedFeatureOnly: boolean;
   onSelectedFeature?: (featureId: string | null) => void;
   onShowFeatureDetailsOverlay: (value: boolean) => void;
+  setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
 };
 
 const CesiumViewer: React.FC<Props> = ({
@@ -44,8 +51,10 @@ const CesiumViewer: React.FC<Props> = ({
   viewerRef,
   selectedFeatureId,
   detailsOverlayOpen,
+  showSelectedFeatureOnly,
   onSelectedFeature,
   onShowFeatureDetailsOverlay,
+  setCityGmlBoundingSphere,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -157,6 +166,7 @@ const CesiumViewer: React.FC<Props> = ({
             <GeoJsonData
               geoJsonData={geoJsonData}
               selectedFeatureId={selectedFeatureId}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
             />
           )}
 
@@ -164,8 +174,10 @@ const CesiumViewer: React.FC<Props> = ({
           {cityGmlData && (
             <CityGmlData
               cityGmlData={cityGmlData}
+              setCityGmlBoundingSphere={setCityGmlBoundingSphere}
               selectedFeatureId={selectedFeatureId}
               detailsOverlayOpen={detailsOverlayOpen}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
             />
           )}
         </>

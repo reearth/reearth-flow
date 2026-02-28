@@ -1,4 +1,5 @@
 import {
+  BoundingSphere,
   GroundPrimitive,
   Primitive,
   ShowGeometryInstanceAttribute,
@@ -31,6 +32,8 @@ type Props = {
   } | null;
   selectedFeatureId?: string | null;
   detailsOverlayOpen: boolean;
+  showSelectedFeatureOnly: boolean;
+  setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
 };
 
 const WAIT_FOR_PRIMITIVE_TIMEOUT_MS = 10_000;
@@ -39,6 +42,8 @@ const CityGmlData: React.FC<Props> = ({
   cityGmlData,
   selectedFeatureId,
   detailsOverlayOpen,
+  showSelectedFeatureOnly,
+  setCityGmlBoundingSphere,
 }) => {
   const { viewer } = useCesium();
   const absolutePrimitiveRef = useRef<Primitive | null>(null);
@@ -170,8 +175,9 @@ const CityGmlData: React.FC<Props> = ({
 
     if (boundingSphere) {
       viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
+      setCityGmlBoundingSphere(boundingSphere);
     }
-  }, [cityGmlData, viewer, cancelPending]);
+  }, [cityGmlData, viewer, setCityGmlBoundingSphere, cancelPending]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
@@ -224,6 +230,29 @@ const CityGmlData: React.FC<Props> = ({
       }
     };
   }, [viewer, cancelPending]);
+
+  useEffect(() => {
+    if (!viewer) return;
+
+    waitForPrimitive(absolutePrimitiveRef.current, () => {
+      featureMapRef.current.forEach((entry, id) => {
+        const isSelected = id === selectedFeatureId;
+
+        if (entry.lodPrimitiveCollection) return;
+
+        const shouldShow = !showSelectedFeatureOnly || isSelected;
+        entry.absoluteInstanceIds.forEach((instanceId) => {
+          const attrs =
+            absolutePrimitiveRef.current?.getGeometryInstanceAttributes(
+              instanceId,
+            );
+          if (attrs) {
+            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
+          }
+        });
+      });
+    });
+  }, [viewer, showSelectedFeatureOnly, selectedFeatureId, waitForPrimitive]);
 
   return null;
 };
