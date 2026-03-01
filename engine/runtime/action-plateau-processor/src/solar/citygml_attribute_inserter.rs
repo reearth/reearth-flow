@@ -556,6 +556,7 @@ impl CityGmlAttributeInserter {
         let mut writer = Writer::new(&mut output);
 
         let mut depth: usize = 0;
+        let mut root_seen = false;
         let mut building_depth: Option<usize> = None;
         let mut current_gml_id: Option<String> = None;
         let mut buf = Vec::new();
@@ -582,6 +583,38 @@ impl CityGmlAttributeInserter {
                     let name = e.name();
                     let local_name = name.as_ref();
                     let gml_id = extract_gml_id(e);
+
+                    // On the root element, inject any missing namespace declarations that
+                    // this processor will need: xmlns:gen (for gen:measureAttribute) and,
+                    // when texture mode is active, xmlns:app (for app:* appearance elements).
+                    if !root_seen && depth == 1 {
+                        root_seen = true;
+                        let needs_gen = !has_xmlns_attr(e, b"gen");
+                        let needs_app = collect_rings && !has_xmlns_attr(e, b"app");
+                        if needs_gen || needs_app {
+                            let mut patched = e.clone().into_owned();
+                            if needs_gen {
+                                patched.push_attribute((
+                                    "xmlns:gen",
+                                    "http://www.opengis.net/citygml/generics/2.0",
+                                ));
+                            }
+                            if needs_app {
+                                patched.push_attribute((
+                                    "xmlns:app",
+                                    "http://www.opengis.net/citygml/appearance/2.0",
+                                ));
+                            }
+                            writer.write_event(Event::Start(patched)).map_err(|e| {
+                                CityGmlAttributeInserterError::Process(format!(
+                                    "XML write error: {e}"
+                                ))
+                            })?;
+                            // Skip the default write below.
+                            buf.clear();
+                            continue;
+                        }
+                    }
 
                     if is_building_tag(e) {
                         building_depth = Some(depth);
@@ -960,6 +993,14 @@ fn extract_gml_id(e: &quick_xml::events::BytesStart<'_>) -> Option<String> {
     None
 }
 
+/// Returns true if the element already declares `xmlns:<prefix>` as an attribute.
+fn has_xmlns_attr(e: &quick_xml::events::BytesStart<'_>, prefix: &[u8]) -> bool {
+    let target_key = [b"xmlns:", prefix].concat();
+    e.attributes()
+        .flatten()
+        .any(|attr| attr.key.as_ref() == target_key.as_slice())
+}
+
 fn is_roof_surface_tag(name: &[u8]) -> bool {
     name == b"bldg:RoofSurface" || name.ends_with(b":RoofSurface") || name == b"RoofSurface"
 }
@@ -1309,5 +1350,127 @@ mod tests {
 
         let (_output, rings, _uris) = inserter.insert_attributes(xml.as_bytes(), false).unwrap();
         assert!(rings.is_empty(), "Should not collect rings when disabled");
+    }
+
+    #[test]
+    fn test_namespace_injection_when_missing() {
+        // Input has neither xmlns:gen nor xmlns:app — the inserter must add them.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:gml="http://www.opengis.net/gml">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg_001">
+      <bldg:measuredHeight>10.0</bldg:measuredHeight>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let mut elements = HashMap::new();
+        let mut vals = HashMap::new();
+        vals.insert("totalSolarRadiation".to_string(), 100.0);
+        elements.insert("bldg_001".to_string(), vals);
+
+        let inserter = CityGmlAttributeInserter {
+            output_dir_ast: rhai::AST::empty(),
+            gml_id_attribute: "gmlId".to_string(),
+            path_attribute: "path".to_string(),
+            measurements: vec![MeasurementDef {
+                name: "年間予測日射量".to_string(),
+                attribute: "totalSolarRadiation".to_string(),
+                uom: "kWh".to_string(),
+            }],
+            texture_image_path_ast: None,
+            source_epsg_ast: None,
+            paths: Vec::new(),
+            elements,
+            texture_bounds: None,
+        };
+
+        // collect_rings=false → xmlns:gen should be injected, xmlns:app should not
+        let (result, _rings, _uris) = inserter.insert_attributes(xml.as_bytes(), false).unwrap();
+        let output = String::from_utf8(result).unwrap();
+
+        assert!(
+            output.contains("xmlns:gen=\"http://www.opengis.net/citygml/generics/2.0\""),
+            "xmlns:gen must be declared on root element when absent from input"
+        );
+        assert!(
+            !output.contains("xmlns:app="),
+            "xmlns:app must not be declared when texture mode is disabled"
+        );
+        assert!(
+            output.contains("gen:measureAttribute"),
+            "gen:measureAttribute must still be injected"
+        );
+    }
+
+    #[test]
+    fn test_namespace_injection_app_when_collect_rings() {
+        // Input has neither xmlns:gen nor xmlns:app; collect_rings=true → both must be added.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:gml="http://www.opengis.net/gml">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg_001">
+      <bldg:measuredHeight>5.0</bldg:measuredHeight>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let inserter = CityGmlAttributeInserter {
+            output_dir_ast: rhai::AST::empty(),
+            gml_id_attribute: "gmlId".to_string(),
+            path_attribute: "path".to_string(),
+            measurements: vec![],
+            texture_image_path_ast: None,
+            source_epsg_ast: None,
+            paths: Vec::new(),
+            elements: HashMap::new(),
+            texture_bounds: None,
+        };
+
+        let (result, _rings, _uris) = inserter.insert_attributes(xml.as_bytes(), true).unwrap();
+        let output = String::from_utf8(result).unwrap();
+
+        assert!(
+            output.contains("xmlns:gen=\"http://www.opengis.net/citygml/generics/2.0\""),
+            "xmlns:gen must be injected"
+        );
+        assert!(
+            output.contains("xmlns:app=\"http://www.opengis.net/citygml/appearance/2.0\""),
+            "xmlns:app must be injected when collect_rings is true"
+        );
+    }
+
+    #[test]
+    fn test_namespace_not_duplicated_when_already_present() {
+        // Input already has xmlns:gen and xmlns:app — inserter must not duplicate them.
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:app="http://www.opengis.net/citygml/appearance/2.0">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg_001">
+      <bldg:measuredHeight>5.0</bldg:measuredHeight>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let inserter = CityGmlAttributeInserter {
+            output_dir_ast: rhai::AST::empty(),
+            gml_id_attribute: "gmlId".to_string(),
+            path_attribute: "path".to_string(),
+            measurements: vec![],
+            texture_image_path_ast: None,
+            source_epsg_ast: None,
+            paths: Vec::new(),
+            elements: HashMap::new(),
+            texture_bounds: None,
+        };
+
+        let (result, _rings, _uris) = inserter.insert_attributes(xml.as_bytes(), true).unwrap();
+        let output = String::from_utf8(result).unwrap();
+
+        // Each declaration should appear exactly once
+        let gen_count = output.matches("xmlns:gen=").count();
+        let app_count = output.matches("xmlns:app=").count();
+        assert_eq!(gen_count, 1, "xmlns:gen must appear exactly once");
+        assert_eq!(app_count, 1, "xmlns:app must appear exactly once");
     }
 }
