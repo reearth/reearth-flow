@@ -229,6 +229,16 @@ graphs:
         with:
           predicate: intersects
 
+      - id: 00000004-0000-0000-0000-000000000004
+        name: OccluderSurfaceFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              env.get("__value")["featureType"] != "bldg:Building";
+            outputPort: default
+
       - id: 00000001-0000-0000-0000-000000000006
         name: GeometrySplitter
         type: action
@@ -1501,8 +1511,13 @@ graphs:
       # Branch: Building geometries to ray intersector (from SpatialFilter output)
       - id: e0000001-0000-0000-0000-00000000000f
         from: 00000004-0000-0000-0000-000000000003
-        to: 00000001-0000-0000-0000-000000000010
+        to: 00000004-0000-0000-0000-000000000004
         fromPort: passed
+        toPort: default
+      - id: e0000004-0000-0000-0000-000000000004
+        from: 00000004-0000-0000-0000-000000000004
+        to: 00000001-0000-0000-0000-000000000010
+        fromPort: default
         toPort: geom
 
       # PreRayAttributeMapper → RayIntersectorShadow (ray)
