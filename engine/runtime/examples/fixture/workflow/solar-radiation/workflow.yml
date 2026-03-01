@@ -1342,7 +1342,7 @@ graphs:
         action: PLATEAU4.SolarCityGmlAttributeInserter
         with:
           outputDir: |
-            file::join_path(env.get("workerArtifactPath"), "bldg")
+            env.get("workerArtifactPath")
           pathAttribute: path
           gmlIdAttribute: gmlId
           measurements:
