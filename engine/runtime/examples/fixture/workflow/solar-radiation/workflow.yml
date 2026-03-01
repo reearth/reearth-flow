@@ -1363,7 +1363,7 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "bldg.zip")
+            file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
 
     edges:
       # Section 1: CityGML Loading Pipeline

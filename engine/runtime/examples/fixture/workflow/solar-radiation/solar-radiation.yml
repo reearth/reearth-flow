@@ -1406,7 +1406,7 @@ graphs:
     action: ZipFileWriter
     with:
       output: |
-        file::join_path(env.get("workerArtifactPath"), "bldg.zip")
+        file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
   edges:
   - id: e0000001-0000-0000-0000-000000000001
     from: 00000001-0000-0000-0000-000000000001

@@ -864,9 +864,9 @@ impl CityGmlAttributeInserter {
             // they fall back to the original photo texture in entity_to_geometry.
             let n = raw_uvs.len() as f64;
             let (centroid_u, centroid_v) = if n > 0.0 {
-                let sum = raw_uvs.iter().fold((0.0f64, 0.0f64), |(su, sv), &(u, v)| {
-                    (su + u, sv + v)
-                });
+                let sum = raw_uvs
+                    .iter()
+                    .fold((0.0f64, 0.0f64), |(su, sv), &(u, v)| (su + u, sv + v));
                 (sum.0 / n, sum.1 / n)
             } else {
                 (0.5, 0.5)
