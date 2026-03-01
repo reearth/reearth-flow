@@ -296,17 +296,21 @@ impl Processor for CityGmlAttributeInserter {
                 })?;
                 // Accept both integer and string EPSG codes
                 if let Ok(n) = val.as_int() {
-                    Ok(n as u32)
-                } else if let Ok(s) = val.clone().into_string() {
+                    u32::try_from(n).map_err(|_| {
+                        CityGmlAttributeInserterError::Process(format!(
+                            "sourceEpsg must be a positive integer, got: {n}"
+                        ))
+                    })
+                } else if let Ok(s) = val.into_string() {
                     s.parse::<u32>().map_err(|e| {
                         CityGmlAttributeInserterError::Process(format!(
                             "Failed to parse sourceEpsg '{s}' as u32: {e}"
                         ))
                     })
                 } else {
-                    Err(CityGmlAttributeInserterError::Process(format!(
-                        "sourceEpsg must be an integer or string, got: {val:?}"
-                    )))
+                    Err(CityGmlAttributeInserterError::Process(
+                        "sourceEpsg must be an integer or string".to_string(),
+                    ))
                 }
             })
             .transpose()?;
@@ -671,14 +675,11 @@ impl CityGmlAttributeInserter {
                         current_gml_id = None;
                     }
 
-                    // Before writing </core:CityModel>, append appearance block
-                    if collect_rings && is_city_model_end_tag(local_name) && !roof_rings.is_empty()
-                    {
-                        // Appearance block will be appended by caller after reprojection
-                        // We just collect rings here; the caller handles the rest
-                    }
-
-                    depth -= 1;
+                    depth = depth.checked_sub(1).ok_or_else(|| {
+                        CityGmlAttributeInserterError::Process(
+                            "Malformed XML: more closing tags than opening tags".to_string(),
+                        )
+                    })?;
                     writer.write_event(Event::End(e.clone())).map_err(|e| {
                         CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
                     })?;
@@ -778,9 +779,9 @@ impl CityGmlAttributeInserter {
         texture_filename: &str,
         external_bounds: Option<(f64, f64, f64, f64)>,
     ) -> Result<String, BoxedError> {
-        // Reproject all coordinates from 6697 → projected CRS
-        let target_epsg = 6697u32;
-        get_or_create_proj(target_epsg, source_epsg)?;
+        // Reproject all coordinates from EPSG:6697 (JGD2011 geographic) → projected CRS
+        let geographic_epsg = 6697u32;
+        get_or_create_proj(geographic_epsg, source_epsg)?;
 
         let mut reprojected_rings: Vec<(usize, Vec<(f64, f64)>)> = Vec::new();
         let mut computed_min_x = f64::MAX;
@@ -791,7 +792,7 @@ impl CityGmlAttributeInserter {
         for (i, ring) in roof_rings.iter().enumerate() {
             let mut projected_coords = Vec::with_capacity(ring.coords.len());
             for &(lat, lon, _height) in &ring.coords {
-                let (x, y) = reproject_coords(lat, lon, target_epsg, source_epsg)?;
+                let (x, y) = reproject_coords(lat, lon, geographic_epsg, source_epsg)?;
                 // Only track bounds if no external bounds were provided
                 if external_bounds.is_none() {
                     if x < computed_min_x {
@@ -977,10 +978,6 @@ fn is_image_uri_tag(name: &[u8]) -> bool {
 
 fn is_pos_list_tag(name: &[u8]) -> bool {
     name == b"gml:posList" || name.ends_with(b":posList") || name == b"posList"
-}
-
-fn is_city_model_end_tag(name: &[u8]) -> bool {
-    name == b"core:CityModel" || name.ends_with(b":CityModel") || name == b"CityModel"
 }
 
 /// Parse a gml:posList string into a list of (lat, lon, height) triples.
