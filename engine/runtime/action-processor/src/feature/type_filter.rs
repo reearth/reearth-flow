@@ -26,7 +26,7 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter CityGML features by feature type (deprecated, use FeatureFilter with `__citygml_feature_type` instead)"
+        "Filter CityGML features by feature type"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
