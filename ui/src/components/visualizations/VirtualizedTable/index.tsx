@@ -142,7 +142,13 @@ function VirtualizedTable<TData, TValue>({
     [rows, selectedRowIndex],
   );
 
-  // Scroll the virtualizer to bring the selected row into view.
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (!rows.length) return;
+    setActiveIndex(filteredSelectedIndex >= 0 ? filteredSelectedIndex : 0);
+  }, [filteredSelectedIndex, rows.length]);
+
   useEffect(() => {
     if (filteredSelectedIndex === -1) return;
     const items = virtualizer.getVirtualItems();
@@ -175,6 +181,56 @@ function VirtualizedTable<TData, TValue>({
 
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
+
+  const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({});
+
+  const moveActive = useCallback(
+    (nextIndex: number) => {
+      if (!rows.length) return;
+
+      const next = Math.max(
+        0,
+        Math.min(activeIndex + nextIndex, rows.length - 1),
+      );
+      if (next === activeIndex) return;
+
+      setActiveIndex(next);
+
+      const nextRow = rows[next] as any;
+      nextRow?.toggleSelected?.();
+      onRowClick?.(nextRow.original);
+
+      virtualizer.scrollToIndex(next, { align: "auto" });
+    },
+    [activeIndex, rows, virtualizer, onRowClick],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTableRowElement>, vIndex: number) => {
+      e.stopPropagation();
+
+      switch (e.key) {
+        case "Enter":
+          e.preventDefault();
+          onRowDoubleClick?.((rows[vIndex] as any)?.original);
+          break;
+
+        case "ArrowUp":
+          e.preventDefault();
+          moveActive(-1);
+          break;
+
+        case "ArrowDown":
+          e.preventDefault();
+          moveActive(1);
+          break;
+
+        default:
+          break;
+      }
+    },
+    [rows, moveActive, onRowDoubleClick],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -266,16 +322,22 @@ function VirtualizedTable<TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
-
             <TableBody>
               {rows.length ? (
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
                   const row = rows[virtualRow.index] as any;
                   const isSelected = selectedRowIndex === row.index;
+
                   return (
                     <TableRow
                       key={row.id}
-                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b"
+                      ref={(el) => {
+                        rowRefs.current[virtualRow.index] = el;
+                      }}
+                      tabIndex={virtualRow.index === activeIndex ? 0 : -1}
+                      onKeyDown={(e) => handleKeyDown(e, virtualRow.index)}
+                      onFocus={() => setActiveIndex(virtualRow.index)}
+                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b focus-visible:outline-hidden"
                       style={{
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${
@@ -284,6 +346,7 @@ function VirtualizedTable<TData, TValue>({
                       }}
                       data-state={isSelected ? "selected" : undefined}
                       onClick={() => {
+                        setActiveIndex(virtualRow.index);
                         row.toggleSelected();
                         onRowClick?.(row.original);
                       }}
