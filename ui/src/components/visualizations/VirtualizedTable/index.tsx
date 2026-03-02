@@ -41,11 +41,6 @@ type DataTableProps<TData, TValue> = {
   selectedRowIndex: number;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
-  customGlobalFilter?: (
-    row: any,
-    _columnId: string,
-    filterValue: string,
-  ) => boolean;
   setSearchTerm?: (term: string) => void;
 };
 
@@ -61,7 +56,6 @@ function VirtualizedTable<TData, TValue>({
   searchTerm,
   onRowClick,
   onRowDoubleClick,
-  customGlobalFilter,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -91,7 +85,6 @@ function VirtualizedTable<TData, TValue>({
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
-    globalFilterFn: customGlobalFilter ? customGlobalFilter : undefined,
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     state: {
@@ -242,6 +235,7 @@ function VirtualizedTable<TData, TValue>({
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
                   const row = rows[virtualRow.index] as any;
                   const isSelected = selectedRowIndex === virtualRow.index;
+                  if (!row) return null;
                   return (
                     <TableRow
                       key={row.id}
