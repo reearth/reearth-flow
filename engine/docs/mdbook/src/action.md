@@ -3161,7 +3161,7 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filter CityGML features by feature type (deprecated, use FeatureFilter with `__citygml_feature_type` instead)
+Filter CityGML features by feature type
 ### Parameters
 ```json
 {
