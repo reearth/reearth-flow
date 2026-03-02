@@ -1,12 +1,13 @@
+import { FilterFn } from "@tanstack/react-table";
 import { NodeChange, useReactFlow } from "@xyflow/react";
 import { useMemo, useCallback, useState, useRef } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
-import { useT } from "@flow/lib/i18n";
-import { Node, Workflow } from "@flow/types";
-import { useCurrentProject } from "@flow/stores";
 import { useWorkflowVariables } from "@flow/lib/gql";
+import { useT } from "@flow/lib/i18n";
+import { useCurrentProject } from "@flow/stores";
+import { Node, Workflow } from "@flow/types";
 
 export type SearchNodeResult = {
   id: string;
@@ -138,36 +139,16 @@ export default ({
   );
 
   const filteredNodes: SearchNodeResult[] = useMemo(() => {
-    const matchingVariableNames =
-      workflowVariables
-        ?.filter((variable) =>
-          variable.name.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
-        .map((variable) => variable.name) || [];
-
     return allNodes.filter((node) => {
-      const matchesSearchTerm =
-        node.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        node.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        checkParamsContainWorkflowVariableNames(
-          node.params,
-          matchingVariableNames,
-        );
       const matchesActionType =
         currentActionTypeFilter === "all" ||
         node.nodeType === currentActionTypeFilter;
       const matchesWorkflow =
         currentWorkflowFilter === "all" ||
         node.workflowId === currentWorkflowFilter;
-      return matchesSearchTerm && matchesActionType && matchesWorkflow;
+      return matchesActionType && matchesWorkflow;
     });
-  }, [
-    allNodes,
-    searchTerm,
-    currentActionTypeFilter,
-    currentWorkflowFilter,
-    workflowVariables,
-  ]);
+  }, [allNodes, currentActionTypeFilter, currentWorkflowFilter]);
 
   const handleNavigateToNode = useCallback(
     (node: SearchNodeResult) => {
@@ -255,7 +236,31 @@ export default ({
     handleDoubleClick,
     50,
   );
+  const nodeSearchOptions: FilterFn<any> = (row, _columnId, filterValue) => {
+    const q = String(filterValue ?? "")
+      .trim()
+      .toLowerCase();
+    if (!q) return true;
 
+    return (
+      String(row.original.id ?? "")
+        .toLowerCase()
+        .includes(q) ||
+      String(row.original.displayName ?? "")
+        .toLowerCase()
+        .includes(q) ||
+      String(row.original.officialName ?? "")
+        .toLowerCase()
+        .includes(q) ||
+      String(row.original.content ?? "")
+        .toLowerCase()
+        .includes(q) ||
+      checkParamsContainWorkflowVariableNames(
+        row.original.params,
+        workflowVariables?.map((variable) => variable.name) || [],
+      )
+    );
+  };
   return {
     filteredNodes,
     selectedNodeId,
@@ -264,6 +269,7 @@ export default ({
     currentWorkflowFilter,
     actionTypes,
     workflows,
+    nodeSearchOptions,
     setSearchTerm,
     setCurrentActionTypeFilter,
     setCurrentWorkflowFilter,
