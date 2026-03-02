@@ -37,6 +37,10 @@
       "description": "属性をマッピングする"
     },
     {
+      "name": "AttributeRangeMapper",
+      "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます"
+    },
+    {
       "name": "BoundsExtractor",
       "description": "境界を抽出する"
     },
