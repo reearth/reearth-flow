@@ -1,7 +1,7 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { NodeChange } from "@xyflow/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -30,8 +30,8 @@ const SearchPanel = ({
   onWorkflowOpen,
   onShowSearchPanel,
 }: SearchPanelProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
-
   const {
     filteredNodes,
     selectedNodeId,
@@ -117,6 +117,13 @@ const SearchPanel = ({
     return filteredNodes.findIndex((row: any) => row.id === selectedNodeId);
   }, [selectedNodeId, filteredNodes]);
 
+  // Focus search input when panel opens
+  useEffect(() => {
+    if (showSearchPanel && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearchPanel, searchInputRef]);
+
   return (
     <div
       className={`absolute z-50 flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
@@ -135,6 +142,7 @@ const SearchPanel = ({
         </div>
         <SearchFilters
           searchTerm={searchTerm}
+          searchInputRef={searchInputRef}
           currentActionTypeFilter={currentActionTypeFilter}
           currentWorkflowFilter={currentWorkflowFilter}
           actionTypes={actionTypes}

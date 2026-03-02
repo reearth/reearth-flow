@@ -3,7 +3,7 @@ import {
   ShareNetworkIcon,
   StackIcon,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { RefObject, useState } from "react";
 
 import {
   Collapsible,
@@ -21,6 +21,7 @@ import { useT } from "@flow/lib/i18n";
 
 type SearchFiltersProps = {
   searchTerm: string;
+  searchInputRef: RefObject<HTMLInputElement | null>;
   currentActionTypeFilter: string;
   currentWorkflowFilter: string;
   actionTypes: {
@@ -38,6 +39,7 @@ type SearchFiltersProps = {
 
 const SearchFilters = ({
   searchTerm,
+  searchInputRef,
   currentActionTypeFilter,
   currentWorkflowFilter,
   actionTypes,
@@ -56,6 +58,7 @@ const SearchFilters = ({
       className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <Input
+          ref={searchInputRef}
           placeholder={t("Search") + "..."}
           value={searchTerm ?? ""}
           onChange={(e) => setSearchTerm(e.target.value)}
