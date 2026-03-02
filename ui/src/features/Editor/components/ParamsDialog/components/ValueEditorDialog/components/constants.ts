@@ -208,6 +208,24 @@ export const getRhaiAutocompleteSuggestions = (
     type: "variable",
     description: t("Current feature attributes"),
   },
+  {
+    label: "__citygml_feature_type",
+    insertText: 'env.get("__value")["__citygml_feature_type"]',
+    type: "variable",
+    description: t("Current feature type"),
+  },
+  {
+    label: "__citygml_gml_id",
+    insertText: 'env.get("__value")["__citygml_gml_id"]',
+    type: "variable",
+    description: t("Current feature ID"),
+  },
+  {
+    label: "__citygml_lod_mask",
+    insertText: 'env.get("__value")["__citygml_lod_mask"]',
+    type: "variable",
+    description: t("Level of detail value"),
+  },
 
   // File Namespace
   {
