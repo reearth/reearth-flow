@@ -88,6 +88,7 @@ const TableViewer: React.FC<Props> = memo(
               showFiltering={true}
               condensed={true}
               selectedRowIndex={selectedRowIndex}
+              detailsOpen={detailsOverlayOpen}
               onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />
