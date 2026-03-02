@@ -1,8 +1,7 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { NodeChange } from "@xyflow/react";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -104,14 +103,6 @@ const SearchPanel = ({
     },
   ];
 
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  const virtualizer = useVirtualizer({
-    count: filteredNodes?.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
-  });
-
   const selectedRowIndex = useMemo(() => {
     if (!selectedNodeId || !filteredNodes) return -1;
 
@@ -146,8 +137,6 @@ const SearchPanel = ({
         />
         <div className="flex min-h-0 flex-1 flex-col">
           <VirtualizedTable
-            parentRef={parentRef}
-            virtualizer={virtualizer}
             columns={searchNodeColumns}
             data={filteredNodes}
             searchTerm={searchTerm}

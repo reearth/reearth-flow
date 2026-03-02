@@ -8,8 +8,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Virtualizer } from "@tanstack/react-virtual";
-import { RefObject, useCallback, useEffect, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -32,8 +32,6 @@ import { useT } from "@flow/lib/i18n";
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data?: TData[];
-  parentRef: RefObject<HTMLDivElement | null>;
-  virtualizer: Virtualizer<HTMLDivElement, Element>;
   selectColumns?: boolean;
   showFiltering?: boolean;
   condensed?: boolean;
@@ -47,8 +45,6 @@ type DataTableProps<TData, TValue> = {
 function VirtualizedTable<TData, TValue>({
   columns,
   data,
-  parentRef,
-  virtualizer,
   selectColumns = false,
   showFiltering = false,
   condensed,
@@ -120,6 +116,43 @@ function VirtualizedTable<TData, TValue>({
 
   const { rows } = table.getRowModel();
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 24,
+  });
+
+  const activeFilter = searchTerm || globalFilter;
+  useEffect(() => {
+    if (parentRef.current) {
+      parentRef.current.scrollTop = 0;
+    }
+    virtualizer.measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter]);
+
+  const filteredSelectedIndex = useMemo(
+    () => rows.findIndex((r) => r.index === selectedRowIndex),
+    [rows, selectedRowIndex],
+  );
+
+  // Scroll the virtualizer to bring the selected row into view.
+  useEffect(() => {
+    if (filteredSelectedIndex === -1) return;
+    const items = virtualizer.getVirtualItems();
+    if (!items.length) return;
+    const start = items[0].index;
+    const end = items[items.length - 1].index;
+    if (filteredSelectedIndex >= start && filteredSelectedIndex <= end) return;
+    virtualizer.scrollToIndex(filteredSelectedIndex, {
+      align: "start",
+      behavior: "auto",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSelectedIndex]);
+
   const [parentHeight, setParentHeight] = useState<number>(0);
 
   useEffect(() => {
@@ -134,7 +167,7 @@ function VirtualizedTable<TData, TValue>({
     setParentHeight(el.clientHeight);
 
     return () => ro.disconnect();
-  }, [parentRef]);
+  }, []);
 
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
@@ -234,8 +267,7 @@ function VirtualizedTable<TData, TValue>({
               {rows.length ? (
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
                   const row = rows[virtualRow.index] as any;
-                  const isSelected = selectedRowIndex === virtualRow.index;
-                  if (!row) return null;
+                  const isSelected = selectedRowIndex === row.index;
                   return (
                     <TableRow
                       key={row.id}
