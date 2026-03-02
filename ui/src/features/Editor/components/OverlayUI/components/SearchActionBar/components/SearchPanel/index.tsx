@@ -40,6 +40,7 @@ const SearchPanel = ({
     currentWorkflowFilter,
     actionTypes,
     workflows,
+    nodeSearchOptions,
     setSearchTerm,
     setCurrentActionTypeFilter,
     setCurrentWorkflowFilter,
@@ -52,56 +53,63 @@ const SearchPanel = ({
     onWorkflowOpen,
   });
 
-  const searchNodeColumns: ColumnDef<SearchNodeResult>[] = [
-    {
-      accessorKey: "displayName",
-      header: t("Action Name"),
-      cell: ({ row }) => (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="block max-w-[100px] truncate font-medium">
-              {row.original.displayName}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={-100} className="bg-primary">
-            {row.original.displayName}
-          </TooltipContent>
-        </Tooltip>
-      ),
-    },
-    {
-      accessorKey: "workflowName",
-      header: t("Workflow"),
-      cell: ({ row }) => (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
-              {row.original.workflowName}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent
-            side="right"
-            sideOffset={-100}
-            align="center"
-            className="bg-primary">
-            {row.original.workflowName}
-          </TooltipContent>
-        </Tooltip>
-      ),
-    },
-    {
-      accessorKey: "nodeType",
-      header: t("Type"),
-      cell: ({ row }) => (
-        <div
-          className={`self-center rounded border text-center ${row.original.nodeType === "transformer" ? "bg-node-transformer/35" : row.original.nodeType === "reader" ? "bg-node-reader/35" : row.original.nodeType === "writer" ? "bg-node-writer/35" : row.original.nodeType === "subworkflow" ? "bg-node-subworkflow/35" : "bg-popover"} p-1 align-middle`}>
-          <p className="self-center text-xs text-zinc-200 capitalize">
-            {row.original.nodeType}
-          </p>
-        </div>
-      ),
-    },
-  ];
+  const searchNodeColumns: ColumnDef<SearchNodeResult | undefined, unknown>[] =
+    [
+      {
+        accessorFn: (row) => row?.displayName,
+        id: "displayName",
+        header: t("Action Name"),
+        cell: ({ row }) => (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block max-w-[100px] truncate font-medium">
+                {row.original?.displayName}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              sideOffset={-100}
+              className="bg-primary">
+              {row.original?.displayName}
+            </TooltipContent>
+          </Tooltip>
+        ),
+      },
+      {
+        accessorFn: (row) => row?.workflowName,
+        id: "workflowName",
+        header: t("Workflow"),
+        cell: ({ row }) => (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
+                {row.original?.workflowName}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              sideOffset={-100}
+              align="center"
+              className="bg-primary">
+              {row.original?.workflowName}
+            </TooltipContent>
+          </Tooltip>
+        ),
+      },
+      {
+        accessorFn: (row) => row?.nodeType,
+        id: "nodeType",
+        header: t("Type"),
+        cell: ({ row }) => (
+          <div
+            className={`self-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/35" : row.original?.nodeType === "reader" ? "bg-node-reader/35" : row.original?.nodeType === "writer" ? "bg-node-writer/35" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/35" : "bg-popover"} p-1 align-middle`}>
+            <p className="self-center text-xs text-zinc-200 capitalize">
+              {row.original?.nodeType}
+            </p>
+          </div>
+        ),
+      },
+    ];
 
   const selectedRowIndex = useMemo(() => {
     if (!selectedNodeId || !filteredNodes) return -1;
@@ -144,6 +152,7 @@ const SearchPanel = ({
             onRowClick={handleRowClick}
             onRowDoubleClick={handleRowDoubleClick}
             condensed
+            customGlobalFilterFn={nodeSearchOptions}
           />
         </div>
       </div>

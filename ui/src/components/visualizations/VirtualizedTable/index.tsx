@@ -1,5 +1,6 @@
 import {
   ColumnDef,
+  FilterFn,
   SortingState,
   VisibilityState,
   flexRender,
@@ -37,6 +38,7 @@ type DataTableProps<TData, TValue> = {
   condensed?: boolean;
   searchTerm?: string;
   selectedRowIndex: number;
+  customGlobalFilterFn?: FilterFn<TData>;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setSearchTerm?: (term: string) => void;
@@ -50,6 +52,7 @@ function VirtualizedTable<TData, TValue>({
   condensed,
   selectedRowIndex,
   searchTerm,
+  customGlobalFilterFn,
   onRowClick,
   onRowDoubleClick,
   setSearchTerm,
@@ -81,6 +84,7 @@ function VirtualizedTable<TData, TValue>({
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
+    globalFilterFn: customGlobalFilterFn ?? "auto",
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     state: {
