@@ -108,6 +108,9 @@ impl SinkFactory for MVTSinkFactory {
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
                 extent: params.extent.unwrap_or(4096) as i32,
+                schema_key: params
+                    .schema_key
+                    .unwrap_or_else(|| "__citygml_feature_type".to_string()),
             },
             join_handles: Vec::new(),
         };
@@ -160,6 +163,11 @@ pub struct MVTWriterParam {
     /// # Extent
     /// MVT tile resolution. Default is 4096.
     pub(super) extent: Option<u32>,
+    /// # Schema Key
+    /// Attribute key whose value is used to match data features with schema features
+    /// for attribute filtering and type casting. Defaults to `__citygml_feature_type`.
+    /// This attribute is excluded from output.
+    pub(super) schema_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -172,6 +180,7 @@ pub struct MVTWriterCompiledParam {
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
+    pub(super) schema_key: String,
 }
 
 impl Sink for MVTWriter {
@@ -182,10 +191,18 @@ impl Sink for MVTWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
             let feature = &ctx.feature;
-            if let Some(feature_type) = feature.feature_type() {
-                let typedef: TypeDef = feature.into();
-                self.schema.types.insert(feature_type, typedef);
-            }
+            let Some(schema_type) = feature
+                .get(&self.params.schema_key)
+                .and_then(|v| v.as_string())
+            else {
+                tracing::warn!(
+                    "Failed to get '{}' attribute for schema_key",
+                    self.params.schema_key
+                );
+                return Ok(());
+            };
+            let typedef: TypeDef = feature.into();
+            self.schema.types.insert(schema_type, typedef);
             return Ok(());
         }
         let geometry = &ctx.feature.geometry;

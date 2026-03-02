@@ -1,5 +1,7 @@
 use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
+// FIXME: remove this module and disable auto fallback to __citygml_feature_type
+use reearth_flow_types::CitygmlFeatureExt;
 
 /// Get the attribute definitions map for a feature type from the schema.
 /// Returns None if the feature type is not found or is a Property type.

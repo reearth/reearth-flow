@@ -8,6 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::CitygmlFeatureExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -25,7 +26,7 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features by feature type"
+        "Filter CityGML features by feature type (deprecated, use FeatureFilter with `__citygml_feature_type` instead)"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

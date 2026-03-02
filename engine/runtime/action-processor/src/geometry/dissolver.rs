@@ -459,9 +459,6 @@ impl Dissolver {
             value: GeometryValue::FlowGeometry2D(multi_polygon_2d.into()),
             ..Default::default()
         };
-        Some(Feature::new_with_attributes_and_geometry(
-            attrs,
-            geometry,
-        ))
+        Some(Feature::new_with_attributes_and_geometry(attrs, geometry))
     }
 }

@@ -461,17 +461,27 @@ impl Feature {
         }
         keys
     }
+}
 
-    pub fn feature_id(&self) -> Option<String> {
+pub trait CitygmlFeatureExt {
+    fn feature_id(&self) -> Option<String>;
+    fn feature_type(&self) -> Option<String>;
+    fn lod(&self) -> Option<String>;
+    fn update_feature_type(&mut self, feature_type: String);
+    fn update_feature_id(&mut self, feature_id: String);
+}
+
+impl CitygmlFeatureExt for Feature {
+    fn feature_id(&self) -> Option<String> {
         self.get(CITYGML_GML_ID_KEY).and_then(|v| v.as_string())
     }
 
-    pub fn feature_type(&self) -> Option<String> {
+    fn feature_type(&self) -> Option<String> {
         self.get(CITYGML_FEATURE_TYPE_KEY)
             .and_then(|v| v.as_string())
     }
 
-    pub fn lod(&self) -> Option<String> {
+    fn lod(&self) -> Option<String> {
         self.get(CITYGML_LOD_MASK_KEY)
             .and_then(|v| v.as_i64())
             .and_then(|mask| {
@@ -484,14 +494,14 @@ impl Feature {
             })
     }
 
-    pub fn update_feature_type(&mut self, feature_type: String) {
+    fn update_feature_type(&mut self, feature_type: String) {
         self.insert(
             CITYGML_FEATURE_TYPE_KEY,
             AttributeValue::String(feature_type),
         );
     }
 
-    pub fn update_feature_id(&mut self, feature_id: String) {
+    fn update_feature_id(&mut self, feature_id: String) {
         self.insert(CITYGML_GML_ID_KEY, AttributeValue::String(feature_id));
     }
 }

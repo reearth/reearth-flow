@@ -24,6 +24,8 @@ use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+// currently czml writer is citygml data specific
+use reearth_flow_types::CitygmlFeatureExt;
 
 use crate::errors::SinkError;
 

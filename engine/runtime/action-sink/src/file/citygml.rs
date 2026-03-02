@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{CitygmlFeatureExt, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
