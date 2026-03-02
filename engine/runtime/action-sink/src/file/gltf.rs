@@ -95,6 +95,9 @@ impl SinkFactory for GltfWriterSinkFactory {
             attach_texture: params.attach_texture.unwrap_or(true),
             classified_features: Default::default(),
             draco_compression: params.draco_compression.unwrap_or(false),
+            group_by: params
+                .group_by
+                .unwrap_or_else(|| "__citygml_feature_type".to_string()),
         };
         Ok(Box::new(sink))
     }
@@ -149,6 +152,7 @@ pub struct GltfWriter {
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
     draco_compression: bool,
+    group_by: String,
 }
 
 /// # GltfWriter Parameters
@@ -161,7 +165,11 @@ pub struct GltfWriterParam {
     output: Expr,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
+    /// Apply Draco compression to the geometry
     draco_compression: Option<bool>,
+    /// all features sharing the same value are written to the same file.
+    /// Defaults to `__citygml_feature_type`. Excluded from output.
+    group_by: Option<String>,
 }
 
 impl Sink for GltfWriter {
@@ -367,8 +375,12 @@ impl GltfWriter {
         city_gml: &reearth_flow_types::geometry::CityGmlGeometry,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
-        let Some(feature_type) = feature.metadata.feature_type.clone() else {
-            return Err(SinkError::GltfWriter("Feature type is missing".to_string()).into());
+        let Some(feature_type) = feature.get(&self.group_by).and_then(|v| v.as_string()) else {
+            return Err(SinkError::GltfWriter(format!(
+                "Failed to get '{}' attribute for group_by",
+                self.group_by
+            ))
+            .into());
         };
         let mut materials: IndexSet<Material> = IndexSet::new();
         let default_material = reearth_flow_types::material::X3DMaterial::default();
@@ -513,9 +525,8 @@ impl GltfWriter {
         use flatgeom::Polygon3 as FlatPolygon3;
 
         let feature_type = feature
-            .metadata
-            .feature_type
-            .clone()
+            .get(&self.group_by)
+            .and_then(|v| v.as_string())
             .unwrap_or_else(|| "Building".to_string());
 
         // Convert Polygon3D to flatgeom::Polygon format [x, y, z, u, v]
@@ -594,9 +605,8 @@ impl GltfWriter {
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
         let feature_type = feature
-            .metadata
-            .feature_type
-            .clone()
+            .get(&self.group_by)
+            .and_then(|v| v.as_string())
             .unwrap_or_else(|| "Building".to_string());
 
         // Extract all faces from the solid

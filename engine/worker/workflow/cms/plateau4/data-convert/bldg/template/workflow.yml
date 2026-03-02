@@ -105,7 +105,7 @@ graphs:
               file::extract_filename(env.get("__value")["path"])
           - newAttribute: type
             attributeValue: |
-              env.get("__feature_type")
+              env.get("__citygml_feature_type")
           - newAttribute: maxLod
             attributeValue: |
               env.get("__value").maxLod
@@ -179,7 +179,7 @@ graphs:
             - attribute: _lod
               method: create
               value: |
-                env.get("__lod")
+                env.get("__citygml_lodmask")
             - attribute: _x
               method: create
               value: |

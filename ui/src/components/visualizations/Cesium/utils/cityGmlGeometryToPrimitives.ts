@@ -92,7 +92,7 @@ export const CITYGML_3D_TYPES: CityGmlTypeConfig[] = [
       !!(
         p?.gmlName?.includes("tran:") ||
         p?.featureType?.includes("tran:") ||
-        p?.metadata?.featureType?.includes("tran:") ||
+        p?.["__citygml_feature_type"]?.includes("tran:") ||
         p?.["tran:class"] ||
         p?.["tran:function"] ||
         p?.cityGmlAttributes?.["tran:class"] ||
@@ -112,7 +112,7 @@ export const CITYGML_3D_TYPES: CityGmlTypeConfig[] = [
       !!(
         p?.gmlName?.includes("brid:") ||
         p?.featureType?.includes("brid:") ||
-        p?.metadata?.featureType?.includes("brid:") ||
+        p?.["__citygml_feature_type"]?.includes("brid:") ||
         p?.["brid:class"] ||
         p?.cityGmlAttributes?.["brid:class"]
       ),
@@ -125,7 +125,7 @@ export const CITYGML_3D_TYPES: CityGmlTypeConfig[] = [
       !!(
         p?.gmlName?.includes("frn:") ||
         p?.featureType?.includes("frn:") ||
-        p?.metadata?.featureType?.includes("frn:") ||
+        p?.["__citygml_feature_type"]?.includes("frn:") ||
         p?.["frn:class"] ||
         p?.cityGmlAttributes?.["frn:class"]
       ),
@@ -138,7 +138,7 @@ export const CITYGML_3D_TYPES: CityGmlTypeConfig[] = [
       !!(
         p?.gmlName?.includes("veg:") ||
         p?.featureType?.includes("veg:") ||
-        p?.metadata?.featureType?.includes("veg:") ||
+        p?.["__citygml_feature_type"]?.includes("veg:") ||
         p?.["veg:class"] ||
         p?.cityGmlAttributes?.["veg:class"]
       ),
@@ -153,7 +153,7 @@ function isDemFeature(properties: Record<string, any>): boolean {
   return !!(
     properties?.gmlName?.includes("dem:") ||
     properties?.featureType?.includes("dem:") ||
-    properties?.metadata?.featureType?.includes("dem:") ||
+    properties?.["__citygml_feature_type"]?.includes("dem:") ||
     properties?.["dem:class"] ||
     properties?.["dem:type"] ||
     properties?.cityGmlAttributes?.["dem:class"] ||

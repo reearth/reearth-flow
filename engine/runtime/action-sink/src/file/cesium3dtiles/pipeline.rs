@@ -35,38 +35,38 @@ use crate::atlas::{
 use crate::file::mvt::tileid::TileIdMethod;
 
 pub(super) fn geometry_slicing_stage(
-    upstream: &[Feature],
+    upstream: &[(String, Vec<Feature>)],
     tile_id_conv: TileIdMethod,
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
     max_zoom: u8,
     attach_texture: bool,
 ) -> crate::errors::Result<()> {
-    upstream.iter().par_bridge().try_for_each(|parcel| {
-        slice_to_tiles(
-            parcel,
-            min_zoom,
-            max_zoom,
-            attach_texture,
-            |(z, x, y), feature| {
-                let bytes = serde_json::to_vec(&feature)
-                    .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
-                let Some(feature_type) = parcel.feature_type() else {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer(
-                        "Failed to get feature type",
-                    ));
-                };
-                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                let serialized_feature = (tile_id, feature_type.to_string(), bytes);
-                sender_sliced.send(serialized_feature).map_err(|e| {
-                    crate::errors::SinkError::cesium3dtiles_writer(format!(
-                        "Failed to send sliced feature with error = {e:?}"
-                    ))
-                })?;
-                Ok(())
-            },
-        )
-    })?;
+    upstream
+        .iter()
+        .flat_map(|(typename, features)| features.iter().map(move |f| (typename, f)))
+        .par_bridge()
+        .try_for_each(|(typename, parcel)| {
+            slice_to_tiles(
+                parcel,
+                min_zoom,
+                max_zoom,
+                attach_texture,
+                |(z, x, y), feature| {
+                    let bytes = serde_json::to_vec(&feature).map_err(|e| {
+                        crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
+                    })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    let serialized_feature = (tile_id, typename.clone(), bytes);
+                    sender_sliced.send(serialized_feature).map_err(|e| {
+                        crate::errors::SinkError::cesium3dtiles_writer(format!(
+                            "Failed to send sliced feature with error = {e:?}"
+                        ))
+                    })?;
+                    Ok::<(), crate::errors::SinkError>(())
+                },
+            )
+        })?;
 
     Ok(())
 }

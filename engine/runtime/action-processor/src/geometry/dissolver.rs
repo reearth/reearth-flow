@@ -375,12 +375,6 @@ impl Dissolver {
         // Start with an empty multi-polygon
         let mut multi_polygon_2d = MultiPolygon2D::new(vec![]);
 
-        // The representative feature is always the last one in the group
-        let representative_metadata = buffered_features_2d
-            .last()
-            .map(|f| f.metadata.clone())
-            .unwrap_or_default();
-
         // Apply attribute accumulation strategy
         let attrs: IndexMap<_, _> = match self.attribute_accumulation {
             AttributeAccumulationStrategy::DropAttributes => {
@@ -465,10 +459,6 @@ impl Dissolver {
             value: GeometryValue::FlowGeometry2D(multi_polygon_2d.into()),
             ..Default::default()
         };
-        Some(Feature::new_with_attributes_and_geometry(
-            attrs,
-            geometry,
-            representative_metadata,
-        ))
+        Some(Feature::new_with_attributes_and_geometry(attrs, geometry))
     }
 }

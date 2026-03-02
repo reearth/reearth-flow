@@ -17,7 +17,12 @@ use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
 pub use crate::attribute::AttributeValue;
-use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metadata::Metadata};
+use crate::{
+    all_attribute_keys,
+    attribute::Attribute,
+    geometry::Geometry,
+    metadata::{CITYGML_FEATURE_TYPE_KEY, CITYGML_GML_ID_KEY, CITYGML_LOD_MASK_KEY},
+};
 
 #[nutype(
     sanitize(trim),
@@ -45,7 +50,6 @@ pub type Attributes = IndexMap<Attribute, AttributeValue>;
 pub struct Feature {
     pub id: uuid::Uuid,
     pub attributes: Arc<Attributes>,
-    pub metadata: Metadata,
     pub geometry: Arc<Geometry>,
 }
 
@@ -72,7 +76,6 @@ impl From<IndexMap<String, AttributeValue>> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -89,7 +92,6 @@ impl From<Attributes> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(v),
-            metadata: Metadata::default(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -100,7 +102,6 @@ impl From<Geometry> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             geometry: Arc::new(v),
-            metadata: Metadata::default(),
             attributes: Arc::new(Attributes::new()),
         }
     }
@@ -125,7 +126,6 @@ impl From<AttributeValue> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -200,15 +200,10 @@ impl From<serde_json::Value> for Feature {
             .cloned()
             .map(|v| serde_json::from_value(v).unwrap_or_default());
 
-        let metadata: Option<Metadata> = v
-            .get("metadata")
-            .cloned()
-            .map(|v| serde_json::from_value(v).unwrap_or_default());
         Self {
             id,
             attributes: Arc::new(attributes),
             geometry: Arc::new(geometry.unwrap_or_default()),
-            metadata: metadata.unwrap_or_default(),
         }
     }
 }
@@ -287,7 +282,6 @@ impl Feature {
         Self {
             id,
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -296,21 +290,15 @@ impl Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
             geometry: Arc::new(Geometry::default()),
         }
     }
 
-    pub fn new_with_attributes_and_geometry(
-        attributes: Attributes,
-        geometry: Geometry,
-        metadata: Metadata,
-    ) -> Self {
+    pub fn new_with_attributes_and_geometry(attributes: Attributes, geometry: Geometry) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
             geometry: Arc::new(geometry),
-            metadata,
         }
     }
 
@@ -324,7 +312,6 @@ impl Feature {
             id: self.id,
             attributes: Arc::new(attributes),
             geometry: Arc::clone(&self.geometry),
-            metadata: self.metadata.clone(),
         }
     }
 
@@ -334,7 +321,6 @@ impl Feature {
             id: self.id,
             attributes: Arc::new(attributes),
             geometry: self.geometry,
-            metadata: self.metadata,
         }
     }
 
@@ -420,28 +406,8 @@ impl Feature {
                 .map(|(k, v)| (k.clone().into_inner(), v.clone().into()))
                 .collect::<serde_json::Map<_, _>>(),
         );
-        scope.set("__value", value);
-        scope.set(
-            "__feature_type",
-            self.feature_type().map_or(serde_json::Value::Null, |_| {
-                serde_json::Value::String(self.feature_type().unwrap_or_default())
-            }),
-        );
-        scope.set(
-            "__feature_id",
-            self.feature_id().map_or(serde_json::Value::Null, |_| {
-                serde_json::Value::String(self.feature_id().unwrap_or_default())
-            }),
-        );
-        scope.set(
-            "__lod",
-            self.metadata
-                .lod
-                .and_then(|lod| lod.highest_lod())
-                .map_or(serde_json::Value::Null, |lod| {
-                    serde_json::Value::Number(serde_json::Number::from(lod))
-                }),
-        );
+        scope.set("__value", value.clone());
+        scope.set_dynamic("value", &value);
         if let Some(with) = with {
             for (k, v) in with {
                 scope.set(k, v.clone());
@@ -495,26 +461,48 @@ impl Feature {
         }
         keys
     }
+}
 
-    pub fn feature_id(&self) -> Option<String> {
-        self.metadata.feature_id.clone()
+// avoid using it outside citygml or PLATEAU specific processors
+pub trait CitygmlFeatureExt {
+    fn feature_id(&self) -> Option<String>;
+    fn feature_type(&self) -> Option<String>;
+    fn lod(&self) -> Option<String>;
+    fn update_feature_type(&mut self, feature_type: String);
+    fn update_feature_id(&mut self, feature_id: String);
+}
+
+impl CitygmlFeatureExt for Feature {
+    fn feature_id(&self) -> Option<String> {
+        self.get(CITYGML_GML_ID_KEY).and_then(|v| v.as_string())
     }
 
-    pub fn feature_type(&self) -> Option<String> {
-        self.metadata.feature_type.clone()
+    fn feature_type(&self) -> Option<String> {
+        self.get(CITYGML_FEATURE_TYPE_KEY)
+            .and_then(|v| v.as_string())
     }
 
-    pub fn lod(&self) -> Option<String> {
-        self.metadata
-            .lod
-            .and_then(|lod| lod.highest_lod().map(|lod| lod.to_string()))
+    fn lod(&self) -> Option<String> {
+        self.get(CITYGML_LOD_MASK_KEY)
+            .and_then(|v| v.as_i64())
+            .and_then(|mask| {
+                let mask = mask as u8;
+                if mask == 0 {
+                    None
+                } else {
+                    Some((7 - mask.leading_zeros() as u8).to_string())
+                }
+            })
     }
 
-    pub fn update_feature_type(&mut self, feature_type: String) {
-        self.metadata.feature_type = Some(feature_type);
+    fn update_feature_type(&mut self, feature_type: String) {
+        self.insert(
+            CITYGML_FEATURE_TYPE_KEY,
+            AttributeValue::String(feature_type),
+        );
     }
 
-    pub fn update_feature_id(&mut self, feature_id: String) {
-        self.metadata.feature_id = Some(feature_id);
+    fn update_feature_id(&mut self, feature_id: String) {
+        self.insert(CITYGML_GML_ID_KEY, AttributeValue::String(feature_id));
     }
 }

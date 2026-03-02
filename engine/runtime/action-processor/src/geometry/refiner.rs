@@ -79,7 +79,6 @@ impl Processor for Refiner {
         let gc = geometry.clone();
         let geom_epsg = gc.epsg;
         let attributes = feature.attributes.clone();
-        let metadata = feature.metadata.clone();
 
         fw.send(ctx.new_with_feature_and_port(feature.clone(), REMAIN_PORT.clone()));
 
@@ -97,7 +96,6 @@ impl Processor for Refiner {
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry2D(geo),
                         }),
-                        metadata: metadata.clone(),
                         attributes: attributes.clone(),
                     };
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -112,7 +110,6 @@ impl Processor for Refiner {
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry3D(geo),
                         }),
-                        metadata: metadata.clone(),
                         attributes: attributes.clone(),
                     };
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

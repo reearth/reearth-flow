@@ -1,17 +1,3 @@
-use serde::{Deserialize, Serialize};
-
-use crate::lod::LodMask;
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Metadata {
-    pub feature_id: Option<String>,
-    pub feature_type: Option<String>,
-    pub lod: Option<LodMask>,
-}
-
-impl Metadata {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
+pub const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
+pub const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";
+pub const CITYGML_LOD_MASK_KEY: &str = "__citygml_lod_mask";

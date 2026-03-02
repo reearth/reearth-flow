@@ -397,7 +397,7 @@ graphs:
       - attribute: gml_id
         method: create
         value: |
-          env.get("__feature_id") ?? env.get("__value")["gmlId"]
+          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
@@ -448,7 +448,7 @@ graphs:
           file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
       - attribute: feature_type
         expr: |
-          env.get("__feature_type")
+          env.get("__value")["__citygml_feature_type"]
       - attribute: city_code
         valueAttribute: cityCode
       - attribute: city_name

@@ -1239,6 +1239,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attribute key whose value determines the output filename: all features sharing the same value are written to the same file. Defaults to `__citygml_feature_type`. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "maxZoom": {
       "title": "Maximum Zoom Level",
       "description": "Maximum zoom level for tile generation (0-24)",
@@ -1260,6 +1268,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         {
           "$ref": "#/definitions/Expr"
         }
+      ]
+    },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value is used to match data features with schema features for attribute filtering and type casting. Defaults to `__citygml_feature_type`. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
       ]
     },
     "skipUnexposedAttributes": {
@@ -3145,7 +3161,7 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filters features by feature type
+Filter CityGML features by feature type
 ### Parameters
 ```json
 {
@@ -4198,8 +4214,16 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "dracoCompression": {
+      "description": "Apply Draco compression to the geometry",
       "type": [
         "boolean",
+        "null"
+      ]
+    },
+    "groupBy": {
+      "description": "all features sharing the same value are written to the same file. Defaults to `__citygml_feature_type`. Excluded from output.",
+      "type": [
+        "string",
         "null"
       ]
     },
@@ -6118,6 +6142,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value is used to match data features with schema features for attribute filtering and type casting. Defaults to `__citygml_feature_type`. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip Unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -7202,7 +7234,7 @@ Extracts maxLod
 ### Type
 * processor
 ### Description
-Detect missing attributes
+Detect missing attributes in PLATEAU4 features
 ### Parameters
 ```json
 {

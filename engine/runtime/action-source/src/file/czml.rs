@@ -300,8 +300,7 @@ fn packet_to_features(
     // Fall back to static geometry extraction (existing logic)
     let geometry = extract_geometry(packet, force_2d)?;
     if let Some(geom) = geometry {
-        let mut feature =
-            Feature::new_with_attributes_and_geometry(base_attributes, geom, Default::default());
+        let mut feature = Feature::new_with_attributes_and_geometry(base_attributes, geom);
         // Capture extra CZML properties for roundtrip
         extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
         Ok(vec![feature])
@@ -421,11 +420,8 @@ fn build_timeseries_features(
         TimeSamplingStrategy::FirstSampleOnly => {
             if let Some(sample) = ts.samples.first() {
                 let geom = point_from_sample(sample, force_2d);
-                let mut feature = Feature::new_with_attributes_and_geometry(
-                    base_attributes.clone(),
-                    geom,
-                    Default::default(),
-                );
+                let mut feature =
+                    Feature::new_with_attributes_and_geometry(base_attributes.clone(), geom);
                 add_interpolation_attributes(&mut feature, ts);
                 extract_extra_czml_properties(packet, Arc::make_mut(&mut feature.attributes));
                 Ok(vec![feature])
@@ -437,11 +433,8 @@ fn build_timeseries_features(
             let mut features = Vec::with_capacity(ts.samples.len());
             for sample in &ts.samples {
                 let geom = point_from_sample(sample, force_2d);
-                let mut feature = Feature::new_with_attributes_and_geometry(
-                    base_attributes.clone(),
-                    geom,
-                    Default::default(),
-                );
+                let mut feature =
+                    Feature::new_with_attributes_and_geometry(base_attributes.clone(), geom);
 
                 let timestamp = sample_timestamp(sample, ts.epoch.as_deref());
                 Arc::make_mut(&mut feature.attributes).insert(
@@ -467,11 +460,8 @@ fn build_timeseries_features(
                 return Ok(vec![]);
             };
 
-            let mut feature = Feature::new_with_attributes_and_geometry(
-                base_attributes.clone(),
-                geom,
-                Default::default(),
-            );
+            let mut feature =
+                Feature::new_with_attributes_and_geometry(base_attributes.clone(), geom);
 
             let timeseries: Vec<Value> = ts
                 .samples

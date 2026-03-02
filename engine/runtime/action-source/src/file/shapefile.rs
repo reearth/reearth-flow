@@ -234,8 +234,7 @@ async fn read_shapefile(
         geometry.epsg = epsg_code;
         let attributes = convert_record_to_attributes(record);
 
-        let feature =
-            Feature::new_with_attributes_and_geometry(attributes, geometry, Default::default());
+        let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
 
         sender
             .send((
