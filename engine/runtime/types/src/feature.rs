@@ -463,6 +463,7 @@ impl Feature {
     }
 }
 
+// avoid using it outside citygml or PLATEAU specific processors
 pub trait CitygmlFeatureExt {
     fn feature_id(&self) -> Option<String>;
     fn feature_type(&self) -> Option<String>;
