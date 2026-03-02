@@ -206,13 +206,13 @@ function VirtualizedTable<TData, TValue>({
   );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTableRowElement>, vIndex: number) => {
+    (e: React.KeyboardEvent<HTMLTableRowElement>) => {
       e.stopPropagation();
 
       switch (e.key) {
         case "Enter":
           e.preventDefault();
-          onRowDoubleClick?.((rows[vIndex] as any)?.original);
+          onRowDoubleClick?.((rows[activeIndex] as any)?.original);
           break;
 
         case "ArrowUp":
@@ -229,7 +229,7 @@ function VirtualizedTable<TData, TValue>({
           break;
       }
     },
-    [rows, moveActive, onRowDoubleClick],
+    [rows, activeIndex, moveActive, onRowDoubleClick],
   );
 
   return (
@@ -335,7 +335,7 @@ function VirtualizedTable<TData, TValue>({
                         rowRefs.current[virtualRow.index] = el;
                       }}
                       tabIndex={virtualRow.index === activeIndex ? 0 : -1}
-                      onKeyDown={(e) => handleKeyDown(e, virtualRow.index)}
+                      onKeyDown={(e) => handleKeyDown(e)}
                       onFocus={() => setActiveIndex(virtualRow.index)}
                       className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b focus-visible:outline-hidden"
                       style={{
