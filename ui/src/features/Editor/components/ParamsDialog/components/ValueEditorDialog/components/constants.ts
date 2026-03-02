@@ -208,24 +208,6 @@ export const getRhaiAutocompleteSuggestions = (
     type: "variable",
     description: t("Current feature attributes"),
   },
-  {
-    label: "__feature_type",
-    insertText: "__feature_type",
-    type: "variable",
-    description: t("Current feature type"),
-  },
-  {
-    label: "__feature_id",
-    insertText: "__feature_id",
-    type: "variable",
-    description: t("Current feature ID"),
-  },
-  {
-    label: "__lod",
-    insertText: "__lod",
-    type: "variable",
-    description: t("Level of detail value"),
-  },
 
   // File Namespace
   {
