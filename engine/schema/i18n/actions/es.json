@@ -37,6 +37,10 @@
       "description": "Asigna atributos"
     },
     {
+      "name": "AttributeRangeMapper",
+      "description": "Mapear valores de atributos a rangos y asignar valores de salida correspondientes"
+    },
+    {
       "name": "BoundsExtractor",
       "description": "Extractor de límites"
     },
