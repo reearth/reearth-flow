@@ -203,7 +203,23 @@ impl Sink for CityGmlWriterSink {
             tracing::info!("CityGmlWriter: header written");
 
             // Collect global appearance data from all features
-            // Each feature may have appearance data, so we need to merge them all
+            //
+            // WHY THIS IS NEEDED:
+            // CityGML appearance data (textures, materials) is stored at the CityModel level
+            // as <app:appearanceMember> elements, separate from the city objects. When reading
+            // CityGML files, each feature gets its appearance data attached as attributes.
+            //
+            // Here we need to:
+            // 1. Collect appearance data from ALL features in the buffer
+            // 2. Merge them into a single global appearance section
+            // 3. Deduplicate textures to avoid writing the same image URI multiple times
+            //
+            // The appearance data flows through the pipeline as:
+            // CityGML file -> FeatureCityGMLReader -> feature.attributes["appearanceMember"] 
+            //   -> CityGmlWriter -> merged global appearance section
+            //
+            // PERFORMANCE NOTE: This collects all appearance data before writing features,
+            // allowing us to write the global appearance section once at the beginning.
             let mut all_textures = Vec::new();
             let mut all_themes = std::collections::HashSet::new();
             let mut found_appearance = false;
@@ -221,6 +237,8 @@ impl Sink for CityGmlWriterSink {
             }
 
             // Deduplicate textures by URI to avoid duplicates
+            // Multiple features may reference the same texture image, so we filter
+            // to ensure each texture URI appears only once in the output
             let mut seen_uris = std::collections::HashSet::new();
             let unique_textures: Vec<_> = all_textures
                 .into_iter()

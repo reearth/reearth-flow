@@ -536,6 +536,40 @@ impl<W: Write> CityGmlXmlWriter<W> {
     }
 
     /// Write global appearance members at CityModel level (before city objects)
+    ///
+    /// # Purpose
+    /// In CityGML, appearance data (textures, materials) is defined at the CityModel level
+    /// as <app:appearanceMember> elements, separate from the city objects. These appearances
+    /// are then referenced by city objects through XLink references (uri="#surface_id").
+    ///
+    /// # CityGML Structure
+    /// ```xml
+    /// <core:CityModel>
+    ///   <app:appearanceMember>
+    ///     <app:Appearance>
+    ///       <app:theme>default</app:theme>
+    ///       <app:surfaceDataMember>
+    ///         <app:ParameterizedTexture>
+    ///           <app:imageURI>texture.jpg</app:imageURI>
+    ///           <app:target uri="#surface_id">
+    ///             <app:TexCoordList>
+    ///               <app:textureCoordinates ring="#ring_id">0.0 0.0 ...</app:textureCoordinates>
+    ///             </app:TexCoordList>
+    ///           </app:target>
+    ///         </app:ParameterizedTexture>
+    ///       </app:surfaceDataMember>
+    ///     </app:Appearance>
+    ///   </app:appearanceMember>
+    ///   <core:cityObjectMember>
+    ///     <!-- Buildings reference surfaces by ID -->
+    ///   </core:cityObjectMember>
+    /// </core:CityModel>
+    /// ```
+    ///
+    /// # Why This is Needed
+    /// The appearance data collected from all features by CityGmlWriter::finish() is written
+    /// here as a single global section at the beginning of the CityModel, before any city
+    /// objects. This matches the structure of the original PLATEAU CityGML files.
     pub fn write_global_appearances(
         &mut self,
         appearance_data: &AppearanceData,
@@ -587,6 +621,27 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
+    /// Write a single texture as a <app:surfaceDataMember> element
+    ///
+    /// # CityGML Structure
+    /// ```xml
+    /// <app:surfaceDataMember>
+    ///   <app:ParameterizedTexture>
+    ///     <app:imageURI>appearance/image.jpg</app:imageURI>
+    ///     <app:mimeType>image/jpg</app:mimeType>
+    ///     <app:target uri="#surface_id">
+    ///       <app:TexCoordList>
+    ///         <app:textureCoordinates ring="#ring_id">0.0 0.0 1.0 1.0...</app:textureCoordinates>
+    ///       </app:TexCoordList>
+    ///     </app:target>
+    ///   </app:ParameterizedTexture>
+    /// </app:surfaceDataMember>
+    /// ```
+    ///
+    /// # Why Path Simplification is Needed
+    /// The texture URI from the reader may be a full file path. CityGML files typically
+    /// store only the relative path (directory/filename) so they remain portable.
+    /// We extract the last two path components to get the appearance directory and image name.
     fn write_surface_data_member(&mut self, texture_data: &TextureData) -> Result<(), SinkError> {
         tracing::debug!(
             "write_surface_data_member: texture_uri={}, targets={}",
@@ -595,6 +650,8 @@ impl<W: Write> CityGmlXmlWriter<W> {
         );
 
         // Extract just the directory and filename part from the full URI
+        // Full path: /home/user/project/appearance/image.jpg
+        // Simplified: appearance/image.jpg (portable relative path)
         let path_parts: Vec<&str> = texture_data.uri.split('/').collect();
         let simplified_path = if path_parts.len() >= 2 {
             // Take the last two parts: directory and filename
@@ -654,6 +711,28 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
+    /// Write a single texture target element
+    ///
+    /// # Purpose
+    /// A target maps a texture to a specific surface (Polygon) in the geometry.
+    /// The target contains:
+    /// - uri: References the Surface ID (Polygon gml:id) - where to apply the texture
+    /// - ring: References the Ring ID (LinearRing gml:id) - which part of the polygon
+    /// - texture_coordinates: UV coordinates mapping image pixels to geometry vertices
+    ///
+    /// # CityGML Structure
+    /// ```xml
+    /// <app:target uri="#UUID_surface_id">
+    ///   <app:TexCoordList>
+    ///     <app:textureCoordinates ring="#UUID_ring_id">0.0 0.0 1.0 0.0 1.0 1.0...</app:textureCoordinates>
+    ///   </app:TexCoordList>
+    /// </app:target>
+    /// ```
+    ///
+    /// # Why Both URI and Ring are Needed
+    /// - The uri attribute references the Polygon (surface) to be textured
+    /// - The ring attribute references the LinearRing within that polygon
+    /// - This allows different parts of a polygon to have different texture coordinates
     fn write_target_element(&mut self, target: &TargetData) -> Result<(), SinkError> {
         tracing::debug!(
             "write_target_element: uri={}, coords_count={}",
@@ -661,7 +740,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
             target.texture_coordinates.len()
         );
 
-        // Start target element with URI attribute
+        // Start target element with URI attribute (references the surface)
         let mut target_start = BytesStart::new("app:target");
         target_start.push_attribute(("uri", target.uri.as_str()));
         self.writer

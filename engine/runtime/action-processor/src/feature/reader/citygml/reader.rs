@@ -371,6 +371,20 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             }
 
             // Extract appearance data BEFORE entity_to_geometry() consumes ent
+            // 
+            // WHY THIS IS NEEDED:
+            // CityGML files contain appearance data (textures, materials) that needs to be
+            // preserved and passed to downstream processors (e.g., CityGMLWriter). The 
+            // appearance data is stored in ent.appearance_store, but entity_to_geometry()
+            // consumes the entity, making it impossible to access afterward.
+            //
+            // The appearance data is converted to AttributeValue format so it can be:
+            // 1. Stored in the feature's attributes
+            // 2. Passed through the workflow pipeline
+            // 3. Used by CityGMLWriter to reconstruct appearance elements in output
+            //
+            // PERFORMANCE NOTE: The conversion is optimized from O(T×S×R) to O(T + S×R)
+            // where T=textures, S=surfaces, R=rings. See convert_appearance_store_to_attribute_value.
             let appearance_member_data =
                 convert_appearance_store_to_attribute_value(&ent.appearance_store.read().unwrap());
 
@@ -408,7 +422,71 @@ fn parse_and_write_features<R: BufRead, W: Write>(
     Ok(count)
 }
 
-// Helper function to convert AppearanceStore to AttributeValue
+/// Converts AppearanceStore (from nusamai-plateau) to AttributeValue for workflow processing.
+///
+/// # Purpose
+/// CityGML appearance data (textures, materials, themes) needs to be extracted from the 
+/// nusamai-plateau parser's data structures and converted to reearth-flow's AttributeValue 
+/// format so it can flow through the pipeline to sinks like CityGMLWriter.
+///
+/// # Data Flow
+/// Input: AppearanceStore from nusamai-plateau parser
+///   ├─ textures: Vec<Texture> (image URLs)
+///   ├─ materials: Vec<Material> (colors, properties)  
+///   └─ themes: HashMap<String, Theme>
+///       ├─ ring_id_to_texture: HashMap<ring_id, (texture_index, tex_coords)>
+///       ├─ surface_id_to_material: HashMap<surface_id, material_index>
+///       └─ surface_id_to_rings: HashMap<surface_id, Vec<ring_id>>
+///
+/// Output: AttributeValue::Map with:
+///   ├─ "textures": Array of {uri, targets: [{uri, ring, textureCoordinates}]}
+///   ├─ "materials": Array of {diffuseColor, specularColor, ambientIntensity}
+///   └─ "themes": Array of {name, surfaceMappings}
+///
+/// # Performance Optimization
+/// 
+/// ## Problem (Original Implementation)
+/// The original code had 4-level nested loops with O(T × S × R) complexity:
+/// ```ignore
+/// for texture in textures {           // T iterations
+///     for theme in themes {           // S iterations
+///         for (surface_id, ring_ids) in surface_id_to_rings {  // R iterations
+///             for ring_id in ring_ids {                          // Inner loop
+///                 if ring_id_to_texture.get(ring_id).texture_index == current_texture_index {
+///                     // Build target
+///                 }
+///             }
+///         }
+///     }
+/// }
+/// ```
+/// Example: 100 textures × 500 surfaces × 10 rings = 500,000 iterations
+///
+/// ## Solution (Current Implementation)
+/// Uses a 2-phase approach with O(T + S×R) complexity:
+/// 
+/// Phase 1 (O(S×R)): Pre-build reverse lookup map from surface_id_to_rings
+///   - Create ring_id -> surface_id mapping
+///   - This is the ONLY time we iterate surface_id_to_rings
+///
+/// Phase 2 (O(T + R)): Single pass through ring_id_to_texture
+///   - Each ring is processed exactly once
+///   - O(1) lookup to find its surface using pre-built map
+///   - Targets are grouped by texture_index in BTreeMap
+///
+/// Phase 3 (O(T)): Build output textures array
+///   - Single iteration through textures
+///   - O(1) lookup in pre-grouped targets
+///
+/// Total: ~5,100 operations vs 500,000 = ~100x speedup for typical inputs
+///
+/// # Why surface_id_to_rings is Essential
+/// The surface_id_to_rings field provides the mapping between:
+/// - Surface IDs (Polygon gml:id) - used as target.uri in CityGML output
+/// - Ring IDs (LinearRing gml:id) - used as target.ring in CityGML output
+///
+/// Without this mapping, we cannot correctly reconstruct CityGML appearance targets
+/// because each target needs BOTH the surface URI and the ring reference.
 fn convert_appearance_store_to_attribute_value(
     appearance_store: &AppearanceStore,
 ) -> AttributeValue {

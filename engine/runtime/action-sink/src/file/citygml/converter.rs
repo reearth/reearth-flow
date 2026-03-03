@@ -12,6 +12,13 @@ pub struct GeometryEntry {
     pub element: GmlElement,
 }
 
+/// Represents a texture target in CityGML format
+/// 
+/// In CityGML, a texture target maps a texture image to a specific surface (Polygon).
+/// The target contains:
+/// - uri: The Surface ID (Polygon gml:id) - used as target.uri in CityGML output
+/// - ring: The Ring ID (LinearRing gml:id) - used as target.ring attribute
+/// - texture_coordinates: UV coordinates for mapping the image to the surface
 #[derive(Debug, Clone)]
 pub struct TargetData {
     pub uri: String,                      // Surface ID (Polygon gml:id)
@@ -19,12 +26,26 @@ pub struct TargetData {
     pub texture_coordinates: Vec<String>, // List of texture coordinate pairs as strings
 }
 
+/// Represents a single texture image with its associated targets
+/// 
+/// In CityGML, a texture is defined once with an image URI, then referenced
+/// by multiple surfaces through targets. This structure holds:
+/// - uri: The image file path/URL
+/// - targets: List of surfaces that use this texture with their UV coordinates
 #[derive(Debug, Clone)]
 pub struct TextureData {
     pub uri: String,
     pub targets: Vec<TargetData>, // Targets associated with this specific texture
 }
 
+/// Container for all appearance data in a CityGML model
+/// 
+/// CityGML appearance data includes:
+/// - textures: Parameterized textures (image-based) with UV mapping
+/// - themes: Named appearance themes (e.g., "summer", "winter")
+/// 
+/// This data is collected from all features and written as a global
+/// <app:appearanceMember> section at the CityModel level.
 #[derive(Debug, Clone)]
 pub struct AppearanceData {
     pub textures: Vec<TextureData>, // Each texture with its associated targets
@@ -32,6 +53,32 @@ pub struct AppearanceData {
 }
 
 /// Extract appearance data from feature attributes
+///
+/// # Purpose
+/// When CityGML files are read by FeatureCityGMLReader, appearance data (textures,
+/// materials, themes) is extracted and stored in each feature's attributes under
+/// the key "appearanceMember". This function extracts that data and converts it
+/// back to structured Rust types for the CityGML writer.
+///
+/// # Data Flow
+/// ```text
+/// CityGML File -> FeatureCityGMLReader -> feature.attributes["appearanceMember"]
+///                                                     |
+///                                                     v
+///                                      extract_appearance_data()
+///                                                     |
+///                                                     v
+///                                            AppearanceData
+///                                                     |
+///                                                     v
+///                                       CityGmlWriter (XML output)
+/// ```
+///
+/// # Why This is Needed
+/// The appearance data flows through the workflow pipeline as AttributeValue
+/// (serialized in JSONL format). This function deserializes it back to structured
+/// types so the CityGML writer can reconstruct the <app:appearanceMember> XML
+/// elements.
 pub fn extract_appearance_data(feature: &Feature) -> Option<AppearanceData> {
     let appearance_attr = Attribute::new("appearanceMember");
     let appearance_member = feature.attributes.get(&appearance_attr)?;
