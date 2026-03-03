@@ -147,6 +147,7 @@ const SearchPanel = ({
           currentWorkflowFilter={currentWorkflowFilter}
           actionTypes={actionTypes}
           workflows={workflows}
+          onShowSearchPanel={onShowSearchPanel}
           setSearchTerm={setSearchTerm}
           setCurrentActionTypeFilter={setCurrentActionTypeFilter}
           setCurrentWorkflowFilter={setCurrentWorkflowFilter}

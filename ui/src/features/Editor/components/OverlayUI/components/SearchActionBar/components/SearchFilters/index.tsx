@@ -3,7 +3,7 @@ import {
   ShareNetworkIcon,
   StackIcon,
 } from "@phosphor-icons/react";
-import { RefObject, useState } from "react";
+import { KeyboardEvent, RefObject, useCallback, useState } from "react";
 
 import {
   Collapsible,
@@ -32,6 +32,7 @@ type SearchFiltersProps = {
     value: string;
     label: string;
   }[];
+  onShowSearchPanel: (open: boolean) => void;
   setCurrentActionTypeFilter: (actionType: string) => void;
   setCurrentWorkflowFilter: (workflow: string) => void;
   setSearchTerm: (term: string) => void;
@@ -44,12 +45,25 @@ const SearchFilters = ({
   currentWorkflowFilter,
   actionTypes,
   workflows,
+  onShowSearchPanel,
   setCurrentActionTypeFilter,
   setCurrentWorkflowFilter,
   setSearchTerm,
 }: SearchFiltersProps) => {
   const t = useT();
   const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      const isModifierPressed = event.metaKey || event.ctrlKey;
+      const isKeyK = event.key === "K" || event.key === "k";
+      if (isModifierPressed && isKeyK) {
+        onShowSearchPanel(false);
+        searchInputRef.current?.blur();
+      }
+    },
+    [onShowSearchPanel, searchInputRef],
+  );
 
   return (
     <Collapsible
@@ -59,6 +73,7 @@ const SearchFilters = ({
       <div className="flex items-center gap-2">
         <Input
           ref={searchInputRef}
+          onKeyDown={handleKeyDown}
           placeholder={t("Search") + "..."}
           value={searchTerm ?? ""}
           onChange={(e) => setSearchTerm(e.target.value)}

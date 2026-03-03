@@ -3,7 +3,14 @@ import {
   ArrowSquareOutIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  KeyboardEvent,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import {
   Button,
@@ -171,7 +178,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
     }
   }, []);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const { current } = scrollRef;
     if (!current) return;
 

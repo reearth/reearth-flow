@@ -10,7 +10,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   DropdownMenu,
@@ -208,11 +215,9 @@ function VirtualizedTable<TData, TValue>({
   );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTableRowElement>) => {
-      e.stopPropagation();
+    (e: KeyboardEvent<HTMLTableRowElement>) => {
       if (detailsOpen) {
         e.preventDefault();
-        e.stopPropagation();
         return;
       }
 
