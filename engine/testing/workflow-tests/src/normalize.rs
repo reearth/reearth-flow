@@ -17,7 +17,12 @@ fn main() -> Result<()> {
         .join("testdata");
 
     if !testdata_dir.exists() {
-        // Try relative path from current directory
+        // Try relative path from current directory (testing/data/testcases)
+        let testdata_dir = Path::new("testing/data/testcases");
+        if testdata_dir.exists() {
+            return normalize_all(testdata_dir);
+        }
+        // Legacy path fallback
         let testdata_dir = Path::new("runtime/examples/fixture/testdata");
         if testdata_dir.exists() {
             return normalize_all(testdata_dir);

@@ -143,7 +143,7 @@ impl<
 {
     pub fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         match valid_type {
-            ValidationType::CorruptGeometry => {
+            ValidationType::CorruptGeometry(_) => {
                 // Check for degenerate triangles
                 let mut problem_reports = Vec::new();
                 for triangle_indices in self.triangles.iter() {

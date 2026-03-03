@@ -233,7 +233,7 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - corruptGeometry
+      - corruptGeometry: 0.01
   - id: 6a1d4f7c-9e2b-4c8a-f5e1-7c2a6f9d4e1b
     name: PlanarityFilter
     type: action
@@ -292,8 +292,8 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - duplicateConsecutivePoints: 0.01
-      - selfIntersection: 0.01
+      - duplicateConsecutivePoints: 0.0099
+      - selfIntersection: 0.0099
   - id: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
     name: AttributeManagerSelfIntersection
     type: action
@@ -2791,16 +2791,13 @@ graphs:
       - newAttribute: L-TRAN-03 xlink参照エラー
         expr: |
           env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
-      - newAttribute: 面の向き不正
-        expr: |
-          env.get("__value")["面の向き不正"] ?? 0
       - newAttribute: 面のエラー
         expr: |
           env.get("__value")["面のエラー"] ?? 0
       - newAttribute: totalErrorCount
         expr: |
           let total = 0;
-          let keys = ["L-TRAN-03 xlink参照エラー", "面の向き不正", "面のエラー"];
+          let keys = ["L-TRAN-03 xlink参照エラー", "面のエラー"];
           for key in keys {
             total += env.get("__value")[key] ?? 0;
           }

@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.8 - 2026-03-03
+
+### Misc
+
+#### 🚀 Features
+
+- Citygml  ([#1962](https://github.com/reearth/reearth-flow/pull/1962)) [`0fe7b5`](https://github.com/reearth/reearth-flow/commit/0fe7b5)
+
+### engine
+
+#### 🚀 Features
+
+- Add CoordinateExtractor geometry processor ([#1950](https://github.com/reearth/reearth-flow/pull/1950)) [`8a8462`](https://github.com/reearth/reearth-flow/commit/8a8462)
+
+#### 🔧 Bug Fixes
+
+- Qc workflows bug fixes ([#1961](https://github.com/reearth/reearth-flow/pull/1961)) [`762315`](https://github.com/reearth/reearth-flow/commit/762315)
+- Add lod0,2,3 processing to data-convert 10-wtr workflow ([#1959](https://github.com/reearth/reearth-flow/pull/1959)) [`c4ae63`](https://github.com/reearth/reearth-flow/commit/c4ae63)
+- MVT preserve CityGML feature attribute order ([#1957](https://github.com/reearth/reearth-flow/pull/1957)) [`6b3f7c`](https://github.com/reearth/reearth-flow/commit/6b3f7c)
+- Sun position calculator time format ([#1951](https://github.com/reearth/reearth-flow/pull/1951)) [`b0eedb`](https://github.com/reearth/reearth-flow/commit/b0eedb)
+- Decompressor util memory fix ([#1952](https://github.com/reearth/reearth-flow/pull/1952)) [`a31461`](https://github.com/reearth/reearth-flow/commit/a31461)
+- Use native certificate store for HTTPS requests in HTTPCaller ([#1955](https://github.com/reearth/reearth-flow/pull/1955)) [`9c86b5`](https://github.com/reearth/reearth-flow/commit/9c86b5)
+- CZMLWriter numeric time support ([#1954](https://github.com/reearth/reearth-flow/pull/1954)) [`3bea70`](https://github.com/reearth/reearth-flow/commit/3bea70)
+- Oom fix for qc fld workflow ([#1947](https://github.com/reearth/reearth-flow/pull/1947)) [`3caf3e`](https://github.com/reearth/reearth-flow/commit/3caf3e)
+- Atlas packing skip large texture ([#1946](https://github.com/reearth/reearth-flow/pull/1946)) [`861b84`](https://github.com/reearth/reearth-flow/commit/861b84)
+- Enable draco compression for all data-convert workflows and fix tests ([#1942](https://github.com/reearth/reearth-flow/pull/1942)) [`cbc0fc`](https://github.com/reearth/reearth-flow/commit/cbc0fc)
+- Fix solid inspection related errors ([#1934](https://github.com/reearth/reearth-flow/pull/1934)) [`b2b791`](https://github.com/reearth/reearth-flow/commit/b2b791)
+
+#### 📖 Documentation
+
+- Move PLATEAU data attribution to testing&#x2F;data&#x2F;README.md ([#1944](https://github.com/reearth/reearth-flow/pull/1944)) [`9e254b`](https://github.com/reearth/reearth-flow/commit/9e254b)
+
+#### 🧪 Testing
+
+- Consolidate test crates and shared fixtures into testing&#x2F; ([#1943](https://github.com/reearth/reearth-flow/pull/1943)) [`7c90c8`](https://github.com/reearth/reearth-flow/commit/7c90c8)
+
+#### Miscellaneous Tasks
+
+- Bump Rust toolchain and upgrade dependencies ([#1956](https://github.com/reearth/reearth-flow/pull/1956)) [`58ce8d`](https://github.com/reearth/reearth-flow/commit/58ce8d)
+
+### 
+
+#### 🚀 Features
+
+- Citygml  ([#1962](https://github.com/reearth/reearth-flow/pull/1962)) [`0fe7b5`](https://github.com/reearth/reearth-flow/commit/0fe7b5)
+
 ## 0.1.0-alpha.7 - 2026-02-24
 
 ### engine

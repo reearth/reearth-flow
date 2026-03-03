@@ -152,8 +152,8 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - duplicateConsecutivePoints: 0.01
-      - corruptGeometry
+      - duplicateConsecutivePoints: 0.009
+      - corruptGeometry: 0.01
   - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
     name: TwoDimensionForcer
     type: action

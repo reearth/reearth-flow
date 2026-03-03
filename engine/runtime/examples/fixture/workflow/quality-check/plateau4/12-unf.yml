@@ -1807,7 +1807,7 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - corruptGeometry
+      - corruptGeometry: 0.01
   - id: 6a1d4f7c-9e2b-4c8a-f5e1-7c2a6f9d4e1b
     name: PlanarityFilter
     type: action
@@ -1866,8 +1866,8 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - duplicateConsecutivePoints: 0.01
-      - selfIntersection: 0.01
+      - duplicateConsecutivePoints: 0.0099
+      - selfIntersection: 0.0099
   - id: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
     name: AttributeManagerSelfIntersection
     type: action
