@@ -34,10 +34,12 @@ pub fn entity_to_geometry(
     reconstruct_unresolved_solid: bool,
 ) -> Result<Geometry, Error> {
     let apperance = entity.appearance_store.read().unwrap();
-    let theme = apperance
+    let solar_theme = apperance.themes.get("solarRadiation");
+    let fallback_theme = apperance
         .themes
         .get("rgbTexture")
         .or_else(|| apperance.themes.get("FMETheme"));
+    let theme = solar_theme.or(fallback_theme);
     let geoms = entity.geometry_store.read().unwrap();
     let epsg = geoms.epsg;
     // entity must be a Feature
@@ -49,7 +51,7 @@ pub fn entity_to_geometry(
     };
 
     // Collect polygon ranges for this feature (global indices in geometry store)
-    let mut polygon_ranges: Vec<(u32, u32)> = geometries
+    let mut polygon_ranges: Vec<(u32, u32, bool)> = geometries
         .iter()
         .filter(|g| {
             matches!(
@@ -59,7 +61,7 @@ pub fn entity_to_geometry(
         })
         .flat_map(|g| {
             let inline = if g.len > 0 {
-                vec![(g.pos, g.pos + g.len)]
+                vec![(g.pos, g.pos + g.len, false)]
             } else {
                 vec![]
             };
@@ -84,10 +86,20 @@ pub fn entity_to_geometry(
                 }
                 // Resolved xlink:href ranges
                 // TODO: implement resolving for other geometry types (requires upstream support in nusamai_citygml parser)
-                for &(start, end) in &geometry.resolved_ranges {
+                for &(start, end, flip) in &geometry.resolved_ranges {
                     for idx_poly in geoms.multipolygon.iter_range(start as usize..end as usize) {
-                        let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                        polygons.push(poly.into());
+                        let poly: Polygon3D<f64> =
+                            idx_poly.transform(|c| geoms.vertices[*c as usize]).into();
+                        if flip {
+                            let (mut exterior, mut interiors) = poly.into_inner();
+                            exterior.reverse_inplace();
+                            for interior in interiors.iter_mut() {
+                                interior.reverse_inplace();
+                            }
+                            polygons.push(Polygon3D::new(exterior, interiors));
+                        } else {
+                            polygons.push(poly);
+                        }
                     }
                 }
                 let mut geometry_feature = GmlGeometry::from(geometry.clone());
@@ -177,12 +189,15 @@ pub fn entity_to_geometry(
                 ..GmlGeometry::new(crate::geometry::GeometryType::Solid, None)
             };
             gml_geometries = vec![solid_gml];
-            polygon_ranges = vec![(0, polygon_count as u32)];
+            polygon_ranges = vec![(0, polygon_count as u32, false)];
         }
     }
 
     // Calculate total polygon count for this feature
-    let total_polygons: usize = polygon_ranges.iter().map(|(s, e)| (e - s) as usize).sum();
+    let total_polygons: usize = polygon_ranges
+        .iter()
+        .map(|(s, e, _)| (e - s) as usize)
+        .sum();
 
     let mut geometry_entity = CityGmlGeometry::new(
         gml_geometries,
@@ -210,7 +225,7 @@ pub fn entity_to_geometry(
         // find and apply materials (only for this feature's polygons)
         {
             let mut poly_materials = Vec::with_capacity(total_polygons);
-            for &(start, end) in &polygon_ranges {
+            for &(start, end, _flip) in &polygon_ranges {
                 for global_idx in start..end {
                     // Find material for this polygon via surface_spans
                     let mut mat_iter = geoms
@@ -242,16 +257,28 @@ pub fn entity_to_geometry(
                 cumulative_rings += geoms.multipolygon.get(poly_idx).rings().count();
             }
 
-            for &(start, end) in &polygon_ranges {
+            for &(start, end, _flip) in &polygon_ranges {
                 for global_idx in start..end {
                     let poly = geoms.multipolygon.get(global_idx as usize);
                     let global_ring_idx = polygon_to_ring_start[global_idx as usize];
 
                     for (i, ring) in poly.rings().enumerate() {
                         let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
-                        let tex = ring_id
-                            .clone()
-                            .and_then(|id| theme.ring_id_to_texture.get(&id));
+                        // When solarRadiation theme is present, use it for rings that have UV
+                        // data in it; fall back to the photo texture theme for other rings.
+                        let tex = ring_id.clone().and_then(|id| {
+                            if let Some(st) = solar_theme {
+                                let solar_tex = st.ring_id_to_texture.get(&id);
+                                if solar_tex.is_some() {
+                                    return solar_tex;
+                                }
+                                fallback_theme.and_then(|ft| ft.ring_id_to_texture.get(&id))
+                            } else {
+                                // No solar theme; theme is the fallback (or only) theme.
+                                // Inside `if let Some(theme) = theme`, `theme` is &Theme.
+                                theme.ring_id_to_texture.get(&id)
+                            }
+                        });
 
                         let mut add_dummy_texture = || {
                             let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
@@ -299,7 +326,7 @@ pub fn entity_to_geometry(
         geometry_entity.polygon_materials = vec![None; total_polygons];
         geometry_entity.polygon_textures = vec![None; total_polygons];
         let mut poly_uvs = flatgeom::MultiPolygon::new();
-        for &(start, end) in &polygon_ranges {
+        for &(start, end, _flip) in &polygon_ranges {
             for global_idx in start..end {
                 let poly = geoms.multipolygon.get(global_idx as usize);
                 for (i, ring) in poly.rings().enumerate() {

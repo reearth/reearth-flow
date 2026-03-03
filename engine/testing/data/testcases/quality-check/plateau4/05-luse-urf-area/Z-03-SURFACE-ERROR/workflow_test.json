@@ -1,0 +1,58 @@
+{
+  "description": "Test for plateau4 05 surface error.",
+  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "luse_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/luse",
+      "name": "luse_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "05_土地利用_面のエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_luse.json",
+      "includeFields": [
+        "面のエラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "05_土地利用_検査結果一覧.csv",
+      "includeColumns": [
+        "面のエラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
+}

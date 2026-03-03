@@ -377,7 +377,6 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
@@ -399,7 +398,6 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
@@ -421,7 +419,6 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
@@ -443,7 +440,6 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["package"];

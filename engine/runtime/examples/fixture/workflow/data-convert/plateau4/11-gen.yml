@@ -144,7 +144,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          env.get("__feature_type") == "uro:DmGeometricAttribute"
+          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -384,12 +384,6 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: featureId
-        method: remove
-      - attribute: featureParentId
-        method: remove
-      - attribute: geometryName
-        method: remove
       - attribute: cityCode
         method: rename
         value: city_code
@@ -399,45 +393,9 @@ graphs:
       - attribute: lod
         method: rename
         value: __lod
-      - attribute: gmlId
-        method: remove
-      - attribute: gmlPropertyName
-        method: remove
-      - attribute: fileIndex
-        method: remove
-      - attribute: root
-        method: remove
-      - attribute: cityGmlPath
-        method: remove
-      - attribute: admin
-        method: remove
-      - attribute: area
-        method: remove
       - attribute: package
         method: rename
         value: __package
-      - attribute: extension
-        method: remove
-      - attribute: dirRoot
-        method: remove
-      - attribute: gmlRootId
-        method: remove
-      - attribute: maxLod
-        method: remove
-      - attribute: dirSchemas
-        method: remove
-      - attribute: dirCodelists
-        method: remove
-      - attribute: path
-        method: remove
-      - attribute: name
-        method: remove
-      - attribute: udxDirs
-        method: remove
-      - attribute: featureType
-        method: remove
-      - attribute: gmlName
-        method: remove
       - attribute: gml:name_code
         method: rename
         value: __gml_name_code
@@ -547,3 +505,8 @@ graphs:
     to: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
     fromPort: default
     toPort: default
+  - id: e0adccfb-46f1-4706-89f6-7b60853eb1a1
+    from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
+    to: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
+    fromPort: schema
+    toPort: schema

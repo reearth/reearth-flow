@@ -1,0 +1,58 @@
+{
+  "description": "Test for plateau4 L-TRAN-03 inspection.",
+  "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "tran_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/tran",
+      "name": "tran_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "03_交通_xlink参照エラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_tran.json",
+      "includeFields": [
+        "L-TRAN-03 xlink参照エラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "03_交通_検査結果一覧.csv",
+      "includeColumns": [
+        "L-TRAN-03 xlink参照エラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
+}

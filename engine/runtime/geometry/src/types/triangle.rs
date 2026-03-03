@@ -160,9 +160,9 @@ impl<T> Triangle3D<T>
 where
     T: CoordNum + Float + Div,
 {
-    pub fn boundary_contains(&self, p: &Coordinate3D<T>) -> bool {
+    pub fn boundary_contains(&self, p: &Coordinate3D<T>, tolerance: Option<T>) -> bool {
         let lines = self.to_lines();
-        lines.iter().any(|line| line.contains(*p))
+        lines.iter().any(|line| line.contains(*p, tolerance))
     }
 
     pub fn contains(&self, p: &Coordinate3D<T>) -> bool {
@@ -235,7 +235,7 @@ mod tests {
                 if inside { "" } else { "not" }
             );
             assert!(
-                t.boundary_contains(&p) == on_boundary,
+                t.boundary_contains(&p, None) == on_boundary,
                 "point {:?} must {} be on boundary",
                 p,
                 if on_boundary { "" } else { "not" }

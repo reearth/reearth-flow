@@ -1,0 +1,19 @@
+# lod0+lod1 wtr general test
+citygml_zip_name = "13105_bunkyo-ku_pref_2025_citygml_1_op_wtr.zip"
+
+[tests.cesium.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[filter.tree]
+"udx/wtr/533945_wtr_6697_op.gml" = [
+  "wtr_e6d396ca-e5ef-4f69-a92a-206bb3fd23a7",
+  "wtr_cf749647-701f-4488-a176-5f6205859103",
+  "wtr_7644a3aa-a7f9-472a-aba5-4fac0c95e6fe",
+  "wtr_7b617d5b-5790-411c-b44d-45da3adce6ab",
+  "wtr_8ab5b5ac-57f2-4ede-bd97-5ab595fe415b",
+]

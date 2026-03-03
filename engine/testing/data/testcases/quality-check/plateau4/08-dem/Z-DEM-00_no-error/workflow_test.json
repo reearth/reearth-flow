@@ -1,0 +1,59 @@
+{
+  "description": "Verify output files: no errors, empty CityGML",
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "dem_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/dem",
+      "name": "dem_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_dem.json"
+      },
+      {
+        "expectedFile": "summary_common.json"
+      }
+    ],
+    "fileErrorSummary": [
+      {
+        "expectedFile": "08_地形_検査結果一覧.csv"
+      },
+      {
+        "expectedFile": "01_共通.csv"
+      }
+    ]
+  },
+  "expectResultOkFile": true
+}

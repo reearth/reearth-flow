@@ -1,0 +1,66 @@
+{
+  "description": "Test quality check for C01",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "frn_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../08220_city_2023_objectlist_op_c06_excluded.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/frn",
+      "name": "frn_.zip"
+    },
+    {
+      "path": "../../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../../fixtures/plateau-citymodel/08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "01_共通_GML_ID重複.csv",
+    "except": [
+      "Index"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": [
+          "Index"
+        ]
+      },
+      {
+        "expectedFile": "04_都市設備_検査結果一覧.csv",
+        "excludeColumns": [
+          "Index"
+        ]
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}

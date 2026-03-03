@@ -1,0 +1,68 @@
+{
+  "description": "Verify output files for other construction quality check with no errors",
+  "workflowPath": "quality-check/plateau4/10-cons/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "cons_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/43206_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6670
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/cons",
+      "name": "cons_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_common.json"
+      },
+      {
+        "expectedFile": "summary_common2-cons.json"
+      },
+      {
+        "expectedFile": "summary_cons.json"
+      }
+    ],
+    "fileErrorSummary": [
+      {
+        "expectedFile": "01_共通.csv"
+      },
+      {
+        "expectedFile": "10_その他の構造物_検査結果一覧.csv",
+        "keyColumns": [
+          "Filename",
+          "フィーチャータイプ",
+          "LOD"
+        ]
+      }
+    ]
+  },
+  "expectResultOkFile": true,
+  "unexpectedOutputValidation": true
+}
