@@ -2044,6 +2044,18 @@ Export features as CZML for Cesium visualization. Supports static entities and t
     "output"
   ],
   "properties": {
+    "colorAttribute": {
+      "title": "Color Attribute",
+      "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "epoch": {
       "title": "Epoch",
       "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
@@ -2075,6 +2087,18 @@ Export features as CZML for Cesium visualization. Supports static entities and t
         }
       ]
     },
+    "heightAttribute": {
+      "title": "Height Attribute",
+      "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "interpolationAlgorithm": {
       "title": "Interpolation Algorithm",
       "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
@@ -2091,6 +2115,14 @@ Export features as CZML for Cesium visualization. Supports static entities and t
       "default": 1,
       "type": "integer",
       "format": "uint32",
+      "minimum": 0.0
+    },
+    "opacity": {
+      "title": "Opacity",
+      "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
+      "default": 180,
+      "type": "integer",
+      "format": "uint8",
       "minimum": 0.0
     },
     "output": {
