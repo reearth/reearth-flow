@@ -48,6 +48,7 @@ type OverlayUIProps = {
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   openNodePickerViaShortcut: boolean;
+  refetchWorkflowVariables: () => void;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodePickerClose: () => void;
@@ -111,6 +112,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   currentWorkflowId,
   customDebugRunWorkflowVariables,
   openNodePickerViaShortcut,
+  refetchWorkflowVariables,
   onNodesAdd,
   onNodesChange,
   onNodePickerClose,
@@ -193,6 +195,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDebugRunStop={onDebugRunStop}
               customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
               onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+              refetchWorkflowVariables={refetchWorkflowVariables}
             />
             <div className="h-4/5 border-r" />
             <ActionBar

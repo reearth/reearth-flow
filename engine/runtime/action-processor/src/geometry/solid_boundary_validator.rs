@@ -3,7 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate3D, line_string::LineString3D, triangular_mesh::TriangularMesh,
+    coordinate::Coordinate3D, line_string::LineString3D, polygon::Polygon3D,
+    triangular_mesh::TriangularMesh,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -154,110 +155,86 @@ impl Processor for SolidBoundaryValidator {
             return Ok(());
         }
 
-        // Extract solid faces from feature
-        let faces: Vec<reearth_flow_geometry::types::line_string::LineString> = match &geometry
-            .value
-        {
+        // Extract polygons and build triangular mesh from feature geometry
+        let (mesh, polygons) = match &geometry.value {
             GeometryValue::FlowGeometry3D(geom) => {
                 if let Some(solid) = geom.as_solid() {
-                    solid
+                    let polygons: Vec<Polygon3D<f64>> = solid
                         .all_faces()
                         .into_iter()
                         .map(|f| {
-                            f.0.iter()
-                                .map(|v| Coordinate3D::new__(v.x, v.y, v.z))
-                                .collect()
+                            let ring: LineString3D<f64> =
+                                f.0.iter()
+                                    .map(|v| Coordinate3D::new__(v.x, v.y, v.z))
+                                    .collect();
+                            Polygon3D::new(ring, vec![])
                         })
-                        .collect::<Vec<_>>()
+                        .collect();
+                    let faces: Vec<LineString3D<f64>> =
+                        polygons.iter().map(|p| p.exterior().clone()).collect();
+                    let mesh = TriangularMesh::from_faces(&faces, Some(tolerance));
+                    (mesh, polygons)
                 } else {
-                    // Not a solid geometry.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 }
             }
             GeometryValue::CityGmlGeometry(gml_geom) => {
                 if gml_geom.gml_geometries.len() > 1 {
-                    return Err(Box::new(GeometryProcessorError::SolidBoundaryValidatorFactory(
-                        "Multiple geometries detected, but only one solid can be validated at a time.".to_string(),
-                    )));
+                    return Err(Box::new(
+                        GeometryProcessorError::SolidBoundaryValidatorFactory(
+                            "Multiple geometries detected, but only one solid can be validated at a time.".to_string(),
+                        ),
+                    ));
                 }
 
                 let Some(geom) = gml_geom.gml_geometries.first() else {
-                    // No geometry given.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 };
 
                 if geom.ty.name() != "Solid" {
-                    // Not a solid geometry.
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 }
 
-                let mut polygons = Vec::new();
-                for p in &geom.polygons {
-                    polygons.push(p.clone().into_merged_contour(Some(tolerance))?);
-                }
-                polygons
+                let polygons: Vec<Polygon3D<f64>> = geom.polygons.clone();
+                let mesh = TriangularMesh::try_from_polygons(polygons.clone(), Some(tolerance));
+                (mesh, polygons)
             }
             _ => {
-                // Not a solid geometry, send to rejected port
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                 return Ok(());
             }
         };
 
-        // Extract vertices, edges, and triangles from the solid
-        // Use a much smaller tolerance for vertex merging than the geometric tolerance.
-        // The geometric tolerance can cause non-adjacent but spatially close vertices
-        // to merge, corrupting the topology and producing false manifold violations.
-        let vertex_merge_tolerance = tolerance * 0.01;
-        let mesh = match TriangularMesh::from_faces(&faces, Some(vertex_merge_tolerance)) {
+        let mesh = match mesh {
             Ok(mesh) => mesh,
             Err(_) => {
-                // Some faces failed triangulation (e.g., non-planar faces).
-                // Retry with only faces that can be triangulated.
-                // Missing faces will be caught by subsequent validation checks.
-                let valid_faces: Vec<_> = faces
-                    .iter()
-                    .filter(|face| {
-                        TriangularMesh::from_faces(&[(*face).clone()], Some(vertex_merge_tolerance))
-                            .is_ok()
-                    })
-                    .cloned()
-                    .collect();
-                match TriangularMesh::from_faces(&valid_faces, Some(vertex_merge_tolerance)) {
-                    Ok(mesh) => mesh,
-                    Err(_) => {
-                        // Even valid faces can't build a mesh
-                        let mut feature = feature.clone();
-                        feature.attributes_mut().insert(
-                            Attribute::new("solid_boundary_issues"),
-                            AttributeValue::from(
-                                serde_json::to_value(&ValidationResult {
-                                    issue_count: 1,
-                                    issue: IssueType::SurfaceIssue,
-                                })
-                                .unwrap(),
-                            ),
-                        );
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()),
-                        );
-                        return Ok(());
-                    }
-                }
+                let mut feature = feature.clone();
+                feature.attributes_mut().insert(
+                    Attribute::new("solid_boundary_issues"),
+                    AttributeValue::from(
+                        serde_json::to_value(&ValidationResult {
+                            issue_count: 1,
+                            issue: IssueType::SurfaceIssue,
+                        })
+                        .unwrap(),
+                    ),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+                return Ok(());
             }
         };
         if mesh.is_empty() {
-            // If triangulation fails, send to rejected port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         }
 
         // Check manifold condition
         let result = if let Some(result) = {
-            let len = mesh.edges_violating_manifold_condition().len();
+            let violating = mesh.edges_violating_manifold_condition();
+            let len = violating.len();
             if len > 0 {
                 Some(ValidationResult {
                     issue_count: len,
@@ -298,7 +275,7 @@ impl Processor for SolidBoundaryValidator {
             result
         }
         // Check face orientation
-        else if let Some(result) = Self::check_orientation(&faces, mesh.get_vertices()) {
+        else if let Some(result) = Self::check_orientation(&polygons, mesh.get_vertices()) {
             result
         }
         // No issues found
@@ -350,43 +327,48 @@ impl SolidBoundaryValidator {
     }
 
     fn check_orientation(
-        faces: &[LineString3D<f64>],
+        polygons: &[Polygon3D<f64>],
         vertices: &[Coordinate3D<f64>],
     ) -> Option<ValidationResult> {
         let epsilon = 1e-8;
-        if faces.is_empty() {
+        if polygons.is_empty() {
             return None;
         }
-        let mut directed_edges = Vec::new();
-        let faces = &faces
-            .iter()
-            .map(|f| {
-                f.iter()
-                    .map(|v| {
-                        vertices
-                            .iter()
-                            .position(|&vv| (vv - *v).norm() < epsilon)
-                            .unwrap()
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        for face in faces {
-            for edge in face.windows(2) {
-                if edge[0] < edge[1] {
-                    let edge = [edge[0], edge[1]];
-                    directed_edges.push((edge, true));
-                } else {
-                    let edge = [edge[1], edge[0]];
-                    directed_edges.push((edge, false));
+
+        // Map a 3D coordinate to its index in the shared vertex list.
+        let vertex_index = |v: &Coordinate3D<f64>| {
+            vertices
+                .iter()
+                .position(|&vv| (vv - *v).norm() < epsilon)
+                .unwrap()
+        };
+
+        // Build directed edges from every ring of every polygon.
+        // Interior hole rings are included so that edges shared between a hole
+        // boundary and an adjacent wall polygon have matching directed-edge partners.
+        let mut directed_edges: Vec<([usize; 2], bool)> = Vec::new();
+        for polygon in polygons {
+            let rings = std::iter::once(polygon.exterior()).chain(polygon.interiors().iter());
+            for ring in rings {
+                let indices: Vec<usize> = ring.iter().map(&vertex_index).collect();
+                for w in indices.windows(2) {
+                    if w[0] < w[1] {
+                        directed_edges.push(([w[0], w[1]], true));
+                    } else {
+                        directed_edges.push(([w[1], w[0]], false));
+                    }
                 }
             }
         }
         directed_edges.sort_by_key(|(e, _)| *e);
-        let issue_count = directed_edges
-            .chunks_exact(2)
-            .filter(|chunk| chunk[0].0 != chunk[1].0 || chunk[0].1 == chunk[1].1)
-            .count();
+
+        let mut issue_count = 0;
+        for chunk in directed_edges.chunks_exact(2) {
+            if chunk[0].0 != chunk[1].0 || chunk[0].1 == chunk[1].1 {
+                issue_count += 1;
+            }
+        }
+
         if issue_count == 0 {
             None
         } else {

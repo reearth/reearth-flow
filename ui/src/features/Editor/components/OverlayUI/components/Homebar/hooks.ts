@@ -11,8 +11,6 @@ import { DialogOptions } from "../../types";
 
 export default () => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
-  const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
-  const handleDialogClose = () => setShowDialog(undefined);
 
   const {
     useGetWorkflowVariables,
@@ -22,11 +20,22 @@ export default () => {
     deleteWorkflowVariables,
   } = useWorkflowVariables();
   const [currentProject] = useCurrentProject();
-  const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const { workflowVariables, refetch: refetchWorkflowVariables } =
+    useGetWorkflowVariables(currentProject?.id);
+
   const currentWorkflowVariables = useMemo(
     () => workflowVariables ?? [],
     [workflowVariables],
   );
+
+  const handleDialogOpen = (dialog: DialogOptions) => {
+    if (dialog === "workflowVariables") {
+      refetchWorkflowVariables();
+    }
+    setShowDialog(dialog);
+  };
+
+  const handleDialogClose = () => setShowDialog(undefined);
 
   const handleWorkflowVariableAdd = useCallback(
     async (workflowVariable: WorkflowVariableType) => {

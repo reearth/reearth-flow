@@ -52,7 +52,7 @@ graphs:
         with:
           validationTypes:
             - duplicatePoints
-            - corruptGeometry
+            - corruptGeometry: 0.01
 
       - id: 60dbacf6-5a4a-4f0a-af4e-cd99db2851cc
         name: PlanarityFilter

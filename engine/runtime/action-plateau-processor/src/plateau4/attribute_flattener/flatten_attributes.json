@@ -9695,7 +9695,7 @@
 		},
 		{
 			"attribute": "urf:usage",
-			"data_type": "d",
+			"data_type": "buffer",
 			"json_path": "urf:usage"
 		},
 		{

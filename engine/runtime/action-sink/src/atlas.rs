@@ -23,6 +23,9 @@ use url::Url;
 
 use crate::zip_eq_logged::ZipEqLoggedExt;
 
+// Textures with width+height >= this are embedded as-is, skipping lossy reencoding
+const ATLAS_SKIP_DIMENSION_SUM: u32 = 4096;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
     // polygons [x, y, z, u, v]
@@ -91,6 +94,10 @@ where
                     )
                 })?;
                 let texture_size = texture_size_cache.get_or_insert(&texture_uri);
+
+                if texture_size.0 + texture_size.1 >= ATLAS_SKIP_DIMENSION_SUM {
+                    continue;
+                }
 
                 let downsample_scale = if limit_texture_resolution {
                     reearth_flow_common::texture::get_texture_downsample_scale_of_polygon(
@@ -486,6 +493,62 @@ mod tests {
         // extremely large geom_error should lead to maximum downsampling
         assert_eq!(width, 1);
         assert_eq!(height, 1);
+    }
+
+    #[test]
+    // test 16384x1 texture which crashes webP if included in atlas
+    fn test_large_texture_skipped_from_atlas() {
+        use atlas_packer::export::WebpAtlasExporter;
+        use atlas_packer::texture::cache::TextureCache;
+
+        let temp_dir = TempDir::new().unwrap();
+        // 16384x1: width+height >= 4096, exceeds WebP's 16383px limit
+        let texture_path = create_test_texture(temp_dir.path(), "large.jpg", 16384, 1);
+        let feature = create_test_feature(
+            &texture_path,
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.0,
+        );
+        let features = vec![&feature];
+        let packer = Mutex::new(AtlasPacker::default());
+        let texture_size_cache = TextureSizeCache::new();
+        let texture_cache = TextureCache::new(200_000_000);
+        let texture_id_gen = |fid: usize, pid: usize| format!("tex_{}_{}", fid, pid);
+
+        load_textures_into_packer(
+            &features,
+            &packer,
+            &texture_size_cache,
+            &texture_id_gen,
+            0.0,
+            false,
+        )
+        .expect("load textures");
+
+        let atlas_dir = temp_dir.path().join("atlas");
+        std::fs::create_dir(&atlas_dir).unwrap();
+
+        let (primitives, _) = process_geometry_with_atlas_export(
+            &features,
+            packer,
+            (16384, 1),
+            WebpAtlasExporter::default(),
+            &atlas_dir,
+            &texture_cache,
+            texture_id_gen,
+        )
+        .expect("process geometry");
+
+        // Without the fix: panics in WebpAtlasExporter, or mat points to .webp atlas
+        // With the fix: texture skipped, mat retains original .jpg
+        let (mat, _) = primitives.iter().next().unwrap();
+        assert!(mat
+            .base_texture
+            .as_ref()
+            .unwrap()
+            .uri
+            .to_string()
+            .ends_with(".jpg"));
     }
 
     #[test]

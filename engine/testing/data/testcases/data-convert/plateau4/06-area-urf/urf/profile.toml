@@ -5,6 +5,7 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_urf.zip"
 ".attributes.meshcode" = "string"
 ".attributes.urf:notificationNumber" = "string"
 ".attributes.urf:finalNotificationNumber" = "string"
+"" = "ordered_dict"
 
 [tests.mvt_polygons]
 threshold = 0.001

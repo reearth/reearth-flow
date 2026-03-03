@@ -156,9 +156,11 @@ pub fn triangles_intersection(
     } else if intersection_points.len() == 2 {
         if [[0, 1], [0, 2], [1, 2]].into_iter().any(|[i, j]| {
             let line = Line3D::new_(t[i], t[j]);
-            let a = line.contains(intersection_points[0]) && line.contains(intersection_points[1]);
+            let a = line.contains(intersection_points[0], Some(epsilon))
+                && line.contains(intersection_points[1], Some(epsilon));
             let line = Line3D::new_(s[i], s[j]);
-            let b = line.contains(intersection_points[0]) && line.contains(intersection_points[1]);
+            let b = line.contains(intersection_points[0], Some(epsilon))
+                && line.contains(intersection_points[1], Some(epsilon));
             a || b
         }) {
             // Intersection at a single point or very close to it, consider as non-intersecting

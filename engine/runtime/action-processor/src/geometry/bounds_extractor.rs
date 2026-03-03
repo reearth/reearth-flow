@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use super::errors::GeometryProcessorError;
+use super::utils::finite_z;
 
 #[derive(Debug, Clone)]
 pub struct Bounds {
@@ -241,7 +242,7 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
-        let z_val = Self::finite_z(coord.z);
+        let z_val = finite_z(coord.z);
         Self::update_bounds(
             bounds,
             Some(Bounds {
@@ -260,7 +261,7 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
-        let z_val = Self::finite_z(point.z());
+        let z_val = finite_z(point.z());
         Some(Bounds {
             min_x: NumCast::from(point.x()).unwrap(),
             max_x: NumCast::from(point.x()).unwrap(),
@@ -359,9 +360,5 @@ impl BoundsExtractor {
             _ => {}
         }
         bounds
-    }
-
-    fn finite_z<Z: CoordNum>(z: Z) -> Option<f64> {
-        NumCast::from(z).filter(|z: &f64| z.is_finite())
     }
 }

@@ -179,6 +179,10 @@ pub(super) enum GeometryProcessorError {
     Rotator3DFactory(String),
     #[error("Rotator3D error: {0}")]
     Rotator3D(String),
+    #[error("CoordinateExtractor Factory error: {0}")]
+    CoordinateExtractorFactory(String),
+    #[error("CoordinateExtractor error: {0}")]
+    CoordinateExtractor(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

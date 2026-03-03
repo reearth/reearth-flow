@@ -50,6 +50,7 @@ export default function Editor({
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
+    refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
     handleDebugRunVariableValueChange,
@@ -140,6 +141,7 @@ export default function Editor({
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
             openNodePickerViaShortcut={openNodePickerViaShortcut}
+            refetchWorkflowVariables={refetchWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
             onWorkflowOpen={handleWorkflowOpen}
             onWorkflowClose={handleWorkflowClose}
