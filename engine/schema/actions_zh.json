@@ -747,6 +747,84 @@
       ]
     },
     {
+      "name": "AttributeRangeMapper",
+      "type": "processor",
+      "description": "将属性值映射到范围并分配相应的输出值",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeRangeMapper Parameters",
+        "type": "object",
+        "required": [
+          "inputAttribute",
+          "outputAttribute",
+          "rangeTable"
+        ],
+        "properties": {
+          "defaultValue": {
+            "title": "Default Value",
+            "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+          },
+          "inputAttribute": {
+            "title": "Input Attribute",
+            "description": "The attribute to evaluate for range mapping",
+            "type": "string"
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "The attribute to store the mapped value",
+            "type": "string"
+          },
+          "rangeTable": {
+            "title": "Range Lookup Table",
+            "description": "List of ranges and their corresponding output values",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/RangeEntry"
+            }
+          }
+        },
+        "definitions": {
+          "RangeEntry": {
+            "title": "Range Entry",
+            "type": "object",
+            "required": [
+              "from",
+              "outputValue",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "title": "From (Minimum)",
+                "description": "The minimum value of the range (inclusive)",
+                "type": "number",
+                "format": "double"
+              },
+              "outputValue": {
+                "title": "Output Value",
+                "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+              },
+              "to": {
+                "title": "To (Maximum)",
+                "description": "The maximum value of the range (exclusive)",
+                "type": "number",
+                "format": "double"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "BoundaryExtractor",
       "type": "processor",
       "description": "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry",
@@ -2043,6 +2121,18 @@
           "output"
         ],
         "properties": {
+          "colorAttribute": {
+            "title": "Color Attribute",
+            "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "epoch": {
             "title": "Epoch",
             "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
@@ -2074,6 +2164,18 @@
               }
             ]
           },
+          "heightAttribute": {
+            "title": "Height Attribute",
+            "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "interpolationAlgorithm": {
             "title": "Interpolation Algorithm",
             "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
@@ -2090,6 +2192,14 @@
             "default": 1,
             "type": "integer",
             "format": "uint32",
+            "minimum": 0.0
+          },
+          "opacity": {
+            "title": "Opacity",
+            "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
+            "default": 180,
+            "type": "integer",
+            "format": "uint8",
             "minimum": 0.0
           },
           "output": {

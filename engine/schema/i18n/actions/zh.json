@@ -37,6 +37,10 @@
       "description": "分配属性"
     },
     {
+      "name": "AttributeRangeMapper",
+      "description": "将属性值映射到范围并分配相应的输出值"
+    },
+    {
       "name": "BoundsExtractor",
       "description": "提取边界"
     },
