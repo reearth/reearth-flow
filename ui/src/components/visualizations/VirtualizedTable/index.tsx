@@ -137,7 +137,7 @@ function VirtualizedTable<TData, TValue>({
     estimateSize: () => 24,
   });
 
-  const activeFilter = searchTerm || globalFilter;
+  const activeFilter = searchTerm ?? globalFilter;
   useEffect(() => {
     if (parentRef.current) {
       parentRef.current.scrollTop = 0;
@@ -213,6 +213,7 @@ function VirtualizedTable<TData, TValue>({
     },
     [activeIndex, rows, virtualizer, onRowClick],
   );
+  const [lastTableInteraction, setLastTableInteraction] = useState(false);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTableRowElement>) => {
@@ -225,6 +226,7 @@ function VirtualizedTable<TData, TValue>({
         case "Enter":
           e.preventDefault();
           onRowDoubleClick?.((rows[activeIndex] as any)?.original);
+          setLastTableInteraction(true);
           break;
 
         case "ArrowUp":
@@ -245,12 +247,13 @@ function VirtualizedTable<TData, TValue>({
   );
 
   useEffect(() => {
-    if (!detailsOpen) {
+    if (!detailsOpen && lastTableInteraction) {
       requestAnimationFrame(() => {
         rowRefs.current[activeIndex]?.focus();
       });
+      setLastTableInteraction(false);
     }
-  }, [detailsOpen, activeIndex]);
+  }, [detailsOpen, activeIndex, lastTableInteraction]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

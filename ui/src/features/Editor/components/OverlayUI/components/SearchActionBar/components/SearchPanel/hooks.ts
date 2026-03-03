@@ -236,11 +236,22 @@ export default ({
     handleDoubleClick,
     50,
   );
+
+  const variableNames = useMemo(
+    () =>
+      workflowVariables?.map((variable) => variable.name.toLowerCase()) ?? [],
+    [workflowVariables],
+  );
+
   const nodeSearchOptions: FilterFn<any> = (row, _columnId, filterValue) => {
     const q = String(filterValue ?? "")
       .trim()
       .toLowerCase();
     if (!q) return true;
+
+    const filteredVariableNames = variableNames.filter((name) =>
+      name.includes(q),
+    );
 
     return (
       String(row.original.id ?? "")
@@ -255,10 +266,11 @@ export default ({
       String(row.original.content ?? "")
         .toLowerCase()
         .includes(q) ||
-      checkParamsContainWorkflowVariableNames(
-        row.original.params,
-        workflowVariables?.map((variable) => variable.name) || [],
-      )
+      (filteredVariableNames.length > 0 &&
+        checkParamsContainWorkflowVariableNames(
+          row.original.params,
+          filteredVariableNames,
+        ))
     );
   };
   return {
