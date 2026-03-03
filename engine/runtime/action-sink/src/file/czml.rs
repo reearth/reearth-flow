@@ -184,10 +184,26 @@ pub(crate) struct CzmlWriterParam {
     /// entity. Features with the same value for this attribute are merged
     /// into one packet with time-tagged positions.
     pub(super) group_timeseries_by: Option<Attribute>,
+    /// # Color Attribute
+    /// Attribute containing a hex color string (e.g., "#ffd8c0") for polygon fill.
+    /// Used when polygon geometry is auto-converted from the feature geometry.
+    pub(super) color_attribute: Option<Attribute>,
+    /// # Opacity
+    /// Alpha value (0–255) for polygon fill color. Default: 180.
+    #[serde(default = "default_opacity")]
+    pub(super) opacity: u8,
+    /// # Height Attribute
+    /// Attribute containing a numeric value for polygon extrusion height.
+    /// When set, polygons are extruded from ground to this height value.
+    pub(super) height_attribute: Option<Attribute>,
 }
 
 fn default_interpolation_degree() -> u32 {
     1
+}
+
+fn default_opacity() -> u8 {
+    180
 }
 
 /// Interpolation algorithm for Cesium time-dynamic properties.
@@ -222,11 +238,15 @@ impl Sink for CzmlWriter {
         let feature = &ctx.feature;
 
         let key = if let Some(group_by) = &self.params.group_by {
-            let key = group_by
-                .iter()
-                .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
-                .collect::<Vec<_>>();
-            AttributeValue::Array(key)
+            if group_by.is_empty() {
+                AttributeValue::Null
+            } else {
+                let key = group_by
+                    .iter()
+                    .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
+                    .collect::<Vec<_>>();
+                AttributeValue::Array(key)
+            }
         } else {
             AttributeValue::Null
         };
@@ -253,24 +273,18 @@ impl Sink for CzmlWriter {
                 .resolve(&file_path)
                 .map_err(crate::errors::SinkError::czml_writer)?;
 
-            let has_embedded = features.iter().any(|f| {
-                f.attributes
-                    .contains_key(&Attribute::new("czml.timeseries"))
-            });
             let is_grouped_timeseries =
                 self.params.group_timeseries_by.is_some() && self.params.time_field.is_some();
+            let has_citygml = features
+                .iter()
+                .any(|f| matches!(&f.geometry.value, GeometryValue::CityGmlGeometry(_)));
 
-            if has_embedded {
-                let buffer = build_embedded_czml(features, &self.params)?;
-                storage
-                    .put_sync(file_path.path().as_path(), Bytes::from(buffer))
-                    .map_err(crate::errors::SinkError::czml_writer)?;
-            } else if is_grouped_timeseries {
+            if is_grouped_timeseries {
                 let buffer = build_timeseries_czml(features, &self.params, &ctx)?;
                 storage
                     .put_sync(file_path.path().as_path(), Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::czml_writer)?;
-            } else {
+            } else if has_citygml {
                 let (sender, receiver) = std::sync::mpsc::sync_channel(1000);
                 let gctx = ctx.as_context();
 
@@ -323,6 +337,11 @@ impl Sink for CzmlWriter {
                 );
                 ra?;
                 rb?;
+            } else {
+                let buffer = build_embedded_czml(features, &self.params)?;
+                storage
+                    .put_sync(file_path.path().as_path(), Bytes::from(buffer))
+                    .map_err(crate::errors::SinkError::czml_writer)?;
             }
         }
         Ok(())
@@ -333,13 +352,32 @@ impl Sink for CzmlWriter {
 /// (produced by the reader's `PreserveRaw` strategy).
 fn build_embedded_czml(
     features: &[Feature],
-    _params: &CzmlWriterParam,
+    params: &CzmlWriterParam,
 ) -> Result<Vec<u8>, BoxedError> {
+    let per_entity_mode = params.time_field.is_some() && params.group_timeseries_by.is_none();
+
     let mut global_start: Option<String> = None;
     let mut global_end: Option<String> = None;
 
+    // Pass 1: Collect time range
     for feature in features {
-        if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability")) {
+        if per_entity_mode {
+            if let Some(time_field) = &params.time_field {
+                if let Some(time_val) = feature.get(time_field) {
+                    let time_str = attribute_value_to_string(time_val);
+                    let start_iso =
+                        strip_epoch_offset_for_availability(&time_str, params.epoch.as_deref());
+                    if global_start.is_none() || start_iso < *global_start.as_ref().unwrap() {
+                        global_start = Some(start_iso.clone());
+                    }
+                    if global_end.is_none() || start_iso > *global_end.as_ref().unwrap() {
+                        global_end = Some(start_iso);
+                    }
+                }
+            }
+        } else if let Some(AttributeValue::String(avail)) =
+            feature.get(Attribute::new("availability"))
+        {
             if let Some((s, e)) = avail.split_once('/') {
                 if !s.is_empty() && !e.is_empty() {
                     if global_start.is_none() || s < global_start.as_deref().unwrap_or("") {
@@ -373,8 +411,9 @@ fn build_embedded_czml(
         .write(format!("[{}", serde_json::to_string(&doc).unwrap()).as_bytes())
         .map_err(SinkError::czml_writer)?;
 
+    // Pass 2: Build packets
     for feature in features {
-        let packet = build_embedded_packet(feature)?;
+        let packet = build_embedded_packet(feature, params, global_end.as_deref())?;
         output_buffer.write(b",").map_err(SinkError::czml_writer)?;
         output_buffer
             .write(&serde_json::to_vec(&packet).map_err(SinkError::czml_writer)?)
@@ -388,7 +427,13 @@ fn build_embedded_czml(
 }
 
 /// Build a single CZML packet from a feature with embedded `czml.*` attributes.
-fn build_embedded_packet(feature: &Feature) -> Result<Value, BoxedError> {
+/// When `params` provides `time_field` and `global_end` is set, per-entity availability
+/// is computed. Polygon geometry is auto-converted when no graphic property exists.
+fn build_embedded_packet(
+    feature: &Feature,
+    params: &CzmlWriterParam,
+    global_end: Option<&str>,
+) -> Result<Value, BoxedError> {
     let mut packet = serde_json::Map::new();
 
     if let Some(AttributeValue::String(id)) = feature.get(Attribute::new("id")) {
@@ -397,11 +442,24 @@ fn build_embedded_packet(feature: &Feature) -> Result<Value, BoxedError> {
     if let Some(AttributeValue::String(name)) = feature.get(Attribute::new("name")) {
         packet.insert("name".to_string(), serde_json::json!(name));
     }
-    if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability")) {
+
+    // Per-entity availability from time_field + global_end
+    if let (Some(time_field), Some(end)) = (&params.time_field, global_end) {
+        if let Some(time_val) = feature.get(time_field) {
+            let time_str = attribute_value_to_string(time_val);
+            let start_iso = strip_epoch_offset_for_availability(&time_str, params.epoch.as_deref());
+            packet.insert(
+                "availability".to_string(),
+                serde_json::json!(format!("{start_iso}/{end}")),
+            );
+        }
+    } else if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability"))
+    {
         if !avail.is_empty() && avail != "/" {
             packet.insert("availability".to_string(), serde_json::json!(avail));
         }
     }
+
     if let Some(AttributeValue::String(parent)) = feature.get(Attribute::new("parent")) {
         packet.insert("parent".to_string(), serde_json::json!(parent));
     }
@@ -472,7 +530,7 @@ fn build_embedded_packet(feature: &Feature) -> Result<Value, BoxedError> {
             packet.insert("position".to_string(), position);
         }
     } else {
-        // Static entity: position from geometry
+        // Static entity: position from geometry (only for point-like entities)
         if let Some((lon, lat, height)) = extract_point_coords(feature) {
             packet.insert(
                 "position".to_string(),
@@ -503,6 +561,7 @@ fn build_embedded_packet(feature: &Feature) -> Result<Value, BoxedError> {
         }
     }
 
+    // Auto-convert polygon geometry or fall back to default point
     if !packet.contains_key("point")
         && !packet.contains_key("billboard")
         && !packet.contains_key("model")
@@ -510,18 +569,37 @@ fn build_embedded_packet(feature: &Feature) -> Result<Value, BoxedError> {
         && !packet.contains_key("polygon")
         && !packet.contains_key("polyline")
     {
-        packet.insert(
-            "point".to_string(),
-            serde_json::json!({
-                "pixelSize": 10,
-                "heightReference": "NONE",
-            }),
-        );
+        if let Some(polygon_val) = feature_geometry_to_polygon_json(feature, params) {
+            packet.insert("polygon".to_string(), polygon_val);
+            // Remove position for polygon entities (positions are in polygon.positions)
+            packet.remove("position");
+        } else {
+            packet.insert(
+                "point".to_string(),
+                serde_json::json!({
+                    "pixelSize": 10,
+                    "heightReference": "NONE",
+                }),
+            );
+        }
     }
 
     if !packet.contains_key("description") {
         if let Some(AttributeValue::String(desc)) = feature.get(Attribute::new("description")) {
             packet.insert("description".to_string(), serde_json::json!(desc));
+        } else {
+            // Auto-generate description from attributes
+            let desc = map_to_html_table(&feature.attributes);
+            if !desc.is_empty() && desc != "<table></table>" {
+                packet.insert("description".to_string(), serde_json::json!(desc));
+            }
+        }
+    }
+
+    // Add properties bag
+    if !packet.contains_key("properties") {
+        if let Some(props) = build_properties_bag(feature) {
+            packet.insert("properties".to_string(), props);
         }
     }
 
@@ -920,6 +998,141 @@ fn polygon_to_czml_polygon(poly: &Polygon3D<f64>) -> CzmlPolygon {
     czml_polygon
 }
 
+/// Parse a hex color string like "#ffd8c0" into [r, g, b, alpha].
+fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
+    let hex = hex.strip_prefix('#').unwrap_or(hex);
+    if hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some([r, g, b, alpha])
+}
+
+/// Convert a Feature's polygon geometry to a styled CZML polygon JSON value.
+fn feature_geometry_to_polygon_json(feature: &Feature, params: &CzmlWriterParam) -> Option<Value> {
+    let czml_polygon = match &feature.geometry.value {
+        GeometryValue::FlowGeometry3D(Geometry3D::Polygon(poly)) => polygon_to_czml_polygon(poly),
+        GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
+            let mut czml_poly = CzmlPolygon::default();
+            let exteriors: Vec<f64> = poly
+                .exterior()
+                .iter()
+                .flat_map(|coord| vec![coord.x, coord.y, 0.0])
+                .collect();
+            czml_poly.positions = Some(PositionList::Object(PositionListProperties {
+                cartographic_degrees: Some(exteriors),
+                ..Default::default()
+            }));
+            let interiors: Vec<Vec<f64>> = poly
+                .interiors()
+                .iter()
+                .map(|line| {
+                    line.iter()
+                        .flat_map(|coord| vec![coord.x, coord.y, 0.0])
+                        .collect()
+                })
+                .collect();
+            if !interiors.is_empty() {
+                czml_poly.holes =
+                    Some(PositionListOfLists::Object(PositionListOfListsProperties {
+                        cartographic_degrees: Some(interiors),
+                        ..Default::default()
+                    }));
+            }
+            czml_poly
+        }
+        GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(mp)) => {
+            mp.0.first().map(polygon_to_czml_polygon)?
+        }
+        GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(mp)) => {
+            let poly = mp.0.first()?;
+            let mut czml_poly = CzmlPolygon::default();
+            let exteriors: Vec<f64> = poly
+                .exterior()
+                .iter()
+                .flat_map(|coord| vec![coord.x, coord.y, 0.0])
+                .collect();
+            czml_poly.positions = Some(PositionList::Object(PositionListProperties {
+                cartographic_degrees: Some(exteriors),
+                ..Default::default()
+            }));
+            czml_poly
+        }
+        _ => return None,
+    };
+
+    // Serialize base polygon to JSON, then apply styling
+    let mut polygon_val = serde_json::to_value(&czml_polygon).ok()?;
+    let obj = polygon_val.as_object_mut()?;
+
+    // Apply color from attribute
+    if let Some(color_attr) = &params.color_attribute {
+        if let Some(AttributeValue::String(hex)) = feature.get(color_attr) {
+            if let Some(rgba) = hex_to_rgba(hex, params.opacity) {
+                obj.insert(
+                    "material".to_string(),
+                    serde_json::json!({
+                        "solidColor": {
+                            "color": {
+                                "rgba": rgba
+                            }
+                        }
+                    }),
+                );
+            }
+        }
+    }
+
+    // Apply extrusion height from attribute
+    if let Some(height_attr) = &params.height_attribute {
+        if let Some(height_val) = feature.get(height_attr) {
+            if let Some(h) = height_val.as_f64() {
+                obj.insert("extrudedHeight".to_string(), serde_json::json!(h));
+                obj.insert("closeBottom".to_string(), serde_json::json!(true));
+                obj.insert("closeTop".to_string(), serde_json::json!(true));
+            }
+        }
+    }
+
+    // Default outline
+    obj.insert("fill".to_string(), serde_json::json!(true));
+    obj.insert("outline".to_string(), serde_json::json!(true));
+    obj.insert(
+        "outlineColor".to_string(),
+        serde_json::json!({ "rgba": [80, 80, 80, 220] }),
+    );
+    obj.insert("outlineWidth".to_string(), serde_json::json!(1.0));
+
+    Some(polygon_val)
+}
+
+/// Build a properties bag from feature attributes, excluding internal keys.
+fn build_properties_bag(feature: &Feature) -> Option<Value> {
+    let skip_prefixes = ["czml."];
+    let skip_keys = ["id", "name", "description", "availability", "parent"];
+
+    let mut properties = serde_json::Map::new();
+    for (attr, value) in feature.attributes.iter() {
+        let key = attr.to_string();
+        if skip_prefixes.iter().any(|p| key.starts_with(p)) {
+            continue;
+        }
+        if skip_keys.contains(&key.as_str()) {
+            continue;
+        }
+        let json_val: serde_json::Value = value.clone().into();
+        properties.insert(key, json_val);
+    }
+
+    if properties.is_empty() {
+        None
+    } else {
+        Some(Value::Object(properties))
+    }
+}
+
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
     let Some(parent_id) = feature.metadata.feature_id.clone() else {
         ctx.event_hub
@@ -989,7 +1202,11 @@ fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_geometry::types::coordinate::Coordinate;
+    use reearth_flow_geometry::types::line_string::LineString;
+    use reearth_flow_geometry::types::no_value::NoValue;
     use reearth_flow_geometry::types::point::Point3D;
+    use reearth_flow_geometry::types::polygon::Polygon;
     use reearth_flow_types::Geometry;
 
     fn make_feature_3d(lon: f64, lat: f64, height: f64) -> Feature {
@@ -1014,6 +1231,9 @@ mod tests {
             interpolation_algorithm: InterpolationAlgorithm::Lagrange,
             interpolation_degree: 5,
             group_timeseries_by: Some(Attribute::new("entityId")),
+            color_attribute: None,
+            opacity: default_opacity(),
+            height_attribute: None,
         }
     }
 
@@ -1123,10 +1343,26 @@ mod tests {
         f
     }
 
+    fn make_default_params() -> CzmlWriterParam {
+        CzmlWriterParam {
+            output: Expr::new("/tmp/test.czml".to_string()),
+            group_by: None,
+            time_field: None,
+            epoch: None,
+            interpolation_algorithm: InterpolationAlgorithm::default(),
+            interpolation_degree: 1,
+            group_timeseries_by: None,
+            color_attribute: None,
+            opacity: default_opacity(),
+            height_attribute: None,
+        }
+    }
+
     #[test]
     fn test_build_embedded_packet_timeseries() {
         let f = make_embedded_feature_with_timeseries();
-        let packet = build_embedded_packet(&f).unwrap();
+        let params = make_default_params();
+        let packet = build_embedded_packet(&f, &params, None).unwrap();
 
         assert_eq!(packet["id"], "vehicle-a");
         assert_eq!(packet["name"], "Vehicle Alpha");
@@ -1150,7 +1386,8 @@ mod tests {
     #[test]
     fn test_build_embedded_packet_static() {
         let f = make_embedded_static_feature();
-        let packet = build_embedded_packet(&f).unwrap();
+        let params = make_default_params();
+        let packet = build_embedded_packet(&f, &params, None).unwrap();
 
         assert_eq!(packet["id"], "static-poi");
         assert_eq!(packet["name"], "Tokyo Tower");
@@ -1180,6 +1417,9 @@ mod tests {
             interpolation_algorithm: InterpolationAlgorithm::default(),
             interpolation_degree: 1,
             group_timeseries_by: None,
+            color_attribute: None,
+            opacity: default_opacity(),
+            height_attribute: None,
         };
 
         let buffer = build_embedded_czml(&features, &params).unwrap();
@@ -1209,6 +1449,9 @@ mod tests {
             interpolation_algorithm: InterpolationAlgorithm::Linear,
             interpolation_degree: 1,
             group_timeseries_by: Some(Attribute::new("entityId")),
+            color_attribute: None,
+            opacity: default_opacity(),
+            height_attribute: None,
         };
 
         let mut f1 = make_feature_3d(139.7, 35.7, 0.0);
@@ -1251,5 +1494,177 @@ mod tests {
         let avail = packet["availability"].as_str().unwrap();
         assert!(avail.contains("1970-01-01T00:00:00Z"));
         assert!(avail.contains("1970-01-01T00:01:00Z"));
+    }
+
+    #[test]
+    fn test_hex_to_rgba() {
+        assert_eq!(hex_to_rgba("#ffd8c0", 180), Some([255, 216, 192, 180]));
+        assert_eq!(hex_to_rgba("ff0000", 255), Some([255, 0, 0, 255]));
+        assert_eq!(hex_to_rgba("#000000", 0), Some([0, 0, 0, 0]));
+        assert_eq!(hex_to_rgba("zzzzzz", 180), None);
+        assert_eq!(hex_to_rgba("#fff", 180), None); // too short
+    }
+
+    fn make_polygon_2d_feature() -> Feature {
+        let coords: Vec<Coordinate<f64, NoValue>> = vec![
+            (139.75, 35.68).into(),
+            (139.76, 35.68).into(),
+            (139.76, 35.69).into(),
+            (139.75, 35.69).into(),
+            (139.75, 35.68).into(),
+        ];
+        let exterior = LineString(coords);
+        let polygon: Polygon<f64, NoValue> = Polygon::new(exterior, vec![]);
+
+        let mut f = Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
+            },
+            Default::default(),
+        );
+        f.insert(Attribute::new("id"), AttributeValue::String("poly1".into()));
+        f.insert(
+            Attribute::new("name"),
+            AttributeValue::String("Test Polygon".into()),
+        );
+        f
+    }
+
+    #[test]
+    fn test_feature_geometry_to_polygon_2d() {
+        let f = make_polygon_2d_feature();
+        let params = make_default_params();
+        let polygon_val = feature_geometry_to_polygon_json(&f, &params);
+        assert!(polygon_val.is_some());
+
+        let pv = polygon_val.unwrap();
+        let positions = &pv["positions"]["cartographicDegrees"];
+        assert!(positions.is_array());
+        let coords = positions.as_array().unwrap();
+        // 5 coords * 3 values (lon, lat, 0.0) = 15
+        assert_eq!(coords.len(), 15);
+        // First coord: lon
+        assert!((coords[0].as_f64().unwrap() - 139.75).abs() < 1e-4);
+        // Z should be 0
+        assert_eq!(coords[2].as_f64().unwrap(), 0.0);
+
+        // Should have fill and outline
+        assert_eq!(pv["fill"], true);
+        assert_eq!(pv["outline"], true);
+    }
+
+    #[test]
+    fn test_polygon_with_styling() {
+        let mut f = make_polygon_2d_feature();
+        f.insert(
+            Attribute::new("fill_color"),
+            AttributeValue::String("#ffd8c0".into()),
+        );
+        f.insert(
+            Attribute::new("depth"),
+            AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap()),
+        );
+
+        let params = CzmlWriterParam {
+            color_attribute: Some(Attribute::new("fill_color")),
+            opacity: 180,
+            height_attribute: Some(Attribute::new("depth")),
+            ..make_default_params()
+        };
+
+        let polygon_val = feature_geometry_to_polygon_json(&f, &params).unwrap();
+
+        // Check material color
+        let rgba = &polygon_val["material"]["solidColor"]["color"]["rgba"];
+        assert_eq!(rgba[0], 255);
+        assert_eq!(rgba[1], 216);
+        assert_eq!(rgba[2], 192);
+        assert_eq!(rgba[3], 180);
+
+        // Check extrusion
+        assert_eq!(polygon_val["extrudedHeight"], 1.5);
+        assert_eq!(polygon_val["closeBottom"], true);
+        assert_eq!(polygon_val["closeTop"], true);
+    }
+
+    #[test]
+    fn test_per_entity_availability() {
+        let mut f1 = make_polygon_2d_feature();
+        f1.insert(
+            Attribute::new("start_time"),
+            AttributeValue::String("3600".into()), // 1 hour offset
+        );
+
+        let mut f2 = make_polygon_2d_feature();
+        f2.insert(Attribute::new("id"), AttributeValue::String("poly2".into()));
+        f2.insert(
+            Attribute::new("start_time"),
+            AttributeValue::String("7200".into()), // 2 hour offset
+        );
+
+        let params = CzmlWriterParam {
+            time_field: Some(Attribute::new("start_time")),
+            epoch: Some("2024-01-01T00:00:00Z".into()),
+            ..make_default_params()
+        };
+
+        let features = vec![f1, f2];
+        let buffer = build_embedded_czml(&features, &params).unwrap();
+        let czml: Vec<Value> = serde_json::from_slice(&buffer).unwrap();
+
+        // Document + 2 entities
+        assert_eq!(czml.len(), 3);
+        assert_eq!(czml[0]["id"], "document");
+        assert!(czml[0]["clock"].is_object());
+
+        // First entity should have availability starting at 1 hour
+        let avail1 = czml[1]["availability"].as_str().unwrap();
+        assert!(avail1.contains("2024-01-01T01:00:00Z"));
+
+        // Second entity should have availability starting at 2 hours
+        let avail2 = czml[2]["availability"].as_str().unwrap();
+        assert!(avail2.contains("2024-01-01T02:00:00Z"));
+
+        // Both should end at the same time (global end = max start = 2 hours)
+        assert!(avail1.ends_with("2024-01-01T02:00:00Z"));
+        assert!(avail2.ends_with("2024-01-01T02:00:00Z"));
+
+        // Should have polygon geometry (not point)
+        assert!(czml[1]["polygon"].is_object());
+        assert!(czml[1].get("point").is_none());
+    }
+
+    #[test]
+    fn test_build_properties_bag() {
+        let mut f = make_feature_3d(139.7, 35.7, 0.0);
+        f.insert(Attribute::new("id"), AttributeValue::String("test".into()));
+        f.insert(
+            Attribute::new("name"),
+            AttributeValue::String("Test".into()),
+        );
+        f.insert(
+            Attribute::new("depth"),
+            AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap()),
+        );
+        f.insert(
+            Attribute::new("czml.point"),
+            AttributeValue::String("{}".into()),
+        );
+        f.insert(
+            Attribute::new("custom_field"),
+            AttributeValue::String("hello".into()),
+        );
+
+        let props = build_properties_bag(&f).unwrap();
+        let obj = props.as_object().unwrap();
+
+        // Should include custom fields but not internal ones
+        assert!(obj.contains_key("depth"));
+        assert!(obj.contains_key("custom_field"));
+        assert!(!obj.contains_key("id"));
+        assert!(!obj.contains_key("name"));
+        assert!(!obj.contains_key("czml.point"));
     }
 }
