@@ -5,14 +5,18 @@ use reearth_flow_common::collection::ApproxHashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    algorithm::{contains::Contains, GeoFloat, GeoNum},
+    algorithm::{
+        line_intersection::LineIntersection,
+        line_string_ops::{LineStringOps, LineStringWithTree2D},
+        GeoFloat, GeoNum,
+    },
     types::{
-        coordinate::Coordinate,
+        coordinate::{Coordinate, Coordinate2D},
         csg::{CSGChild, CSG},
         face::Face,
         geometry::Geometry,
         line::Line,
-        line_string::LineString,
+        line_string::{LineString, LineString2D},
         multi_line_string::MultiLineString,
         multi_point::MultiPoint,
         multi_polygon::MultiPolygon,
@@ -23,9 +27,6 @@ use crate::{
     },
     utils,
 };
-
-/// Distance threshold in meters for duplicate consecutive points detection
-const DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD: f64 = 0.01;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 /// The role of a ring in a polygon.
@@ -282,7 +283,10 @@ impl Display for ValidationProblemReport {
 pub enum ValidationType {
     DuplicatePoints,
     DuplicateConsecutivePoints(f64),
-    CorruptGeometry,
+    /// Corrupt geometry check with optional tolerance for interior/exterior ring intersection.
+    /// If tolerance is None or 0.0, only proper crossings are detected.
+    /// If tolerance > 0.0, intersection points within tolerance of ring vertices are ignored.
+    CorruptGeometry(Option<f64>),
     /// Self-intersection check with optional tolerance (in coordinate units).
     /// If tolerance is None or 0.0, exact intersection check is performed.
     /// If tolerance > 0.0, intersections where the overlap distance is less than tolerance are ignored.
@@ -466,7 +470,7 @@ impl<
                     }
                 }
             }
-            ValidationType::CorruptGeometry => {
+            ValidationType::CorruptGeometry(_) => {
                 if utils::check_too_few_points(self, false) {
                     reason.push(ValidationProblemAtPosition(
                         ValidationProblem::TooFewPoints,
@@ -513,7 +517,7 @@ impl<
                     }
                 }
             }
-            ValidationType::DuplicatePoints | ValidationType::CorruptGeometry => {
+            ValidationType::DuplicatePoints | ValidationType::CorruptGeometry(_) => {
                 for line_string in &self.0 {
                     if let Some(result) = line_string.validate(valid_type.clone()) {
                         for (idx, problem) in result.0.iter().enumerate() {
@@ -550,7 +554,8 @@ impl<
                 // Check exterior ring
                 let coords: Vec<Coordinate<T, Z>> = self.exterior().coords().cloned().collect();
                 for (i, e) in coords.windows(2).enumerate() {
-                    if (e[0] - e[1]).norm().to_f64().unwrap_or(f64::INFINITY) <= tolerance {
+                    let dist = (e[0] - e[1]).norm().to_f64().unwrap_or(f64::INFINITY);
+                    if dist <= tolerance {
                         reason.push(ValidationProblemAtPosition(
                             ValidationProblem::DuplicateConsecutivePoints,
                             ValidationProblemPosition::Polygon(
@@ -565,18 +570,18 @@ impl<
                 for (j, interior) in self.interiors().iter().enumerate() {
                     let coords: Vec<Coordinate<T, Z>> = interior.coords().cloned().collect();
                     for i in 0..coords.len().saturating_sub(1) {
-                        let p1 = &coords[i];
-                        let p2 = &coords[i + 1];
-                        if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
-                            if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
-                                reason.push(ValidationProblemAtPosition(
-                                    ValidationProblem::DuplicateConsecutivePoints,
-                                    ValidationProblemPosition::Polygon(
-                                        RingRole::Interior(j as isize),
-                                        CoordinatePosition(i as isize),
-                                    ),
-                                ));
-                            }
+                        let dist = (coords[i] - coords[i + 1])
+                            .norm()
+                            .to_f64()
+                            .unwrap_or(f64::INFINITY);
+                        if dist <= tolerance {
+                            reason.push(ValidationProblemAtPosition(
+                                ValidationProblem::DuplicateConsecutivePoints,
+                                ValidationProblemPosition::Polygon(
+                                    RingRole::Interior(j as isize),
+                                    CoordinatePosition(i as isize),
+                                ),
+                            ));
                         }
                     }
                 }
@@ -610,10 +615,53 @@ impl<
                     }
                 }
             }
-            ValidationType::CorruptGeometry => {
-                let polygon_exterior = Polygon::new(self.exterior().clone(), vec![]);
+            ValidationType::CorruptGeometry(tolerance) => {
+                // Check if interior rings cross the exterior ring using 2D line-on-line intersection.
+                // We project to 2D (strip Z) to avoid false positives from Z bounding box checks.
+                let tolerance = tolerance.unwrap_or(0.0);
+                let exterior_2d = to_2d_line_string(self.exterior());
+                let exterior_tree = LineStringWithTree2D::new(exterior_2d);
+
                 for (j, interior) in self.interiors().iter().enumerate() {
-                    if !polygon_exterior.contains(interior) {
+                    let interior_2d = to_2d_line_string(interior);
+                    let intersections = exterior_tree.intersection(&interior_2d);
+
+                    let has_crossing = intersections.iter().any(|intersection| {
+                        match intersection {
+                            LineIntersection::Collinear { .. } => true,
+                            LineIntersection::SinglePoint {
+                                intersection: pt,
+                                is_proper,
+                            } => {
+                                if *is_proper {
+                                    // Proper intersection: the crossing is in the interior of
+                                    // both segments. Check if it's within tolerance of a vertex
+                                    // on both rings.
+                                    if tolerance > 0.0 {
+                                        let near_exterior = exterior_tree
+                                            .line_string()
+                                            .coords()
+                                            .any(|c| (*c - *pt).norm() < tolerance);
+                                        let near_interior = interior_2d
+                                            .coords()
+                                            .any(|c| (*c - *pt).norm() < tolerance);
+                                        // If the intersection is near vertices of both rings,
+                                        // it's likely a shared vertex touch, not a crossing
+                                        !(near_exterior && near_interior)
+                                    } else {
+                                        true
+                                    }
+                                } else {
+                                    // Improper intersection: at an endpoint of at least one
+                                    // segment. This is typically a shared vertex touch, not a
+                                    // crossing.
+                                    false
+                                }
+                            }
+                        }
+                    });
+
+                    if has_crossing {
                         reason.push(ValidationProblemAtPosition(
                             ValidationProblem::InteriorRingNotContainedInExteriorRing,
                             ValidationProblemPosition::Polygon(
@@ -733,7 +781,7 @@ impl<
     > Validator<T, Z> for Rect<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        if valid_type != ValidationType::CorruptGeometry {
+        if !matches!(valid_type, ValidationType::CorruptGeometry(_)) {
             return None;
         }
         if self.min.x >= self.max.x || self.min.y >= self.max.y || self.min.z >= self.max.z {
@@ -790,6 +838,15 @@ impl<
             }
         }
     }
+}
+
+/// Convert a generic 3D/2D line string to a 2D line string (stripping Z coordinates).
+fn to_2d_line_string<T: GeoFloat, Z: GeoFloat>(ls: &LineString<T, Z>) -> LineString2D<f64> {
+    LineString2D::new(
+        ls.coords()
+            .map(|c| Coordinate2D::new_(c.x.to_f64().unwrap(), c.y.to_f64().unwrap()))
+            .collect(),
+    )
 }
 
 #[cfg(test)]

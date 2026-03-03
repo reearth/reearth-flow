@@ -64,8 +64,8 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@1.91
+      - name: install Rust
+        uses: dtolnay/rust-toolchain@1.93.1
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2

@@ -1788,7 +1788,7 @@ graphs:
     action: GeometryValidator
     with:
       validationTypes:
-      - corruptGeometry
+      - corruptGeometry: 0.01
   - id: 38b40d0a-42a8-43e5-8978-898a723fddc8
     name: AttributeMapperCorruptGeometry
     type: action

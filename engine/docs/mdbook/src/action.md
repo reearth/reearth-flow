@@ -2122,6 +2122,18 @@ Export features as CZML for Cesium visualization. Supports static entities and t
     "output"
   ],
   "properties": {
+    "colorAttribute": {
+      "title": "Color Attribute",
+      "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "epoch": {
       "title": "Epoch",
       "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
@@ -2153,6 +2165,18 @@ Export features as CZML for Cesium visualization. Supports static entities and t
         }
       ]
     },
+    "heightAttribute": {
+      "title": "Height Attribute",
+      "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "interpolationAlgorithm": {
       "title": "Interpolation Algorithm",
       "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
@@ -2169,6 +2193,14 @@ Export features as CZML for Cesium visualization. Supports static entities and t
       "default": 1,
       "type": "integer",
       "format": "uint32",
+      "minimum": 0.0
+    },
+    "opacity": {
+      "title": "Opacity",
+      "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
+      "default": 180,
+      "type": "integer",
+      "format": "uint8",
       "minimum": 0.0
     },
     "output": {
@@ -4102,8 +4134,7 @@ Validate Feature Geometry Quality
         {
           "type": "string",
           "enum": [
-            "duplicatePoints",
-            "corruptGeometry"
+            "duplicatePoints"
           ]
         },
         {
@@ -4114,6 +4145,23 @@ Validate Feature Geometry Quality
           "properties": {
             "duplicateConsecutivePoints": {
               "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
+          "type": "object",
+          "required": [
+            "corruptGeometry"
+          ],
+          "properties": {
+            "corruptGeometry": {
+              "type": [
+                "number",
+                "null"
+              ],
               "format": "double"
             }
           },
@@ -5737,6 +5785,7 @@ Convert vector geometries to raster image format
 ### Output Ports
 * default
 * textured
+* textureBounds
 ### Category
 * Geometry
 
@@ -7326,6 +7375,118 @@ Extract object list
 ```
 ### Input Ports
 * default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU4.SolarCityGmlAttributeInserter
+### Type
+* processor
+### Description
+Inserts solar radiation measurement attributes into original CityGML files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlAttributeInserterParam",
+  "description": "Configuration for inserting measurement attributes into CityGML files.",
+  "type": "object",
+  "required": [
+    "measurements",
+    "outputDir"
+  ],
+  "properties": {
+    "gmlIdAttribute": {
+      "description": "Attribute name on element features holding gml:id (default: \"gmlId\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "measurements": {
+      "description": "Measurement definitions to insert as gen:measureAttribute elements",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MeasurementDef"
+      }
+    },
+    "outputDir": {
+      "description": "Output directory expression for modified CityGML files",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "pathAttribute": {
+      "description": "Attribute name on path features holding the file path (default: \"path\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceEpsg": {
+      "description": "The projected CRS EPSG code used for rasterization (needed for UV computation)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "textureImagePath": {
+      "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "MeasurementDef": {
+      "description": "A single measurement attribute definition.",
+      "type": "object",
+      "required": [
+        "attribute",
+        "name",
+        "uom"
+      ],
+      "properties": {
+        "attribute": {
+          "description": "Feature attribute key holding the numeric value (e.g. \"totalSolarRadiation\")",
+          "type": "string"
+        },
+        "name": {
+          "description": "XML name attribute value (e.g. \"年間予測日射量\")",
+          "type": "string"
+        },
+        "uom": {
+          "description": "Unit of measurement (e.g. \"kWh\")",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* path
+* element
+* textureBounds
 ### Output Ports
 * default
 ### Category

@@ -668,16 +668,13 @@ graphs:
             - newAttribute: "L-TRAN-03 xlink参照エラー"
               expr: |
                 env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
-            - newAttribute: "面の向き不正"
-              expr: |
-                env.get("__value")["面の向き不正"] ?? 0
             - newAttribute: "面のエラー"
               expr: |
                 env.get("__value")["面のエラー"] ?? 0
             - newAttribute: totalErrorCount
               expr: |
                 let total = 0;
-                let keys = ["L-TRAN-03 xlink参照エラー", "面の向き不正", "面のエラー"];
+                let keys = ["L-TRAN-03 xlink参照エラー", "面のエラー"];
                 for key in keys {
                   total += env.get("__value")[key] ?? 0;
                 }

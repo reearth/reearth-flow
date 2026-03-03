@@ -227,21 +227,8 @@ impl Sink for MVTWriter {
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
-                let mut new_attrs =
-                    crate::schema::filter_and_cast_attributes(feature, &self.schema);
-                if self.params.skip_unexposed_attributes {
-                    new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
-                }
-                if self.params.colon_to_underscore {
-                    new_attrs = new_attrs
-                        .into_iter()
-                        .map(|(k, v)| (Attribute::new(k.inner().replace(":", "_")), v))
-                        .collect();
-                }
-                let cleaned_feature = feature.with_attributes(new_attrs);
-
                 let buffer = self.buffer.entry((output, compress_output)).or_default();
-                buffer.push((cleaned_feature, layer_name));
+                buffer.push((feature.clone(), layer_name));
             }
             _ => {
                 return Err(Box::new(SinkError::MvtWriter(
@@ -295,7 +282,24 @@ impl MVTWriter {
                 .extend(buffer.clone());
         }
         for ((output, compress_output), buffer) in &features {
-            let res = self.write(ctx.clone(), buffer.clone(), output, compress_output)?;
+            let filtered_buffer: BufferValue = buffer
+                .iter()
+                .map(|(feature, layer_name)| {
+                    let mut new_attrs =
+                        crate::schema::filter_and_cast_attributes(feature, &self.schema);
+                    if self.params.skip_unexposed_attributes {
+                        new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
+                    }
+                    if self.params.colon_to_underscore {
+                        new_attrs = new_attrs
+                            .into_iter()
+                            .map(|(k, v)| (Attribute::new(k.inner().replace(":", "_")), v))
+                            .collect();
+                    }
+                    (feature.with_attributes(new_attrs), layer_name.clone())
+                })
+                .collect();
+            let res = self.write(ctx.clone(), filtered_buffer, output, compress_output)?;
             result.extend(res);
         }
         Ok(result)
