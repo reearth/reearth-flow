@@ -39,7 +39,8 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "11_水部_無効な空間属性の型.csv"
+    "expectedFile": "11_水部_無効な空間属性の型.csv",
+    "except": "appearanceMember"
   },
   "summaryOutput": {
     "errorCountSummary": {

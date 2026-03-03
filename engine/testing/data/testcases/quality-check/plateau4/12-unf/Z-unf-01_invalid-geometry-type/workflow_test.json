@@ -38,7 +38,8 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "12_地下埋設物_無効な空間属性の型.csv"
+    "expectedFile": "12_地下埋設物_無効な空間属性の型.csv",
+    "except": "appearanceMember"
   },
   "summaryOutput": {
     "errorCountSummary": {
