@@ -5,6 +5,7 @@ import {
   TrashIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 import {
   Dialog,
@@ -119,102 +120,111 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     onBatchUpdate,
   });
 
-  const columns: ColumnDef<AnyWorkflowVariable>[] = [
-    {
-      accessorKey: "name",
-      header: t("Name"),
-      cell: ({ row }) => {
-        const variable = localWorkflowVariables[row.index];
-        return (
-          <NameInput
-            variable={variable}
-            onUpdate={handleLocalUpdate}
-            placeholder={t("Enter name")}
-          />
-        );
-      },
-    },
-    {
-      accessorKey: "type",
-      header: t("Type"),
-    },
-    {
-      accessorKey: "defaultValue",
-      header: t("Default Value"),
-      cell: ({ row }) => {
-        const variable = localWorkflowVariables[row.index];
-        return <DefaultValueDisplay variable={variable} />;
-      },
-    },
-    {
-      accessorKey: "required",
-      header: t("Required"),
-      cell: ({ row }) => {
-        const isChecked = row.getValue("required") as boolean;
-        return (
-          <Switch
-            checked={isChecked}
-            onCheckedChange={() => {
-              const projectVar = { ...localWorkflowVariables[row.index] };
-              projectVar.required = !isChecked;
-              handleLocalUpdate(projectVar);
-            }}
-          />
-        );
-      },
-    },
-    {
-      accessorKey: "public",
-      header: t("Public"),
-      cell: ({ row }) => {
-        const variable = localWorkflowVariables[row.index];
-        return (
-          <Switch
-            checked={variable.public}
-            onCheckedChange={() => {
-              const projectVar = { ...variable };
-              projectVar.public = !variable.public;
-              handleLocalUpdate(projectVar);
-            }}
-          />
-        );
-      },
-    },
-    {
-      id: "actions",
-      header: t("Actions"),
-      cell: ({ row }) => {
-        const variable = localWorkflowVariables[row.index];
-        return (
-          <div className="flex items-center gap-1">
-            <IconButton
-              icon={<PencilSimpleIcon size={18} />}
-              size="default"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditVariable(variable);
-              }}
-              tooltipText={t("Edit default value and advanced options")}
-              className="hover:bg-accent"
+  const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: t("Name"),
+        cell: ({ row }) => {
+          const variable = localWorkflowVariables[row.index];
+          return (
+            <NameInput
+              variable={variable}
+              onUpdate={handleLocalUpdate}
+              placeholder={t("Enter name")}
             />
-            <IconButton
-              icon={<TrashIcon size={18} />}
-              size="default"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteSingle(variable.id);
-              }}
-              tooltipText={t("Delete variable")}
-              className="hover:bg-accent"
-            />
-          </div>
-        );
+          );
+        },
       },
-      size: 100,
-    },
-  ];
+      {
+        accessorKey: "type",
+        header: t("Type"),
+      },
+      {
+        accessorKey: "defaultValue",
+        header: t("Default Value"),
+        cell: ({ row }) => {
+          const variable = localWorkflowVariables[row.index];
+          return <DefaultValueDisplay variable={variable} />;
+        },
+      },
+      {
+        accessorKey: "required",
+        header: t("Required"),
+        cell: ({ row }) => {
+          const isChecked = row.getValue("required") as boolean;
+          return (
+            <Switch
+              checked={isChecked}
+              onCheckedChange={() => {
+                const projectVar = { ...localWorkflowVariables[row.index] };
+                projectVar.required = !isChecked;
+                handleLocalUpdate(projectVar);
+              }}
+            />
+          );
+        },
+      },
+      {
+        accessorKey: "public",
+        header: t("Public"),
+        cell: ({ row }) => {
+          const variable = localWorkflowVariables[row.index];
+          return (
+            <Switch
+              checked={variable.public}
+              onCheckedChange={() => {
+                const projectVar = { ...variable };
+                projectVar.public = !variable.public;
+                handleLocalUpdate(projectVar);
+              }}
+            />
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: t("Actions"),
+        cell: ({ row }) => {
+          const variable = localWorkflowVariables[row.index];
+          return (
+            <div className="flex items-center gap-1">
+              <IconButton
+                icon={<PencilSimpleIcon size={18} />}
+                size="default"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditVariable(variable);
+                }}
+                tooltipText={t("Edit default value and advanced options")}
+                className="hover:bg-accent"
+              />
+              <IconButton
+                icon={<TrashIcon size={18} />}
+                size="default"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteSingle(variable.id);
+                }}
+                tooltipText={t("Delete variable")}
+                className="hover:bg-accent"
+              />
+            </div>
+          );
+        },
+        size: 100,
+      },
+    ],
+    [
+      localWorkflowVariables,
+      handleLocalUpdate,
+      handleEditVariable,
+      handleDeleteSingle,
+      t,
+    ],
+  );
 
   return (
     <>

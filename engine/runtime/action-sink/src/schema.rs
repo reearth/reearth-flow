@@ -1,5 +1,5 @@
 use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
-use reearth_flow_types::{AttributeValue, Attributes, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 /// Get the attribute definitions map for a feature type from the schema.
 /// Returns None if the feature type is not found or is a Property type.
@@ -93,12 +93,14 @@ pub fn filter_and_cast_attributes(feature: &Feature, schema: &Schema) -> Attribu
         return feature.attributes.as_ref().clone();
     };
 
-    feature
-        .attributes
+    schema_attrs
         .iter()
-        .filter_map(|(key, value)| {
-            let attr_def = schema_attrs.get(key.as_ref())?;
-            Some((key.clone(), cast_attribute_value(value, &attr_def.type_ref)))
+        .filter_map(|(schema_key, attr_def)| {
+            let value = feature.get(schema_key)?;
+            Some((
+                Attribute::new(schema_key.clone()),
+                cast_attribute_value(value, &attr_def.type_ref),
+            ))
         })
         .collect()
 }
