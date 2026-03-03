@@ -215,7 +215,7 @@ impl Sink for CityGmlWriterSink {
             // 3. Deduplicate textures to avoid writing the same image URI multiple times
             //
             // The appearance data flows through the pipeline as:
-            // CityGML file -> FeatureCityGMLReader -> feature.attributes["appearanceMember"] 
+            // CityGML file -> FeatureCityGMLReader -> feature.attributes["appearanceMember"]
             //   -> CityGmlWriter -> merged global appearance section
             //
             // PERFORMANCE NOTE: This collects all appearance data before writing features,

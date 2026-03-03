@@ -13,7 +13,7 @@ pub struct GeometryEntry {
 }
 
 /// Represents a texture target in CityGML format
-/// 
+///
 /// In CityGML, a texture target maps a texture image to a specific surface (Polygon).
 /// The target contains:
 /// - uri: The Surface ID (Polygon gml:id) - used as target.uri in CityGML output
@@ -27,7 +27,7 @@ pub struct TargetData {
 }
 
 /// Represents a single texture image with its associated targets
-/// 
+///
 /// In CityGML, a texture is defined once with an image URI, then referenced
 /// by multiple surfaces through targets. This structure holds:
 /// - uri: The image file path/URL
@@ -39,11 +39,11 @@ pub struct TextureData {
 }
 
 /// Container for all appearance data in a CityGML model
-/// 
+///
 /// CityGML appearance data includes:
 /// - textures: Parameterized textures (image-based) with UV mapping
 /// - themes: Named appearance themes (e.g., "summer", "winter")
-/// 
+///
 /// This data is collected from all features and written as a global
 /// <app:appearanceMember> section at the CityModel level.
 #[derive(Debug, Clone)]

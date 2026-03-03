@@ -371,10 +371,10 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             }
 
             // Extract appearance data BEFORE entity_to_geometry() consumes ent
-            // 
+            //
             // WHY THIS IS NEEDED:
             // CityGML files contain appearance data (textures, materials) that needs to be
-            // preserved and passed to downstream processors (e.g., CityGMLWriter). The 
+            // preserved and passed to downstream processors (e.g., CityGMLWriter). The
             // appearance data is stored in ent.appearance_store, but entity_to_geometry()
             // consumes the entity, making it impossible to access afterward.
             //
@@ -425,8 +425,8 @@ fn parse_and_write_features<R: BufRead, W: Write>(
 /// Converts AppearanceStore (from nusamai-plateau) to AttributeValue for workflow processing.
 ///
 /// # Purpose
-/// CityGML appearance data (textures, materials, themes) needs to be extracted from the 
-/// nusamai-plateau parser's data structures and converted to reearth-flow's AttributeValue 
+/// CityGML appearance data (textures, materials, themes) needs to be extracted from the
+/// nusamai-plateau parser's data structures and converted to reearth-flow's AttributeValue
 /// format so it can flow through the pipeline to sinks like CityGMLWriter.
 ///
 /// # Data Flow
@@ -444,7 +444,7 @@ fn parse_and_write_features<R: BufRead, W: Write>(
 ///   └─ "themes": Array of {name, surfaceMappings}
 ///
 /// # Performance Optimization
-/// 
+///
 /// ## Problem (Original Implementation)
 /// The original code had 4-level nested loops with O(T × S × R) complexity:
 /// ```ignore
@@ -464,7 +464,7 @@ fn parse_and_write_features<R: BufRead, W: Write>(
 ///
 /// ## Solution (Current Implementation)
 /// Uses a 2-phase approach with O(T + S×R) complexity:
-/// 
+///
 /// Phase 1 (O(S×R)): Pre-build reverse lookup map from surface_id_to_rings
 ///   - Create ring_id -> surface_id mapping
 ///   - This is the ONLY time we iterate surface_id_to_rings
@@ -531,7 +531,7 @@ fn convert_appearance_store_to_attribute_value(
         // NO NESTED LOOPS - each ring is processed exactly once
         for (theme_name, theme) in &appearance_store.themes {
             let ring_to_surface = theme_ring_to_surface.get(theme_name);
-            let theme_has_mappings = ring_to_surface.map_or(false, |m| !m.is_empty());
+            let theme_has_mappings = ring_to_surface.is_some_and(|m| !m.is_empty());
 
             // Single iteration through ring_id_to_texture
             for (ring_id, (tex_idx, line_string)) in &theme.ring_id_to_texture {
