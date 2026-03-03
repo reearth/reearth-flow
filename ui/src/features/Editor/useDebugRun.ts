@@ -31,9 +31,8 @@ export default ({
   });
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
-  const { workflowVariables } = useGetWorkflowVariables(
-    currentProject?.id ?? "",
-  );
+  const { workflowVariables, refetch: refetchWorkflowVariables } =
+    useGetWorkflowVariables(currentProject?.id ?? "");
 
   const [customDebugRunWorkflowVariables, setCustomDebugRunWorkflowVariables] =
     useState<AnyWorkflowVariable[] | undefined>(undefined);
@@ -233,6 +232,7 @@ export default ({
   return {
     activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
+    refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
