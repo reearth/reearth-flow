@@ -172,8 +172,8 @@ graphs:
         action: GeometryValidator
         with:
           validationTypes:
-            - duplicateConsecutivePoints: 0.01
-            - corruptGeometry
+            - duplicateConsecutivePoints: 0.009
+            - corruptGeometry: 0.01
 
       # TwoDimensionForcer: Convert 3D geometry to 2D before edge matching
       - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c

@@ -34,10 +34,12 @@ pub fn entity_to_geometry(
     reconstruct_unresolved_solid: bool,
 ) -> Result<Geometry, Error> {
     let apperance = entity.appearance_store.read().unwrap();
-    let theme = apperance
+    let solar_theme = apperance.themes.get("solarRadiation");
+    let fallback_theme = apperance
         .themes
         .get("rgbTexture")
         .or_else(|| apperance.themes.get("FMETheme"));
+    let theme = solar_theme.or(fallback_theme);
     let geoms = entity.geometry_store.read().unwrap();
     let epsg = geoms.epsg;
     // entity must be a Feature
@@ -262,9 +264,21 @@ pub fn entity_to_geometry(
 
                     for (i, ring) in poly.rings().enumerate() {
                         let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
-                        let tex = ring_id
-                            .clone()
-                            .and_then(|id| theme.ring_id_to_texture.get(&id));
+                        // When solarRadiation theme is present, use it for rings that have UV
+                        // data in it; fall back to the photo texture theme for other rings.
+                        let tex = ring_id.clone().and_then(|id| {
+                            if let Some(st) = solar_theme {
+                                let solar_tex = st.ring_id_to_texture.get(&id);
+                                if solar_tex.is_some() {
+                                    return solar_tex;
+                                }
+                                fallback_theme.and_then(|ft| ft.ring_id_to_texture.get(&id))
+                            } else {
+                                // No solar theme; theme is the fallback (or only) theme.
+                                // Inside `if let Some(theme) = theme`, `theme` is &Theme.
+                                theme.ring_id_to_texture.get(&id)
+                            }
+                        });
 
                         let mut add_dummy_texture = || {
                             let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
