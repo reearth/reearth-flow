@@ -415,7 +415,98 @@ fn convert_appearance_store_to_attribute_value(
     let mut appearance_attrs = HashMap::new();
 
     // Add textures if available
+    // OPTIMIZED: Pre-build ring-to-surface mapping and group targets by texture index
+    // instead of iterating textures × surfaces × rings (O(T×S×R) -> O(T + S×R))
+    //
+    // Original: 4-level nested loop (T textures × S surfaces × R rings)
+    // Optimized: 2-phase approach:
+    //   Phase 1: O(S×R) - Pre-build lookup map from surface_id_to_rings (ONE TIME)
+    //   Phase 2: O(T + R) - Single pass through ring_id_to_texture
     if !appearance_store.textures.is_empty() {
+        use std::collections::BTreeMap;
+
+        // Group targets by texture index
+        let mut texture_targets: BTreeMap<u32, Vec<HashMap<String, AttributeValue>>> =
+            BTreeMap::new();
+
+        // PHASE 1: Pre-build a map from ring_id -> surface_id for each theme
+        // Uses surface_id_to_rings from nusamai-plateau/src/appearance.rs
+        // Complexity: O(T + S×R) where T=themes, S=surfaces, R=rings per surface
+        let mut theme_ring_to_surface: HashMap<
+            &String,
+            HashMap<&nusamai_citygml::LocalId, &nusamai_citygml::LocalId>,
+        > = HashMap::new();
+        for (theme_name, theme) in &appearance_store.themes {
+            let mut ring_to_surface: HashMap<&nusamai_citygml::LocalId, &nusamai_citygml::LocalId> =
+                HashMap::new();
+            // Iterate surface_id_to_rings to build reverse lookup
+            for (surface_id, ring_ids) in &theme.surface_id_to_rings {
+                for ring_id in ring_ids {
+                    ring_to_surface.insert(ring_id, surface_id);
+                }
+            }
+            theme_ring_to_surface.insert(theme_name, ring_to_surface);
+        }
+
+        // PHASE 2: Process each theme's rings
+        // Complexity: O(T + R_total) where R_total = total rings across all themes
+        // NO NESTED LOOPS - each ring is processed exactly once
+        for (theme_name, theme) in &appearance_store.themes {
+            let ring_to_surface = theme_ring_to_surface.get(theme_name);
+            let theme_has_mappings = ring_to_surface.map_or(false, |m| !m.is_empty());
+
+            // Single iteration through ring_id_to_texture
+            for (ring_id, (tex_idx, line_string)) in &theme.ring_id_to_texture {
+                let mut target_map = HashMap::new();
+
+                // Determine the URI: use surface ID if mapping exists, otherwise use ring ID
+                if theme_has_mappings {
+                    if let Some(surface_id) = ring_to_surface.unwrap().get(ring_id) {
+                        // Ring has a surface mapping - use surface ID for URI
+                        let uri = format!("#{}", surface_id.0);
+                        target_map.insert("uri".to_string(), AttributeValue::String(uri));
+                    } else {
+                        // Ring is NOT in surface_id_to_rings - skip it (matches original behavior)
+                        continue;
+                    }
+                } else {
+                    // No surface mappings for this theme - use ring ID as URI (fallback)
+                    let uri = format!("#{}", ring_id.0);
+                    target_map.insert("uri".to_string(), AttributeValue::String(uri));
+                }
+
+                // Use RING ID for the ring attribute (always)
+                target_map.insert(
+                    "ring".to_string(),
+                    AttributeValue::String(format!("#{}", ring_id.0)),
+                );
+
+                // Add texture coordinates from the line string
+                let coord_strings: Vec<String> = line_string
+                    .iter()
+                    .map(|point| format!("{} {}", point[0], point[1]))
+                    .collect();
+
+                if !coord_strings.is_empty() {
+                    let tex_coords: Vec<AttributeValue> = coord_strings
+                        .into_iter()
+                        .map(AttributeValue::String)
+                        .collect();
+                    target_map.insert(
+                        "textureCoordinates".to_string(),
+                        AttributeValue::Array(tex_coords),
+                    );
+                }
+
+                // Group by texture index
+                texture_targets
+                    .entry(*tex_idx)
+                    .or_default()
+                    .push(target_map);
+            }
+        }
+
+        // Build the textures array using the grouped targets
         let textures: Vec<AttributeValue> = appearance_store
             .textures
             .iter()
@@ -427,102 +518,22 @@ fn convert_appearance_store_to_attribute_value(
                     AttributeValue::String(texture.image_url.to_string()),
                 );
 
-                // Build targets using surface_id_to_rings mapping
-                // This ensures target.uri references the surface (Polygon) ID,
-                // while the ring attribute references the ring (LinearRing) ID
-                let mut all_targets = Vec::new();
-                for (_theme_name, theme) in &appearance_store.themes {
-                    // Iterate through surface-to-rings mapping
-                    for (surface_id, ring_ids) in &theme.surface_id_to_rings {
-                        for ring_id in ring_ids {
-                            // Look up the texture index and coordinates for this ring
-                            if let Some((tex_idx, line_string)) =
-                                theme.ring_id_to_texture.get(ring_id)
-                            {
-                                if *tex_idx == idx as u32 {
-                                    let mut target_map = HashMap::new();
-
-                                    // Use SURFACE ID for target URI (correct!)
-                                    let uri = format!("#{}", surface_id.0);
-                                    target_map
-                                        .insert("uri".to_string(), AttributeValue::String(uri));
-
-                                    // Use RING ID for the ring attribute (correct!)
-                                    target_map.insert(
-                                        "ring".to_string(),
-                                        AttributeValue::String(format!("#{}", ring_id.0)),
-                                    );
-
-                                    // Add texture coordinates from the line string
-                                    let mut coord_strings = Vec::new();
-                                    for point in line_string.iter() {
-                                        coord_strings.push(format!("{} {}", point[0], point[1]));
-                                    }
-                                    if !coord_strings.is_empty() {
-                                        let tex_coords: Vec<AttributeValue> = coord_strings
-                                            .iter()
-                                            .map(|coord| AttributeValue::String(coord.clone()))
-                                            .collect();
-                                        target_map.insert(
-                                            "textureCoordinates".to_string(),
-                                            AttributeValue::Array(tex_coords),
-                                        );
-                                    }
-
-                                    all_targets.push(AttributeValue::Map(target_map));
-                                }
-                            }
-                        }
+                // Get targets for this texture (if any)
+                if let Some(targets) = texture_targets.get(&(idx as u32)) {
+                    if !targets.is_empty() {
+                        let target_attrs: Vec<AttributeValue> = targets
+                            .iter()
+                            .map(|t| AttributeValue::Map(t.clone()))
+                            .collect();
+                        texture_map
+                            .insert("targets".to_string(), AttributeValue::Array(target_attrs));
                     }
-                }
-
-                // If no targets were created from surface_id_to_rings, fall back to using
-                // ring_id_to_texture directly. This happens when merge_global transfers
-                // ring_id_to_texture but not surface_id_to_rings.
-                if all_targets.is_empty() {
-                    for (_theme_name, theme) in &appearance_store.themes {
-                        for (ring_id, (tex_idx, line_string)) in &theme.ring_id_to_texture {
-                            if *tex_idx == idx as u32 {
-                                let mut target_map = HashMap::new();
-
-                                // When surface_id_to_rings is not available, use ring ID as both uri and ring
-                                // The ring ID references the LinearRing gml:id
-                                let uri = format!("#{}", ring_id.0);
-                                target_map.insert("uri".to_string(), AttributeValue::String(uri));
-                                target_map.insert(
-                                    "ring".to_string(),
-                                    AttributeValue::String(format!("#{}", ring_id.0)),
-                                );
-
-                                // Add texture coordinates from the line string
-                                let mut coord_strings = Vec::new();
-                                for point in line_string.iter() {
-                                    coord_strings.push(format!("{} {}", point[0], point[1]));
-                                }
-                                if !coord_strings.is_empty() {
-                                    let tex_coords: Vec<AttributeValue> = coord_strings
-                                        .iter()
-                                        .map(|coord| AttributeValue::String(coord.clone()))
-                                        .collect();
-                                    target_map.insert(
-                                        "textureCoordinates".to_string(),
-                                        AttributeValue::Array(tex_coords),
-                                    );
-                                }
-
-                                all_targets.push(AttributeValue::Map(target_map));
-                            }
-                        }
-                    }
-                }
-
-                if !all_targets.is_empty() {
-                    texture_map.insert("targets".to_string(), AttributeValue::Array(all_targets));
                 }
 
                 AttributeValue::Map(texture_map)
             })
             .collect();
+
         appearance_attrs.insert("textures".to_string(), AttributeValue::Array(textures));
     }
 
