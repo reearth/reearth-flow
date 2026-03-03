@@ -229,6 +229,16 @@ graphs:
         with:
           predicate: intersects
 
+      - id: 00000004-0000-0000-0000-000000000004
+        name: OccluderSurfaceFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              env.get("__value")["featureType"] != "bldg:Building";
+            outputPort: default
+
       - id: 00000001-0000-0000-0000-000000000006
         name: GeometrySplitter
         type: action
@@ -1322,6 +1332,39 @@ graphs:
           compressOutput: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod4.zip")
 
+      # ========================================
+      # CityGML Output Pipeline
+      # ========================================
+
+      - id: 00000001-0000-0000-0000-0000000000e0
+        name: CityGmlAttributeInserter
+        type: action
+        action: PLATEAU4.SolarCityGmlAttributeInserter
+        with:
+          outputDir: |
+            env.get("workerArtifactPath")
+          pathAttribute: path
+          gmlIdAttribute: gmlId
+          measurements:
+            - name: "年間予測日射量"
+              attribute: totalSolarRadiation
+              uom: "kWh"
+            - name: "年間予測発電量"
+              attribute: totalSolarPower
+              uom: "kWh"
+          textureImagePath: |
+            file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
+          sourceEpsg: |
+            env.get("prcs")
+
+      - id: 00000001-0000-0000-0000-0000000000e1
+        name: CityGmlZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
+
     edges:
       # Section 1: CityGML Loading Pipeline
       - id: e0000001-0000-0000-0000-000000000001
@@ -1468,8 +1511,13 @@ graphs:
       # Branch: Building geometries to ray intersector (from SpatialFilter output)
       - id: e0000001-0000-0000-0000-00000000000f
         from: 00000004-0000-0000-0000-000000000003
-        to: 00000001-0000-0000-0000-000000000010
+        to: 00000004-0000-0000-0000-000000000004
         fromPort: passed
+        toPort: default
+      - id: e0000004-0000-0000-0000-000000000004
+        from: 00000004-0000-0000-0000-000000000004
+        to: 00000001-0000-0000-0000-000000000010
+        fromPort: default
         toPort: geom
 
       # PreRayAttributeMapper → RayIntersectorShadow (ray)
@@ -2016,3 +2064,35 @@ graphs:
         to: 00000001-0000-0000-0000-000000000014
         fromPort: default
         toPort: geom
+
+      # ========================================
+      # CityGML Output Pipeline Edges
+      # ========================================
+
+      # FolderAndFilePathReader → CityGmlAttributeInserter (path port: CityGML file paths)
+      - id: e0000001-0000-0000-0000-0000000000e0
+        from: 00000001-0000-0000-0000-000000000111
+        to: 00000001-0000-0000-0000-0000000000e0
+        fromPort: default
+        toPort: path
+
+      # BuildingAreaMerger (merged) → CityGmlAttributeInserter (element port: radiation data)
+      - id: e0000001-0000-0000-0000-0000000000e1
+        from: 00000001-0000-0000-0000-0000000000d3
+        to: 00000001-0000-0000-0000-0000000000e0
+        fromPort: merged
+        toPort: element
+
+      # ImageRasterizer → CityGmlAttributeInserter (textureBounds: UV reference frame for CityGML)
+      - id: e0000001-0000-0000-0000-0000000000e3
+        from: 00000001-0000-0000-0000-000000000061
+        to: 00000001-0000-0000-0000-0000000000e0
+        fromPort: textureBounds
+        toPort: textureBounds
+
+      # CityGmlAttributeInserter → CityGmlZipFileWriter
+      - id: e0000001-0000-0000-0000-0000000000e2
+        from: 00000001-0000-0000-0000-0000000000e0
+        to: 00000001-0000-0000-0000-0000000000e1
+        fromPort: default
+        toPort: default

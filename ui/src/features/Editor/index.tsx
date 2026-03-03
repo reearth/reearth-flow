@@ -50,6 +50,7 @@ export default function Editor({
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
+    refetchWorkflowVariables,
     showSearchPanel,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
@@ -137,6 +138,7 @@ export default function Editor({
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+            refetchWorkflowVariables={refetchWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
             onWorkflowOpen={handleWorkflowOpen}
             onWorkflowClose={handleWorkflowClose}

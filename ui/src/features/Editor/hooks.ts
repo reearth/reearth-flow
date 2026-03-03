@@ -253,6 +253,7 @@ export default ({
 
   const {
     customDebugRunWorkflowVariables,
+    refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
@@ -415,6 +416,7 @@ export default ({
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
+    refetchWorkflowVariables,
     showSearchPanel,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
