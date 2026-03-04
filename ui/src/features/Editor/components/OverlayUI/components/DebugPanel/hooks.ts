@@ -209,6 +209,23 @@ export default () => {
             );
             if (matchingEntities.length > 0) {
               cesiumViewer.zoomTo(matchingEntities);
+            } else {
+              // Search in data sources as fallback
+              for (const dataSource of cesiumViewer.dataSources) {
+                const matching = dataSource.entities.values.filter(
+                  (entity: any) => {
+                    const props = entity.properties?.getValue?.();
+                    return (
+                      props?._originalId === featureId ||
+                      entity.id === featureId
+                    );
+                  },
+                );
+                if (matching.length > 0) {
+                  cesiumViewer.zoomTo(matching);
+                  break;
+                }
+              }
             }
           }
         } catch (err) {
@@ -387,7 +404,6 @@ export default () => {
     outputDataForDownload,
     selectedOutputData,
     // enableClustering,
-    selectedFeature,
     selectedFeatureId,
     detailsOverlayOpen,
     detailsFeature,
