@@ -211,8 +211,7 @@ export default () => {
               cesiumViewer.zoomTo(matchingEntities);
             } else {
               // Search in data sources as fallback
-              for (let i = 0; i < cesiumViewer.dataSources.length; i++) {
-                const dataSource = cesiumViewer.dataSources.get(i);
+              for (const dataSource of cesiumViewer.dataSources) {
                 const matching = dataSource.entities.values.filter(
                   (entity: any) => {
                     const props = entity.properties?.getValue?.();
