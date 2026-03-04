@@ -13,11 +13,3 @@ pub enum SolarPositionError {
     #[error("Coordinate reprojection failed: {0}")]
     Reprojection(String),
 }
-
-#[derive(Error, Debug)]
-pub enum CityGmlAttributeInserterError {
-    #[error("CityGmlAttributeInserter Factory error: {0}")]
-    Factory(String),
-    #[error("CityGmlAttributeInserter error: {0}")]
-    Process(String),
-}
