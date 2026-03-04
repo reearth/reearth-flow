@@ -3,7 +3,14 @@ import {
   ArrowSquareOutIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
-import { memo, useCallback, useMemo } from "react";
+import {
+  KeyboardEvent,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import {
   Button,
@@ -163,7 +170,37 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       geometry: filteredGeometry,
     };
   }, [feature]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.focus();
+    }
+  }, []);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const { current } = scrollRef;
+    if (!current) return;
+
+    const scrollAmount = 50;
+
+    switch (event.key) {
+      case "ArrowUp":
+        event.preventDefault();
+        current.scrollBy({ top: -scrollAmount, behavior: "smooth" });
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        current.scrollBy({ top: scrollAmount, behavior: "smooth" });
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        onClose();
+        break;
+      default:
+        break;
+    }
+  };
   const openRawInNewWindow = useCallback((label: string, value: unknown) => {
     const resolved = resolveValue(value);
     let json: string;
@@ -343,7 +380,10 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       </div>
 
       {/* Content */}
-      <div className="h-[calc(100%-4rem)] overflow-y-auto p-4">
+      <div
+        className="h-[calc(100%-4rem)] overflow-y-auto p-4 focus-visible:outline-hidden"
+        ref={scrollRef}
+        onKeyDown={handleKeyDown}>
         <div className="space-y-6">
           {/* Feature ID */}
           {processedFeature.id != null && (

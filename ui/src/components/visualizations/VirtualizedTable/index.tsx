@@ -1,5 +1,6 @@
 import {
   ColumnDef,
+  FilterFn,
   SortingState,
   VisibilityState,
   flexRender,
@@ -8,8 +9,15 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Virtualizer } from "@tanstack/react-virtual";
-import { RefObject, useCallback, useEffect, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   DropdownMenu,
@@ -32,36 +40,30 @@ import { useT } from "@flow/lib/i18n";
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data?: TData[];
-  parentRef: RefObject<HTMLDivElement | null>;
-  virtualizer: Virtualizer<HTMLDivElement, Element>;
   selectColumns?: boolean;
   showFiltering?: boolean;
   condensed?: boolean;
   searchTerm?: string;
   selectedRowIndex: number;
+  customGlobalFilterFn?: FilterFn<TData>;
+  detailsOpen?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
-  customGlobalFilter?: (
-    row: any,
-    _columnId: string,
-    filterValue: string,
-  ) => boolean;
   setSearchTerm?: (term: string) => void;
 };
 
 function VirtualizedTable<TData, TValue>({
   columns,
   data,
-  parentRef,
-  virtualizer,
   selectColumns = false,
   showFiltering = false,
   condensed,
   selectedRowIndex,
   searchTerm,
+  customGlobalFilterFn,
+  detailsOpen,
   onRowClick,
   onRowDoubleClick,
-  customGlobalFilter,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -91,7 +93,7 @@ function VirtualizedTable<TData, TValue>({
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
-    globalFilterFn: customGlobalFilter ? customGlobalFilter : undefined,
+    globalFilterFn: customGlobalFilterFn ?? "auto",
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     state: {
@@ -127,6 +129,49 @@ function VirtualizedTable<TData, TValue>({
 
   const { rows } = table.getRowModel();
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 24,
+  });
+
+  const activeFilter = searchTerm ?? globalFilter;
+  useEffect(() => {
+    if (parentRef.current) {
+      parentRef.current.scrollTop = 0;
+    }
+    virtualizer.measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter]);
+
+  const filteredSelectedIndex = useMemo(
+    () => rows.findIndex((r) => r.index === selectedRowIndex),
+    [rows, selectedRowIndex],
+  );
+
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (!rows.length) return;
+    setActiveIndex(filteredSelectedIndex >= 0 ? filteredSelectedIndex : 0);
+  }, [filteredSelectedIndex, rows.length]);
+
+  useEffect(() => {
+    if (filteredSelectedIndex === -1) return;
+    const items = virtualizer.getVirtualItems();
+    if (!items.length) return;
+    const start = items[0].index;
+    const end = items[items.length - 1].index;
+    if (filteredSelectedIndex >= start && filteredSelectedIndex <= end) return;
+    virtualizer.scrollToIndex(filteredSelectedIndex, {
+      align: "start",
+      behavior: "auto",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSelectedIndex]);
+
   const [parentHeight, setParentHeight] = useState<number>(0);
 
   useEffect(() => {
@@ -141,10 +186,74 @@ function VirtualizedTable<TData, TValue>({
     setParentHeight(el.clientHeight);
 
     return () => ro.disconnect();
-  }, [parentRef]);
+  }, []);
 
   const totalSize = virtualizer.getTotalSize();
   const spacerHeight = Math.max(totalSize, parentHeight);
+
+  const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({});
+
+  const moveActive = useCallback(
+    (nextIndex: number) => {
+      if (!rows.length) return;
+
+      const next = Math.max(
+        0,
+        Math.min(activeIndex + nextIndex, rows.length - 1),
+      );
+      if (next === activeIndex) return;
+
+      setActiveIndex(next);
+
+      const nextRow = rows[next] as any;
+      nextRow?.toggleSelected?.();
+      onRowClick?.(nextRow.original);
+
+      virtualizer.scrollToIndex(next, { align: "auto" });
+    },
+    [activeIndex, rows, virtualizer, onRowClick],
+  );
+  const [lastTableInteraction, setLastTableInteraction] = useState(false);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTableRowElement>) => {
+      if (detailsOpen) {
+        e.preventDefault();
+        return;
+      }
+
+      switch (e.key) {
+        case "Enter":
+          e.preventDefault();
+          onRowDoubleClick?.((rows[activeIndex] as any)?.original);
+          setLastTableInteraction(true);
+          break;
+
+        case "ArrowUp":
+          e.preventDefault();
+          moveActive(-1);
+          break;
+
+        case "ArrowDown":
+          e.preventDefault();
+          moveActive(1);
+          break;
+
+        default:
+          break;
+      }
+    },
+    [detailsOpen, rows, activeIndex, moveActive, onRowDoubleClick],
+  );
+
+  useEffect(() => {
+    if (!detailsOpen && lastTableInteraction) {
+      requestAnimationFrame(() => {
+        rowRefs.current[activeIndex]?.focus();
+      });
+      setLastTableInteraction(false);
+    }
+  }, [detailsOpen, activeIndex, lastTableInteraction]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -236,16 +345,28 @@ function VirtualizedTable<TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
-
             <TableBody>
               {rows.length ? (
                 virtualizer.getVirtualItems().map((virtualRow, idx) => {
                   const row = rows[virtualRow.index] as any;
-                  const isSelected = selectedRowIndex === virtualRow.index;
+                  const isSelected = selectedRowIndex === row.index;
+
                   return (
                     <TableRow
                       key={row.id}
-                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b"
+                      ref={(el) => {
+                        rowRefs.current[virtualRow.index] = el;
+                      }}
+                      tabIndex={
+                        detailsOpen
+                          ? -1
+                          : virtualRow.index === activeIndex
+                            ? 0
+                            : -1
+                      }
+                      onKeyDown={(e) => handleKeyDown(e)}
+                      onFocus={() => setActiveIndex(virtualRow.index)}
+                      className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b focus-visible:outline-hidden"
                       style={{
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${
@@ -254,6 +375,7 @@ function VirtualizedTable<TData, TValue>({
                       }}
                       data-state={isSelected ? "selected" : undefined}
                       onClick={() => {
+                        setActiveIndex(virtualRow.index);
                         row.toggleSelected();
                         onRowClick?.(row.original);
                       }}
