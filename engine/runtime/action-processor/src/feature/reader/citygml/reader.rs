@@ -29,6 +29,132 @@ use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
 
+/// Resolve geometry refs, build per-child attributes, and emit a single pre-flattened entity.
+/// Both the main emit loop and the cross-file feature-ref path call this so attribute keys
+/// only need to be maintained in one place.
+#[allow(clippy::too_many_arguments)]
+fn emit_flat_entity(
+    ctx: &Context,
+    fw: &ProcessorChannelForwarder,
+    mut ent: Entity,
+    root_needs_reconstruction: bool,
+    // Already contains base_attributes + gmlRootId + root featureType + gmlId + maxLod.
+    // This function overrides the child-specific fields (featureType, gmlName, lod, gmlId).
+    mut attrs: HashMap<Attribute, AttributeValue>,
+    root_metadata: &Metadata,
+    transformer: &mut GeometricMergedownTransform,
+    flatten: bool,
+    parent_lod: LodMask,
+    geom_registry: &HashMap<Url, Arc<RwLock<GeometryStore>>>,
+    app_registry: &HashMap<Url, Arc<RwLock<AppearanceStore>>>,
+) -> Result<(), BoxedError> {
+    // Resolve geometry refs
+    {
+        let mut geom_store = ent.geometry_store.write().unwrap();
+        let nusamai_citygml::Value::Object(obj) = &mut ent.root else {
+            return Ok(());
+        };
+        if let nusamai_citygml::object::ObjectStereotype::Feature {
+            ref mut geometries, ..
+        } = obj.stereotype
+        {
+            geom_store.resolve_refs(geometries);
+
+            let has_cross_file = geometries
+                .iter()
+                .any(|r| r.unresolved_refs.iter().any(|(f, _, _)| f.is_some()));
+            if has_cross_file {
+                let old_ring_count = geom_store.ring_ids.len();
+                let old_span_count = geom_store.surface_spans.len();
+                let src_app_stores: Vec<Arc<RwLock<AppearanceStore>>> = {
+                    let mut seen = std::collections::HashSet::new();
+                    geometries
+                        .iter()
+                        .flat_map(|r| r.unresolved_refs.iter())
+                        .filter(|(f, _, _)| f.is_some())
+                        .filter_map(|(f, href, _)| {
+                            let mut url = f.clone().unwrap();
+                            url.set_fragment(Some(&href.0));
+                            app_registry.get(&url).map(Arc::clone)
+                        })
+                        .filter(|a| seen.insert(Arc::as_ptr(a) as usize))
+                        .collect()
+                };
+                geom_store.resolve_cross_file_refs(geometries, geom_registry);
+                if !src_app_stores.is_empty() {
+                    let new_ring_ids = geom_store.ring_ids[old_ring_count..].to_vec();
+                    let new_surface_spans = geom_store.surface_spans[old_span_count..].to_vec();
+                    let mut app_store = ent.appearance_store.write().unwrap();
+                    for src_app_arc in src_app_stores {
+                        let mut src_app = (*src_app_arc.read().unwrap()).clone();
+                        app_store.merge_global(&mut src_app, &new_ring_ids, &new_surface_spans);
+                    }
+                }
+            }
+        }
+    }
+
+    let nusamai_citygml::Value::Object(obj) = &ent.root else {
+        return Ok(());
+    };
+    let mut child_lod = LodMask::default();
+    if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } = &obj.stereotype {
+        for geom in geometries {
+            child_lod.add_lod(geom.lod);
+        }
+    } else {
+        return Ok(());
+    }
+    transformer.transform(&mut ent);
+
+    let child_id = ent.id.clone();
+    let child_typename = ent.typename.clone();
+    if flatten {
+        if let Some(typename) = &child_typename {
+            if typename != "uro:DmGeometricAttribute" {
+                attrs.insert(
+                    Attribute::new("featureType"),
+                    AttributeValue::String(typename.to_string()),
+                );
+                attrs.insert(
+                    Attribute::new("gmlName"),
+                    AttributeValue::String(typename.to_string()),
+                );
+            }
+        }
+        let effective_lod = child_lod.highest_lod().or_else(|| parent_lod.highest_lod());
+        if let Some(max_lod) = effective_lod {
+            attrs.insert(
+                Attribute::new("lod"),
+                AttributeValue::String(max_lod.to_string()),
+            );
+        }
+    }
+
+    let citygml_attributes =
+        AttributeValue::Map(AttributeValue::from_nusamai_citygml_value(&ent.root));
+    let geometry: Geometry = entity_to_geometry(ent, root_needs_reconstruction)
+        .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
+    let mut feature: Feature = geometry.into();
+    feature.extend(attrs);
+    feature.insert("cityGmlAttributes", citygml_attributes);
+    let mut child_metadata = root_metadata.clone();
+    if flatten {
+        if child_lod.highest_lod().is_some() {
+            child_metadata.lod = Some(child_lod);
+        }
+        child_metadata.feature_id = child_id;
+        child_metadata.feature_type = child_typename;
+    }
+    feature.metadata = child_metadata;
+    fw.send(ExecutorContext::new_with_context_feature_and_port(
+        ctx,
+        feature,
+        DEFAULT_PORT.clone(),
+    ));
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct BufferedEntity {
     pub entity: Entity,
@@ -226,15 +352,23 @@ pub(super) fn emit_buffered(
     geom_registry: &HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: &HashMap<Url, Arc<RwLock<AppearanceStore>>>,
 ) -> Result<(), BoxedError> {
-    // Build feature registry: (file_url, gml_id) -> index in buffered
-    let feature_registry: HashMap<(Url, String), usize> = buffered
+    // Build flat feature registry: (file_url, gml_id) -> (Entity, root_needs_reconstruction)
+    // Pre-flatten all entities so child IDs (e.g. tran:TrafficArea inside tran:Road) are indexed.
+    let flat_feature_registry: HashMap<(Url, String), (Entity, bool)> = buffered
         .iter()
-        .enumerate()
-        .filter_map(|(i, be)| {
-            be.entity
-                .id
-                .as_ref()
-                .map(|id| ((be.entity.base_url.clone(), id.clone()), i))
+        .flat_map(|be| {
+            let flat = if be.flatten {
+                FlattenTreeTransform::transform(be.entity.clone())
+            } else {
+                vec![be.entity.clone()]
+            };
+            let file_url = be.entity.base_url.clone();
+            let rnr = be.root_needs_reconstruction;
+            flat.into_iter().filter_map(move |ent| {
+                ent.id
+                    .clone()
+                    .map(|id| ((file_url.clone(), id), (ent, rnr)))
+            })
         })
         .collect();
 
@@ -292,172 +426,40 @@ pub(super) fn emit_buffered(
             vec![entity]
         };
 
-        for mut ent in flat_entities {
-            // Resolve same-file and cross-file geometry refs
-            {
-                let mut geom_store = ent.geometry_store.write().unwrap();
-                let nusamai_citygml::Value::Object(obj) = &mut ent.root else {
-                    continue;
-                };
-                if let nusamai_citygml::object::ObjectStereotype::Feature {
-                    ref mut geometries,
-                    ..
-                } = obj.stereotype
-                {
-                    // Same-file refs
-                    geom_store.resolve_refs(geometries);
-
-                    // Cross-file refs
-                    let has_cross_file = geometries
-                        .iter()
-                        .any(|r| r.unresolved_refs.iter().any(|(f, _, _)| f.is_some()));
-
-                    if has_cross_file {
-                        let old_ring_count = geom_store.ring_ids.len();
-                        let old_span_count = geom_store.surface_spans.len();
-
-                        // Collect unique source AppearanceStores before resolving clears refs
-                        let src_app_stores: Vec<Arc<RwLock<AppearanceStore>>> = {
-                            let mut seen = std::collections::HashSet::new();
-                            geometries
-                                .iter()
-                                .flat_map(|r| r.unresolved_refs.iter())
-                                .filter(|(f, _, _)| f.is_some())
-                                .filter_map(|(f, href, _)| {
-                                    let mut url = f.clone().unwrap();
-                                    url.set_fragment(Some(&href.0));
-                                    app_registry.get(&url).map(Arc::clone)
-                                })
-                                .filter(|a| seen.insert(Arc::as_ptr(a) as usize))
-                                .collect()
-                        };
-
-                        geom_store.resolve_cross_file_refs(geometries, geom_registry);
-
-                        // Merge appearances for newly added polygons
-                        if !src_app_stores.is_empty() {
-                            let new_ring_ids =
-                                geom_store.ring_ids[old_ring_count..].to_vec();
-                            let new_surface_spans =
-                                geom_store.surface_spans[old_span_count..].to_vec();
-                            let mut app_store = ent.appearance_store.write().unwrap();
-                            for src_app_arc in src_app_stores {
-                                let mut src_app = (*src_app_arc.read().unwrap()).clone();
-                                app_store.merge_global(
-                                    &mut src_app,
-                                    &new_ring_ids,
-                                    &new_surface_spans,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            let nusamai_citygml::Value::Object(obj) = &ent.root else {
-                continue;
-            };
-            let mut child_lod = LodMask::default();
-            let mut geom_feature_id: Option<String> = None;
-            if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
-                &obj.stereotype
-            {
-                for geom in geometries {
-                    child_lod.add_lod(geom.lod);
-                    let has_id = ent.id.as_ref().is_some_and(|id| !id.is_empty());
-                    if !has_id && geom_feature_id.is_none() {
-                        geom_feature_id = geom.feature_id.clone();
-                    }
-                }
-            } else {
-                continue;
-            }
-            transformer.transform(&mut ent);
-
-            let child_id = ent.id.clone();
-            let child_typename = ent.typename.clone();
-            let mut attributes = attributes.clone();
-            if flatten {
-                if let Some(typename) = &child_typename {
-                    if typename != "uro:DmGeometricAttribute" {
-                        attributes.insert(
-                            Attribute::new("featureType"),
-                            AttributeValue::String(typename.to_string()),
-                        );
-                        attributes.insert(
-                            Attribute::new("gmlName"),
-                            AttributeValue::String(typename.to_string()),
-                        );
-                    }
-                }
-                let effective_lod = child_lod.highest_lod().or_else(|| lod.highest_lod());
-                if let Some(max_lod) = effective_lod {
-                    attributes.insert(
-                        Attribute::new("lod"),
-                        AttributeValue::String(max_lod.to_string()),
-                    );
-                }
-            }
-
-            let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
-            let citygml_attributes = AttributeValue::Map(citygml_attributes);
-            let geometry: Geometry =
-                entity_to_geometry(ent, root_needs_reconstruction).map_err(|e| {
-                    FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-                })?;
-            let mut feature: Feature = geometry.into();
-            feature.extend(attributes);
-            feature.insert("cityGmlAttributes", citygml_attributes);
-            let mut child_metadata = metadata.clone();
-            if flatten {
-                if child_lod.highest_lod().is_some() {
-                    child_metadata.lod = Some(child_lod);
-                }
-                child_metadata.feature_id = child_id;
-                child_metadata.feature_type = child_typename;
-            }
-            feature.metadata = child_metadata;
-
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
+        for ent in flat_entities {
+            emit_flat_entity(
                 &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
+                fw,
+                ent,
+                root_needs_reconstruction,
+                attributes.clone(),
+                &metadata,
+                &mut transformer,
+                flatten,
+                lod,
+                geom_registry,
+                app_registry,
+            )?;
         }
 
-        // Emit cross-file feature refs with this entity's base_attributes
+        // Emit cross-file feature refs using the referencing entity's attributes/metadata
         if flatten && !cross_file_feature_refs.is_empty() {
             for (ref_file_url, ref_id) in &cross_file_feature_refs {
                 let key = (ref_file_url.clone(), ref_id.clone());
-                if let Some(&idx) = feature_registry.get(&key) {
-                    let ref_be = &buffered[idx];
-                    // Emit the referenced entity's flattened children with our base_attributes
-                    let ref_flat = if ref_be.flatten {
-                        FlattenTreeTransform::transform(ref_be.entity.clone())
-                    } else {
-                        vec![ref_be.entity.clone()]
-                    };
-                    for mut ref_ent in ref_flat {
-                        transformer.transform(&mut ref_ent);
-                        let ref_citygml_attributes =
-                            AttributeValue::from_nusamai_citygml_value(&ref_ent.root);
-                        let ref_geometry =
-                            entity_to_geometry(ref_ent, ref_be.root_needs_reconstruction)
-                                .map_err(|e| {
-                                    FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-                                })?;
-                        let mut ref_feature: Feature = ref_geometry.into();
-                        ref_feature.extend(base_attributes.clone());
-                        ref_feature.insert(
-                            "cityGmlAttributes",
-                            AttributeValue::Map(ref_citygml_attributes),
-                        );
-                        fw.send(ExecutorContext::new_with_context_feature_and_port(
-                            &ctx,
-                            ref_feature,
-                            DEFAULT_PORT.clone(),
-                        ));
-                    }
+                if let Some((ref_ent, ref_rnr)) = flat_feature_registry.get(&key) {
+                    emit_flat_entity(
+                        &ctx,
+                        fw,
+                        ref_ent.clone(),
+                        *ref_rnr,
+                        attributes.clone(),
+                        &metadata,
+                        &mut transformer,
+                        flatten,
+                        lod,
+                        geom_registry,
+                        app_registry,
+                    )?;
                 }
             }
         }
