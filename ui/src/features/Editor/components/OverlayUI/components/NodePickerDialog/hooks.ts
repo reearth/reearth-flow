@@ -1,4 +1,4 @@
-import { useReactFlow, XYPosition } from "@xyflow/react";
+import { EdgeChange, useReactFlow, XYPosition } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
@@ -6,22 +6,37 @@ import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
-import { ActionNodeType, Node } from "@flow/types";
+import { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
+import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type ActionTypeFiltering = "all" | ActionNodeType;
 export default ({
   openedActionType,
   isMainWorkflow,
+  nodes,
+  selectedNodeIds,
+  edges,
+  openNodePickerViaShortcut,
   onNodesAdd,
+  onNodesChange,
+  onEdgesAdd,
+  onEdgesChange,
   onClose,
 }: {
   openedActionType: {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
+  nodes: Node[];
+  selectedNodeIds: string[];
+  edges?: Edge[];
   isMainWorkflow: boolean;
+  openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
+  onNodesChange?: (changes: NodeChange[]) => void;
+  onEdgesAdd?: (edges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
   onClose: () => void;
 }) => {
   const t = useT();
@@ -92,21 +107,100 @@ export default ({
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
       const randomX = getRandomNumberInRange(50, 200);
       const randomY = getRandomNumberInRange(50, 200);
-      const newNode = await buildNewCanvasNode({
-        position:
-          openedActionType.position.x === 0 && openedActionType.position.y === 0
-            ? screenToFlowPosition({
-                x: window.innerWidth / 2 + randomX,
-                y: window.innerHeight / 2 - randomY,
-              })
-            : openedActionType.position,
-        type: name,
-      });
+      const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
+      const lastSelectedNode = nodes.find(
+        (n) => n.id === selectedNodeIds[selectedNodeIds.length - 1],
+      );
+      const outgoingEdges = lastSelectedNode
+        ? edges?.filter((e) => e.source === lastSelectedNode.id)
+        : undefined;
+
+      let position: XYPosition;
+      if (lastSelectedNode && openNodePickerViaShortcut) {
+        position = outgoingEdges?.length
+          ? {
+              x: lastSelectedNode.position.x + 125,
+              y: lastSelectedNode.position.y + 75,
+            }
+          : {
+              x: lastSelectedNode.position.x + 250,
+              y: lastSelectedNode.position.y,
+            };
+      } else if (
+        openedActionType.position.x === 0 &&
+        openedActionType.position.y === 0
+      ) {
+        position = screenToFlowPosition({
+          x: window.innerWidth / 2 + randomX,
+          y: window.innerHeight / 2 - randomY,
+        });
+      } else {
+        position = openedActionType.position;
+      }
+
+      const newNode = await buildNewCanvasNode({ position, type: name });
       if (!newNode) return;
+
+      if (lastSelectedNode && openNodePickerViaShortcut) {
+        if (lastSelectedNode.type !== "writer" && newNode.type !== "reader") {
+          onEdgesAdd?.([
+            {
+              id: generateUUID(),
+              source: lastSelectedNode.id,
+              target: newNode.id,
+            },
+          ]);
+        }
+
+        if (
+          outgoingEdges?.length &&
+          lastSelectedNode.type !== "writer" &&
+          newNode.type !== "writer" &&
+          newNode.type !== "reader"
+        ) {
+          const removeChanges: EdgeChange[] = outgoingEdges.map((e) => ({
+            id: e.id,
+            type: "remove" as const,
+          }));
+          const addChanges: EdgeChange[] = outgoingEdges.map((e) => ({
+            type: "add" as const,
+            item: {
+              id: generateUUID(),
+              source: newNode.id,
+              target: e.target,
+              sourceHandle: e.sourceHandle ?? null,
+              targetHandle: e.targetHandle ?? null,
+            },
+          }));
+          onEdgesChange?.([...removeChanges, ...addChanges]);
+        }
+      }
+
+      if (selectedNodes.length) {
+        const nodesToDeselect: NodeChange[] = selectedNodes.map((node) => ({
+          type: "select",
+          id: node.id,
+          selected: false,
+        }));
+        onNodesChange?.(nodesToDeselect);
+      }
       onNodesAdd([newNode]);
+
       // TODO - add drop in batch support
       // onNodesChange(handleNodeDropInBatch(newNode, newNodes));
       onClose();
+
+      const focusNewNode = () => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-id="${newNode.id}"]`,
+        );
+        if (el) {
+          el.focus();
+        } else {
+          requestAnimationFrame(focusNewNode);
+        }
+      };
+      requestAnimationFrame(focusNewNode);
     },
   );
 
