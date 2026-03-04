@@ -1,5 +1,7 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use nusamai_citygml::GeometryStore;
+use nusamai_plateau::appearance::AppearanceStore;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -11,9 +13,12 @@ use reearth_flow_types::Expr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::RwLock;
 use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
+
+use super::reader::{BufferedEntity, emit_buffered, parse_and_register};
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGmlReaderFactory;
@@ -85,6 +90,9 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
         let process = FeatureCityGmlReader {
             global_params: with,
             params: compiled_params,
+            geom_registry: HashMap::new(),
+            app_registry: HashMap::new(),
+            buffered: Vec::new(),
         };
         Ok(Box::new(process))
     }
@@ -94,6 +102,12 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureCityGmlReaderParam,
+    /// Pass 1 registry: polygon URL → owning GeometryStore
+    geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
+    /// Pass 1 registry: polygon URL → owning AppearanceStore
+    app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>>,
+    /// Buffered entities from pass 1, emitted in pass 2 (finish)
+    buffered: Vec<BufferedEntity>,
 }
 
 /// # FeatureCityGmlReader Parameters
@@ -129,9 +143,8 @@ impl Processor for FeatureCityGmlReader {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let fw = fw.clone();
         let feature = ctx.feature.clone();
         let ctx = ctx.as_context();
         let global_params = self.global_params.clone();
@@ -146,25 +159,36 @@ impl Processor for FeatureCityGmlReader {
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });
-        super::reader::read_citygml(
+        // Pass 1: parse file, populate registries, buffer entities
+        parse_and_register(
             ctx,
-            fw,
             feature,
             dataset,
             original_dataset,
             flatten,
             global_params,
             codelists_url,
+            &mut self.geom_registry,
+            &mut self.app_registry,
+            &mut self.buffered,
         )
         .map_err(|e| e.into())
     }
 
     fn finish(
         &mut self,
-        _ctx: NodeContext,
-        _fw: &ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        Ok(())
+        // Pass 2: resolve cross-file refs, emit all buffered entities
+        let buffered = std::mem::take(&mut self.buffered);
+        emit_buffered(
+            ctx.as_context(),
+            fw,
+            buffered,
+            &self.geom_registry,
+            &self.app_registry,
+        )
     }
 
     fn name(&self) -> &str {

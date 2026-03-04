@@ -1,13 +1,14 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader, BufWriter, Cursor, Write},
-    path::PathBuf,
+    io::{BufRead, BufReader, Cursor},
     str::FromStr,
     sync::{Arc, RwLock},
 };
 
 use indexmap::IndexMap;
-use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
+use nusamai_citygml::{
+    CityGmlElement, CityGmlReader, Envelope, GeometryStore, ParseError, SubTreeReader,
+};
 use nusamai_plateau::{
     appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
 };
@@ -15,7 +16,7 @@ use quick_xml::NsReader;
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    cache::executor_cache_subdir,
+    errors::BoxedError,
     executor_operation::{Context, ExecutorContext},
     forwarder::ProcessorChannelForwarder,
     node::DEFAULT_PORT,
@@ -26,35 +27,33 @@ use reearth_flow_types::{
 };
 use url::Url;
 
-/// RAII guard that ensures the cache directory is cleaned up when dropped.
-struct CacheGuard {
-    path: PathBuf,
+use crate::feature::errors::FeatureProcessorError;
+
+#[derive(Debug, Clone)]
+pub(super) struct BufferedEntity {
+    pub entity: Entity,
+    pub base_attributes: IndexMap<Attribute, AttributeValue>,
+    pub flatten: bool,
+    pub base_url: Url,
+    pub root_needs_reconstruction: bool,
 }
 
-impl CacheGuard {
-    fn new(path: PathBuf) -> Self {
-        Self { path }
-    }
-}
-
-impl Drop for CacheGuard {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.path);
-    }
-}
-
+/// Pass 1: parse a CityGML file, populate geometry/appearance registries, buffer entities.
+/// Does not emit any features.
 #[allow(clippy::uninlined_format_args, clippy::too_many_arguments)]
-pub(super) fn read_citygml(
+pub(super) fn parse_and_register(
     ctx: Context,
-    fw: ProcessorChannelForwarder,
     feature: Feature,
     dataset: rhai::AST,
     original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
-    codelists_path: Option<Url>,
-) -> Result<(), crate::feature::errors::FeatureProcessorError> {
-    let code_resolver = if let Some(codelists_path) = codelists_path {
+    codelists_url: Option<Url>,
+    geom_registry: &mut HashMap<Url, Arc<RwLock<GeometryStore>>>,
+    app_registry: &mut HashMap<Url, Arc<RwLock<AppearanceStore>>>,
+    buffered: &mut Vec<BufferedEntity>,
+) -> Result<(), FeatureProcessorError> {
+    let code_resolver = if let Some(codelists_path) = codelists_url {
         nusamai_plateau::codelist::Resolver::with_fallback(vec![codelists_path])
     } else {
         nusamai_plateau::codelist::Resolver::new()
@@ -65,114 +64,47 @@ pub(super) fn read_citygml(
         .eval_ast::<String>(&dataset)
         .unwrap_or_else(|_| original_dataset.to_string());
     let input_path = Uri::from_str(city_gml_path.as_str()).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver.resolve(&input_path).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let byte = storage.get_sync(input_path.path().as_path()).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let cursor = Cursor::new(byte);
     let buf_reader = BufReader::new(cursor);
-
     let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
     let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
-    parse_tree_reader(
+
+    collect_entities(
         &mut st,
         &feature.attributes,
         flatten.unwrap_or(false),
         base_url,
-        &ctx,
-        &fw,
+        geom_registry,
+        app_registry,
+        buffered,
     )
-    .map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
-    Ok(())
+    .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))
 }
 
 #[allow(clippy::uninlined_format_args)]
-fn parse_tree_reader<R: BufRead>(
+fn collect_entities<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
     base_attributes: &IndexMap<Attribute, AttributeValue>,
     flatten: bool,
     base_url: Url,
-    ctx: &Context,
-    fw: &ProcessorChannelForwarder,
-) -> Result<(), crate::feature::errors::FeatureProcessorError> {
-    // Phase 1: Parse CityGML, build features, write them to a temp JSONL file.
-    // This lets us drop all parsed entities/appearances/geometry before sending,
-    // so backpressure on fw.send() doesn't trap large parsing data in memory.
-    //
-    // Use executor-specific cache directory for isolation between concurrent workflows.
-    let executor_id = fw.executor_id();
-    let cache_dir =
-        executor_cache_subdir(executor_id, "citygml-reader").join(uuid::Uuid::new_v4().to_string());
-    std::fs::create_dir_all(&cache_dir).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
-    // RAII guard ensures cleanup even if we return early due to error
-    let _cache_guard = CacheGuard::new(cache_dir.clone());
-    let temp_path = cache_dir.join("features.jsonl");
-
-    let feature_count = {
-        let file = std::fs::File::create(&temp_path).map_err(|e| {
-            crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-        })?;
-        let mut writer = BufWriter::new(file);
-        let count = parse_and_write_features(st, base_attributes, flatten, base_url, &mut writer)?;
-        writer.flush().map_err(|e| {
-            crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-        })?;
-        count
-    };
-    // All parsing data (entities, appearances, geometry stores) is now dropped.
-
-    // Phase 2: Stream features from disk one at a time.
-    if feature_count > 0 {
-        let file = std::fs::File::open(&temp_path).map_err(|e| {
-            crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-        })?;
-        let reader = BufReader::new(file);
-        for line in reader.lines() {
-            let line = line.map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
-            if line.is_empty() {
-                continue;
-            }
-            let feature: Feature = serde_json::from_str(&line).map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
-                ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
-        }
-    }
-
-    // Cache cleanup is handled by _cache_guard's Drop implementation
-    Ok(())
-}
-
-/// Parses CityGML entities and appearances, transforms them into Features,
-/// and writes each Feature as a JSON line. Returns the number of features written.
-#[allow(clippy::uninlined_format_args)]
-fn parse_and_write_features<R: BufRead, W: Write>(
-    st: &mut SubTreeReader<'_, '_, R>,
-    base_attributes: &IndexMap<Attribute, AttributeValue>,
-    flatten: bool,
-    base_url: Url,
-    writer: &mut W,
-) -> Result<usize, crate::feature::errors::FeatureProcessorError> {
+    geom_registry: &mut HashMap<Url, Arc<RwLock<GeometryStore>>>,
+    app_registry: &mut HashMap<Url, Arc<RwLock<AppearanceStore>>>,
+    buffered: &mut Vec<BufferedEntity>,
+) -> Result<(), FeatureProcessorError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();
     let mut envelope = Envelope::default();
@@ -189,6 +121,7 @@ fn parse_and_write_features<R: BufRead, W: Write>(
                 let mut cityobj: models::TopLevelCityObject = Default::default();
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
+                let feature_hrefs = st.collect_feature_hrefs();
                 let id = cityobj.id();
                 let typename = cityobj.name();
                 if let Some(root) = cityobj.into_object() {
@@ -199,6 +132,7 @@ fn parse_and_write_features<R: BufRead, W: Write>(
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(),
+                        cross_file_feature_refs: feature_hrefs,
                     };
                     entities.push(entity);
                 }
@@ -232,29 +166,88 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             ))),
         }
     })
-    .map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
+    .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
 
-    let mut transformer = GeometricMergedownTransform::new();
-    let mut count = 0usize;
     for entity in entities {
+        // Merge file-level global appearances
         {
-            let geom_store = entity.geometry_store.read().map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
+            let geom_store = entity.geometry_store.read().unwrap();
             entity.appearance_store.write().unwrap().merge_global(
                 &mut global_appearances,
                 &geom_store.ring_ids,
                 &geom_store.surface_spans,
             );
         }
+        // Swap lat/lon coordinate order
         {
             let mut geom_store = entity.geometry_store.write().unwrap();
             geom_store.vertices.iter_mut().for_each(|v| {
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
+        // Populate registries keyed by polygon URL
+        {
+            let geom_store = entity.geometry_store.read().unwrap();
+            for span in &geom_store.surface_spans {
+                let mut poly_url = base_url.clone();
+                poly_url.set_fragment(Some(&span.id.0));
+                geom_registry.insert(poly_url.clone(), Arc::clone(&entity.geometry_store));
+                app_registry.insert(poly_url, Arc::clone(&entity.appearance_store));
+            }
+        }
+        // Check if geometry refs are empty (needs reconstruction from store)
+        let root_needs_reconstruction = {
+            let nusamai_citygml::Value::Object(obj) = &entity.root else {
+                continue;
+            };
+            matches!(
+                &obj.stereotype,
+                nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. }
+                    if geometries.is_empty()
+            )
+        };
+        buffered.push(BufferedEntity {
+            entity,
+            base_attributes: base_attributes.clone(),
+            flatten,
+            base_url: base_url.clone(),
+            root_needs_reconstruction,
+        });
+    }
+    Ok(())
+}
+
+/// Pass 2: resolve cross-file geometry refs and emit features.
+#[allow(clippy::uninlined_format_args)]
+pub(super) fn emit_buffered(
+    ctx: Context,
+    fw: &ProcessorChannelForwarder,
+    buffered: Vec<BufferedEntity>,
+    geom_registry: &HashMap<Url, Arc<RwLock<GeometryStore>>>,
+    app_registry: &HashMap<Url, Arc<RwLock<AppearanceStore>>>,
+) -> Result<(), BoxedError> {
+    // Build feature registry: (file_url, gml_id) -> index in buffered
+    let feature_registry: HashMap<(Url, String), usize> = buffered
+        .iter()
+        .enumerate()
+        .filter_map(|(i, be)| {
+            be.entity
+                .id
+                .as_ref()
+                .map(|id| ((be.entity.base_url.clone(), id.clone()), i))
+        })
+        .collect();
+
+    let mut transformer = GeometricMergedownTransform::new();
+
+    for BufferedEntity {
+        entity,
+        base_attributes,
+        flatten,
+        base_url,
+        root_needs_reconstruction,
+    } in buffered.iter().cloned()
+    {
         let gml_id = entity.root.id();
         let name = entity.root.typename();
         let lod = LodMask::find_lods_by_citygml_value(&entity.root);
@@ -291,29 +284,18 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             );
         }
         attributes.extend(base_attributes.clone());
-        // Check if the root entity has geometry refs before flattening.
-        // Features like uro:OtherConstruction have unresolved xlink:href Solid geometry,
-        // so the parser leaves geometry refs empty. In that case, all flattened entities
-        // need reconstruction from the shared geometry store.
-        let root_needs_reconstruction = {
-            let nusamai_citygml::Value::Object(obj) = &entity.root else {
-                continue;
-            };
-            matches!(
-                &obj.stereotype,
-                nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. }
-                    if geometries.is_empty()
-            )
-        };
+
+        let cross_file_feature_refs = entity.cross_file_feature_refs.clone();
         let flat_entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
             vec![entity]
         };
+
         for mut ent in flat_entities {
-            // Resolve xlink:href geometry references for this entity
+            // Resolve same-file and cross-file geometry refs
             {
-                let geom_store = ent.geometry_store.read().unwrap();
+                let mut geom_store = ent.geometry_store.write().unwrap();
                 let nusamai_citygml::Value::Object(obj) = &mut ent.root else {
                     continue;
                 };
@@ -322,9 +304,56 @@ fn parse_and_write_features<R: BufRead, W: Write>(
                     ..
                 } = obj.stereotype
                 {
+                    // Same-file refs
                     geom_store.resolve_refs(geometries);
+
+                    // Cross-file refs
+                    let has_cross_file = geometries
+                        .iter()
+                        .any(|r| r.unresolved_refs.iter().any(|(f, _, _)| f.is_some()));
+
+                    if has_cross_file {
+                        let old_ring_count = geom_store.ring_ids.len();
+                        let old_span_count = geom_store.surface_spans.len();
+
+                        // Collect unique source AppearanceStores before resolving clears refs
+                        let src_app_stores: Vec<Arc<RwLock<AppearanceStore>>> = {
+                            let mut seen = std::collections::HashSet::new();
+                            geometries
+                                .iter()
+                                .flat_map(|r| r.unresolved_refs.iter())
+                                .filter(|(f, _, _)| f.is_some())
+                                .filter_map(|(f, href, _)| {
+                                    let mut url = f.clone().unwrap();
+                                    url.set_fragment(Some(&href.0));
+                                    app_registry.get(&url).map(Arc::clone)
+                                })
+                                .filter(|a| seen.insert(Arc::as_ptr(a) as usize))
+                                .collect()
+                        };
+
+                        geom_store.resolve_cross_file_refs(geometries, geom_registry);
+
+                        // Merge appearances for newly added polygons
+                        if !src_app_stores.is_empty() {
+                            let new_ring_ids =
+                                geom_store.ring_ids[old_ring_count..].to_vec();
+                            let new_surface_spans =
+                                geom_store.surface_spans[old_span_count..].to_vec();
+                            let mut app_store = ent.appearance_store.write().unwrap();
+                            for src_app_arc in src_app_stores {
+                                let mut src_app = (*src_app_arc.read().unwrap()).clone();
+                                app_store.merge_global(
+                                    &mut src_app,
+                                    &new_ring_ids,
+                                    &new_surface_spans,
+                                );
+                            }
+                        }
+                    }
                 }
             }
+
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
@@ -374,9 +403,7 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             let citygml_attributes = AttributeValue::Map(citygml_attributes);
             let geometry: Geometry =
                 entity_to_geometry(ent, root_needs_reconstruction).map_err(|e| {
-                    crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!(
-                        "{e:?}"
-                    ))
+                    FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
                 })?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
@@ -391,14 +418,49 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             }
             feature.metadata = child_metadata;
 
-            serde_json::to_writer(&mut *writer, &feature).map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
-            writer.write_all(b"\n").map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
-            count += 1;
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &ctx,
+                feature,
+                DEFAULT_PORT.clone(),
+            ));
+        }
+
+        // Emit cross-file feature refs with this entity's base_attributes
+        if flatten && !cross_file_feature_refs.is_empty() {
+            for (ref_file_url, ref_id) in &cross_file_feature_refs {
+                let key = (ref_file_url.clone(), ref_id.clone());
+                if let Some(&idx) = feature_registry.get(&key) {
+                    let ref_be = &buffered[idx];
+                    // Emit the referenced entity's flattened children with our base_attributes
+                    let ref_flat = if ref_be.flatten {
+                        FlattenTreeTransform::transform(ref_be.entity.clone())
+                    } else {
+                        vec![ref_be.entity.clone()]
+                    };
+                    for mut ref_ent in ref_flat {
+                        transformer.transform(&mut ref_ent);
+                        let ref_citygml_attributes =
+                            AttributeValue::from_nusamai_citygml_value(&ref_ent.root);
+                        let ref_geometry =
+                            entity_to_geometry(ref_ent, ref_be.root_needs_reconstruction)
+                                .map_err(|e| {
+                                    FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+                                })?;
+                        let mut ref_feature: Feature = ref_geometry.into();
+                        ref_feature.extend(base_attributes.clone());
+                        ref_feature.insert(
+                            "cityGmlAttributes",
+                            AttributeValue::Map(ref_citygml_attributes),
+                        );
+                        fw.send(ExecutorContext::new_with_context_feature_and_port(
+                            &ctx,
+                            ref_feature,
+                            DEFAULT_PORT.clone(),
+                        ));
+                    }
+                }
+            }
         }
     }
-    Ok(count)
+    Ok(())
 }
