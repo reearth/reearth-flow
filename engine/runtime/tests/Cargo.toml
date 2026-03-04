@@ -24,19 +24,86 @@ reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
+reearth-flow-worker.workspace = true
 
+async-trait.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 directories.workspace = true
 once_cell.workspace = true
+regex.workspace = true
 rust-embed = "8.11.0"
 serde.workspace = true
 serde_json.workspace = true
+slog.workspace = true
 tempfile.workspace = true
 time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
 uuid.workspace = true
 
 [[test]]
 name = "test-main"
 path = "test_main.rs"
+
+# ---------------------------------------------------------------------------
+# Why each logging test is a separate binary:
+#
+# Each test installs its own `UserFacingLogLayer` via
+# `tracing::subscriber::set_global_default()`, which can only succeed once
+# per process. If all tests shared a single binary, only the first
+# subscriber would take effect and the rest would silently be ignored.
+#
+# The scoped alternative `tracing::dispatcher::with_default()` is not
+# viable without significant refactoring for three reasons:
+#
+#   1. It uses thread-local storage. The engine spawns OS threads per DAG
+#      node via `std::thread::Builder` (dag_executor.rs), and those threads
+#      do not inherit the parent's thread-local dispatcher — tracing events
+#      emitted inside them would be silently lost.
+#
+#   2. `LogEventHandler` re-emits tracing events from a separate async task
+#      on the tokio runtime, which also would not see a thread-local
+#      dispatcher without explicit propagation.
+#
+#   3. `USER_FACING_LOG_FILE_WRITER` is a process-level global static
+#      (`Lazy<RwLock<Option<NonBlocking>>>`), so concurrent tests would
+#      conflict on the shared writer slot regardless of dispatcher scoping.
+#
+# Separate binaries give each test its own process, so `set_global_default`
+# succeeds exactly once and all spawned threads inherit the subscriber.
+# ---------------------------------------------------------------------------
+
+[[test]]
+name = "test-logging-basic"
+path = "logging_test/01_basic_sequential_processing.rs"
+
+[[test]]
+name = "test-logging-parallel"
+path = "logging_test/02_parallel_processing.rs"
+
+[[test]]
+name = "test-logging-duplicate-node-names"
+path = "logging_test/03_duplicate_node_names.rs"
+
+[[test]]
+name = "test-logging-factory-error"
+path = "logging_test/04_factory_error.rs"
+
+[[test]]
+name = "test-logging-source-error"
+path = "logging_test/05_source_error.rs"
+
+[[test]]
+name = "test-logging-processor-error"
+path = "logging_test/06_processor_error.rs"
+
+[[test]]
+name = "test-logging-sink-error"
+path = "logging_test/07_sink_error.rs"
+
+[[test]]
+name = "test-logging-workflow-definition-error"
+path = "logging_test/08_workflow_definition_error.rs"

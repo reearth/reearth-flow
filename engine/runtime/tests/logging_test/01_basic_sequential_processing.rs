@@ -1,0 +1,26 @@
+mod logging_helper;
+
+use serde::Deserialize;
+
+use logging_helper::{
+    execute_logging_test, verify_action_log, verify_result_json, verify_user_facing_log,
+};
+
+const FIXTURE_DIR: &str = "logging/01_basic_sequential_processing";
+const WORKFLOW_NAME: &str = "Basic Sequential Processing Test";
+
+#[derive(Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+struct ResultEntry {
+    test_id: i64,
+    test_name: String,
+    test_value: i64,
+}
+
+#[test]
+fn test_logging_basic_sequential_processing() {
+    let result = execute_logging_test(FIXTURE_DIR, WORKFLOW_NAME);
+
+    verify_action_log(FIXTURE_DIR, &result);
+    verify_user_facing_log(FIXTURE_DIR, &result);
+    verify_result_json::<ResultEntry>(FIXTURE_DIR, &result);
+}

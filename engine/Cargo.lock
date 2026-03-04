@@ -7125,7 +7125,9 @@ dependencies = [
 name = "reearth-flow-tests"
 version = "0.0.324"
 dependencies = [
+ "async-trait",
  "bytes",
+ "chrono",
  "directories",
  "once_cell",
  "reearth-flow-action-log",
@@ -7139,13 +7141,18 @@ dependencies = [
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
+ "reearth-flow-worker",
+ "regex",
  "rust-embed",
  "serde",
  "serde_json",
+ "slog",
  "tempfile",
  "time",
  "tokio",
  "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
  "uuid",
 ]
 

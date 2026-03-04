@@ -1,19 +1,14 @@
-mod action_log_parser;
 mod artifact;
 mod asset;
 mod command;
-mod errors;
 mod event_handler;
 mod factory;
 mod incremental;
-mod logger;
-mod pubsub;
-mod types;
-mod user_facing_log_handler;
 
 use std::env;
 
 use command::{build_worker_command, RunWorkerCommand};
+use reearth_flow_worker::logger;
 
 fn main() {
     let app = build_worker_command().version(env!("CARGO_PKG_VERSION"));
