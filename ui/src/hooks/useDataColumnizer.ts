@@ -3,13 +3,21 @@ import { useCallback, useEffect, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
-// Helper function to format cell values with truncation
-function formatCellValue(value: any): string {
+// Fully serialize a value to a string for use as the accessor value.
+// Keeping the full string ensures global filtering can match any part of the data.
+function serializeValue(value: any): string {
   if (value === undefined) return "-";
+  if (value === null) return "null";
+  return JSON.stringify(value);
+}
 
-  const formatted = JSON.stringify(value);
-
-  return formatted;
+// Truncate a pre-serialized string for display only, to prevent large payloads
+// from degrading render performance.
+const DISPLAY_MAX_CHARS = 100;
+function truncateDisplayValue(str: string): string {
+  if (!str) return "";
+  if (str.length <= DISPLAY_MAX_CHARS) return str;
+  return str.slice(0, DISPLAY_MAX_CHARS) + "…";
 }
 
 export default ({
@@ -61,6 +69,7 @@ export default ({
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
+                cell: (info: any) => truncateDisplayValue(info.getValue()),
               }) as ColumnDef<any>,
           ),
           ...Array.from(allProps).map(
@@ -71,25 +80,25 @@ export default ({
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
+                cell: (info: any) => truncateDisplayValue(info.getValue()),
               }) as ColumnDef<any>,
           ),
         ];
 
-        // Transform features for table display
+        // Store fully serialized strings as accessor values so global filtering
+        // can match any part of the data. Truncation happens only in the cell renderer.
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
           ...Object.fromEntries(
-            Array.from(allGeometry).map((geometry) => {
-              return [
-                `geometry${geometry}`,
-                formatCellValue(feature.geometry?.[geometry] || null),
-              ];
-            }),
+            Array.from(allGeometry).map((geometry) => [
+              `geometry${geometry}`,
+              serializeValue(feature.geometry?.[geometry] ?? null),
+            ]),
           ),
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `attributes${prop}`,
-              formatCellValue(feature.properties?.[prop] ?? null),
+              serializeValue(feature.properties?.[prop] ?? null),
             ]),
           ),
         }));

@@ -10,6 +10,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
   convertedSelectedFeature?: any;
+  showSelectedFeatureOnly: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   onSelectedFeature: (value: any) => void;
   onMapLoad: (onCenter?: boolean) => void;
@@ -22,6 +23,7 @@ const TwoDViewer: React.FC<Props> = ({
   fileType,
   enableClustering,
   convertedSelectedFeature,
+  showSelectedFeatureOnly,
   mapRef,
   onMapLoad,
   onSelectedFeature,
@@ -38,6 +40,7 @@ const TwoDViewer: React.FC<Props> = ({
         fileType={fileType}
         enableClustering={enableClustering}
         convertedSelectedFeature={convertedSelectedFeature}
+        showSelectedFeatureOnly={showSelectedFeatureOnly}
         mapRef={mapRef}
         onMapLoad={onMapLoad}
         onSelectedFeature={onSelectedFeature}
