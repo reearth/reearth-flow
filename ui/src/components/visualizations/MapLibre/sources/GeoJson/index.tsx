@@ -18,6 +18,7 @@ type Props = {
   mapRef: React.RefObject<maplibregl.Map | null>;
   enableClustering?: boolean;
   selectedFeatureId?: string;
+  showSelectedFeatureOnly: boolean;
 };
 
 const SOURCE_ID = "geojson-data-source";
@@ -28,6 +29,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
   mapRef,
   enableClustering = false,
   selectedFeatureId,
+  showSelectedFeatureOnly,
 }) => {
   const requestAnimationFrameRef = useRef<number | null>(null);
   const endTimeoutRef = useRef<number | null>(null);
@@ -99,6 +101,20 @@ const GeoJsonDataSource: React.FC<Props> = ({
       paint: {
         "circle-radius": 4,
         "circle-color": "#3f3f45",
+        "circle-opacity": [
+          "case",
+          ["==", ["get", "_originalId"], selectedFeatureId ?? ""],
+          [
+            "interpolate",
+            ["linear"],
+            ["coalesce", ["feature-state", "pulse"], 0],
+            0,
+            0.6,
+            1,
+            1.0,
+          ],
+          showSelectedFeatureOnly ? 0.0 : 1.0,
+        ],
         "circle-stroke-width": 5,
         "circle-stroke-color": "rgba(0, 163, 64, 0.6)",
         "circle-stroke-opacity": [
@@ -117,7 +133,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         ],
       },
     }),
-    [selectedFeatureId],
+    [selectedFeatureId, showSelectedFeatureOnly],
   );
 
   const lineStringLayer: LayerProps = useMemo(
@@ -136,6 +152,12 @@ const GeoJsonDataSource: React.FC<Props> = ({
         "line-width": selectedFeatureId
           ? ["case", ["==", ["get", "_originalId"], selectedFeatureId], 4, 2]
           : 2,
+        "line-opacity": [
+          "case",
+          ["==", ["get", "_originalId"], selectedFeatureId ?? ""],
+          selectedFeatureId ? 0.9 : 0.8,
+          showSelectedFeatureOnly ? 0.0 : 0.8,
+        ],
       },
       filter: [
         "any",
@@ -143,7 +165,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         ["==", ["geometry-type"], "MultiLineString"],
       ],
     }),
-    [selectedFeatureId],
+    [selectedFeatureId, showSelectedFeatureOnly],
   );
 
   const polygonLayer: LayerProps = useMemo(
@@ -159,14 +181,12 @@ const GeoJsonDataSource: React.FC<Props> = ({
               "#3f3f45",
             ]
           : "#3f3f45",
-        "fill-opacity": selectedFeatureId
-          ? [
-              "case",
-              ["==", ["get", "_originalId"], selectedFeatureId],
-              0.9,
-              0.8,
-            ]
-          : 0.8,
+        "fill-opacity": [
+          "case",
+          ["==", ["get", "_originalId"], selectedFeatureId ?? ""],
+          selectedFeatureId ? 0.9 : 0.8,
+          showSelectedFeatureOnly ? 0.0 : 0.8,
+        ],
       },
       filter: [
         "any",
@@ -174,7 +194,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         ["==", ["geometry-type"], "MultiPolygon"],
       ],
     }),
-    [selectedFeatureId],
+    [selectedFeatureId, showSelectedFeatureOnly],
   );
   // TODO: Readd clustering support at a later date or remove entirely if deemed unnecessary
   // const clusterLayer: LayerProps = useMemo(
