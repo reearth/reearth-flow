@@ -303,6 +303,11 @@ graphs:
         } else {
           filename
         };
+        let target_udx = if op_pos >= 0 {
+          filename.sub_string(op_pos + 4)
+        } else {
+          ""
+        };
         [
           #{
             cityGmlPath: env.get("cityGmlPath"),
@@ -310,6 +315,7 @@ graphs:
             codelists: env.get("codelistsPath") ?? env.get("codelists"),
             schemas: env.get("schemasPath") ?? env.get("schemas"),
             __plateau_base_name: base_name,
+            __target_udx: target_udx,
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -325,6 +331,16 @@ graphs:
       flatten: true
       dataset: |
         env.get("__value")["path"]
+  - id: f1e2d3c4-b5a6-7890-f1e2-d3c4b5a67890
+    name: UdxDirsFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          let target = env.get("__value")["__target_udx"] ?? "";
+          target == "" || env.get("__value")["udxDirs"] == target
+        outputPort: default
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
     name: AttributeManagerPreFlattener
     type: action
@@ -623,6 +639,11 @@ graphs:
     toPort: default
   - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
     from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+    to: f1e2d3c4-b5a6-7890-f1e2-d3c4b5a67890
+    fromPort: default
+    toPort: default
+  - id: a0b1c2d3-e4f5-6789-a0b1-c2d3e4f56789
+    from: f1e2d3c4-b5a6-7890-f1e2-d3c4b5a67890
     to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
     fromPort: default
     toPort: default
