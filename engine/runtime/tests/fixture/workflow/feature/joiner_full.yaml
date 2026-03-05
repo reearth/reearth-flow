@@ -1,0 +1,110 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043411
+name: "FeatureJoinerFullExample"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33c
+with:
+  outputPath:
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33c
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreatorRequestor
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                "city": "Tokyo",
+                "country": "Japan",
+                "population": 37977000,
+              },
+              #{
+                "city": "Osaka",
+                "country": "Japan",
+                "population": 14977000,
+              },
+              #{
+                "city": "UnmatchedCity1",
+                "country": "Japan",
+                "population": 100000,
+              },
+            ]
+
+      - id: 873032b6-c0e2-41db-9306-abbd8a22047b
+        name: FeatureCreatorSupplier
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                "city": "Tokyo",
+                "lat": 35.6897,
+                "lng": 139.6922,
+              },
+              #{
+                "city": "Osaka",
+                "lat": 34.75,
+                "lng": 135.4601,
+              },
+              #{
+                "city": "UnmatchedCity2",
+                "lat": 40.0,
+                "lng": 140.0,
+              },
+            ]
+
+      - id: d2b4977d-e218-4628-96f2-d26407aeea14
+        name: FeatureJoiner
+        type: action
+        action: FeatureJoiner
+        with:
+          joinType: full
+          requestorAttribute:
+            - city
+          supplierAttribute:
+            - city
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: EchoJoined
+        type: action
+        action: EchoSink
+
+      - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        name: EchoUnjoinedRequestor
+        type: action
+        action: EchoSink
+
+      - id: b2c3d4e5-f6a7-8901-bcde-f23456789012
+        name: EchoUnjoinedSupplier
+        type: action
+        action: EchoSink
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d2b4977d-e218-4628-96f2-d26407aeea14
+        fromPort: default
+        toPort: requestor
+      - id: 1cd7b9b7-1ac5-4e5e-81d4-e9aea55c858c
+        from: 873032b6-c0e2-41db-9306-abbd8a22047b
+        to: d2b4977d-e218-4628-96f2-d26407aeea14
+        fromPort: default
+        toPort: supplier
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: joined
+        toPort: default
+      - id: d2e3f4a5-b6c7-8901-cdef-345678901234
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        fromPort: unjoinedRequestor
+        toPort: default
+      - id: e3f4a5b6-c7d8-9012-defa-456789012345
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: b2c3d4e5-f6a7-8901-bcde-f23456789012
+        fromPort: unjoinedSupplier
+        toPort: default
