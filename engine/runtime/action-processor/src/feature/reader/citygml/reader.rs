@@ -189,25 +189,24 @@ pub(super) fn parse_and_register(
     let city_gml_path = scope
         .eval_ast::<String>(&dataset)
         .unwrap_or_else(|_| original_dataset.to_string());
-    let input_path = Uri::from_str(city_gml_path.as_str()).map_err(|e| {
-        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
+    let input_path = Uri::from_str(city_gml_path.as_str())
+        .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    let storage = storage_resolver.resolve(&input_path).map_err(|e| {
-        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
-    let byte = storage.get_sync(input_path.path().as_path()).map_err(|e| {
-        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
+    let storage = storage_resolver
+        .resolve(&input_path)
+        .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
+    let byte = storage
+        .get_sync(input_path.path().as_path())
+        .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let cursor = Cursor::new(byte);
     let buf_reader = BufReader::new(cursor);
     let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
     let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
     let mut citygml_reader = CityGmlReader::new(context);
-    let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
-        FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-    })?;
+    let mut st = citygml_reader
+        .start_root(&mut xml_reader)
+        .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
 
     collect_entities(
         &mut st,

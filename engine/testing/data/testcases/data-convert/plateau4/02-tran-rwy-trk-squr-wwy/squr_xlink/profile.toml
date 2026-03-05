@@ -8,10 +8,33 @@ threshold = 0.001
 [tests.mvt_lines]
 threshold = 0.01
 
-[tests.mvt_attributes.casts]
+[filter.tree]
+"udx/squr/53396570_squr_6697_op.gml" = ["squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"]
+
+[convs.mvt.squr_lod2]
+flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
+fme_path = "11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
+truth_path = "squr_lod2_truth.json"
+
+[convs.mvt.squr_lod2.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"
 
-[filter.tree]
-"udx/squr/53396570_squr_6697_op.gml" = ["squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"]
+[convs.mvt.tran_lod2]
+flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_tran_mvt_lod2"
+fme_path = "11100_saitama-shi_city_2025_citygml_1_op_tran_mvt_lod2"
+truth_path = "tran_lod2_truth.json"
+
+[convs.mvt.tran_lod2.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+
+[tests.json_attributes_v2.squr_lod2]
+flow.path = "convs/mvt/squr_lod2.json"
+truth.path = "squr_lod2_truth.json"
+
+[tests.json_attributes_v2.tran_lod2]
+flow.path = "convs/mvt/tran_lod2.json"
+truth.path = "tran_lod2_truth.json"

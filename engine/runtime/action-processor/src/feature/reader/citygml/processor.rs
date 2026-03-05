@@ -18,7 +18,7 @@ use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
 
-use super::reader::{BufferedEntity, emit_buffered, parse_and_register};
+use super::reader::{emit_buffered, parse_and_register, BufferedEntity};
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGmlReaderFactory;
