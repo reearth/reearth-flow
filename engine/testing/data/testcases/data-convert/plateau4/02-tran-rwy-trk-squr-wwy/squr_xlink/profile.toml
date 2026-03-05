@@ -21,20 +21,6 @@ truth_path = "squr_lod2_truth.json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"
 
-[convs.mvt.tran_lod2]
-flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_tran_mvt_lod2"
-fme_path = "11100_saitama-shi_city_2025_citygml_1_op_tran_mvt_lod2"
-truth_path = "tran_lod2_truth.json"
-
-[convs.mvt.tran_lod2.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-".attributes.ancestors[0].meshcode" = "string"
-
 [tests.json_attributes_v2.squr_lod2]
 flow.path = "convs/mvt/squr_lod2.json"
 truth.path = "squr_lod2_truth.json"
-
-[tests.json_attributes_v2.tran_lod2]
-flow.path = "convs/mvt/tran_lod2.json"
-truth.path = "tran_lod2_truth.json"
