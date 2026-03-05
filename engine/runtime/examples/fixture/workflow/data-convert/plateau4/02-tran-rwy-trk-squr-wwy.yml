@@ -298,11 +298,6 @@ graphs:
       creator: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let op_pos = filename.index_of("_op_");
-        let base_name = if op_pos >= 0 {
-          filename.sub_string(0, op_pos + 3)
-        } else {
-          filename
-        };
         let target_udx = if op_pos >= 0 {
           filename.sub_string(op_pos + 4)
         } else {
@@ -314,7 +309,6 @@ graphs:
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             codelists: env.get("codelistsPath") ?? env.get("codelists"),
             schemas: env.get("schemasPath") ?? env.get("schemas"),
-            __plateau_base_name: base_name,
             __target_udx: target_udx,
           },
         ]
@@ -464,9 +458,13 @@ graphs:
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
-        let base = env.get("__value").__plateau_base_name;
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let pkg = env.get("__value").__package;
-        file::join_path(artifact, base + "_" + pkg + "_3dtiles_lod3.zip")
+        let suffix = "_" + pkg;
+        if city_gml.ends_with(suffix) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
   - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
     name: AttributeManagerByLod0-2
     type: action
@@ -538,10 +536,14 @@ graphs:
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
-        let base = env.get("__value").__plateau_base_name;
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let pkg = env.get("__value").__package;
         let lod = env.get("__value").__lod;
-        file::join_path(artifact, base + "_" + pkg + "_mvt_lod" + lod + ".zip")
+        let suffix = "_" + pkg;
+        if city_gml.ends_with(suffix) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_mvt_lod" + lod + ".zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -621,9 +623,13 @@ graphs:
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
-        let base = env.get("__value").__plateau_base_name;
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let pkg = env.get("__value").__package;
-        file::join_path(artifact, base + "_" + pkg + "_dm_geometric_attributes.zip")
+        let suffix = "_" + pkg;
+        if city_gml.ends_with(suffix) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:
