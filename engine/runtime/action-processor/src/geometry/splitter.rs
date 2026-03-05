@@ -376,6 +376,8 @@ impl GeometrySplitter {
                 line_strings: vec![],
                 feature_id: geometry_feature.feature_id.clone(),
                 feature_type: geometry_feature.feature_type.clone(),
+                composite_surfaces: vec![],
+                polygon_ring_ids: vec![],
             };
 
             let single_citygml = CityGmlGeometry {

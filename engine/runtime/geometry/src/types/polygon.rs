@@ -37,6 +37,7 @@ use super::validation::Validation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
+    pub id: Option<String>,
     pub(crate) exterior: LineString<T, Z>,
     pub(crate) interiors: Vec<LineString<T, Z>>,
 }
@@ -54,6 +55,7 @@ impl From<Polygon<f64, f64>> for Polygon<f64, NoValue> {
             .map(|interior| interior.into())
             .collect::<Vec<LineString<f64, NoValue>>>();
         Polygon {
+            id: polygons.id,
             exterior: new_exterior,
             interiors: new_interiors,
         }
@@ -67,6 +69,23 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             interior.close();
         }
         Self {
+            id: None,
+            exterior,
+            interiors,
+        }
+    }
+
+    pub fn new_with_id(
+        mut exterior: LineString<T, Z>,
+        mut interiors: Vec<LineString<T, Z>>,
+        id: Option<String>,
+    ) -> Self {
+        exterior.close();
+        for interior in &mut interiors {
+            interior.close();
+        }
+        Self {
+            id,
             exterior,
             interiors,
         }

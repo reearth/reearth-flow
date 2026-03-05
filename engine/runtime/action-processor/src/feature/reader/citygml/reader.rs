@@ -370,6 +370,24 @@ fn parse_and_write_features<R: BufRead, W: Write>(
                 }
             }
 
+            // Extract appearance data BEFORE entity_to_geometry() consumes ent
+            //
+            // WHY THIS IS NEEDED:
+            // CityGML files contain appearance data (textures, materials) that needs to be
+            // preserved and passed to downstream processors (e.g., CityGMLWriter). The
+            // appearance data is stored in ent.appearance_store, but entity_to_geometry()
+            // consumes the entity, making it impossible to access afterward.
+            //
+            // The appearance data is converted to AttributeValue format so it can be:
+            // 1. Stored in the feature's attributes
+            // 2. Passed through the workflow pipeline
+            // 3. Used by CityGMLWriter to reconstruct appearance elements in output
+            //
+            // PERFORMANCE NOTE: The conversion is optimized from O(T×S×R) to O(T + S×R)
+            // where T=textures, S=surfaces, R=rings. See convert_appearance_store_to_attribute_value.
+            let appearance_member_data =
+                convert_appearance_store_to_attribute_value(&ent.appearance_store.read().unwrap());
+
             let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
             let citygml_attributes = AttributeValue::Map(citygml_attributes);
             let geometry: Geometry =
@@ -381,6 +399,7 @@ fn parse_and_write_features<R: BufRead, W: Write>(
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
             feature.insert("cityGmlAttributes", citygml_attributes);
+            feature.insert("appearanceMember", appearance_member_data);
             let mut child_metadata = metadata.clone();
             if flatten {
                 if child_lod.highest_lod().is_some() {
@@ -401,4 +420,329 @@ fn parse_and_write_features<R: BufRead, W: Write>(
         }
     }
     Ok(count)
+}
+
+/// Converts AppearanceStore (from nusamai-plateau) to AttributeValue for workflow processing.
+///
+/// # Purpose
+/// CityGML appearance data (textures, materials, themes) needs to be extracted from the
+/// nusamai-plateau parser's data structures and converted to reearth-flow's AttributeValue
+/// format so it can flow through the pipeline to sinks like CityGMLWriter.
+///
+/// # Data Flow
+/// Input: AppearanceStore from nusamai-plateau parser
+///   ├─ textures: Vec<Texture> (image URLs)
+///   ├─ materials: Vec<Material> (colors, properties)  
+///   └─ themes: HashMap<String, Theme>
+///       ├─ ring_id_to_texture: HashMap<ring_id, (texture_index, tex_coords)>
+///       ├─ surface_id_to_material: HashMap<surface_id, material_index>
+///       └─ surface_id_to_rings: HashMap<surface_id, Vec<ring_id>>
+///
+/// Output: AttributeValue::Map with:
+///   ├─ "textures": Array of {uri, targets: [{uri, ring, textureCoordinates}]}
+///   ├─ "materials": Array of {diffuseColor, specularColor, ambientIntensity}
+///   └─ "themes": Array of {name, surfaceMappings}
+///
+/// # Performance Optimization
+///
+/// ## Problem (Original Implementation)
+/// The original code had 4-level nested loops with O(T × S × R) complexity:
+/// ```ignore
+/// for texture in textures {           // T iterations
+///     for theme in themes {           // S iterations
+///         for (surface_id, ring_ids) in surface_id_to_rings {  // R iterations
+///             for ring_id in ring_ids {                          // Inner loop
+///                 if ring_id_to_texture.get(ring_id).texture_index == current_texture_index {
+///                     // Build target
+///                 }
+///             }
+///         }
+///     }
+/// }
+/// ```
+/// Example: 100 textures × 500 surfaces × 10 rings = 500,000 iterations
+///
+/// ## Solution (Current Implementation)
+/// Uses a 2-phase approach with O(T + S×R) complexity:
+///
+/// Phase 1 (O(S×R)): Pre-build reverse lookup map from surface_id_to_rings
+///   - Create ring_id -> surface_id mapping
+///   - This is the ONLY time we iterate surface_id_to_rings
+///
+/// Phase 2 (O(T + R)): Single pass through ring_id_to_texture
+///   - Each ring is processed exactly once
+///   - O(1) lookup to find its surface using pre-built map
+///   - Targets are grouped by texture_index in BTreeMap
+///
+/// Phase 3 (O(T)): Build output textures array
+///   - Single iteration through textures
+///   - O(1) lookup in pre-grouped targets
+///
+/// Total: ~5,100 operations vs 500,000 = ~100x speedup for typical inputs
+///
+/// # Why surface_id_to_rings is Essential
+/// The surface_id_to_rings field provides the mapping between:
+/// - Surface IDs (Polygon gml:id) - used as target.uri in CityGML output
+/// - Ring IDs (LinearRing gml:id) - used as target.ring in CityGML output
+///
+/// Without this mapping, we cannot correctly reconstruct CityGML appearance targets
+/// because each target needs BOTH the surface URI and the ring reference.
+fn convert_appearance_store_to_attribute_value(
+    appearance_store: &AppearanceStore,
+) -> AttributeValue {
+    let mut appearance_attrs = HashMap::new();
+
+    // Add textures if available
+    // OPTIMIZED: Pre-build ring-to-surface mapping and group targets by texture index
+    // instead of iterating textures × surfaces × rings (O(T×S×R) -> O(T + S×R))
+    //
+    // Original: 4-level nested loop (T textures × S surfaces × R rings)
+    // Optimized: 2-phase approach:
+    //   Phase 1: O(S×R) - Pre-build lookup map from surface_id_to_rings (ONE TIME)
+    //   Phase 2: O(T + R) - Single pass through ring_id_to_texture
+    if !appearance_store.textures.is_empty() {
+        use std::collections::BTreeMap;
+
+        // Group targets by texture index
+        let mut texture_targets: BTreeMap<u32, Vec<HashMap<String, AttributeValue>>> =
+            BTreeMap::new();
+
+        // PHASE 1: Pre-build a map from ring_id -> surface_id for each theme
+        // Uses surface_id_to_rings from nusamai-plateau/src/appearance.rs
+        // Complexity: O(T + S×R) where T=themes, S=surfaces, R=rings per surface
+        let mut theme_ring_to_surface: HashMap<
+            &String,
+            HashMap<&nusamai_citygml::LocalId, &nusamai_citygml::LocalId>,
+        > = HashMap::new();
+        for (theme_name, theme) in &appearance_store.themes {
+            let mut ring_to_surface: HashMap<&nusamai_citygml::LocalId, &nusamai_citygml::LocalId> =
+                HashMap::new();
+            // Iterate surface_id_to_rings to build reverse lookup
+            for (surface_id, ring_ids) in &theme.surface_id_to_rings {
+                for ring_id in ring_ids {
+                    ring_to_surface.insert(ring_id, surface_id);
+                }
+            }
+            theme_ring_to_surface.insert(theme_name, ring_to_surface);
+        }
+
+        // PHASE 2: Process each theme's rings
+        // Complexity: O(T + R_total) where R_total = total rings across all themes
+        // NO NESTED LOOPS - each ring is processed exactly once
+        for (theme_name, theme) in &appearance_store.themes {
+            let ring_to_surface = theme_ring_to_surface.get(theme_name);
+            let theme_has_mappings = ring_to_surface.is_some_and(|m| !m.is_empty());
+
+            // Single iteration through ring_id_to_texture
+            for (ring_id, (tex_idx, line_string)) in &theme.ring_id_to_texture {
+                let mut target_map = HashMap::new();
+
+                // Determine the URI: use surface ID if mapping exists, otherwise use ring ID
+                if theme_has_mappings {
+                    if let Some(surface_id) = ring_to_surface.unwrap().get(ring_id) {
+                        // Ring has a surface mapping - use surface ID for URI
+                        let uri = format!("#{}", surface_id.0);
+                        target_map.insert("uri".to_string(), AttributeValue::String(uri));
+                    } else {
+                        // Ring is NOT in surface_id_to_rings - skip it (matches original behavior)
+                        continue;
+                    }
+                } else {
+                    // No surface mappings for this theme - use ring ID as URI (fallback)
+                    let uri = format!("#{}", ring_id.0);
+                    target_map.insert("uri".to_string(), AttributeValue::String(uri));
+                }
+
+                // Use RING ID for the ring attribute (always)
+                target_map.insert(
+                    "ring".to_string(),
+                    AttributeValue::String(format!("#{}", ring_id.0)),
+                );
+
+                // Add texture coordinates from the line string
+                let coord_strings: Vec<String> = line_string
+                    .iter()
+                    .map(|point| format!("{} {}", point[0], point[1]))
+                    .collect();
+
+                if !coord_strings.is_empty() {
+                    let tex_coords: Vec<AttributeValue> = coord_strings
+                        .into_iter()
+                        .map(AttributeValue::String)
+                        .collect();
+                    target_map.insert(
+                        "textureCoordinates".to_string(),
+                        AttributeValue::Array(tex_coords),
+                    );
+                }
+
+                // Group by texture index
+                texture_targets
+                    .entry(*tex_idx)
+                    .or_default()
+                    .push(target_map);
+            }
+        }
+
+        // Build the textures array using the grouped targets
+        let textures: Vec<AttributeValue> = appearance_store
+            .textures
+            .iter()
+            .enumerate()
+            .map(|(idx, texture)| {
+                let mut texture_map = HashMap::new();
+                texture_map.insert(
+                    "uri".to_string(),
+                    AttributeValue::String(texture.image_url.to_string()),
+                );
+
+                // Get targets for this texture (if any)
+                if let Some(targets) = texture_targets.get(&(idx as u32)) {
+                    if !targets.is_empty() {
+                        let target_attrs: Vec<AttributeValue> = targets
+                            .iter()
+                            .map(|t| AttributeValue::Map(t.clone()))
+                            .collect();
+                        texture_map
+                            .insert("targets".to_string(), AttributeValue::Array(target_attrs));
+                    }
+                }
+
+                AttributeValue::Map(texture_map)
+            })
+            .collect();
+
+        appearance_attrs.insert("textures".to_string(), AttributeValue::Array(textures));
+    }
+
+    // Add materials if available
+    if !appearance_store.materials.is_empty() {
+        let materials: Vec<AttributeValue> = appearance_store
+            .materials
+            .iter()
+            .map(|material| {
+                let mut material_map = HashMap::new();
+                // Add diffuse color
+                let mut diffuse_color_map = HashMap::new();
+                diffuse_color_map.insert(
+                    "red".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.diffuse_color.r)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                diffuse_color_map.insert(
+                    "green".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.diffuse_color.g)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                diffuse_color_map.insert(
+                    "blue".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.diffuse_color.b)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                // nusamai_citygml::Color doesn't have alpha, so we'll use 1.0 as default
+                diffuse_color_map.insert(
+                    "alpha".to_string(),
+                    AttributeValue::Number(serde_json::Number::from(1)),
+                );
+                material_map.insert(
+                    "diffuseColor".to_string(),
+                    AttributeValue::Map(diffuse_color_map),
+                );
+
+                // Add specular color
+                let mut specular_color_map = HashMap::new();
+                specular_color_map.insert(
+                    "red".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.specular_color.r)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                specular_color_map.insert(
+                    "green".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.specular_color.g)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                specular_color_map.insert(
+                    "blue".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.specular_color.b)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                specular_color_map.insert(
+                    "alpha".to_string(),
+                    AttributeValue::Number(serde_json::Number::from(1)),
+                );
+                material_map.insert(
+                    "specularColor".to_string(),
+                    AttributeValue::Map(specular_color_map),
+                );
+
+                // Add ambient intensity
+                material_map.insert(
+                    "ambientIntensity".to_string(),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(material.ambient_intensity)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+
+                AttributeValue::Map(material_map)
+            })
+            .collect();
+        appearance_attrs.insert("materials".to_string(), AttributeValue::Array(materials));
+    }
+
+    // Add themes if available
+    if !appearance_store.themes.is_empty() {
+        let themes: Vec<AttributeValue> = appearance_store
+            .themes
+            .iter()
+            .map(|(theme_name, theme)| {
+                let mut theme_map = HashMap::new();
+                theme_map.insert(
+                    "name".to_string(),
+                    AttributeValue::String(theme_name.clone()),
+                );
+
+                // Add surface mappings if available
+                if !theme.surface_id_to_material.is_empty() {
+                    let surface_mappings: Vec<AttributeValue> = theme
+                        .surface_id_to_material
+                        .iter()
+                        .map(|(surface_id, material_idx)| {
+                            let mut mapping_map = HashMap::new();
+                            mapping_map.insert(
+                                "surfaceId".to_string(),
+                                AttributeValue::String(surface_id.0.clone()),
+                            );
+                            mapping_map.insert(
+                                "materialIndex".to_string(),
+                                AttributeValue::Number((*material_idx).into()),
+                            );
+                            AttributeValue::Map(mapping_map)
+                        })
+                        .collect();
+                    theme_map.insert(
+                        "surfaceMappings".to_string(),
+                        AttributeValue::Array(surface_mappings),
+                    );
+                }
+
+                AttributeValue::Map(theme_map)
+            })
+            .collect();
+        appearance_attrs.insert("themes".to_string(), AttributeValue::Array(themes));
+    }
+
+    AttributeValue::Map(appearance_attrs)
 }
