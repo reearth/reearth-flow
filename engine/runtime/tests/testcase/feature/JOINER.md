@@ -19,8 +19,6 @@ runtime/tests/
 │   ├── joiner.yaml                         # Left join test
 │   ├── joiner_inner.yaml                   # Inner join test
 │   └── joiner_full.yaml                    # Full join test
-└── fixture/testdata/feature/joiner/
-    └── joiner.json                         # Test data placeholder
 ```
 
 ## Running the Tests
@@ -74,7 +72,12 @@ cargo test -p reearth-flow-tests --test test-main
 | UnmatchedCity1 | - | `unjoinedRequestor` |
 | - | UnmatchedCity2 | (dropped - left join) |
 
-**Verification**: Test passes if workflow completes without error.
+**Verification**: Workflow completes without error (EchoSink receives data on expected ports).
+
+**Expected Counts**:
+- Joined: 4 features
+- UnjoinedRequestor: 1 feature
+- UnjoinedSupplier: 0 features
 
 ---
 
@@ -94,7 +97,12 @@ cargo test -p reearth-flow-tests --test test-main
 | UnmatchedCity1 | - | (dropped - inner join) |
 | - | UnmatchedCity2 | (dropped - inner join) |
 
-**Verification**: Test passes if workflow completes without error.
+**Verification**: Workflow completes without error.
+
+**Expected Counts**:
+- Joined: 2 features
+- UnjoinedRequestor: 0 features
+- UnjoinedSupplier: 0 features (not connected in workflow)
 
 ---
 
@@ -115,7 +123,12 @@ cargo test -p reearth-flow-tests --test test-main
 | UnmatchedCity1 | - | `unjoinedRequestor` |
 | - | UnmatchedCity2 | `unjoinedSupplier` |
 
-**Verification**: Test passes if workflow completes without error.
+**Verification**: Workflow completes without error.
+
+**Expected Counts**:
+- Joined: 2 features
+- UnjoinedRequestor: 1 feature
+- UnjoinedSupplier: 1 feature
 
 ## Common Test Data Attributes
 
@@ -148,6 +161,41 @@ with:
     - city
 ```
 
+## Implementation Details
+
+The tests use `EchoSink` to verify that the FeatureJoiner produces output. The EchoSink receives features from each output port and logs them (when logging is enabled).
+
+### Why EchoSink Instead of File Assertions?
+
+Currently the tests use EchoSink because:
+1. It's simpler - no need to manage output file paths
+2. It's consistent with the FeatureMerger test approach
+3. The primary goal is to verify the join logic works, not to test file I/O
+4. The workflow execution would fail if the ports didn't receive data
+
+### Potential Improvements
+
+To add output verification with file assertions:
+1. Replace `EchoSink` with `JsonWriter` sinks in the workflows
+2. Configure output paths via `env.get("outputFilePath")` or similar
+3. Read and verify the output files in the test code
+
+Example improvement:
+```rust
+#[test]
+fn test_joiner_left() {
+    let tempdir = execute("feature/joiner", vec![]).unwrap();
+    let temp_path = tempdir.path();
+    
+    // Read output files and verify counts
+    let joined = read_json_file(temp_path, "joined.json");
+    let unjoined_requestor = read_json_file(temp_path, "unjoined_requestor.json");
+    
+    assert_eq!(joined.len(), 4, "Should have 4 joined features");
+    assert_eq!(unjoined_requestor.len(), 1, "Should have 1 unjoined requestor");
+}
+```
+
 ## Adding New Tests
 
 To add a new FeatureJoiner test case:
@@ -165,18 +213,20 @@ To add a new FeatureJoiner test case:
 
 ## Debugging Failed Tests
 
-### Check workflow syntax
-```bash
-cargo run -p reearth-flow-cli -- validate workflow runtime/tests/fixture/workflow/feature/joiner.yaml
-```
-
 ### Enable logging
 ```bash
 RUST_LOG=debug cargo test -p reearth-flow-tests --test test-main -- test_joiner_left
 ```
 
-### Inspect temp output
-The test framework creates a temp directory with output files. The test returns this directory which can be inspected for debugging.
+### Check workflow syntax
+```bash
+cargo run -p reearth-flow-cli -- validate workflow runtime/tests/fixture/workflow/feature/joiner.yaml
+```
+
+### Verify test data exists
+```bash
+ls -la runtime/tests/fixture/testdata/feature/
+```
 
 ## Related Tests
 
