@@ -125,11 +125,15 @@ const CesiumViewer: React.FC<Props> = ({
     const features = fileContent?.features || [];
 
     const geoJsonFeatures = features.filter(
-      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
+      (feature: any) =>
+        feature?.geometry?.type !== "CityGmlGeometry" &&
+        feature?.geometry?.type !== "FlowGeometry3D",
     );
 
     const cityGmlFeatures = features.filter(
-      (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
+      (feature: any) =>
+        feature?.geometry?.type === "CityGmlGeometry" ||
+        feature?.geometry?.type === "FlowGeometry3D",
     );
 
     return {
