@@ -447,10 +447,28 @@ pub(super) fn emit_buffered(
             for (ref_file_url, ref_id) in &cross_file_feature_refs {
                 let key = (ref_file_url.clone(), ref_id.clone());
                 if let Some((ref_ent, ref_rnr)) = flat_feature_registry.get(&key) {
+                    let mut ent = ref_ent.clone();
+                    // The entity in flat_feature_registry has parentId/parentType pointing to its
+                    // original parent (e.g. tran:Road). Override them so this copy reflects the
+                    // referrer (the entity that contains the xlink:href, e.g. tran:Square).
+                    if let nusamai_citygml::Value::Object(ref mut obj) = ent.root {
+                        if let Some(id) = &metadata.feature_id {
+                            obj.attributes.insert(
+                                "parentId".to_string(),
+                                nusamai_citygml::Value::String(id.clone()),
+                            );
+                        }
+                        if let Some(typename) = &metadata.feature_type {
+                            obj.attributes.insert(
+                                "parentType".to_string(),
+                                nusamai_citygml::Value::String(typename.clone()),
+                            );
+                        }
+                    }
                     emit_flat_entity(
                         &ctx,
                         fw,
-                        ref_ent.clone(),
+                        ent,
                         *ref_rnr,
                         attributes.clone(),
                         &metadata,
