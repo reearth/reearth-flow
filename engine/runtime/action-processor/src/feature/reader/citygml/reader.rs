@@ -245,20 +245,9 @@ fn collect_entities<R: BufRead>(
             b"core:cityObjectMember" => {
                 let mut cityobj: models::TopLevelCityObject = Default::default();
                 cityobj.parse(st)?;
-                let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
-                let feature_hrefs = st.collect_feature_hrefs();
-                let id = cityobj.id();
-                let typename = cityobj.name();
-                if let Some(root) = cityobj.into_object() {
-                    let entity = Entity {
-                        id: Some(id.to_string()),
-                        typename: Some(typename.to_string()),
-                        root,
-                        base_url: base_url.clone(),
-                        geometry_store: RwLock::new(geometry_store).into(),
-                        appearance_store: Default::default(),
-                        cross_file_feature_refs: feature_hrefs,
-                    };
+                if let Some(entity) =
+                    cityobj.into_entity(st, base_url.clone(), envelope.crs_uri.clone())
+                {
                     entities.push(entity);
                 }
                 Ok(())
