@@ -29,7 +29,7 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
 
 #[derive(RustEmbed)]
 #[folder = "fixture/testdata/"]
-struct Fixtures;
+pub struct Fixtures;
 
 #[derive(RustEmbed)]
 #[folder = "fixture/workflow/"]
@@ -70,15 +70,42 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         Uri::for_test("ram:///log/").path(),
     ));
     let mut workflow = Workflow::try_from(workflow).expect("failed to parse workflow");
+    let folder_str = folder_path.to_str().unwrap();
     workflow
-        .merge_with(HashMap::from([(
-            "outputFilePath".to_string(),
-            folder_path
-                .join("result.json")
-                .to_str()
-                .unwrap()
-                .to_string(),
-        )]))
+        .merge_with(HashMap::from([
+            (
+                "outputFilePath".to_string(),
+                format!(
+                    "file://{}",
+                    folder_path.join("result.json").to_str().unwrap()
+                ),
+            ),
+            ("outputDir".to_string(), folder_str.to_string()),
+            (
+                "joinedOutputPath".to_string(),
+                format!(
+                    "file://{}",
+                    folder_path.join("joined.json").to_str().unwrap()
+                ),
+            ),
+            (
+                "unjoinedRequestorOutputPath".to_string(),
+                format!(
+                    "file://{}",
+                    folder_path
+                        .join("unjoined_requestor.json")
+                        .to_str()
+                        .unwrap()
+                ),
+            ),
+            (
+                "unjoinedSupplierOutputPath".to_string(),
+                format!(
+                    "file://{}",
+                    folder_path.join("unjoined_supplier.json").to_str().unwrap()
+                ),
+            ),
+        ]))
         .unwrap();
     Runner::run(
         uuid::Uuid::new_v4(),

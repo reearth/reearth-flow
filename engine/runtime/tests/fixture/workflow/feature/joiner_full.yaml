@@ -2,8 +2,6 @@
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043411
 name: "FeatureJoinerFullExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33c
-with:
-  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33c
     name: entry_point
