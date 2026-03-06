@@ -4,6 +4,7 @@ name: "FeatureJoinerInnerExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33b
 with:
   outputPath:
+  joinedOutputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33b
     name: entry_point
@@ -68,9 +69,12 @@ graphs:
             - city
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: Echo
+        name: JsonWriterJoined
         type: action
-        action: EchoSink
+        action: JsonWriter
+        with:
+          output: |
+            env.get("joinedOutputPath")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
