@@ -29,20 +29,12 @@ graphs:
         action: FeatureCreator
         with:
           creator: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let op_pos = filename.index_of("_op_");
-            let target_udx = if op_pos >= 0 {
-              filename.sub_string(op_pos + 4)
-            } else {
-              ""
-            };
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
-                __target_udx: target_udx,
               },
             ]
 
@@ -62,14 +54,13 @@ graphs:
             env.get("__value")["path"]
 
       - id: f1e2d3c4-b5a6-7890-f1e2-d3c4b5a67890
-        name: UdxDirsFilter
+        name: TargetPackagesFilter
         type: action
         action: FeatureFilter
         with:
           conditions:
             - expr: |
-                let target = env.get("__value")["__target_udx"] ?? "";
-                target == "" || env.get("__value")["udxDirs"] == target
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
               outputPort: default
 
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e

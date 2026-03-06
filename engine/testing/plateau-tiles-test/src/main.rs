@@ -263,12 +263,21 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
+        let zip_stem = profile
+            .citygml_zip_name
+            .strip_suffix(".zip")
+            .unwrap_or(&profile.citygml_zip_name);
+        let target_package = zip_stem
+            .find("_op_")
+            .map(|pos| zip_stem[pos + 4..].to_string());
+
         runner::run_workflow(
             &workflow_path,
             &inputs["citymodel"],
             &output_dir,
             inputs.get("codelists").map(PathBuf::as_path),
             inputs.get("schemas").map(PathBuf::as_path),
+            target_package.as_deref(),
         );
 
         let elapsed = start_time.elapsed();

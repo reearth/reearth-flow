@@ -60,15 +60,6 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
-  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilterByPackage
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-        outputPort: default
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
@@ -114,11 +105,6 @@ graphs:
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
-    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    fromPort: default
-    toPort: default
-  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
-    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
@@ -296,20 +282,12 @@ graphs:
     action: FeatureCreator
     with:
       creator: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let op_pos = filename.index_of("_op_");
-        let target_udx = if op_pos >= 0 {
-          filename.sub_string(op_pos + 4)
-        } else {
-          ""
-        };
         [
           #{
             cityGmlPath: env.get("cityGmlPath"),
             cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
             codelists: env.get("codelistsPath") ?? env.get("codelists"),
             schemas: env.get("schemasPath") ?? env.get("schemas"),
-            __target_udx: target_udx,
           },
         ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -326,14 +304,13 @@ graphs:
       dataset: |
         env.get("__value")["path"]
   - id: f1e2d3c4-b5a6-7890-f1e2-d3c4b5a67890
-    name: UdxDirsFilter
+    name: TargetPackagesFilter
     type: action
     action: FeatureFilter
     with:
       conditions:
       - expr: |
-          let target = env.get("__value")["__target_udx"] ?? "";
-          target == "" || env.get("__value")["udxDirs"] == target
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
         outputPort: default
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
     name: AttributeManagerPreFlattener
