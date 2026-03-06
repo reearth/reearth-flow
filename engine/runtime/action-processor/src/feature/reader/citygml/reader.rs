@@ -389,7 +389,10 @@ fn collect_entities<R: BufRead>(
             )
         };
         let store_id = store_pool.len();
-        store_pool.push((entity.geometry_store.clone(), entity.appearance_store.clone()));
+        store_pool.push((
+            entity.geometry_store.clone(),
+            entity.appearance_store.clone(),
+        ));
         let record = CachedEntityRecord {
             store_id,
             entity,

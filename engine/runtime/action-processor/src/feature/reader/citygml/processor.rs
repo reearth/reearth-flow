@@ -200,9 +200,8 @@ impl Processor for FeatureCityGmlReader {
         if self.cache_dir.is_none() {
             let executor_id = fw.executor_id();
             let dir = executor_cache_subdir(executor_id, "citygml-reader");
-            std::fs::create_dir_all(&dir).map_err(|e| {
-                FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
-            })?;
+            std::fs::create_dir_all(&dir)
+                .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
             self.cache_dir = Some(dir);
         }
         // Pass 1: parse file, populate registries, write entities to per-file JSONL cache
