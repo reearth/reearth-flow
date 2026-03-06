@@ -232,7 +232,6 @@ ls -la runtime/tests/fixture/testdata/feature/
 ## Related Tests
 
 - **FeatureMerger**: `testcase/feature/merger.rs` - Similar accumulating processor with different semantics
-- See comparison in `tmp/feature-joiner/feature_merger_explain.md`
 
 ## References
 
