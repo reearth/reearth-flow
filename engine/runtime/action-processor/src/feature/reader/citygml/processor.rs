@@ -198,10 +198,15 @@ impl Processor for FeatureCityGmlReader {
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });
-        // Initialize cache directory on first call
+        // Initialize cache directory on first call.
+        // Each reader instance gets its own subdirectory to avoid corruption when multiple instances read the same files in parallel.
         if self.cache_dir.is_none() {
+            static INSTANCE_COUNTER: std::sync::atomic::AtomicU64 =
+                std::sync::atomic::AtomicU64::new(0);
+            let instance = INSTANCE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let executor_id = fw.executor_id();
-            let dir = executor_cache_subdir(executor_id, "citygml-reader");
+            let dir =
+                executor_cache_subdir(executor_id, "citygml-reader").join(instance.to_string());
             std::fs::create_dir_all(&dir)
                 .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
             self.cache_dir = Some(dir);
