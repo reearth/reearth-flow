@@ -1385,6 +1385,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -3605,7 +3613,7 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filters features by feature type
+Filter CityGML features by feature type
 ### Parameters
 ```json
 {
@@ -4714,6 +4722,7 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "dracoCompression": {
+      "description": "Apply Draco compression to the geometry",
       "type": [
         "boolean",
         "null"
@@ -4725,6 +4734,13 @@ Writes 3D features to GLTF format with optional texture attachment
         {
           "$ref": "#/definitions/Expr"
         }
+      ]
+    },
+    "schemaKey": {
+      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. Excluded from output.",
+      "type": [
+        "string",
+        "null"
       ]
     }
   },
@@ -6769,6 +6785,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key to match data and schema features for attribute filtering and casting This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip Unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -8153,7 +8177,7 @@ Extracts maxLod
 ### Type
 * processor
 ### Description
-Detect missing attributes
+Detect missing attributes in PLATEAU4 features
 ### Parameters
 ```json
 {

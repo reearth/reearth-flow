@@ -437,14 +437,10 @@ graphs:
         method: create
         value: |
           file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
-      - attribute: _lod_type
-        method: create
-        value: |
-          env.get("__lod_type")
       - attribute: feature_type
         method: create
         value: |
-          env.get("__feature_type")
+          env.get("__value")["__citygml_feature_type"]
       - attribute: path
         method: rename
         value: _path
@@ -734,6 +730,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: false
@@ -764,6 +761,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -794,6 +792,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: false
@@ -824,6 +823,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -854,6 +854,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: false
@@ -884,6 +885,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -914,6 +916,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: false

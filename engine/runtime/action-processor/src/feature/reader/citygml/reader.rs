@@ -23,8 +23,8 @@ use reearth_flow_runtime::{
     node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
-    conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, metadata::Metadata,
-    Attribute, AttributeValue, Feature,
+    conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, Attribute,
+    AttributeValue, CitygmlFeatureExt, Feature,
 };
 use url::Url;
 
@@ -108,7 +108,9 @@ fn emit_flat_entity(
     // Already contains base_attributes + gmlRootId + root featureType + gmlId + maxLod.
     // This function overrides the child-specific fields (featureType, gmlName, lod, gmlId).
     mut attrs: HashMap<Attribute, AttributeValue>,
-    root_metadata: &Metadata,
+    citygml_gml_id: Option<String>,
+    citygml_feature_type: Option<String>,
+    citygml_lod: u8,
     transformer: &mut GeometricMergedownTransform,
     flatten: bool,
     parent_lod: LodMask,
@@ -205,15 +207,28 @@ fn emit_flat_entity(
     let mut feature: Feature = geometry.into();
     feature.extend(attrs);
     feature.insert("cityGmlAttributes", citygml_attributes);
-    let mut child_metadata = root_metadata.clone();
     if flatten {
-        if child_lod.highest_lod().is_some() {
-            child_metadata.lod = Some(child_lod);
+        let eff_lod = if child_lod.highest_lod().is_some() {
+            child_lod.to_u8()
+        } else {
+            citygml_lod
+        };
+        if let Some(id) = child_id.or_else(|| citygml_gml_id.clone()) {
+            feature.update_feature_id(id);
         }
-        child_metadata.feature_id = child_id;
-        child_metadata.feature_type = child_typename;
+        if let Some(ft) = child_typename.or_else(|| citygml_feature_type.clone()) {
+            feature.update_feature_type(ft);
+        }
+        feature.update_lod_mask(LodMask::from_u8(eff_lod));
+    } else {
+        if let Some(id) = citygml_gml_id {
+            feature.update_feature_id(id);
+        }
+        if let Some(ft) = citygml_feature_type {
+            feature.update_feature_type(ft);
+        }
+        feature.update_lod_mask(LodMask::from_u8(citygml_lod));
     }
-    feature.metadata = child_metadata;
     fw.send(ExecutorContext::new_with_context_feature_and_port(
         ctx,
         feature,
@@ -445,11 +460,9 @@ pub(super) fn emit_buffered(
             let gml_id = entity.root.id();
             let name = entity.root.typename();
             let lod = LodMask::find_lods_by_citygml_value(&entity.root);
-            let metadata = Metadata {
-                feature_id: gml_id.map(|id| id.to_string()),
-                feature_type: name.map(|name| name.to_string()),
-                lod: Some(lod),
-            };
+            let citygml_gml_id = gml_id.map(|id| id.to_string());
+            let citygml_feature_type = name.map(|name| name.to_string());
+            let citygml_lod = lod.to_u8();
             let mut attributes = HashMap::<Attribute, AttributeValue>::from([
                 (
                     Attribute::new("featureType"),
@@ -493,7 +506,9 @@ pub(super) fn emit_buffered(
                     ent,
                     root_needs_reconstruction,
                     attributes.clone(),
-                    &metadata,
+                    citygml_gml_id.clone(),
+                    citygml_feature_type.clone(),
+                    citygml_lod,
                     &mut transformer,
                     flatten,
                     lod,
@@ -514,13 +529,13 @@ pub(super) fn emit_buffered(
                         let mut ent = ref_ent.clone();
                         // Override parentId/parentType to reflect the referrer, not the original parent.
                         if let nusamai_citygml::Value::Object(ref mut obj) = ent.root {
-                            if let Some(id) = &metadata.feature_id {
+                            if let Some(id) = &citygml_gml_id {
                                 obj.attributes.insert(
                                     "parentId".to_string(),
                                     nusamai_citygml::Value::String(id.clone()),
                                 );
                             }
-                            if let Some(typename) = &metadata.feature_type {
+                            if let Some(typename) = &citygml_feature_type {
                                 obj.attributes.insert(
                                     "parentType".to_string(),
                                     nusamai_citygml::Value::String(typename.clone()),
@@ -533,7 +548,9 @@ pub(super) fn emit_buffered(
                             ent,
                             *ref_rnr,
                             attributes.clone(),
-                            &metadata,
+                            citygml_gml_id.clone(),
+                            citygml_feature_type.clone(),
+                            citygml_lod,
                             &mut transformer,
                             flatten,
                             lod,

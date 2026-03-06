@@ -103,13 +103,14 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 compress_output,
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
+                schema_key: params.schema_key,
             },
         };
         Ok(Box::new(sink))
     }
 }
 
-type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
+type BufferKey = (Uri, Option<String>, Option<Uri>); // (output, filename, compress_output)
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
@@ -144,6 +145,11 @@ pub struct Cesium3DTilesWriterParam {
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Schema Key
+    /// Attribute key whose value identifies the schema type and determines the output
+    /// filename: all features sharing the same value are written to the same file.
+    /// This attribute is excluded from output.
+    pub(super) schema_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +161,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
+    pub(super) schema_key: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -165,7 +172,7 @@ impl Sink for Cesium3DTilesWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         match &ctx.port {
             port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
-            port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx)?,
+            port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx),
             port => {
                 return Err(
                     SinkError::Cesium3DTilesWriter(format!("Unknown port with: {port:?}")).into(),
@@ -183,11 +190,6 @@ impl Sink for Cesium3DTilesWriter {
 
 impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
-        let Some(feature_type) = &ctx.feature.feature_type() else {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Failed to get feature type".to_string(),
-            ));
-        };
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
             return Err(SinkError::Cesium3DTilesWriter(
@@ -203,6 +205,12 @@ impl Cesium3DTilesWriter {
                 "Unsupported input".to_string(),
             ));
         }
+
+        let filename = self
+            .params
+            .schema_key
+            .as_ref()
+            .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
         let output = self.params.output.clone();
         let scope = ctx
@@ -223,10 +231,17 @@ impl Cesium3DTilesWriter {
         };
 
         let feature = {
-            let mut attrs = crate::schema::filter_and_cast_attributes(&ctx.feature, &self.schema);
-            if self.params.skip_unexposed_attributes {
-                attrs.retain(|k, _| !k.as_ref().starts_with("__"));
-            }
+            let mut attrs = crate::schema::filter_and_cast_attributes(
+                &ctx.feature,
+                &self.schema,
+                self.params.schema_key.as_deref(),
+            );
+            let skip_unexp = self.params.skip_unexposed_attributes;
+            attrs.retain(|k, _| {
+                let key = k.as_ref();
+                !(skip_unexp && key.starts_with("__"))
+                    && self.params.schema_key.as_deref() != Some(key)
+            });
             let mut feature = ctx.feature.clone();
             feature.attributes = Arc::new(attrs);
             feature
@@ -234,44 +249,50 @@ impl Cesium3DTilesWriter {
 
         let buffer = self
             .buffer
-            .entry((output, feature_type.clone(), compress_output.clone()))
+            .entry((output, filename, compress_output.clone()))
             .or_default();
         buffer.push(feature);
         Ok(())
     }
 
-    fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
-        let feature = &ctx.feature;
-        let Some(feature_type) = &feature.feature_type() else {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Failed to get feature type".to_string(),
-            ));
+    fn process_schema(&mut self, ctx: &ExecutorContext) {
+        let Some(ref schema_key) = self.params.schema_key else {
+            return;
         };
 
+        let feature = &ctx.feature;
+        let Some(schema_type) = feature.get(schema_key).and_then(|v| v.as_string()) else {
+            tracing::warn!("Feature missing '{}' attribute for schema_key", schema_key);
+            return;
+        };
+
+        let skip_unexp = self.params.skip_unexposed_attributes;
         let mut sanitized_feature = feature.clone();
         sanitized_feature.attributes = Arc::new(
             sanitized_feature
                 .attributes
                 .iter()
                 .filter(|(k, _)| {
-                    !self.params.skip_unexposed_attributes || !k.as_ref().starts_with("__")
+                    let key = k.as_ref();
+                    !(skip_unexp && key.starts_with("__"))
+                        && self.params.schema_key.as_deref() != Some(key)
                 })
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect(),
         );
 
         let typedef: TypeDef = (&sanitized_feature).into();
-        self.schema.types.insert(feature_type.clone(), typedef);
-        Ok(())
+        self.schema.types.insert(schema_type, typedef);
     }
 
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
-        let mut features = HashMap::<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>::new();
-        for ((output, feature_type, compress_output), buffer) in &self.buffer {
+        let mut features =
+            HashMap::<(Uri, Option<Uri>), Vec<(Option<String>, Vec<Feature>)>>::new();
+        for ((output, filename, compress_output), buffer) in &self.buffer {
             features
                 .entry((output.clone(), compress_output.clone()))
                 .or_default()
-                .push((feature_type.clone(), buffer.clone()));
+                .push((filename.clone(), buffer.clone()));
         }
         for ((output, compress_output), buffer) in &features {
             self.write(ctx.clone(), buffer, output, compress_output)?;
@@ -283,24 +304,14 @@ impl Cesium3DTilesWriter {
     pub(crate) fn write(
         &self,
         ctx: Context,
-        upstream: &Vec<(String, Vec<Feature>)>,
+        upstream: &[(Option<String>, Vec<Feature>)],
         output: &Uri,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
-        let mut features = Vec::new();
-        let mut schema: Schema = self.schema.clone();
-        for (feature_type, upstream) in upstream {
-            let Some(feature) = upstream.first() else {
-                continue;
-            };
-            if !schema.types.contains_key(feature_type) {
-                let typedef: TypeDef = feature.into();
-                schema.types.insert(feature_type.clone(), typedef);
-            }
-            features.extend(upstream.clone().into_iter());
-        }
+        let schema = self.schema.clone();
+        let grouped_features: Vec<(Option<String>, Vec<Feature>)> = upstream.to_owned();
 
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
         let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
@@ -311,9 +322,11 @@ impl Cesium3DTilesWriter {
             {
                 let ctx = ctx.clone();
                 s.spawn(move || {
+                    let feature_count: usize =
+                        grouped_features.iter().map(|(_, fs)| fs.len()).sum();
                     let now = time::Instant::now();
                     let result = super::pipeline::geometry_slicing_stage(
-                        &features,
+                        &grouped_features,
                         tile_id_conv,
                         sender_sliced,
                         min_zoom,
@@ -333,7 +346,7 @@ impl Cesium3DTilesWriter {
                         None,
                         format!(
                             "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
-                            features.len(),
+                            feature_count,
                             now.elapsed(),
                             output
                         ),

@@ -24,6 +24,8 @@ use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+// currently czml writer is citygml data specific
+use reearth_flow_types::CitygmlFeatureExt;
 
 use crate::errors::SinkError;
 
@@ -1252,7 +1254,7 @@ fn build_properties_bag(feature: &Feature) -> Option<Value> {
 }
 
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
-    let Some(parent_id) = feature.metadata.feature_id.clone() else {
+    let Some(parent_id) = feature.feature_id() else {
         ctx.event_hub
             .warn_log(None, "Feature does not have a feature_id".to_string());
         return vec![];
@@ -1336,7 +1338,6 @@ mod tests {
                     lon, lat, height,
                 ))),
             },
-            Default::default(),
         )
     }
 

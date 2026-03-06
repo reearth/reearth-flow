@@ -115,6 +115,7 @@ graphs:
         type: action
         action: MVTWriter
         with:
+          schemaKey: __citygml_feature_type
           format: mvt
           layerName: |
             env.get("__value").feature_type.split(":")[1]

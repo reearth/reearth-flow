@@ -1013,7 +1013,7 @@ mod tests {
             AttributeValue::String(xml_content.to_string()),
         );
 
-        Feature::new_with_attributes_and_geometry(attributes, Geometry::new(), Default::default())
+        Feature::new_with_attributes_and_geometry(attributes, Geometry::new())
     }
 
     fn run_validator_test(
@@ -1099,7 +1099,6 @@ mod tests {
         let feature = Feature::new_with_attributes_and_geometry(
             attributes,
             Geometry::new(),
-            Default::default(),
         );
 
         let ctx = utils::create_default_execute_context(&feature);
