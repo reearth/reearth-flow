@@ -4,6 +4,9 @@ name: "FeatureJoinerExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   outputPath:
+  joinedOutputPath:
+  unjoinedRequestorOutputPath:
+  unjoinedSupplierOutputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -88,19 +91,28 @@ graphs:
             - city
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: EchoJoined
+        name: JsonWriterJoined
         type: action
-        action: EchoSink
+        action: JsonWriter
+        with:
+          output: |
+            env.get("joinedOutputPath")
 
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-        name: EchoUnjoinedRequestor
+        name: JsonWriterUnjoinedRequestor
         type: action
-        action: EchoSink
+        action: JsonWriter
+        with:
+          output: |
+            env.get("unjoinedRequestorOutputPath")
 
       - id: b2c3d4e5-f6a7-8901-bcde-f23456789012
-        name: EchoUnjoinedSupplier
+        name: JsonWriterUnjoinedSupplier
         type: action
-        action: EchoSink
+        action: JsonWriter
+        with:
+          output: |
+            env.get("unjoinedSupplierOutputPath")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
