@@ -2859,6 +2859,147 @@ Filter Features Based on Custom Conditions
 ### Category
 * Feature
 
+## FeatureJoiner
+### Type
+* processor
+### Description
+Joins requestor and supplier features based on matching attribute values with configurable join types
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureJoiner Parameters",
+  "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
+  "type": "object",
+  "properties": {
+    "conflictResolution": {
+      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ConflictResolution"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "joinType": {
+      "description": "Join type: inner, left, or full",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/JoinType"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requestorAttribute": {
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "requestorAttributeValue": {
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "supplierAttribute": {
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttributeValue": {
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "ConflictResolution": {
+      "oneOf": [
+        {
+          "description": "Requestor attributes win on conflict",
+          "type": "string",
+          "enum": [
+            "requestorWins"
+          ]
+        },
+        {
+          "description": "Supplier attributes win on conflict (default)",
+          "type": "string",
+          "enum": [
+            "supplierWins"
+          ]
+        }
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "JoinType": {
+      "oneOf": [
+        {
+          "description": "Only emit features where a match exists",
+          "type": "string",
+          "enum": [
+            "inner"
+          ]
+        },
+        {
+          "description": "Emit all requestor features (default)",
+          "type": "string",
+          "enum": [
+            "left"
+          ]
+        },
+        {
+          "description": "Emit all features from both sides",
+          "type": "string",
+          "enum": [
+            "full"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* requestor
+* supplier
+### Output Ports
+* joined
+* unjoinedRequestor
+* unjoinedSupplier
+### Category
+* Feature
+
 ## FeatureLodFilter
 ### Type
 * processor
