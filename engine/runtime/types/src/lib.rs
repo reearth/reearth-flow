@@ -9,7 +9,6 @@ pub mod geometry;
 pub mod jpmesh;
 pub mod lod;
 pub mod material;
-pub mod metadata;
 pub mod workflow;
 
 pub use attribute::*;

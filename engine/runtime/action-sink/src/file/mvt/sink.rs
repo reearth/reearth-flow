@@ -108,6 +108,7 @@ impl SinkFactory for MVTSinkFactory {
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
                 extent: params.extent.unwrap_or(4096) as i32,
+                schema_key: params.schema_key,
             },
             join_handles: Vec::new(),
         };
@@ -160,6 +161,10 @@ pub struct MVTWriterParam {
     /// # Extent
     /// MVT tile resolution. Default is 4096.
     pub(super) extent: Option<u32>,
+    /// # Schema Key
+    /// Attribute key to match data and schema features for attribute filtering and casting
+    /// This attribute is excluded from output.
+    pub(super) schema_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -172,6 +177,7 @@ pub struct MVTWriterCompiledParam {
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
+    pub(super) schema_key: Option<String>,
 }
 
 impl Sink for MVTWriter {
@@ -181,11 +187,16 @@ impl Sink for MVTWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
+            let Some(ref schema_key) = self.params.schema_key else {
+                return Ok(());
+            };
             let feature = &ctx.feature;
-            if let Some(feature_type) = feature.feature_type() {
-                let typedef: TypeDef = feature.into();
-                self.schema.types.insert(feature_type, typedef);
-            }
+            let Some(schema_type) = feature.get(schema_key).and_then(|v| v.as_string()) else {
+                tracing::warn!("Feature missing '{}' attribute for schema_key", schema_key);
+                return Ok(());
+            };
+            let typedef: TypeDef = feature.into();
+            self.schema.types.insert(schema_type, typedef);
             return Ok(());
         }
         let geometry = &ctx.feature.geometry;
@@ -227,6 +238,7 @@ impl Sink for MVTWriter {
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
+
                 let buffer = self.buffer.entry((output, compress_output)).or_default();
                 buffer.push((feature.clone(), layer_name));
             }
@@ -285,11 +297,17 @@ impl MVTWriter {
             let filtered_buffer: BufferValue = buffer
                 .iter()
                 .map(|(feature, layer_name)| {
-                    let mut new_attrs =
-                        crate::schema::filter_and_cast_attributes(feature, &self.schema);
-                    if self.params.skip_unexposed_attributes {
-                        new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
-                    }
+                    let skip = self.params.skip_unexposed_attributes;
+                    let mut new_attrs = crate::schema::filter_and_cast_attributes(
+                        feature,
+                        &self.schema,
+                        self.params.schema_key.as_deref(),
+                    );
+                    new_attrs.retain(|k, _| {
+                        let key = k.as_ref();
+                        self.params.schema_key.as_deref() != Some(key)
+                            && !(skip && key.starts_with("__"))
+                    });
                     if self.params.colon_to_underscore {
                         new_attrs = new_attrs
                             .into_iter()

@@ -115,7 +115,7 @@ graphs:
               file::extract_filename(env.get("__value")["path"])
           - newAttribute: type
             attributeValue: |
-              env.get("__feature_type")
+              env.get("__value")["__citygml_feature_type"]
           - newAttribute: maxLod
             attributeValue: |
               env.get("__value").maxLod
@@ -186,10 +186,6 @@ graphs:
               method: create
               value: |
                 file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
-            - attribute: _lod
-              method: create
-              value: |
-                env.get("__lod")
             - attribute: _x
               method: create
               value: |
@@ -254,6 +250,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -275,6 +272,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -296,6 +294,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -317,6 +316,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -338,6 +338,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -359,6 +360,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -380,6 +382,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
