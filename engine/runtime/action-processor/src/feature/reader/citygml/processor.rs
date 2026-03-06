@@ -1,8 +1,9 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 
 use nusamai_citygml::GeometryStore;
 use nusamai_plateau::appearance::AppearanceStore;
 use reearth_flow_runtime::{
+    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
@@ -18,7 +19,7 @@ use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
 
-use super::reader::{emit_buffered, parse_and_register, BufferedEntity};
+use super::reader::{emit_buffered, parse_and_register};
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGmlReaderFactory;
@@ -92,22 +93,58 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             params: compiled_params,
             geom_registry: HashMap::new(),
             app_registry: HashMap::new(),
-            buffered: Vec::new(),
+            store_pool: Vec::new(),
+            cache_paths: Vec::new(),
+            cache_dir: None,
         };
         Ok(Box::new(process))
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureCityGmlReaderParam,
-    /// Pass 1 registry: polygon URL → owning GeometryStore
+    /// Pass 1 registry: polygon URL → owning GeometryStore (needed for cross-file ref resolution)
     geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
     /// Pass 1 registry: polygon URL → owning AppearanceStore
     app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>>,
-    /// Buffered entities from pass 1, emitted in pass 2 (finish)
-    buffered: Vec<BufferedEntity>,
+    /// One entry per top-level city object parsed; indexed by store_id in the JSONL cache.
+    store_pool: Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>,
+    /// Per-file JSONL cache paths written during pass 1.
+    cache_paths: Vec<PathBuf>,
+    /// Root of the executor-specific cache directory, set on first process() call.
+    cache_dir: Option<PathBuf>,
+}
+
+impl std::fmt::Debug for FeatureCityGmlReader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FeatureCityGmlReader")
+            .field("cache_paths", &self.cache_paths.len())
+            .field("store_pool", &self.store_pool.len())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Clone for FeatureCityGmlReader {
+    fn clone(&self) -> Self {
+        Self {
+            global_params: self.global_params.clone(),
+            params: self.params.clone(),
+            geom_registry: HashMap::new(),
+            app_registry: HashMap::new(),
+            store_pool: Vec::new(),
+            cache_paths: Vec::new(),
+            cache_dir: None,
+        }
+    }
+}
+
+impl Drop for FeatureCityGmlReader {
+    fn drop(&mut self) {
+        if let Some(ref dir) = self.cache_dir {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
 }
 
 /// # FeatureCityGmlReader Parameters
@@ -143,7 +180,7 @@ impl Processor for FeatureCityGmlReader {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature.clone();
         let ctx = ctx.as_context();
@@ -159,8 +196,17 @@ impl Processor for FeatureCityGmlReader {
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });
-        // Pass 1: parse file, populate registries, buffer entities
-        parse_and_register(
+        // Initialize cache directory on first call
+        if self.cache_dir.is_none() {
+            let executor_id = fw.executor_id();
+            let dir = executor_cache_subdir(executor_id, "citygml-reader");
+            std::fs::create_dir_all(&dir).map_err(|e| {
+                FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
+            })?;
+            self.cache_dir = Some(dir);
+        }
+        // Pass 1: parse file, populate registries, write entities to per-file JSONL cache
+        let cache_path = parse_and_register(
             ctx,
             feature,
             dataset,
@@ -170,9 +216,12 @@ impl Processor for FeatureCityGmlReader {
             codelists_url,
             &mut self.geom_registry,
             &mut self.app_registry,
-            &mut self.buffered,
+            &mut self.store_pool,
+            self.cache_dir.as_deref().unwrap(),
         )
-        .map_err(|e| e.into())
+        .map_err(|e| -> BoxedError { e.into() })?;
+        self.cache_paths.push(cache_path);
+        Ok(())
     }
 
     fn finish(
@@ -180,12 +229,16 @@ impl Processor for FeatureCityGmlReader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Pass 2: resolve cross-file refs, emit all buffered entities
-        let buffered = std::mem::take(&mut self.buffered);
+        let Some(cache_dir) = self.cache_dir.as_deref() else {
+            return Ok(());
+        };
+        // Pass 2: stream per-file, resolve cross-file refs, emit
         emit_buffered(
             ctx.as_context(),
             fw,
-            buffered,
+            cache_dir,
+            &self.cache_paths,
+            &self.store_pool,
             &self.geom_registry,
             &self.app_registry,
         )
