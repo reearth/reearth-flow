@@ -25,7 +25,8 @@ runtime/tests/
 
 ### Run all FeatureJoiner tests
 ```bash
-cd /home/zw/code/rust_programming/reearth-flow/engine
+# From the repository root:
+cd engine
 cargo test -p reearth-flow-tests --test test-main -- joiner
 ```
 
