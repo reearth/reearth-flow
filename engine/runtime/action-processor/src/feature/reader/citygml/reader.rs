@@ -30,6 +30,8 @@ use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
 
+type StorePool = Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>;
+
 /// Serialized form of one entity stored in the per-file JSONL cache.
 /// `entity.geometry_store` and `entity.appearance_store` are `#[serde(skip)]`,
 /// so only the root/attribute data is written; stores are re-attached via `store_id`.
@@ -46,7 +48,7 @@ struct CachedEntityRecord {
 /// Load all records from a per-file JSONL cache and re-attach geometry/appearance stores.
 fn load_records(
     path: &Path,
-    store_pool: &[(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)],
+    store_pool: &StorePool,
 ) -> Result<Vec<CachedEntityRecord>, BoxedError> {
     let file = std::fs::File::open(path)?;
     let reader = BufReader::new(file);
@@ -68,7 +70,7 @@ fn load_records(
 /// for cross-file xlink:href resolution.
 fn load_flat_map(
     path: &Path,
-    store_pool: &[(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)],
+    store_pool: &StorePool,
 ) -> HashMap<String, (nusamai_plateau::Entity, bool)> {
     let records = match load_records(path, store_pool) {
         Ok(r) => r,
@@ -233,7 +235,7 @@ pub(super) fn parse_and_register(
     codelists_url: Option<Url>,
     geom_registry: &mut HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: &mut HashMap<Url, Arc<RwLock<AppearanceStore>>>,
-    store_pool: &mut Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>,
+    store_pool: &mut StorePool,
     cache_dir: &Path,
 ) -> Result<PathBuf, FeatureProcessorError> {
     let code_resolver = if let Some(codelists_path) = codelists_url {
@@ -280,7 +282,7 @@ pub(super) fn parse_and_register(
     Ok(cache_path)
 }
 
-#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::uninlined_format_args, clippy::too_many_arguments)]
 fn collect_entities<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
     base_attributes: &IndexMap<Attribute, AttributeValue>,
@@ -288,7 +290,7 @@ fn collect_entities<R: BufRead>(
     base_url: Url,
     geom_registry: &mut HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: &mut HashMap<Url, Arc<RwLock<AppearanceStore>>>,
-    store_pool: &mut Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>,
+    store_pool: &mut StorePool,
     cache_path: &Path,
 ) -> Result<(), FeatureProcessorError> {
     let mut entities = Vec::new();
@@ -420,7 +422,7 @@ pub(super) fn emit_buffered(
     fw: &ProcessorChannelForwarder,
     cache_dir: &Path,
     cache_paths: &[PathBuf],
-    store_pool: &[(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)],
+    store_pool: &StorePool,
     geom_registry: &HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: &HashMap<Url, Arc<RwLock<AppearanceStore>>>,
 ) -> Result<(), BoxedError> {

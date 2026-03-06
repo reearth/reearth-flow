@@ -21,6 +21,8 @@ use crate::feature::errors::FeatureProcessorError;
 
 use super::reader::{emit_buffered, parse_and_register};
 
+type StorePool = Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGmlReaderFactory;
 
@@ -109,7 +111,7 @@ pub struct FeatureCityGmlReader {
     /// Pass 1 registry: polygon URL → owning AppearanceStore
     app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>>,
     /// One entry per top-level city object parsed; indexed by store_id in the JSONL cache.
-    store_pool: Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>,
+    store_pool: StorePool,
     /// Per-file JSONL cache paths written during pass 1.
     cache_paths: Vec<PathBuf>,
     /// Root of the executor-specific cache directory, set on first process() call.
