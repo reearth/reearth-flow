@@ -135,6 +135,7 @@ graphs:
         type: action
         action: MVTWriter
         with:
+          schemaKey: __citygml_feature_type
           format: mvt
           layerName: Road
           minZoom: 8
@@ -171,6 +172,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true

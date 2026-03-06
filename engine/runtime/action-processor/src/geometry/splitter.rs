@@ -300,11 +300,7 @@ impl GeometrySplitter {
 
         new_geometry.value = GeometryValue::CityGmlGeometry(split_feature);
         fw.send(ctx.new_with_feature_and_port(
-            Feature::new_with_attributes_and_geometry(
-                attributes,
-                new_geometry,
-                feature.metadata.clone(),
-            ),
+            Feature::new_with_attributes_and_geometry(attributes, new_geometry),
             DEFAULT_PORT.clone(),
         ));
 
@@ -406,11 +402,7 @@ impl GeometrySplitter {
 
             new_geometry.value = GeometryValue::CityGmlGeometry(single_citygml);
             fw.send(ctx.new_with_feature_and_port(
-                Feature::new_with_attributes_and_geometry(
-                    attributes,
-                    new_geometry,
-                    feature.metadata.clone(),
-                ),
+                Feature::new_with_attributes_and_geometry(attributes, new_geometry),
                 DEFAULT_PORT.clone(),
             ));
         }

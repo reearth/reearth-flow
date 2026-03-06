@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{CitygmlFeatureExt, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -191,11 +191,10 @@ impl Sink for CityGmlWriterSink {
                     continue;
                 };
 
-                let feature_type = feature
-                    .metadata
-                    .feature_type
-                    .as_deref()
-                    .unwrap_or("gen:GenericCityObject");
+                let feature_type_str = feature
+                    .feature_type()
+                    .unwrap_or_else(|| "gen:GenericCityObject".to_string());
+                let feature_type = feature_type_str.as_str();
                 let city_type = CityObjectType::from_feature_type(feature_type);
 
                 let geometries = convert_citygml_geometry(geom, &self.lod_mask);

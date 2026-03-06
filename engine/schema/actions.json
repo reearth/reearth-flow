@@ -1341,6 +1341,14 @@
               }
             ]
           },
+          "schemaKey": {
+            "title": "Schema Key",
+            "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "skipUnexposedAttributes": {
             "title": "Skip unexposed Attributes",
             "description": "Skip attributes with double underscore prefix",
@@ -3260,7 +3268,7 @@
     {
       "name": "FeatureTypeFilter",
       "type": "processor",
-      "description": "Filters features by feature type",
+      "description": "Filter CityGML features by feature type",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureTypeFilter Parameters",
@@ -4311,6 +4319,7 @@
             ]
           },
           "dracoCompression": {
+            "description": "Apply Draco compression to the geometry",
             "type": [
               "boolean",
               "null"
@@ -4322,6 +4331,13 @@
               {
                 "$ref": "#/definitions/Expr"
               }
+            ]
+          },
+          "schemaKey": {
+            "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. Excluded from output.",
+            "type": [
+              "string",
+              "null"
             ]
           }
         },
@@ -6230,6 +6246,14 @@
               }
             ]
           },
+          "schemaKey": {
+            "title": "Schema Key",
+            "description": "Attribute key to match data and schema features for attribute filtering and casting This attribute is excluded from output.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "skipUnexposedAttributes": {
             "title": "Skip Unexposed Attributes",
             "description": "Skip attributes with double underscore prefix",
@@ -7335,7 +7359,7 @@
     {
       "name": "PLATEAU4.MissingAttributeDetector",
       "type": "processor",
-      "description": "Detect missing attributes",
+      "description": "Detect missing attributes in PLATEAU4 features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MissingAttributeDetector Parameters",

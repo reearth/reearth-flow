@@ -227,6 +227,7 @@ graphs:
     type: action
     action: MVTWriter
     with:
+      schemaKey: __citygml_feature_type
       layerName: |
         "luse"
       minZoom: 8
@@ -320,6 +321,7 @@ graphs:
     type: action
     action: MVTWriter
     with:
+      schemaKey: __citygml_feature_type
       layerName: |
         "lsld"
       minZoom: 8

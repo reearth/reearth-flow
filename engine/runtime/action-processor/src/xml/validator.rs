@@ -572,7 +572,7 @@ mod tests {
             AttributeValue::String(xml_content.to_string()),
         );
 
-        Feature::new_with_attributes_and_geometry(attributes, Geometry::new(), Default::default())
+        Feature::new_with_attributes_and_geometry(attributes, Geometry::new())
     }
 
     fn run_validator_test(

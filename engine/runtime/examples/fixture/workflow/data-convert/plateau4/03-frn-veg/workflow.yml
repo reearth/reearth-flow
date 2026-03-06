@@ -137,7 +137,7 @@ graphs:
             - attribute: gml_id
               method: create
               value: |
-                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
@@ -180,7 +180,7 @@ graphs:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
             - expr: |
-                env.get("__feature_type") == "frn:CityFurniture"
+                env.get("__value")["__citygml_feature_type"] == "frn:CityFurniture"
               outputPort: frn_CityFurniture_schema
 
       - id: bbccddee-2222-3333-4444-555566667777
@@ -207,6 +207,8 @@ graphs:
               valueAttribute: uro:geometrySrcDescLod1
             - attribute: uro:lodType
               valueAttribute: uro:lodType
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
 
       - id: 35953fd4-5359-43cc-be03-a396259a4c8e
         name: GeometryFilterForFrn
@@ -247,6 +249,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -374,6 +377,7 @@ graphs:
         type: action
         action: MVTWriter
         with:
+          schemaKey: __citygml_feature_type
           layerName: |
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
@@ -405,7 +409,7 @@ graphs:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
             - expr: |
-                env.get("__feature_type") == "veg:SolitaryVegetationObject"
+                env.get("__value")["__citygml_feature_type"] == "veg:SolitaryVegetationObject"
               outputPort: veg_SolitaryVegetationObject_schema
 
       - id: 22bb33cc-4444-5555-6666-777788889999
@@ -444,6 +448,8 @@ graphs:
               valueAttribute: uro:geometrySrcDescLod1
             - attribute: uro:lodType
               valueAttribute: uro:lodType
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
 
       - id: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
         name: AttributeManagerByLodVeg1
@@ -489,6 +495,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -634,6 +641,7 @@ graphs:
         type: action
         action: MVTWriter
         with:
+          schemaKey: __citygml_feature_type
           layerName: |
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
@@ -665,7 +673,7 @@ graphs:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
             - expr: |
-                env.get("__feature_type") == "veg:PlantCover"
+                env.get("__value")["__citygml_feature_type"] == "veg:PlantCover"
               outputPort: veg_PlantCover_schema
 
       - id: 44dd55ee-6666-7777-8888-999900001111
@@ -696,6 +704,8 @@ graphs:
               valueAttribute: uro:geometrySrcDescLod1
             - attribute: uro:lodType
               valueAttribute: uro:lodType
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
 
       - id: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
         name: AttributeManagerByLodVeg2
@@ -722,6 +732,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -859,6 +870,7 @@ graphs:
         type: action
         action: MVTWriter
         with:
+          schemaKey: __citygml_feature_type
           layerName: |
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8

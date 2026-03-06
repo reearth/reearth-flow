@@ -911,11 +911,7 @@ mod tests {
             FlowGeometry2D::Point(point),
         ));
 
-        Feature::new_with_attributes_and_geometry(
-            attributes,
-            geometry,
-            Default::default(), // Empty metadata
-        )
+        Feature::new_with_attributes_and_geometry(attributes, geometry)
     }
 
     fn create_test_context() -> NodeContext {
