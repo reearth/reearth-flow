@@ -1641,7 +1641,6 @@ mod tests {
                 epsg: Some(4326),
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
             },
-            Default::default(),
         );
         f.insert(Attribute::new("id"), AttributeValue::String("poly1".into()));
         f.insert(
