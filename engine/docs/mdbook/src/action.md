@@ -4729,7 +4729,7 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "output": {
-      "description": "Output path or expression for the GLTF file to create",
+      "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -4737,7 +4737,7 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "schemaKey": {
-      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. Excluded from output.",
+      "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
       "type": [
         "string",
         "null"
@@ -6787,7 +6787,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "schemaKey": {
       "title": "Schema Key",
-      "description": "Attribute key to match data and schema features for attribute filtering and casting This attribute is excluded from output.",
+      "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
       "type": [
         "string",
         "null"
