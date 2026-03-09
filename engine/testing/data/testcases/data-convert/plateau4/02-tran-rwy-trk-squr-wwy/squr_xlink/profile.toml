@@ -25,5 +25,5 @@ flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lo
 truth_path = "squr_lod2_png_truth"
 tiles = ["16/58187/25758"]
 
-[tests.mvt_raster.squr_lod2]
+[tests.raster.squr_lod2]
 threshold = 0.001

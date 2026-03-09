@@ -1,4 +1,5 @@
 use plateau_tiles_test::conv_mvt;
+use plateau_tiles_test::conv_png;
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
 use plateau_tiles_test::test_cesium::{self, CesiumConfig};
@@ -65,7 +66,7 @@ struct Tests {
     #[serde(default)]
     json_object_key_order: Option<KeyOrderConfig>,
     #[serde(default)]
-    mvt_raster: Option<HashMap<String, RasterConfig>>,
+    raster: Option<HashMap<String, RasterConfig>>,
 }
 
 fn pack_inputs(
@@ -311,6 +312,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if !profile.convs.mvt_png.is_empty() {
+            run_test("convs_mvt_png", &relative_path_display, || {
+                let convs_raster_dir = output_dir.join("convs/raster");
+                fs::create_dir_all(&convs_raster_dir).map_err(|e| e.to_string())?;
+                for (id, entry) in &profile.convs.mvt_png {
+                    let mvt_dir = output_dir.join(
+                        &entry
+                            .flow
+                            .as_ref()
+                            .expect("convs.mvt_png entry requires flow.path")
+                            .path,
+                    );
+                    let png_dir = convs_raster_dir.join(id);
+                    conv_png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
+                }
+                Ok(())
+            });
+        }
+
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
                 test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
@@ -341,28 +361,19 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
-        if let Some(raster_tests) = &tests.mvt_raster {
+        if let Some(raster_tests) = &tests.raster {
             for (id, cfg) in raster_tests {
                 let id = id.clone();
                 let cfg_ref = cfg;
                 if let Some(conv_entry) = profile.convs.mvt_png.get(&id) {
-                    let flow_mvt_dir = output_dir.join(
-                        &conv_entry
-                            .flow
-                            .as_ref()
-                            .expect("convs.mvt_png entry requires flow.path")
-                            .path,
-                    );
+                    let flow_png_dir = output_dir.join("convs/raster").join(&id);
                     let truth_dir = test_path.join(&conv_entry.truth_path);
-                    let tiles = conv_entry.tiles.as_deref();
-                    run_test(
-                        &format!("mvt_raster/{}", id),
-                        &relative_path_display,
-                        || test_raster::test_raster(&truth_dir, &flow_mvt_dir, cfg_ref, tiles),
-                    );
+                    run_test(&format!("raster/{}", id), &relative_path_display, || {
+                        test_raster::test_raster(&truth_dir, &flow_png_dir, cfg_ref)
+                    });
                 } else {
                     panic!(
-                        "tests.mvt_raster.{} references missing convs.mvt_png.{} entry",
+                        "tests.raster.{} references missing convs.mvt_png.{} entry",
                         id, id
                     );
                 }

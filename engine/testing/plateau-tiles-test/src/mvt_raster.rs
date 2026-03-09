@@ -309,33 +309,6 @@ pub fn write_raster_png(raster: &[f32], path: &std::path::Path) -> Result<(), St
         .map_err(|e| format!("Failed to write PNG {:?}: {}", path, e))
 }
 
-/// Reads an 8-bit grayscale PNG file into a f32 raster.
-pub fn read_raster_png(path: &std::path::Path) -> Result<Vec<f32>, String> {
-    use image::GrayImage;
-    let img = image::open(path)
-        .map_err(|e| format!("Failed to read PNG {:?}: {}", path, e))?
-        .into_luma8();
-    let GrayImage { .. } = img;
-    Ok(img.pixels().map(|p| p.0[0] as f32 / 255.0).collect())
-}
-
-/// Pixel-wise RMS comparison (same logic as test_mvt_lines).
-pub fn compare_rasters(r1: &[f32], r2: &[f32]) -> f64 {
-    let sum: f64 = r1
-        .iter()
-        .zip(r2.iter())
-        .map(|(a, b)| {
-            let diff = ((*a as f64) - (*b as f64)).abs();
-            if diff >= 0.5 {
-                diff
-            } else {
-                0.0
-            }
-        })
-        .sum();
-    (sum / r1.len() as f64).sqrt()
-}
-
 /// Returns all unique feature keys present in a tile (across all layers and geometry types).
 pub fn make_feature_keys_in_tile(tile: &Tile) -> Vec<String> {
     let mut keys = Vec::new();
@@ -363,6 +336,7 @@ pub fn make_feature_keys_in_tile(tile: &Tile) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::conv_png::compare_rasters;
     const EPSILON: f64 = 1e-6;
 
     // Verifies compare_rasters can detect a known difference.
