@@ -779,6 +779,17 @@ graphs:
         with:
           zmax: maxZ
 
+      # Exclude bldg:Building solid geometry to avoid duplication with individual bounded surfaces
+      - id: 00000001-0000-0000-0000-00000000006c
+        name: TextureBuildingFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["featureType"] != "bldg:Building";
+              outputPort: default
+
       # Filter to keep only roof surfaces for texture assignment
       - id: 00000001-0000-0000-0000-00000000006a
         name: FilterRoofForTexture
@@ -1751,11 +1762,18 @@ graphs:
         fromPort: default
         toPort: default
 
-      # RoofSpatialFilter → FilterRoofForTexture (filter only roof surfaces)
+      # RoofSpatialFilter → TextureBuildingFilter (exclude bldg:Building solid geometry)
       - id: e0000001-0000-0000-0000-000000000062
         from: 00000004-0000-0000-0000-000000000003
-        to: 00000001-0000-0000-0000-00000000006a
+        to: 00000001-0000-0000-0000-00000000006c
         fromPort: passed
+        toPort: default
+
+      # TextureBuildingFilter → FilterRoofForTexture (filter only roof surfaces)
+      - id: e0000001-0000-0000-0000-00000000006e
+        from: 00000001-0000-0000-0000-00000000006c
+        to: 00000001-0000-0000-0000-00000000006a
+        fromPort: default
         toPort: default
 
       # FilterRoofForTexture (unfiltered) → TexturedHorizontalReprojector (non-roof geometry passes through without texture)
