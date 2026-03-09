@@ -906,6 +906,15 @@ graphs:
     action: BoundsExtractor
     with:
       zmax: maxZ
+  - id: 00000001-0000-0000-0000-00000000006c
+    name: TextureBuildingFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] != "bldg:Building";
+        outputPort: default
   - id: 00000001-0000-0000-0000-00000000006a
     name: FilterRoofForTexture
     type: action
@@ -1661,8 +1670,13 @@ graphs:
     toPort: default
   - id: e0000001-0000-0000-0000-000000000062
     from: 00000004-0000-0000-0000-000000000003
-    to: 00000001-0000-0000-0000-00000000006a
+    to: 00000001-0000-0000-0000-00000000006c
     fromPort: passed
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000006e
+    from: 00000001-0000-0000-0000-00000000006c
+    to: 00000001-0000-0000-0000-00000000006a
+    fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-00000000006b
     from: 00000001-0000-0000-0000-00000000006a

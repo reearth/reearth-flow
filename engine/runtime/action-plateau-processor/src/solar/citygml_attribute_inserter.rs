@@ -878,7 +878,6 @@ impl CityGmlAttributeInserter {
         xml.push_str("<app:mimeType>image/png</app:mimeType>");
 
         for (projected_coords, ring) in reprojected_rings.iter().zip(roof_rings.iter()) {
-
             // Compute raw (unclamped) UV values to determine ring coverage.
             let raw_uvs: Vec<(f64, f64)> = projected_coords
                 .iter()
@@ -1286,19 +1285,7 @@ mod tests {
             b"<?xml version=\"1.0\"?><core:CityModel><core:cityObjectMember/></core:CityModel>";
         let appearance = "<app:appearanceMember><app:Appearance/></app:appearanceMember>";
 
-        let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
-            gml_id_attribute: "gmlId".to_string(),
-            path_attribute: "path".to_string(),
-            measurements: vec![],
-            texture_image_path_ast: None,
-            source_epsg_ast: None,
-            paths: Vec::new(),
-            elements: HashMap::new(),
-            texture_bounds: None,
-        };
-
-        let result = inserter.insert_appearance_block(xml, appearance).unwrap();
+        let result = CityGmlAttributeInserter::insert_appearance_block(xml, appearance).unwrap();
         let output = String::from_utf8(result).unwrap();
 
         assert!(output.contains("app:appearanceMember"));
