@@ -213,8 +213,12 @@ export default ({
     handleEdgesChange: handleYEdgesChange,
   });
 
-  const { nodePickerOpen, handleNodePickerOpen, handleNodePickerClose } =
-    useUIState();
+  const {
+    nodePickerOpen,
+    openNodePickerViaShortcut,
+    handleNodePickerOpen,
+    handleNodePickerClose,
+  } = useUIState();
 
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
@@ -418,6 +422,7 @@ export default ({
     customDebugRunWorkflowVariables,
     refetchWorkflowVariables,
     showSearchPanel,
+    openNodePickerViaShortcut,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
