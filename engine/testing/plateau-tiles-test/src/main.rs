@@ -2,12 +2,12 @@ mod align_cesium;
 mod align_mvt;
 mod cast_config;
 mod compare_attributes;
+mod conv_mvt;
 mod runner;
 mod test_cesium;
 mod test_json_attributes;
 mod test_json_attributes_v2;
 mod test_json_object_key_order;
-mod test_mvt_attributes;
 mod test_mvt_lines;
 mod test_mvt_points;
 mod test_mvt_polygons;
@@ -22,7 +22,6 @@ use test_cesium::CesiumConfig;
 use test_json_attributes::JsonFileConfig;
 use test_json_attributes_v2::JsonFileV2Config;
 use test_json_object_key_order::KeyOrderConfig;
-use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_lines::MvtLinesConfig;
 use test_mvt_points::MvtPointsConfig;
 use test_mvt_polygons::MvtPolygonsConfig;
@@ -50,11 +49,31 @@ fn init_logging() {
 }
 
 #[derive(Debug, Deserialize)]
+struct ConvMvtFlowSource {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ConvMvtEntry {
+    flow: ConvMvtFlowSource,
+    #[serde(default)]
+    casts: Option<HashMap<String, cast_config::CastConfigValue>>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct Convs {
+    #[serde(default)]
+    mvt: HashMap<String, ConvMvtEntry>,
+}
+
+#[derive(Debug, Deserialize)]
 struct Profile {
     citygml_zip_name: String,
     workflow_path: Option<String>,
     #[serde(default, rename = "tests")]
     tests: Tests,
+    #[serde(default)]
+    convs: Convs,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -63,8 +82,6 @@ struct Tests {
     json_attributes: Option<HashMap<String, JsonFileConfig>>,
     #[serde(default)]
     json_attributes_v2: Option<HashMap<String, JsonFileV2Config>>,
-    #[serde(default)]
-    mvt_attributes: Option<MvtAttributesConfig>,
     #[serde(default)]
     mvt_polygons: Option<MvtPolygonsConfig>,
     #[serde(default)]
@@ -146,6 +163,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/ogasawara-mura",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr_xlink",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
@@ -245,12 +263,21 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
+        let zip_stem = profile
+            .citygml_zip_name
+            .strip_suffix(".zip")
+            .unwrap_or(&profile.citygml_zip_name);
+        let target_package = zip_stem
+            .find("_op_")
+            .map(|pos| zip_stem[pos + 4..].to_string());
+
         runner::run_workflow(
             &workflow_path,
             &inputs["citymodel"],
             &output_dir,
             inputs.get("codelists").map(PathBuf::as_path),
             inputs.get("schemas").map(PathBuf::as_path),
+            target_package.as_deref(),
         );
 
         let elapsed = start_time.elapsed();
@@ -291,19 +318,22 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
-        if let Some(cfg) = &tests.json_attributes_v2 {
-            run_test("json_attributes_v2", &relative_path_display, || {
-                test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
+        if !profile.convs.mvt.is_empty() {
+            run_test("convs_mvt", &relative_path_display, || {
+                let convs_dir = output_dir.join("convs/mvt");
+                fs::create_dir_all(&convs_dir).map_err(|e| e.to_string())?;
+                for (id, entry) in &profile.convs.mvt {
+                    let mvt_dir = output_dir.join(&entry.flow.path);
+                    let output_path = convs_dir.join(format!("{}.json", id));
+                    conv_mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
+                }
+                Ok(())
             });
         }
 
-        if let Some(cfg) = &tests.mvt_attributes {
-            run_test("mvt_attributes", &relative_path_display, || {
-                test_mvt_attributes::test_mvt_attributes(
-                    &fme_extracted_dir,
-                    &flow_extracted_dir,
-                    cfg,
-                )
+        if let Some(cfg) = &tests.json_attributes_v2 {
+            run_test("json_attributes_v2", &relative_path_display, || {
+                test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
             });
         }
 

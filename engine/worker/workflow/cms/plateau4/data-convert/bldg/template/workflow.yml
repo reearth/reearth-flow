@@ -43,6 +43,16 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: 7519f13d-95c6-4dd9-942b-e060c3cf51f0
+        name: TargetPackagesFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+              outputPort: default
+
       - id: 33e32a91-5ade-4265-8665-b061f552839c
         name: AttributeManagerForCityCodeAndCityName
         type: action
@@ -399,6 +409,11 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 7519f13d-95c6-4dd9-942b-e060c3cf51f0
+        fromPort: default
+        toPort: default
+      - id: 34e078ae-5425-4129-89f9-07695867f4eb
+        from: 7519f13d-95c6-4dd9-942b-e060c3cf51f0
         to: 33e32a91-5ade-4265-8665-b061f552839c
         fromPort: default
         toPort: default

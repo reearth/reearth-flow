@@ -19,6 +19,7 @@ pub fn run_workflow(
     output_dir: &Path,
     codelists_path: Option<&Path>,
     schemas_path: Option<&Path>,
+    target_package: Option<&str>,
 ) {
     let yaml_transformer =
         yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
@@ -59,6 +60,10 @@ pub fn run_workflow(
             "schemasPath".to_string(),
             format!("{}", schemas_path.display()),
         );
+    }
+
+    if let Some(pkg) = target_package {
+        variables.insert("targetPackages".to_string(), pkg.to_string());
     }
 
     workflow.extend_with(variables).unwrap();
