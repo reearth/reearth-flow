@@ -9,7 +9,8 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
 
 use crate::artifact::artifact_job_subdir_root_uri;
-use crate::types::metadata::Metadata;
+use reearth_flow_worker::errors::{self, Error};
+use reearth_flow_worker::types::metadata::Metadata;
 
 #[derive(Debug, Clone)]
 pub struct DirCopySpec {
@@ -40,7 +41,7 @@ pub async fn prepare_incremental_feature_store(
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
     feature_state: &State,
-) -> crate::errors::Result<(Arc<State>, HashSet<uuid::Uuid>)> {
+) -> errors::Result<(Arc<State>, HashSet<uuid::Uuid>)> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
@@ -53,18 +54,17 @@ pub async fn prepare_incremental_feature_store(
         "Incremental run: previous feature-store root = {}",
         prev_feature_store_uri.path().display()
     );
-    let prev_feature_store_state = State::new(&prev_feature_store_uri, storage_resolver)
-        .map_err(crate::errors::Error::init)?;
+    let prev_feature_store_state =
+        State::new(&prev_feature_store_uri, storage_resolver).map_err(Error::init)?;
 
     let reuse_feature_store_uri =
-        setup_job_directory(storage_key, "previous-feature-store", job_id)
-            .map_err(crate::errors::Error::init)?;
+        setup_job_directory(storage_key, "previous-feature-store", job_id).map_err(Error::init)?;
     tracing::info!(
         "Incremental run: reuse feature-store root = {}",
         reuse_feature_store_uri.path().display()
     );
-    let reuse_state = State::new(&reuse_feature_store_uri, storage_resolver)
-        .map_err(crate::errors::Error::init)?;
+    let reuse_state =
+        State::new(&reuse_feature_store_uri, storage_resolver).map_err(Error::init)?;
 
     let candidate_edge_ids = collect_reusable_edge_ids(workflow, start_node_id)?;
 
@@ -103,7 +103,7 @@ pub async fn prepare_incremental_feature_store(
                 tracing::info!("Copied edge {} into feature-store", edge_id_str);
             }
             Err(e) => {
-                return Err(crate::errors::Error::init(format!(
+                return Err(Error::init(format!(
                     "Failed to copy edge {} into feature-store: {:?}",
                     edge_id_str, e
                 )));
@@ -129,7 +129,7 @@ pub async fn prepare_incremental_feature_store(
 pub fn collect_reusable_edge_ids(
     workflow: &Workflow,
     start_node_id: uuid::Uuid,
-) -> crate::errors::Result<Vec<uuid::Uuid>> {
+) -> errors::Result<Vec<uuid::Uuid>> {
     let graphs: HashMap<uuid::Uuid, &reearth_flow_types::Graph> =
         workflow.graphs.iter().map(|g| (g.id, g)).collect();
 
@@ -141,7 +141,7 @@ pub fn collect_reusable_edge_ids(
     }
 
     let start_graph_id = node_to_graph.get(&start_node_id).copied().ok_or_else(|| {
-        crate::errors::Error::init(format!(
+        Error::init(format!(
             "start_node_id {} not found in any graph",
             start_node_id
         ))
@@ -200,10 +200,10 @@ fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
     graph_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
     out: &mut HashSet<uuid::Uuid>,
-) -> crate::errors::Result<()> {
+) -> errors::Result<()> {
     let graph = graphs
         .get(&graph_id)
-        .ok_or_else(|| crate::errors::Error::init(format!("graph {} not found", graph_id)))?;
+        .ok_or_else(|| Error::init(format!("graph {} not found", graph_id)))?;
 
     // Build adjacency list for BFS
     let mut adj: HashMap<uuid::Uuid, Vec<uuid::Uuid>> = HashMap::new();
@@ -285,7 +285,7 @@ fn collect_all_edges_in_graph_recursive(
     graph_id: uuid::Uuid,
     out: &mut HashSet<uuid::Uuid>,
     visited: &mut HashSet<uuid::Uuid>,
-) -> crate::errors::Result<()> {
+) -> errors::Result<()> {
     if !visited.insert(graph_id) {
         tracing::info!(
             "Skipping already-visited subgraph {} (cycle detected)",
@@ -296,7 +296,7 @@ fn collect_all_edges_in_graph_recursive(
 
     let graph = graphs
         .get(&graph_id)
-        .ok_or_else(|| crate::errors::Error::init(format!("graph {} not found", graph_id)))?;
+        .ok_or_else(|| Error::init(format!("graph {} not found", graph_id)))?;
 
     for edge in &graph.edges {
         out.insert(edge.id);
@@ -329,7 +329,7 @@ pub async fn prepare_incremental_artifacts(
     previous_job_id: uuid::Uuid,
     job_id: uuid::Uuid,
     specs: &[DirCopySpec],
-) -> crate::errors::Result<()> {
+) -> errors::Result<()> {
     for spec in specs {
         copy_job_subdir_remote_to_local(
             storage_key,
@@ -347,7 +347,7 @@ pub async fn prepare_incremental_artifacts(
             spec.previous_subdir,
             spec.materialize_target(),
         )
-        .map_err(crate::errors::Error::init)?;
+        .map_err(Error::init)?;
     }
     Ok(())
 }
@@ -361,15 +361,15 @@ async fn copy_job_subdir_remote_to_local(
     job_id: uuid::Uuid,
     from_subdir: &str,
     to_subdir: &str,
-) -> crate::errors::Result<()> {
+) -> errors::Result<()> {
     let remote_root = remote_job_subdir_root_uri(metadata, prev_job_id, from_subdir)?;
     let local_prev_root =
-        setup_job_directory(storage_key, to_subdir, job_id).map_err(crate::errors::Error::init)?;
+        setup_job_directory(storage_key, to_subdir, job_id).map_err(Error::init)?;
 
     // Ensure local directory exists.
     tokio::fs::create_dir_all(local_prev_root.path())
         .await
-        .map_err(crate::errors::Error::init)?;
+        .map_err(Error::init)?;
 
     download_remote_tree(
         storage_resolver,
@@ -399,13 +399,13 @@ fn remote_job_subdir_root_uri(
     metadata: &Metadata,
     prev_job_id: uuid::Uuid,
     from_subdir: &str,
-) -> crate::errors::Result<reearth_flow_common::uri::Uri> {
+) -> errors::Result<reearth_flow_common::uri::Uri> {
     match from_subdir {
         // Remote: <base>/<prev_job_id>/artifacts/
         "artifacts" => artifact_job_subdir_root_uri(metadata, prev_job_id, "artifacts"),
         // Remote: <base>/<prev_job_id>/temp-artifacts/
         "temp-artifacts" => artifact_job_subdir_root_uri(metadata, prev_job_id, "temp-artifacts"),
-        _ => Err(crate::errors::Error::init(format!(
+        _ => Err(Error::init(format!(
             "Unsupported incremental artifact subdir: {from_subdir}"
         ))),
     }
@@ -417,22 +417,20 @@ async fn download_remote_tree(
     remote_root: &reearth_flow_common::uri::Uri,
     local_dst_root: &Path,
     label: &str,
-) -> crate::errors::Result<()> {
+) -> errors::Result<()> {
     tracing::info!(
         "Incremental run: downloading previous {} from {}",
         label,
         remote_root
     );
 
-    let root_storage = storage_resolver
-        .resolve(remote_root)
-        .map_err(crate::errors::Error::init)?;
+    let root_storage = storage_resolver.resolve(remote_root).map_err(Error::init)?;
 
     let items = root_storage
         .list_with_result(Some(remote_root.path().as_path()), true)
         .await
         .map_err(|e| {
-            crate::errors::Error::init(format!(
+            Error::init(format!(
                 "Incremental run: failed to list previous {label} under {remote_root}: {e}"
             ))
         })?;
@@ -452,7 +450,7 @@ async fn download_remote_tree(
 
     tokio::fs::create_dir_all(local_dst_root)
         .await
-        .map_err(crate::errors::Error::init)?;
+        .map_err(Error::init)?;
 
     let remote_prefix = remote_root.path().to_string_lossy().to_string();
 
@@ -485,10 +483,10 @@ async fn download_remote_tree(
         if let Some(parent) = local_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
-                .map_err(crate::errors::Error::init)?;
+                .map_err(Error::init)?;
         }
 
-        let canonical_uri = remote_root.join(&rel).map_err(crate::errors::Error::init)?;
+        let canonical_uri = remote_root.join(&rel).map_err(Error::init)?;
 
         tracing::info!(
             "Incremental run: downloading previous {label} {} -> {}",
@@ -498,16 +496,16 @@ async fn download_remote_tree(
 
         let s = storage_resolver
             .resolve(&canonical_uri)
-            .map_err(crate::errors::Error::init)?;
+            .map_err(Error::init)?;
         let res = s
             .get(canonical_uri.path().as_path())
             .await
-            .map_err(crate::errors::Error::init)?;
-        let bytes = res.bytes().await.map_err(crate::errors::Error::init)?;
+            .map_err(Error::init)?;
+        let bytes = res.bytes().await.map_err(Error::init)?;
 
         tokio::fs::write(&local_path, bytes)
             .await
-            .map_err(crate::errors::Error::init)?;
+            .map_err(Error::init)?;
     }
 
     Ok(())

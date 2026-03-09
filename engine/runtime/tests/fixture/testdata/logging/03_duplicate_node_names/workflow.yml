@@ -1,0 +1,54 @@
+id: 00caad2a-9f7d-4189-b479-153fa9ea36e3
+name: "Duplicate Node Names Test"
+entryGraphId: 7a8b9c0d-1e2f-3456-ef12-345678900003
+with:
+  workerArtifactPath: null
+graphs:
+  - id: 7a8b9c0d-1e2f-3456-ef12-345678900003
+    name: main_graph
+    nodes:
+      - id: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        name: ProcessNode
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [#{"node": "first", "value": 1}]
+      - id: a2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        name: ProcessNode
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [#{"node": "second", "value": 2}]
+      - id: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        name: ProcessNode
+        type: action
+        action: BulkAttributeRenamer
+        with:
+          renameType: All
+          renameAction: AddPrefix
+          renameValue: "dup_"
+      - id: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "result.json")
+    edges:
+      - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        to: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        fromPort: default
+        toPort: default
+      - id: e2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        from: a2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        to: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        fromPort: default
+        toPort: default
+      - id: e3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        from: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        to: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
+        fromPort: default
+        toPort: default

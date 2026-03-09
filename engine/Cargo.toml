@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.324"
+version = "0.0.325"
 
 [profile.dev]
 opt-level = 0
@@ -67,6 +67,7 @@ reearth-flow-state = { path = "runtime/state" }
 reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
+reearth-flow-worker = { path = "worker" }
 
 nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"], tag = "v0.8.26" }
 nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.26" }

@@ -1,0 +1,50 @@
+id: 00caad2a-9f7d-4189-b479-153fa9ea36e1
+name: "Basic Sequential Processing Test"
+entryGraphId: 7a8b9c0d-1e2f-3456-ef12-345678900001
+with:
+  workerArtifactPath: null
+graphs:
+  - id: 7a8b9c0d-1e2f-3456-ef12-345678900001
+    name: main_graph
+    nodes:
+      - id: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            let features = [];
+            for i in 1..=3 {
+              features.push(#{
+                "id": i,
+                "name": `item_${i}`,
+                "value": i * 10
+              });
+            }
+            features
+      - id: b2f50a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: BulkAttributeRenamer
+        type: action
+        action: BulkAttributeRenamer
+        with:
+          renameType: All
+          renameAction: AddPrefix
+          renameValue: "test_"
+      - id: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "result.json")
+    edges:
+      - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
+        from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: b2f50a3e-61d3-48e2-a328-e7226c2ad1ae
+        fromPort: default
+        toPort: default
+      - id: e2fc0a3e-61d3-48e2-a328-e7226c2ad1ae
+        from: b2f50a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
+        fromPort: default
+        toPort: default

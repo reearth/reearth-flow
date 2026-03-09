@@ -1,10 +1,10 @@
 use google_cloud_pubsub::client::{Client, ClientConfig};
 
-pub(crate) mod google;
-pub(crate) mod noop;
+pub mod google;
+pub mod noop;
 
 #[derive(thiserror::Error, Debug, Clone)]
-pub(crate) enum PubSubBackendError {
+pub enum PubSubBackendError {
     #[error("Failed to try from : {0}")]
     TryFrom(String),
     #[error("Failed to create : {0}")]
@@ -12,19 +12,19 @@ pub(crate) enum PubSubBackendError {
 }
 
 impl PubSubBackendError {
-    pub(crate) fn create<T: ToString>(message: T) -> Self {
+    pub fn create<T: ToString>(message: T) -> Self {
         Self::Create(message.to_string())
     }
 }
 
 #[derive(Clone)]
-pub(crate) enum PubSubBackend {
+pub enum PubSubBackend {
     Google(google::CloudPubSub),
     Noop(noop::NoopPubSub),
 }
 
 impl PubSubBackend {
-    pub(crate) async fn try_from(value: &str) -> Result<Self, PubSubBackendError> {
+    pub async fn try_from(value: &str) -> Result<Self, PubSubBackendError> {
         let value = value.to_lowercase();
         match value.as_str() {
             "google" => {
