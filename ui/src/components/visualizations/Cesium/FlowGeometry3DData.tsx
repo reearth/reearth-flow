@@ -1,4 +1,8 @@
-import { BoundingSphere, Primitive, ShowGeometryInstanceAttribute } from "cesium";
+import {
+  BoundingSphere,
+  Primitive,
+  ShowGeometryInstanceAttribute,
+} from "cesium";
 import { memo, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
@@ -72,12 +76,16 @@ const FlowGeometry3DData: React.FC<Props> = ({
         const shouldShow = !showSelectedFeatureOnly || isSelected;
 
         entry.meshInstanceIds.forEach((instanceId) => {
-          const attrs = meshPrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
-          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
+          const attrs =
+            meshPrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
+          if (attrs)
+            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
         });
         entry.lineInstanceIds.forEach((instanceId) => {
-          const attrs = linePrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
-          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
+          const attrs =
+            linePrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
+          if (attrs)
+            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
         });
       });
     };

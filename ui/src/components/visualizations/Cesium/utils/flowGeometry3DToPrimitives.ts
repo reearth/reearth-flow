@@ -275,7 +275,11 @@ export function convertFlowGeometry3DCollectionToPrimitives(
         featureId,
         instanceId: `${featureId}_mesh_0`,
       };
-      const instance = triangularMeshToGeometryInstance(mesh, color, instanceId);
+      const instance = triangularMeshToGeometryInstance(
+        mesh,
+        color,
+        instanceId,
+      );
       if (instance) {
         meshInstances.push(instance);
         entry.meshInstanceIds.push(instanceId);
