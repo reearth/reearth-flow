@@ -1,5 +1,7 @@
 use crate::conv_png::{empty_raster, truth_png_path};
-use crate::mvt_raster::{compare_rasters, make_feature_keys_in_tile, rasterize_tile_feature, read_raster_png};
+use crate::mvt_raster::{
+    compare_rasters, make_feature_keys_in_tile, rasterize_tile_feature, read_raster_png,
+};
 use prost::Message;
 use serde::Deserialize;
 use std::fs;

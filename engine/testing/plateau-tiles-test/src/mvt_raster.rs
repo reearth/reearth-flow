@@ -91,7 +91,13 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                             // Wu 1px boundary for all rings
                             for ring in &pixel_rings {
                                 for window in ring.windows(2) {
-                                    draw_wu_line(&mut raster, window[0].0, window[0].1, window[1].0, window[1].1);
+                                    draw_wu_line(
+                                        &mut raster,
+                                        window[0].0,
+                                        window[0].1,
+                                        window[1].0,
+                                        window[1].1,
+                                    );
                                 }
                                 // Close the ring
                                 if ring.len() >= 2 {
@@ -291,8 +297,8 @@ pub fn write_raster_png(raster: &[f32], path: &std::path::Path) -> Result<(), St
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create dirs {:?}: {}", parent, e))?;
     }
-    let file = std::fs::File::create(path)
-        .map_err(|e| format!("Failed to create {:?}: {}", path, e))?;
+    let file =
+        std::fs::File::create(path).map_err(|e| format!("Failed to create {:?}: {}", path, e))?;
     PngEncoder::new_with_quality(file, CompressionType::Best, FilterType::Up)
         .write_image(
             &pixels,
