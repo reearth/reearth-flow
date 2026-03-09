@@ -5,7 +5,7 @@ pub mod compare_attributes;
 pub mod conv_mvt;
 pub mod conv_png;
 pub mod profile_config;
-pub mod raster;
+pub mod mvt_raster;
 pub mod runner;
 pub mod test_cesium;
 pub mod test_json_attributes;

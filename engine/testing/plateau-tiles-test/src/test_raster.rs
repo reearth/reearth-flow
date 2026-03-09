@@ -1,13 +1,11 @@
 use crate::conv_png::{empty_raster, truth_png_path};
-use crate::raster::{compare_rasters, rasterize_tile_feature, read_raster_png};
+use crate::mvt_raster::{compare_rasters, make_feature_keys_in_tile, rasterize_tile_feature, read_raster_png};
 use prost::Message;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 use tinymvt::vector_tile::Tile;
 use walkdir::WalkDir;
-
-use crate::align_mvt::make_feature_keys_in_tile;
 
 #[derive(Debug, Deserialize)]
 pub struct RasterConfig {

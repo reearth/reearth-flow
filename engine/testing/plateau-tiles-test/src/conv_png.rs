@@ -1,5 +1,4 @@
-use crate::align_mvt::make_feature_keys_in_tile;
-use crate::raster::{rasterize_tile_feature, write_raster_png, RASTER_SIZE};
+use crate::mvt_raster::{make_feature_keys_in_tile, rasterize_tile_feature, write_raster_png, RASTER_SIZE};
 use prost::Message;
 use std::fs;
 use std::path::Path;
