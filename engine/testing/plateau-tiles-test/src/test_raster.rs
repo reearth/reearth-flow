@@ -22,6 +22,17 @@ pub fn test_raster(
 ) -> Result<(), String> {
     let threshold = config.threshold.unwrap_or(0.0);
 
+    assert!(
+        flow_mvt_dir.exists(),
+        "flow_mvt_dir does not exist: {:?}",
+        flow_mvt_dir
+    );
+    assert!(
+        truth_dir.exists(),
+        "truth_dir does not exist: {:?}",
+        truth_dir
+    );
+
     // Walk all .mvt files in the flow output
     let mut mvt_files: Vec<_> = WalkDir::new(flow_mvt_dir)
         .into_iter()
@@ -100,6 +111,13 @@ pub fn test_raster(
         results.push((score, rel.clone(), ident.clone()));
     }
 
+    assert!(
+        total > 0,
+        "no features compared — truth_dir={:?}, flow_mvt_dir={:?}",
+        truth_dir,
+        flow_mvt_dir
+    );
+
     let failures: Vec<_> = results
         .iter()
         .filter(|(score, _, _)| *score > threshold)
@@ -140,9 +158,6 @@ pub fn test_raster(
 
 /// Collects all (rel_tile_path, ident) pairs present in the truth directory.
 fn collect_truth_idents(truth_dir: &Path) -> Vec<(String, String)> {
-    if !truth_dir.exists() {
-        return Vec::new();
-    }
     WalkDir::new(truth_dir)
         .into_iter()
         .filter_map(|e| e.ok())

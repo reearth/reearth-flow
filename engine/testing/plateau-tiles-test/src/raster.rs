@@ -237,19 +237,25 @@ fn scanline_fill(raster: &mut [f32], rings: &[Vec<(f64, f64)>]) {
 
 /// Writes a f32 raster to an 8-bit grayscale PNG file.
 pub fn write_raster_png(raster: &[f32], path: &std::path::Path) -> Result<(), String> {
-    use image::{GrayImage, Luma};
-    let mut img = GrayImage::new(RASTER_SIZE as u32, RASTER_SIZE as u32);
-    for (i, &v) in raster.iter().enumerate() {
-        let x = (i % RASTER_SIZE) as u32;
-        let y = (i / RASTER_SIZE) as u32;
-        let pixel = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-        img.put_pixel(x, y, Luma([pixel]));
-    }
+    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+    use image::ImageEncoder;
+    let pixels: Vec<u8> = raster
+        .iter()
+        .map(|&v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)
+        .collect();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create dirs {:?}: {}", parent, e))?;
     }
-    img.save(path)
+    let file = std::fs::File::create(path)
+        .map_err(|e| format!("Failed to create {:?}: {}", path, e))?;
+    PngEncoder::new_with_quality(file, CompressionType::Best, FilterType::Up)
+        .write_image(
+            &pixels,
+            RASTER_SIZE as u32,
+            RASTER_SIZE as u32,
+            image::ExtendedColorType::L8,
+        )
         .map_err(|e| format!("Failed to write PNG {:?}: {}", path, e))
 }
 
@@ -278,4 +284,31 @@ pub fn compare_rasters(r1: &[f32], r2: &[f32]) -> f64 {
         })
         .sum();
     (sum / r1.len() as f64).sqrt()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const EPSILON: f64 = 1e-6;
+
+    // Verifies compare_rasters can detect a known difference.
+    // A horizontal line from (100,100) to (200,100) at exact integer y:
+    //   endpoints x=100, x=200 → value 0.5 each (xgap = 0.5)
+    //   interior x=101..=199   → value 1.0 each (99 pixels)
+    // All values ≥ 0.5, so sum = 0.5 + 99×1.0 + 0.5 = 100.0
+    // score = sqrt(100.0 / RASTER_SIZE²)
+    #[test]
+    fn test_compare_rasters_known_line_score() {
+        let mut r1 = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
+        let r2 = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
+        draw_wu_line(&mut r1, 100.0, 100.0, 200.0, 100.0);
+        let score = compare_rasters(&r1, &r2);
+        let expected = (100.0_f64 / (RASTER_SIZE * RASTER_SIZE) as f64).sqrt();
+        assert!(
+            (score - expected).abs() < EPSILON,
+            "Expected score ~{}, got {}",
+            expected,
+            score
+        );
+    }
 }

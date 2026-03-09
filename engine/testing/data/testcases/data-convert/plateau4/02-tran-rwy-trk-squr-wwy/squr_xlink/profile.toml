@@ -2,12 +2,6 @@
 
 citygml_zip_name = "11100_saitama-shi_city_2025_citygml_1_op_squr.zip"
 
-[tests.mvt_polygons]
-threshold = 0.001
-
-[tests.mvt_lines]
-threshold = 0.01
-
 [filter.tree]
 "udx/squr/53396570_squr_6697_op.gml" = ["squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"]
 
@@ -32,4 +26,4 @@ truth_path = "squr_lod2_png_truth"
 tiles = ["16/58187/25758"]
 
 [tests.mvt_raster.squr_lod2]
-threshold = 0.01
+threshold = 0.001
