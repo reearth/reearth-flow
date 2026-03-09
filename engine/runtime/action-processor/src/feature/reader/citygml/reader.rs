@@ -213,7 +213,7 @@ fn emit_flat_entity(
         } else {
             citygml_lod
         };
-        if let Some(id) = child_id.or_else(|| citygml_gml_id.clone()) {
+        if let Some(id) = child_id {
             feature.update_feature_id(id);
         }
         if let Some(ft) = child_typename.or_else(|| citygml_feature_type.clone()) {
