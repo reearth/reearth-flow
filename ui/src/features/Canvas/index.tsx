@@ -135,7 +135,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
-      minZoom={0.3}
+      minZoom={0.2}
       proOptions={{ hideAttribution: true }}
       nodeDragThreshold={2}
       snapToGrid

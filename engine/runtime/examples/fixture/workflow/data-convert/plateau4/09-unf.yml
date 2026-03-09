@@ -55,15 +55,6 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
-  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilterByPackage
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-        outputPort: default
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
@@ -109,11 +100,6 @@ graphs:
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
-    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    fromPort: default
-    toPort: default
-  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
-    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
@@ -312,6 +298,15 @@ graphs:
       flatten: true
       dataset: |
         env.get("__value")["path"]
+  - id: 44bd136f-0fba-44f4-b719-22c28163c070
+    name: TargetPackagesFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
   - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
     name: AttributeManagerDict
     type: action
@@ -575,7 +570,7 @@ graphs:
     fromPort: default
     toPort: default
   - id: c9e3f0a4-5d6b-7c8e-1f2a-b345d1c701e1
-    from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+    from: 44bd136f-0fba-44f4-b719-22c28163c070
     to: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
     fromPort: default
     toPort: default
@@ -596,6 +591,11 @@ graphs:
     toPort: default
   - id: ccb494b2-8908-4a01-ae38-918718315912
     from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+    to: 44bd136f-0fba-44f4-b719-22c28163c070
+    fromPort: default
+    toPort: default
+  - id: 2c41faa3-589d-4955-9c62-941eb184e559
+    from: 44bd136f-0fba-44f4-b719-22c28163c070
     to: 0f670054-828b-48d8-9672-dbc34247f2b3
     fromPort: default
     toPort: default

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_a7dc6f3f-fe16-48c0-a017-c4c27de53411">
+	<gml:name>BuildingDetailAttribute_buildingStructureOrgType</gml:name>
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id1">
+            <gml:description>耐火造</gml:description>
+            <gml:name>1</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id2">
+            <gml:description>準耐火</gml:description>
+            <gml:name>2</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id3">
+            <gml:description>防火造</gml:description>
+            <gml:name>3</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id4">
+            <gml:description>準防火造</gml:description>
+            <gml:name>4</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id5">
+            <gml:description>木造</gml:description>
+            <gml:name>5</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id6">
+            <gml:description>不明</gml:description>
+            <gml:name>88</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>
+</gml:Dictionary>
