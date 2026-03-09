@@ -35,6 +35,10 @@ prost.workspace = true
 indexmap.workspace = true
 image.workspace = true
 
+[lib]
+name = "plateau_tiles_test"
+path = "src/lib.rs"
+
 [[bin]]
 name = "plateau-tiles-test"
 path = "src/main.rs"

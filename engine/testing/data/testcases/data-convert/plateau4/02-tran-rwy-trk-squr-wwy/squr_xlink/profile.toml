@@ -25,10 +25,11 @@ truth_path = "squr_lod2_truth.json"
 flow.path = "convs/mvt/squr_lod2.json"
 truth.path = "squr_lod2_truth.json"
 
-[convs.png.squr_lod2]
+[convs.mvt_png.squr_lod2]
 fme_path = "squr_lod2"
 flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
 truth_path = "squr_lod2_png_truth"
+tiles = ["16/58187/25758"]
 
-[tests.raster.squr_lod2]
+[tests.mvt_raster.squr_lod2]
 threshold = 0.01

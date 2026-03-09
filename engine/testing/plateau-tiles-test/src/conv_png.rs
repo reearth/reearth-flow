@@ -8,7 +8,14 @@ use walkdir::WalkDir;
 
 /// For each .mvt file under `mvt_dir`, rasterizes each feature individually and writes a PNG
 /// under `truth_dir/<rel_tile_path>/<ident>.png`.
-pub fn write_png_truth(mvt_dir: &Path, truth_dir: &Path) -> Result<(), String> {
+///
+/// If `tiles` is `Some`, only tiles whose z/x/y path (no extension) appears in the list are
+/// processed.
+pub fn write_png_truth(
+    mvt_dir: &Path,
+    truth_dir: &Path,
+    tiles: Option<&[String]>,
+) -> Result<(), String> {
     if !mvt_dir.exists() {
         return Err(format!("MVT directory does not exist: {:?}", mvt_dir));
     }
@@ -22,6 +29,13 @@ pub fn write_png_truth(mvt_dir: &Path, truth_dir: &Path) -> Result<(), String> {
             .strip_prefix(mvt_dir)
             .map_err(|e| e.to_string())?
             .with_extension("");
+
+        if let Some(tile_list) = tiles {
+            let rel_str = rel.to_string_lossy();
+            if !tile_list.iter().any(|t| t == rel_str.as_ref()) {
+                continue;
+            }
+        }
 
         let data = fs::read(path).map_err(|e| format!("Failed to read {:?}: {}", path, e))?;
         let tile = Tile::decode(&data[..])

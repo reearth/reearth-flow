@@ -18,6 +18,7 @@ pub fn test_raster(
     truth_dir: &Path,
     flow_mvt_dir: &Path,
     config: &RasterConfig,
+    tiles: Option<&[String]>,
 ) -> Result<(), String> {
     let threshold = config.threshold.unwrap_or(0.0);
 
@@ -26,6 +27,18 @@ pub fn test_raster(
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
+        .filter(|e| {
+            if let Some(tile_list) = tiles {
+                let rel = e
+                    .path()
+                    .strip_prefix(flow_mvt_dir)
+                    .ok()
+                    .map(|p| p.with_extension(""));
+                rel.is_some_and(|r| tile_list.iter().any(|t| t == r.to_string_lossy().as_ref()))
+            } else {
+                true
+            }
+        })
         .collect();
     mvt_files.sort_by_key(|e| e.path().to_path_buf());
 

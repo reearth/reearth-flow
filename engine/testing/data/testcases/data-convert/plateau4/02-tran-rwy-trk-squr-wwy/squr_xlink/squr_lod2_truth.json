@@ -7,232 +7,56 @@
     "gml_id": "tran_722336ad-1ab8-47eb-b4f6-6344528b32d3",
     "attributes": {
       "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_722336ad-1ab8-47eb-b4f6-6344528b32d3",
       "tran:function": "車道部",
       "tran:function_code": "1000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26",
-    "attributes": {
-      "meshcode": "53396570",
       "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26",
-      "tran:function": "車道部",
-      "tran:function_code": "1000",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
-      ]
+      ],
+      "gml:id": "tran_722336ad-1ab8-47eb-b4f6-6344528b32d3"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_538c013e-156a-438c-ab59-805ce2cf61de": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_538c013e-156a-438c-ab59-805ce2cf61de",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_538c013e-156a-438c-ab59-805ce2cf61de",
-      "tran:function": "歩道部",
-      "tran:function_code": "2000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_be206d71-cee3-450e-8288-be1eff7716c6": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_be206d71-cee3-450e-8288-be1eff7716c6",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_be206d71-cee3-450e-8288-be1eff7716c6",
-      "tran:function": "車道部",
-      "tran:function_code": "1000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_ad12e6ea-7648-4c70-9d3b-693e2395ec3d": {
@@ -242,174 +66,117 @@
     "city_name": "埼玉県さいたま市",
     "gml_id": "tran_ad12e6ea-7648-4c70-9d3b-693e2395ec3d",
     "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
       "gml:id": "tran_ad12e6ea-7648-4c70-9d3b-693e2395ec3d",
-      "tran:function": "車道部",
-      "tran:function_code": "1000",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
-      ]
+      ],
+      "feature_type": "tran:TrafficArea",
+      "tran:function_code": "1000",
+      "meshcode": "53396570",
+      "tran:function": "車道部"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
-  "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0": {
+  "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f": {
     "meshcode": "53396570",
     "feature_type": "tran:TrafficArea",
     "city_code": "11100",
     "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0",
+    "gml_id": "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f",
     "attributes": {
+      "gml:id": "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f",
       "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
       "tran:function": "車道部",
       "tran:function_code": "1000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
+      "feature_type": "tran:TrafficArea"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f",
-      "tran:function": "歩道部",
-      "tran:function_code": "2000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_6a93c89c-d64a-458a-af66-354cde38e1dc": {
@@ -421,231 +188,235 @@
     "attributes": {
       "meshcode": "53396570",
       "feature_type": "tran:TrafficArea",
+      "tran:function": "歩道部",
       "gml:id": "tran_6a93c89c-d64a-458a-af66-354cde38e1dc",
-      "tran:function": "歩道部",
-      "tran:function_code": "2000",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
-      ]
+      ],
+      "tran:function_code": "2000"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
-  "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78": {
+  "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26": {
     "meshcode": "53396570",
     "feature_type": "tran:TrafficArea",
     "city_code": "11100",
     "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78",
+    "gml_id": "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26",
     "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78",
-      "tran:function": "歩道部",
-      "tran:function_code": "2000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_fbc48f58-8281-4818-bc91-f0c3129a200e": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_fbc48f58-8281-4818-bc91-f0c3129a200e",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_fbc48f58-8281-4818-bc91-f0c3129a200e",
-      "tran:function": "歩道部",
-      "tran:function_code": "2000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f",
       "tran:function": "車道部",
+      "gml:id": "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26",
+      "meshcode": "53396570",
       "tran:function_code": "1000",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
-      ]
+      ],
+      "feature_type": "tran:TrafficArea"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4": {
+    "meshcode": "53396570",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4",
+    "attributes": {
+      "feature_type": "tran:AuxiliaryTrafficArea",
+      "tran:function_code": "3000",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "meshcode": "53396570",
+      "gml:id": "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4",
+      "tran:function": "島"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "島",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405": {
+    "meshcode": "53396570",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405",
+    "attributes": {
+      "feature_type": "tran:AuxiliaryTrafficArea",
+      "tran:function": "島",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "tran:function_code": "3000",
+      "meshcode": "53396570",
+      "gml:id": "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "島",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_5bfccadd-3f75-4457-a9dd-fd138e414192": {
@@ -656,55 +427,476 @@
     "gml_id": "tran_5bfccadd-3f75-4457-a9dd-fd138e414192",
     "attributes": {
       "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
       "gml:id": "tran_5bfccadd-3f75-4457-a9dd-fd138e414192",
       "tran:function": "車道部",
       "tran:function_code": "1000",
+      "feature_type": "tran:TrafficArea",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
       ]
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7": {
+    "meshcode": "53396570",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7",
+    "attributes": {
+      "tran:function_code": "3000",
+      "gml:id": "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7",
+      "tran:function": "島",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "meshcode": "53396570",
+      "feature_type": "tran:AuxiliaryTrafficArea"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "島",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111": {
+    "meshcode": "53396570",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111",
+    "attributes": {
+      "feature_type": "tran:AuxiliaryTrafficArea",
+      "tran:function": "島",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "gml:id": "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111",
+      "tran:function_code": "3000",
+      "meshcode": "53396570"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "島",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0",
+    "attributes": {
+      "gml:id": "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "meshcode": "53396570",
+      "feature_type": "tran:TrafficArea",
+      "tran:function": "車道部",
+      "tran:function_code": "1000"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "車道部",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78",
+    "attributes": {
+      "tran:function": "歩道部",
+      "tran:function_code": "2000",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "gml:id": "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78",
+      "feature_type": "tran:TrafficArea",
+      "meshcode": "53396570"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "歩道部",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f",
+    "attributes": {
+      "tran:function": "歩道部",
+      "tran:function_code": "2000",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "gml:id": "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f",
+      "meshcode": "53396570",
+      "feature_type": "tran:TrafficArea"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "歩道部",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_77299789-2af2-406f-b9ff-db102da7bf6a": {
+    "meshcode": "53396570",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_77299789-2af2-406f-b9ff-db102da7bf6a",
+    "attributes": {
+      "feature_type": "tran:AuxiliaryTrafficArea",
+      "tran:function_code": "3000",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "gml:id": "tran_77299789-2af2-406f-b9ff-db102da7bf6a",
+      "tran:function": "島",
+      "meshcode": "53396570"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "島",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_be206d71-cee3-450e-8288-be1eff7716c6": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_be206d71-cee3-450e-8288-be1eff7716c6",
+    "attributes": {
+      "tran:function_code": "1000",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "tran:function": "車道部",
+      "meshcode": "53396570",
+      "feature_type": "tran:TrafficArea",
+      "gml:id": "tran_be206d71-cee3-450e-8288-be1eff7716c6"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "車道部",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_7863206f-c19c-4630-a904-2f9b66eccb72": {
@@ -714,56 +906,57 @@
     "city_name": "埼玉県さいたま市",
     "gml_id": "tran_7863206f-c19c-4630-a904-2f9b66eccb72",
     "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
       "gml:id": "tran_7863206f-c19c-4630-a904-2f9b66eccb72",
-      "tran:function": "車道部",
       "tran:function_code": "1000",
+      "meshcode": "53396570",
+      "tran:function": "車道部",
+      "feature_type": "tran:TrafficArea",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
       ]
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_e26d59df-301f-4e82-bf1a-8e2d1b2edc24": {
@@ -774,232 +967,116 @@
     "gml_id": "tran_e26d59df-301f-4e82-bf1a-8e2d1b2edc24",
     "attributes": {
       "meshcode": "53396570",
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
       "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_e26d59df-301f-4e82-bf1a-8e2d1b2edc24",
       "tran:function": "歩道部",
+      "tran:function_code": "2000",
+      "gml:id": "tran_e26d59df-301f-4e82-bf1a-8e2d1b2edc24"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "歩道部",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_6af68814-26ed-4df5-a765-f7b9fb559255": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_6af68814-26ed-4df5-a765-f7b9fb559255",
+    "attributes": {
+      "tran:function": "歩道部",
+      "meshcode": "53396570",
+      "gml:id": "tran_6af68814-26ed-4df5-a765-f7b9fb559255",
+      "feature_type": "tran:TrafficArea",
       "tran:function_code": "2000",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
       ]
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7": {
-    "meshcode": "53396570",
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:AuxiliaryTrafficArea",
-      "gml:id": "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7",
-      "tran:function": "島",
-      "tran:function_code": "3000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405": {
-    "meshcode": "53396570",
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:AuxiliaryTrafficArea",
-      "gml:id": "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405",
-      "tran:function": "島",
-      "tran:function_code": "3000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_77299789-2af2-406f-b9ff-db102da7bf6a": {
-    "meshcode": "53396570",
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_77299789-2af2-406f-b9ff-db102da7bf6a",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:AuxiliaryTrafficArea",
-      "gml:id": "tran_77299789-2af2-406f-b9ff-db102da7bf6a",
-      "tran:function": "島",
-      "tran:function_code": "3000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_ec86a474-43a2-4fd7-ae2e-e145a188b499": {
@@ -1010,55 +1087,176 @@
     "gml_id": "tran_ec86a474-43a2-4fd7-ae2e-e145a188b499",
     "attributes": {
       "meshcode": "53396570",
-      "feature_type": "tran:AuxiliaryTrafficArea",
-      "gml:id": "tran_ec86a474-43a2-4fd7-ae2e-e145a188b499",
-      "tran:function": "島",
       "tran:function_code": "3000",
+      "gml:id": "tran_ec86a474-43a2-4fd7-ae2e-e145a188b499",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
-      ]
+      ],
+      "tran:function": "島",
+      "feature_type": "tran:AuxiliaryTrafficArea"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_fbc48f58-8281-4818-bc91-f0c3129a200e": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_fbc48f58-8281-4818-bc91-f0c3129a200e",
+    "attributes": {
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "gml:id": "tran_fbc48f58-8281-4818-bc91-f0c3129a200e",
+      "meshcode": "53396570",
+      "feature_type": "tran:TrafficArea",
+      "tran:function": "歩道部",
+      "tran:function_code": "2000"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "歩道部",
+    "uro_geometrySrcDescLod1": "未作成",
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+  },
+  "tran_538c013e-156a-438c-ab59-805ce2cf61de": {
+    "meshcode": "53396570",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "gml_id": "tran_538c013e-156a-438c-ab59-805ce2cf61de",
+    "attributes": {
+      "ancestors": [
+        {
+          "feature_type": "tran:Square",
+          "tran:class": "道路",
+          "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
+          "tran:function_code": "1",
+          "meshcode": "53396570",
+          "uro:DataQualityAttribute": [
+            {
+              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+              "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
+                  "uro:srcScaleLod2": "地図情報レベル500",
+                  "uro:srcScaleLod2_code": "3",
+                  "uro:srcScaleLod3": "地図情報レベル500",
+                  "uro:publicSurveySrcDescLod2_code": "018",
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
+                }
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
+            }
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
+        }
+      ],
+      "gml:id": "tran_538c013e-156a-438c-ab59-805ce2cf61de",
+      "meshcode": "53396570",
+      "feature_type": "tran:TrafficArea",
+      "tran:function": "歩道部",
+      "tran:function_code": "2000"
+    },
+    "core_creationDate": "2024-02-29",
+    "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
+    "tran_function": "歩道部",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   },
   "tran_a427cffe-35ec-4bfe-b6d0-89065567967a": {
@@ -1068,233 +1266,57 @@
     "city_name": "埼玉県さいたま市",
     "gml_id": "tran_a427cffe-35ec-4bfe-b6d0-89065567967a",
     "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:AuxiliaryTrafficArea",
       "gml:id": "tran_a427cffe-35ec-4bfe-b6d0-89065567967a",
-      "tran:function": "島",
-      "tran:function_code": "3000",
+      "meshcode": "53396570",
       "ancestors": [
         {
-          "meshcode": "53396570",
           "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
           "tran:class": "道路",
-          "tran:class_code": "1040",
           "tran:function": "駅前広場",
+          "tran:class_code": "1040",
+          "core:creationDate": "2024-02-29",
           "tran:function_code": "1",
+          "meshcode": "53396570",
           "uro:DataQualityAttribute": [
             {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
               "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
               "uro:lodType_code": "3.0",
+              "uro:thematicSrcDesc_code": "023",
               "uro:PublicSurveyDataQualityAttribute": [
                 {
+                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+                  "uro:publicSurveySrcDescLod3_code": "018",
+                  "uro:srcScaleLod3_code": "3",
                   "uro:srcScaleLod2": "地図情報レベル500",
                   "uro:srcScaleLod2_code": "3",
                   "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
                   "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
+                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果"
                 }
-              ]
+              ],
+              "uro:appearanceSrcDescLod3_code": "5",
+              "uro:geometrySrcDescLod1": "未作成",
+              "uro:thematicSrcDesc": "数値地形図データ",
+              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+              "uro:geometrySrcDescLod3": "公共測量成果",
+              "uro:geometrySrcDescLod3_code": "000",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果",
+              "uro:geometrySrcDescLod1_code": "999"
             }
-          ]
+          ],
+          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"
         }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4": {
-    "meshcode": "53396570",
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4",
-    "attributes": {
-      "meshcode": "53396570",
+      ],
       "feature_type": "tran:AuxiliaryTrafficArea",
-      "gml:id": "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4",
       "tran:function": "島",
-      "tran:function_code": "3000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
+      "tran:function_code": "3000"
     },
-    "core_creationDate": "2026-03-21",
+    "core_creationDate": "2024-02-29",
     "tran_class": "道路",
+    "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111": {
-    "meshcode": "53396570",
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:AuxiliaryTrafficArea",
-      "gml:id": "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111",
-      "tran:function": "島",
-      "tran:function_code": "3000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "島",
-    "uro_geometrySrcDescLod1": "公共測量成果",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
-  },
-  "tran_6af68814-26ed-4df5-a765-f7b9fb559255": {
-    "meshcode": "53396570",
-    "feature_type": "tran:TrafficArea",
-    "city_code": "11100",
-    "city_name": "埼玉県さいたま市",
-    "gml_id": "tran_6af68814-26ed-4df5-a765-f7b9fb559255",
-    "attributes": {
-      "meshcode": "53396570",
-      "feature_type": "tran:TrafficArea",
-      "gml:id": "tran_6af68814-26ed-4df5-a765-f7b9fb559255",
-      "tran:function": "歩道部",
-      "tran:function_code": "2000",
-      "ancestors": [
-        {
-          "meshcode": "53396570",
-          "feature_type": "tran:Square",
-          "gml:id": "squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf",
-          "core:creationDate": "2024-02-29",
-          "tran:class": "道路",
-          "tran:class_code": "1040",
-          "tran:function": "駅前広場",
-          "tran:function_code": "1",
-          "uro:DataQualityAttribute": [
-            {
-              "uro:geometrySrcDescLod1": "未作成",
-              "uro:geometrySrcDescLod1_code": "999",
-              "uro:geometrySrcDescLod2": "公共測量成果",
-              "uro:geometrySrcDescLod2_code": "000",
-              "uro:geometrySrcDescLod3": "公共測量成果",
-              "uro:geometrySrcDescLod3_code": "000",
-              "uro:thematicSrcDesc": "数値地形図データ",
-              "uro:thematicSrcDesc_code": "023",
-              "uro:appearanceSrcDescLod3": "疑似テクスチャ",
-              "uro:appearanceSrcDescLod3_code": "5",
-              "uro:lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
-              "uro:lodType_code": "3.0",
-              "uro:PublicSurveyDataQualityAttribute": [
-                {
-                  "uro:srcScaleLod2": "地図情報レベル500",
-                  "uro:srcScaleLod2_code": "3",
-                  "uro:srcScaleLod3": "地図情報レベル500",
-                  "uro:srcScaleLod3_code": "3",
-                  "uro:publicSurveySrcDescLod2": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod2_code": "018",
-                  "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
-                  "uro:publicSurveySrcDescLod3_code": "018"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "core_creationDate": "2026-03-21",
-    "tran_class": "道路",
-    "tran_function": "歩道部",
-    "uro_geometrySrcDescLod1": "公共測量成果",
+    "uro_geometrySrcDescLod1": "未作成",
     "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
   }
 }

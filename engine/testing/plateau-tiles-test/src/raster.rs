@@ -1,4 +1,4 @@
-use tinymvt::geometry::{Geometry, GeometryDecoder};
+use tinymvt::geometry::GeometryDecoder;
 use tinymvt::tag::TagsDecoder;
 use tinymvt::vector_tile::Tile;
 
@@ -154,7 +154,12 @@ pub fn draw_wu_line(raster: &mut [f32], x0: f64, y0: f64, x1: f64, y1: f64) {
     let xgap = 1.0 - (x0 + 0.5).fract();
     let xpxl1 = xend as i32;
     let ypxl1 = yend.floor() as i32;
-    set(raster, xpxl1, ypxl1, (1.0 - yend.fract()) as f32 * xgap as f32);
+    set(
+        raster,
+        xpxl1,
+        ypxl1,
+        (1.0 - yend.fract()) as f32 * xgap as f32,
+    );
     set(raster, xpxl1, ypxl1 + 1, yend.fract() as f32 * xgap as f32);
     let mut intery = yend + gradient;
 
@@ -163,7 +168,12 @@ pub fn draw_wu_line(raster: &mut [f32], x0: f64, y0: f64, x1: f64, y1: f64) {
     let xgap = (x1 + 0.5).fract();
     let xpxl2 = xend as i32;
     let ypxl2 = yend.floor() as i32;
-    set(raster, xpxl2, ypxl2, (1.0 - yend.fract()) as f32 * xgap as f32);
+    set(
+        raster,
+        xpxl2,
+        ypxl2,
+        (1.0 - yend.fract()) as f32 * xgap as f32,
+    );
     set(raster, xpxl2, ypxl2 + 1, yend.fract() as f32 * xgap as f32);
 
     for x in (xpxl1 + 1)..xpxl2 {
@@ -260,7 +270,11 @@ pub fn compare_rasters(r1: &[f32], r2: &[f32]) -> f64 {
         .zip(r2.iter())
         .map(|(a, b)| {
             let diff = ((*a as f64) - (*b as f64)).abs();
-            if diff >= 0.5 { diff } else { 0.0 }
+            if diff >= 0.5 {
+                diff
+            } else {
+                0.0
+            }
         })
         .sum();
     (sum / r1.len() as f64).sqrt()

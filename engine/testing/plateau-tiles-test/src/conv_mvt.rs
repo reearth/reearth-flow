@@ -45,8 +45,7 @@ pub fn load_mvt_attr(dir: &Path) -> Result<IndexMap<String, Value>, String> {
         .collect();
     entries.sort_by_key(|e| e.path().to_path_buf());
 
-    for entry in entries
-    {
+    for entry in entries {
         let path = entry.path();
         let data = fs::read(path).map_err(|e| format!("Failed to read MVT file: {}", e))?;
 
