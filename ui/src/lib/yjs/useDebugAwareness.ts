@@ -20,13 +20,19 @@ export default ({
     (jobId: string | null, status?: string) => {
       if (jobId && projectId) {
         const existingDebugRun = yAwareness.getLocalState()?.debugRun;
-        const isSameJob = existingDebugRun?.jobId === jobId;
-        yAwareness.setLocalStateField("debugRun", {
-          jobId,
-          projectId,
-          startedAt: isSameJob ? existingDebugRun.startedAt : Date.now(),
-          status,
-        });
+        if (existingDebugRun) {
+          yAwareness.setLocalStateField("debugRun", {
+            ...existingDebugRun,
+            status,
+          });
+        } else {
+          yAwareness.setLocalStateField("debugRun", {
+            jobId,
+            status,
+            startedAt: Date.now(),
+            projectId,
+          });
+        }
       } else {
         const state = yAwareness.getLocalState();
         if (state?.debugRun) {
