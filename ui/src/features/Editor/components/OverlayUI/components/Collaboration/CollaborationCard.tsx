@@ -7,10 +7,12 @@ import { useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { UserDebugRun } from "@flow/types";
 
 type Props = {
   self?: boolean;
   clientId: number;
+  userDebugRun?: UserDebugRun;
   userName: string;
   color: string;
   spotlightUserClientId?: number | null;
@@ -23,6 +25,7 @@ type Props = {
 const CollaborationCard: React.FC<Props> = ({
   self,
   clientId,
+  userDebugRun,
   userName,
   color,
   spotlightUserClientId,
@@ -34,7 +37,25 @@ const CollaborationCard: React.FC<Props> = ({
   const isSpotlighted = spotlightUserClientId === clientId;
   const t = useT();
   const [isHovered, setIsHovered] = useState(false);
-
+  const getDebugRunStatusLabel = (
+    status: string | undefined,
+    t: (key: string) => string,
+  ) => {
+    switch (status) {
+      case "completed":
+        return t("Completed");
+      case "running":
+        return t("Running");
+      case "cancelled":
+        return t("Cancelled");
+      case "failed":
+        return t("Failed");
+      case "queued":
+        return t("Queued");
+      default:
+        return t("Unknown");
+    }
+  };
   return (
     <div
       className="flex items-center gap-2 rounded-lg p-1 hover:bg-primary"
@@ -52,13 +73,34 @@ const CollaborationCard: React.FC<Props> = ({
         <span className="truncate text-sm select-none dark:font-light">
           {userName}
         </span>
-        {time && (
-          <span className="text-sm opacity-55 dark:font-light">
-            {t("debugging (started {{time}})", {
-              time,
-            })}
-          </span>
-        )}
+
+        <div className="flex items-center gap-2">
+          {time && (
+            <div className="flex items-center gap-0.5">
+              <span className="text-sm opacity-55 dark:font-light">
+                {getDebugRunStatusLabel(userDebugRun?.status, t)}
+              </span>
+              <span className="text-sm opacity-55 dark:font-light">
+                {t("({{time}})", { time })}
+              </span>
+            </div>
+          )}
+          <div
+            className={`${
+              userDebugRun?.status === "completed"
+                ? "bg-success"
+                : userDebugRun?.status === "running"
+                  ? "active-node-status"
+                  : userDebugRun?.status === "cancelled"
+                    ? "bg-warning"
+                    : userDebugRun?.status === "failed"
+                      ? "bg-destructive"
+                      : userDebugRun?.status === "queued"
+                        ? "queued-node-status"
+                        : "bg-secondary"
+            } size-3 rounded-full`}
+          />
+        </div>
       </div>
       <div className="ml-auto">
         {isHovered && onSpotlightUserSelect && !isSpotlighted && !self && (

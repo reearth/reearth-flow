@@ -229,6 +229,13 @@ export default ({
     [],
   );
 
+  useEffect(() => {
+    broadcastDebugRun(
+      debugJob?.jobId ?? null,
+      debugJob?.status ? debugJob.status : undefined,
+    );
+  }, [debugJob?.jobId, debugJob?.status, broadcastDebugRun]);
+
   return {
     activeUsersDebugRuns,
     customDebugRunWorkflowVariables,

@@ -90,6 +90,7 @@ const DebugActiveRunsPopover: React.FC<Props> = ({
                         <CollaborationCard
                           key={user?.debugRun?.jobId}
                           clientId={user.clientId}
+                          userDebugRun={user.debugRun}
                           userName={user.userName}
                           color={user.color}
                           time={timeAgo}
