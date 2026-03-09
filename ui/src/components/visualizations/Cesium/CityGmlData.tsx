@@ -49,7 +49,6 @@ const CityGmlData: React.FC<Props> = ({
   const absolutePrimitiveRef = useRef<Primitive | null>(null);
   const groundPrimitiveRef = useRef<GroundPrimitive | null>(null);
   const meshPrimitiveRef = useRef<Primitive | null>(null);
-  const linePrimitiveRef = useRef<Primitive | null>(null);
   const featureMapRef = useRef<Map<string, FeatureInstanceData>>(new Map());
   const prevSelectedRef = useRef<string | null>(null);
   const { buildLodGeometry, cancelPending } = useLodWorker();
@@ -93,13 +92,6 @@ const CityGmlData: React.FC<Props> = ({
         entry.meshInstanceIds.forEach((id) => {
           const attrs =
             meshPrimitiveRef.current?.getGeometryInstanceAttributes(id);
-          if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(true);
-        });
-      });
-      waitForPrimitive(linePrimitiveRef.current, () => {
-        entry.lineInstanceIds.forEach((id) => {
-          const attrs =
-            linePrimitiveRef.current?.getGeometryInstanceAttributes(id);
           if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(true);
         });
       });
@@ -186,10 +178,6 @@ const CityGmlData: React.FC<Props> = ({
       viewer.scene.primitives.remove(meshPrimitiveRef.current);
       meshPrimitiveRef.current = null;
     }
-    if (linePrimitiveRef.current) {
-      viewer.scene.primitives.remove(linePrimitiveRef.current);
-      linePrimitiveRef.current = null;
-    }
 
     featureMapRef.current.clear();
     prevSelectedRef.current = null;
@@ -198,7 +186,6 @@ const CityGmlData: React.FC<Props> = ({
       absolutePrimitive,
       groundPrimitive,
       meshPrimitive,
-      linePrimitive,
       featureMap,
       boundingSphere,
     } = convertFeatureCollectionToPrimitives(cityGmlData.features);
@@ -206,13 +193,11 @@ const CityGmlData: React.FC<Props> = ({
     absolutePrimitiveRef.current = absolutePrimitive;
     groundPrimitiveRef.current = groundPrimitive;
     meshPrimitiveRef.current = meshPrimitive;
-    linePrimitiveRef.current = linePrimitive;
     featureMapRef.current = featureMap;
 
     if (absolutePrimitive) viewer.scene.primitives.add(absolutePrimitive);
     if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
     if (meshPrimitive) viewer.scene.primitives.add(meshPrimitive);
-    if (linePrimitive) viewer.scene.primitives.add(linePrimitive);
 
     if (boundingSphere) {
       viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
@@ -269,7 +254,6 @@ const CityGmlData: React.FC<Props> = ({
         viewer.scene.primitives.remove(absolutePrimitiveRef.current);
         viewer.scene.primitives.remove(groundPrimitiveRef.current);
         viewer.scene.primitives.remove(meshPrimitiveRef.current);
-        viewer.scene.primitives.remove(linePrimitiveRef.current);
       }
     };
   }, [viewer, cancelPending]);
@@ -302,21 +286,6 @@ const CityGmlData: React.FC<Props> = ({
         entry.meshInstanceIds.forEach((instanceId) => {
           const attrs =
             meshPrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
-          if (attrs) {
-            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
-          }
-        });
-      });
-    });
-
-    waitForPrimitive(linePrimitiveRef.current, () => {
-      featureMapRef.current.forEach((entry, id) => {
-        const isSelected = id === selectedFeatureId;
-        if (entry.lodPrimitiveCollection) return;
-        const shouldShow = !showSelectedFeatureOnly || isSelected;
-        entry.lineInstanceIds.forEach((instanceId) => {
-          const attrs =
-            linePrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
           if (attrs) {
             attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
           }

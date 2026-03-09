@@ -6202,7 +6202,6 @@ __metadata:
     msw: "npm:2.12.8"
     perfect-cursors: "npm:1.0.5"
     prettier: "npm:3.8.1"
-    proj4: "npm:2.20.3"
     react: "npm:19.2.4"
     react-datepicker: "npm:9.1.0"
     react-dom: "npm:19.2.4"
@@ -14079,13 +14078,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mgrs@npm:1.0.0":
-  version: 1.0.0
-  resolution: "mgrs@npm:1.0.0"
-  checksum: 10c0/a360853be5a3b4f4734dbf0a193851c08039ccb6077362ab0f890cccd170ef88b59585129757da9fea4d7a313d7dc3ee88f37f594fc1ae3e4e8efc5353144d77
-  languageName: node
-  linkType: hard
-
 "micromatch@npm:^4.0.5, micromatch@npm:^4.0.8":
   version: 4.0.8
   resolution: "micromatch@npm:4.0.8"
@@ -15091,16 +15083,6 @@ __metadata:
   version: 2.0.1
   resolution: "process-nextick-args@npm:2.0.1"
   checksum: 10c0/bec089239487833d46b59d80327a1605e1c5287eaad770a291add7f45fda1bb5e28b38e0e061add0a1d0ee0984788ce74fa394d345eed1c420cacf392c554367
-  languageName: node
-  linkType: hard
-
-"proj4@npm:2.20.3":
-  version: 2.20.3
-  resolution: "proj4@npm:2.20.3"
-  dependencies:
-    mgrs: "npm:1.0.0"
-    wkt-parser: "npm:^1.5.3"
-  checksum: 10c0/d1dc2ba80963d1d656ff58404475820b6a329abf3b8daa8164c6e770ea420cad4ae7c5a02d9187ce56b22667ff575342104132649601e407cd9bbe52dd793ee7
   languageName: node
   linkType: hard
 
@@ -18288,13 +18270,6 @@ __metadata:
   bin:
     why-is-node-running: cli.js
   checksum: 10c0/1cde0b01b827d2cf4cb11db962f3958b9175d5d9e7ac7361d1a7b0e2dc6069a263e69118bd974c4f6d0a890ef4eedfe34cf3d5167ec14203dbc9a18620537054
-  languageName: node
-  linkType: hard
-
-"wkt-parser@npm:^1.5.3":
-  version: 1.5.3
-  resolution: "wkt-parser@npm:1.5.3"
-  checksum: 10c0/d2357f36fcd51f785dbf0e7ac3d1672e0f4cc2036ea51ba7361d13d42aa7539ecffa2217fc5af53b5c4d39026395544303276d3bc21003224998eb5f42d13340
   languageName: node
   linkType: hard
 
