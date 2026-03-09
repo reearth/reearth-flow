@@ -3,6 +3,8 @@ mod align_mvt;
 mod cast_config;
 mod compare_attributes;
 mod conv_mvt;
+mod conv_png;
+mod raster;
 mod runner;
 mod test_cesium;
 mod test_json_attributes;
@@ -11,6 +13,7 @@ mod test_json_object_key_order;
 mod test_mvt_lines;
 mod test_mvt_points;
 mod test_mvt_polygons;
+mod test_raster;
 
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -25,6 +28,7 @@ use test_json_object_key_order::KeyOrderConfig;
 use test_mvt_lines::MvtLinesConfig;
 use test_mvt_points::MvtPointsConfig;
 use test_mvt_polygons::MvtPolygonsConfig;
+use test_raster::RasterConfig;
 use tracing::info;
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
@@ -60,10 +64,23 @@ struct ConvMvtEntry {
     casts: Option<HashMap<String, cast_config::CastConfigValue>>,
 }
 
+#[derive(Debug, Deserialize)]
+struct ConvPngFlowSource {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ConvPngEntry {
+    flow: ConvPngFlowSource,
+    truth_path: String,
+}
+
 #[derive(Debug, Deserialize, Default)]
 struct Convs {
     #[serde(default)]
     mvt: HashMap<String, ConvMvtEntry>,
+    #[serde(default)]
+    png: HashMap<String, ConvPngEntry>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,6 +109,8 @@ struct Tests {
     cesium: Option<CesiumConfig>,
     #[serde(default)]
     json_object_key_order: Option<KeyOrderConfig>,
+    #[serde(default)]
+    raster: Option<HashMap<String, RasterConfig>>,
 }
 
 fn pack_inputs(
@@ -331,6 +350,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
                 test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
@@ -359,6 +379,28 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             run_test("cesium", &relative_path_display, || {
                 test_cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
+        }
+
+        if let Some(raster_tests) = &tests.raster {
+            for (id, cfg) in raster_tests {
+                let id = id.clone();
+                let cfg_ref = cfg;
+                // Find the matching convs.png entry for truth_path and flow path
+                if let Some(conv_entry) = profile.convs.png.get(&id) {
+                    let flow_mvt_dir = output_dir.join(&conv_entry.flow.path);
+                    let truth_dir = test_path.join(&conv_entry.truth_path);
+                    run_test(
+                        &format!("raster/{}", id),
+                        &relative_path_display,
+                        || test_raster::test_raster(&truth_dir, &flow_mvt_dir, cfg_ref),
+                    );
+                } else {
+                    panic!(
+                        "tests.raster.{} references missing convs.png.{} entry",
+                        id, id
+                    );
+                }
+            }
         }
 
         if let Some(cfg) = &tests.json_object_key_order {

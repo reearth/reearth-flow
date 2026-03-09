@@ -13,7 +13,7 @@ threshold = 0.01
 
 [convs.mvt.squr_lod2]
 flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
-fme_path = "11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
+fme_path = "squr_lod2"
 truth_path = "squr_lod2_truth.json"
 
 [convs.mvt.squr_lod2.casts]
@@ -24,3 +24,11 @@ truth_path = "squr_lod2_truth.json"
 [tests.json_attributes_v2.squr_lod2]
 flow.path = "convs/mvt/squr_lod2.json"
 truth.path = "squr_lod2_truth.json"
+
+[convs.png.squr_lod2]
+fme_path = "squr_lod2"
+flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
+truth_path = "squr_lod2_png_truth"
+
+[tests.raster.squr_lod2]
+threshold = 0.01

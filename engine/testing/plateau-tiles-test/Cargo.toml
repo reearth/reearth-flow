@@ -33,6 +33,7 @@ zip.workspace = true
 tinymvt.workspace = true
 prost.workspace = true
 indexmap.workspace = true
+image.workspace = true
 
 [[bin]]
 name = "plateau-tiles-test"

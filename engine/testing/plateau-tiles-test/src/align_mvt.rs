@@ -195,6 +195,30 @@ fn features_by_ident(
     result
 }
 
+/// Returns all unique feature keys present in a tile (across all layers and geometry types).
+pub fn make_feature_keys_in_tile(tile: &Tile) -> Vec<String> {
+    let mut keys = Vec::new();
+    for layer in &tile.layers {
+        let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
+        for feature in &layer.features {
+            let tags = match tags_decoder.decode(&feature.tags) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            let mut props = serde_json::Map::new();
+            for (key, value) in tags {
+                let json_value = tinymvt_value_to_json(&value);
+                props.insert(key.to_string(), json_value);
+            }
+            let key = make_feature_key(&Value::Object(props), None);
+            if !keys.contains(&key) {
+                keys.push(key);
+            }
+        }
+    }
+    keys
+}
+
 /// Aligns features from two directories by walking all .mvt files
 /// Returns aligned features with their geometries decoded
 pub fn align_mvt_features(

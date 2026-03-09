@@ -2,10 +2,16 @@
 
 #[path = "../cast_config.rs"]
 mod cast_config;
+#[path = "../align_mvt.rs"]
+mod align_mvt;
 #[path = "../compare_attributes.rs"]
 mod compare_attributes;
 #[path = "../conv_mvt.rs"]
 mod conv_mvt;
+#[path = "../conv_png.rs"]
+mod conv_png;
+#[path = "../raster.rs"]
+mod raster;
 
 use cast_config::CastConfigValue;
 use serde::Deserialize;
@@ -23,6 +29,8 @@ struct Profile {
 struct Convs {
     #[serde(default)]
     mvt: HashMap<String, ConvMvtEntry>,
+    #[serde(default)]
+    png: HashMap<String, ConvPngEntry>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,6 +39,12 @@ struct ConvMvtEntry {
     truth_path: String,
     #[serde(default)]
     casts: Option<HashMap<String, CastConfigValue>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ConvPngEntry {
+    fme_path: String,
+    truth_path: String,
 }
 
 fn run(profile_path: &Path, fme_root: &Path) -> Result<(), String> {
@@ -44,9 +58,15 @@ fn run(profile_path: &Path, fme_root: &Path) -> Result<(), String> {
     for (id, entry) in &profile.convs.mvt {
         let mvt_dir = fme_root.join(&entry.fme_path);
         let output_path = testcase_dir.join(&entry.truth_path);
-
         conv_mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
-        println!("wrote {} -> {}", id, output_path.display());
+        println!("wrote mvt/{} -> {}", id, output_path.display());
+    }
+
+    for (id, entry) in &profile.convs.png {
+        let mvt_dir = fme_root.join(&entry.fme_path);
+        let truth_dir = testcase_dir.join(&entry.truth_path);
+        conv_png::write_png_truth(&mvt_dir, &truth_dir)?;
+        println!("wrote png/{} -> {}", id, truth_dir.display());
     }
 
     Ok(())

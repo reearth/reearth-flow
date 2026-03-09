@@ -5741,6 +5741,7 @@ version = "0.1.96"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
+ "image 0.25.9",
  "indexmap 2.13.0",
  "prost",
  "reearth-flow-action-log",
