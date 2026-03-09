@@ -18,19 +18,13 @@ export default ({
   const prevDebugRunsByClientRef = useRef<Map<number, any>>(new Map());
   const broadcastDebugRun = useCallback(
     (jobId: string | null, status?: string) => {
-      if (jobId && projectId && status) {
+      if (jobId && projectId) {
+        const existingDebugRun = yAwareness.getLocalState()?.debugRun;
+        const isSameJob = existingDebugRun?.jobId === jobId;
         yAwareness.setLocalStateField("debugRun", {
           jobId,
           projectId,
-          startedAt:
-            yAwareness.getLocalState()?.debugRun?.startedAt ?? Date.now(),
-          status,
-        });
-      } else if (jobId && projectId) {
-        yAwareness.setLocalStateField("debugRun", {
-          jobId,
-          projectId,
-          startedAt: Date.now(),
+          startedAt: isSameJob ? existingDebugRun.startedAt : Date.now(),
           status,
         });
       } else {
