@@ -1,0 +1,128 @@
+{
+  "frn_1cc6e096-caab-45e1-a195-6bd5fbe6ee8c__dm_E2": {
+    "meshcode": "56380598",
+    "city_code": "15202",
+    "city_name": "新潟県長岡市",
+    "feature_type": "frn:CityFurniture",
+    "gml_id": "frn_1cc6e096-caab-45e1-a195-6bd5fbe6ee8c",
+    "attributes": {
+      "meshcode": "56380598",
+      "feature_type": "frn:CityFurniture",
+      "gml:id": "frn_1cc6e096-caab-45e1-a195-6bd5fbe6ee8c",
+      "core:creationDate": "2024-03-22",
+      "frn:function": "その他",
+      "frn:function_code": "9000",
+      "uro:DmGeometricAttribute": [
+        {
+          "uro:dmCode": "その他小物体",
+          "uro:dmCode_code": "8142",
+          "uro:geometryType": "線",
+          "uro:geometryType_code": "E2",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        }
+      ],
+      "uro:ParkFacilityLongevityPlanAttribute": [
+        {
+          "uro:facilityId": "KAN0144",
+          "uro:parkCode": "N13",
+          "uro:parkCode_code": "13",
+          "uro:parkName": "国営越後丘陵公園",
+          "uro:parkName_code": "13",
+          "uro:parkType": "国営",
+          "uro:parkType_code": "7",
+          "uro:facilityName": "門",
+          "uro:facilityName_code": "8010",
+          "uro:facilityNameOptional": "YF-27",
+          "uro:specificFacilityName": "鋼製ゲート",
+          "uro:NumberOfFacilities": [
+            {
+              "uro:quantity": 1,
+              "uro:quantityUnit": "基",
+              "uro:quantityUnit_code": "7"
+            }
+          ],
+          "uro:size": "1基",
+          "uro:mainMaterial": "スチール",
+          "uro:mainMaterial_code": "15",
+          "uro:mainMaterialOptional": "金属製",
+          "uro:installationYear": 2007,
+          "uro:disposalLimitPeriod": 18,
+          "uro:expectedUsagePeriod": 44,
+          "uro:ParkHealthAssessment": [
+            {
+              "uro:assessmentFiscalYear": 2012,
+              "uro:condition": "A",
+              "uro:condition_code": "1",
+              "uro:urgency": "低",
+              "uro:urgency_code": "1"
+            }
+          ],
+          "uro:managementType": "事後",
+          "uro:managementType_code": "2"
+        }
+      ],
+      "uro:FacilityTypeAttribute": [
+        {
+          "uro:class": "公園施設",
+          "uro:class_code": "07",
+          "uro:function": "管理施設",
+          "uro:function_code": "0708"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod2": "未作成",
+          "uro:geometrySrcDescLod2_code": "999",
+          "uro:geometrySrcDescLod3": "未作成",
+          "uro:geometrySrcDescLod3_code": "999",
+          "uro:thematicSrcDesc": [
+            "台帳",
+            "その他の資料"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "300",
+            "700"
+          ],
+          "uro:appearanceSrcDescLod2": "未作成",
+          "uro:appearanceSrcDescLod2_code": "99",
+          "uro:appearanceSrcDescLod3": "未作成",
+          "uro:appearanceSrcDescLod3_code": "99",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003"
+            }
+          ]
+        }
+      ]
+    },
+    "dm_feature_type": "DmGeometricAttribute",
+    "dm_attributes": {
+      "uro:dmCode": "その他小物体",
+      "uro:dmCode_code": "8142",
+      "uro:geometryType": "線",
+      "uro:geometryType_code": "E2",
+      "uro:mapLevel": "地図情報レベル2500",
+      "uro:mapLevel_code": "2500",
+      "uro:shapeType": "非区分（下記に該当しない全データ）",
+      "uro:shapeType_code": "0"
+    },
+    "dm_dmCode": "その他小物体",
+    "dm_dmCode_code": "8142",
+    "dm_geometryType": "線",
+    "dm_geometryType_code": "E2",
+    "dm_mapLevel": "地図情報レベル2500",
+    "dm_mapLevel_code": "2500",
+    "dm_shapeType": "非区分（下記に該当しない全データ）",
+    "dm_shapeType_code": "0"
+  }
+}

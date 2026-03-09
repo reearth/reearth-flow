@@ -8,7 +8,8 @@ pub const RASTER_SIZE: usize = 1024;
 pub const STROKE_PIXELS: f64 = (RASTER_SIZE / 256) as f64;
 
 /// Rasterizes all geometry in a tile for a given feature ident into a RASTER_SIZE x RASTER_SIZE f32 raster.
-/// Lines: Wu anti-aliased. Polygon interiors: scanline fill. Polygon boundaries: Wu. Points: single pixel.
+/// Lines: capsule SDF per segment (analytically correct round joins/caps).
+/// Polygon interiors: scanline fill. Polygon boundaries: Wu line. Points: circle SDF.
 pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
     let mut raster = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
 
@@ -49,7 +50,7 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                     }
                 }
                 2 => {
-                    // LineString
+                    // LineString: capsule SDF per segment for correct round joins/caps
                     if let Ok(linestrings) = decoder.decode_linestrings() {
                         for ls in &linestrings {
                             for window in ls.windows(2) {
@@ -57,7 +58,7 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                                 let y0 = window[0][1] as f64 * scale * RASTER_SIZE as f64;
                                 let x1 = window[1][0] as f64 * scale * RASTER_SIZE as f64;
                                 let y1 = window[1][1] as f64 * scale * RASTER_SIZE as f64;
-                                draw_thick_wu_line(&mut raster, x0, y0, x1, y1, STROKE_PIXELS);
+                                draw_capsule(&mut raster, x0, y0, x1, y1, STROKE_PIXELS);
                             }
                         }
                     }
@@ -117,7 +118,37 @@ fn set_pixel(raster: &mut [f32], x: i32, y: i32, alpha: f32) {
     }
 }
 
-/// Anti-aliased circle splat. alpha = clamp(r + 0.5 - dist, 0, 1) per pixel.
+/// Capsule SDF renderer. Draws a thick line segment from (ax,ay) to (bx,by) with radius r.
+/// alpha = clamp(r + 0.5 - dist_to_segment, 0, 1): boundary pixels (dist=r) get alpha=0.5,
+/// interior pixels get 1.0. Adjacent segments share overlapping caps forming round joins via max().
+pub fn draw_capsule(raster: &mut [f32], ax: f64, ay: f64, bx: f64, by: f64, r: f64) {
+    let dx = bx - ax;
+    let dy = by - ay;
+    let len2 = dx * dx + dy * dy;
+
+    let pad = (r + 1.0).ceil() as i32;
+    let x0 = (ax.min(bx).floor() as i32 - pad).max(0);
+    let y0 = (ay.min(by).floor() as i32 - pad).max(0);
+    let x1 = (ax.max(bx).ceil() as i32 + pad).min(RASTER_SIZE as i32 - 1);
+    let y1 = (ay.max(by).ceil() as i32 + pad).min(RASTER_SIZE as i32 - 1);
+
+    for py in y0..=y1 {
+        for px in x0..=x1 {
+            let dist = if len2 < 1e-20 {
+                (px as f64 - ax).hypot(py as f64 - ay)
+            } else {
+                let t = (((px as f64 - ax) * dx + (py as f64 - ay) * dy) / len2).clamp(0.0, 1.0);
+                (px as f64 - (ax + t * dx)).hypot(py as f64 - (ay + t * dy))
+            };
+            let alpha = (r + 0.5 - dist).clamp(0.0, 1.0) as f32;
+            if alpha > 0.0 {
+                set_pixel(raster, px, py, alpha);
+            }
+        }
+    }
+}
+
+/// Anti-aliased circle splat for point features. alpha = clamp(r + 0.5 - dist, 0, 1).
 pub fn draw_aa_circle(raster: &mut [f32], cx: f64, cy: f64, r: f64) {
     let r_ceil = (r + 1.0).ceil() as i32;
     let x0 = cx.floor() as i32 - r_ceil;
@@ -131,31 +162,6 @@ pub fn draw_aa_circle(raster: &mut [f32], cx: f64, cy: f64, r: f64) {
             set_pixel(raster, px, py, alpha);
         }
     }
-}
-
-/// Thick anti-aliased line: fills a rectangle (4-corner polygon) + circle caps at both endpoints.
-pub fn draw_thick_wu_line(raster: &mut [f32], x0: f64, y0: f64, x1: f64, y1: f64, r: f64) {
-    let dx = x1 - x0;
-    let dy = y1 - y0;
-    let len = dx.hypot(dy);
-    if len < 1e-10 {
-        draw_aa_circle(raster, x0, y0, r);
-        return;
-    }
-    let (nx, ny) = (-dy / len * r, dx / len * r);
-    let ring = vec![
-        (x0 + nx, y0 + ny),
-        (x1 + nx, y1 + ny),
-        (x1 - nx, y1 - ny),
-        (x0 - nx, y0 - ny),
-    ];
-    scanline_fill(raster, &[ring.clone()]);
-    for w in ring.windows(2) {
-        draw_wu_line(raster, w[0].0, w[0].1, w[1].0, w[1].1);
-    }
-    draw_wu_line(raster, ring[3].0, ring[3].1, ring[0].0, ring[0].1);
-    draw_aa_circle(raster, x0, y0, r);
-    draw_aa_circle(raster, x1, y1, r);
 }
 
 /// Wu's anti-aliased line drawing algorithm
