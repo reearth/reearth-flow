@@ -48,6 +48,16 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: 44bd136f-0fba-44f4-b719-22c28163c070
+        name: TargetPackagesFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+              outputPort: default
+
       # Dictionary branch
       - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
         name: AttributeManagerDict
@@ -337,9 +347,9 @@ graphs:
         toPort: default
 
       # Dictionary branch edges
-      # FeatureReaderByCityGml -> AttributeManagerDict
+      # TargetPackagesFilter -> AttributeManagerDict
       - id: c9e3f0a4-5d6b-7c8e-1f2a-b345d1c701e1
-        from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+        from: 44bd136f-0fba-44f4-b719-22c28163c070
         to: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
         fromPort: default
         toPort: default
@@ -363,9 +373,15 @@ graphs:
         toPort: default
 
       # Main processing branch edges
-      # FeatureReaderByCityGml -> AttributeManagerPreFlattener
+      # FeatureReaderByCityGml -> TargetPackagesFilter
       - id: ccb494b2-8908-4a01-ae38-918718315912
         from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
+        to: 44bd136f-0fba-44f4-b719-22c28163c070
+        fromPort: default
+        toPort: default
+      # TargetPackagesFilter -> AttributeManagerPreFlattener
+      - id: 2c41faa3-589d-4955-9c62-941eb184e559
+        from: 44bd136f-0fba-44f4-b719-22c28163c070
         to: 0f670054-828b-48d8-9672-dbc34247f2b3
         fromPort: default
         toPort: default

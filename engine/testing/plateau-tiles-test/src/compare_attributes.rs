@@ -65,14 +65,6 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     gml_id.to_string()
 }
 
-#[derive(Debug)]
-pub struct AttributeComparer {
-    identifier: String,
-    casts: HashMap<String, CastConfig>,
-    values: HashMap<String, Value>,
-    mismatches: Vec<(String, String, Value, Value)>,
-}
-
 #[derive(Debug, Clone)]
 pub enum CastConfig {
     String,
@@ -104,6 +96,191 @@ pub fn structural_casts(casts: &HashMap<String, CastConfig>) -> HashMap<String, 
         .collect()
 }
 
+fn tokenize_path(path: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_bracket = false;
+
+    for ch in path.chars() {
+        match ch {
+            '.' if !in_bracket => {
+                if !current.is_empty() {
+                    tokens.push(current.clone());
+                    current.clear();
+                }
+            }
+            '[' => {
+                if !current.is_empty() {
+                    tokens.push(current.clone());
+                    current.clear();
+                }
+                in_bracket = true;
+                current.push(ch);
+            }
+            ']' => {
+                current.push(ch);
+                tokens.push(current.clone());
+                current.clear();
+                in_bracket = false;
+            }
+            _ => current.push(ch),
+        }
+    }
+
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+
+    tokens
+}
+
+fn get_nested_impl<'a>(obj: &'a Value, tokens: &[String]) -> Option<&'a Value> {
+    if tokens.is_empty() {
+        return Some(obj);
+    }
+
+    let token = &tokens[0];
+    if token.starts_with('[') && token.ends_with(']') {
+        let idx_str = &token[1..token.len() - 1];
+        if let Ok(idx) = idx_str.parse::<usize>() {
+            if let Some(arr) = obj.as_array() {
+                if let Some(value) = arr.get(idx) {
+                    return get_nested_impl(value, &tokens[1..]);
+                }
+            }
+        }
+    } else if let Some(obj_map) = obj.as_object() {
+        if let Some(value) = obj_map.get(token) {
+            return get_nested_impl(value, &tokens[1..]);
+        }
+    }
+
+    None
+}
+
+fn get_nested<'a>(obj: &'a Value, path: &str) -> Option<&'a Value> {
+    get_nested_impl(obj, &tokenize_path(path))
+}
+
+/// Applies a single cast to a value.
+pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
+    match cast {
+        CastConfig::String => {
+            if let Some(s) = value.as_str() {
+                Value::String(s.to_string())
+            } else {
+                Value::String(value.to_string())
+            }
+        }
+        CastConfig::Float { .. } => match &value {
+            Value::Number(_) => value,
+            Value::String(s) => {
+                if let Ok(f) = s.parse::<f64>() {
+                    serde_json::json!(f)
+                } else {
+                    value
+                }
+            }
+            _ => value,
+        },
+        CastConfig::Int => match &value {
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    serde_json::json!(i)
+                } else if let Some(f) = n.as_f64() {
+                    serde_json::json!(f.round() as i64)
+                } else {
+                    value
+                }
+            }
+            Value::String(s) => {
+                if let Ok(i) = s.parse::<i64>() {
+                    serde_json::json!(i)
+                } else if let Ok(f) = s.parse::<f64>() {
+                    serde_json::json!(f.round() as i64)
+                } else {
+                    value
+                }
+            }
+            _ => value,
+        },
+        CastConfig::Json => {
+            if let Some(s) = value.as_str() {
+                serde_json::from_str(s).unwrap_or(value)
+            } else {
+                value
+            }
+        }
+        CastConfig::ListToDict { key: dict_key } => {
+            if let Some(arr) = value.as_array() {
+                let mut map = serde_json::Map::new();
+                for item in arr {
+                    if let Some(k) = get_nested(item, dict_key) {
+                        if let Some(k_str) = k.as_str() {
+                            map.insert(k_str.to_string(), item.clone());
+                        }
+                    }
+                }
+                Value::Object(map)
+            } else {
+                value
+            }
+        }
+        CastConfig::IgnoreBoth => Value::Null,
+        CastConfig::OrderedDict => value,
+    }
+}
+
+/// Recursively applies casts to a value tree, producing a normalized form.
+/// Used by generate-truth (FME artifacts → truth JSON) and the convs step
+/// (flow MVT → comparison JSON), so both sides are normalized before comparison.
+#[allow(dead_code)]
+pub fn apply_casts_to_value(
+    value: Value,
+    path: &str,
+    casts: &HashMap<String, CastConfig>,
+) -> Value {
+    // Apply cast at current path first, then recurse into the result
+    let value = if let Some(cast) = casts.get(path) {
+        apply_cast(cast, value)
+    } else {
+        value
+    };
+
+    match value {
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .map(|(k, v)| {
+                    let child_path = if path.is_empty() {
+                        format!(".{}", k)
+                    } else {
+                        format!("{}.{}", path, k)
+                    };
+                    (k, apply_casts_to_value(v, &child_path, casts))
+                })
+                .collect(),
+        ),
+        Value::Array(arr) => Value::Array(
+            arr.into_iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    let child_path = format!("{}[{}]", path, i);
+                    apply_casts_to_value(v, &child_path, casts)
+                })
+                .collect(),
+        ),
+        _ => value,
+    }
+}
+
+#[derive(Debug)]
+pub struct AttributeComparer {
+    identifier: String,
+    casts: HashMap<String, CastConfig>,
+    values: HashMap<String, Value>,
+    mismatches: Vec<(String, String, Value, Value)>,
+}
+
 impl AttributeComparer {
     pub fn new(
         identifier: String,
@@ -118,148 +295,9 @@ impl AttributeComparer {
         }
     }
 
-    fn get_nested<'a>(obj: &'a Value, path: &str) -> Option<&'a Value> {
-        let tokens = Self::tokenize_path(path);
-        Self::get_nested_impl(obj, &tokens)
-    }
-
-    fn tokenize_path(path: &str) -> Vec<String> {
-        let mut tokens = Vec::new();
-        let mut current = String::new();
-        let mut in_bracket = false;
-
-        for ch in path.chars() {
-            match ch {
-                '.' if !in_bracket => {
-                    if !current.is_empty() {
-                        tokens.push(current.clone());
-                        current.clear();
-                    }
-                }
-                '[' => {
-                    if !current.is_empty() {
-                        tokens.push(current.clone());
-                        current.clear();
-                    }
-                    in_bracket = true;
-                    current.push(ch);
-                }
-                ']' => {
-                    current.push(ch);
-                    tokens.push(current.clone());
-                    current.clear();
-                    in_bracket = false;
-                }
-                _ => current.push(ch),
-            }
-        }
-
-        if !current.is_empty() {
-            tokens.push(current);
-        }
-
-        tokens
-    }
-
-    fn get_nested_impl<'a>(obj: &'a Value, tokens: &[String]) -> Option<&'a Value> {
-        if tokens.is_empty() {
-            return Some(obj);
-        }
-
-        let token = &tokens[0];
-        if token.starts_with('[') && token.ends_with(']') {
-            // Array index
-            let idx_str = &token[1..token.len() - 1];
-            if let Ok(idx) = idx_str.parse::<usize>() {
-                if let Some(arr) = obj.as_array() {
-                    if let Some(value) = arr.get(idx) {
-                        return Self::get_nested_impl(value, &tokens[1..]);
-                    }
-                }
-            }
-        } else if let Some(obj_map) = obj.as_object() {
-            // Object key
-            if let Some(value) = obj_map.get(token) {
-                return Self::get_nested_impl(value, &tokens[1..]);
-            }
-        }
-
-        None
-    }
-
     fn cast_attr(&self, key: &str, value: Value) -> Value {
         if let Some(cast) = self.casts.get(key) {
-            match cast {
-                CastConfig::String => {
-                    if let Some(s) = value.as_str() {
-                        Value::String(s.to_string())
-                    } else {
-                        Value::String(value.to_string())
-                    }
-                }
-                CastConfig::Float { .. } => {
-                    // Convert to number if possible
-                    match &value {
-                        Value::Number(_) => value,
-                        Value::String(s) => {
-                            if let Ok(f) = s.parse::<f64>() {
-                                serde_json::json!(f)
-                            } else {
-                                value
-                            }
-                        }
-                        _ => value,
-                    }
-                }
-                CastConfig::Int => {
-                    // Convert to integer if possible
-                    match &value {
-                        Value::Number(n) => {
-                            if let Some(i) = n.as_i64() {
-                                serde_json::json!(i)
-                            } else if let Some(f) = n.as_f64() {
-                                serde_json::json!(f.round() as i64)
-                            } else {
-                                value
-                            }
-                        }
-                        Value::String(s) => {
-                            if let Ok(i) = s.parse::<i64>() {
-                                serde_json::json!(i)
-                            } else if let Ok(f) = s.parse::<f64>() {
-                                serde_json::json!(f.round() as i64)
-                            } else {
-                                value
-                            }
-                        }
-                        _ => value,
-                    }
-                }
-                CastConfig::Json => {
-                    if let Some(s) = value.as_str() {
-                        serde_json::from_str(s).unwrap_or(value)
-                    } else {
-                        value
-                    }
-                }
-                CastConfig::ListToDict { key: dict_key } => {
-                    if let Some(arr) = value.as_array() {
-                        let mut map = serde_json::Map::new();
-                        for item in arr {
-                            if let Some(k) = Self::get_nested(item, dict_key) {
-                                if let Some(k_str) = k.as_str() {
-                                    map.insert(k_str.to_string(), item.clone());
-                                }
-                            }
-                        }
-                        Value::Object(map)
-                    } else {
-                        value
-                    }
-                }
-                CastConfig::IgnoreBoth => Value::Null,
-                CastConfig::OrderedDict => value,
-            }
+            apply_cast(cast, value)
         } else {
             value
         }
@@ -638,5 +676,25 @@ mod tests {
         let v1 = json!({"value": 1.5});
         let v2 = json!({"value": 1.500001});
         assert!(analyze_attributes("test", &v1, &v2, casts_eps, HashMap::new()).is_ok());
+    }
+
+    #[test]
+    fn test_apply_casts_to_value_json() {
+        let mut casts = HashMap::new();
+        casts.insert(".data".to_string(), CastConfig::Json);
+
+        let v = json!({"data": "{\"key\": \"value\"}"});
+        let result = apply_casts_to_value(v, "", &casts);
+        assert_eq!(result, json!({"data": {"key": "value"}}));
+    }
+
+    #[test]
+    fn test_apply_casts_to_value_string() {
+        let mut casts = HashMap::new();
+        casts.insert(".id".to_string(), CastConfig::String);
+
+        let v = json!({"id": 123});
+        let result = apply_casts_to_value(v, "", &casts);
+        assert_eq!(result, json!({"id": "123"}));
     }
 }
