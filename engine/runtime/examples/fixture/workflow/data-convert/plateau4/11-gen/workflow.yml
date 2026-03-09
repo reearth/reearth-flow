@@ -49,6 +49,16 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: 04b83179-6c76-446c-851d-ef0f91f62406
+        name: TargetPackagesFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+              outputPort: default
+
       - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7
         name: AttributeManagerPreFlattener
         type: action
@@ -188,9 +198,15 @@ graphs:
         to: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
         fromPort: default
         toPort: default
-      # FeatureReaderByCityGml -> AttributeManagerPreFlattener
+      # FeatureReaderByCityGml -> TargetPackagesFilter
       - id: 4c54b0bc-2b17-4d59-b999-e45b015ab3ff
         from: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
+        to: 04b83179-6c76-446c-851d-ef0f91f62406
+        fromPort: default
+        toPort: default
+      # TargetPackagesFilter -> AttributeManagerPreFlattener
+      - id: 632886cb-7cb6-41fa-b1c6-c6d484f8fbd4
+        from: 04b83179-6c76-446c-851d-ef0f91f62406
         to: 7bd12def-bc00-4340-adf5-1a2d68995dd7
         fromPort: default
         toPort: default

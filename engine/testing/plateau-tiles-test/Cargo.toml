@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.1.90"
+version = "0.1.91"
 edition = "2021"
 
 [dependencies]
@@ -37,3 +37,7 @@ indexmap.workspace = true
 [[bin]]
 name = "plateau-tiles-test"
 path = "src/main.rs"
+
+[[bin]]
+name = "generate-truth"
+path = "src/bin/generate_truth.rs"
