@@ -354,12 +354,12 @@ export function convertFeatureCollectionToPrimitives(
         (g: any) => g.triangularMesh,
       );
       if (meshGeometries.length > 0) {
-        for (const geom of meshGeometries) {
+        for (const [index, geom] of meshGeometries.entries()) {
           const mesh = geom.triangularMesh as TriangularMeshData;
           const instanceId: InstanceId = {
             _originalId: featureId,
             featureId,
-            instanceId: `${featureId}_mesh_0`,
+            instanceId: `${featureId}_mesh_${index}`,
           };
           const instance = triangularMeshToGeometryInstance(
             mesh,
@@ -609,12 +609,12 @@ export function createLodUpgradePrimitiveCollection(
   const meshGeometries = lodGeometries.filter((g: any) => g.triangularMesh);
   if (meshGeometries.length > 0) {
     const fillInstances: GeometryInstance[] = [];
-    for (const geom of meshGeometries) {
+    for (const [index, geom] of meshGeometries.entries()) {
       const mesh = geom.triangularMesh as TriangularMeshData;
       const defaultColor = typeConfig?.color ?? Color.GRAY.withAlpha(0.8);
       const instance = triangularMeshToGeometryInstance(mesh, defaultColor, {
         featureId,
-        instanceId: `${featureId}_fill_lod_mesh_0`,
+        instanceId: `${featureId}_fill_lod_mesh_${index}`,
       });
       if (instance) fillInstances.push(instance);
     }

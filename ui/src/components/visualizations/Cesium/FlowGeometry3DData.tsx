@@ -69,30 +69,34 @@ const FlowGeometry3DData: React.FC<Props> = ({
   useEffect(() => {
     if (!viewer) return;
 
-    const applyVisibility = (primitive: Primitive | null) => {
-      if (!primitive || !(primitive as any).ready) return;
+    const applyVisibility = () => {
+      const mesh = meshPrimitiveRef.current;
+      const line = linePrimitiveRef.current;
+      const meshReady = !!mesh && (mesh as any).ready;
+      const lineReady = !!line && (line as any).ready;
+      if (!meshReady && !lineReady) return;
       featureMapRef.current.forEach((entry, id) => {
         const isSelected = id === selectedFeatureId;
         const shouldShow = !showSelectedFeatureOnly || isSelected;
-
-        entry.meshInstanceIds.forEach((instanceId) => {
-          const attrs =
-            meshPrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
-          if (attrs)
-            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
-        });
-        entry.lineInstanceIds.forEach((instanceId) => {
-          const attrs =
-            linePrimitiveRef.current?.getGeometryInstanceAttributes(instanceId);
-          if (attrs)
-            attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
-        });
+        if (meshReady) {
+          entry.meshInstanceIds.forEach((instanceId) => {
+            const attrs = mesh.getGeometryInstanceAttributes(instanceId);
+            if (attrs)
+              attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
+          });
+        }
+        if (lineReady) {
+          entry.lineInstanceIds.forEach((instanceId) => {
+            const attrs = line.getGeometryInstanceAttributes(instanceId);
+            if (attrs)
+              attrs.show = ShowGeometryInstanceAttribute.toValue(shouldShow);
+          });
+        }
       });
     };
 
     // Primitives are synchronous (asynchronous: false), so they're ready immediately
-    applyVisibility(meshPrimitiveRef.current);
-    applyVisibility(linePrimitiveRef.current);
+    applyVisibility();
   }, [viewer, showSelectedFeatureOnly, selectedFeatureId]);
 
   // Cleanup on unmount
