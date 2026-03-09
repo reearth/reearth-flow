@@ -160,15 +160,16 @@ pub struct GltfWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GltfWriterParam {
-    /// Output path or expression for the GLTF file to create
+    /// Output file path. When `schemaKey` is set, treated as a directory and
+    /// each feature type is written to `<output>/<schemaKeyValue>.glb`;
+    /// otherwise all features are written to this single file.
     output: Expr,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
     /// Apply Draco compression to the geometry
     draco_compression: Option<bool>,
-    /// Attribute key whose value identifies the schema type and determines
-    /// the output filename: all features sharing the same value are written
-    /// to the same file. Excluded from output.
+    /// Features are grouped by this attribute and written to separate files.
+    /// The key is excluded from output attributes.
     schema_key: Option<String>,
 }
 

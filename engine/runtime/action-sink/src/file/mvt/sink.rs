@@ -162,7 +162,7 @@ pub struct MVTWriterParam {
     /// MVT tile resolution. Default is 4096.
     pub(super) extent: Option<u32>,
     /// # Schema Key
-    /// Attribute key to match data and schema features for attribute filtering and casting
+    /// Attribute key to match data and schema features for attribute filtering and casting.
     /// This attribute is excluded from output.
     pub(super) schema_key: Option<String>,
 }
