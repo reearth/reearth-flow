@@ -57,15 +57,6 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
-  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilterByPackage
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-        outputPort: default
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
@@ -111,11 +102,6 @@ graphs:
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
-    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    fromPort: default
-    toPort: default
-  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
-    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
@@ -314,6 +300,15 @@ graphs:
       flatten: true
       dataset: |
         env.get("__value")["path"]
+  - id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+    name: TargetPackagesFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
   - id: ea263dcf-70c9-42a2-8385-07eb1d76270f
     name: VegPackageFilterDict
     type: action
@@ -1093,11 +1088,16 @@ graphs:
     toPort: default
   - id: ccb494b2-8908-4a01-ae38-918718315912
     from: d8182be7-aff0-4a13-b634-cbe03045befa
+    to: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+    fromPort: default
+    toPort: default
+  - id: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d3e
+    from: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
     to: 0f670054-828b-48d8-9672-dbc34247f2b3
     fromPort: default
     toPort: default
   - id: a501c060-4f06-486a-b455-a71893bfa8a3
-    from: d8182be7-aff0-4a13-b634-cbe03045befa
+    from: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
     to: ea263dcf-70c9-42a2-8385-07eb1d76270f
     fromPort: default
     toPort: default

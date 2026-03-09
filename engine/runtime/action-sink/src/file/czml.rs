@@ -62,7 +62,7 @@ impl SinkFactory for CzmlWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let mut params: CzmlWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::CzmlWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -75,6 +75,7 @@ impl SinkFactory for CzmlWriterFactory {
             )
             .into());
         };
+        params.sanitize();
 
         let sink = CzmlWriter {
             params,
@@ -204,6 +205,54 @@ fn default_interpolation_degree() -> u32 {
 
 fn default_opacity() -> u8 {
     180
+}
+
+/// Strip common expression wrappers from an attribute name.
+///
+/// The UI may wrap plain attribute names in expression syntax like
+/// `env.get("__value").field_name`. This extracts the bare attribute name.
+fn sanitize_attribute(attr: &Attribute) -> Attribute {
+    let s = attr.inner();
+    // env.get("__value").field_name → field_name
+    if let Some(rest) = s.strip_prefix("env.get(\"__value\").") {
+        return Attribute::new(rest);
+    }
+    Attribute::new(s)
+}
+
+/// Strip surrounding literal quote characters from a string.
+///
+/// The UI may double-quote epoch values, e.g. `"\"2024-01-01T00:00:00Z\""`.
+/// After JSON deserialization this becomes `"2024-01-01T00:00:00Z"` (with
+/// literal `"` chars). This helper removes them.
+fn sanitize_epoch(epoch: &str) -> String {
+    let s = epoch.trim();
+    if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
+        s[1..s.len() - 1].to_string()
+    } else {
+        s.to_string()
+    }
+}
+
+impl CzmlWriterParam {
+    /// Normalize fields that may contain expression syntax from the UI.
+    fn sanitize(&mut self) {
+        if let Some(ref attr) = self.time_field {
+            self.time_field = Some(sanitize_attribute(attr));
+        }
+        if let Some(ref attr) = self.group_timeseries_by {
+            self.group_timeseries_by = Some(sanitize_attribute(attr));
+        }
+        if let Some(ref attr) = self.color_attribute {
+            self.color_attribute = Some(sanitize_attribute(attr));
+        }
+        if let Some(ref attr) = self.height_attribute {
+            self.height_attribute = Some(sanitize_attribute(attr));
+        }
+        if let Some(ref epoch) = self.epoch {
+            self.epoch = Some(sanitize_epoch(epoch));
+        }
+    }
 }
 
 /// Interpolation algorithm for Cesium time-dynamic properties.
@@ -356,17 +405,42 @@ fn build_embedded_czml(
 ) -> Result<Vec<u8>, BoxedError> {
     let per_entity_mode = params.time_field.is_some() && params.group_timeseries_by.is_none();
 
+    // Auto-detect epoch for numeric time values in per-entity mode
+    let effective_epoch: Option<String> = if per_entity_mode {
+        if params.epoch.is_some() {
+            params.epoch.clone()
+        } else {
+            let all_numeric = params.time_field.as_ref().is_some_and(|tf| {
+                features.iter().all(|f| {
+                    f.get(tf)
+                        .map(|v| {
+                            let s = attribute_value_to_string(v);
+                            s.parse::<f64>().is_ok()
+                        })
+                        .unwrap_or(true)
+                })
+            });
+            if all_numeric {
+                Some("1970-01-01T00:00:00Z".to_string())
+            } else {
+                None
+            }
+        }
+    } else {
+        params.epoch.clone()
+    };
+
     let mut global_start: Option<String> = None;
     let mut global_end: Option<String> = None;
 
     // Pass 1: Collect time range
-    for feature in features {
-        if per_entity_mode {
-            if let Some(time_field) = &params.time_field {
+    if per_entity_mode {
+        if let Some(time_field) = &params.time_field {
+            for feature in features {
                 if let Some(time_val) = feature.get(time_field) {
                     let time_str = attribute_value_to_string(time_val);
                     let start_iso =
-                        strip_epoch_offset_for_availability(&time_str, params.epoch.as_deref());
+                        strip_epoch_offset_for_availability(&time_str, effective_epoch.as_deref());
                     if global_start.is_none() || start_iso < *global_start.as_ref().unwrap() {
                         global_start = Some(start_iso.clone());
                     }
@@ -375,16 +449,20 @@ fn build_embedded_czml(
                     }
                 }
             }
-        } else if let Some(AttributeValue::String(avail)) =
-            feature.get(Attribute::new("availability"))
-        {
-            if let Some((s, e)) = avail.split_once('/') {
-                if !s.is_empty() && !e.is_empty() {
-                    if global_start.is_none() || s < global_start.as_deref().unwrap_or("") {
-                        global_start = Some(s.to_string());
-                    }
-                    if global_end.is_none() || e > global_end.as_deref().unwrap_or("") {
-                        global_end = Some(e.to_string());
+        }
+    }
+    if !per_entity_mode {
+        for feature in features {
+            if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability"))
+            {
+                if let Some((s, e)) = avail.split_once('/') {
+                    if !s.is_empty() && !e.is_empty() {
+                        if global_start.is_none() || s < global_start.as_deref().unwrap_or("") {
+                            global_start = Some(s.to_string());
+                        }
+                        if global_end.is_none() || e > global_end.as_deref().unwrap_or("") {
+                            global_end = Some(e.to_string());
+                        }
                     }
                 }
             }
@@ -412,8 +490,19 @@ fn build_embedded_czml(
         .map_err(SinkError::czml_writer)?;
 
     // Pass 2: Build packets
-    for feature in features {
-        let packet = build_embedded_packet(feature, params, global_end.as_deref())?;
+    for (idx, feature) in features.iter().enumerate() {
+        let mut packet = build_embedded_packet(
+            feature,
+            params,
+            global_end.as_deref(),
+            effective_epoch.as_deref(),
+        )?;
+        // Ensure every packet has an id (required by Cesium)
+        if let Some(obj) = packet.as_object_mut() {
+            if !obj.contains_key("id") {
+                obj.insert("id".to_string(), serde_json::json!(format!("entity_{idx}")));
+            }
+        }
         output_buffer.write(b",").map_err(SinkError::czml_writer)?;
         output_buffer
             .write(&serde_json::to_vec(&packet).map_err(SinkError::czml_writer)?)
@@ -429,15 +518,20 @@ fn build_embedded_czml(
 /// Build a single CZML packet from a feature with embedded `czml.*` attributes.
 /// When `params` provides `time_field` and `global_end` is set, per-entity availability
 /// is computed. Polygon geometry is auto-converted when no graphic property exists.
+/// `effective_epoch` is the epoch to use for numeric time conversion (may be auto-detected).
 fn build_embedded_packet(
     feature: &Feature,
     params: &CzmlWriterParam,
     global_end: Option<&str>,
+    effective_epoch: Option<&str>,
 ) -> Result<Value, BoxedError> {
     let mut packet = serde_json::Map::new();
 
     if let Some(AttributeValue::String(id)) = feature.get(Attribute::new("id")) {
         packet.insert("id".to_string(), serde_json::json!(id));
+    } else if let Some(AttributeValue::String(name)) = feature.get(Attribute::new("name")) {
+        // Use name as fallback id
+        packet.insert("id".to_string(), serde_json::json!(name));
     }
     if let Some(AttributeValue::String(name)) = feature.get(Attribute::new("name")) {
         packet.insert("name".to_string(), serde_json::json!(name));
@@ -447,7 +541,7 @@ fn build_embedded_packet(
     if let (Some(time_field), Some(end)) = (&params.time_field, global_end) {
         if let Some(time_val) = feature.get(time_field) {
             let time_str = attribute_value_to_string(time_val);
-            let start_iso = strip_epoch_offset_for_availability(&time_str, params.epoch.as_deref());
+            let start_iso = strip_epoch_offset_for_availability(&time_str, effective_epoch);
             packet.insert(
                 "availability".to_string(),
                 serde_json::json!(format!("{start_iso}/{end}")),
@@ -561,7 +655,7 @@ fn build_embedded_packet(
         }
     }
 
-    // Auto-convert polygon geometry or fall back to default point
+    // Auto-convert polygon geometry when no graphic property was set via czml.* attributes
     if !packet.contains_key("point")
         && !packet.contains_key("billboard")
         && !packet.contains_key("model")
@@ -573,23 +667,18 @@ fn build_embedded_packet(
             packet.insert("polygon".to_string(), polygon_val);
             // Remove position for polygon entities (positions are in polygon.positions)
             packet.remove("position");
-        } else {
-            packet.insert(
-                "point".to_string(),
-                serde_json::json!({
-                    "pixelSize": 10,
-                    "heightReference": "NONE",
-                }),
-            );
         }
+        // No fallback point — if the geometry cannot be converted, rely on the
+        // position that was already set (if any) or let the entity be data-only.
     }
 
     if !packet.contains_key("description") {
         if let Some(AttributeValue::String(desc)) = feature.get(Attribute::new("description")) {
             packet.insert("description".to_string(), serde_json::json!(desc));
         } else {
-            // Auto-generate description from attributes
-            let desc = map_to_html_table(&feature.attributes);
+            // Auto-generate description from non-internal attributes
+            let filtered = filter_description_attributes(&feature.attributes);
+            let desc = map_to_html_table(&filtered);
             if !desc.is_empty() && desc != "<table></table>" {
                 packet.insert("description".to_string(), serde_json::json!(desc));
             }
@@ -846,15 +935,7 @@ fn build_entity_packet(
         .map(attribute_value_to_string);
 
     let description = sorted.first().map(|f| {
-        let filtered: IndexMap<Attribute, AttributeValue> = f
-            .attributes
-            .iter()
-            .filter(|(k, _)| {
-                let name = k.to_string();
-                !name.starts_with("czml.") && name != time_field.to_string()
-            })
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
+        let filtered = filter_description_attributes(&f.attributes);
         map_to_html_table(&filtered)
     });
 
@@ -873,10 +954,19 @@ fn build_entity_packet(
         packet["description"] = serde_json::json!(d);
     }
 
-    packet["point"] = serde_json::json!({
-        "pixelSize": 10,
-        "heightReference": "NONE",
-    });
+    // Add graphic based on geometry type: polygon for polygon features, point for others
+    if let Some(first_feature) = sorted.first() {
+        if let Some(polygon_val) = feature_geometry_to_polygon_json(first_feature, params) {
+            packet["polygon"] = polygon_val;
+            // Polygon positions are self-contained; remove redundant position
+            packet.as_object_mut().map(|m| m.remove("position"));
+        } else {
+            packet["point"] = serde_json::json!({
+                "pixelSize": 10,
+                "heightReference": "NONE",
+            });
+        }
+    }
 
     Ok(packet)
 }
@@ -961,12 +1051,36 @@ fn attribute_value_to_string(value: &AttributeValue) -> String {
     }
 }
 
+/// Filter attributes for description, removing internal and duplicate keys.
+fn filter_description_attributes(
+    attrs: &IndexMap<Attribute, AttributeValue>,
+) -> IndexMap<Attribute, AttributeValue> {
+    let skip_prefixes = ["czml.", "_", "http_"];
+    let skip_keys = [
+        "id",
+        "name",
+        "description",
+        "availability",
+        "parent",
+        "match",
+    ];
+
+    attrs
+        .iter()
+        .filter(|(k, _)| {
+            let key = k.to_string();
+            !skip_prefixes.iter().any(|p| key.starts_with(p)) && !skip_keys.contains(&key.as_str())
+        })
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
+
 fn map_to_html_table(map: &IndexMap<Attribute, AttributeValue>) -> String {
     let mut html = String::new();
     html.push_str("<table>");
     for (key, value) in map {
-        let value: serde_json::Value = value.clone().into();
-        html.push_str(&format!("<tr><td>{key}</td><td>{value}</td></tr>"));
+        let display = attribute_value_to_string(value);
+        html.push_str(&format!("<tr><td>{key}</td><td>{display}</td></tr>"));
     }
     html.push_str("</table>");
     html
@@ -1123,6 +1237,10 @@ fn build_properties_bag(feature: &Feature) -> Option<Value> {
             continue;
         }
         let json_val: serde_json::Value = value.clone().into();
+        // Skip null values — Cesium's CzmlDataSource crashes on null property values
+        if json_val.is_null() {
+            continue;
+        }
         properties.insert(key, json_val);
     }
 
@@ -1362,7 +1480,7 @@ mod tests {
     fn test_build_embedded_packet_timeseries() {
         let f = make_embedded_feature_with_timeseries();
         let params = make_default_params();
-        let packet = build_embedded_packet(&f, &params, None).unwrap();
+        let packet = build_embedded_packet(&f, &params, None, None).unwrap();
 
         assert_eq!(packet["id"], "vehicle-a");
         assert_eq!(packet["name"], "Vehicle Alpha");
@@ -1387,7 +1505,7 @@ mod tests {
     fn test_build_embedded_packet_static() {
         let f = make_embedded_static_feature();
         let params = make_default_params();
-        let packet = build_embedded_packet(&f, &params, None).unwrap();
+        let packet = build_embedded_packet(&f, &params, None, None).unwrap();
 
         assert_eq!(packet["id"], "static-poi");
         assert_eq!(packet["name"], "Tokyo Tower");

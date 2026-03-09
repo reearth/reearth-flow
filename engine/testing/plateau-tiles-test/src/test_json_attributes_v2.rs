@@ -73,7 +73,7 @@ pub fn test_json_attributes_v2(
         };
 
         // Use analyze_attributes: flow as attr1 (casts applied to it), truth as attr2
-        analyze_attributes(name, &flow_data, &truth_data, casts, HashMap::new())?;
+        analyze_attributes(name, &truth_data, &flow_data, casts, HashMap::new())?;
 
         tracing::debug!("OK: json_attributes_v2 '{}'", name);
     }
