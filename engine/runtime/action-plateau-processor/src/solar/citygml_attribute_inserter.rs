@@ -404,17 +404,17 @@ impl Processor for CityGmlAttributeInserter {
             let (modified, roof_rings, image_uris) =
                 self.insert_attributes(&input_bytes, collect_rings)?;
 
-            // If we have roof rings and texture info, append solar appearance block and
-            // remove those rings from the original photo-texture appearance so that there
-            // is no ambiguity when the output CityGML is read back.
+            // If we have roof rings and texture info, append appearance block
             let final_output = if let (false, Some(epsg), Some(ref tex_fname)) =
                 (roof_rings.is_empty(), source_epsg, &texture_filename)
             {
-                let (appearance_xml, solar_ring_ids) =
-                    self.build_appearance_xml(&roof_rings, epsg, tex_fname, self.texture_bounds)?;
-                let stripped =
-                    strip_photo_texture_for_rings(&modified, &solar_ring_ids)?;
-                self.insert_appearance_block(&stripped, &appearance_xml)?
+                let appearance_xml = CityGmlAttributeInserter::build_appearance_xml(
+                    &roof_rings,
+                    epsg,
+                    tex_fname,
+                    self.texture_bounds,
+                )?;
+                CityGmlAttributeInserter::insert_appearance_block(&modified, &appearance_xml)?
             } else {
                 modified
             };
@@ -809,26 +809,23 @@ impl CityGmlAttributeInserter {
 
     /// Reproject ring coordinates from EPSG:6697 to the projected CRS, compute UV coordinates,
     /// and generate the appearance XML block to insert before </core:CityModel>.
-    /// Also returns the set of ring IDs that are covered by the solar texture, so that the
-    /// caller can remove those rings from the original photo-texture appearance.
     fn build_appearance_xml(
-        &self,
         roof_rings: &[RoofRingData],
         source_epsg: u32,
         texture_filename: &str,
         external_bounds: Option<(f64, f64, f64, f64)>,
-    ) -> Result<(String, HashSet<String>), BoxedError> {
+    ) -> Result<String, BoxedError> {
         // Reproject all coordinates from EPSG:6697 (JGD2011 geographic) → projected CRS
         let geographic_epsg = 6697u32;
         get_or_create_proj(geographic_epsg, source_epsg)?;
 
-        let mut reprojected_rings: Vec<(usize, Vec<(f64, f64)>)> = Vec::new();
+        let mut reprojected_rings: Vec<Vec<(f64, f64)>> = Vec::new();
         let mut computed_min_x = f64::MAX;
         let mut computed_min_y = f64::MAX;
         let mut computed_max_x = f64::MIN;
         let mut computed_max_y = f64::MIN;
 
-        for (i, ring) in roof_rings.iter().enumerate() {
+        for ring in roof_rings.iter() {
             let mut projected_coords = Vec::with_capacity(ring.coords.len());
             for &(lat, lon, _height) in &ring.coords {
                 let (x, y) = reproject_coords(lat, lon, geographic_epsg, source_epsg)?;
@@ -849,7 +846,7 @@ impl CityGmlAttributeInserter {
                 }
                 projected_coords.push((x, y));
             }
-            reprojected_rings.push((i, projected_coords));
+            reprojected_rings.push(projected_coords);
         }
 
         // Use externally-provided bounds (from ImageRasterizer) when available, so that UV
@@ -863,12 +860,16 @@ impl CityGmlAttributeInserter {
         let width = max_x - min_x;
         let height = max_y - min_y;
 
-        // Build the XML string
+        // Build the XML string.
+        // Using the same theme name ("rgbTexture") as the original photo-texture appearance
+        // means nusamai merges both blocks into one Theme when reading back: the solar UV
+        // entries (appended last) overwrite the photo UV entries for the same ring IDs,
+        // so solar-covered roofs show the irradiance texture while all other surfaces keep
+        // the photo texture — no changes to the generic reader are required.
         let mut xml = String::new();
-        let mut solar_ring_ids: HashSet<String> = HashSet::new();
         xml.push_str("<app:appearanceMember>");
         xml.push_str("<app:Appearance>");
-        xml.push_str("<app:theme>solarRadiation</app:theme>");
+        xml.push_str("<app:theme>rgbTexture</app:theme>");
         xml.push_str("<app:surfaceDataMember>");
         xml.push_str("<app:ParameterizedTexture>");
         xml.push_str("<app:imageURI>");
@@ -876,8 +877,7 @@ impl CityGmlAttributeInserter {
         xml.push_str("</app:imageURI>");
         xml.push_str("<app:mimeType>image/png</app:mimeType>");
 
-        for (i, projected_coords) in &reprojected_rings {
-            let ring = &roof_rings[*i];
+        for (projected_coords, ring) in reprojected_rings.iter().zip(roof_rings.iter()) {
 
             // Compute raw (unclamped) UV values to determine ring coverage.
             let raw_uvs: Vec<(f64, f64)> = projected_coords
@@ -902,20 +902,14 @@ impl CityGmlAttributeInserter {
             // stray slightly outside due to radiation-cell discretization).  Only rings
             // whose centroid is clearly outside the radiation bounds are skipped.
             let n = raw_uvs.len() as f64;
-            let (centroid_u, centroid_v) = if n > 0.0 {
-                let sum = raw_uvs
-                    .iter()
-                    .fold((0.0f64, 0.0f64), |(su, sv), &(u, v)| (su + u, sv + v));
-                (sum.0 / n, sum.1 / n)
-            } else {
-                (0.5, 0.5)
-            };
+            let sum = raw_uvs
+                .iter()
+                .fold((0.0f64, 0.0f64), |(su, sv), &(u, v)| (su + u, sv + v));
+            let (centroid_u, centroid_v) = (sum.0 / n, sum.1 / n);
             if !(0.0..=1.0).contains(&centroid_u) || !(0.0..=1.0).contains(&centroid_v) {
                 // Ring centroid is outside the texture area; skip it.
                 continue;
             }
-
-            solar_ring_ids.insert(ring.ring_id.clone());
 
             // Clamp UV values to [0, 1] for rings that are mostly within coverage but
             // have a few edge vertices that stray slightly outside the radiation bounds.
@@ -954,12 +948,11 @@ impl CityGmlAttributeInserter {
         xml.push_str("</app:Appearance>");
         xml.push_str("</app:appearanceMember>");
 
-        Ok((xml, solar_ring_ids))
+        Ok(xml)
     }
 
     /// Insert appearance XML block before the closing </core:CityModel> tag.
     fn insert_appearance_block(
-        &self,
         xml_bytes: &[u8],
         appearance_xml: &str,
     ) -> Result<Vec<u8>, BoxedError> {
@@ -981,266 +974,6 @@ impl CityGmlAttributeInserter {
         result.extend_from_slice(&xml_bytes[insert_pos..]);
         Ok(result)
     }
-}
-
-/// Strip `<app:textureCoordinates>` entries from photo-texture appearance blocks
-/// (`rgbTexture`, `FMETheme`) for ring IDs that are now covered by the solar radiation theme.
-/// An `<app:target>` block that becomes empty after filtering is dropped entirely.
-/// This eliminates ambiguity when the output CityGML is read back: each ring has UV data
-/// in exactly one theme.
-fn strip_photo_texture_for_rings(
-    input: &[u8],
-    solar_ring_ids: &HashSet<String>,
-) -> Result<Vec<u8>, BoxedError> {
-    if solar_ring_ids.is_empty() {
-        return Ok(input.to_vec());
-    }
-
-    let mut reader = Reader::from_reader(input);
-    reader.config_mut().trim_text(false);
-
-    let mut output: Vec<u8> = Vec::with_capacity(input.len());
-    let mut buf = Vec::new();
-    let mut depth: usize = 0;
-
-    // Appearance-level tracking
-    let mut appearance_depth: Option<usize> = None;
-    let mut is_photo_appearance: Option<bool> = None; // None = theme not yet seen
-    let mut in_theme_element = false;
-    let mut theme_text = String::new();
-
-    // Per-target buffering (within a photo appearance)
-    let mut target_depth: Option<usize> = None;
-    let mut target_buf: Vec<u8> = Vec::new();
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Eof) => break,
-            Ok(Event::Start(ref e)) => {
-                depth += 1;
-                let ename = e.name();
-                let local = xml_local_name(ename.as_ref());
-
-                if target_depth.is_some() {
-                    // We are buffering an <app:target> block — accumulate everything.
-                    Writer::new(&mut target_buf)
-                        .write_event(Event::Start(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                } else if local == b"Appearance" && appearance_depth.is_none() {
-                    appearance_depth = Some(depth);
-                    is_photo_appearance = None;
-                    Writer::new(&mut output)
-                        .write_event(Event::Start(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                } else if local == b"theme"
-                    && appearance_depth.is_some()
-                    && is_photo_appearance.is_none()
-                {
-                    in_theme_element = true;
-                    theme_text.clear();
-                    Writer::new(&mut output)
-                        .write_event(Event::Start(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                } else if local == b"target" && is_photo_appearance == Some(true) {
-                    // Start buffering this <app:target> block.
-                    target_depth = Some(depth);
-                    target_buf.clear();
-                    Writer::new(&mut target_buf)
-                        .write_event(Event::Start(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                } else {
-                    Writer::new(&mut output)
-                        .write_event(Event::Start(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                }
-            }
-            Ok(Event::End(ref e)) => {
-                let ename = e.name();
-                let local = xml_local_name(ename.as_ref());
-
-                if target_depth == Some(depth) {
-                    // End of a buffered <app:target> — filter it and maybe emit.
-                    Writer::new(&mut target_buf)
-                        .write_event(Event::End(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                    if let Some(filtered) =
-                        filter_target_block(&target_buf, solar_ring_ids)
-                    {
-                        output.extend_from_slice(&filtered);
-                    }
-                    target_depth = None;
-                    target_buf.clear();
-                } else if target_depth.is_some() {
-                    // Still inside the buffered target.
-                    Writer::new(&mut target_buf)
-                        .write_event(Event::End(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                } else {
-                    if in_theme_element && local == b"theme" {
-                        in_theme_element = false;
-                        let t = theme_text.trim();
-                        is_photo_appearance = Some(t == "rgbTexture" || t == "FMETheme");
-                        theme_text.clear();
-                    }
-                    if appearance_depth == Some(depth) {
-                        appearance_depth = None;
-                        is_photo_appearance = None;
-                    }
-                    Writer::new(&mut output)
-                        .write_event(Event::End(e.clone()))
-                        .map_err(|e| {
-                            CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                        })?;
-                }
-                depth = depth.saturating_sub(1);
-            }
-            Ok(Event::Text(ref e)) => {
-                if target_depth.is_some() {
-                    Writer::new(&mut target_buf)
-                        .write_event(Event::Text(e.clone()))
-                        .map_err(|err| {
-                            CityGmlAttributeInserterError::Process(format!(
-                                "XML write error: {err}"
-                            ))
-                        })?;
-                } else {
-                    if in_theme_element {
-                        if let Ok(text) = e.unescape() {
-                            theme_text.push_str(&text);
-                        }
-                    }
-                    Writer::new(&mut output)
-                        .write_event(Event::Text(e.clone()))
-                        .map_err(|err| {
-                            CityGmlAttributeInserterError::Process(format!(
-                                "XML write error: {err}"
-                            ))
-                        })?;
-                }
-            }
-            Ok(event) => {
-                let target = if target_depth.is_some() {
-                    &mut target_buf
-                } else {
-                    &mut output
-                };
-                Writer::new(target).write_event(event).map_err(|e| {
-                    CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))
-                })?;
-            }
-            Err(e) => {
-                return Err(CityGmlAttributeInserterError::Process(format!(
-                    "XML read error: {e}"
-                ))
-                .into());
-            }
-        }
-        buf.clear();
-    }
-
-    Ok(output)
-}
-
-/// Filter one `<app:target>` block: remove any `<app:textureCoordinates>` whose `ring`
-/// attribute (after stripping the leading `#`) is in `solar_ring_ids`.
-/// Returns `None` if all texture coordinates were removed (caller should drop the target).
-fn filter_target_block(
-    target_xml: &[u8],
-    solar_ring_ids: &HashSet<String>,
-) -> Option<Vec<u8>> {
-    let mut reader = Reader::from_reader(target_xml);
-    reader.config_mut().trim_text(false);
-
-    let mut output: Vec<u8> = Vec::new();
-    let mut buf = Vec::new();
-    let mut depth: usize = 0;
-
-    let mut suppress = false; // suppress current <app:textureCoordinates>
-    let mut tex_coord_depth: usize = 0;
-    let mut has_remaining = false;
-
-    loop {
-        match reader.read_event_into(&mut buf) {
-            Ok(Event::Eof) => break,
-            Ok(Event::Start(ref e)) => {
-                depth += 1;
-                let ename = e.name();
-                let local = xml_local_name(ename.as_ref());
-                if local == b"textureCoordinates" {
-                    let ring_id = e
-                        .attributes()
-                        .flatten()
-                        .find(|a| a.key.as_ref() == b"ring")
-                        .and_then(|a| a.unescape_value().ok())
-                        .map(|v| v.trim_start_matches('#').to_string());
-                    suppress = ring_id.map_or(false, |id| solar_ring_ids.contains(&id));
-                    tex_coord_depth = depth;
-                    if !suppress {
-                        has_remaining = true;
-                    }
-                }
-                if !suppress {
-                    Writer::new(&mut output)
-                        .write_event(Event::Start(e.clone()))
-                        .ok();
-                }
-            }
-            Ok(Event::End(ref e)) => {
-                let emit = !suppress;
-                if emit {
-                    Writer::new(&mut output)
-                        .write_event(Event::End(e.clone()))
-                        .ok();
-                }
-                if suppress && depth == tex_coord_depth {
-                    suppress = false;
-                }
-                depth = depth.saturating_sub(1);
-            }
-            Ok(Event::Text(ref e)) => {
-                if !suppress {
-                    Writer::new(&mut output)
-                        .write_event(Event::Text(e.clone()))
-                        .ok();
-                }
-            }
-            Ok(event) => {
-                if !suppress {
-                    Writer::new(&mut output).write_event(event).ok();
-                }
-            }
-            Err(_) => break,
-        }
-        buf.clear();
-    }
-
-    if has_remaining {
-        Some(output)
-    } else {
-        None
-    }
-}
-
-/// Return the local name (after `:`) of an XML qualified name.
-fn xml_local_name(name: &[u8]) -> &[u8] {
-    name.iter()
-        .rposition(|&b| b == b':')
-        .map(|pos| &name[pos + 1..])
-        .unwrap_or(name)
 }
 
 fn is_building_tag(e: &quick_xml::events::BytesStart<'_>) -> bool {

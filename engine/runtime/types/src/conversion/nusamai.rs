@@ -262,15 +262,9 @@ pub fn entity_to_geometry(
 
                     for (i, ring) in poly.rings().enumerate() {
                         let ring_id = geoms.ring_ids[global_ring_idx + i].clone();
-                        // Try every appearance theme for this ring; first hit wins.
-                        // This allows multiple themes (e.g. photo texture + solar radiation)
-                        // to coexist without any hardcoded theme-name priority here.
-                        let tex = ring_id.clone().and_then(|id| {
-                            apperance
-                                .themes
-                                .values()
-                                .find_map(|t| t.ring_id_to_texture.get(&id))
-                        });
+                        let tex = ring_id
+                            .clone()
+                            .and_then(|id| theme.ring_id_to_texture.get(&id));
 
                         let mut add_dummy_texture = || {
                             let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
