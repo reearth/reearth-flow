@@ -35,6 +35,7 @@ regex.workspace = true
 rust-embed = "8.11.0"
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 slog.workspace = true
 tempfile.workspace = true
 time.workspace = true

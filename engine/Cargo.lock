@@ -7146,6 +7146,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "serde_yaml",
  "slog",
  "tempfile",
  "time",

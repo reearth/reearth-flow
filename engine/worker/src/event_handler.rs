@@ -5,7 +5,7 @@ use reearth_flow_runtime::node::NodeHandle;
 use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
-use reearth_flow_worker::pubsub::publisher::Publisher;
+use reearth_flow_worker::pubsub::Publisher;
 use reearth_flow_worker::types::edge_pass_through_event::{
     EdgePassThroughEvent, EventStatus, UpdatedEdge,
 };

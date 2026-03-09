@@ -23,7 +23,7 @@ use crate::{
 use reearth_flow_worker::{
     errors::{self, Error},
     logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
-    pubsub::{backend::PubSubBackend, publisher::Publisher},
+    pubsub::{PubSubBackend, Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
         metadata::Metadata,

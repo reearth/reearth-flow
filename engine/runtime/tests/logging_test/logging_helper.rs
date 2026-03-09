@@ -25,7 +25,7 @@ use reearth_flow_types::Workflow;
 use reearth_flow_worker::logger::{
     UserFacingLogHandler, UserFacingLogLayer, USER_FACING_LOG_FILE_WRITER,
 };
-use reearth_flow_worker::pubsub::backend::{noop::NoopPubSub, PubSubBackend};
+use reearth_flow_worker::pubsub::{NoopPubSub, PubSubBackend};
 use reearth_flow_worker::types::user_facing_log_event::UserFacingLogLevel;
 use regex::Regex;
 use rust_embed::RustEmbed;
@@ -123,10 +123,18 @@ fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool
     let (non_blocking, _uf_guard) = tracing_appender::non_blocking(file);
     *USER_FACING_LOG_FILE_WRITER.write().unwrap() = Some(non_blocking);
 
+    // Extract workflow id from YAML the same way production does in command.rs
+    // (extract_workflow_info), so the handler emits the real workflowId field.
+    let pre_parsed_workflow_id = serde_yaml::from_str::<serde_yaml::Value>(workflow_str)
+        .ok()
+        .and_then(|v| v.get("id")?.as_str().map(String::from))
+        .and_then(|s| Uuid::parse_str(&s).ok())
+        .expect("workflow fixture must contain a valid UUID `id` field");
+
     // Create handler + layer (same as production)
     let rt = Runtime::new().unwrap();
     let handler = Arc::new(UserFacingLogHandler::new(
-        Uuid::nil(),
+        pre_parsed_workflow_id,
         job_id,
         PubSubBackend::Noop(NoopPubSub {}),
         rt.handle().clone(),
@@ -218,11 +226,13 @@ pub struct UserFacingLogEntry {
     pub message: String,
 }
 
-/// Compare ignoring `workflow_id`, `job_id`, and `timestamp` (they vary per run).
+/// Compare ignoring `job_id` and `timestamp` (they vary per run).
+/// `workflow_id` is deterministic (from the YAML fixture) and is compared.
 /// The `message` field is normalized to strip variable elapsed timing.
 impl PartialEq for UserFacingLogEntry {
     fn eq(&self, other: &Self) -> bool {
-        self.level == other.level
+        self.workflow_id == other.workflow_id
+            && self.level == other.level
             && self.node_name == other.node_name
             && self.node_id == other.node_id
             && normalize_uf_message(&self.message) == normalize_uf_message(&other.message)
@@ -239,12 +249,20 @@ impl Ord for UserFacingLogEntry {
     fn cmp(&self, other: &Self) -> Ordering {
         let a = normalize_uf_message(&self.message);
         let b = normalize_uf_message(&other.message);
-        (&self.level, &self.node_name, &self.node_id, &a).cmp(&(
-            &other.level,
-            &other.node_name,
-            &other.node_id,
-            &b,
-        ))
+        (
+            &self.workflow_id,
+            &self.level,
+            &self.node_name,
+            &self.node_id,
+            &a,
+        )
+            .cmp(&(
+                &other.workflow_id,
+                &other.level,
+                &other.node_name,
+                &other.node_id,
+                &b,
+            ))
     }
 }
 
