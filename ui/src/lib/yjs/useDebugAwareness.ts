@@ -16,10 +16,17 @@ export default ({
 
   // Track last known debugRun per client (after project filter)
   const prevDebugRunsByClientRef = useRef<Map<number, any>>(new Map());
-
   const broadcastDebugRun = useCallback(
     (jobId: string | null, status?: string) => {
-      if (jobId && projectId) {
+      if (jobId && projectId && status) {
+        yAwareness.setLocalStateField("debugRun", {
+          jobId,
+          projectId,
+          startedAt:
+            yAwareness.getLocalState()?.debugRun?.startedAt ?? Date.now(),
+          status,
+        });
+      } else if (jobId && projectId) {
         yAwareness.setLocalStateField("debugRun", {
           jobId,
           projectId,

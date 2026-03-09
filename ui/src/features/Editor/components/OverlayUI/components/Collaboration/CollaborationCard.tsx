@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { UserDebugRun } from "@flow/types";
+import { JobStatus, UserDebugRun } from "@flow/types";
 
 type Props = {
   self?: boolean;
@@ -38,7 +38,7 @@ const CollaborationCard: React.FC<Props> = ({
   const t = useT();
   const [isHovered, setIsHovered] = useState(false);
   const getDebugRunStatusLabel = (
-    status: string | undefined,
+    status: JobStatus | undefined,
     t: (key: string) => string,
   ) => {
     switch (status) {
@@ -75,31 +75,35 @@ const CollaborationCard: React.FC<Props> = ({
         </span>
 
         <div className="flex items-center gap-2">
-          {time && (
-            <div className="flex items-center gap-0.5">
-              <span className="text-sm opacity-55 dark:font-light">
-                {getDebugRunStatusLabel(userDebugRun?.status, t)}
-              </span>
-              <span className="text-sm opacity-55 dark:font-light">
-                {t("({{time}})", { time })}
-              </span>
+          {(time || userDebugRun) && (
+            <div className="flex items-center gap-2">
+              {time && (
+                <div className="flex items-center gap-0.5">
+                  <span className="text-sm opacity-55 dark:font-light">
+                    {getDebugRunStatusLabel(userDebugRun?.status, t)}
+                  </span>
+                  <span className="text-sm opacity-55 dark:font-light">
+                    {t("({{time}})", { time })}
+                  </span>
+                </div>
+              )}
+              <div
+                className={`${
+                  userDebugRun?.status === "completed"
+                    ? "bg-success"
+                    : userDebugRun?.status === "running"
+                      ? "active-node-status"
+                      : userDebugRun?.status === "cancelled"
+                        ? "bg-warning"
+                        : userDebugRun?.status === "failed"
+                          ? "bg-destructive"
+                          : userDebugRun?.status === "queued"
+                            ? "queued-node-status"
+                            : "bg-secondary"
+                } size-3 rounded-full`}
+              />
             </div>
           )}
-          <div
-            className={`${
-              userDebugRun?.status === "completed"
-                ? "bg-success"
-                : userDebugRun?.status === "running"
-                  ? "active-node-status"
-                  : userDebugRun?.status === "cancelled"
-                    ? "bg-warning"
-                    : userDebugRun?.status === "failed"
-                      ? "bg-destructive"
-                      : userDebugRun?.status === "queued"
-                        ? "queued-node-status"
-                        : "bg-secondary"
-            } size-3 rounded-full`}
-          />
         </div>
       </div>
       <div className="ml-auto">
