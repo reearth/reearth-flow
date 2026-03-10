@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.9 - 2026-03-10
+
+### Misc
+
+#### 🚀 Features
+
+- Redoing the commit ([#1962](https://github.com/reearth/reearth-flow/pull/1962)) that added citygml output for the solar workflow ([#1972](https://github.com/reearth/reearth-flow/pull/1972)) [`0c11dc`](https://github.com/reearth/reearth-flow/commit/0c11dc)
+
+### engine
+
+#### 🚀 Features
+
+- Cross-file xlink:href reference of features and geometry ([#1966](https://github.com/reearth/reearth-flow/pull/1966)) [`937f1e`](https://github.com/reearth/reearth-flow/commit/937f1e)
+- Add AttributeRangeMapper for mapping attribute values to ranges ([#1941](https://github.com/reearth/reearth-flow/pull/1941)) [`761aa8`](https://github.com/reearth/reearth-flow/commit/761aa8)
+
+#### 🔧 Bug Fixes
+
+- Enhance CZML writer parameter sanitization and auto-detect epoch for numeric time values ([#1968](https://github.com/reearth/reearth-flow/pull/1968)) [`b64e43`](https://github.com/reearth/reearth-flow/commit/b64e43)
+- Revert &quot;feat: citygml  ([#1962](https://github.com/reearth/reearth-flow/pull/1962))&quot; ([#1965](https://github.com/reearth/reearth-flow/pull/1965)) [`3d02e6`](https://github.com/reearth/reearth-flow/commit/3d02e6)
+- Add color and height attributes for polygon styling in CZML export ([#1964](https://github.com/reearth/reearth-flow/pull/1964)) [`1825a7`](https://github.com/reearth/reearth-flow/commit/1825a7)
+
+#### 🧪 Testing
+
+- Add integration tests for user-facing log and action log output ([#1971](https://github.com/reearth/reearth-flow/pull/1971)) [`ebe502`](https://github.com/reearth/reearth-flow/commit/ebe502)
+
+### ui
+
+#### 🚀 Features
+
+- Auto-selection on action creation + auto-connect new action from previously selected action [FLOW-FE-333] ([#1938](https://github.com/reearth/reearth-flow/pull/1938)) [`b308e8`](https://github.com/reearth/reearth-flow/commit/b308e8)
+- Show subscription status of debug run for awareness [FLOW-FE-384] ([#1970](https://github.com/reearth/reearth-flow/pull/1970)) [`edd5a5`](https://github.com/reearth/reearth-flow/commit/edd5a5)
+
+#### 🔧 Bug Fixes
+
+- Dnd auto-select fix and optimize geometry processing for fly-to-behaviour [FLOW-FE-420] ([#1974](https://github.com/reearth/reearth-flow/pull/1974)) [`269268`](https://github.com/reearth/reearth-flow/commit/269268)
+- Correct VirtualizedTable Search Rendering &amp; Enhance Search Panel Interactions [FLOW-FE-411] ([#1963](https://github.com/reearth/reearth-flow/pull/1963)) [`556f49`](https://github.com/reearth/reearth-flow/commit/556f49)
+- Min zoom level and datetime ([#1945](https://github.com/reearth/reearth-flow/pull/1945)) [`6df43b`](https://github.com/reearth/reearth-flow/commit/6df43b)
+- Improve GeoJSON Data Columnizer Formatting, Performance &amp; Viewer Feature Controls [FLOW-FE-409] ([#1948](https://github.com/reearth/reearth-flow/pull/1948)) [`5a3b37`](https://github.com/reearth/reearth-flow/commit/5a3b37)
+- Add workflow path handling for input&#x2F;output router for dnd subworkflows in createYWorkflow [FLOW-FE-410] ([#1958](https://github.com/reearth/reearth-flow/pull/1958)) [`d644bf`](https://github.com/reearth/reearth-flow/commit/d644bf)
+- Prevent workflow variable dialog focus on other user movements and refetch fresh variables ([#1960](https://github.com/reearth/reearth-flow/pull/1960)) [`75df56`](https://github.com/reearth/reearth-flow/commit/75df56)
+
+### 
+
+#### 🚀 Features
+
+- Redoing the commit ([#1962](https://github.com/reearth/reearth-flow/pull/1962)) that added citygml output for the solar workflow ([#1972](https://github.com/reearth/reearth-flow/pull/1972)) [`0c11dc`](https://github.com/reearth/reearth-flow/commit/0c11dc)
+
 ## 0.1.0-alpha.8 - 2026-03-03
 
 ### Misc
