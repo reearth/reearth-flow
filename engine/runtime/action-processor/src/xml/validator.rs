@@ -467,7 +467,7 @@ impl XmlValidator {
                 let fetch_result = match fetcher.fetch(location) {
                     Ok(r) => r,
                     Err(e) if is_remote => {
-                        tracing::warn!(url = %location, "Skipping unreachable remote schema");
+                        tracing::warn!(url = %location, error = ?e, "Skipping unreachable remote schema");
                         continue;
                     }
                     Err(e) => {
@@ -482,7 +482,7 @@ impl XmlValidator {
                 let schemas = match resolver.resolve_all(&fetch_result.content, base_uri) {
                     Ok(s) => s,
                     Err(e) if is_remote => {
-                        tracing::warn!(url = %location, "Skipping unresolvable remote schema");
+                        tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
                         continue;
                     }
                     Err(e) => {
