@@ -20,7 +20,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
-use converter::{compute_envelope, convert_citygml_geometry, BoundingEnvelope, CityObjectType};
+use converter::{
+    compute_envelope, convert_citygml_geometry, AppearanceBundle, BoundingEnvelope, CityObjectType,
+};
 use writer::CityGmlXmlWriter;
 
 #[derive(Debug, Clone, Default)]
@@ -198,13 +200,23 @@ impl Sink for CityGmlWriterSink {
                     .unwrap_or("gen:GenericCityObject");
                 let city_type = CityObjectType::from_feature_type(feature_type);
 
-                let geometries = convert_citygml_geometry(geom, &self.lod_mask);
+                let (geometries, appearance) = convert_citygml_geometry(geom, &self.lod_mask);
                 if geometries.is_empty() {
                     continue;
                 }
 
                 let gml_id_str = feature.id.to_string();
-                xml_writer.write_city_object(city_type, &geometries, Some(gml_id_str.as_str()))?;
+                let appearance_opt: Option<&AppearanceBundle> = if appearance.has_content() {
+                    Some(&appearance)
+                } else {
+                    None
+                };
+                xml_writer.write_city_object(
+                    city_type,
+                    &geometries,
+                    Some(gml_id_str.as_str()),
+                    appearance_opt,
+                )?;
             }
 
             xml_writer.write_footer()?;
