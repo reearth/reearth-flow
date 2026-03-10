@@ -164,7 +164,7 @@
   "Stop debug run of workflow": "Detener ejecución de depuración del flujo de trabajo",
   "Additional Debug Actions": "Acciones adicionales de depuración",
   "Run Workflow": "Ejecutar flujo de trabajo",
-  "3D Viewer Could Not Be Loaded. Check if the data is valid.": "El visor 3D no se pudo cargar. Verifica si los datos son válidos.",
+  "Geo Viewer Could Not Be Loaded. Check if the data is valid.": "El visor geográfico no se pudo cargar. Verifica si los datos son válidos.",
   "View raw": "Ver en bruto",
   "Back to table": "Volver a la tabla",
   "Feature ID: ": "ID de característica: ",

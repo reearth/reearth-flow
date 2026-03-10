@@ -164,7 +164,7 @@
   "Stop debug run of workflow": "停止工作流的调试运行",
   "Additional Debug Actions": "附加调试操作",
   "Run Workflow": "运行工作流",
-  "3D Viewer Could Not Be Loaded. Check if the data is valid.": "3D查看器无法加载。请检查数据是否有效。",
+  "Geo Viewer Could Not Be Loaded. Check if the data is valid.": "地理查看器无法加载。请检查数据是否有效。",
   "View raw": "查看原始数据",
   "Back to table": "返回表格",
   "Feature ID: ": "特征ID: ",
