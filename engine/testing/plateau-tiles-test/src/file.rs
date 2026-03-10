@@ -5,29 +5,28 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
+fn perr(p: &Path, err: impl std::fmt::Display) -> String {
+    format!("{:?}: {}", p, err)
+}
+
 /// Zips the contents of `src_dir` into `zip_path` (no top-level directory prefix).
 pub fn zip_dir(src_dir: &Path, zip_path: &Path) -> Result<(), String> {
-    let file = fs::File::create(zip_path)
-        .map_err(|e| format!("Failed to create zip {:?}: {}", zip_path, e))?;
+    let file = fs::File::create(zip_path).map_err(|e| perr(zip_path, e))?;
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(src_dir).into_iter().filter_map(|r| r.ok()) {
         let path = entry.path();
         if path.is_file() {
-            let rel = path.strip_prefix(src_dir).unwrap();
+            let rel = path.strip_prefix(src_dir).map_err(|e| perr(path, e))?;
             let name = rel.to_string_lossy().to_string();
-            zip.start_file(&name, options)
-                .map_err(|e| format!("Failed to start zip entry {}: {}", name, e))?;
-            let content =
-                fs::read(path).map_err(|e| format!("Failed to read {:?}: {}", path, e))?;
-            zip.write_all(&content)
-                .map_err(|e| format!("Failed to write zip entry {}: {}", name, e))?;
+            zip.start_file(&name, options).map_err(|e| perr(path, e))?;
+            let content = fs::read(path).map_err(|e| perr(path, e))?;
+            zip.write_all(&content).map_err(|e| perr(path, e))?;
         }
     }
 
-    zip.finish()
-        .map_err(|e| format!("Failed to finish zip {:?}: {}", zip_path, e))?;
+    zip.finish().map_err(|e| perr(zip_path, e))?;
     Ok(())
 }
 
@@ -35,18 +34,11 @@ pub fn zip_dir(src_dir: &Path, zip_path: &Path) -> Result<(), String> {
 pub fn extract_zip_to_tmp(zip_path: &Path) -> Result<PathBuf, String> {
     let tmp_dir = std::env::temp_dir().join(format!("plateau-tiles-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tmp_dir);
-    fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
-    let file = fs::File::open(zip_path)
-        .map_err(|e| format!("Failed to open zip {:?}: {}", zip_path, e))?;
-    let mut zip = zip::ZipArchive::new(file)
-        .map_err(|e| format!("Failed to read zip {:?}: {}", zip_path, e))?;
-    zip.extract(&tmp_dir)
-        .map_err(|e| format!("Failed to extract zip {:?}: {}", zip_path, e))?;
+    fs::create_dir_all(&tmp_dir).map_err(|e| perr(&tmp_dir, e))?;
+    let file = fs::File::open(zip_path).map_err(|e| perr(zip_path, e))?;
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| perr(zip_path, e))?;
+    zip.extract(&tmp_dir).map_err(|e| perr(zip_path, e))?;
     Ok(tmp_dir)
-}
-
-fn perr(p: &Path, err: impl std::fmt::Display) -> String {
-    format!("{:?}: {}", p, err)
 }
 
 /// Copies all items from `source_dir` into `output_dir`.
