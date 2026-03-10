@@ -249,4 +249,43 @@ mod tests {
             score
         );
     }
+
+    // draw_aa_circle is analytical: alpha = clamp(r + 0.5 - dist, 0, 1).
+    // Every pixel in the bounding box must match the formula exactly (within f32 precision).
+    #[test]
+    fn test_draw_aa_circle_point_geometry() {
+        let (cx, cy, r) = (512.0_f64, 512.0_f64, 4.0_f64);
+        let mut raster = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
+        draw_aa_circle(&mut raster, cx, cy, r);
+
+        let r_ceil = (r + 1.0).ceil() as i32;
+        for py in (cy as i32 - r_ceil)..=(cy as i32 + r_ceil) {
+            for px in (cx as i32 - r_ceil)..=(cx as i32 + r_ceil) {
+                let dist = (px as f64 - cx).hypot(py as f64 - cy);
+                let expected = (r + 0.5 - dist).clamp(0.0, 1.0) as f32;
+                let actual = raster[py as usize * RASTER_SIZE + px as usize];
+                assert!(
+                    (actual - expected).abs() < 1e-6,
+                    "pixel ({},{}) expected {}, got {}",
+                    px, py, expected, actual
+                );
+            }
+        }
+    }
+
+    // scanline_fill is exact: interior pixels are 1.0, exterior are 0.0.
+    // Square ring (100,100)→(200,100)→(200,200)→(100,200):
+    //   rows y=100..=199, cols x=100..=200 → 100×101 = 10100 pixels filled.
+    #[test]
+    fn test_scanline_fill_polygon_geometry() {
+        let mut raster = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
+        let ring = vec![(100.0, 100.0), (200.0, 100.0), (200.0, 200.0), (100.0, 200.0)];
+        scanline_fill(&mut raster, &[ring]);
+        let area: f32 = raster.iter().sum();
+        assert!(
+            (area - 10100.0).abs() < EPSILON as f32,
+            "filled area should be 10100 pixels, got {}",
+            area
+        );
+    }
 }
