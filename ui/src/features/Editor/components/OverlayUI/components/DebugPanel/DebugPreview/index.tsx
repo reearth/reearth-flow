@@ -132,7 +132,7 @@ const DebugPreview: React.FC<Props> = ({
 
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
-      {visualizerType === "2d-map" ? (
+      {visualizerType === "2d-map" || visualizerType === "3d-map" ? (
         <div className="h-full">
           {/* Geo Viewer Header */}
           <div className="py-1">
