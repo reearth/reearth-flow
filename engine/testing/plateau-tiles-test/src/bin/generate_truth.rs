@@ -1,5 +1,6 @@
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::file::{extract_zip_to_tmp, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
 use std::fs;
@@ -58,29 +59,32 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let stem = Path::new(&entry.path)
             .file_name()
             .expect("convs.mvt_png path must have a file name");
-        let zip_path = fme_dir.join(stem).with_extension("zip");
-        let tmp_dir = extract_zip_to_tmp(&zip_path)?;
-        let truth_dir = fme_dir.join(&entry.truth_path);
-        let result = mvt_png::write_png_truth(&tmp_dir, &truth_dir, entry.tiles.as_deref());
-        fs::remove_dir_all(&tmp_dir).ok();
-        result?;
-        println!("wrote mvt_png/{} -> {}", id, truth_dir.display());
+        let mvt_zip_path = fme_dir.join(stem).with_extension("zip");
+        let tmp_mvt_dir = extract_zip_to_tmp(&mvt_zip_path)?;
+
+        let tmp_png_dir =
+            std::env::temp_dir().join(format!("generate-truth-png-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&tmp_png_dir);
+        fs::create_dir_all(&tmp_png_dir)
+            .map_err(|e| format!("Failed to create tmp png dir: {}", e))?;
+
+        let result = mvt_png::write_png_truth(&tmp_mvt_dir, &tmp_png_dir, entry.tiles.as_deref());
+        fs::remove_dir_all(&tmp_mvt_dir).ok();
+
+        if let Err(e) = result {
+            fs::remove_dir_all(&tmp_png_dir).ok();
+            return Err(e);
+        }
+
+        let truth_zip_path = fme_dir.join(&entry.truth_path).with_extension("zip");
+        let zip_result = zip_dir(&tmp_png_dir, &truth_zip_path);
+        fs::remove_dir_all(&tmp_png_dir).ok();
+        zip_result?;
+
+        println!("wrote mvt_png/{} -> {}", id, truth_zip_path.display());
     }
 
     Ok(())
-}
-
-fn extract_zip_to_tmp(zip_path: &Path) -> Result<PathBuf, String> {
-    let tmp_dir = std::env::temp_dir().join(format!("generate-truth-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&tmp_dir);
-    fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
-    let file = fs::File::open(zip_path)
-        .map_err(|e| format!("Failed to open zip {:?}: {}", zip_path, e))?;
-    let mut zip = zip::ZipArchive::new(file)
-        .map_err(|e| format!("Failed to read zip {:?}: {}", zip_path, e))?;
-    zip.extract(&tmp_dir)
-        .map_err(|e| format!("Failed to extract zip {:?}: {}", zip_path, e))?;
-    Ok(tmp_dir)
 }
 
 fn main() {

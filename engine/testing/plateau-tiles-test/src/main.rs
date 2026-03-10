@@ -1,5 +1,6 @@
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
 use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
@@ -20,8 +21,6 @@ use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 use walkdir::WalkDir;
-use zip::write::SimpleFileOptions;
-use zip::ZipWriter;
 
 static INIT: Once = Once::new();
 
@@ -79,7 +78,7 @@ fn pack_inputs(
     let citymodel_udx_dir = test_path.join("citymodel/udx");
     assert!(citymodel_udx_dir.exists());
     let citymodel = output_dir.join(format!("{}.zip", zip_stem));
-    zip_dir(&citymodel_udx_dir, &citymodel);
+    zip_dir(&citymodel_udx_dir, &citymodel).unwrap();
 
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
@@ -87,14 +86,14 @@ fn pack_inputs(
     let codelists_dir = test_path.join("citymodel/codelists");
     if codelists_dir.exists() {
         let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
-        zip_dir(&codelists_dir, &path);
+        zip_dir(&codelists_dir, &path).unwrap();
         inputs.insert("codelists", path);
     }
 
     let schemas_dir = test_path.join("citymodel/schemas");
     if schemas_dir.exists() {
         let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
-        zip_dir(&schemas_dir, &path);
+        zip_dir(&schemas_dir, &path).unwrap();
         inputs.insert("schemas", path);
     }
 
@@ -111,25 +110,6 @@ fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
     inputs
-}
-
-fn zip_dir(src_dir: &Path, zip_path: &Path) {
-    let file = fs::File::create(zip_path).unwrap();
-    let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path.is_file() {
-            let relative_path = path.strip_prefix(src_dir).unwrap();
-            let zip_path = relative_path.to_string_lossy().to_string();
-            zip.start_file(zip_path, options).unwrap();
-            let content = fs::read(path).unwrap();
-            std::io::Write::write_all(&mut zip, &content).unwrap();
-        }
-    }
-
-    zip.finish().unwrap();
 }
 
 const DEFAULT_TESTS: &[&str] = &[
@@ -394,43 +374,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     if let Some("1") = env::var("PLATEAU_TILES_TEST_CLEANUP").ok().as_deref() {
         info!("Cleaning up output directory: {}", output_dir.display());
         fs::remove_dir_all(&output_dir).unwrap();
-    }
-}
-
-fn extract_dir(source_dir: &Path, output_dir: &Path) {
-    if !source_dir.exists() {
-        return;
-    }
-    fs::create_dir_all(output_dir).unwrap();
-
-    for entry in fs::read_dir(source_dir).unwrap().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        let dest = output_dir.join(path.file_name().unwrap());
-        if path.extension().is_some_and(|e| e == "zip") {
-            let stem = path.file_stem().unwrap().to_str().unwrap();
-            let out = output_dir.join(stem);
-            let _ = fs::remove_dir_all(&out);
-            fs::create_dir_all(&out).unwrap();
-            let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
-            zip.extract(&out).unwrap();
-        } else if path.is_dir() {
-            copy_dir_recursive(&path, &dest);
-        } else {
-            fs::copy(&path, &dest).unwrap();
-        }
-    }
-}
-
-fn copy_dir_recursive(src: &Path, dst: &Path) {
-    fs::create_dir_all(dst).unwrap();
-    for entry in fs::read_dir(src).unwrap().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        let dest = dst.join(path.file_name().unwrap());
-        if path.is_dir() {
-            copy_dir_recursive(&path, &dest);
-        } else {
-            fs::copy(&path, &dest).unwrap();
-        }
     }
 }
 

@@ -3,6 +3,7 @@ pub mod align_mvt;
 pub mod cast_config;
 pub mod compare_attributes;
 pub mod conv;
+pub mod file;
 pub mod profile_config;
 pub mod rasterize;
 pub mod runner;
