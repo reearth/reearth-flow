@@ -215,13 +215,7 @@ fn parse_from_string_and_number(
 ) -> Result<chrono::DateTime<chrono::Utc>, String> {
     match format {
         DateTimeInputFormat::Auto => {
-            // Try string formats first
-            if let Some(s) = str_val {
-                if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
-                    return Ok(dt);
-                }
-            }
-            // Try numeric formats (Unix timestamps)
+            // Try numeric formats first (Unix timestamps) - handles numeric strings like "1609459200"
             if let Some(n) = i64_val {
                 // Try seconds first (smaller values), then milliseconds
                 if n < 1_000_000_000_000 {
@@ -229,6 +223,12 @@ fn parse_from_string_and_number(
                         return Ok(dt);
                     }
                 } else if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
+                    return Ok(dt);
+                }
+            }
+            // Try string formats (RFC3339, YYYY-MM-DD, etc.)
+            if let Some(s) = str_val {
+                if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
                     return Ok(dt);
                 }
             }
@@ -449,5 +449,81 @@ mod tests {
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
         assert_eq!(result, "2021-01-01T00:00:00+00:00");
+    }
+
+    #[test]
+    fn test_auto_unix_timestamp_string() {
+        // Test auto-detect with Unix timestamp as string (improved behavior)
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("1609459200".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+    }
+
+    #[test]
+    fn test_auto_unix_ms_timestamp_string() {
+        // Test auto-detect with Unix timestamp in milliseconds as string
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("1609459200000".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+    }
+
+    #[test]
+    fn test_output_to_different_attribute() {
+        // Test that outputAttribute writes to a different attribute (leaves input untouched)
+        use crate::tests::utils::create_default_execute_context;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert(
+            "createdAt".to_string(),
+            AttributeValue::String("2021-01-01T00:00:00Z".to_string()),
+        );
+
+        let params = DateTimeConverterParam {
+            attribute: "createdAt".to_string(),
+            input_format: DateTimeInputFormat::Rfc3339,
+            output_format: DateTimeOutputFormat::UnixS,
+            output_attribute: Some("createdAtTimestamp".to_string()),
+        };
+        let mut processor = DateTimeConverter { params };
+
+        // Use NoopChannelForwarder to capture outputs
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+
+        // Create context using the helper
+        let ctx = create_default_execute_context(&feature);
+        processor.process(ctx, &fw).unwrap();
+
+        // Check the output feature
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        let output_feature = &features[0];
+
+        // Original attribute should be unchanged
+        assert_eq!(
+            output_feature.get("createdAt"),
+            Some(&AttributeValue::String("2021-01-01T00:00:00Z".to_string()))
+        );
+
+        // New attribute should have the converted value
+        assert_eq!(
+            output_feature.get("createdAtTimestamp"),
+            Some(&AttributeValue::String("1609459200".to_string()))
+        );
     }
 }
