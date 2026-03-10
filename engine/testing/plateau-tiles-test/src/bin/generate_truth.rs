@@ -61,8 +61,8 @@ fn extract_zip_to_tmp(zip_path: &Path) -> Result<PathBuf, String> {
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
     let file = fs::File::open(zip_path)
         .map_err(|e| format!("Failed to open zip {:?}: {}", zip_path, e))?;
-    let mut zip =
-        zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip {:?}: {}", zip_path, e))?;
+    let mut zip = zip::ZipArchive::new(file)
+        .map_err(|e| format!("Failed to read zip {:?}: {}", zip_path, e))?;
     zip.extract(&tmp_dir)
         .map_err(|e| format!("Failed to extract zip {:?}: {}", zip_path, e))?;
     Ok(tmp_dir)

@@ -348,9 +348,14 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(raster_tests) = &tests.raster {
             for (id, cfg) in raster_tests {
                 let conv_entry = profile.convs.mvt_png.get(id).unwrap_or_else(|| {
-                    panic!("tests.raster.{} references missing convs.mvt_png.{}", id, id)
+                    panic!(
+                        "tests.raster.{} references missing convs.mvt_png.{}",
+                        id, id
+                    )
                 });
-                let flow_png_dir = output_dir.join("flow_extracted").join(&conv_entry.truth_path);
+                let flow_png_dir = output_dir
+                    .join("flow_extracted")
+                    .join(&conv_entry.truth_path);
                 let truth_dir = fme_extracted_dir.join(&conv_entry.truth_path);
                 let id = id.clone();
                 run_test(&format!("raster/{}", id), &relative_path_display, || {
