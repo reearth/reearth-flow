@@ -32,7 +32,6 @@ type Props = {
   dataURLs?: { key: string; name: string }[];
   selectedFeatureId: string | null;
   // enableClustering?: boolean;
-  mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
@@ -48,7 +47,6 @@ const DebugPreview: React.FC<Props> = ({
   selectedOutputData,
   dataURLs,
   onConvertedSelectedFeature,
-  mapRef,
   cesiumViewerRef,
   selectedFeatureId,
   onSelectedFeature,
@@ -126,7 +124,6 @@ const DebugPreview: React.FC<Props> = ({
     handleShowSelectedFeatureOnly,
     setCityGmlBoundingSphere,
   } = useHooks({
-    mapRef,
     cesiumViewerRef,
     threeJSViewerRef,
     selectedOutputData,

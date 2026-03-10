@@ -39,7 +39,6 @@ const DebugPanel: React.FC = () => {
     debugJobId,
     debugJobState,
     fileType,
-    mapRef,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -266,7 +265,6 @@ const DebugPanel: React.FC = () => {
                           fileType={fileType}
                           selectedOutputData={selectedOutputData}
                           selectedFeatureId={selectedFeatureId}
-                          mapRef={mapRef}
                           cesiumViewerRef={cesiumViewerRef}
                           onConvertedSelectedFeature={
                             setConvertedSelectedFeature
