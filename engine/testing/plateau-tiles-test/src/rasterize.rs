@@ -267,7 +267,10 @@ mod tests {
                 assert!(
                     (actual - expected).abs() < 1e-6,
                     "pixel ({},{}) expected {}, got {}",
-                    px, py, expected, actual
+                    px,
+                    py,
+                    expected,
+                    actual
                 );
             }
         }
@@ -279,7 +282,12 @@ mod tests {
     #[test]
     fn test_scanline_fill_polygon_geometry() {
         let mut raster = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
-        let ring = vec![(100.0, 100.0), (200.0, 100.0), (200.0, 200.0), (100.0, 200.0)];
+        let ring = vec![
+            (100.0, 100.0),
+            (200.0, 100.0),
+            (200.0, 200.0),
+            (100.0, 200.0),
+        ];
         scanline_fill(&mut raster, &[ring]);
         let area: f32 = raster.iter().sum();
         assert!(
