@@ -1,6 +1,15 @@
 # test dm geometric attributes
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_trk.zip"
 
+[convs.json.tilesets_lod3]
+flow_path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3/tileset.json"
+output_path = "3dtiles_lod3_tileset.json"
+generate_truth = false
+json_path = ".properties"
+
+[tests.json_attributes_v2.tilesets_lod3]
+path = "3dtiles_lod3_tileset.json"
+
 [tests.mvt_lines]
 zoom = [12, 16]
 threshold = 0.01
@@ -20,12 +29,6 @@ threshold = 0.01
 ".dm_attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"
-
-
-[tests.json_attributes_v2.tilesets_lod3]
-flow.path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3/tileset.json"
-flow.json_path = ".properties"
-truth.path = "3dtiles_lod3_tileset.json"
 
 [filter.tree]
 "udx/trk/54401008_trk_6697_op.gml" = ["trk_c2138494-83e0-41b4-bfc1-609ca229aba2"]

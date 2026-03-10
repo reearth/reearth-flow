@@ -1,6 +1,7 @@
 use crate::mvt_raster::{
     make_feature_keys_in_tile, rasterize_tile_feature, write_raster_png, RASTER_SIZE,
 };
+use image::GrayImage;
 use prost::Message;
 use std::fs;
 use std::path::Path;
@@ -85,7 +86,6 @@ pub fn empty_raster() -> Vec<f32> {
 
 /// Reads an 8-bit grayscale PNG file into a f32 raster.
 pub fn read_raster_png(path: &std::path::Path) -> Result<Vec<f32>, String> {
-    use image::GrayImage;
     let img = image::open(path)
         .map_err(|e| format!("Failed to read PNG {:?}: {}", path, e))?
         .into_luma8();

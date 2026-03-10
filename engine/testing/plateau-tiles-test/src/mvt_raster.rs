@@ -1,5 +1,7 @@
 use crate::compare_attributes::make_feature_key;
-use crate::conv_mvt::tinymvt_value_to_json;
+use crate::conv::mvt::tinymvt_value_to_json;
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use image::ImageEncoder;
 use tinymvt::geometry::GeometryDecoder;
 use tinymvt::tag::TagsDecoder;
 use tinymvt::vector_tile::Tile;
@@ -26,7 +28,6 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
             };
             let mut props = serde_json::Map::new();
             for (key, value) in tags {
-                use crate::conv_mvt::tinymvt_value_to_json;
                 props.insert(key.to_string(), tinymvt_value_to_json(&value));
             }
             let props_value = serde_json::Value::Object(props);
@@ -287,8 +288,6 @@ fn scanline_fill(raster: &mut [f32], rings: &[Vec<(f64, f64)>]) {
 
 /// Writes a f32 raster to an 8-bit grayscale PNG file.
 pub fn write_raster_png(raster: &[f32], path: &std::path::Path) -> Result<(), String> {
-    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
-    use image::ImageEncoder;
     let pixels: Vec<u8> = raster
         .iter()
         .map(|&v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)
@@ -336,7 +335,7 @@ pub fn make_feature_keys_in_tile(tile: &Tile) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::conv_png::compare_rasters;
+    use crate::conv::png::compare_rasters;
     const EPSILON: f64 = 1e-6;
 
     // Verifies compare_rasters can detect a known difference.

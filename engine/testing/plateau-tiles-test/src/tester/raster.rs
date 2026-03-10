@@ -1,4 +1,4 @@
-use crate::conv_png::{compare_rasters, empty_raster, read_raster_png};
+use crate::conv::png::{compare_rasters, empty_raster, read_raster_png};
 use serde::Deserialize;
 use std::path::Path;
 use walkdir::WalkDir;

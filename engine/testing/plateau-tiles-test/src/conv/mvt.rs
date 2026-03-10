@@ -7,11 +7,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use tinymvt::tag::TagsDecoder;
+use tinymvt::tag::Value as TValue;
 use tinymvt::vector_tile::Tile;
 use walkdir::WalkDir;
 
 pub fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
-    use tinymvt::tag::Value as TValue;
     match value {
         TValue::String(s) => Value::String(s.clone()),
         TValue::Float(bytes) => {

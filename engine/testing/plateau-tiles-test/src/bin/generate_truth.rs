@@ -1,5 +1,5 @@
-use plateau_tiles_test::conv_mvt;
-use plateau_tiles_test::conv_png;
+use plateau_tiles_test::conv::mvt;
+use plateau_tiles_test::conv::png;
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
 use std::fs;
@@ -20,6 +20,21 @@ fn run(profile_path: &Path) -> Result<(), String> {
     let testcase_dir = profile_path.parent().unwrap();
     let fme_dir = testcase_dir.join("fme");
 
+    for (id, entry) in &profile.convs.json {
+        if !entry.generate_truth {
+            continue;
+        }
+        let flow_file = fme_dir.join(&entry.flow_path);
+        let output_path = fme_dir.join(&entry.output_path);
+        plateau_tiles_test::conv::json::write_json(
+            &flow_file,
+            &output_path,
+            entry.json_path.as_deref(),
+            &entry.casts,
+        )?;
+        println!("wrote json/{} -> {}", id, output_path.display());
+    }
+
     for (id, entry) in &profile.convs.mvt_attributes {
         if !entry.generate_truth {
             continue;
@@ -30,7 +45,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let zip_path = fme_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = fme_dir.join(&entry.truth_path);
-        let result = conv_mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
+        let result = mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
         fs::remove_dir_all(&tmp_dir).ok();
         result?;
         println!("wrote mvt_attributes/{} -> {}", id, output_path.display());
@@ -46,7 +61,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let zip_path = fme_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let truth_dir = fme_dir.join(&entry.truth_path);
-        let result = conv_png::write_png_truth(&tmp_dir, &truth_dir, entry.tiles.as_deref());
+        let result = png::write_png_truth(&tmp_dir, &truth_dir, entry.tiles.as_deref());
         fs::remove_dir_all(&tmp_dir).ok();
         result?;
         println!("wrote mvt_png/{} -> {}", id, truth_dir.display());

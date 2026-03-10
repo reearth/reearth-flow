@@ -1,15 +1,15 @@
-use plateau_tiles_test::conv_mvt;
-use plateau_tiles_test::conv_png;
+use plateau_tiles_test::conv::mvt;
+use plateau_tiles_test::conv::png;
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
-use plateau_tiles_test::test_cesium::{self, CesiumConfig};
-use plateau_tiles_test::test_json_attributes::{self, JsonFileConfig};
-use plateau_tiles_test::test_json_attributes_v2::{self, JsonFileV2Config};
-use plateau_tiles_test::test_json_object_key_order::{self, KeyOrderConfig};
-use plateau_tiles_test::test_mvt_lines::{self, MvtLinesConfig};
-use plateau_tiles_test::test_mvt_points::{self, MvtPointsConfig};
-use plateau_tiles_test::test_mvt_polygons::{self, MvtPolygonsConfig};
-use plateau_tiles_test::test_raster::{self, RasterConfig};
+use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
+use plateau_tiles_test::tester::json_attributes::{self, JsonFileConfig};
+use plateau_tiles_test::tester::json_attributes_v2::{self, JsonFileV2Config};
+use plateau_tiles_test::tester::json_object_key_order::{self, KeyOrderConfig};
+use plateau_tiles_test::tester::mvt_lines::{self, MvtLinesConfig};
+use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
+use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
+use plateau_tiles_test::tester::raster::{self, RasterConfig};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
@@ -17,6 +17,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 use tracing::info;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
@@ -25,8 +27,6 @@ static INIT: Once = Once::new();
 
 fn init_logging() {
     INIT.call_once(|| {
-        use tracing_subscriber::prelude::*;
-        use tracing_subscriber::EnvFilter;
         let filter = EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| EnvFilter::new("info,plateau_tiles_test=debug"));
 
@@ -283,7 +283,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
-                test_json_attributes::test_json_attributes(
+                json_attributes::test_json_attributes(
                     &fme_source_dir,
                     &flow_source_dir,
                     &fme_extracted_dir,
@@ -293,12 +293,28 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if !profile.convs.json.is_empty() {
+            run_test("convs_json", &relative_path_display, || {
+                for entry in profile.convs.json.values() {
+                    let flow_file = output_dir.join("flow_extracted").join(&entry.flow_path);
+                    let output_path = output_dir.join("flow_extracted").join(&entry.output_path);
+                    plateau_tiles_test::conv::json::write_json(
+                        &flow_file,
+                        &output_path,
+                        entry.json_path.as_deref(),
+                        &entry.casts,
+                    )?;
+                }
+                Ok(())
+            });
+        }
+
         if !profile.convs.mvt_attributes.is_empty() {
             run_test("convs_mvt_attributes", &relative_path_display, || {
                 for entry in profile.convs.mvt_attributes.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
-                    conv_mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
+                    mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
                 }
                 Ok(())
             });
@@ -309,7 +325,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 for entry in profile.convs.mvt_png.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
-                    conv_png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
+                    png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
                 }
                 Ok(())
             });
@@ -317,31 +333,31 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
-                test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
+                json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_polygons {
             run_test("mvt_polygons", &relative_path_display, || {
-                test_mvt_polygons::test_mvt_polygons(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_polygons::test_mvt_polygons(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_lines {
             run_test("mvt_lines", &relative_path_display, || {
-                test_mvt_lines::test_mvt_lines(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_lines::test_mvt_lines(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_points {
             run_test("mvt_points", &relative_path_display, || {
-                test_mvt_points::test_mvt_points(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_points::test_mvt_points(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.cesium {
             run_test("cesium", &relative_path_display, || {
-                test_cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
@@ -359,14 +375,14 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 let truth_dir = fme_extracted_dir.join(&conv_entry.truth_path);
                 let id = id.clone();
                 run_test(&format!("raster/{}", id), &relative_path_display, || {
-                    test_raster::test_raster(&truth_dir, &flow_png_dir, cfg)
+                    raster::test_raster(&truth_dir, &flow_png_dir, cfg)
                 });
             }
         }
 
         if let Some(cfg) = &tests.json_object_key_order {
             run_test("json_object_key_order", &relative_path_display, || {
-                test_json_object_key_order::test_json_object_key_order(
+                json_object_key_order::test_json_object_key_order(
                     &flow_source_dir,
                     &flow_extracted_dir,
                     cfg,

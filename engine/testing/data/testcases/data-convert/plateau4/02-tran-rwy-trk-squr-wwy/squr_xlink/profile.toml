@@ -22,8 +22,7 @@ generate_truth = true
 tiles = ["16/58187/25758"]
 
 [tests.json_attributes_v2.squr_lod2]
-flow.path = "squr_lod2_truth.json"
-truth.path = "squr_lod2_truth.json"
+path = "squr_lod2_truth.json"
 
 [tests.raster.squr_lod2]
 threshold = 0.001

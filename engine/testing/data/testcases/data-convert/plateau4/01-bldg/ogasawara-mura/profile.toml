@@ -1,9 +1,13 @@
 citygml_zip_name = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg.zip"
 
+[convs.json.tilesets_lod1]
+flow_path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
+output_path = "3dtiles_lod1_tileset.json"
+generate_truth = false
+json_path = ".properties"
+
 [tests.json_attributes_v2.tilesets_lod1]
-flow.path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1/tileset.json"
-flow.json_path = ".properties"
-truth.path = "3dtiles_lod1_tileset.json"
+path = "3dtiles_lod1_tileset.json"
 
 [tests.cesium.casts]
 ".attributes" = "json"

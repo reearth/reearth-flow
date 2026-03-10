@@ -20,10 +20,23 @@ pub struct ConvMvtPngEntry {
     pub tiles: Option<Vec<String>>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConvJsonEntry {
+    pub flow_path: String,
+    pub output_path: String,
+    pub generate_truth: bool,
+    #[serde(default)]
+    pub json_path: Option<String>,
+    #[serde(default)]
+    pub casts: HashMap<String, CastConfigValue>,
+}
+
 #[derive(Debug, Deserialize, Default)]
 pub struct Convs {
     #[serde(default)]
     pub mvt_attributes: HashMap<String, ConvMvtEntry>,
     #[serde(default)]
     pub mvt_png: HashMap<String, ConvMvtPngEntry>,
+    #[serde(default)]
+    pub json: HashMap<String, ConvJsonEntry>,
 }
