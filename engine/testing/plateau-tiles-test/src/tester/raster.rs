@@ -87,12 +87,12 @@ pub fn test_raster(
         results.push((score, rel));
     }
 
-    assert!(
-        total > 0,
-        "no PNGs compared — truth_dir={:?}, flow_png_dir={:?}",
-        truth_dir,
-        flow_png_dir
-    );
+    if total == 0 {
+        return Err(format!(
+            "no PNG: truth={:?}, flow={:?}",
+            truth_dir, flow_png_dir
+        ));
+    }
 
     let failures: Vec<_> = results
         .iter()
