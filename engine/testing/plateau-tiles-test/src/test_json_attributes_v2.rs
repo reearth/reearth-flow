@@ -39,7 +39,7 @@ pub fn test_json_attributes_v2(
     config: &HashMap<String, JsonFileV2Config>,
 ) -> Result<(), String> {
     for (name, cfg) in config {
-        let flow_file = output_dir.join(&cfg.flow.path);
+        let flow_file = output_dir.join("flow_extracted").join(&cfg.flow.path);
         assert!(flow_file.exists(), "missing flow file {:?}", flow_file);
 
         let truth_file = testcase_dir.join(&cfg.truth.path);

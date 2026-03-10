@@ -264,15 +264,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     }
 
     if stages.contains('e') {
-        // Extract FME zip files from testcase to output_dir/fme_extracted
+        // Extract FME zip files and copy other items from testcase to output_dir/fme_extracted
         let fme_source_dir = test_path.join("fme");
         let fme_extracted_dir = output_dir.join("fme_extracted");
-        extract_toplevel_zips(&fme_source_dir, &fme_extracted_dir);
+        extract_dir(&fme_source_dir, &fme_extracted_dir);
 
         // Extract Flow output zip files to output_dir/flow_extracted
         let flow_source_dir = output_dir.join("flow");
         let flow_extracted_dir = output_dir.join("flow_extracted");
-        extract_toplevel_zips(&flow_source_dir, &flow_extracted_dir);
+        extract_dir(&flow_source_dir, &flow_extracted_dir);
 
         // Decompress draco-compressed glb in flow output
         // fme.zip should be preprocessed to contain only decompressed glb files
@@ -295,17 +295,9 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if !profile.convs.mvt.is_empty() {
             run_test("convs_mvt", &relative_path_display, || {
-                let convs_dir = output_dir.join("convs/mvt");
-                fs::create_dir_all(&convs_dir).map_err(|e| e.to_string())?;
-                for (id, entry) in &profile.convs.mvt {
-                    let mvt_dir = output_dir.join(
-                        &entry
-                            .flow
-                            .as_ref()
-                            .expect("convs.mvt entry requires flow.path")
-                            .path,
-                    );
-                    let output_path = convs_dir.join(format!("{}.json", id));
+                for (_, entry) in &profile.convs.mvt {
+                    let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
                     conv_mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
                 }
                 Ok(())
@@ -314,17 +306,9 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if !profile.convs.mvt_png.is_empty() {
             run_test("convs_mvt_png", &relative_path_display, || {
-                let convs_raster_dir = output_dir.join("convs/raster");
-                fs::create_dir_all(&convs_raster_dir).map_err(|e| e.to_string())?;
-                for (id, entry) in &profile.convs.mvt_png {
-                    let mvt_dir = output_dir.join(
-                        &entry
-                            .flow
-                            .as_ref()
-                            .expect("convs.mvt_png entry requires flow.path")
-                            .path,
-                    );
-                    let png_dir = convs_raster_dir.join(id);
+                for (_, entry) in &profile.convs.mvt_png {
+                    let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
                     conv_png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
                 }
                 Ok(())
@@ -363,20 +347,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(raster_tests) = &tests.raster {
             for (id, cfg) in raster_tests {
+                let conv_entry = profile.convs.mvt_png.get(id).unwrap_or_else(|| {
+                    panic!("tests.raster.{} references missing convs.mvt_png.{}", id, id)
+                });
+                let flow_png_dir = output_dir.join("flow_extracted").join(&conv_entry.truth_path);
+                let truth_dir = fme_extracted_dir.join(&conv_entry.truth_path);
                 let id = id.clone();
-                let cfg_ref = cfg;
-                if let Some(conv_entry) = profile.convs.mvt_png.get(&id) {
-                    let flow_png_dir = output_dir.join("convs/raster").join(&id);
-                    let truth_dir = test_path.join(&conv_entry.truth_path);
-                    run_test(&format!("raster/{}", id), &relative_path_display, || {
-                        test_raster::test_raster(&truth_dir, &flow_png_dir, cfg_ref)
-                    });
-                } else {
-                    panic!(
-                        "tests.raster.{} references missing convs.mvt_png.{} entry",
-                        id, id
-                    );
-                }
+                run_test(&format!("raster/{}", id), &relative_path_display, || {
+                    test_raster::test_raster(&truth_dir, &flow_png_dir, cfg)
+                });
             }
         }
 
@@ -397,7 +376,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     }
 }
 
-fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
+fn extract_dir(source_dir: &Path, output_dir: &Path) {
     if !source_dir.exists() {
         return;
     }
@@ -405,6 +384,7 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
 
     for entry in fs::read_dir(source_dir).unwrap().filter_map(|e| e.ok()) {
         let path = entry.path();
+        let dest = output_dir.join(path.file_name().unwrap());
         if path.extension().is_some_and(|e| e == "zip") {
             let stem = path.file_stem().unwrap().to_str().unwrap();
             let out = output_dir.join(stem);
@@ -412,6 +392,23 @@ fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
             fs::create_dir_all(&out).unwrap();
             let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
             zip.extract(&out).unwrap();
+        } else if path.is_dir() {
+            copy_dir_recursive(&path, &dest);
+        } else {
+            fs::copy(&path, &dest).unwrap();
+        }
+    }
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) {
+    fs::create_dir_all(dst).unwrap();
+    for entry in fs::read_dir(src).unwrap().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        let dest = dst.join(path.file_name().unwrap());
+        if path.is_dir() {
+            copy_dir_recursive(&path, &dest);
+        } else {
+            fs::copy(&path, &dest).unwrap();
         }
     }
 }

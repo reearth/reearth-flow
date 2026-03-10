@@ -6,8 +6,7 @@ citygml_zip_name = "11100_saitama-shi_city_2025_citygml_1_op_squr.zip"
 "udx/squr/53396570_squr_6697_op.gml" = ["squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"]
 
 [convs.mvt.squr_lod2]
-flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
-fme_path = "squr_lod2"
+path = "11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
 truth_path = "squr_lod2_truth.json"
 
 [convs.mvt.squr_lod2.casts]
@@ -16,13 +15,13 @@ truth_path = "squr_lod2_truth.json"
 ".attributes.ancestors[0].meshcode" = "string"
 
 [tests.json_attributes_v2.squr_lod2]
-flow.path = "convs/mvt/squr_lod2.json"
+flow.path = "squr_lod2_truth.json"
 truth.path = "squr_lod2_truth.json"
 
 [convs.mvt_png.squr_lod2]
-fme_path = "squr_lod2"
-flow.path = "flow_extracted/11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
+path = "11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
 truth_path = "squr_lod2_png_truth"
+fme = true
 tiles = ["16/58187/25758"]
 
 [tests.raster.squr_lod2]

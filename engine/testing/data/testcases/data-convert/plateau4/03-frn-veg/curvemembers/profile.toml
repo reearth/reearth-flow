@@ -6,8 +6,7 @@ path = "dictionary.json"
 must_not_exist = true
 
 [convs.mvt.frn_dm_geometric_attributes]
-fme_path = "frn_dm_geometric_attributes"
-flow.path = "flow_extracted/15202_nagaoka-shi_city_2024_citygml_1_op_frn_dm_geometric_attributes"
+path = "15202_nagaoka-shi_city_2024_citygml_1_op_frn_dm_geometric_attributes"
 truth_path = "frn_dm_geometric_attributes_truth.json"
 
 [convs.mvt.frn_dm_geometric_attributes.casts]
@@ -16,13 +15,13 @@ truth_path = "frn_dm_geometric_attributes_truth.json"
 ".dm_attributes" = "json"
 
 [tests.json_attributes_v2.frn_dm_geometric_attributes]
-flow.path = "convs/mvt/frn_dm_geometric_attributes.json"
+flow.path = "frn_dm_geometric_attributes_truth.json"
 truth.path = "frn_dm_geometric_attributes_truth.json"
 
 [convs.mvt_png.frn_dm_geometric_attributes]
-fme_path = "frn_dm_geometric_attributes"
-flow.path = "flow_extracted/15202_nagaoka-shi_city_2024_citygml_1_op_frn_dm_geometric_attributes"
+path = "15202_nagaoka-shi_city_2024_citygml_1_op_frn_dm_geometric_attributes"
 truth_path = "frn_dm_geometric_attributes_png_truth"
+fme = true
 
 [tests.raster.frn_dm_geometric_attributes]
 threshold = 0.001
