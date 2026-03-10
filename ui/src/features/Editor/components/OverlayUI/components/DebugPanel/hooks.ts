@@ -301,23 +301,25 @@ export default () => {
         } catch (err) {
           console.error("Error zooming to Cesium feature:", err);
         }
-      } else if (!is3D && mapRef.current) {
-        // 2D MapLibre viewer - use existing bbox approach
-        try {
-          const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-          mapRef.current.fitBounds(
-            [
-              [minLng, minLat],
-              [maxLng, maxLat],
-            ],
-            { padding: 0, duration: 500, maxZoom: 15 },
-          );
-        } catch (err) {
-          console.error("Error computing bbox for selectedFeature:", err);
-        }
+      } else if (!is3D) {
+        const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+        if (!cesiumViewer) return;
+
+        const featureId = selectedFeature.id;
+        if (!featureId) return;
+        const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+
+        cesiumViewer.camera.flyTo({
+          destination: Cartesian3.fromDegrees(
+            (minLng + maxLng) / 2,
+            (minLat + maxLat) / 2,
+            500000,
+          ),
+          duration: 1.5,
+        });
       }
     },
-    [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
+    [streamingQuery.detectedGeometryType, cesiumViewerRef],
   );
 
   const formattedData = useDataColumnizer({

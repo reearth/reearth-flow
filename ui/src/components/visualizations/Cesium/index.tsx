@@ -27,7 +27,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   infoBox: false,
   sceneMode: SceneMode.SCENE3D,
   homeButton: false,
-  geocoder: false,
+  geocoder: true,
   animation: false,
   navigationHelpButton: false,
   creditContainer: document.createElement("none"),
@@ -143,6 +143,8 @@ const CesiumViewer: React.FC<Props> = ({
           : null,
     };
   }, [fileContent]);
+
+  console.log("GEOJSON DATA:", geoJsonData);
 
   return (
     <Viewer ref={viewerRef} full {...defaultCesiumProps}>
