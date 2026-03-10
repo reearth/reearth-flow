@@ -132,7 +132,6 @@ impl ProcessorFactory for FeatureJoinerFactory {
             .into());
         }
 
-        let join_type = params.join_type.unwrap_or(JoinType::Left);
         let conflict_resolution = params
             .conflict_resolution
             .unwrap_or(ConflictResolution::SupplierWins);
@@ -140,7 +139,7 @@ impl ProcessorFactory for FeatureJoinerFactory {
         let process = FeatureJoiner {
             global_params: with,
             params: CompiledParam {
-                join_type,
+                join_type: params.join_type,
                 requestor_attribute_value,
                 supplier_attribute_value,
                 requestor_attribute: params.requestor_attribute,
@@ -149,7 +148,6 @@ impl ProcessorFactory for FeatureJoinerFactory {
             },
             requestor_key_map: HashMap::new(),
             supplier_key_map: HashMap::new(),
-            supplier_match_tracker: HashMap::new(),
             next_requestor_idx: 0,
             next_supplier_idx: 0,
             temp_dir: None,
@@ -170,7 +168,7 @@ impl ProcessorFactory for FeatureJoinerFactory {
 #[serde(rename_all = "camelCase")]
 pub struct FeatureJoinerParam {
     /// Join type: inner, left, or full
-    join_type: Option<JoinType>,
+    join_type: JoinType,
     /// Attributes from requestor features to use for matching (alternative to requestorAttributeValue)
     requestor_attribute: Option<Vec<Attribute>>,
     /// Attributes from supplier features to use for matching (alternative to supplierAttributeValue)
@@ -209,7 +207,6 @@ pub struct FeatureJoiner {
     // Disk-backed state
     requestor_key_map: HashMap<String, usize>,
     supplier_key_map: HashMap<String, usize>,
-    supplier_match_tracker: HashMap<String, bool>,
     next_requestor_idx: usize,
     next_supplier_idx: usize,
     temp_dir: Option<PathBuf>,
@@ -238,7 +235,6 @@ impl Clone for FeatureJoiner {
             params: self.params.clone(),
             requestor_key_map: HashMap::new(),
             supplier_key_map: HashMap::new(),
-            supplier_match_tracker: HashMap::new(),
             next_requestor_idx: 0,
             next_supplier_idx: 0,
             temp_dir: None,
@@ -472,9 +468,6 @@ impl Processor for FeatureJoiner {
                         let idx = self.next_supplier_idx;
                         self.next_supplier_idx += 1;
                         entry.insert(idx);
-                        // Mark as initially unmatched (for full join tracking)
-                        self.supplier_match_tracker
-                            .insert(supplier_attribute_value.clone(), false);
                         idx
                     }
                 };
@@ -521,10 +514,6 @@ impl Processor for FeatureJoiner {
                     let supplier_features =
                         read_features_from_file(&self.supplier_file_path(sup_idx))?;
 
-                    // Mark supplier as matched (for full join tracking)
-                    self.supplier_match_tracker
-                        .insert(request_value.clone(), true);
-
                     // Generate one output feature per combination (many-to-many)
                     for request_feature in requestor_features.iter() {
                         for supplier_feature in supplier_features.iter() {
@@ -562,13 +551,10 @@ impl Processor for FeatureJoiner {
         // For Full Join: Emit unmatched suppliers
         if matches!(self.params.join_type, JoinType::Full) {
             for (supplier_value, &sup_idx) in self.supplier_key_map.iter() {
-                let was_matched = self
-                    .supplier_match_tracker
-                    .get(supplier_value)
-                    .copied()
-                    .unwrap_or(false);
+                // Check if this supplier key has any matching requestor
+                let has_match = self.requestor_key_map.contains_key(supplier_value);
 
-                if !was_matched {
+                if !has_match {
                     let supplier_features =
                         read_features_from_file(&self.supplier_file_path(sup_idx))?;
                     for supplier_feature in supplier_features.iter() {

@@ -2871,6 +2871,9 @@ Joins requestor and supplier features based on matching attribute values with co
   "title": "FeatureJoiner Parameters",
   "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
   "type": "object",
+  "required": [
+    "joinType"
+  ],
   "properties": {
     "conflictResolution": {
       "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
@@ -2885,12 +2888,9 @@ Joins requestor and supplier features based on matching attribute values with co
     },
     "joinType": {
       "description": "Join type: inner, left, or full",
-      "anyOf": [
+      "allOf": [
         {
           "$ref": "#/definitions/JoinType"
-        },
-        {
-          "type": "null"
         }
       ]
     },
