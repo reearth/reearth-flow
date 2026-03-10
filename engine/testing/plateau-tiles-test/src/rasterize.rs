@@ -1,122 +1,9 @@
-use crate::compare_attributes::make_feature_key;
-use crate::conv::mvt::tinymvt_value_to_json;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use image::GrayImage;
 use image::ImageEncoder;
-use tinymvt::geometry::GeometryDecoder;
-use tinymvt::tag::TagsDecoder;
-use tinymvt::vector_tile::Tile;
 
 pub const RASTER_SIZE: usize = 1024;
 pub const STROKE_PIXELS: f64 = (RASTER_SIZE / 256) as f64;
-
-/// Rasterizes all geometry in a tile for a given feature ident into a RASTER_SIZE x RASTER_SIZE f32 raster.
-/// Lines: capsule SDF per segment (analytically correct round joins/caps).
-/// Polygon interiors: scanline fill. Polygon boundaries: Wu line. Points: circle SDF.
-pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
-    let mut raster = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
-
-    for layer in &tile.layers {
-        let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
-        let extent = layer.extent.unwrap_or(4096);
-        let scale = 1.0 / extent as f64;
-
-        for feature in &layer.features {
-            // Check if this feature matches the ident
-            let tags = match tags_decoder.decode(&feature.tags) {
-                Ok(t) => t,
-                Err(_) => continue,
-            };
-            let mut props = serde_json::Map::new();
-            for (key, value) in tags {
-                props.insert(key.to_string(), tinymvt_value_to_json(&value));
-            }
-            let props_value = serde_json::Value::Object(props);
-            let feature_key = crate::compare_attributes::make_feature_key(&props_value, None);
-            if feature_key != ident {
-                continue;
-            }
-
-            let geom_type = feature.r#type.unwrap_or(0);
-            let mut decoder = GeometryDecoder::new(&feature.geometry);
-
-            match geom_type {
-                1 => {
-                    // Point
-                    if let Ok(points) = decoder.decode_points() {
-                        for point in &points {
-                            let x = point[0] as f64 * scale * RASTER_SIZE as f64;
-                            let y = point[1] as f64 * scale * RASTER_SIZE as f64;
-                            draw_aa_circle(&mut raster, x, y, STROKE_PIXELS);
-                        }
-                    }
-                }
-                2 => {
-                    // LineString: capsule SDF per segment for correct round joins/caps
-                    if let Ok(linestrings) = decoder.decode_linestrings() {
-                        for ls in &linestrings {
-                            for window in ls.windows(2) {
-                                let x0 = window[0][0] as f64 * scale * RASTER_SIZE as f64;
-                                let y0 = window[0][1] as f64 * scale * RASTER_SIZE as f64;
-                                let x1 = window[1][0] as f64 * scale * RASTER_SIZE as f64;
-                                let y1 = window[1][1] as f64 * scale * RASTER_SIZE as f64;
-                                draw_capsule(&mut raster, x0, y0, x1, y1, STROKE_PIXELS);
-                            }
-                        }
-                    }
-                }
-                3 => {
-                    // Polygon: scanline fill interior + Wu boundary
-                    if let Ok(polygons) = decoder.decode_polygons() {
-                        for rings in &polygons {
-                            if rings.is_empty() {
-                                continue;
-                            }
-                            // Convert all rings to pixel coords
-                            let pixel_rings: Vec<Vec<(f64, f64)>> = rings
-                                .iter()
-                                .map(|ring| {
-                                    ring.iter()
-                                        .map(|p| {
-                                            (
-                                                p[0] as f64 * scale * RASTER_SIZE as f64,
-                                                p[1] as f64 * scale * RASTER_SIZE as f64,
-                                            )
-                                        })
-                                        .collect()
-                                })
-                                .collect();
-
-                            // Scanline fill using even-odd rule across all rings
-                            scanline_fill(&mut raster, &pixel_rings);
-
-                            // Wu 1px boundary for all rings
-                            for ring in &pixel_rings {
-                                for window in ring.windows(2) {
-                                    draw_wu_line(
-                                        &mut raster,
-                                        window[0].0,
-                                        window[0].1,
-                                        window[1].0,
-                                        window[1].1,
-                                    );
-                                }
-                                // Close the ring
-                                if ring.len() >= 2 {
-                                    let last = ring[ring.len() - 1];
-                                    let first = ring[0];
-                                    draw_wu_line(&mut raster, last.0, last.1, first.0, first.1);
-                                }
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    raster
-}
 
 fn set_pixel(raster: &mut [f32], x: i32, y: i32, alpha: f32) {
     if x >= 0 && x < RASTER_SIZE as i32 && y >= 0 && y < RASTER_SIZE as i32 {
@@ -171,7 +58,7 @@ pub fn draw_aa_circle(raster: &mut [f32], cx: f64, cy: f64, r: f64) {
     }
 }
 
-/// Wu's anti-aliased line drawing algorithm
+/// Wu's anti-aliased line drawing algorithm.
 pub fn draw_wu_line(raster: &mut [f32], x0: f64, y0: f64, x1: f64, y1: f64) {
     let mut x0 = x0;
     let mut y0 = y0;
@@ -236,12 +123,11 @@ pub fn draw_wu_line(raster: &mut [f32], x0: f64, y0: f64, x1: f64, y1: f64) {
 }
 
 /// Scanline fill using even-odd rule. rings[0] is exterior, rest are holes.
-fn scanline_fill(raster: &mut [f32], rings: &[Vec<(f64, f64)>]) {
+pub fn scanline_fill(raster: &mut [f32], rings: &[Vec<(f64, f64)>]) {
     if rings.is_empty() {
         return;
     }
 
-    // Bounding box
     let mut min_y = f64::INFINITY;
     let mut max_y = f64::NEG_INFINITY;
     for ring in rings {
@@ -272,7 +158,6 @@ fn scanline_fill(raster: &mut [f32], rings: &[Vec<(f64, f64)>]) {
 
         xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        // Fill between pairs (even-odd)
         for chunk in xs.chunks(2) {
             if chunk.len() == 2 {
                 let x_start = (chunk[0].floor() as i32).max(0);
@@ -308,34 +193,40 @@ pub fn write_raster_png(raster: &[f32], path: &std::path::Path) -> Result<(), St
         .map_err(|e| format!("Failed to write PNG {:?}: {}", path, e))
 }
 
-/// Returns all unique feature keys present in a tile (across all layers and geometry types).
-pub fn make_feature_keys_in_tile(tile: &Tile) -> Vec<String> {
-    let mut keys = Vec::new();
-    for layer in &tile.layers {
-        let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
-        for feature in &layer.features {
-            let tags = match tags_decoder.decode(&feature.tags) {
-                Ok(t) => t,
-                Err(_) => continue,
-            };
-            let mut props = serde_json::Map::new();
-            for (key, value) in tags {
-                let json_value = tinymvt_value_to_json(&value);
-                props.insert(key.to_string(), json_value);
+/// Reads an 8-bit grayscale PNG file into a f32 raster.
+pub fn read_raster_png(path: &std::path::Path) -> Result<Vec<f32>, String> {
+    let img = image::open(path)
+        .map_err(|e| format!("Failed to read PNG {:?}: {}", path, e))?
+        .into_luma8();
+    let GrayImage { .. } = img;
+    Ok(img.pixels().map(|p| p.0[0] as f32 / 255.0).collect())
+}
+
+/// Returns `RASTER_SIZE * RASTER_SIZE` zero raster.
+pub fn empty_raster() -> Vec<f32> {
+    vec![0.0f32; RASTER_SIZE * RASTER_SIZE]
+}
+
+/// Pixel-wise RMS comparison between two f32 rasters.
+pub fn compare_rasters(r1: &[f32], r2: &[f32]) -> f64 {
+    let sum: f64 = r1
+        .iter()
+        .zip(r2.iter())
+        .map(|(a, b)| {
+            let diff = ((*a as f64) - (*b as f64)).abs();
+            if diff >= 0.5 {
+                diff
+            } else {
+                0.0
             }
-            let key = make_feature_key(&serde_json::Value::Object(props), None);
-            if !keys.contains(&key) {
-                keys.push(key);
-            }
-        }
-    }
-    keys
+        })
+        .sum();
+    (sum / r1.len() as f64).sqrt()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::conv::png::compare_rasters;
     const EPSILON: f64 = 1e-6;
 
     // Verifies compare_rasters can detect a known difference.

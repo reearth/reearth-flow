@@ -1,3 +1,3 @@
 pub mod json;
 pub mod mvt;
-pub mod png;
+pub mod mvt_png;

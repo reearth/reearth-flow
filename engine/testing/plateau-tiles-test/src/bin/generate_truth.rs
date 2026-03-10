@@ -1,5 +1,5 @@
 use plateau_tiles_test::conv::mvt;
-use plateau_tiles_test::conv::png;
+use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
 use std::fs;
@@ -61,7 +61,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let zip_path = fme_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let truth_dir = fme_dir.join(&entry.truth_path);
-        let result = png::write_png_truth(&tmp_dir, &truth_dir, entry.tiles.as_deref());
+        let result = mvt_png::write_png_truth(&tmp_dir, &truth_dir, entry.tiles.as_deref());
         fs::remove_dir_all(&tmp_dir).ok();
         result?;
         println!("wrote mvt_png/{} -> {}", id, truth_dir.display());

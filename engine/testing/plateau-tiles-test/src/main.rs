@@ -1,5 +1,5 @@
 use plateau_tiles_test::conv::mvt;
-use plateau_tiles_test::conv::png;
+use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
 use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
@@ -325,7 +325,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 for entry in profile.convs.mvt_png.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
-                    png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
+                    mvt_png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
                 }
                 Ok(())
             });
