@@ -18,7 +18,7 @@ type Props = {
   setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
 };
 
-const ThreeDViewer: React.FC<Props> = ({
+const GeoViewer: React.FC<Props> = ({
   className,
   fileContent,
   fileType,
@@ -33,7 +33,7 @@ const ThreeDViewer: React.FC<Props> = ({
   const t = useT();
   return (
     <RenderFallback
-      message={t("3D Viewer Could Not Be Loaded. Check if the data is valid.")}
+      message={t("Geo Viewer Could Not Be Loaded. Check if the data is valid.")}
       textSize="sm">
       <div className={`relative size-full ${className}`}>
         <CesiumViewer
@@ -52,4 +52,4 @@ const ThreeDViewer: React.FC<Props> = ({
   );
 };
 
-export default memo(ThreeDViewer);
+export default memo(GeoViewer);

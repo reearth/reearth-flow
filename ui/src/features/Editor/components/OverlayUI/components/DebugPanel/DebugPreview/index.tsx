@@ -21,7 +21,7 @@ import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 import type { JobState } from "@flow/stores";
 
-import ThreeDViewer from "./components/ThreeDViewer";
+import GeoViewer from "./components/GeoViewer";
 import useHooks from "./hooks";
 
 type Props = {
@@ -134,15 +134,13 @@ const DebugPreview: React.FC<Props> = ({
     <div className="h-full w-full">
       {visualizerType === "2d-map" ? (
         <div className="h-full">
-          {/* 2D and 3D Viewer Header */}
+          {/* Geo Viewer Header */}
           <div className="py-1">
             <div className="flex w-full justify-between p-1">
               <div className="flex items-center gap-1 rounded-md px-3 py-2">
                 <GlobeIcon size={16} />
                 <p className="text-sm font-medium select-none">
-                  {visualizerType === "2d-map"
-                    ? t("2D Viewer")
-                    : t("3D Viewer")}
+                  {t("Geo Viewer")}
                 </p>
                 {detectedGeometryType && (
                   <span className="rounded px-2 py-1 text-xs text-muted-foreground">
@@ -185,7 +183,7 @@ const DebugPreview: React.FC<Props> = ({
             </div>
           </div>
           <div className="h-[calc(100%-55px)]" id="cesiumContainer">
-            <ThreeDViewer
+            <GeoViewer
               fileContent={processedOutputData}
               fileType={fileType}
               cesiumViewerRef={cesiumViewerRef}
