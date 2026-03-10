@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufRead, BufReader, BufWriter, Read as _, Seek, SeekFrom, Write as _},
+    io::{BufRead, BufReader, BufWriter, Read as _, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -357,10 +357,11 @@ impl Processor for AreaOnAreaOverlayer {
         // Output files are placed in temp_dir. send_file() will move them to the
         // channel buffer directory before this processor's Drop cleans up temp_dir.
         let output_id = uuid::Uuid::new_v4();
-        let area_path = temp_dir.join(format!("aoa-area-{output_id}.jsonl"));
-        let remnants_path = temp_dir.join(format!("aoa-remnants-{output_id}.jsonl"));
-        let mut area_writer = BufWriter::new(File::create(&area_path)?);
-        let mut remnants_writer = BufWriter::new(File::create(&remnants_path)?);
+        let area_path = temp_dir.join(format!("aoa-area-{output_id}.jsonl.zst"));
+        let remnants_path = temp_dir.join(format!("aoa-remnants-{output_id}.jsonl.zst"));
+        let mut area_writer = BufWriter::new(zstd::Encoder::new(File::create(&area_path)?, 1)?);
+        let mut remnants_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&remnants_path)?, 1)?);
         let mut area_count: usize = 0;
         let mut remnants_count: usize = 0;
 
@@ -405,10 +406,14 @@ impl Processor for AreaOnAreaOverlayer {
             remnants_count += rc;
         }
 
-        area_writer.flush()?;
-        remnants_writer.flush()?;
-        drop(area_writer);
-        drop(remnants_writer);
+        area_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
+        remnants_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
 
         let context = ctx.as_context();
 
@@ -710,14 +715,14 @@ fn overlay_2d_disk(
 /// Stream MiddlePolygons from a JSONL file, convert to Features, and write
 /// directly to area/remnants output files without collecting in memory.
 /// Returns (area_count, remnants_count).
-fn from_midpolygons_disk(
+fn from_midpolygons_disk<W: Write>(
     midpolygons_path: &Path,
     disk_feats: &DiskBackedFeatures,
     output_attribute: &Option<String>,
     generate_list: &Option<String>,
     accumulation_mode: &AccumulationMode,
-    area_writer: &mut BufWriter<File>,
-    remnants_writer: &mut BufWriter<File>,
+    area_writer: &mut W,
+    remnants_writer: &mut W,
 ) -> Result<(usize, usize), BoxedError> {
     let file = File::open(midpolygons_path)?;
     let reader = BufReader::new(file);

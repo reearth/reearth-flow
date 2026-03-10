@@ -329,8 +329,8 @@ impl Processor for GridDivider {
         let bounds_per_group = std::mem::take(&mut self.bounds_per_group);
         let group_map = std::mem::take(&mut self.group_map);
 
-        let output_path = dir.join("output.jsonl");
-        let mut output_writer = BufWriter::new(File::create(&output_path)?);
+        let output_path = dir.join("output.jsonl.zst");
+        let mut output_writer = BufWriter::new(zstd::Encoder::new(File::create(&output_path)?, 1)?);
         let mut total_output = 0usize;
 
         for key in &group_keys {
@@ -460,7 +460,10 @@ impl Processor for GridDivider {
             }
         }
 
-        output_writer.flush()?;
+        output_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
 
         if total_output > 0 {
             fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());

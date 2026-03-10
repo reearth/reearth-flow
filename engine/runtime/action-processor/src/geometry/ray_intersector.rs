@@ -297,6 +297,7 @@ pub struct RayIntersector {
     // Disk-backed state
     pair_ids: Vec<String>,
     pair_id_set: HashSet<String>,
+    // In-memory buffers: pair_id -> concatenated single-record zstd frames
     ray_buffer: HashMap<String, Vec<u8>>,
     geom_buffer: HashMap<String, Vec<u8>>,
     buffer_bytes: usize,
@@ -918,12 +919,10 @@ impl Processor for RayIntersector {
             }
         }
 
-        intersection_writer.flush()?;
         intersection_writer
             .into_inner()
             .map_err(|e| e.into_error())?
             .finish()?;
-        no_intersection_writer.flush()?;
         no_intersection_writer
             .into_inner()
             .map_err(|e| e.into_error())?

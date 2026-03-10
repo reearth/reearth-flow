@@ -562,12 +562,10 @@ impl Processor for FeatureMerger {
             }
         }
 
-        merged_writer.flush()?;
         merged_writer
             .into_inner()
             .map_err(|e| e.into_error())?
             .finish()?;
-        unmerged_writer.flush()?;
         unmerged_writer
             .into_inner()
             .map_err(|e| e.into_error())?
