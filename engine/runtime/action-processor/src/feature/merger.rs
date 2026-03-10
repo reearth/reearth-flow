@@ -324,7 +324,7 @@ impl FeatureMerger {
 
         self.ensure_temp_dir()?;
 
-        // Flush requestor buffer — bytes are already compressed zstd frames; just append.
+        // Flush requestor buffer
         for (idx, bytes) in std::mem::take(&mut self.requestor_buffer) {
             let path = self.requestor_file_path(idx);
             let mut file = File::options().create(true).append(true).open(path)?;

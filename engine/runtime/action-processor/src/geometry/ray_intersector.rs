@@ -369,7 +369,7 @@ impl RayIntersector {
 
         let dir = self.ensure_temp_dir()?.clone();
 
-        // Flush ray buffer — bytes are already compressed zstd frames; just append.
+        // Flush ray buffer
         for (pair_id, bytes) in self.ray_buffer.drain() {
             let safe_name = sanitize_pair_id(&pair_id);
             let path = dir.join("rays").join(format!("{safe_name}.jsonl.zst"));
@@ -918,7 +918,6 @@ impl Processor for RayIntersector {
             }
         }
 
-        // Finish the zstd streams (flush BufWriter buffer, then finalize the zstd frame)
         intersection_writer.flush()?;
         intersection_writer
             .into_inner()

@@ -144,9 +144,8 @@ struct AreaOnAreaOverlayer {
     group_map: HashMap<AttributeValue, usize>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
-    // In-memory buffer: group_idx -> Vec<(compressed_aabb_frame, compressed_feature_frame)>
-    #[allow(clippy::type_complexity)]
-    buffer: HashMap<usize, Vec<(Vec<u8>, Vec<u8>)>>,
+    // In-memory buffer: group_idx -> Vec<(aabb_json, feature_json)>
+    buffer: HashMap<usize, Vec<(String, String)>>,
     buffer_bytes: usize,
     /// Executor ID for cache isolation, set on first process() call
     executor_id: Option<uuid::Uuid>,
@@ -217,12 +216,10 @@ impl AreaOnAreaOverlayer {
     ) -> Result<(), BoxedError> {
         let aabb_json = serde_json::to_string(aabb)?;
         self.buffer_bytes += aabb_json.len() + feature_json.len();
-        let aabb_frame = zstd::encode_all((aabb_json + "\n").as_bytes(), 1)?;
-        let feat_frame = zstd::encode_all((feature_json.to_string() + "\n").as_bytes(), 1)?;
         self.buffer
             .entry(group_idx)
             .or_default()
-            .push((aabb_frame, feat_frame));
+            .push((aabb_json, feature_json.to_string()));
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -238,27 +235,30 @@ impl AreaOnAreaOverlayer {
         for (group_idx, entries) in std::mem::take(&mut self.buffer) {
             let group_dir = self.ensure_group_dir(group_idx)?;
 
-            // Write aabbs: compressed frames appended directly to .jsonl.zst
+            // Write aabbs
             {
-                let mut aabb_file = File::options()
+                let aabbs_file = File::options()
                     .create(true)
                     .append(true)
-                    .open(group_dir.join("aabbs.jsonl.zst"))?;
-                for (aabb_frame, _) in &entries {
-                    aabb_file.write_all(aabb_frame)?;
+                    .open(group_dir.join("aabbs.jsonl"))?;
+                let mut aabb_w = BufWriter::new(aabbs_file);
+                for (aabb_json, _) in &entries {
+                    aabb_w.write_all(aabb_json.as_bytes())?;
+                    aabb_w.write_all(b"\n")?;
                 }
+                aabb_w.flush()?;
             }
 
-            // Write features: decompress each frame, write plain JSONL (needed for DiskBackedFeatures seek)
+            // Write features
             {
                 let feats_file = File::options()
                     .create(true)
                     .append(true)
                     .open(group_dir.join("features.jsonl"))?;
                 let mut feat_w = BufWriter::new(feats_file);
-                for (_, feat_frame) in &entries {
-                    let plain = zstd::decode_all(feat_frame.as_slice())?;
-                    feat_w.write_all(&plain)?;
+                for (_, feature_json) in &entries {
+                    feat_w.write_all(feature_json.as_bytes())?;
+                    feat_w.write_all(b"\n")?;
                 }
                 feat_w.flush()?;
             }
@@ -366,13 +366,13 @@ impl Processor for AreaOnAreaOverlayer {
 
         for group_idx in 0..self.group_count {
             let group_dir = temp_dir.join(format!("group_{group_idx:06}"));
-            let aabbs_path = group_dir.join("aabbs.jsonl.zst");
+            let aabbs_path = group_dir.join("aabbs.jsonl");
             let features_path = group_dir.join("features.jsonl");
 
             // Load AABBs into memory (small: ~32 bytes each)
             let aabbs: Vec<[f64; 4]> = {
                 let file = File::open(&aabbs_path)?;
-                let reader = BufReader::new(zstd::Decoder::new(file)?);
+                let reader = BufReader::new(file);
                 let mut result = Vec::new();
                 for line in reader.lines() {
                     let line = line?;

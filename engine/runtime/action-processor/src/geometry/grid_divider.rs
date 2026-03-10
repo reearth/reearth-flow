@@ -287,7 +287,6 @@ impl Processor for GridDivider {
                     idx
                 };
 
-                // Serialize feature to buffer (compressed)
                 let json = serde_json::to_string(&feature).map_err(|e| {
                     GeometryProcessorError::GridDivider(format!("Failed to serialize feature: {e}"))
                 })?;

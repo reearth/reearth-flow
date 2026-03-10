@@ -78,11 +78,11 @@ fn merge_chunks_to_writer<W: Write>(
 ) -> Result<(), BoxedError> {
     let mut readers: Vec<BufReader<zstd::Decoder<'static, BufReader<File>>>> = chunk_paths
         .iter()
-        .map(|p| {
-            let file = File::open(p).expect("failed to open chunk file");
-            BufReader::new(zstd::Decoder::new(file).expect("failed to create zstd decoder"))
+        .map(|p| -> Result<_, BoxedError> {
+            let file = File::open(p)?;
+            Ok(BufReader::new(zstd::Decoder::new(file)?))
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     let mut heap = BinaryHeap::new();
     for (i, reader) in readers.iter_mut().enumerate() {
@@ -171,7 +171,7 @@ impl ProcessorFactory for FeatureSorterFactory {
 #[derive(Debug, Clone)]
 struct FeatureSorter {
     params: FeatureSorterParam,
-    buffer: Vec<(AttributeValue, Vec<u8>)>, // (key, compressed TSV line frame)
+    buffer: Vec<(AttributeValue, Vec<u8>)>, // (key, raw TSV line bytes)
     buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
     chunk_count: usize,
@@ -232,9 +232,8 @@ impl FeatureSorter {
         let file = File::create(&chunk_path)?;
         let mut encoder = zstd::Encoder::new(file, 1)?;
 
-        for (_, frame) in &self.buffer {
-            let tsv_line = zstd::decode_all(frame.as_slice())?;
-            encoder.write_all(&tsv_line)?;
+        for (_, tsv_line) in &self.buffer {
+            encoder.write_all(tsv_line)?;
         }
         encoder.finish()?;
 
@@ -285,8 +284,7 @@ impl Processor for FeatureSorter {
         tsv_line.push(b'\t');
         tsv_line.extend_from_slice(feature_json.as_bytes());
         tsv_line.push(b'\n');
-        let frame = zstd::encode_all(tsv_line.as_slice(), 1)?;
-        self.buffer.push((key, frame));
+        self.buffer.push((key, tsv_line));
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -338,16 +336,16 @@ impl Processor for FeatureSorter {
             chunk_paths = next_paths;
         }
 
-        // Final merge: write to output JSONL zst file for file-backed sending
+        // Final merge
         let output_path = dir.join("output.jsonl.zst");
         {
             let mut readers: Vec<BufReader<zstd::Decoder<'static, BufReader<File>>>> = chunk_paths
                 .iter()
-                .map(|p| {
-                    let file = File::open(p).expect("failed to open chunk file");
-                    BufReader::new(zstd::Decoder::new(file).expect("failed to create zstd decoder"))
+                .map(|p| -> Result<_, BoxedError> {
+                    let file = File::open(p)?;
+                    Ok(BufReader::new(zstd::Decoder::new(file)?))
                 })
-                .collect();
+                .collect::<Result<_, _>>()?;
 
             let mut heap = BinaryHeap::new();
             for (i, reader) in readers.iter_mut().enumerate() {
