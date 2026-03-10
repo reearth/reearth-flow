@@ -80,7 +80,7 @@ export default () => {
     if (!outputURLs) return undefined;
     return outputURLs.map((url) => ({
       url,
-      name: url.split("/").pop() || url,
+      name: decodeURIComponent(url.split("/").pop() || url),
     }));
   }, [outputURLs]);
 
