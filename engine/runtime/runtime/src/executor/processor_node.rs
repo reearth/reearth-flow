@@ -358,13 +358,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     port,
                     context,
                 } => {
-                    let reader =
-                        crate::forwarder::open_jsonl_reader(&path).map_err(|e| {
-                            ExecutionError::CannotReceiveFromChannel(format!(
-                                "Failed to open file-backed op file {}: {e}",
-                                path.display()
-                            ))
-                        })?;
+                    let reader = crate::forwarder::open_jsonl_reader(&path).map_err(|e| {
+                        ExecutionError::CannotReceiveFromChannel(format!(
+                            "Failed to open file-backed op file {}: {e}",
+                            path.display()
+                        ))
+                    })?;
                     for line in reader.lines() {
                         let line = line.map_err(|e| {
                             ExecutionError::CannotReceiveFromChannel(format!(

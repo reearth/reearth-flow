@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BinaryHeap, HashMap};
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use super::errors::FeatureProcessorError;
@@ -49,11 +49,7 @@ impl Ord for HeapEntry {
     }
 }
 
-fn read_entry(
-    reader: &mut BufReader<File>,
-    chunk_idx: usize,
-    descending: bool,
-) -> Option<HeapEntry> {
+fn read_entry<R: BufRead>(reader: &mut R, chunk_idx: usize, descending: bool) -> Option<HeapEntry> {
     let mut line = String::new();
     match reader.read_line(&mut line) {
         Ok(0) => None,
@@ -75,16 +71,16 @@ fn read_entry(
     }
 }
 
-fn merge_chunks_to_writer(
+fn merge_chunks_to_writer<W: Write>(
     chunk_paths: &[PathBuf],
-    writer: &mut BufWriter<File>,
+    writer: &mut W,
     descending: bool,
 ) -> Result<(), BoxedError> {
-    let mut readers: Vec<BufReader<File>> = chunk_paths
+    let mut readers: Vec<BufReader<zstd::Decoder<'static, BufReader<File>>>> = chunk_paths
         .iter()
         .map(|p| {
             let file = File::open(p).expect("failed to open chunk file");
-            BufReader::new(file)
+            BufReader::new(zstd::Decoder::new(file).expect("failed to create zstd decoder"))
         })
         .collect();
 
@@ -104,7 +100,6 @@ fn merge_chunks_to_writer(
             heap.push(next);
         }
     }
-    writer.flush()?;
     Ok(())
 }
 
@@ -176,7 +171,7 @@ impl ProcessorFactory for FeatureSorterFactory {
 #[derive(Debug, Clone)]
 struct FeatureSorter {
     params: FeatureSorterParam,
-    buffer: Vec<(AttributeValue, String, String)>, // (key, key_json, feature_json)
+    buffer: Vec<(AttributeValue, Vec<u8>)>, // (key, compressed TSV line frame)
     buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
     chunk_count: usize,
@@ -233,17 +228,15 @@ impl FeatureSorter {
         }
 
         let dir = self.ensure_temp_dir()?.clone();
-        let chunk_path = dir.join(format!("chunk_{:06}.tsv", self.chunk_count));
+        let chunk_path = dir.join(format!("chunk_{:06}.tsv.zst", self.chunk_count));
         let file = File::create(&chunk_path)?;
-        let mut writer = BufWriter::new(file);
+        let mut encoder = zstd::Encoder::new(file, 1)?;
 
-        for (_, key_json, feature_json) in &self.buffer {
-            writer.write_all(key_json.as_bytes())?;
-            writer.write_all(b"\t")?;
-            writer.write_all(feature_json.as_bytes())?;
-            writer.write_all(b"\n")?;
+        for (_, frame) in &self.buffer {
+            let tsv_line = zstd::decode_all(frame.as_slice())?;
+            encoder.write_all(&tsv_line)?;
         }
-        writer.flush()?;
+        encoder.finish()?;
 
         self.chunk_count += 1;
         self.buffer.clear();
@@ -288,7 +281,12 @@ impl Processor for FeatureSorter {
         let feature_json = serde_json::to_string(&feature)?;
 
         self.buffer_bytes += key_json.len() + feature_json.len();
-        self.buffer.push((key, key_json, feature_json));
+        let mut tsv_line = key_json.into_bytes();
+        tsv_line.push(b'\t');
+        tsv_line.extend_from_slice(feature_json.as_bytes());
+        tsv_line.push(b'\n');
+        let frame = zstd::encode_all(tsv_line.as_slice(), 1)?;
+        self.buffer.push((key, frame));
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -314,7 +312,7 @@ impl Processor for FeatureSorter {
 
         // Collect initial chunk paths
         let mut chunk_paths: Vec<PathBuf> = (0..self.chunk_count)
-            .map(|i| dir.join(format!("chunk_{:06}.tsv", i)))
+            .map(|i| dir.join(format!("chunk_{:06}.tsv.zst", i)))
             .collect();
 
         // Multi-pass merge: merge groups of MERGE_FAN_IN until few enough remain
@@ -324,10 +322,11 @@ impl Processor for FeatureSorter {
             let mut next_paths = Vec::new();
 
             for (group_idx, group) in chunk_paths.chunks(MERGE_FAN_IN).enumerate() {
-                let out_path = dir.join(format!("pass_{pass:03}_chunk_{group_idx:06}.tsv"));
+                let out_path = dir.join(format!("pass_{pass:03}_chunk_{group_idx:06}.tsv.zst"));
                 let file = File::create(&out_path)?;
-                let mut writer = BufWriter::new(file);
-                merge_chunks_to_writer(group, &mut writer, descending)?;
+                let mut encoder = zstd::Encoder::new(file, 1)?;
+                merge_chunks_to_writer(group, &mut encoder, descending)?;
+                encoder.finish()?;
                 next_paths.push(out_path);
             }
 
@@ -339,14 +338,14 @@ impl Processor for FeatureSorter {
             chunk_paths = next_paths;
         }
 
-        // Final merge: write to output JSONL file for file-backed sending
-        let output_path = dir.join("output.jsonl");
+        // Final merge: write to output JSONL zst file for file-backed sending
+        let output_path = dir.join("output.jsonl.zst");
         {
-            let mut readers: Vec<BufReader<File>> = chunk_paths
+            let mut readers: Vec<BufReader<zstd::Decoder<'static, BufReader<File>>>> = chunk_paths
                 .iter()
                 .map(|p| {
                     let file = File::open(p).expect("failed to open chunk file");
-                    BufReader::new(file)
+                    BufReader::new(zstd::Decoder::new(file).expect("failed to create zstd decoder"))
                 })
                 .collect();
 
@@ -358,17 +357,17 @@ impl Processor for FeatureSorter {
             }
 
             let out_file = File::create(&output_path)?;
-            let mut writer = BufWriter::new(out_file);
+            let mut encoder = zstd::Encoder::new(out_file, 1)?;
             while let Some(entry) = heap.pop() {
-                writer.write_all(entry.feature_json.as_bytes())?;
-                writer.write_all(b"\n")?;
+                encoder.write_all(entry.feature_json.as_bytes())?;
+                encoder.write_all(b"\n")?;
                 if let Some(next) =
                     read_entry(&mut readers[entry.chunk_idx], entry.chunk_idx, descending)
                 {
                     heap.push(next);
                 }
             }
-            writer.flush()?;
+            encoder.finish()?;
         }
 
         fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());

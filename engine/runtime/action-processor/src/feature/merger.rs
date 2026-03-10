@@ -179,9 +179,9 @@ pub struct FeatureMerger {
     requestor_before_value: Option<String>,
     supplier_before_value: Option<String>,
     temp_dir: Option<PathBuf>,
-    // In-memory buffers: idx -> Vec<feature_json>
-    requestor_buffer: HashMap<usize, Vec<String>>,
-    supplier_buffer: HashMap<usize, Vec<String>>,
+    // In-memory buffers: idx -> compressed zstd bytes (concatenated frames)
+    requestor_buffer: HashMap<usize, Vec<u8>>,
+    supplier_buffer: HashMap<usize, Vec<u8>>,
     buffer_bytes: usize,
     /// Executor ID for cache isolation, set on first process() call
     executor_id: Option<uuid::Uuid>,
@@ -288,10 +288,10 @@ impl FeatureMerger {
     ) -> Result<(), BoxedError> {
         let feature_json = serde_json::to_string(feature)?;
         self.buffer_bytes += feature_json.len();
-        self.requestor_buffer
-            .entry(idx)
-            .or_default()
-            .push(feature_json);
+        let mut src = feature_json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.requestor_buffer.entry(idx).or_default().extend(frame);
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -306,10 +306,10 @@ impl FeatureMerger {
     ) -> Result<(), BoxedError> {
         let feature_json = serde_json::to_string(feature)?;
         self.buffer_bytes += feature_json.len();
-        self.supplier_buffer
-            .entry(idx)
-            .or_default()
-            .push(feature_json);
+        let mut src = feature_json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.supplier_buffer.entry(idx).or_default().extend(frame);
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -324,29 +324,18 @@ impl FeatureMerger {
 
         self.ensure_temp_dir()?;
 
-        // Flush requestor buffer — each flush appends a new zstd frame to the file.
-        // zstd::Decoder handles concatenated frames by default in zstd 0.13+.
-        for (idx, entries) in std::mem::take(&mut self.requestor_buffer) {
+        // Flush requestor buffer — bytes are already compressed zstd frames; just append.
+        for (idx, bytes) in std::mem::take(&mut self.requestor_buffer) {
             let path = self.requestor_file_path(idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            let mut encoder = zstd::Encoder::new(file, 1)?;
-            for feature_json in entries {
-                encoder.write_all(feature_json.as_bytes())?;
-                encoder.write_all(b"\n")?;
-            }
-            encoder.finish()?;
+            let mut file = File::options().create(true).append(true).open(path)?;
+            file.write_all(&bytes)?;
         }
 
         // Flush supplier buffer
-        for (idx, entries) in std::mem::take(&mut self.supplier_buffer) {
+        for (idx, bytes) in std::mem::take(&mut self.supplier_buffer) {
             let path = self.supplier_file_path(idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            let mut encoder = zstd::Encoder::new(file, 1)?;
-            for feature_json in entries {
-                encoder.write_all(feature_json.as_bytes())?;
-                encoder.write_all(b"\n")?;
-            }
-            encoder.finish()?;
+            let mut file = File::options().create(true).append(true).open(path)?;
+            file.write_all(&bytes)?;
         }
 
         self.buffer_bytes = 0;
@@ -540,8 +529,7 @@ impl Processor for FeatureMerger {
 
         let merged_path = temp_dir.join("output_merged.jsonl.zst");
         let unmerged_path = temp_dir.join("output_unmerged.jsonl.zst");
-        let mut merged_writer =
-            BufWriter::new(zstd::Encoder::new(File::create(&merged_path)?, 1)?);
+        let mut merged_writer = BufWriter::new(zstd::Encoder::new(File::create(&merged_path)?, 1)?);
         let mut unmerged_writer =
             BufWriter::new(zstd::Encoder::new(File::create(&unmerged_path)?, 1)?);
         let mut merged_count: usize = 0;

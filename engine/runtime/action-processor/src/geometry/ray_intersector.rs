@@ -297,8 +297,8 @@ pub struct RayIntersector {
     // Disk-backed state
     pair_ids: Vec<String>,
     pair_id_set: HashSet<String>,
-    ray_buffer: HashMap<String, Vec<String>>,
-    geom_buffer: HashMap<String, Vec<String>>,
+    ray_buffer: HashMap<String, Vec<u8>>,
+    geom_buffer: HashMap<String, Vec<u8>>,
     buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
     executor_id: Option<uuid::Uuid>,
@@ -369,31 +369,20 @@ impl RayIntersector {
 
         let dir = self.ensure_temp_dir()?.clone();
 
-        // Flush ray buffer — each flush appends a new zstd frame to the file.
-        // zstd::Decoder handles concatenated frames by default in zstd 0.13+.
-        for (pair_id, lines) in self.ray_buffer.drain() {
+        // Flush ray buffer — bytes are already compressed zstd frames; just append.
+        for (pair_id, bytes) in self.ray_buffer.drain() {
             let safe_name = sanitize_pair_id(&pair_id);
             let path = dir.join("rays").join(format!("{safe_name}.jsonl.zst"));
-            let file = File::options().create(true).append(true).open(&path)?;
-            let mut encoder = zstd::Encoder::new(file, 1)?;
-            for line in &lines {
-                encoder.write_all(line.as_bytes())?;
-                encoder.write_all(b"\n")?;
-            }
-            encoder.finish()?;
+            let mut file = File::options().create(true).append(true).open(&path)?;
+            file.write_all(&bytes)?;
         }
 
         // Flush geom buffer
-        for (pair_id, lines) in self.geom_buffer.drain() {
+        for (pair_id, bytes) in self.geom_buffer.drain() {
             let safe_name = sanitize_pair_id(&pair_id);
             let path = dir.join("geoms").join(format!("{safe_name}.jsonl.zst"));
-            let file = File::options().create(true).append(true).open(&path)?;
-            let mut encoder = zstd::Encoder::new(file, 1)?;
-            for line in &lines {
-                encoder.write_all(line.as_bytes())?;
-                encoder.write_all(b"\n")?;
-            }
-            encoder.finish()?;
+            let mut file = File::options().create(true).append(true).open(&path)?;
+            file.write_all(&bytes)?;
         }
 
         self.buffer_bytes = 0;
@@ -627,7 +616,14 @@ impl Processor for RayIntersector {
                         ))
                     })?;
                     self.buffer_bytes += json.len();
-                    self.ray_buffer.entry(pair_id).or_default().push(json);
+                    let mut src = json.into_bytes();
+                    src.push(b'\n');
+                    let frame = zstd::encode_all(src.as_slice(), 1).map_err(|e| {
+                        GeometryProcessorError::RayIntersector(format!(
+                            "Failed to compress ray record: {e}"
+                        ))
+                    })?;
+                    self.ray_buffer.entry(pair_id).or_default().extend(frame);
                 }
                 Err(_) => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -648,11 +644,27 @@ impl Processor for RayIntersector {
                     })
                 };
 
+                let push_geom = |buffer: &mut HashMap<String, Vec<u8>>,
+                                 buffer_bytes: &mut usize,
+                                 pair_id: String,
+                                 json: String|
+                 -> Result<(), BoxedError> {
+                    *buffer_bytes += json.len();
+                    let mut src = json.into_bytes();
+                    src.push(b'\n');
+                    let frame = zstd::encode_all(src.as_slice(), 1).map_err(|e| {
+                        GeometryProcessorError::RayIntersector(format!(
+                            "Failed to compress geom record: {e}"
+                        ))
+                    })?;
+                    buffer.entry(pair_id).or_default().extend(frame);
+                    Ok(())
+                };
+
                 if let GeometryValue::FlowGeometry3D(geo) = &feature.geometry.value {
                     if let Some(mesh) = to_triangle_mesh(geo.clone(), DEFAULT_TOLERANCE) {
                         let json = serialize_mesh(mesh, geom_id)?;
-                        self.buffer_bytes += json.len();
-                        self.geom_buffer.entry(pair_id).or_default().push(json);
+                        push_geom(&mut self.geom_buffer, &mut self.buffer_bytes, pair_id, json)?;
                     } else {
                         fw.send(
                             ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
@@ -685,8 +697,7 @@ impl Processor for RayIntersector {
                         };
                     if let Some(mesh) = to_triangle_mesh(geom, DEFAULT_TOLERANCE) {
                         let json = serialize_mesh(mesh, geom_id)?;
-                        self.buffer_bytes += json.len();
-                        self.geom_buffer.entry(pair_id).or_default().push(json);
+                        push_geom(&mut self.geom_buffer, &mut self.buffer_bytes, pair_id, json)?;
                     } else {
                         fw.send(
                             ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),

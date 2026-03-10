@@ -137,7 +137,8 @@ pub struct GridDivider {
     group_map: HashMap<AttributeValue, usize>,
     group_keys: Vec<AttributeValue>,
     group_count: usize,
-    buffer: HashMap<usize, Vec<String>>,
+    // In-memory buffers: group_idx -> compressed zstd bytes (concatenated frames)
+    buffer: HashMap<usize, Vec<u8>>,
     buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
     executor_id: Option<uuid::Uuid>,
@@ -221,15 +222,10 @@ impl GridDivider {
 
         let dir = self.ensure_temp_dir()?.clone();
 
-        for (group_idx, lines) in self.buffer.drain() {
-            let path = dir.join(format!("group_{group_idx:06}.jsonl"));
-            let file = File::options().create(true).append(true).open(&path)?;
-            let mut writer = BufWriter::new(file);
-            for line in &lines {
-                writer.write_all(line.as_bytes())?;
-                writer.write_all(b"\n")?;
-            }
-            writer.flush()?;
+        for (group_idx, bytes) in self.buffer.drain() {
+            let path = dir.join(format!("group_{group_idx:06}.jsonl.zst"));
+            let mut file = File::options().create(true).append(true).open(&path)?;
+            file.write_all(&bytes)?;
         }
 
         self.buffer_bytes = 0;
@@ -291,12 +287,15 @@ impl Processor for GridDivider {
                     idx
                 };
 
-                // Serialize feature to buffer
+                // Serialize feature to buffer (compressed)
                 let json = serde_json::to_string(&feature).map_err(|e| {
                     GeometryProcessorError::GridDivider(format!("Failed to serialize feature: {e}"))
                 })?;
                 self.buffer_bytes += json.len();
-                self.buffer.entry(group_idx).or_default().push(json);
+                let mut src = json.into_bytes();
+                src.push(b'\n');
+                let frame = zstd::encode_all(src.as_slice(), 1)?;
+                self.buffer.entry(group_idx).or_default().extend(frame);
 
                 if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
                     self.flush_buffer()?;
@@ -345,7 +344,7 @@ impl Processor for GridDivider {
                 None => continue,
             };
 
-            let group_path = dir.join(format!("group_{group_idx:06}.jsonl"));
+            let group_path = dir.join(format!("group_{group_idx:06}.jsonl.zst"));
             if !group_path.exists() {
                 continue;
             }
@@ -355,7 +354,7 @@ impl Processor for GridDivider {
             let grid_origin_y = bounds.min().y;
 
             let file = File::open(&group_path)?;
-            let reader = BufReader::new(file);
+            let reader = BufReader::new(zstd::Decoder::new(file)?);
 
             // Process features in parallel chunks
             let mut chunk: Vec<Feature> = Vec::new();
