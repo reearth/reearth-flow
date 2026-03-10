@@ -79,18 +79,35 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           />
         )}
       </EdgeLabelRenderer>
-      {jobStatus === "completed" && (
-        <path
-          className="stroke-success"
-          d={edgePath}
-          strokeWidth="1"
-          fill="none"
-          markerEnd="url(#arrow)"
-        />
-      )}
-      {jobStatus === "queued" && (
-        <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
-      )}
+      {jobStatus === "completed" &&
+        (selected ? (
+          <path
+            className="stroke-success"
+            d={edgePath}
+            strokeWidth="2"
+            fill="none"
+            markerEnd="url(#arrow)"
+          />
+        ) : (
+          <path
+            d={edgePath}
+            className="stroke-success/60"
+            strokeWidth="1"
+            fill="none"
+            markerEnd="url(#arrow)"
+          />
+        ))}
+      {jobStatus === "queued" &&
+        (selected ? (
+          <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
+        ) : (
+          <path
+            d={edgePath}
+            stroke="#27272A"
+            fill="none"
+            className="stroke-dashed"
+          />
+        ))}
       {jobStatus === "running" && (
         <>
           <path
