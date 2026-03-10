@@ -247,12 +247,12 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         // Extract FME zip files and copy other items from testcase to output_dir/fme_extracted
         let fme_source_dir = test_path.join("fme");
         let fme_extracted_dir = output_dir.join("fme_extracted");
-        extract_dir(&fme_source_dir, &fme_extracted_dir);
+        extract_dir(&fme_source_dir, &fme_extracted_dir).unwrap();
 
         // Extract Flow output zip files to output_dir/flow_extracted
         let flow_source_dir = output_dir.join("flow");
         let flow_extracted_dir = output_dir.join("flow_extracted");
-        extract_dir(&flow_source_dir, &flow_extracted_dir);
+        extract_dir(&flow_source_dir, &flow_extracted_dir).unwrap();
 
         // Decompress draco-compressed glb in flow output
         // fme.zip should be preprocessed to contain only decompressed glb files

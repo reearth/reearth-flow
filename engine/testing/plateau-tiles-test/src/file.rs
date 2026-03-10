@@ -45,43 +45,65 @@ pub fn extract_zip_to_tmp(zip_path: &Path) -> Result<PathBuf, String> {
     Ok(tmp_dir)
 }
 
+fn perr(p: &Path, err: impl std::fmt::Display) -> String {
+    format!("{:?}: {}", p, err)
+}
+
 /// Copies all items from `source_dir` into `output_dir`.
 /// - `.zip` files are extracted into a subdirectory named after the zip stem.
 /// - Directories are copied recursively.
 /// - Other files are copied directly.
-pub fn extract_dir(source_dir: &Path, output_dir: &Path) {
+pub fn extract_dir(source_dir: &Path, output_dir: &Path) -> Result<(), String> {
     if !source_dir.exists() {
-        return;
+        return Ok(());
     }
-    fs::create_dir_all(output_dir).unwrap();
-
-    for entry in fs::read_dir(source_dir).unwrap().filter_map(|e| e.ok()) {
+    fs::create_dir_all(output_dir).map_err(|err| perr(output_dir, err))?;
+    for entry in fs::read_dir(source_dir)
+        .map_err(|err| perr(source_dir, err))?
+        .filter_map(|r| r.ok())
+    {
         let path = entry.path();
-        let dest = output_dir.join(path.file_name().unwrap());
-        if path.extension().is_some_and(|e| e == "zip") {
-            let stem = path.file_stem().unwrap().to_str().unwrap();
+        let dest = output_dir.join(
+            path.file_name()
+                .ok_or_else(|| format!("no filename: {:?}", path))?,
+        );
+        if path.extension().is_some_and(|ext| ext == "zip") {
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| format!("bad stem: {:?}", path))?;
             let out = output_dir.join(stem);
             let _ = fs::remove_dir_all(&out);
-            fs::create_dir_all(&out).unwrap();
-            let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
-            zip.extract(&out).unwrap();
+            fs::create_dir_all(&out).map_err(|err| perr(&out, err))?;
+            zip::ZipArchive::new(fs::File::open(&path).map_err(|err| perr(&path, err))?)
+                .map_err(|err| perr(&path, err))?
+                .extract(&out)
+                .map_err(|err| perr(&path, err))?;
         } else if path.is_dir() {
-            copy_dir_recursive(&path, &dest);
+            copy_dir_recursive(&path, &dest)?;
         } else {
-            fs::copy(&path, &dest).unwrap();
+            fs::copy(&path, &dest).map_err(|err| perr(&path, err))?;
         }
     }
+    Ok(())
 }
 
-pub fn copy_dir_recursive(src: &Path, dst: &Path) {
-    fs::create_dir_all(dst).unwrap();
-    for entry in fs::read_dir(src).unwrap().filter_map(|e| e.ok()) {
+pub fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|err| perr(dst, err))?;
+    for entry in fs::read_dir(src)
+        .map_err(|err| perr(src, err))?
+        .filter_map(|r| r.ok())
+    {
         let path = entry.path();
-        let dest = dst.join(path.file_name().unwrap());
+        let dest = dst.join(
+            path.file_name()
+                .ok_or_else(|| format!("no filename: {:?}", path))?,
+        );
         if path.is_dir() {
-            copy_dir_recursive(&path, &dest);
+            copy_dir_recursive(&path, &dest)?;
         } else {
-            fs::copy(&path, &dest).unwrap();
+            fs::copy(&path, &dest).map_err(|err| perr(&path, err))?;
         }
     }
+    Ok(())
 }
