@@ -9,10 +9,6 @@ use tinymvt::tag::TagsDecoder;
 use tinymvt::vector_tile::Tile;
 use walkdir::WalkDir;
 
-/// Rasterizes all geometry in a tile for a given feature ident into a `width × height` Canvas.
-/// Lines: capsule SDF per segment (analytically correct round joins/caps).
-/// Polygon interiors: scanline fill. Polygon boundaries: Wu line. Points: circle SDF.
-
 /// Renders a single MVT feature's geometry into `canvas`.
 fn render_feature(
     canvas: &mut Canvas,
