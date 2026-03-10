@@ -138,6 +138,57 @@ export default () => {
     setFullscreenDebug((prev) => !prev);
   };
 
+  const getFeatureBoundingSphereFromBounds = (gmlGeometries: any[]) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let minZ = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let maxZ = -Infinity;
+    let found = false;
+
+    for (const geom of gmlGeometries) {
+      if (!Array.isArray(geom.polygons)) continue;
+
+      for (const polygon of geom.polygons) {
+        for (const coord of polygon.exterior || []) {
+          if (
+            coord &&
+            typeof coord.x === "number" &&
+            typeof coord.y === "number"
+          ) {
+            const z = typeof coord.z === "number" ? coord.z : 0;
+
+            minX = Math.min(minX, coord.x);
+            minY = Math.min(minY, coord.y);
+            minZ = Math.min(minZ, z);
+
+            maxX = Math.max(maxX, coord.x);
+            maxY = Math.max(maxY, coord.y);
+            maxZ = Math.max(maxZ, z);
+
+            found = true;
+          }
+        }
+      }
+    }
+
+    if (!found) return null;
+
+    const corners = [
+      Cartesian3.fromDegrees(minX, minY, minZ),
+      Cartesian3.fromDegrees(minX, minY, maxZ),
+      Cartesian3.fromDegrees(minX, maxY, minZ),
+      Cartesian3.fromDegrees(minX, maxY, maxZ),
+      Cartesian3.fromDegrees(maxX, minY, minZ),
+      Cartesian3.fromDegrees(maxX, minY, maxZ),
+      Cartesian3.fromDegrees(maxX, maxY, minZ),
+      Cartesian3.fromDegrees(maxX, maxY, maxZ),
+    ];
+
+    return BoundingSphere.fromPoints(corners);
+  };
+
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
       if (!selectedFeature) return;
@@ -165,7 +216,7 @@ export default () => {
               geometry.gmlGeometries ||
               geometry.value?.cityGmlGeometry?.gmlGeometries;
             const positions: Cartesian3[] = [];
-
+            if (!Array.isArray(gmlGeometries)) return;
             for (const geom of gmlGeometries) {
               if (!Array.isArray(geom.polygons)) continue;
 
@@ -178,6 +229,7 @@ export default () => {
                 ];
 
                 for (const ring of rings) {
+                  if (!Array.isArray(ring)) continue;
                   for (const coord of ring || []) {
                     if (
                       coord &&
@@ -199,7 +251,8 @@ export default () => {
 
             if (positions.length === 0) return;
 
-            const sphere = BoundingSphere.fromPoints(positions);
+            const sphere = getFeatureBoundingSphereFromBounds(gmlGeometries);
+            if (!sphere) return;
 
             const paddedSphere = new BoundingSphere(
               sphere.center,
