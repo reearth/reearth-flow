@@ -33,6 +33,9 @@ pub fn write_json(
 
     let out =
         serde_json::to_vec_pretty(&data).map_err(|e| format!("Failed to serialize JSON: {}", e))?;
-    fs::write(output, out).map_err(|e| format!("Failed to write {:?}: {}", output, e))?;
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("{:?}: {}", parent, e))?;
+    }
+    fs::write(output, out).map_err(|e| format!("{:?}: {}", output, e))?;
     Ok(())
 }
