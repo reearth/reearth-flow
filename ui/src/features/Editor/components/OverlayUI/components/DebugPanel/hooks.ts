@@ -1,5 +1,10 @@
 import bbox from "@turf/bbox";
-import { BoundingSphere, Cartesian3 } from "cesium";
+import {
+  BoundingSphere,
+  Cartesian3,
+  HeadingPitchRange,
+  Math as CesiumMath,
+} from "cesium";
 import {
   MouseEvent,
   useCallback,
@@ -161,42 +166,54 @@ export default () => {
               geometry.value?.cityGmlGeometry?.gmlGeometries;
             const positions: Cartesian3[] = [];
 
-            if (gmlGeometries && Array.isArray(gmlGeometries)) {
-              for (
-                let gi = 0;
-                gi < gmlGeometries.length && positions.length < 50;
-                gi++
-              ) {
-                const geom = gmlGeometries[gi];
-                if (Array.isArray(geom.polygons)) {
-                  for (
-                    let pi = 0;
-                    pi < geom.polygons.length && positions.length < 50;
-                    pi++
-                  ) {
-                    for (const coord of geom.polygons[pi].exterior || []) {
-                      if (coord?.x !== undefined && coord?.y !== undefined) {
-                        positions.push(
-                          Cartesian3.fromDegrees(
-                            coord.x,
-                            coord.y,
-                            coord.z || 0,
-                          ),
-                        );
-                      }
-                      if (positions.length >= 50) break;
+            for (const geom of gmlGeometries) {
+              if (!Array.isArray(geom.polygons)) continue;
+
+              for (const polygon of geom.polygons) {
+                const rings = [
+                  ...(polygon.exterior ? [polygon.exterior] : []),
+                  ...(Array.isArray(polygon.interiors)
+                    ? polygon.interiors
+                    : []),
+                ];
+
+                for (const ring of rings) {
+                  for (const coord of ring || []) {
+                    if (
+                      coord &&
+                      typeof coord.x === "number" &&
+                      typeof coord.y === "number"
+                    ) {
+                      positions.push(
+                        Cartesian3.fromDegrees(
+                          coord.x,
+                          coord.y,
+                          typeof coord.z === "number" ? coord.z : 0,
+                        ),
+                      );
                     }
                   }
                 }
               }
             }
 
-            if (positions.length > 0) {
-              const sphere = BoundingSphere.fromPoints(positions);
-              cesiumViewer.camera.flyToBoundingSphere(sphere, {
-                duration: 1.5,
-              });
-            }
+            if (positions.length === 0) return;
+
+            const sphere = BoundingSphere.fromPoints(positions);
+
+            const paddedSphere = new BoundingSphere(
+              sphere.center,
+              Math.max(sphere.radius * 1.2, 10),
+            );
+
+            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
+              duration: 1.5,
+              offset: new HeadingPitchRange(
+                0,
+                CesiumMath.toRadians(-35),
+                paddedSphere.radius * 2.5,
+              ),
+            });
           } else {
             // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
             const matchingEntities = cesiumViewer.entities.values.filter(
