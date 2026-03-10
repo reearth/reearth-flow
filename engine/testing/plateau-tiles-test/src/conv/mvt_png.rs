@@ -1,9 +1,6 @@
 use crate::compare_attributes::make_feature_key;
 use crate::conv::mvt::tinymvt_value_to_json;
-use crate::rasterize::{
-    draw_aa_circle, draw_capsule, draw_wu_line, scanline_fill, write_raster_png, RASTER_SIZE,
-    STROKE_PIXELS,
-};
+use crate::rasterize::Canvas;
 use prost::Message;
 use std::fs;
 use std::path::Path;
@@ -12,11 +9,18 @@ use tinymvt::tag::TagsDecoder;
 use tinymvt::vector_tile::Tile;
 use walkdir::WalkDir;
 
-/// Rasterizes all geometry in a tile for a given feature ident into a RASTER_SIZE x RASTER_SIZE f32 raster.
+/// Rasterizes all geometry in a tile for a given feature ident into a `width × height` Canvas.
 /// Lines: capsule SDF per segment (analytically correct round joins/caps).
 /// Polygon interiors: scanline fill. Polygon boundaries: Wu line. Points: circle SDF.
-pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
-    let mut raster = vec![0.0f32; RASTER_SIZE * RASTER_SIZE];
+pub fn rasterize_tile_feature(
+    tile: &Tile,
+    ident: &str,
+    width: usize,
+    height: usize,
+    stroke: f64,
+) -> Canvas {
+    let mut canvas = Canvas::new(width, height);
+    let stroke_pixels = stroke;
 
     for layer in &tile.layers {
         let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
@@ -46,9 +50,9 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                     // Point
                     if let Ok(points) = decoder.decode_points() {
                         for point in &points {
-                            let x = point[0] as f64 * scale * RASTER_SIZE as f64;
-                            let y = point[1] as f64 * scale * RASTER_SIZE as f64;
-                            draw_aa_circle(&mut raster, x, y, STROKE_PIXELS);
+                            let x = point[0] as f64 * scale * width as f64;
+                            let y = point[1] as f64 * scale * height as f64;
+                            canvas.draw_aa_circle(x, y, stroke_pixels);
                         }
                     }
                 }
@@ -57,11 +61,11 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                     if let Ok(linestrings) = decoder.decode_linestrings() {
                         for ls in &linestrings {
                             for window in ls.windows(2) {
-                                let x0 = window[0][0] as f64 * scale * RASTER_SIZE as f64;
-                                let y0 = window[0][1] as f64 * scale * RASTER_SIZE as f64;
-                                let x1 = window[1][0] as f64 * scale * RASTER_SIZE as f64;
-                                let y1 = window[1][1] as f64 * scale * RASTER_SIZE as f64;
-                                draw_capsule(&mut raster, x0, y0, x1, y1, STROKE_PIXELS);
+                                let x0 = window[0][0] as f64 * scale * width as f64;
+                                let y0 = window[0][1] as f64 * scale * height as f64;
+                                let x1 = window[1][0] as f64 * scale * width as f64;
+                                let y1 = window[1][1] as f64 * scale * height as f64;
+                                canvas.draw_capsule(x0, y0, x1, y1, stroke_pixels);
                             }
                         }
                     }
@@ -79,20 +83,19 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                                     ring.iter()
                                         .map(|p| {
                                             (
-                                                p[0] as f64 * scale * RASTER_SIZE as f64,
-                                                p[1] as f64 * scale * RASTER_SIZE as f64,
+                                                p[0] as f64 * scale * width as f64,
+                                                p[1] as f64 * scale * height as f64,
                                             )
                                         })
                                         .collect()
                                 })
                                 .collect();
 
-                            scanline_fill(&mut raster, &pixel_rings);
+                            canvas.scanline_fill(&pixel_rings);
 
                             for ring in &pixel_rings {
                                 for window in ring.windows(2) {
-                                    draw_wu_line(
-                                        &mut raster,
+                                    canvas.draw_wu_line(
                                         window[0].0,
                                         window[0].1,
                                         window[1].0,
@@ -102,7 +105,7 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
                                 if ring.len() >= 2 {
                                     let last = ring[ring.len() - 1];
                                     let first = ring[0];
-                                    draw_wu_line(&mut raster, last.0, last.1, first.0, first.1);
+                                    canvas.draw_wu_line(last.0, last.1, first.0, first.1);
                                 }
                             }
                         }
@@ -113,7 +116,7 @@ pub fn rasterize_tile_feature(tile: &Tile, ident: &str) -> Vec<f32> {
         }
     }
 
-    raster
+    canvas
 }
 
 /// Returns all unique feature keys present in a tile (across all layers and geometry types).
@@ -148,6 +151,9 @@ pub fn write_png_truth(
     mvt_dir: &Path,
     truth_dir: &Path,
     tiles: Option<&[String]>,
+    width: usize,
+    height: usize,
+    stroke: f64,
 ) -> Result<(), String> {
     if !mvt_dir.exists() {
         return Err(format!("MVT directory does not exist: {:?}", mvt_dir));
@@ -177,15 +183,15 @@ pub fn write_png_truth(
         let idents = make_feature_keys_in_tile(&tile);
 
         for ident in &idents {
-            let raster = rasterize_tile_feature(&tile, ident);
+            let canvas = rasterize_tile_feature(&tile, ident, width, height, stroke);
 
-            if raster.iter().all(|&v| v == 0.0) {
+            if canvas.is_blank() {
                 continue;
             }
 
             let safe_ident = sanitize_filename(ident);
             let png_path = truth_dir.join(&rel).join(format!("{}.png", safe_ident));
-            write_raster_png(&raster, &png_path)?;
+            canvas.write_png(&png_path)?;
         }
     }
 

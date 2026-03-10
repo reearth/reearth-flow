@@ -1,6 +1,11 @@
 use crate::cast_config::CastConfigValue;
+use crate::rasterize::{RasterSize, DEFAULT_STROKE};
 use serde::Deserialize;
 use std::collections::HashMap;
+
+fn default_stroke() -> f64 {
+    DEFAULT_STROKE
+}
 
 #[derive(Debug, Deserialize)]
 pub struct ConvMvtEntry {
@@ -18,6 +23,10 @@ pub struct ConvMvtPngEntry {
     pub generate_truth: bool,
     #[serde(default)]
     pub tiles: Option<Vec<String>>,
+    #[serde(default)]
+    pub size: RasterSize,
+    #[serde(default = "default_stroke")]
+    pub stroke: f64,
 }
 
 #[derive(Debug, Deserialize)]

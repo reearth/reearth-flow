@@ -1,4 +1,4 @@
-use crate::rasterize::{compare_rasters, empty_raster, read_raster_png};
+use crate::rasterize::{Canvas, RasterSize};
 use serde::Deserialize;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -6,6 +6,8 @@ use walkdir::WalkDir;
 #[derive(Debug, Deserialize)]
 pub struct RasterConfig {
     pub threshold: Option<f64>,
+    #[serde(default)]
+    pub size: RasterSize,
 }
 
 pub fn test_raster(
@@ -14,6 +16,7 @@ pub fn test_raster(
     config: &RasterConfig,
 ) -> Result<(), String> {
     let threshold = config.threshold.unwrap_or(0.0);
+    let (default_width, default_height) = config.size.dimensions();
 
     assert!(
         flow_png_dir.exists(),
@@ -47,15 +50,17 @@ pub fn test_raster(
             .to_string();
         seen.insert(rel.clone());
 
-        let flow_raster = read_raster_png(path)?;
+        let flow_canvas = Canvas::read_png(path)?;
         let truth_png = truth_dir.join(&rel);
-        let truth_raster = if truth_png.exists() {
-            read_raster_png(&truth_png)?
+        let truth_canvas = if truth_png.exists() {
+            Canvas::read_png(&truth_png)?
         } else {
-            empty_raster()
+            Canvas::new(flow_canvas.width, flow_canvas.height)
         };
 
-        let score = compare_rasters(&truth_raster, &flow_raster);
+        let score = flow_canvas
+            .compare(&truth_canvas)
+            .map_err(|e| format!("{}: {}", rel, e))?;
         worst_score = f64::max(worst_score, score);
         total += 1;
         results.push((score, rel));
@@ -76,8 +81,11 @@ pub fn test_raster(
         if seen.contains(&rel) {
             continue;
         }
-        let truth_raster = read_raster_png(path)?;
-        let score = compare_rasters(&truth_raster, &empty_raster());
+        let truth_canvas = Canvas::read_png(path)?;
+        let empty = Canvas::new(default_width, default_height);
+        let score = truth_canvas
+            .compare(&empty)
+            .map_err(|e| format!("{}: {}", rel, e))?;
         worst_score = f64::max(worst_score, score);
         total += 1;
         results.push((score, rel));

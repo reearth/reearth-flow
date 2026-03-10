@@ -305,7 +305,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 for entry in profile.convs.mvt_png.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
-                    mvt_png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
+                    let (w, h) = entry.size.dimensions();
+                    mvt_png::write_png_truth(
+                        &mvt_dir,
+                        &png_dir,
+                        entry.tiles.as_deref(),
+                        w,
+                        h,
+                        entry.stroke,
+                    )?;
                 }
                 Ok(())
             });

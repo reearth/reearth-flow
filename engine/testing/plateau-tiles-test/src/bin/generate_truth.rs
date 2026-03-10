@@ -68,7 +68,15 @@ fn run(profile_path: &Path) -> Result<(), String> {
         fs::create_dir_all(&tmp_png_dir)
             .map_err(|e| format!("Failed to create tmp png dir: {}", e))?;
 
-        let result = mvt_png::write_png_truth(&tmp_mvt_dir, &tmp_png_dir, entry.tiles.as_deref());
+        let (w, h) = entry.size.dimensions();
+        let result = mvt_png::write_png_truth(
+            &tmp_mvt_dir,
+            &tmp_png_dir,
+            entry.tiles.as_deref(),
+            w,
+            h,
+            entry.stroke,
+        );
         fs::remove_dir_all(&tmp_mvt_dir).ok();
 
         if let Err(e) = result {
