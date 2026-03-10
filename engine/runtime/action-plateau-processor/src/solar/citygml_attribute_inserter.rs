@@ -408,9 +408,13 @@ impl Processor for CityGmlAttributeInserter {
             let final_output = if let (false, Some(epsg), Some(ref tex_fname)) =
                 (roof_rings.is_empty(), source_epsg, &texture_filename)
             {
-                let appearance_xml =
-                    self.build_appearance_xml(&roof_rings, epsg, tex_fname, self.texture_bounds)?;
-                self.insert_appearance_block(&modified, &appearance_xml)?
+                let appearance_xml = CityGmlAttributeInserter::build_appearance_xml(
+                    &roof_rings,
+                    epsg,
+                    tex_fname,
+                    self.texture_bounds,
+                )?;
+                CityGmlAttributeInserter::insert_appearance_block(&modified, &appearance_xml)?
             } else {
                 modified
             };
@@ -806,7 +810,6 @@ impl CityGmlAttributeInserter {
     /// Reproject ring coordinates from EPSG:6697 to the projected CRS, compute UV coordinates,
     /// and generate the appearance XML block to insert before </core:CityModel>.
     fn build_appearance_xml(
-        &self,
         roof_rings: &[RoofRingData],
         source_epsg: u32,
         texture_filename: &str,
@@ -816,13 +819,13 @@ impl CityGmlAttributeInserter {
         let geographic_epsg = 6697u32;
         get_or_create_proj(geographic_epsg, source_epsg)?;
 
-        let mut reprojected_rings: Vec<(usize, Vec<(f64, f64)>)> = Vec::new();
+        let mut reprojected_rings: Vec<Vec<(f64, f64)>> = Vec::new();
         let mut computed_min_x = f64::MAX;
         let mut computed_min_y = f64::MAX;
         let mut computed_max_x = f64::MIN;
         let mut computed_max_y = f64::MIN;
 
-        for (i, ring) in roof_rings.iter().enumerate() {
+        for ring in roof_rings.iter() {
             let mut projected_coords = Vec::with_capacity(ring.coords.len());
             for &(lat, lon, _height) in &ring.coords {
                 let (x, y) = reproject_coords(lat, lon, geographic_epsg, source_epsg)?;
@@ -843,7 +846,7 @@ impl CityGmlAttributeInserter {
                 }
                 projected_coords.push((x, y));
             }
-            reprojected_rings.push((i, projected_coords));
+            reprojected_rings.push(projected_coords);
         }
 
         // Use externally-provided bounds (from ImageRasterizer) when available, so that UV
@@ -857,11 +860,16 @@ impl CityGmlAttributeInserter {
         let width = max_x - min_x;
         let height = max_y - min_y;
 
-        // Build the XML string
+        // Build the XML string.
+        // Using the same theme name ("rgbTexture") as the original photo-texture appearance
+        // means nusamai merges both blocks into one Theme when reading back: the solar UV
+        // entries (appended last) overwrite the photo UV entries for the same ring IDs,
+        // so solar-covered roofs show the irradiance texture while all other surfaces keep
+        // the photo texture — no changes to the generic reader are required.
         let mut xml = String::new();
         xml.push_str("<app:appearanceMember>");
         xml.push_str("<app:Appearance>");
-        xml.push_str("<app:theme>solarRadiation</app:theme>");
+        xml.push_str("<app:theme>rgbTexture</app:theme>");
         xml.push_str("<app:surfaceDataMember>");
         xml.push_str("<app:ParameterizedTexture>");
         xml.push_str("<app:imageURI>");
@@ -869,9 +877,7 @@ impl CityGmlAttributeInserter {
         xml.push_str("</app:imageURI>");
         xml.push_str("<app:mimeType>image/png</app:mimeType>");
 
-        for (i, projected_coords) in &reprojected_rings {
-            let ring = &roof_rings[*i];
-
+        for (projected_coords, ring) in reprojected_rings.iter().zip(roof_rings.iter()) {
             // Compute raw (unclamped) UV values to determine ring coverage.
             let raw_uvs: Vec<(f64, f64)> = projected_coords
                 .iter()
@@ -893,20 +899,14 @@ impl CityGmlAttributeInserter {
             // Use centroid-based check: a ring whose centroid UV falls within [0, 1]
             // is considered inside the solar texture area (even if a few edge vertices
             // stray slightly outside due to radiation-cell discretization).  Only rings
-            // whose centroid is clearly outside the radiation bounds are skipped so that
-            // they fall back to the original photo texture in entity_to_geometry.
+            // whose centroid is clearly outside the radiation bounds are skipped.
             let n = raw_uvs.len() as f64;
-            let (centroid_u, centroid_v) = if n > 0.0 {
-                let sum = raw_uvs
-                    .iter()
-                    .fold((0.0f64, 0.0f64), |(su, sv), &(u, v)| (su + u, sv + v));
-                (sum.0 / n, sum.1 / n)
-            } else {
-                (0.5, 0.5)
-            };
+            let sum = raw_uvs
+                .iter()
+                .fold((0.0f64, 0.0f64), |(su, sv), &(u, v)| (su + u, sv + v));
+            let (centroid_u, centroid_v) = (sum.0 / n, sum.1 / n);
             if !(0.0..=1.0).contains(&centroid_u) || !(0.0..=1.0).contains(&centroid_v) {
-                // Ring centroid is outside the texture area; leave it out of the solar
-                // appearance so it falls back to the original photo texture.
+                // Ring centroid is outside the texture area; skip it.
                 continue;
             }
 
@@ -952,7 +952,6 @@ impl CityGmlAttributeInserter {
 
     /// Insert appearance XML block before the closing </core:CityModel> tag.
     fn insert_appearance_block(
-        &self,
         xml_bytes: &[u8],
         appearance_xml: &str,
     ) -> Result<Vec<u8>, BoxedError> {
@@ -1286,19 +1285,7 @@ mod tests {
             b"<?xml version=\"1.0\"?><core:CityModel><core:cityObjectMember/></core:CityModel>";
         let appearance = "<app:appearanceMember><app:Appearance/></app:appearanceMember>";
 
-        let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
-            gml_id_attribute: "gmlId".to_string(),
-            path_attribute: "path".to_string(),
-            measurements: vec![],
-            texture_image_path_ast: None,
-            source_epsg_ast: None,
-            paths: Vec::new(),
-            elements: HashMap::new(),
-            texture_bounds: None,
-        };
-
-        let result = inserter.insert_appearance_block(xml, appearance).unwrap();
+        let result = CityGmlAttributeInserter::insert_appearance_block(xml, appearance).unwrap();
         let output = String::from_utf8(result).unwrap();
 
         assert!(output.contains("app:appearanceMember"));

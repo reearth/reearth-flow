@@ -14,4 +14,4 @@
         Display,
     )
 )]
-pub(crate) struct Topic(String);
+pub struct Topic(String);

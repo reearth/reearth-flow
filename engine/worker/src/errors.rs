@@ -31,23 +31,23 @@ pub enum Error {
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl Error {
-    pub(crate) fn init<T: ToString>(message: T) -> Self {
+    pub fn init<T: ToString>(message: T) -> Self {
         Self::Init(message.to_string())
     }
 
-    pub(crate) fn failed_to_create_workflow<T: ToString>(message: T) -> Self {
+    pub fn failed_to_create_workflow<T: ToString>(message: T) -> Self {
         Self::FailedToCreateWorkflow(message.to_string())
     }
 
-    pub(crate) fn run<T: ToString>(message: T) -> Self {
+    pub fn run<T: ToString>(message: T) -> Self {
         Self::Run(message.to_string())
     }
 
-    pub(crate) fn failed_to_download_asset_files<T: ToString>(message: T) -> Self {
+    pub fn failed_to_download_asset_files<T: ToString>(message: T) -> Self {
         Self::FailedToDownloadAssetFiles(message.to_string())
     }
 
-    pub(crate) fn failed_to_upload_artifact<T: ToString>(message: T) -> Self {
+    pub fn failed_to_upload_artifact<T: ToString>(message: T) -> Self {
         Self::FailedToUploadArtifact(message.to_string())
     }
 }

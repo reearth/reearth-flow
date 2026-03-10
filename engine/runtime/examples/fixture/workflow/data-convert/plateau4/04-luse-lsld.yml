@@ -57,15 +57,6 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
-  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilterByPackage
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-        outputPort: default
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
@@ -111,11 +102,6 @@ graphs:
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
-    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    fromPort: default
-    toPort: default
-  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
-    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
@@ -158,6 +144,15 @@ graphs:
       codelistsPath: env.get("__value").codelists
       dataset: |
         env.get("__value")["path"]
+  - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
+    name: TargetPackagesFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
   - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
     name: AttributeFlattener
     type: action
@@ -352,6 +347,11 @@ graphs:
     toPort: default
   - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
     from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+    to: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
+    fromPort: default
+    toPort: default
+  - id: 1076a29a-9d4c-4205-b3bb-d95072400253
+    from: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
     to: 3820b7e2-a1ca-436b-acb0-72b907c8b246
     fromPort: default
     toPort: default

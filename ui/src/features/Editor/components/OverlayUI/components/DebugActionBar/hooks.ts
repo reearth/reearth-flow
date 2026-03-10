@@ -9,10 +9,13 @@ import { AnyWorkflowVariable } from "@flow/types";
 export default ({
   onDebugRunStart,
   onDebugRunStop,
+  refetchWorkflowVariables,
+
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  refetchWorkflowVariables: () => void;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
@@ -28,8 +31,10 @@ export default ({
   const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
   const handleShowDebugActiveRunsPopover = () =>
     setshowOverlayElement("debugRuns");
-  const handleShowDebugWorkflowVariablesDialog = () =>
+  const handleShowDebugWorkflowVariablesDialog = () => {
+    refetchWorkflowVariables();
     setshowOverlayElement("debugWorkflowVariables");
+  };
   const handlePopoverClose = () => setshowOverlayElement(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 

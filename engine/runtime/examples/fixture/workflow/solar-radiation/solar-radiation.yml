@@ -80,15 +80,6 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
-  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilterByPackage
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-        outputPort: default
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
@@ -134,11 +125,6 @@ graphs:
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
-    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    fromPort: default
-    toPort: default
-  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
-    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
@@ -920,6 +906,15 @@ graphs:
     action: BoundsExtractor
     with:
       zmax: maxZ
+  - id: 00000001-0000-0000-0000-00000000006c
+    name: TextureBuildingFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] != "bldg:Building";
+        outputPort: default
   - id: 00000001-0000-0000-0000-00000000006a
     name: FilterRoofForTexture
     type: action
@@ -1675,8 +1670,13 @@ graphs:
     toPort: default
   - id: e0000001-0000-0000-0000-000000000062
     from: 00000004-0000-0000-0000-000000000003
-    to: 00000001-0000-0000-0000-00000000006a
+    to: 00000001-0000-0000-0000-00000000006c
     fromPort: passed
+    toPort: default
+  - id: e0000001-0000-0000-0000-00000000006e
+    from: 00000001-0000-0000-0000-00000000006c
+    to: 00000001-0000-0000-0000-00000000006a
+    fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-00000000006b
     from: 00000001-0000-0000-0000-00000000006a

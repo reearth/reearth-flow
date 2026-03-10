@@ -1,0 +1,1 @@
+{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36e8","jobId":"5566c900-9581-4c5c-be02-fd13e4d94029","timestamp":"2025-07-26T10:15:17.694379Z","level":"ERROR","nodeName":null,"nodeId":null,"message":"Workflow definition error: InputError: SerdeUtilError: graphs[0]: missing field `edges` at line 7 column 5"}

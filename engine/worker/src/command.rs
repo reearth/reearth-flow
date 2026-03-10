@@ -19,8 +19,11 @@ use crate::{
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
     incremental::{prepare_incremental_artifacts, prepare_incremental_feature_store, DirCopySpec},
+};
+use reearth_flow_worker::{
+    errors::{self, Error},
     logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
-    pubsub::{backend::PubSubBackend, publisher::Publisher},
+    pubsub::{PubSubBackend, Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
         metadata::Metadata,
@@ -125,15 +128,14 @@ pub struct RunWorkerCommand {
 }
 
 impl RunWorkerCommand {
-    pub fn parse_cli_args(mut matches: ArgMatches) -> crate::errors::Result<Self> {
+    pub fn parse_cli_args(mut matches: ArgMatches) -> errors::Result<Self> {
         let workflow = matches
             .remove_one::<String>("workflow")
-            .ok_or(crate::errors::Error::init("No workflow provided"))?;
+            .ok_or(Error::init("No workflow provided"))?;
         let metadata_path = matches
             .remove_one::<String>("metadata_path")
-            .ok_or(crate::errors::Error::init("No metadata path provided"))?;
-        let metadata_path =
-            Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
+            .ok_or(Error::init("No metadata path provided"))?;
+        let metadata_path = Uri::from_str(metadata_path.as_str()).map_err(Error::init)?;
         let worker_num = matches
             .remove_one::<String>("worker_num")
             .and_then(|s| s.parse::<usize>().ok())
@@ -169,16 +171,16 @@ impl RunWorkerCommand {
         })
     }
 
-    pub fn execute(&self) -> crate::errors::Result<()> {
+    pub fn execute(&self) -> errors::Result<()> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.worker_num)
             .enable_all()
             .build()
-            .map_err(crate::errors::Error::FailedToCreateTokioRuntime)?;
+            .map_err(Error::FailedToCreateTokioRuntime)?;
         runtime.block_on(self.run())
     }
 
-    async fn run(&self) -> crate::errors::Result<()> {
+    async fn run(&self) -> errors::Result<()> {
         tracing::info!("Starting worker");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
 
@@ -192,11 +194,11 @@ impl RunWorkerCommand {
 
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
-            .map_err(crate::errors::Error::init)?;
+            .map_err(Error::init)?;
 
         let handle = Handle::current();
         set_pubsub_context(pubsub.clone(), workflow_id, meta.job_id, handle)
-            .map_err(crate::errors::Error::init)?;
+            .map_err(Error::init)?;
 
         if let Some(name) = workflow_name {
             if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
@@ -214,7 +216,7 @@ impl RunWorkerCommand {
 
                 self.cleanup(&meta, &storage_resolver).await?;
 
-                return Err(crate::errors::Error::failed_to_create_workflow(e));
+                return Err(Error::failed_to_create_workflow(e));
             }
         };
 
@@ -261,7 +263,7 @@ impl RunWorkerCommand {
                     job_result.clone(),
                 ))
                 .await
-                .map_err(crate::errors::Error::run),
+                .map_err(Error::run),
             PubSubBackend::Noop(p) => p
                 .publish(JobCompleteEvent::new(
                     workflow_id,
@@ -269,7 +271,7 @@ impl RunWorkerCommand {
                     job_result.clone(),
                 ))
                 .await
-                .map_err(|e| crate::errors::Error::run(format!("{e:?}"))),
+                .map_err(|e| Error::run(format!("{e:?}"))),
         }?;
         tracing::info!(
             "Job completed with workflow_id: {:?}, job_id: {:?} result: {:?}",
@@ -283,23 +285,21 @@ impl RunWorkerCommand {
     async fn download_metadata(
         &self,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<Metadata> {
+    ) -> errors::Result<Metadata> {
         let storage = storage_resolver
             .resolve(&self.metadata_path)
-            .map_err(crate::errors::Error::init)?;
+            .map_err(Error::init)?;
 
         let meta = storage
             .get(&self.metadata_path.as_path())
             .await
-            .map_err(crate::errors::Error::FailedToDownloadMetadata)?;
+            .map_err(Error::FailedToDownloadMetadata)?;
         let meta_json = meta
             .bytes()
             .await
-            .map_err(crate::errors::Error::FailedToDownloadMetadata)?;
-        let meta_json =
-            String::from_utf8(meta_json.to_vec()).map_err(crate::errors::Error::init)?;
-        let meta: Metadata =
-            serde_json::from_str(meta_json.as_str()).map_err(crate::errors::Error::init)?;
+            .map_err(Error::FailedToDownloadMetadata)?;
+        let meta_json = String::from_utf8(meta_json.to_vec()).map_err(Error::init)?;
+        let meta: Metadata = serde_json::from_str(meta_json.as_str()).map_err(Error::init)?;
 
         Ok(meta)
     }
@@ -307,12 +307,12 @@ impl RunWorkerCommand {
     async fn download_workflow(
         &self,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<String> {
+    ) -> errors::Result<String> {
         let (yaml_content, base_dir) = if self.workflow == "-" {
-            let content = io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?;
+            let content = io::read_to_string(io::stdin()).map_err(Error::init)?;
             (content, None)
         } else {
-            let path = Uri::from_str(self.workflow.as_str()).map_err(crate::errors::Error::init)?;
+            let path = Uri::from_str(self.workflow.as_str()).map_err(Error::init)?;
 
             // Extract base directory for !include resolution
             let base_dir = if path.protocol() == Protocol::File {
@@ -321,28 +321,26 @@ impl RunWorkerCommand {
                 None
             };
 
-            let storage = storage_resolver
-                .resolve(&path)
-                .map_err(crate::errors::Error::init)?;
+            let storage = storage_resolver.resolve(&path).map_err(Error::init)?;
             let bytes = storage
                 .get(path.path().as_path())
                 .await
-                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
+                .map_err(Error::FailedToDownloadWorkflow)?;
             let bytes = bytes
                 .bytes()
                 .await
-                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
-            let content = String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?;
+                .map_err(Error::FailedToDownloadWorkflow)?;
+            let content = String::from_utf8(bytes.to_vec()).map_err(Error::init)?;
             (content, base_dir)
         };
 
         // Expand !include directives if we have a base directory
         let expanded = if let Some(base) = base_dir.as_ref() {
             reearth_flow_common::serde::expand_yaml_includes(&yaml_content, Some(base))
-                .map_err(crate::errors::Error::init)?
+                .map_err(Error::init)?
         } else {
             reearth_flow_common::serde::expand_yaml_includes(&yaml_content, None)
-                .map_err(crate::errors::Error::init)?
+                .map_err(Error::init)?
         };
 
         Ok(expanded)
@@ -370,25 +368,24 @@ impl RunWorkerCommand {
         storage_resolver: &Arc<StorageResolver>,
         meta: &Metadata,
         workflow: &mut Workflow,
-    ) -> crate::errors::Result<(
+    ) -> errors::Result<(
         Arc<State>,
         Arc<State>,
         Arc<LoggerFactory>,
         Option<IncrementalRunConfig>,
     )> {
         let job_id = meta.job_id;
-        let asset_path =
-            setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
+        let asset_path = setup_job_directory("workers", "assets", job_id).map_err(Error::init)?;
 
-        let artifact_path = setup_job_directory("workers", "artifacts", job_id)
-            .map_err(crate::errors::Error::init)?;
+        let artifact_path =
+            setup_job_directory("workers", "artifacts", job_id).map_err(Error::init)?;
 
-        let temp_artifact_path = setup_job_directory("workers", "temp-artifacts", job_id)
-            .map_err(crate::errors::Error::init)?;
+        let temp_artifact_path =
+            setup_job_directory("workers", "temp-artifacts", job_id).map_err(Error::init)?;
         let temp_artifact_root = temp_artifact_path
             .path()
             .to_str()
-            .ok_or_else(|| crate::errors::Error::init("Invalid temp-artifacts dir path"))?
+            .ok_or_else(|| Error::init("Invalid temp-artifacts dir path"))?
             .to_string();
         std::env::set_var(
             "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
@@ -423,20 +420,19 @@ impl RunWorkerCommand {
         }
         workflow
             .extend_with(global)
-            .map_err(crate::errors::Error::failed_to_create_workflow)?;
+            .map_err(Error::failed_to_create_workflow)?;
         workflow
             .merge_with(self.vars.clone())
-            .map_err(crate::errors::Error::failed_to_create_workflow)?;
+            .map_err(Error::failed_to_create_workflow)?;
 
         download_asset(storage_resolver, &meta.assets, &asset_path).await?;
 
-        let action_log_uri = setup_job_directory("workers", "action-log", job_id)
-            .map_err(crate::errors::Error::init)?;
-        let feature_state_uri = setup_job_directory("workers", "feature-store", job_id)
-            .map_err(crate::errors::Error::init)?;
-        let feature_state = Arc::new(
-            State::new(&feature_state_uri, storage_resolver).map_err(crate::errors::Error::init)?,
-        );
+        let action_log_uri =
+            setup_job_directory("workers", "action-log", job_id).map_err(Error::init)?;
+        let feature_state_uri =
+            setup_job_directory("workers", "feature-store", job_id).map_err(Error::init)?;
+        let feature_state =
+            Arc::new(State::new(&feature_state_uri, storage_resolver).map_err(Error::init)?);
         let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
@@ -457,10 +453,8 @@ impl RunWorkerCommand {
         if let (Some(prev_job_str), Some(start_node_str)) =
             (&self.previous_job_id, &self.start_node_id)
         {
-            let prev_job_id =
-                uuid::Uuid::parse_str(prev_job_str).map_err(crate::errors::Error::init)?;
-            let start_node_id =
-                uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
+            let prev_job_id = uuid::Uuid::parse_str(prev_job_str).map_err(Error::init)?;
+            let start_node_id = uuid::Uuid::parse_str(start_node_str).map_err(Error::init)?;
 
             let (previous_feature_state, available_edge_ids) = prepare_incremental_feature_store(
                 "workers",
@@ -489,10 +483,10 @@ impl RunWorkerCommand {
 
             previous_feature_state
                 .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
-                .map_err(crate::errors::Error::init)?;
+                .map_err(Error::init)?;
             feature_state
                 .rewrite_feature_store_file_paths_in_root_dir(prev_job_id, job_id)
-                .map_err(crate::errors::Error::init)?;
+                .map_err(Error::init)?;
 
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
@@ -521,7 +515,7 @@ impl RunWorkerCommand {
         &self,
         meta: &Metadata,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<()> {
+    ) -> errors::Result<()> {
         upload_artifact(storage_resolver, meta).await?;
         Ok(())
     }

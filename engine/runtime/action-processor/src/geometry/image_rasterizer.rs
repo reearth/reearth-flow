@@ -318,40 +318,45 @@ impl Processor for ImageRasterizer {
                     let max_x = boundary.right_down.x;
                     let min_y = boundary.left_down.y;
                     let max_y = boundary.left_up.y;
-                    let mut bounds_feature = Feature::new_with_attributes(Attributes::default());
-                    bounds_feature.insert(
-                        "textureMinX",
-                        reearth_flow_types::AttributeValue::Number(
-                            serde_json::Number::from_f64(min_x)
-                                .unwrap_or(serde_json::Number::from(0)),
-                        ),
-                    );
-                    bounds_feature.insert(
-                        "textureMinY",
-                        reearth_flow_types::AttributeValue::Number(
-                            serde_json::Number::from_f64(min_y)
-                                .unwrap_or(serde_json::Number::from(0)),
-                        ),
-                    );
-                    bounds_feature.insert(
-                        "textureMaxX",
-                        reearth_flow_types::AttributeValue::Number(
-                            serde_json::Number::from_f64(max_x)
-                                .unwrap_or(serde_json::Number::from(0)),
-                        ),
-                    );
-                    bounds_feature.insert(
-                        "textureMaxY",
-                        reearth_flow_types::AttributeValue::Number(
-                            serde_json::Number::from_f64(max_y)
-                                .unwrap_or(serde_json::Number::from(0)),
-                        ),
-                    );
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        bounds_feature,
-                        BOUNDS_PORT.clone(),
-                    ));
+                    match (
+                        serde_json::Number::from_f64(min_x),
+                        serde_json::Number::from_f64(min_y),
+                        serde_json::Number::from_f64(max_x),
+                        serde_json::Number::from_f64(max_y),
+                    ) {
+                        (Some(min_x_n), Some(min_y_n), Some(max_x_n), Some(max_y_n)) => {
+                            let mut bounds_feature =
+                                Feature::new_with_attributes(Attributes::default());
+                            bounds_feature.insert(
+                                "textureMinX",
+                                reearth_flow_types::AttributeValue::Number(min_x_n),
+                            );
+                            bounds_feature.insert(
+                                "textureMinY",
+                                reearth_flow_types::AttributeValue::Number(min_y_n),
+                            );
+                            bounds_feature.insert(
+                                "textureMaxX",
+                                reearth_flow_types::AttributeValue::Number(max_x_n),
+                            );
+                            bounds_feature.insert(
+                                "textureMaxY",
+                                reearth_flow_types::AttributeValue::Number(max_y_n),
+                            );
+                            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                                &ctx,
+                                bounds_feature,
+                                BOUNDS_PORT.clone(),
+                            ));
+                        }
+                        _ => {
+                            tracing::warn!(
+                                "Texture bounds contain non-finite values \
+                                 (min_x={min_x}, min_y={min_y}, max_x={max_x}, max_y={max_y}); \
+                                 skipping bounds feature"
+                            );
+                        }
+                    }
                 }
 
                 // If we have features waiting for texture coordinates, process them

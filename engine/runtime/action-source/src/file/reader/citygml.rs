@@ -92,6 +92,7 @@ async fn parse_tree_reader<R: BufRead>(
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(),
+                        cross_file_feature_refs: vec![],
                     };
                     entities.push(entity);
                 }
