@@ -142,7 +142,7 @@
     "@vitest/coverage-v8": "4.0.18",
     "autoprefixer": "10.4.27",
     "del-cli": "7.0.0",
-    "eslint": "10.0.3",
+    "eslint": "9.39.2",
     "eslint-config-reearth": "0.3.8",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-storybook": "10.2.17",
