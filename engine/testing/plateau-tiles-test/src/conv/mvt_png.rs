@@ -12,134 +12,107 @@ use walkdir::WalkDir;
 /// Rasterizes all geometry in a tile for a given feature ident into a `width × height` Canvas.
 /// Lines: capsule SDF per segment (analytically correct round joins/caps).
 /// Polygon interiors: scanline fill. Polygon boundaries: Wu line. Points: circle SDF.
-pub fn rasterize_tile_feature(
-    tile: &Tile,
-    ident: &str,
+
+/// Renders a single MVT feature's geometry into `canvas`.
+fn render_feature(
+    canvas: &mut Canvas,
+    feature: &tinymvt::vector_tile::tile::Feature,
+    scale: f64,
     width: usize,
     height: usize,
     stroke: f64,
-) -> Canvas {
-    let mut canvas = Canvas::new(width, height);
-    let stroke_pixels = stroke;
+) {
+    let geom_type = feature.r#type.unwrap_or(0);
+    let mut decoder = GeometryDecoder::new(&feature.geometry);
+    let s = |v: i32, dim: usize| v as f64 * scale * dim as f64;
 
-    for layer in &tile.layers {
-        let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
-        let extent = layer.extent.unwrap_or(4096);
-        let scale = 1.0 / extent as f64;
-
-        for feature in &layer.features {
-            let tags = match tags_decoder.decode(&feature.tags) {
-                Ok(t) => t,
-                Err(_) => continue,
-            };
-            let mut props = serde_json::Map::new();
-            for (key, value) in tags {
-                props.insert(key.to_string(), tinymvt_value_to_json(&value));
-            }
-            let props_value = serde_json::Value::Object(props);
-            let feature_key = make_feature_key(&props_value, None);
-            if feature_key != ident {
-                continue;
-            }
-
-            let geom_type = feature.r#type.unwrap_or(0);
-            let mut decoder = GeometryDecoder::new(&feature.geometry);
-
-            match geom_type {
-                1 => {
-                    // Point
-                    if let Ok(points) = decoder.decode_points() {
-                        for point in &points {
-                            let x = point[0] as f64 * scale * width as f64;
-                            let y = point[1] as f64 * scale * height as f64;
-                            canvas.draw_aa_circle(x, y, stroke_pixels);
-                        }
-                    }
+    match geom_type {
+        1 => {
+            if let Ok(points) = decoder.decode_points() {
+                for p in &points {
+                    canvas.draw_aa_circle(s(p[0], width), s(p[1], height), stroke);
                 }
-                2 => {
-                    // LineString: capsule SDF per segment for correct round joins/caps
-                    if let Ok(linestrings) = decoder.decode_linestrings() {
-                        for ls in &linestrings {
-                            for window in ls.windows(2) {
-                                let x0 = window[0][0] as f64 * scale * width as f64;
-                                let y0 = window[0][1] as f64 * scale * height as f64;
-                                let x1 = window[1][0] as f64 * scale * width as f64;
-                                let y1 = window[1][1] as f64 * scale * height as f64;
-                                canvas.draw_capsule(x0, y0, x1, y1, stroke_pixels);
-                            }
-                        }
-                    }
-                }
-                3 => {
-                    // Polygon: scanline fill interior + Wu boundary
-                    if let Ok(polygons) = decoder.decode_polygons() {
-                        for rings in &polygons {
-                            if rings.is_empty() {
-                                continue;
-                            }
-                            let pixel_rings: Vec<Vec<(f64, f64)>> = rings
-                                .iter()
-                                .map(|ring| {
-                                    ring.iter()
-                                        .map(|p| {
-                                            (
-                                                p[0] as f64 * scale * width as f64,
-                                                p[1] as f64 * scale * height as f64,
-                                            )
-                                        })
-                                        .collect()
-                                })
-                                .collect();
-
-                            canvas.scanline_fill(&pixel_rings);
-
-                            for ring in &pixel_rings {
-                                for window in ring.windows(2) {
-                                    canvas.draw_wu_line(
-                                        window[0].0,
-                                        window[0].1,
-                                        window[1].0,
-                                        window[1].1,
-                                    );
-                                }
-                                if ring.len() >= 2 {
-                                    let last = ring[ring.len() - 1];
-                                    let first = ring[0];
-                                    canvas.draw_wu_line(last.0, last.1, first.0, first.1);
-                                }
-                            }
-                        }
-                    }
-                }
-                _ => {}
             }
         }
+        2 => {
+            if let Ok(linestrings) = decoder.decode_linestrings() {
+                for ls in &linestrings {
+                    for w in ls.windows(2) {
+                        canvas.draw_capsule(
+                            s(w[0][0], width),
+                            s(w[0][1], height),
+                            s(w[1][0], width),
+                            s(w[1][1], height),
+                            stroke,
+                        );
+                    }
+                }
+            }
+        }
+        3 => {
+            if let Ok(polygons) = decoder.decode_polygons() {
+                for rings in &polygons {
+                    if rings.is_empty() {
+                        continue;
+                    }
+                    let px: Vec<Vec<(f64, f64)>> = rings
+                        .iter()
+                        .map(|r| {
+                            r.iter()
+                                .map(|p| (s(p[0], width), s(p[1], height)))
+                                .collect()
+                        })
+                        .collect();
+                    canvas.scanline_fill(&px);
+                    for ring in &px {
+                        for w in ring.windows(2) {
+                            canvas.draw_wu_line(w[0].0, w[0].1, w[1].0, w[1].1);
+                        }
+                        if ring.len() >= 2 {
+                            canvas.draw_wu_line(
+                                ring[ring.len() - 1].0,
+                                ring[ring.len() - 1].1,
+                                ring[0].0,
+                                ring[0].1,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
     }
-
-    canvas
 }
 
-/// Returns all unique feature keys present in a tile (across all layers and geometry types).
-pub fn make_feature_keys_in_tile(tile: &Tile) -> Vec<String> {
-    let mut keys = Vec::new();
+/// Single-pass rasterization: decodes each feature's tags once and renders directly into
+/// per-ident canvases, avoiding the O(N×F) re-scan of the old make_feature_keys + rasterize_tile_feature approach.
+fn rasterize_tile_to_canvases(
+    tile: &Tile,
+    width: usize,
+    height: usize,
+    stroke: f64,
+) -> std::collections::HashMap<String, Canvas> {
+    let mut canvases: std::collections::HashMap<String, Canvas> = std::collections::HashMap::new();
     for layer in &tile.layers {
         let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
+        let scale = 1.0 / layer.extent.unwrap_or(4096) as f64;
         for feature in &layer.features {
             let tags = match tags_decoder.decode(&feature.tags) {
                 Ok(t) => t,
                 Err(_) => continue,
             };
-            let mut props = serde_json::Map::new();
-            for (key, value) in tags {
-                props.insert(key.to_string(), tinymvt_value_to_json(&value));
-            }
-            let key = make_feature_key(&serde_json::Value::Object(props), None);
-            if !keys.contains(&key) {
-                keys.push(key);
-            }
+            let props: serde_json::Map<_, _> = tags
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), tinymvt_value_to_json(&v)))
+                .collect();
+            let ident = make_feature_key(&serde_json::Value::Object(props), None);
+            let canvas = canvases
+                .entry(ident)
+                .or_insert_with(|| Canvas::new(width, height));
+            render_feature(canvas, feature, scale, width, height, stroke);
         }
     }
-    keys
+    canvases
 }
 
 /// For each .mvt file under `mvt_dir`, rasterizes each feature individually and writes a PNG
@@ -180,17 +153,13 @@ pub fn write_png_truth(
         let tile = Tile::decode(&data[..])
             .map_err(|e| format!("Failed to decode MVT {:?}: {}", path, e))?;
 
-        let idents = make_feature_keys_in_tile(&tile);
-
-        for ident in &idents {
-            let canvas = rasterize_tile_feature(&tile, ident, width, height, stroke);
-
+        for (ident, canvas) in rasterize_tile_to_canvases(&tile, width, height, stroke) {
             if canvas.is_blank() {
                 continue;
             }
-
-            let safe_ident = sanitize_filename(ident);
-            let png_path = truth_dir.join(&rel).join(format!("{}.png", safe_ident));
+            let png_path = truth_dir
+                .join(&rel)
+                .join(format!("{}.png", sanitize_filename(&ident)));
             canvas.write_png(&png_path)?;
         }
     }
