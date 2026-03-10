@@ -6,8 +6,7 @@ use std::collections::HashMap;
 pub struct ConvMvtEntry {
     pub path: String,
     pub truth_path: String,
-    #[serde(default)]
-    pub fme: bool,
+    pub generate_truth: bool,
     #[serde(default)]
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
@@ -16,8 +15,7 @@ pub struct ConvMvtEntry {
 pub struct ConvMvtPngEntry {
     pub path: String,
     pub truth_path: String,
-    #[serde(default)]
-    pub fme: bool,
+    pub generate_truth: bool,
     #[serde(default)]
     pub tiles: Option<Vec<String>>,
 }

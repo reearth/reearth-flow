@@ -21,7 +21,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
     let fme_dir = testcase_dir.join("fme");
 
     for (id, entry) in &profile.convs.mvt {
-        if !entry.fme {
+        if !entry.generate_truth {
             continue;
         }
         let stem = Path::new(&entry.path)
@@ -37,7 +37,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
     }
 
     for (id, entry) in &profile.convs.mvt_png {
-        if !entry.fme {
+        if !entry.generate_truth {
             continue;
         }
         let stem = Path::new(&entry.path)
