@@ -113,6 +113,7 @@ fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
 }
 
 const DEFAULT_TESTS: &[&str] = &[
+    "data-convert/plateau4/01-bldg/fld",
     "data-convert/plateau4/01-bldg/lod1",
     "data-convert/plateau4/01-bldg/tako-machi",
     "data-convert/plateau4/01-bldg/ogasawara-mura",
