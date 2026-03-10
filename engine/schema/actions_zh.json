@@ -1263,7 +1263,31 @@
       "name": "CenterPointReplacer",
       "type": "processor",
       "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CenterPointReplacerParam",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "default": "centerOfGravity",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CenterPointMode"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CenterPointMode": {
+            "type": "string",
+            "enum": [
+              "centerOfGravity",
+              "boundingBoxCenter",
+              "anyInsidePoint"
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"

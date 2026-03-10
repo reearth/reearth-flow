@@ -1263,7 +1263,33 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 ### Description
 Replace Feature Geometry with Center Point
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CenterPointReplacerParam",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "default": "centerOfGravity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CenterPointMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CenterPointMode": {
+      "type": "string",
+      "enum": [
+        "centerOfGravity",
+        "boundingBoxCenter",
+        "anyInsidePoint"
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
