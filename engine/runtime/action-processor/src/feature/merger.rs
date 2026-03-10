@@ -324,14 +324,12 @@ impl FeatureMerger {
 
         self.ensure_temp_dir()?;
 
-        // Flush requestor buffer
         for (idx, bytes) in std::mem::take(&mut self.requestor_buffer) {
             let path = self.requestor_file_path(idx);
             let mut file = File::options().create(true).append(true).open(path)?;
             file.write_all(&bytes)?;
         }
 
-        // Flush supplier buffer
         for (idx, bytes) in std::mem::take(&mut self.supplier_buffer) {
             let path = self.supplier_file_path(idx);
             let mut file = File::options().create(true).append(true).open(path)?;
@@ -418,12 +416,10 @@ impl Processor for FeatureMerger {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Capture executor_id on first process call for cache isolation
         if self.executor_id.is_none() {
             self.executor_id = Some(fw.executor_id());
         }
 
-        self.ensure_temp_dir()?;
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
