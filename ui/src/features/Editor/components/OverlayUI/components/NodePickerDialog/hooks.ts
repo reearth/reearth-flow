@@ -141,6 +141,8 @@ export default ({
       const newNode = await buildNewCanvasNode({ position, type: name });
       if (!newNode) return;
 
+      onNodesAdd([newNode]);
+
       if (lastSelectedNode && openNodePickerViaShortcut) {
         if (lastSelectedNode.type !== "writer" && newNode.type !== "reader") {
           onEdgesAdd?.([
@@ -184,7 +186,6 @@ export default ({
         }));
         onNodesChange?.(nodesToDeselect);
       }
-      onNodesAdd([newNode]);
 
       // TODO - add drop in batch support
       // onNodesChange(handleNodeDropInBatch(newNode, newNodes));
