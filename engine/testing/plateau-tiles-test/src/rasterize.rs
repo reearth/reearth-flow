@@ -267,7 +267,7 @@ impl Canvas {
         })
     }
 
-    /// Pixel-wise RMS comparison between two canvases.
+    /// Pixelwise comparison between two canvases.
     /// Returns `Err` if canvas dimensions differ.
     /// Only differences ≥ 0.5 are counted (ignores sub-pixel AA noise).
     pub fn compare(&self, other: &Canvas) -> Result<f64, String> {
