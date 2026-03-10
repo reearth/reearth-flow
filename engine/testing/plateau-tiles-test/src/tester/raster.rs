@@ -131,3 +131,106 @@ pub fn test_raster(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rasterize::{Canvas, RasterSize};
+
+    fn config(threshold: f64, size: usize) -> RasterConfig {
+        RasterConfig {
+            threshold: Some(threshold),
+            size: RasterSize::Square(size),
+        }
+    }
+
+    fn write_canvas(dir: &std::path::Path, name: &str, w: usize, h: usize, fill: f32) {
+        let mut c = Canvas::new(w, h);
+        c.data.iter_mut().for_each(|v| *v = fill);
+        c.write_png(&dir.join(name)).unwrap();
+    }
+
+    #[test]
+    fn flow_dir_missing() {
+        let td = tempfile::TempDir::new().unwrap();
+        let truth = td.path().join("truth");
+        std::fs::create_dir_all(&truth).unwrap();
+        let err = test_raster(&truth, &td.path().join("nope"), &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("flow_png_dir does not exist"), "{err}");
+    }
+
+    #[test]
+    fn truth_dir_missing() {
+        let td = tempfile::TempDir::new().unwrap();
+        let flow = td.path().join("flow");
+        std::fs::create_dir_all(&flow).unwrap();
+        let err = test_raster(&td.path().join("nope"), &flow, &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("truth_dir does not exist"), "{err}");
+    }
+
+    #[test]
+    fn no_pngs_returns_err() {
+        let td = tempfile::TempDir::new().unwrap();
+        let truth = td.path().join("truth");
+        let flow = td.path().join("flow");
+        std::fs::create_dir_all(&truth).unwrap();
+        std::fs::create_dir_all(&flow).unwrap();
+        std::fs::write(flow.join("not_a_png.txt"), b"data").unwrap();
+        let err = test_raster(&truth, &flow, &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("no PNG"), "{err}");
+    }
+
+    #[test]
+    fn corrupt_flow_png_returns_err() {
+        let td = tempfile::TempDir::new().unwrap();
+        let truth = td.path().join("truth");
+        let flow = td.path().join("flow");
+        std::fs::create_dir_all(&truth).unwrap();
+        std::fs::create_dir_all(&flow).unwrap();
+        std::fs::write(flow.join("tile.png"), b"not a png at all").unwrap();
+        let err = test_raster(&truth, &flow, &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("Failed to read PNG"), "{err}");
+    }
+
+    #[test]
+    fn size_mismatch_flow_vs_truth_returns_err() {
+        let td = tempfile::TempDir::new().unwrap();
+        let truth = td.path().join("truth");
+        let flow = td.path().join("flow");
+        std::fs::create_dir_all(&truth).unwrap();
+        std::fs::create_dir_all(&flow).unwrap();
+        write_canvas(&flow, "tile.png", 32, 32, 0.0);
+        write_canvas(&truth, "tile.png", 16, 16, 0.0);
+        let err = test_raster(&truth, &flow, &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("Canvas size mismatch"), "{err}");
+    }
+
+    // truth-only PNG: compared against an empty canvas of the config size.
+    // If the truth PNG dimensions differ from config size → size mismatch.
+    #[test]
+    fn size_mismatch_truth_only_vs_empty_returns_err() {
+        let td = tempfile::TempDir::new().unwrap();
+        let truth = td.path().join("truth");
+        let flow = td.path().join("flow");
+        std::fs::create_dir_all(&truth).unwrap();
+        std::fs::create_dir_all(&flow).unwrap();
+        // truth PNG is 32×32 but config size (empty canvas) is 16×16
+        write_canvas(&truth, "tile.png", 32, 32, 0.0);
+        let err = test_raster(&truth, &flow, &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("Canvas size mismatch"), "{err}");
+    }
+
+    #[test]
+    fn threshold_exceeded_returns_err() {
+        let td = tempfile::TempDir::new().unwrap();
+        let truth = td.path().join("truth");
+        let flow = td.path().join("flow");
+        std::fs::create_dir_all(&truth).unwrap();
+        std::fs::create_dir_all(&flow).unwrap();
+        // flow=white (1.0), truth=black (0.0): diff=1.0 per pixel ≥ 0.5 → score=1.0 > threshold=0.0
+        write_canvas(&flow, "tile.png", 16, 16, 1.0);
+        write_canvas(&truth, "tile.png", 16, 16, 0.0);
+        let err = test_raster(&truth, &flow, &config(0.0, 16)).unwrap_err();
+        assert!(err.contains("Raster comparison failed"), "{err}");
+    }
+}

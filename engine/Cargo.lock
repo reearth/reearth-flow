@@ -5760,6 +5760,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "tempfile",
  "tinymvt",
  "tokio",
  "toml 1.0.3+spec-1.1.0",
