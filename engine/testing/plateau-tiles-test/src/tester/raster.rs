@@ -18,16 +18,12 @@ pub fn test_raster(
     let threshold = config.threshold.unwrap_or(0.0);
     let (default_width, default_height) = config.size.dimensions();
 
-    assert!(
-        flow_png_dir.exists(),
-        "flow_png_dir does not exist: {:?}",
-        flow_png_dir
-    );
-    assert!(
-        truth_dir.exists(),
-        "truth_dir does not exist: {:?}",
-        truth_dir
-    );
+    if !flow_png_dir.exists() {
+        return Err(format!("flow_png_dir does not exist: {:?}", flow_png_dir));
+    }
+    if !truth_dir.exists() {
+        return Err(format!("truth_dir does not exist: {:?}", truth_dir));
+    }
 
     let mut flow_pngs: Vec<_> = WalkDir::new(flow_png_dir)
         .into_iter()
