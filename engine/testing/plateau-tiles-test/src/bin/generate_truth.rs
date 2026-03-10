@@ -20,20 +20,20 @@ fn run(profile_path: &Path) -> Result<(), String> {
     let testcase_dir = profile_path.parent().unwrap();
     let fme_dir = testcase_dir.join("fme");
 
-    for (id, entry) in &profile.convs.mvt {
+    for (id, entry) in &profile.convs.mvt_attributes {
         if !entry.generate_truth {
             continue;
         }
         let stem = Path::new(&entry.path)
             .file_name()
-            .expect("convs.mvt path must have a file name");
+            .expect("convs.mvt_attributes path must have a file name");
         let zip_path = fme_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = fme_dir.join(&entry.truth_path);
         let result = conv_mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
         fs::remove_dir_all(&tmp_dir).ok();
         result?;
-        println!("wrote mvt/{} -> {}", id, output_path.display());
+        println!("wrote mvt_attributes/{} -> {}", id, output_path.display());
     }
 
     for (id, entry) in &profile.convs.mvt_png {

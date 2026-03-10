@@ -23,7 +23,7 @@ pub struct ConvMvtPngEntry {
 #[derive(Debug, Deserialize, Default)]
 pub struct Convs {
     #[serde(default)]
-    pub mvt: HashMap<String, ConvMvtEntry>,
+    pub mvt_attributes: HashMap<String, ConvMvtEntry>,
     #[serde(default)]
     pub mvt_png: HashMap<String, ConvMvtPngEntry>,
 }

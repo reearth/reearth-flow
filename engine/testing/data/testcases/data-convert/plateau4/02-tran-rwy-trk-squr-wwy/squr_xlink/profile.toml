@@ -5,12 +5,12 @@ citygml_zip_name = "11100_saitama-shi_city_2025_citygml_1_op_squr.zip"
 [filter.tree]
 "udx/squr/53396570_squr_6697_op.gml" = ["squr_6f7e89a6-c35c-48fa-9d72-f013609c89cf"]
 
-[convs.mvt.squr_lod2]
+[convs.mvt_attributes.squr_lod2]
 path = "11100_saitama-shi_city_2025_citygml_1_op_squr_mvt_lod2"
 truth_path = "squr_lod2_truth.json"
 generate_truth = false
 
-[convs.mvt.squr_lod2.casts]
+[convs.mvt_attributes.squr_lod2.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"

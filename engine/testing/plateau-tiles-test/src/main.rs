@@ -293,9 +293,9 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
-        if !profile.convs.mvt.is_empty() {
-            run_test("convs_mvt", &relative_path_display, || {
-                for (_, entry) in &profile.convs.mvt {
+        if !profile.convs.mvt_attributes.is_empty() {
+            run_test("convs_mvt_attributes", &relative_path_display, || {
+                for entry in profile.convs.mvt_attributes.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
                     conv_mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
@@ -306,7 +306,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if !profile.convs.mvt_png.is_empty() {
             run_test("convs_mvt_png", &relative_path_display, || {
-                for (_, entry) in &profile.convs.mvt_png {
+                for entry in profile.convs.mvt_png.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
                     conv_png::write_png_truth(&mvt_dir, &png_dir, entry.tiles.as_deref())?;
