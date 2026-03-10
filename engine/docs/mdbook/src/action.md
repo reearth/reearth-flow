@@ -2267,6 +2267,163 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 ### Category
 * File
 
+## DateTimeConverter
+### Type
+* processor
+### Description
+Convert datetime values between different formats
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DateTimeConverter Parameters",
+  "type": "object",
+  "required": [
+    "attribute",
+    "outputFormat"
+  ],
+  "properties": {
+    "attribute": {
+      "description": "Attribute containing the datetime value to convert",
+      "type": "string"
+    },
+    "inputFormat": {
+      "description": "Format of the input value (default: auto)",
+      "default": "auto",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DateTimeInputFormat"
+        }
+      ]
+    },
+    "outputAttribute": {
+      "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "outputFormat": {
+      "description": "Desired output format",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DateTimeOutputFormat"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DateTimeInputFormat": {
+      "description": "Input format options for DateTimeConverter",
+      "oneOf": [
+        {
+          "description": "Auto-detect from known formats",
+          "type": "string",
+          "enum": [
+            "auto"
+          ]
+        },
+        {
+          "description": "RFC3339 / ISO 8601 format",
+          "type": "string",
+          "enum": [
+            "rfc3339"
+          ]
+        },
+        {
+          "description": "Unix timestamp in seconds",
+          "type": "string",
+          "enum": [
+            "unix_s"
+          ]
+        },
+        {
+          "description": "Unix timestamp in milliseconds",
+          "type": "string",
+          "enum": [
+            "unix_ms"
+          ]
+        },
+        {
+          "description": "Date only format (YYYY-MM-DD)",
+          "type": "string",
+          "enum": [
+            "date"
+          ]
+        },
+        {
+          "description": "Custom format using chrono format specifiers",
+          "type": "object",
+          "required": [
+            "custom"
+          ],
+          "properties": {
+            "custom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DateTimeOutputFormat": {
+      "description": "Output format options for DateTimeConverter",
+      "oneOf": [
+        {
+          "description": "RFC3339 / ISO 8601 format",
+          "type": "string",
+          "enum": [
+            "rfc3339"
+          ]
+        },
+        {
+          "description": "Unix timestamp in seconds",
+          "type": "string",
+          "enum": [
+            "unix_s"
+          ]
+        },
+        {
+          "description": "Unix timestamp in milliseconds",
+          "type": "string",
+          "enum": [
+            "unix_ms"
+          ]
+        },
+        {
+          "description": "Date only format (YYYY-MM-DD)",
+          "type": "string",
+          "enum": [
+            "date"
+          ]
+        },
+        {
+          "description": "Custom format using chrono format specifiers",
+          "type": "object",
+          "required": [
+            "custom"
+          ],
+          "properties": {
+            "custom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* failed
+### Category
+* Attribute
+
 ## DimensionFilter
 ### Type
 * processor
