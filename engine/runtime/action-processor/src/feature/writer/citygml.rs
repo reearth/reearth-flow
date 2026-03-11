@@ -51,6 +51,13 @@ pub(super) fn write_citygml(
     pretty_print: &bool,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), FeatureProcessorError> {
-    write_citygml_to_storage(output, features, lod_mask, *epsg_code, *pretty_print, storage_resolver)
-        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))
+    write_citygml_to_storage(
+        output,
+        features,
+        lod_mask,
+        *epsg_code,
+        *pretty_print,
+        storage_resolver,
+    )
+    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))
 }

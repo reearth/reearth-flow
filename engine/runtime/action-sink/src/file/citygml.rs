@@ -186,8 +186,11 @@ pub fn write_citygml_to_storage(
             }
 
             let gml_id_str = feature.id.to_string();
-            let appearance_opt: Option<&AppearanceBundle> =
-                if appearance.has_content() { Some(&appearance) } else { None };
+            let appearance_opt: Option<&AppearanceBundle> = if appearance.has_content() {
+                Some(&appearance)
+            } else {
+                None
+            };
             xml_writer.write_city_object(
                 city_type,
                 &geometries,

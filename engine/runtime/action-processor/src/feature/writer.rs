@@ -133,7 +133,10 @@ impl ProcessorFactory for FeatureWriterFactory {
                 };
                 Ok(Box::new(process))
             }
-            FeatureWriterParam::CityGml { common_param, param } => {
+            FeatureWriterParam::CityGml {
+                common_param,
+                param,
+            } => {
                 let common_param = CompiledCommonWriterParam {
                     output: expr_engine
                         .compile(common_param.output.as_ref())
