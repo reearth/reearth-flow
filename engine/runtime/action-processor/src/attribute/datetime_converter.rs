@@ -198,11 +198,14 @@ fn parse_datetime(
     match value {
         AttributeValue::String(s) => {
             let i64_val = s.parse::<i64>().ok();
-            parse_from_string_and_number(Some(s), i64_val, format)
+            parse_from_string_and_number(Some(s), i64_val, None, format)
         }
         AttributeValue::Number(n) => {
             let s = n.to_string();
-            parse_from_string_and_number(Some(&s), n.as_i64(), format)
+            // Try integer first, then float (truncating to handle values like 1700000000.0)
+            let i64_val = n.as_i64();
+            let f64_val = n.as_f64();
+            parse_from_string_and_number(Some(&s), i64_val, f64_val, format)
         }
         _ => Err("Unsupported value type for datetime conversion".to_string()),
     }
@@ -211,8 +214,12 @@ fn parse_datetime(
 fn parse_from_string_and_number(
     str_val: Option<&str>,
     i64_val: Option<i64>,
+    f64_val: Option<f64>,
     format: &DateTimeInputFormat,
 ) -> Result<chrono::DateTime<chrono::Utc>, String> {
+    // Get effective i64 value: use i64_val if available, otherwise truncate f64_val
+    let effective_i64 = i64_val.or_else(|| f64_val.map(|f| f.trunc() as i64));
+
     match format {
         DateTimeInputFormat::Auto => {
             // Try numeric formats first (Unix timestamps) - handles numeric strings like "1609459200"
@@ -227,32 +234,24 @@ fn parse_from_string_and_number(
                 let is_integer_like =
                     !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit());
                 if is_integer_like {
-                    if let Some(n) = i64_val {
+                    if let Some(n) = effective_i64 {
                         let digit_count = digits.len();
                         // Decide which unit to try first based on digit count
                         // Shorter (e.g., 10-digit) values are more likely seconds;
                         // longer (e.g., 12–13-digit) values are more likely milliseconds.
                         let try_ms_first = digit_count >= 12;
                         if try_ms_first {
-                            if let Ok(dt) =
-                                reearth_flow_common::datetime::try_from_unix_ms(n)
-                            {
+                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
                                 return Ok(dt);
                             }
-                            if let Ok(dt) =
-                                reearth_flow_common::datetime::try_from_unix_s(n)
-                            {
+                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
                                 return Ok(dt);
                             }
                         } else {
-                            if let Ok(dt) =
-                                reearth_flow_common::datetime::try_from_unix_s(n)
-                            {
+                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
                                 return Ok(dt);
                             }
-                            if let Ok(dt) =
-                                reearth_flow_common::datetime::try_from_unix_ms(n)
-                            {
+                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
                                 return Ok(dt);
                             }
                         }
@@ -261,7 +260,7 @@ fn parse_from_string_and_number(
             }
 
             // Fallback: if we have a numeric value (e.g., from a Number), try both units
-            if let Some(n) = i64_val {
+            if let Some(n) = effective_i64 {
                 if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
                     return Ok(dt);
                 }
@@ -283,12 +282,12 @@ fn parse_from_string_and_number(
                 .map_err(|e| format!("Failed to parse RFC3339: {e}"))
         }
         DateTimeInputFormat::UnixS => {
-            let n = i64_val.ok_or("Expected numeric value for Unix timestamp")?;
+            let n = effective_i64.ok_or("Expected numeric value for Unix timestamp")?;
             reearth_flow_common::datetime::try_from_unix_s(n)
                 .map_err(|e| format!("Failed to parse Unix timestamp (seconds): {e}"))
         }
         DateTimeInputFormat::UnixMs => {
-            let n = i64_val.ok_or("Expected numeric value for Unix timestamp")?;
+            let n = effective_i64.ok_or("Expected numeric value for Unix timestamp")?;
             reearth_flow_common::datetime::try_from_unix_ms(n)
                 .map_err(|e| format!("Failed to parse Unix timestamp (milliseconds): {e}"))
         }
@@ -485,6 +484,23 @@ mod tests {
         let feature = create_test_feature(
             "timestamp",
             AttributeValue::Number(Number::from(1609459200i64)),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+    }
+
+    #[test]
+    fn test_float_unix_timestamp() {
+        // Test with float input (e.g., from schema processing that produces 1700000000.0)
+        use serde_json::Number;
+        let float_value: f64 = 1609459200.0;
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::Number(Number::from_f64(float_value).unwrap()),
         );
 
         let input_value = feature.get("timestamp").unwrap();
