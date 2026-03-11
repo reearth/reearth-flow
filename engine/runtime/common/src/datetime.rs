@@ -26,8 +26,8 @@ pub fn try_from_unix_s(ts: i64) -> crate::Result<chrono::DateTime<Utc>> {
 
 /// Parse datetime from Unix timestamp in milliseconds
 pub fn try_from_unix_ms(ts: i64) -> crate::Result<chrono::DateTime<Utc>> {
-    let secs = ts / 1000;
-    let nanos = ((ts % 1000) * 1_000_000) as u32;
+    let secs = ts.div_euclid(1000);
+    let nanos = (ts.rem_euclid(1000) * 1_000_000) as u32;
     chrono::DateTime::from_timestamp(secs, nanos).ok_or_else(|| {
         crate::Error::datetime(format!("Invalid Unix timestamp (milliseconds): {ts}"))
     })
