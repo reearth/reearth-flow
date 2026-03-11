@@ -43,6 +43,10 @@ pub(super) enum AttributeProcessorError {
     RangeMapperFactory(String),
     #[error("Attribute RangeMapper error: {0}")]
     RangeMapper(String),
+    #[error("NullAttributeMapper Factory error: {0}")]
+    NullAttributeMapperFactory(String),
+    #[error("NullAttributeMapper error: {0}")]
+    NullAttributeMapper(String),
 }
 
 #[allow(dead_code)]
