@@ -43,9 +43,9 @@ pub(super) enum AttributeProcessorError {
     RangeMapperFactory(String),
     #[error("Attribute RangeMapper error: {0}")]
     RangeMapper(String),
-    #[error("DateTimeConverter Factory error: {0}")]
+    #[error("Attribute DateTimeConverterFactory error: {0}")]
     DateTimeConverterFactory(String),
-    #[error("DateTimeConverter error: {0}")]
+    #[error("Attribute DateTimeConverter error: {0}")]
     DateTimeConverter(String),
 }
 
