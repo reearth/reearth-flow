@@ -9,6 +9,7 @@ use super::{
     file_path_extractor::FeatureFilePathExtractorFactory,
     filter::FeatureFilterFactory,
     joiner::FeatureJoinerFactory,
+    json_fragmenter::JSONFragmenterFactory,
     list_concatenator::ListConcatenatorFactory,
     list_exploder::ListExploderFactory,
     list_indexer::ListIndexerFactory,
@@ -41,6 +42,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FeatureDuplicateFilterFactory>::default(),
         Box::<FeatureWriterFactory>::default(),
         Box::<FeatureCityGmlReaderFactory>::default(),
+        Box::<JSONFragmenterFactory>::default(),
     ];
     factories
         .into_iter()

@@ -401,6 +401,15 @@
   z-index: -1 !important;
 }
 
+/* zIndexMode="manual" disables xyflow's automatic +1000 elevation for selected nodes,
+   so we replicate that behaviour here for action nodes only */
+.react-flow__node-reader.selected,
+.react-flow__node-writer.selected,
+.react-flow__node-transformer.selected,
+.react-flow__node-subworkflow.selected {
+  z-index: 1000 !important;
+}
+
 #cesiumContainer {
   clip-path: inset(0 round calc(var(--radius) /* 0.25rem = 4px */ - 2px));
 }
