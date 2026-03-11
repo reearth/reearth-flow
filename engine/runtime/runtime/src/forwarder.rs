@@ -17,6 +17,21 @@ use crate::feature_store::{FeatureWriter, FeatureWriterKey};
 
 use crate::node::{NodeHandle, Port};
 
+/// Opens a JSONL (or zstd-compressed JSONL) file for line-by-line reading.
+///
+/// If the path ends with `.zst`, the file is transparently decompressed using
+/// zstd streaming decoding with multi-frame support (for files written across
+/// multiple flush operations). Otherwise a plain buffered reader is returned.
+pub(crate) fn open_jsonl_reader(path: &Path) -> std::io::Result<Box<dyn BufRead>> {
+    let file = std::fs::File::open(path)?;
+    if path.extension().and_then(|e| e.to_str()) == Some("zst") {
+        let decoder = zstd::Decoder::new(file)?;
+        Ok(Box::new(BufReader::new(decoder)))
+    } else {
+        Ok(Box::new(BufReader::new(file)))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ProcessorChannelForwarder {
     ChannelManager(ChannelManager),
@@ -355,10 +370,9 @@ impl ChannelManager {
     /// The file at `path` will be moved and cleaned up by the engine core.
     fn send_file(&self, path: PathBuf, port: Port, context: Context) {
         // Count features in the file for debugging
-        let feature_count = std::fs::File::open(&path)
-            .map(|f| {
-                BufReader::new(f)
-                    .lines()
+        let feature_count = open_jsonl_reader(&path)
+            .map(|r| {
+                r.lines()
                     .filter(|l| l.as_ref().map(|s| !s.is_empty()).unwrap_or(false))
                     .count()
             })
@@ -375,13 +389,23 @@ impl ChannelManager {
             panic!("Failed to create channel buffer directory {cache_dir:?}: {e}")
         });
 
-        let file_name = format!(
-            "{}-{}.jsonl",
-            uuid::Uuid::new_v4(),
-            path.file_stem()
+        let is_zst = path.extension().and_then(|e| e.to_str()) == Some("zst");
+        let file_name = if is_zst {
+            let stem = path
+                .file_stem()
+                .and_then(|s| Path::new(s).file_stem())
                 .and_then(|s| s.to_str())
-                .unwrap_or("output")
-        );
+                .unwrap_or("output");
+            format!("{}-{}.jsonl.zst", uuid::Uuid::new_v4(), stem)
+        } else {
+            format!(
+                "{}-{}.jsonl",
+                uuid::Uuid::new_v4(),
+                path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("output")
+            )
+        };
         let new_path = cache_dir.join(file_name);
 
         std::fs::rename(&path, &new_path).unwrap_or_else(|e| {
@@ -411,11 +435,10 @@ impl ChannelManager {
     }
 
     fn write_file_features_to_store(&self, path: &Path, port: &Port) {
-        let file = match std::fs::File::open(path) {
-            Ok(f) => f,
+        let reader = match open_jsonl_reader(path) {
+            Ok(r) => r,
             Err(_) => return,
         };
-        let reader = BufReader::new(file);
         for line in reader.lines() {
             let line = match line {
                 Ok(l) => l,
@@ -526,11 +549,10 @@ impl NoopChannelForwarder {
     }
 
     pub fn send_file(&self, path: PathBuf, port: Port) {
-        let file = match std::fs::File::open(&path) {
-            Ok(f) => f,
+        let reader = match open_jsonl_reader(&path) {
+            Ok(r) => r,
             Err(_) => return,
         };
-        let reader = BufReader::new(file);
         let mut send_features = self.send_features.lock().unwrap();
         let mut send_ports = self.send_ports.lock().unwrap();
         for line in reader.lines() {

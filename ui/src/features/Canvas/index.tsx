@@ -135,6 +135,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
+      zIndexMode="manual" // Prevent xyflow from auto-elevating nodes and edges within Batch nodes, which would break the intended layering of Batch containers > edges > action nodes.
       minZoom={0.2}
       proOptions={{ hideAttribution: true }}
       nodeDragThreshold={2}

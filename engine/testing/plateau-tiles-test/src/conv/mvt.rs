@@ -1,16 +1,17 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use indexmap::IndexMap;
 use prost::Message;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use tinymvt::tag::TagsDecoder;
+use tinymvt::tag::Value as TValue;
 use tinymvt::vector_tile::Tile;
 use walkdir::WalkDir;
 
 pub fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
-    use tinymvt::tag::Value as TValue;
     match value {
         TValue::String(s) => Value::String(s.clone()),
         TValue::Float(bytes) => {
@@ -28,16 +29,23 @@ pub fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
     }
 }
 
-/// Loads all MVT attributes from a directory, keyed by ident (or composite key for DM features)
-pub fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
-    let mut ret = HashMap::new();
-    let mut rel = HashMap::new();
+/// Loads all MVT attributes from a directory, keyed by ident (or composite key for DM features).
+/// Returns an IndexMap to preserve stable insertion order across runs.
+pub fn load_mvt_attr(dir: &Path) -> Result<IndexMap<String, Value>, String> {
+    if !dir.exists() {
+        return Err(format!("MVT directory does not exist: {:?}", dir));
+    }
+    let mut ret: IndexMap<String, Value> = IndexMap::new();
+    let mut rel: IndexMap<String, _> = IndexMap::new();
 
-    for entry in WalkDir::new(dir)
+    let mut entries: Vec<_> = WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.path().extension().is_some_and(|ext| ext == "mvt"))
-    {
+        .collect();
+    entries.sort_by_key(|e| e.path().to_path_buf());
+
+    for entry in entries {
         let path = entry.path();
         let data = fs::read(path).map_err(|e| format!("Failed to read MVT file: {}", e))?;
 

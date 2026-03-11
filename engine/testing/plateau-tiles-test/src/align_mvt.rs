@@ -1,5 +1,5 @@
 use crate::compare_attributes::make_feature_key;
-use crate::conv_mvt::tinymvt_value_to_json;
+use crate::conv::mvt::tinymvt_value_to_json;
 use prost::Message;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::multi_point::MultiPoint2D;

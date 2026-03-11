@@ -1,6 +1,6 @@
 use std::env;
 use std::fmt::Debug;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::Arc;
 use std::time::{self, Duration};
@@ -358,13 +358,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     port,
                     context,
                 } => {
-                    let file = std::fs::File::open(&path).map_err(|e| {
+                    let reader = crate::forwarder::open_jsonl_reader(&path).map_err(|e| {
                         ExecutionError::CannotReceiveFromChannel(format!(
                             "Failed to open file-backed op file {}: {e}",
                             path.display()
                         ))
                     })?;
-                    let reader = BufReader::new(file);
                     for line in reader.lines() {
                         let line = line.map_err(|e| {
                             ExecutionError::CannotReceiveFromChannel(format!(
