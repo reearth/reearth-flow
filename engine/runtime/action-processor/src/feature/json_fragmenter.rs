@@ -11,6 +11,7 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Number;
 use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
@@ -198,7 +199,15 @@ impl Processor for JSONFragmenter {
         };
 
         let opts = self.params.options();
-        let matches = find_by_json_path(json_value.clone(), &opts.json_query).unwrap_or_default();
+        let matches = match find_by_json_path(json_value.clone(), &opts.json_query) {
+            Ok(m) => m,
+            Err(e) => {
+                return Err(FeatureProcessorError::JSONFragmenter(format!(
+                    "JSONPath query error: {e}"
+                ))
+                .into());
+            }
+        };
 
         if matches.is_empty() {
             if opts.reject_no_fragments {
@@ -220,7 +229,7 @@ impl Processor for JSONFragmenter {
             );
             new_feature.insert(
                 Attribute::new("json_index"),
-                AttributeValue::String(index.to_string()),
+                AttributeValue::Number(Number::from(index)),
             );
 
             if let JSONFragmenterParam::Attribute { json_attribute, .. } = &self.params {
@@ -307,6 +316,25 @@ mod tests {
     use super::*;
     use crate::tests::utils::create_default_execute_context;
 
+    /// Variant that returns the Result so we can assert on errors.
+    fn run_processor_result(
+        feature: &Feature,
+        params: JSONFragmenterParam,
+    ) -> Result<(Vec<Feature>, Vec<Port>), BoxedError> {
+        let mut processor = JSONFragmenter { params };
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = create_default_execute_context(feature);
+        processor.process(ctx, &fw)?;
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap().clone();
+            let ports = noop.send_ports.lock().unwrap().clone();
+            Ok((features, ports))
+        } else {
+            unreachable!()
+        }
+    }
+
     fn make_feature_with_json(json: &str) -> Feature {
         let mut feature = Feature::new_with_attributes(Default::default());
         feature.insert(
@@ -386,13 +414,13 @@ mod tests {
             .attributes
             .get(&Attribute::new("json_index"))
             .unwrap();
-        assert_eq!(json_index, &AttributeValue::String("0".to_string()));
+        assert_eq!(json_index, &AttributeValue::Number(Number::from(0)));
 
         let json_index1 = features[1]
             .attributes
             .get(&Attribute::new("json_index"))
             .unwrap();
-        assert_eq!(json_index1, &AttributeValue::String("1".to_string()));
+        assert_eq!(json_index1, &AttributeValue::Number(Number::from(1)));
     }
 
     #[test]
@@ -563,5 +591,73 @@ mod tests {
         assert_ne!(ids[0], ids[2]);
         // Each fragment id should differ from the original
         assert!(ids.iter().all(|id| *id != feature.id));
+    }
+
+    #[test]
+    fn test_invalid_json_query_returns_error() {
+        let json = r#"[1, 2, 3]"#;
+        let feature = make_feature_with_json(json);
+        // "$[" is syntactically invalid JSONPath
+        let result = run_processor_result(&feature, attribute_params("$["));
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("JSONPath query error"),
+            "Expected JSONPath error, got: {err_msg}"
+        );
+    }
+
+    #[test]
+    fn test_file_url_success() {
+        use std::io::Write;
+
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("data.json");
+        let mut f = std::fs::File::create(&file_path).unwrap();
+        write!(f, r#"[{{"name": "Alice"}}, {{"name": "Bob"}}]"#).unwrap();
+        drop(f);
+
+        let file_uri = format!("file://{}", file_path.display());
+        // Build params via serde so the Expr nutype is constructed correctly
+        let params: JSONFragmenterParam = serde_json::from_value(serde_json::json!({
+            "inputSource": "fileUrl",
+            "path": format!("\"{}\"", file_uri),
+            "jsonQuery": "$[*]",
+            "flattenQueryResult": true
+        }))
+        .unwrap();
+
+        let feature = Feature::new_with_attributes(Default::default());
+        let (features, ports) = run_processor(&feature, params);
+
+        assert_eq!(features.len(), 2);
+        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert_eq!(
+            features[0].attributes.get(&Attribute::new("name")),
+            Some(&AttributeValue::String("Alice".to_string()))
+        );
+        assert_eq!(
+            features[1].attributes.get(&Attribute::new("name")),
+            Some(&AttributeValue::String("Bob".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_file_url_missing_file_returns_error() {
+        let params: JSONFragmenterParam = serde_json::from_value(serde_json::json!({
+            "inputSource": "fileUrl",
+            "path": "\"file:///nonexistent/path/data.json\"",
+            "jsonQuery": "$[*]"
+        }))
+        .unwrap();
+
+        let feature = Feature::new_with_attributes(Default::default());
+        let result = run_processor_result(&feature, params);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Failed to read file"),
+            "Expected file read error, got: {err_msg}"
+        );
     }
 }
