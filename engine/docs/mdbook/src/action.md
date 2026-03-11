@@ -5972,6 +5972,141 @@ Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to
 ### Category
 * Geometry
 
+## JSONFragmenter
+### Type
+* processor
+### Description
+Fragments JSON documents into individual features based on a JSONPath query
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JSONFragmenter Parameters",
+  "description": "Configuration for fragmenting JSON documents into individual features.",
+  "oneOf": [
+    {
+      "description": "Read JSON from a feature attribute",
+      "type": "object",
+      "required": [
+        "inputSource",
+        "jsonAttribute",
+        "jsonQuery"
+      ],
+      "properties": {
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "attribute"
+          ]
+        },
+        "jsonAttribute": {
+          "description": "The attribute containing the JSON text to fragment",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
+        "rejectNoFragments": {
+          "description": "If true, reject features that produce no fragments",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "description": "Read JSON from a file path or URL",
+      "type": "object",
+      "required": [
+        "inputSource",
+        "jsonQuery",
+        "path"
+      ],
+      "properties": {
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "fileUrl"
+          ]
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "path": {
+          "description": "Expression evaluating to the file path or URL containing JSON",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
+        "rejectNoFragments": {
+          "description": "If true, reject features that produce no fragments",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Feature
+
 ## JsonReader
 ### Type
 * source
