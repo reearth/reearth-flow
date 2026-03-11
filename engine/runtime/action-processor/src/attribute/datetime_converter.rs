@@ -216,13 +216,56 @@ fn parse_from_string_and_number(
     match format {
         DateTimeInputFormat::Auto => {
             // Try numeric formats first (Unix timestamps) - handles numeric strings like "1609459200"
-            if let Some(n) = i64_val {
-                // Try seconds first (smaller values), then milliseconds
-                if n < 1_000_000_000_000 {
-                    if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
-                        return Ok(dt);
+            // Prefer using the digit count of the original numeric string (if available)
+            if let Some(s) = str_val {
+                // Check if the string looks like an integer: optional leading '-' followed by digits
+                let digits = if let Some(rest) = s.strip_prefix('-') {
+                    rest
+                } else {
+                    s
+                };
+                let is_integer_like =
+                    !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit());
+                if is_integer_like {
+                    if let Some(n) = i64_val {
+                        let digit_count = digits.len();
+                        // Decide which unit to try first based on digit count
+                        // Shorter (e.g., 10-digit) values are more likely seconds;
+                        // longer (e.g., 12–13-digit) values are more likely milliseconds.
+                        let try_ms_first = digit_count >= 12;
+                        if try_ms_first {
+                            if let Ok(dt) =
+                                reearth_flow_common::datetime::try_from_unix_ms(n)
+                            {
+                                return Ok(dt);
+                            }
+                            if let Ok(dt) =
+                                reearth_flow_common::datetime::try_from_unix_s(n)
+                            {
+                                return Ok(dt);
+                            }
+                        } else {
+                            if let Ok(dt) =
+                                reearth_flow_common::datetime::try_from_unix_s(n)
+                            {
+                                return Ok(dt);
+                            }
+                            if let Ok(dt) =
+                                reearth_flow_common::datetime::try_from_unix_ms(n)
+                            {
+                                return Ok(dt);
+                            }
+                        }
                     }
-                } else if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
+                }
+            }
+
+            // Fallback: if we have a numeric value (e.g., from a Number), try both units
+            if let Some(n) = i64_val {
+                if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
+                    return Ok(dt);
+                }
+                if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
                     return Ok(dt);
                 }
             }
