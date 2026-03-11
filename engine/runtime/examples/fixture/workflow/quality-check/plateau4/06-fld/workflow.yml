@@ -7,10 +7,17 @@ with:
   codelists:
   schemasPath:
   schemas:
+  objectListsPath:
+  objectLists:
   workerArtifactPath:
   prcs:
   targetPackages: ["fld", "htd", "ifld", "tnm", "rfld"]
 graphs:
+  # Common quality check graphs
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   - id: 0a2f610f-b92c-483b-a76a-e6143c3ab249
     name: EntryPoint
     nodes:
@@ -26,6 +33,7 @@ graphs:
                 cityGmlPath: env.get("cityGmlPath"),
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
+                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
                 workerArtifactPath: env.get("workerArtifactPath"),
               },
             ]
@@ -38,6 +46,17 @@ graphs:
           archiveAttributes:
             - codelists
             - schemas
+
+      # Common quality check subgraphs
+      - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b
+        name: CommonQualityCheck-01-01
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c
+        name: CommonQualityCheck-01-02
+        type: subGraph
+        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
 
       - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
         name: FeatureFilePathExtractor
@@ -389,7 +408,8 @@ graphs:
                 let v3 = env.get("__value")["向きが不正な三角形"] ?? 0;
                 let v4 = env.get("__value")["線状・点状の三角形"] ?? 0;
                 let v5 = env.get("__value")["共有先のない辺"] ?? 0;
-                v1 + v2 + v3 + v4 + v5
+                let common = env.get("__value")["totalErrorCount"] ?? 0;
+                v1 + v2 + v3 + v4 + v5 + common
 
       # Filter features with no errors
       - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
@@ -430,6 +450,19 @@ graphs:
       - id: b54bb6e9-9bee-407c-a11d-58436552a745
         from: 04f359e7-3c19-4b3a-9859-3cd7de61eec9
         to: 0aeb935e-bc3e-4867-96f3-122d504fcde6
+        fromPort: default
+        toPort: default
+
+      # Connect DirectoryDecompressor to common quality check subgraphs
+      - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0f
+        from: 0aeb935e-bc3e-4867-96f3-122d504fcde6  # DirectoryDecompressor
+        to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b    # CommonQualityCheck-01-01
+        fromPort: default
+        toPort: default
+
+      - id: c6d7e8f9-a0b1-2c3d-4e5f-6a7b8c9d0e1a
+        from: 0aeb935e-bc3e-4867-96f3-122d504fcde6  # DirectoryDecompressor
+        to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c    # CommonQualityCheck-01-02
         fromPort: default
         toPort: default
 
@@ -632,6 +665,19 @@ graphs:
         fromPort: default
         toPort: default
 
+      # Connect CommonQualityCheck subgraphs summaryOutput to StatisticsCalculatorTotalErrors
+      - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1e
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b  # CommonQualityCheck-01-01
+        to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b    # StatisticsCalculatorTotalErrors
+        fromPort: summaryOutput
+        toPort: default
+
+      - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d2f
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c  # CommonQualityCheck-01-02
+        to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b    # StatisticsCalculatorTotalErrors
+        fromPort: summaryOutput
+        toPort: default
+
       # ===== ZipFileWriter connections =====
       # CSVWriter → ZipFileWriter
       - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
@@ -644,5 +690,19 @@ graphs:
       - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
         from: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
         to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
+        fromPort: default
+        toPort: default
+
+      # CommonQualityCheck-01-01 default output → ZipFileWriter
+      - id: c0d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5a
+        from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b  # CommonQualityCheck-01-01
+        to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # CommonQualityCheck-01-02 default output → ZipFileWriter
+      - id: d1e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6b
+        from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c  # CommonQualityCheck-01-02
+        to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e    # ZipFileWriter
         fromPort: default
         toPort: default
