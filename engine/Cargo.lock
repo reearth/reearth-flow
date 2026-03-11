@@ -6623,6 +6623,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-action-sink",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",

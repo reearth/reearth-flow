@@ -48,6 +48,9 @@ pub struct CityGmlXmlWriter<W: Write> {
     writer: Writer<W>,
     srs_name: String,
     id_counter: u64,
+    pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
+    /// Maps original texture URI strings to relative output paths.
+    uri_remap: HashMap<String, String>,
 }
 
 impl<W: Write> CityGmlXmlWriter<W> {
@@ -61,7 +64,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
             writer,
             srs_name,
             id_counter: 0,
+            pending_appearances: Vec::new(),
+            uri_remap: HashMap::new(),
         }
+    }
+
+    pub fn set_uri_remap(&mut self, remap: HashMap<String, String>) {
+        self.uri_remap = remap;
     }
 
     fn generate_gml_id(&mut self, prefix: &str) -> String {
@@ -142,18 +151,20 @@ impl<W: Write> CityGmlXmlWriter<W> {
             self.write_lod_geometry(city_type, entry, need_appearance, &mut surface_appearances)?;
         }
 
-        if let Some(app) = appearance {
-            if !surface_appearances.is_empty() {
-                self.write_appearance(app, &surface_appearances)?;
-            }
-        }
-
         self.writer
             .write_event(Event::End(BytesEnd::new(element_name)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         self.writer
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        // Defer appearance to CityModel level (app:appearanceMember)
+        if let Some(app) = appearance {
+            if !surface_appearances.is_empty() {
+                self.pending_appearances
+                    .push((app.clone(), surface_appearances));
+            }
+        }
 
         Ok(())
     }
@@ -480,11 +491,10 @@ impl<W: Write> CityGmlXmlWriter<W> {
         }
 
         self.writer
-            .write_event(Event::Start(BytesStart::new("app:appearance")))
-            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-        self.writer
             .write_event(Event::Start(BytesStart::new("app:Appearance")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.write_text_element("app:theme", "rgbTexture")?;
 
         let mut sorted_materials: Vec<_> = by_material.into_iter().collect();
         sorted_materials.sort_by_key(|(k, _)| *k);
@@ -504,9 +514,6 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
         self.writer
             .write_event(Event::End(BytesEnd::new("app:Appearance")))
-            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-        self.writer
-            .write_event(Event::End(BytesEnd::new("app:appearance")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
@@ -558,8 +565,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(BytesStart::new("app:ParameterizedTexture")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        self.write_text_element("app:imageURI", texture.uri.as_str())?;
-        self.write_text_element("app:mimeType", mime_type_from_uri(texture.uri.as_str()))?;
+        let image_uri = self
+            .uri_remap
+            .get(texture.uri.as_str())
+            .map(|s| s.clone())
+            .unwrap_or_else(|| texture.uri.to_string());
+        self.write_text_element("app:imageURI", image_uri.as_str())?;
+        self.write_text_element("app:mimeType", mime_type_from_uri(image_uri.as_str()))?;
 
         for sa in targets {
             let mut target_elem = BytesStart::new("app:target");
@@ -636,6 +648,16 @@ impl<W: Write> CityGmlXmlWriter<W> {
     }
 
     pub fn write_footer(&mut self) -> Result<(), SinkError> {
+        let pending = std::mem::take(&mut self.pending_appearances);
+        for (bundle, surfaces) in &pending {
+            self.writer
+                .write_event(Event::Start(BytesStart::new("app:appearanceMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            self.write_appearance(bundle, surfaces)?;
+            self.writer
+                .write_event(Event::End(BytesEnd::new("app:appearanceMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
         self.writer
             .write_event(Event::End(BytesEnd::new("core:CityModel")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -660,5 +682,169 @@ fn mime_type_from_uri(uri: &str) -> &'static str {
         "image/webp"
     } else {
         "image/jpeg"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_geometry::types::coordinate::Coordinate3D;
+    use reearth_flow_types::material::{Texture, X3DMaterial};
+    use url::Url;
+
+    use super::*;
+
+    const SRS: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
+
+    // Exterior: 3 coords → posList "35 139 0 35 139.1 0 35.1 139 0"
+    // (format_pos_list emits y x z, integer-valued floats drop the decimal)
+    fn triangle() -> Vec<Coordinate3D<f64>> {
+        vec![
+            Coordinate3D::new__(139.0, 35.0, 0.0),
+            Coordinate3D::new__(139.1, 35.0, 0.0),
+            Coordinate3D::new__(139.0, 35.1, 0.0),
+        ]
+    }
+
+    /// Run write_city_object + write_footer on a single LOD-2 MultiSurface for a Building
+    /// and return the compact XML string (appearances emitted at CityModel level).
+    fn write_building(surfaces: Vec<GmlSurface>, appearance: Option<&AppearanceBundle>) -> String {
+        let entry = GeometryEntry {
+            lod: 2,
+            property: None,
+            element: GmlElement::MultiSurface { id: None, surfaces },
+        };
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        w.write_city_object(
+            CityObjectType::Building,
+            &[entry],
+            Some("obj-001"),
+            appearance,
+        )
+        .unwrap();
+        w.write_footer().unwrap();
+        String::from_utf8(buf).unwrap()
+    }
+
+    // ── X3DMaterial ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_write_city_object_x3d_material() {
+        // Surface references material index 0; no texture.
+        // id_counter starts at 0 → first generate_gml_id("poly") → "poly_1".
+        // LinearRing gets no gml:id (no texture).
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: Some(0),
+            texture_idx: None,
+            uv_exterior: vec![],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            // X3DMaterial::default(): diffuse=0.7/0.7/0.7, specular=0.04/0.04/0.04, ambient=0.9
+            materials: vec![X3DMaterial::default()],
+            textures: vec![],
+        };
+
+        let xml = write_building(vec![surface], Some(&appearance));
+
+        let expected = concat!(
+            r#"<core:cityObjectMember>"#,
+            r#"<bldg:Building gml:id="obj-001">"#,
+            r#"<bldg:lod2MultiSurface>"#,
+            r#"<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon gml:id="poly_1">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#, // no gml:id — material only, not texture
+            r#"<gml:posList>35 139 0 35 139.1 0 35.1 139 0</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:MultiSurface>"#,
+            r#"</bldg:lod2MultiSurface>"#,
+            r#"</bldg:Building>"#,
+            r#"</core:cityObjectMember>"#,
+            // Appearance is now a top-level app:appearanceMember
+            r#"<app:appearanceMember>"#,
+            r#"<app:Appearance>"#,
+            r#"<app:theme>rgbTexture</app:theme>"#,
+            r#"<app:surfaceDataMember><app:X3DMaterial>"#,
+            r#"<app:diffuseColor>0.7 0.7 0.7</app:diffuseColor>"#,
+            r#"<app:specularColor>0.04 0.04 0.04</app:specularColor>"#,
+            r#"<app:ambientIntensity>0.9</app:ambientIntensity>"#,
+            r#"<app:target>#poly_1</app:target>"#,
+            r#"</app:X3DMaterial></app:surfaceDataMember>"#,
+            r#"</app:Appearance>"#,
+            r#"</app:appearanceMember>"#,
+            r#"</core:CityModel>"#,
+        );
+        assert_eq!(xml, expected);
+    }
+
+    // ── ParameterizedTexture ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_write_city_object_parameterized_texture() {
+        // Surface references texture index 0 with UV coords.
+        // Polygon gets gml:id="poly_1", exterior LinearRing gets gml:id="poly_1_e".
+        // UV: [[0,0],[1,0],[0.5,1]] → "0 0 1 0 0.5 1"
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: None,
+            texture_idx: Some(0),
+            uv_exterior: vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            materials: vec![],
+            textures: vec![Texture {
+                uri: Url::parse("file:///textures/wall.jpg").unwrap(),
+            }],
+        };
+
+        let xml = write_building(vec![surface], Some(&appearance));
+
+        let expected = concat!(
+            r#"<core:cityObjectMember>"#,
+            r#"<bldg:Building gml:id="obj-001">"#,
+            r#"<bldg:lod2MultiSurface>"#,
+            r#"<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon gml:id="poly_1">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing gml:id="poly_1_e">"#, // ring ID for texture coord reference
+            r#"<gml:posList>35 139 0 35 139.1 0 35.1 139 0</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:MultiSurface>"#,
+            r#"</bldg:lod2MultiSurface>"#,
+            r#"</bldg:Building>"#,
+            r#"</core:cityObjectMember>"#,
+            // Appearance is now a top-level app:appearanceMember
+            r#"<app:appearanceMember>"#,
+            r#"<app:Appearance>"#,
+            r#"<app:theme>rgbTexture</app:theme>"#,
+            r#"<app:surfaceDataMember><app:ParameterizedTexture>"#,
+            r#"<app:imageURI>file:///textures/wall.jpg</app:imageURI>"#,
+            r#"<app:mimeType>image/jpeg</app:mimeType>"#,
+            r##"<app:target uri="#poly_1">"##,
+            r#"<app:TexCoordList>"#,
+            r##"<app:textureCoordinates ring="#poly_1_e">0 0 1 0 0.5 1</app:textureCoordinates>"##,
+            r#"</app:TexCoordList>"#,
+            r#"</app:target>"#,
+            r#"</app:ParameterizedTexture></app:surfaceDataMember>"#,
+            r#"</app:Appearance>"#,
+            r#"</app:appearanceMember>"#,
+            r#"</core:CityModel>"#,
+        );
+        assert_eq!(xml, expected);
     }
 }

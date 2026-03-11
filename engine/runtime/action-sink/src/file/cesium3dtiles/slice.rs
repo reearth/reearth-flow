@@ -195,10 +195,10 @@ pub fn slice_to_tiles<E>(
                 }
             }
             GeometryType::Curve => {
-                unimplemented!()
+                tracing::warn!("Line slicing is not implemented yet. Skipping Curve geometry.");
             }
             GeometryType::Point => {
-                unimplemented!()
+                tracing::warn!("Point slicing is not implemented yet. Skipping Point geometry.");
             }
         }
     }
