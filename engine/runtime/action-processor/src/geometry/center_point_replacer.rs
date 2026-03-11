@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+use reearth_flow_geometry::algorithm::area2d::Area2D;
+use reearth_flow_geometry::algorithm::area3d::Area3D;
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
 use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::interior_point::InteriorPoint;
@@ -21,18 +23,23 @@ use serde_json::Value;
 
 static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 
+/// Method used to compute the center point of a geometry.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum CenterPointMode {
+    /// Computes the centroid (center of gravity) of the geometry.
     #[default]
     CenterOfGravity,
+    /// Computes the center of the geometry's bounding box.
     BoundingBoxCenter,
+    /// Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).
     AnyInsidePoint,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CenterPointReplacerParam {
+    /// The method used to compute the replacement center point.
     #[serde(default)]
     mode: CenterPointMode,
 }
@@ -212,10 +219,12 @@ impl CenterPointReplacer {
                 let point = match geos {
                     Geometry2D::Polygon(p) => p.interior_point(),
                     Geometry2D::MultiPolygon(mp) => {
-                        // Use the largest polygon
+                        // Use the polygon with the largest area
                         mp.iter()
-                            .filter_map(|p| p.interior_point().map(|pt| (pt, p.exterior().0.len())))
-                            .max_by_key(|(_, len)| *len)
+                            .filter_map(|p| p.interior_point().map(|pt| (pt, p.unsigned_area2d())))
+                            .max_by(|(_, a), (_, b)| {
+                                a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+                            })
                             .map(|(pt, _)| pt)
                     }
                     Geometry2D::Rect(r) => {
@@ -286,8 +295,10 @@ impl CenterPointReplacer {
                     Geometry3D::Polygon(p) => p.interior_point(),
                     Geometry3D::MultiPolygon(mp) => mp
                         .iter()
-                        .filter_map(|p| p.interior_point().map(|pt| (pt, p.exterior().0.len())))
-                        .max_by_key(|(_, len)| *len)
+                        .filter_map(|p| p.interior_point().map(|pt| (pt, p.unsigned_area3d())))
+                        .max_by(|(_, a), (_, b)| {
+                            a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+                        })
                         .map(|(pt, _)| pt),
                     Geometry3D::Rect(r) => {
                         let center = r.center();
@@ -334,7 +345,7 @@ impl CenterPointReplacer {
                     self.send_rejected(feature, ctx, fw);
                     return;
                 }
-                // Compute weighted centroid across all polygons
+                // Compute average centroid across all polygons
                 let mut total_x = 0.0_f64;
                 let mut total_y = 0.0_f64;
                 let mut total_z = 0.0_f64;

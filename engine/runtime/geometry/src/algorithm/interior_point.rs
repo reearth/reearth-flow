@@ -171,7 +171,7 @@ fn polylabel_2d<T: GeoFloat>(polygon: &Polygon2D<T>, precision: T) -> Option<Poi
     let max_y = rect.max.y;
     let width = max_x - min_x;
     let height = max_y - min_y;
-    let cell_size = if width > height { width } else { height };
+    let cell_size = if width < height { width } else { height };
     let two = T::one() + T::one();
 
     if cell_size.is_zero() {
