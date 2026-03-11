@@ -177,7 +177,6 @@
   "No data to display in table format": "Aucune donnée à afficher au format tableau",
   "Rows": "Lignes",
   "total": "total",
-  "2D Viewer Could Not Be Loaded. Check if the data is valid.": "Le visiteur 2D n'a pas pu être chargé. Vérifiez si les données sont valides.",
   "Geo Viewer": "Visiteur géographique",
   "Center Data": "Centrer les données",
   "Fly to Selected Feature": "Volez vers la fonctionnalité sélectionnée",

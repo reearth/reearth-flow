@@ -177,7 +177,6 @@
   "No data to display in table format": "テーブル形式で表示するデータがありません",
   "Rows": "行",
   "total": "合計",
-  "2D Viewer Could Not Be Loaded. Check if the data is valid.": "2Dビューアを読み込めませんでした。データが有効かどうかを確認してください。",
   "Geo Viewer": "ジオビューア",
   "Center Data": "データを中央に配置",
   "Fly to Selected Feature": "選択したフィーチャーに移動",
