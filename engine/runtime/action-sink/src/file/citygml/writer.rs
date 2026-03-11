@@ -568,7 +568,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let image_uri = self
             .uri_remap
             .get(texture.uri.as_str())
-            .map(|s| s.clone())
+            .cloned()
             .unwrap_or_else(|| texture.uri.to_string());
         self.write_text_element("app:imageURI", image_uri.as_str())?;
         self.write_text_element("app:mimeType", mime_type_from_uri(image_uri.as_str()))?;
