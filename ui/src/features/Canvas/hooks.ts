@@ -14,6 +14,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 type Props = {
   nodes: Node[];
+  selectedNodeIds?: string[];
   edges: Edge[];
   isMainWorkflow: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
@@ -52,6 +53,7 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 
 export default ({
   nodes,
+  selectedNodeIds,
   edges,
   isMainWorkflow,
   onWorkflowAdd,
@@ -75,6 +77,7 @@ export default ({
     handleNodeSettings,
   } = useNodes({
     nodes,
+    selectedNodeIds,
     edges,
     onWorkflowAdd,
     onNodesAdd,
