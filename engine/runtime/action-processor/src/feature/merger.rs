@@ -179,9 +179,9 @@ pub struct FeatureMerger {
     requestor_before_value: Option<String>,
     supplier_before_value: Option<String>,
     temp_dir: Option<PathBuf>,
-    // In-memory buffers: idx -> Vec<feature_json>
-    requestor_buffer: HashMap<usize, Vec<String>>,
-    supplier_buffer: HashMap<usize, Vec<String>>,
+    // In-memory buffers: idx -> compressed zstd bytes (concatenated frames)
+    requestor_buffer: HashMap<usize, Vec<u8>>,
+    supplier_buffer: HashMap<usize, Vec<u8>>,
     buffer_bytes: usize,
     /// Executor ID for cache isolation, set on first process() call
     executor_id: Option<uuid::Uuid>,
@@ -237,7 +237,7 @@ struct CompiledParam {
 
 fn read_features_from_file(path: &Path) -> Result<Vec<Feature>, BoxedError> {
     let file = File::open(path)?;
-    let reader = BufReader::new(file);
+    let reader = BufReader::new(zstd::Decoder::new(file)?);
     let mut features = Vec::new();
     for line in reader.lines() {
         let line = line?;
@@ -271,14 +271,14 @@ impl FeatureMerger {
         self.temp_dir
             .as_ref()
             .unwrap()
-            .join(format!("requestor/{idx:06}.jsonl"))
+            .join(format!("requestor/{idx:06}.jsonl.zst"))
     }
 
     fn supplier_file_path(&self, idx: usize) -> PathBuf {
         self.temp_dir
             .as_ref()
             .unwrap()
-            .join(format!("supplier/{idx:06}.jsonl"))
+            .join(format!("supplier/{idx:06}.jsonl.zst"))
     }
 
     fn write_feature_to_requestor(
@@ -288,10 +288,10 @@ impl FeatureMerger {
     ) -> Result<(), BoxedError> {
         let feature_json = serde_json::to_string(feature)?;
         self.buffer_bytes += feature_json.len();
-        self.requestor_buffer
-            .entry(idx)
-            .or_default()
-            .push(feature_json);
+        let mut src = feature_json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.requestor_buffer.entry(idx).or_default().extend(frame);
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -306,10 +306,10 @@ impl FeatureMerger {
     ) -> Result<(), BoxedError> {
         let feature_json = serde_json::to_string(feature)?;
         self.buffer_bytes += feature_json.len();
-        self.supplier_buffer
-            .entry(idx)
-            .or_default()
-            .push(feature_json);
+        let mut src = feature_json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.supplier_buffer.entry(idx).or_default().extend(frame);
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -324,28 +324,16 @@ impl FeatureMerger {
 
         self.ensure_temp_dir()?;
 
-        // Flush requestor buffer
-        for (idx, entries) in std::mem::take(&mut self.requestor_buffer) {
+        for (idx, bytes) in std::mem::take(&mut self.requestor_buffer) {
             let path = self.requestor_file_path(idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            let mut writer = BufWriter::new(file);
-            for feature_json in entries {
-                writer.write_all(feature_json.as_bytes())?;
-                writer.write_all(b"\n")?;
-            }
-            writer.flush()?;
+            let mut file = File::options().create(true).append(true).open(path)?;
+            file.write_all(&bytes)?;
         }
 
-        // Flush supplier buffer
-        for (idx, entries) in std::mem::take(&mut self.supplier_buffer) {
+        for (idx, bytes) in std::mem::take(&mut self.supplier_buffer) {
             let path = self.supplier_file_path(idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            let mut writer = BufWriter::new(file);
-            for feature_json in entries {
-                writer.write_all(feature_json.as_bytes())?;
-                writer.write_all(b"\n")?;
-            }
-            writer.flush()?;
+            let mut file = File::options().create(true).append(true).open(path)?;
+            file.write_all(&bytes)?;
         }
 
         self.buffer_bytes = 0;
@@ -428,12 +416,10 @@ impl Processor for FeatureMerger {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Capture executor_id on first process call for cache isolation
         if self.executor_id.is_none() {
             self.executor_id = Some(fw.executor_id());
         }
 
-        self.ensure_temp_dir()?;
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
@@ -537,10 +523,11 @@ impl Processor for FeatureMerger {
             None => return Ok(()),
         };
 
-        let merged_path = temp_dir.join("output_merged.jsonl");
-        let unmerged_path = temp_dir.join("output_unmerged.jsonl");
-        let mut merged_writer = BufWriter::new(File::create(&merged_path)?);
-        let mut unmerged_writer = BufWriter::new(File::create(&unmerged_path)?);
+        let merged_path = temp_dir.join("output_merged.jsonl.zst");
+        let unmerged_path = temp_dir.join("output_unmerged.jsonl.zst");
+        let mut merged_writer = BufWriter::new(zstd::Encoder::new(File::create(&merged_path)?, 1)?);
+        let mut unmerged_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&unmerged_path)?, 1)?);
         let mut merged_count: usize = 0;
         let mut unmerged_count: usize = 0;
 
@@ -571,10 +558,14 @@ impl Processor for FeatureMerger {
             }
         }
 
-        merged_writer.flush()?;
-        unmerged_writer.flush()?;
-        drop(merged_writer);
-        drop(unmerged_writer);
+        merged_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
+        unmerged_writer
+            .into_inner()
+            .map_err(|e| e.into_error())?
+            .finish()?;
 
         let context = ctx.as_context();
 

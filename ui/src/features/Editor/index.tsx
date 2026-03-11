@@ -52,6 +52,7 @@ export default function Editor({
     customDebugRunWorkflowVariables,
     refetchWorkflowVariables,
     showSearchPanel,
+    openNodePickerViaShortcut,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowAdd,
@@ -123,6 +124,7 @@ export default function Editor({
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
             selectedNodeIds={selectedNodeIds}
+            nodes={nodes}
             edges={edges}
             project={currentProject}
             yDoc={yDoc}
@@ -138,6 +140,7 @@ export default function Editor({
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+            openNodePickerViaShortcut={openNodePickerViaShortcut}
             refetchWorkflowVariables={refetchWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
             onWorkflowOpen={handleWorkflowOpen}
@@ -145,6 +148,8 @@ export default function Editor({
             onNodesAdd={handleNodesAdd}
             onNodesChange={handleNodesChange}
             onNodePickerClose={handleNodePickerClose}
+            onEdgesAdd={handleEdgesAdd}
+            onEdgesChange={handleEdgesChange}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}
             onProjectShare={handleProjectShare}

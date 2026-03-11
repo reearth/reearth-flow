@@ -1,0 +1,24 @@
+id: 00caad2a-9f7d-4189-b479-153fa9ea36e8
+name: "Workflow Definition Error Test"
+entryGraphId: 99999999-9999-9999-9999-999999999999
+with:
+  workerArtifactPath: null
+graphs:
+  - id: 7a8b9c0d-1e2f-3456-ef12-345678900008
+    name: main_graph
+    nodes:
+      - id: a1fc0a3e-61d3-48e2-a328-e7226c2ad1af
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [#{"test": "data"}]
+      - id: c1fc0a3e-61d3-48e2-a328-e7226c2ad1af
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "result.json")
+    # edges field is completely missing to trigger workflow definition error

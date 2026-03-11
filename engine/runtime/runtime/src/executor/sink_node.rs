@@ -2,7 +2,7 @@ use std::{
     borrow::Cow,
     env,
     fmt::Debug,
-    io::{BufRead, BufReader},
+    io::BufRead,
     mem::swap,
     sync::{atomic::AtomicU64, Arc},
     time::{self, Duration},
@@ -248,8 +248,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     port,
                     context,
                 } => {
-                    let file = match std::fs::File::open(&path) {
-                        Ok(f) => f,
+                    let reader = match crate::forwarder::open_jsonl_reader(&path) {
+                        Ok(r) => r,
                         Err(e) => {
                             has_failed = true;
                             let err = ExecutionError::CannotReceiveFromChannel(format!(
@@ -262,7 +262,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             continue;
                         }
                     };
-                    let reader = BufReader::new(file);
                     for line in reader.lines() {
                         let line = match line {
                             Ok(l) => l,

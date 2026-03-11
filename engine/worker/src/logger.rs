@@ -6,7 +6,7 @@ use std::{
 
 use crate::errors::Error;
 use crate::pubsub::backend::PubSubBackend;
-use crate::user_facing_log_handler::{UserFacingLogHandler, UserFacingLogLayer};
+pub use crate::user_facing_log_handler::{UserFacingLogHandler, UserFacingLogLayer};
 use once_cell::sync::{Lazy, OnceCell};
 use tokio::runtime::Handle;
 use tracing::Level;

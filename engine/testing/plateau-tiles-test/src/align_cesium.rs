@@ -82,7 +82,7 @@ pub fn load_tileset(dir: &Path) -> Result<TilesetInfo, String> {
     })
 }
 
-pub(crate) struct GeometryCollector {
+pub struct GeometryCollector {
     tileset_dir: PathBuf,
     casts: HashMap<String, CastConfig>,
     self_consistency_check: bool,

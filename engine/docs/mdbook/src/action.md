@@ -2859,6 +2859,147 @@ Filter Features Based on Custom Conditions
 ### Category
 * Feature
 
+## FeatureJoiner
+### Type
+* processor
+### Description
+Joins requestor and supplier features based on matching attribute values with configurable join types
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureJoiner Parameters",
+  "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
+  "type": "object",
+  "required": [
+    "joinType"
+  ],
+  "properties": {
+    "conflictResolution": {
+      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ConflictResolution"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "joinType": {
+      "description": "Join type: inner, left, or full",
+      "allOf": [
+        {
+          "$ref": "#/definitions/JoinType"
+        }
+      ]
+    },
+    "requestorAttribute": {
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "requestorAttributeValue": {
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "supplierAttribute": {
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttributeValue": {
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "ConflictResolution": {
+      "oneOf": [
+        {
+          "description": "Requestor attributes win on conflict",
+          "type": "string",
+          "enum": [
+            "requestorWins"
+          ]
+        },
+        {
+          "description": "Supplier attributes win on conflict (default)",
+          "type": "string",
+          "enum": [
+            "supplierWins"
+          ]
+        }
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "JoinType": {
+      "oneOf": [
+        {
+          "description": "Only emit features where a match exists",
+          "type": "string",
+          "enum": [
+            "inner"
+          ]
+        },
+        {
+          "description": "Emit all requestor features (default)",
+          "type": "string",
+          "enum": [
+            "left"
+          ]
+        },
+        {
+          "description": "Emit all features from both sides",
+          "type": "string",
+          "enum": [
+            "full"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* requestor
+* supplier
+### Output Ports
+* joined
+* unjoinedRequestor
+* unjoinedSupplier
+### Category
+* Feature
+
 ## FeatureLodFilter
 ### Type
 * processor
@@ -5785,6 +5926,7 @@ Convert vector geometries to raster image format
 ### Output Ports
 * default
 * textured
+* textureBounds
 ### Category
 * Geometry
 
@@ -7374,6 +7516,118 @@ Extract object list
 ```
 ### Input Ports
 * default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU4.SolarCityGmlAttributeInserter
+### Type
+* processor
+### Description
+Inserts solar radiation measurement attributes into original CityGML files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlAttributeInserterParam",
+  "description": "Configuration for inserting measurement attributes into CityGML files.",
+  "type": "object",
+  "required": [
+    "measurements",
+    "outputDir"
+  ],
+  "properties": {
+    "gmlIdAttribute": {
+      "description": "Attribute name on element features holding gml:id (default: \"gmlId\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "measurements": {
+      "description": "Measurement definitions to insert as gen:measureAttribute elements",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MeasurementDef"
+      }
+    },
+    "outputDir": {
+      "description": "Output directory expression for modified CityGML files",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "pathAttribute": {
+      "description": "Attribute name on path features holding the file path (default: \"path\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceEpsg": {
+      "description": "The projected CRS EPSG code used for rasterization (needed for UV computation)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "textureImagePath": {
+      "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "MeasurementDef": {
+      "description": "A single measurement attribute definition.",
+      "type": "object",
+      "required": [
+        "attribute",
+        "name",
+        "uom"
+      ],
+      "properties": {
+        "attribute": {
+          "description": "Feature attribute key holding the numeric value (e.g. \"totalSolarRadiation\")",
+          "type": "string"
+        },
+        "name": {
+          "description": "XML name attribute value (e.g. \"年間予測日射量\")",
+          "type": "string"
+        },
+        "uom": {
+          "description": "Unit of measurement (e.g. \"kWh\")",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* path
+* element
+* textureBounds
 ### Output Ports
 * default
 ### Category
