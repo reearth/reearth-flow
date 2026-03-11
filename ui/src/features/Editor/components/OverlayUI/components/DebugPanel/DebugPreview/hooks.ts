@@ -17,7 +17,7 @@ export default ({
     useState<BoundingSphere | null>(null);
   const [showSelectedFeatureOnly, setShowSelectedFeatureOnly] = useState(false);
 
-  const handleThreeDViewerReset = useCallback(() => {
+  const handleGeoViewerReset = useCallback(() => {
     if (cesiumViewerRef?.current?.cesiumElement) {
       const cesiumViewer = cesiumViewerRef.current.cesiumElement;
       if (cesiumViewer) {
@@ -58,7 +58,7 @@ export default ({
 
   return {
     showSelectedFeatureOnly,
-    handleThreeDViewerReset,
+    handleGeoViewerReset,
     handleThreeJsReset,
     handleShowSelectedFeatureOnly,
     setCityGmlBoundingSphere,

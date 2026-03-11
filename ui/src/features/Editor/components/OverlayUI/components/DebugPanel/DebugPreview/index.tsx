@@ -119,7 +119,7 @@ const DebugPreview: React.FC<Props> = ({
 
   const {
     showSelectedFeatureOnly,
-    handleThreeDViewerReset,
+    handleGeoViewerReset,
     handleThreeJsReset,
     handleShowSelectedFeatureOnly,
     setCityGmlBoundingSphere,
@@ -158,7 +158,7 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleThreeDViewerReset}>
+                  <DropdownMenuItem onClick={handleGeoViewerReset}>
                     <CornersOutIcon />
                     {t("Center Data")}
                   </DropdownMenuItem>

@@ -1,4 +1,10 @@
-import { Entity, GeoJsonDataSource } from "cesium";
+import {
+  Color,
+  ColorMaterialProperty,
+  ConstantProperty,
+  Entity,
+  GeoJsonDataSource,
+} from "cesium";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useCesium,
@@ -9,6 +15,15 @@ type Props = {
   geoJsonData: any | null;
   selectedFeatureId?: string | null;
   showSelectedFeatureOnly: boolean;
+};
+
+type EntityRecord = {
+  entity: Entity;
+  origPolygonMaterial?: any;
+  origPolygonOutlineColor?: any;
+  origPointColor?: any;
+  origPolylineMaterial?: any;
+  origBillboardColor?: any;
 };
 
 function sanitizeCoords(coords: any): any {
@@ -52,6 +67,9 @@ function sanitizeGeoJson(geoJson: any) {
   return geoJson;
 }
 
+const HIGHLIGHT_COLOR = Color.CYAN.withAlpha(0.7);
+const HIGHLIGHT_FILL = Color.CYAN.withAlpha(0.4);
+
 const GeoJsonData: React.FC<Props> = ({
   geoJsonData,
   selectedFeatureId,
@@ -60,6 +78,8 @@ const GeoJsonData: React.FC<Props> = ({
   const { viewer } = useCesium();
   const [dataSourceKey, setDataSourceKey] = useState(0);
   const dataSourceRef = useRef<GeoJsonDataSource | null>(null);
+  const prevSelectedRef = useRef<string | null>(null);
+  const featureMapRef = useRef<Map<string, EntityRecord[]>>(new Map());
 
   const sanitizedData = useMemo(() => {
     if (!geoJsonData) return null;
@@ -73,7 +93,6 @@ const GeoJsonData: React.FC<Props> = ({
   const updateVisibility = useCallback(() => {
     const ds = dataSourceRef.current;
     if (!ds) return;
-
     ds.entities.values.forEach((entity: Entity) => {
       if (!showSelectedFeatureOnly) {
         entity.show = true;
@@ -87,6 +106,59 @@ const GeoJsonData: React.FC<Props> = ({
     });
   }, [selectedFeatureId, showSelectedFeatureOnly]);
 
+  const handleDeselectFeature = useCallback((prevId: string) => {
+    const records = featureMapRef.current.get(prevId);
+    if (!records) return;
+
+    records.forEach(
+      ({
+        entity,
+        origPolygonMaterial,
+        origPolygonOutlineColor,
+        origPointColor,
+        origPolylineMaterial,
+        origBillboardColor,
+      }) => {
+        if (entity.polygon) {
+          if (origPolygonMaterial !== undefined)
+            entity.polygon.material = origPolygonMaterial;
+          if (origPolygonOutlineColor !== undefined)
+            entity.polygon.outlineColor = origPolygonOutlineColor;
+        }
+        if (entity.point && origPointColor !== undefined) {
+          entity.point.color = origPointColor;
+        }
+        if (entity.polyline && origPolylineMaterial !== undefined) {
+          entity.polyline.material = origPolylineMaterial;
+        }
+        if (entity.billboard && origBillboardColor !== undefined) {
+          entity.billboard.color = origBillboardColor;
+        }
+      },
+    );
+  }, []);
+
+  const handleHighlightSelectedFeature = useCallback((featureId: string) => {
+    const records = featureMapRef.current.get(featureId);
+    if (!records) return;
+
+    records.forEach(({ entity }) => {
+      if (entity.polygon) {
+        entity.polygon.material = new ColorMaterialProperty(HIGHLIGHT_FILL);
+        entity.polygon.outlineColor = new ConstantProperty(HIGHLIGHT_COLOR);
+      }
+      if (entity.point) {
+        entity.point.color = new ConstantProperty(HIGHLIGHT_COLOR);
+      }
+      if (entity.billboard) {
+        entity.billboard.color = new ConstantProperty(HIGHLIGHT_COLOR);
+      }
+      if (entity.polyline) {
+        entity.polyline.material = new ColorMaterialProperty(HIGHLIGHT_COLOR);
+      }
+    });
+  }, []);
+
   const flyTo = useCallback(async () => {
     const ds = dataSourceRef.current;
     if (!ds || !viewer) return;
@@ -96,11 +168,8 @@ const GeoJsonData: React.FC<Props> = ({
       return;
     }
 
-    const entity = ds.entities.values.find((e: Entity) => {
-      const props = e.properties?.getValue?.();
-      const id = props?._originalId ?? e.id;
-      return id === selectedFeatureId;
-    });
+    const records = featureMapRef.current.get(selectedFeatureId);
+    const entity = records?.[0]?.entity;
 
     if (entity) {
       await viewer.flyTo(entity, {
@@ -109,18 +178,57 @@ const GeoJsonData: React.FC<Props> = ({
     }
   }, [viewer, selectedFeatureId]);
 
-  useEffect(() => {
-    updateVisibility();
-  }, [updateVisibility]);
-
   const handleLoad = useCallback(
     async (ds: GeoJsonDataSource) => {
       dataSourceRef.current = ds;
+      prevSelectedRef.current = null;
+      featureMapRef.current = new Map();
+
+      ds.entities.values.forEach((entity: Entity) => {
+        const props = entity.properties?.getValue?.();
+        const id = props?._originalId ?? entity.id;
+
+        const record: EntityRecord = {
+          entity,
+          origPolygonMaterial: entity.polygon?.material,
+          origPolygonOutlineColor: entity.polygon?.outlineColor,
+          origPointColor: entity.point?.color,
+          origPolylineMaterial: entity.polyline?.material,
+          origBillboardColor: entity.billboard?.color,
+        };
+
+        const existing = featureMapRef.current.get(id) ?? [];
+        existing.push(record);
+        featureMapRef.current.set(id, existing);
+      });
+
       updateVisibility();
       await flyTo();
     },
     [updateVisibility, flyTo],
   );
+
+  useEffect(() => {
+    const prevId = prevSelectedRef.current;
+    const currentId = selectedFeatureId ?? null;
+    prevSelectedRef.current = currentId;
+
+    if (prevId && prevId !== currentId) {
+      handleDeselectFeature(prevId);
+    }
+
+    if (currentId) {
+      handleHighlightSelectedFeature(currentId);
+    }
+  }, [
+    selectedFeatureId,
+    handleHighlightSelectedFeature,
+    handleDeselectFeature,
+  ]);
+
+  useEffect(() => {
+    updateVisibility();
+  });
 
   if (!sanitizedData) return null;
 

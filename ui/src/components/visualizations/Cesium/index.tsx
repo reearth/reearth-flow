@@ -144,8 +144,6 @@ const CesiumViewer: React.FC<Props> = ({
     };
   }, [fileContent]);
 
-  console.log("GEOJSON DATA:", geoJsonData);
-
   return (
     <Viewer ref={viewerRef} full {...defaultCesiumProps}>
       {onSelectedFeature && (

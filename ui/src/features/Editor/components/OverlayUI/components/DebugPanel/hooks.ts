@@ -4,6 +4,7 @@ import {
   Cartesian3,
   HeadingPitchRange,
   Math as CesiumMath,
+  Rectangle,
 } from "cesium";
 import {
   MouseEvent,
@@ -308,13 +309,20 @@ export default () => {
         if (!featureId) return;
         const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
 
-        cesiumViewer.camera.flyTo({
-          destination: Cartesian3.fromDegrees(
-            (minLng + maxLng) / 2,
-            (minLat + maxLat) / 2,
-            500000,
-          ),
+        const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
+        const sphere = BoundingSphere.fromRectangle3D(rect);
+        const paddedSphere = new BoundingSphere(
+          sphere.center,
+          Math.max(sphere.radius * 1.5, 500),
+        );
+
+        cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
           duration: 1.5,
+          offset: new HeadingPitchRange(
+            0,
+            CesiumMath.toRadians(-90),
+            paddedSphere.radius * 2,
+          ),
         });
       }
     },
