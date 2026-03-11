@@ -228,7 +228,7 @@ const GeoJsonData: React.FC<Props> = ({
 
   useEffect(() => {
     updateVisibility();
-  });
+  }, [updateVisibility]);
 
   if (!sanitizedData) return null;
 

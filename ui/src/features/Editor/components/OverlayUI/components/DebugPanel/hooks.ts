@@ -304,26 +304,27 @@ export default () => {
       } else if (!is3D) {
         const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
         if (!cesiumViewer) return;
+        try {
+          const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
 
-        const featureId = selectedFeature.id;
-        if (!featureId) return;
-        const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+          const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
+          const sphere = BoundingSphere.fromRectangle3D(rect);
+          const paddedSphere = new BoundingSphere(
+            sphere.center,
+            Math.max(sphere.radius * 1.5, 500),
+          );
 
-        const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
-        const sphere = BoundingSphere.fromRectangle3D(rect);
-        const paddedSphere = new BoundingSphere(
-          sphere.center,
-          Math.max(sphere.radius * 1.5, 500),
-        );
-
-        cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
-          duration: 1.5,
-          offset: new HeadingPitchRange(
-            0,
-            CesiumMath.toRadians(-90),
-            paddedSphere.radius * 2,
-          ),
-        });
+          cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
+            duration: 1.5,
+            offset: new HeadingPitchRange(
+              0,
+              CesiumMath.toRadians(-90),
+              paddedSphere.radius * 2,
+            ),
+          });
+        } catch (error) {
+          console.error("Error calculating bounding box for feature:", error);
+        }
       }
     },
     [streamingQuery.detectedGeometryType, cesiumViewerRef],

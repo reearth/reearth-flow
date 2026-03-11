@@ -27,7 +27,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   infoBox: false,
   sceneMode: SceneMode.SCENE3D,
   homeButton: false,
-  geocoder: true,
+  geocoder: false,
   animation: false,
   navigationHelpButton: false,
   creditContainer: document.createElement("none"),
