@@ -15,6 +15,10 @@
       "value": "schemas_.zip"
     },
     {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/12206_kisarazu-shi_city_2024_citygml_1_op/12206_city_2024_objectlist_op.xlsx"
+    },
+    {
       "name": "prcs",
       "value": 6669
     }

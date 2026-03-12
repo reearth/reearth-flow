@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_cc9fdc3d-05f3-43fa-87be-3967f6ec44e8">
+<gml:name>RiverFloodingRiskAttribute_description</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="RiverFloodingRiskAttribute_description_1">
+<gml:description>中村川水系中村川</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

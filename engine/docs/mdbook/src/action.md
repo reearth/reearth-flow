@@ -8289,11 +8289,27 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
   "description": "Configure unshared edge detection behavior",
   "type": "object",
   "properties": {
+    "groupBy": {
+      "description": "Group By Attributes. When specified, edge detection is performed independently within each group. Features with the same values for these attributes are grouped together.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "tolerance": {
       "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
       "default": 0.1,
       "type": "number",
       "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
     }
   }
 }
