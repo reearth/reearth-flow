@@ -33,7 +33,6 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 type Props = {
   readonly?: boolean;
   nodes: Node[];
-  selectedNodeIds?: string[];
   edges: Edge[];
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
@@ -68,7 +67,6 @@ type Props = {
 const Canvas: React.FC<Props> = ({
   readonly,
   nodes,
-  selectedNodeIds,
   edges,
   users,
   currentWorkflowId,
@@ -108,7 +106,6 @@ const Canvas: React.FC<Props> = ({
   } = useHooks({
     nodes,
     edges,
-    selectedNodeIds,
     isMainWorkflow,
     onWorkflowAdd,
     onNodesAdd,

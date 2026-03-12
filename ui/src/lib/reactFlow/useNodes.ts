@@ -19,7 +19,6 @@ import useDnd from "./useDnd";
 
 type Props = {
   nodes: Node[];
-  selectedNodeIds?: string[];
   edges: Edge[];
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -31,7 +30,6 @@ type Props = {
 
 export default ({
   nodes,
-  selectedNodeIds,
   edges,
   onWorkflowAdd,
   onNodesAdd,
@@ -42,11 +40,8 @@ export default ({
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
   const { handleNodeDragOver, handleNodeDrop } = useDnd({
-    nodes,
-    selectedNodeIds,
     onWorkflowAdd,
     onNodesAdd,
-    onNodesChange,
     onNodePickerOpen,
   });
 

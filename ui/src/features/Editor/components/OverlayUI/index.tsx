@@ -257,7 +257,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           edges={edges}
           openNodePickerViaShortcut={openNodePickerViaShortcut}
           onNodesAdd={onNodesAdd}
-          onNodesChange={onNodesChange}
           onEdgesAdd={onEdgesAdd}
           onEdgesChange={onEdgesChange}
           onClose={onNodePickerClose}

@@ -14,7 +14,7 @@ import {
 } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { useT } from "@flow/lib/i18n";
-import type { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import useHooks from "./hooks";
 
@@ -33,7 +33,6 @@ type Props = {
   isMainWorkflow: boolean;
   openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
-  onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesAdd?: (edges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onClose: () => void;
@@ -46,7 +45,6 @@ const NodePickerDialog: React.FC<Props> = ({
   edges,
   openNodePickerViaShortcut,
   onNodesAdd,
-  onNodesChange,
   onEdgesAdd,
   onEdgesChange,
   onClose,
@@ -73,7 +71,6 @@ const NodePickerDialog: React.FC<Props> = ({
     edges,
     openNodePickerViaShortcut,
     onNodesAdd,
-    onNodesChange,
     onEdgesAdd,
     onEdgesChange,
     onClose,

@@ -6,7 +6,7 @@ import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
-import { ActionNodeType, Edge, Node, NodeChange } from "@flow/types";
+import { ActionNodeType, Edge, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
@@ -19,7 +19,6 @@ export default ({
   edges,
   openNodePickerViaShortcut,
   onNodesAdd,
-  onNodesChange,
   onEdgesAdd,
   onEdgesChange,
   onClose,
@@ -34,7 +33,6 @@ export default ({
   isMainWorkflow: boolean;
   openNodePickerViaShortcut: boolean;
   onNodesAdd: (nodes: Node[]) => void;
-  onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesAdd?: (edges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onClose: () => void;
@@ -107,7 +105,6 @@ export default ({
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
       const randomX = getRandomNumberInRange(50, 200);
       const randomY = getRandomNumberInRange(50, 200);
-      const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
       const lastSelectedNode = nodes.find(
         (n) => n.id === selectedNodeIds[selectedNodeIds.length - 1],
       );
@@ -176,15 +173,6 @@ export default ({
           }));
           onEdgesChange?.([...removeChanges, ...addChanges]);
         }
-      }
-
-      if (selectedNodes.length) {
-        const nodesToDeselect: NodeChange[] = selectedNodes.map((node) => ({
-          type: "select",
-          id: node.id,
-          selected: false,
-        }));
-        onNodesChange?.(nodesToDeselect);
       }
 
       // TODO - add drop in batch support

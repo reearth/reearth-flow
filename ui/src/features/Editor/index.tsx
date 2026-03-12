@@ -171,7 +171,6 @@ export default function Editor({
             onShowSearchPanel={setShowSearchPanel}>
             <Canvas
               nodes={nodes}
-              selectedNodeIds={selectedNodeIds}
               edges={edges}
               yDoc={yDoc}
               users={users}
