@@ -200,10 +200,9 @@ export default () => {
       const is3D =
         currentDetectedGeometryType === "CityGmlGeometry" ||
         currentDetectedGeometryType === "FlowGeometry3D";
-      const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
-      if (!cesiumViewer) return;
 
-      if (cesiumViewer) {
+      if (cesiumViewerRef.current) {
+        const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
         if (is3D) {
           try {
             const featureId = selectedFeature.id;
