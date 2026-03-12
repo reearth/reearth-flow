@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_e37e7586-23d7-4581-9cde-780f9a5eef93">
+ <gml:name>KeyValuePairAttribute_key</gml:name>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_100">
+   <gml:description>建物構造コード</gml:description>
+   <gml:name>100</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_101">
+   <gml:description>延べ面積換算コード</gml:description>
+   <gml:name>101</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_102">
+   <gml:description>変化フラグ</gml:description>
+   <gml:name>102</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_103">
+   <gml:description>過年度修正フラグ</gml:description>
+   <gml:name>103</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_104">
+   <gml:description>調整フラグ</gml:description>
+   <gml:name>104</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_105">
+   <gml:description>高度地区</gml:description>
+   <gml:name>105</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_106">
+   <gml:description>防火及び準防火地域</gml:description>
+   <gml:name>106</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key_107">
+   <gml:description>建物修正フラグ</gml:description>
+   <gml:name>107</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+</gml:Dictionary>

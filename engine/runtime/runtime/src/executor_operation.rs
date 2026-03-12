@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use reearth_flow_eval_expr::engine::Engine;
@@ -14,8 +15,17 @@ use crate::{
 #[derive(Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum ExecutorOperation {
-    Op { ctx: ExecutorContext },
-    Terminate { ctx: NodeContext },
+    Op {
+        ctx: ExecutorContext,
+    },
+    FileBackedOp {
+        path: PathBuf,
+        port: Port,
+        context: Context,
+    },
+    Terminate {
+        ctx: NodeContext,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -83,32 +93,6 @@ pub struct ExecutorContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-}
-
-impl From<Context> for ExecutorContext {
-    fn from(ctx: Context) -> Self {
-        Self {
-            feature: Feature::default(),
-            port: DEFAULT_PORT.clone(),
-            expr_engine: ctx.expr_engine,
-            storage_resolver: ctx.storage_resolver,
-            kv_store: ctx.kv_store,
-            event_hub: ctx.event_hub,
-        }
-    }
-}
-
-impl Default for ExecutorContext {
-    fn default() -> Self {
-        Self {
-            feature: Feature::default(),
-            port: DEFAULT_PORT.clone(),
-            expr_engine: Arc::new(Engine::new()),
-            storage_resolver: Arc::new(StorageResolver::new()),
-            kv_store: Arc::new(crate::kvs::create_kv_store()),
-            event_hub: EventHub::new(30),
-        }
-    }
 }
 
 impl ExecutorContext {

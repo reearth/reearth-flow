@@ -1,0 +1,5 @@
+Folder,Index,Filename,フィーチャータイプ,LOD,インスタンス数,面のエラー,面の向き不正,非水密立体,立体のその他のエラー
+cons,1,49303415_cons_6697_op.gml,GroundSurface,3,1,0,0,0,0
+cons,1,49303415_cons_6697_op.gml,RoofSurface,3,1,1,0,0,0
+cons,1,49303415_cons_6697_op.gml,WallSurface,3,4,0,0,0,0
+cons,1,49303415_cons_6697_op.gml,OtherConstruction,3,1,0,0,1,0

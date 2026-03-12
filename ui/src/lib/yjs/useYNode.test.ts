@@ -67,6 +67,7 @@ describe("useYNode", () => {
         officialName: node.data.officialName,
         inputs: node.data.inputs,
         outputs: node.data.outputs,
+        workflowPath: node.data.workflowPath,
         params: node.data.params,
         customizations: node.data.customizations,
         isCollapsed: node.data.isCollapsed ?? false,

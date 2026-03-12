@@ -96,6 +96,9 @@ impl Orchestrator {
             )
             .await?;
 
+        // Generate unique executor ID for cache isolation between concurrent executions
+        let executor_id = uuid::Uuid::new_v4();
+
         let runtime_clone = self.runtime.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
             run_dag_executor(
@@ -109,6 +112,7 @@ impl Orchestrator {
                 feature_state,
                 incremental_run_config,
                 event_handlers,
+                executor_id,
             )
         });
 

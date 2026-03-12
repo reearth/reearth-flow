@@ -274,7 +274,7 @@ impl Processor for BuildingPartConnectivityChecker {
             })?
             .to_string();
 
-        let geometry = feature.geometry.clone();
+        let geometry = (*feature.geometry).clone();
         if matches!(geometry.value, reearth_flow_types::GeometryValue::None) {
             return Ok(());
         }
@@ -297,7 +297,11 @@ impl Processor for BuildingPartConnectivityChecker {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context(), fw)?;
         Ok(())
     }
@@ -323,15 +327,15 @@ impl BuildingPartConnectivityChecker {
                 if let Some(part_info) = parts.iter().find(|p| p.part_id == part_id) {
                     let mut feature = part_info.feature.clone();
 
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("_status"),
                         AttributeValue::String(status.clone()),
                     );
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("_connected_id"),
                         AttributeValue::Number(serde_json::Number::from(connected_id)),
                     );
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         Attribute::new("_connected_parts"),
                         AttributeValue::Number(serde_json::Number::from(connected_parts)),
                     );

@@ -1,38 +1,66 @@
-import bbox from "@turf/bbox";
-import { LngLatBounds } from "maplibre-gl";
-import { useCallback } from "react";
+import { BoundingSphere } from "cesium";
+import { RefObject, useCallback, useEffect, useState } from "react";
+
+import { ThreeJSViewerRef } from "@flow/components/visualizations/ThreeJS";
 
 export default ({
-  mapRef,
-  selectedOutputData,
+  cesiumViewerRef,
+  threeJSViewerRef,
+  convertedSelectedFeature,
 }: {
-  mapRef: any;
+  cesiumViewerRef: RefObject<any>;
+  threeJSViewerRef: RefObject<ThreeJSViewerRef | null>;
   selectedOutputData: any;
+  convertedSelectedFeature: any;
 }) => {
-  const handleMapLoad = useCallback(
-    (onCenter?: boolean) => {
-      if (mapRef.current && selectedOutputData) {
-        try {
-          const [minLng, minLat, maxLng, maxLat] = bbox(selectedOutputData);
-          const dataBounds = new LngLatBounds(
-            [minLng, minLat],
-            [maxLng, maxLat],
-          );
+  const [cityGmlBoundingSphere, setCityGmlBoundingSphere] =
+    useState<BoundingSphere | null>(null);
+  const [showSelectedFeatureOnly, setShowSelectedFeatureOnly] = useState(false);
 
-          mapRef.current.fitBounds(dataBounds, {
-            padding: 40,
-            duration: onCenter ? 500 : 0,
-            maxZoom: 16,
+  const handleGeoViewerReset = useCallback(() => {
+    if (cesiumViewerRef?.current?.cesiumElement) {
+      const cesiumViewer = cesiumViewerRef.current.cesiumElement;
+      if (cesiumViewer) {
+        // Handle cityGml primitives
+        if (cityGmlBoundingSphere) {
+          cesiumViewer.camera.flyToBoundingSphere(cityGmlBoundingSphere, {
+            duration: 1.5,
           });
-        } catch (err) {
-          console.error("Error computing bbox:", err);
+        } else if (cesiumViewer.dataSources.length > 0) {
+          // Zoom to all entities
+          const allEntities: any[] = [];
+          for (let i = 0; i < cesiumViewer.dataSources.length; i++) {
+            allEntities.push(
+              ...cesiumViewer.dataSources.get(i).entities.values,
+            );
+          }
+          if (allEntities.length > 0) {
+            cesiumViewer.zoomTo(allEntities);
+          }
         }
       }
-    },
-    [mapRef, selectedOutputData],
-  );
+    }
+  }, [cesiumViewerRef, cityGmlBoundingSphere]);
+
+  const handleThreeJsReset = useCallback(() => {
+    threeJSViewerRef.current?.resetCamera();
+  }, [threeJSViewerRef]);
+
+  const handleShowSelectedFeatureOnly = useCallback(() => {
+    setShowSelectedFeatureOnly((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    if (!convertedSelectedFeature) {
+      setShowSelectedFeatureOnly(false);
+    }
+  }, [convertedSelectedFeature]);
 
   return {
-    handleMapLoad,
+    showSelectedFeatureOnly,
+    handleGeoViewerReset,
+    handleThreeJsReset,
+    handleShowSelectedFeatureOnly,
+    setCityGmlBoundingSphere,
   };
 };

@@ -24,6 +24,7 @@ export type NodeData = {
   outputs?: string[];
   params?: NodeParams;
   customizations?: NodeCustomizations;
+  workflowPath?: string;
   isCollapsed?: boolean;
   isDisabled?: boolean;
   // subworkflow nodes

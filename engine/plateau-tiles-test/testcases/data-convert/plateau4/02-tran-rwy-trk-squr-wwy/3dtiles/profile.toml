@@ -1,9 +1,0 @@
-citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_tran.zip"
-
-[tests.cesium_statistics]
-
-[tests.cesium_attributes.casts]
-".attributes" = "json"
-
-[filter.tree]
-"udx/tran/" = ["54401008_tran_6697_op.gml", "54401018_tran_6697_op.gml", "54401018_tran_6697_appearance/"]

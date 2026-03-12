@@ -58,6 +58,7 @@ const createBaseNode = ({
   data: {
     officialName: officialName || type,
   },
+  selected: true,
 });
 
 const createSpecializedNode = ({
@@ -107,7 +108,7 @@ const createActionNode = async (
     }
   }
 
-  return {
+  const newNode = {
     ...createBaseNode({ position, type: action.type }),
     // Needs measured, but at time of creation we don't know size yet.
     // 150x25 is base-size of GeneralNode.
@@ -122,6 +123,8 @@ const createActionNode = async (
       params: defaultParams,
     },
   };
+
+  return newNode;
 };
 
 export const buildNewCanvasNode = async ({
@@ -130,7 +133,11 @@ export const buildNewCanvasNode = async ({
   officialName,
 }: CreateNodeOptions): Promise<Node | null> => {
   if (nodeTypes.includes(type as NodeType)) {
-    return createSpecializedNode({ position, type, officialName });
+    return createSpecializedNode({
+      position,
+      type,
+      officialName,
+    });
   }
   return createActionNode(type, position);
 };

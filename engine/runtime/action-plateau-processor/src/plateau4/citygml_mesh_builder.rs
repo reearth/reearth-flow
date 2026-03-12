@@ -160,8 +160,8 @@ impl Processor for CityGmlMeshBuilder {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
                 // Also send summary feature for consistency
                 let mut summary_feature = feature.clone();
-                summary_feature.geometry = FlowGeometry::default();
-                summary_feature.attributes.insert(
+                summary_feature.geometry = Arc::new(FlowGeometry::default());
+                summary_feature.attributes_mut().insert(
                     Attribute::new("_relief_index"),
                     AttributeValue::Number(self.relief_feature_counter.into()),
                 );
@@ -176,15 +176,15 @@ impl Processor for CityGmlMeshBuilder {
                 Ok(result) => result,
                 Err(e) => {
                     // If we can't parse the file, pass through with error
-                    feature.attributes.insert(
+                    feature.attributes_mut().insert(
                         self.params.error_attribute.clone(),
                         AttributeValue::String(format!("Failed to parse CityGML: {e}")),
                     );
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
                     // Also send summary feature for consistency
                     let mut summary_feature = feature.clone();
-                    summary_feature.geometry = FlowGeometry::default();
-                    summary_feature.attributes.insert(
+                    summary_feature.geometry = Arc::new(FlowGeometry::default());
+                    summary_feature.attributes_mut().insert(
                         Attribute::new("_relief_index"),
                         AttributeValue::Number(self.relief_feature_counter.into()),
                     );
@@ -194,7 +194,7 @@ impl Processor for CityGmlMeshBuilder {
             };
 
         // Add the Relief Index attribute
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             Attribute::new("_relief_index"),
             AttributeValue::Number(self.relief_feature_counter.into()),
         );
@@ -208,7 +208,7 @@ impl Processor for CityGmlMeshBuilder {
         // Create and send summary feature
         // This contains file metadata with a null geometry for aggregation
         let mut summary_feature = feature.clone();
-        summary_feature.geometry = FlowGeometry::default(); // Null geometry
+        summary_feature.geometry = Arc::new(FlowGeometry::default()); // Null geometry
 
         fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
         if let Some(triangular_mesh) = triangular_mesh {
@@ -218,7 +218,7 @@ impl Processor for CityGmlMeshBuilder {
                 epsg: epsg_code,
                 value: geometry_value,
             };
-            feature.geometry = geometry;
+            feature.geometry = Arc::new(geometry);
 
             // Send to default port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
@@ -232,10 +232,10 @@ impl Processor for CityGmlMeshBuilder {
                 error_type,
                 geometry,
             } = error;
-            error_feature.geometry = FlowGeometry {
+            error_feature.geometry = Arc::new(FlowGeometry {
                 epsg: epsg_code,
                 value: geometry,
-            };
+            });
             let port_name = match error_type {
                 ErrorType::NotClosed => "not_closed",
                 ErrorType::IncorrectNumVertices => "incorrect_vertices",
@@ -248,7 +248,11 @@ impl Processor for CityGmlMeshBuilder {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

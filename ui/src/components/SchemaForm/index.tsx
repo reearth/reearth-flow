@@ -221,6 +221,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
           onEditorOpen,
           onPythonEditorOpen,
           originalSchema,
+          schema,
           actionName,
         }}
         onChange={handleChange}

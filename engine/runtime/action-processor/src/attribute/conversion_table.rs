@@ -215,13 +215,17 @@ impl Processor for AttributeConversionTable {
             } else {
                 AttributeValue::Null
             };
-            feature.attributes.insert(rule.feature_to.clone(), value);
+            feature.insert(&rule.feature_to, value);
         }
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

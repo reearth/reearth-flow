@@ -1,5 +1,4 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -18,7 +17,7 @@ type Props = {
   detailsOverlayOpen: boolean;
   detailsFeature: any;
   formattedData: ReturnType<typeof useDataColumnizer>;
-  onCloseFeatureDetails: () => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const TableViewer: React.FC<Props> = memo(
@@ -32,10 +31,9 @@ const TableViewer: React.FC<Props> = memo(
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
-    onCloseFeatureDetails,
+    onShowFeatureDetailsOverlay,
   }) => {
     const t = useT();
-
     // Handle row single click - select feature and show details
     const handleRowSingleClick = useCallback(
       (feature: any) => {
@@ -43,7 +41,6 @@ const TableViewer: React.FC<Props> = memo(
       },
       [onSingleClick],
     );
-
     // Handle row double click
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
@@ -51,8 +48,6 @@ const TableViewer: React.FC<Props> = memo(
       },
       [onDoubleClick],
     );
-
-    const parentRef = useRef<HTMLDivElement>(null);
 
     const selectedRowIndex = useMemo(() => {
       if (!selectedFeatureId || !formattedData.tableData) return -1;
@@ -66,26 +61,6 @@ const TableViewer: React.FC<Props> = memo(
           normalizedSelectedId,
       );
     }, [selectedFeatureId, formattedData.tableData]);
-
-    const virtualizer = useVirtualizer({
-      count: formattedData?.tableData?.length,
-      getScrollElement: () => parentRef.current,
-      estimateSize: () => 24,
-    });
-
-    useEffect(() => {
-      if (
-        selectedRowIndex !== -1 &&
-        !(
-          selectedFeatureId?.startsWith('"') && selectedFeatureId?.endsWith('"')
-        )
-      ) {
-        virtualizer.scrollToIndex(selectedRowIndex, {
-          align: "start",
-          behavior: "auto",
-        });
-      }
-    }, [selectedRowIndex, selectedFeatureId, virtualizer]);
 
     // Loading state
     if (!fileContent || !formattedData.tableData) {
@@ -107,14 +82,13 @@ const TableViewer: React.FC<Props> = memo(
           {/* Table */}
           <div className="flex-1 overflow-hidden">
             <VirtualizedTable
-              parentRef={parentRef}
-              virtualizer={virtualizer}
               columns={formattedData.tableColumns}
               data={formattedData.tableData}
               selectColumns={true}
               showFiltering={true}
               condensed={true}
               selectedRowIndex={selectedRowIndex}
+              detailsOpen={detailsOverlayOpen}
               onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />
@@ -148,7 +122,7 @@ const TableViewer: React.FC<Props> = memo(
           <FeatureDetailsOverlay
             feature={detailsFeature}
             detectedGeometryType={detectedGeometryType}
-            onClose={onCloseFeatureDetails}
+            onClose={() => onShowFeatureDetailsOverlay(false)}
           />
         )}
       </div>

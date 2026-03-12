@@ -12,6 +12,7 @@ import { ArrayFieldTemplate } from "./ArrayFieldTemplate";
 import { BaseInputTemplate } from "./BaseInputTemplate";
 import {
   AddButton,
+  ClearButton,
   CopyButton,
   MoveDownButton,
   MoveUpButton,
@@ -57,6 +58,7 @@ export function generateTemplates<
     ButtonTemplates: {
       // SubmitButton intentionally omitted - handled outside SchemaForm
       AddButton,
+      ClearButton,
       CopyButton,
       MoveDownButton,
       MoveUpButton,

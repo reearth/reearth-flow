@@ -6,41 +6,39 @@ import (
 	"net/http"
 	"testing"
 
+	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	"github.com/reearth/reearth-flow/api/pkg/id"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/text/language"
 )
 
 var (
-	uId1 = id.NewUserID()
-	wId1 = id.NewWorkspaceID()
+	uId1 = accountsid.NewUserID()
+	wId1 = accountsid.NewWorkspaceID()
 )
 
 func TestUpdateMe(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	uid := pkguser.NewID()
-	wid := workspace.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsid.NewUserID()
+	uid := accountsid.NewUserID()
+	wid := accountsid.NewWorkspaceID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(uid)
 		b.Name("updated")
 		b.Email("hoge@test.com")
-		md := pkguser.NewMetadata().
-			Lang(language.English).
-			MustBuild()
+		md := accountsuser.NewMetadata()
+		md.SetLang(language.English)
 		b.Metadata(md)
-		b.MyWorkspaceID(wid)
+		b.Workspace(wid)
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().UpdateMe(gomock.Any(), gomock.Any()).Return(operator, nil),
@@ -79,14 +77,14 @@ func TestRemoveMyAuth(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().RemoveMyAuth(gomock.Any(), gomock.Any()).Return(operator, nil),
@@ -121,15 +119,15 @@ func TestDeleteMe(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	uid := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	uid := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(uid)
 		b.Name("updated")
 		b.Email("hoge@test.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockUserRepo.EXPECT().DeleteMe(gomock.Any(), gomock.Any()).Return(nil),
@@ -164,25 +162,25 @@ func TestSearchUser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	uid := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	uid := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	u := factory.NewUser(func(b *pkguser.Builder) {
+	u := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(uid)
 		b.Name("e2e")
 		b.Email("e2e@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	gomock.InOrder(
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockUserRepo.EXPECT().UserByNameOrEmail(gomock.Any(), "e2e").Return(u, nil),
+		mockUserRepo.EXPECT().FindByNameOrEmail(gomock.Any(), "e2e").Return(u, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
-		mockUserRepo.EXPECT().UserByNameOrEmail(gomock.Any(), "notfound").Return(nil, nil),
+		mockUserRepo.EXPECT().FindByNameOrEmail(gomock.Any(), "notfound").Return(nil, nil),
 	)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -233,16 +231,16 @@ func TestNode(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
-	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
+	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(accountsuser.List{operator}, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
 	}
@@ -273,16 +271,16 @@ func TestNodes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
 
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
-	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
+	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(accountsuser.List{operator}, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
 	}

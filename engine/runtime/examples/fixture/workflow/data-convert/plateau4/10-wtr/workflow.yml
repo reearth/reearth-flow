@@ -49,6 +49,16 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
+        name: TargetPackagesFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+              outputPort: default
+
       - id: e2441531-649a-4dcd-916f-ac59f7d56de3
         name: AttributeManagerPreFlattener
         type: action
@@ -95,59 +105,12 @@ graphs:
         action: AttributeManager
         with:
           operations:
-            - attribute: featureId
-              method: remove
-            - attribute: featureParentId
-              method: remove
-            - attribute: geometryName
-              method: remove
             - attribute: cityCode
               method: rename
               value: city_code
             - attribute: cityName
               method: rename
               value: city_name
-            - attribute: lod
-              method: remove
-            - attribute: gmlId
-              method: remove
-            - attribute: gmlPropertyName
-              method: remove
-            - attribute: fileIndex
-              method: remove
-            - attribute: root
-              method: remove
-            - attribute: cityGmlPath
-              method: remove
-            - attribute: admin
-              method: remove
-            - attribute: area
-              method: remove
-            - attribute: package
-              method: rename
-              value: __package
-            - attribute: extension
-              method: remove
-            - attribute: dirRoot
-              method: remove
-            - attribute: gmlRootId
-              method: remove
-            - attribute: maxLod
-              method: remove
-            - attribute: dirSchemas
-              method: remove
-            - attribute: dirCodelists
-              method: remove
-            - attribute: path
-              method: remove
-            - attribute: name
-              method: remove
-            - attribute: udxDirs
-              method: remove
-            - attribute: featureType
-              method: remove
-            - attribute: gmlName
-              method: remove
 
       - id: 123e1a65-7cad-4412-9336-91f37694aa08
         name: FeatureSorter
@@ -158,6 +121,48 @@ graphs:
             - __package
           order: ascending
 
+      - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        name: TwoDimensionForcerLod0
+        type: action
+        action: TwoDimensionForcer
+
+      - id: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
+        name: AttributeManagerByLod0
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+
+      - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+        name: MVTWriterLod0
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value")["package"] + "_lod0")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value")["package"];
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_mvt_lod0.zip")
+          skipUnexposedAttributes: true
+          colonToUnderscore: true
+
       - id: 674b22f7-ffb7-4594-b569-4c4f780326ce
         name: Cesium3DTilesWriterLod1
         type: action
@@ -167,13 +172,12 @@ graphs:
           maxZoom: 18
           attachTexture: true
           skipUnexposedAttributes: true
-          dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let pkg = env.get("__value").__package;
+            let pkg = env.get("__value")["package"];
             let suffix = "_" + pkg;
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
@@ -193,6 +197,11 @@ graphs:
         toPort: default
       - id: 2fda72bd-a8a2-439e-9220-ed04dfad61c6
         from: e3fb9c45-57d1-4d3d-8723-8fe9932f2a17
+        to: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
+        fromPort: default
+        toPort: default
+      - id: ed3607e7-38c8-4034-82f3-467c3e0487b2
+        from: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
         to: e2441531-649a-4dcd-916f-ac59f7d56de3
         fromPort: default
         toPort: default
@@ -206,10 +215,35 @@ graphs:
         to: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
         fromPort: default
         toPort: default
+      - id: e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b
+        from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
+        to: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        fromPort: lod0
+        toPort: default
+      - id: f5a6b7c8-d9e0-1f2a-3b4c-5d6e7f8a9b0c
+        from: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        to: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
+        fromPort: default
+        toPort: default
+      - id: a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d
+        from: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
+        to: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+        fromPort: default
+        toPort: default
       - id: 1e4665bb-cbc2-4c38-933a-04df26192ae4
         from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
         to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
         fromPort: lod1
+        toPort: default
+      - id: 1e4665bb-cbc2-4c38-933a-04df26192ae2
+        from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
+        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
+        fromPort: lod2
+        toPort: default
+      - id: 1e4665bb-cbc2-4c38-933a-04df26192ae3
+        from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
+        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
+        fromPort: lod3
         toPort: default
       - id: ad5d5514-c17c-4732-b32f-9133a4a8bc0d
         from: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
@@ -226,3 +260,13 @@ graphs:
         to: 674b22f7-ffb7-4594-b569-4c4f780326ce
         fromPort: default
         toPort: default
+      - id: 12345678-90ab-cdef-1234-567890abcdef
+        from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+        to: 674b22f7-ffb7-4594-b569-4c4f780326ce
+        fromPort: schema
+        toPort: schema
+      - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
+        from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+        to: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+        fromPort: schema
+        toPort: schema

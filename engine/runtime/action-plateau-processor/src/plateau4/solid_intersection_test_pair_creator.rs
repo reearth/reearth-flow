@@ -202,10 +202,10 @@ impl Processor for SolidIntersectionTestPairCreator {
                 if let Some(AttributeValue::String(gml_id)) = map.get(&self.gml_id_attribute) {
                     if !self.feature_cache.contains_key(gml_id) {
                         // Create a feature from the map data
-                        let mut cached_feature = Feature::new();
+                        let mut cached_feature = Feature::new_with_attributes(Default::default());
                         for (key, value) in map {
                             cached_feature
-                                .attributes
+                                .attributes_mut()
                                 .insert(Attribute::new(key), value.clone());
                         }
                         // Copy geometry from the original overlay feature (it's the intersection area)
@@ -244,10 +244,10 @@ impl Processor for SolidIntersectionTestPairCreator {
                     let mut output_b = feat_b.clone();
 
                     output_a
-                        .attributes
+                        .attributes_mut()
                         .insert(Attribute::new(&self.pair_id_attribute), pair_id.clone());
                     output_b
-                        .attributes
+                        .attributes_mut()
                         .insert(Attribute::new(&self.pair_id_attribute), pair_id);
 
                     // Send features to respective ports
@@ -260,7 +260,11 @@ impl Processor for SolidIntersectionTestPairCreator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

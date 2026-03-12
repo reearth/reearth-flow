@@ -1,5 +1,6 @@
 export * from "./SubmitButton";
 export * from "./AddButton";
+export * from "./ClearButton";
 export * from "./CopyButton";
 export * from "./MoveDownButton";
 export * from "./MoveUpButton";

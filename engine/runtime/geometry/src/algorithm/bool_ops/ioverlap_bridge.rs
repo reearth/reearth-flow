@@ -163,6 +163,40 @@ where
     shapes_to_multi_polygon(shapes)
 }
 
+/// Perform boolean operation: Polygon op MultiPolygon using iOverlay.
+pub(crate) fn boolean_op_polygon_multi_polygon<T>(
+    poly: &Polygon2D<T>,
+    mpoly: &MultiPolygon2D<T>,
+    op: OpType,
+) -> MultiPolygon2D<T>
+where
+    T: GeoFloat + FloatNumber,
+{
+    let subject = vec![polygon_to_shape_paths(poly)];
+    let clip = multi_polygon_to_shape_paths(mpoly);
+
+    let shapes = subject.overlay(&clip, op.into(), FillRule::NonZero);
+
+    shapes_to_multi_polygon(shapes)
+}
+
+/// Perform boolean operation: MultiPolygon op Polygon using iOverlay.
+pub(crate) fn boolean_op_multi_polygon_polygon<T>(
+    mpoly: &MultiPolygon2D<T>,
+    poly: &Polygon2D<T>,
+    op: OpType,
+) -> MultiPolygon2D<T>
+where
+    T: GeoFloat + FloatNumber,
+{
+    let subject = multi_polygon_to_shape_paths(mpoly);
+    let clip = vec![polygon_to_shape_paths(poly)];
+
+    let shapes = subject.overlay(&clip, op.into(), FillRule::NonZero);
+
+    shapes_to_multi_polygon(shapes)
+}
+
 /// Clip a multi-line-string with a polygon using iOverlay.
 pub(crate) fn clip_polygon<T>(
     poly: &Polygon2D<T>,

@@ -94,8 +94,8 @@ impl Processor for AttributeFlattener {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         for attribute in &self.params.attributes {
-            if feature.attributes.contains_key(attribute) {
-                if let Some(AttributeValue::Map(value)) = feature.attributes.get(attribute) {
+            if feature.get(attribute).is_some() {
+                if let Some(AttributeValue::Map(value)) = feature.get(attribute).cloned() {
                     let new_attributes = value
                         .iter()
                         .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
@@ -111,7 +111,11 @@ impl Processor for AttributeFlattener {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

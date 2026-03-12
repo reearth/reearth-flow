@@ -76,7 +76,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.params?.textColor || "",
+                  data.customizations?.textColor || "",
                   "important",
                 );
             }

@@ -3,9 +3,9 @@ package gql
 import (
 	"context"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/user"
 )
 
 type ContextKey string
@@ -26,7 +26,7 @@ func AttachUsecases(ctx context.Context, u *interfaces.Container, enableDataLoad
 	return ctx
 }
 
-func getUser(ctx context.Context) *user.User {
+func getUser(ctx context.Context) *accountsuser.User {
 	return adapter.User(ctx)
 }
 

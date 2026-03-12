@@ -3,27 +3,27 @@ package repo
 import (
 	"testing"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWorkspaceFilter_Merge(t *testing.T) {
-	a := workspace.NewID()
-	b := workspace.NewID()
+	a := accountsworkspace.NewID()
+	b := accountsworkspace.NewID()
 	assert.Equal(t, WorkspaceFilter{
-		Readable: id.WorkspaceIDList{a, b},
-		Writable: id.WorkspaceIDList{b, a},
+		Readable: accountsid.WorkspaceIDList{a, b},
+		Writable: accountsid.WorkspaceIDList{b, a},
 	}, WorkspaceFilter{
-		Readable: id.WorkspaceIDList{a},
-		Writable: id.WorkspaceIDList{b},
+		Readable: accountsid.WorkspaceIDList{a},
+		Writable: accountsid.WorkspaceIDList{b},
 	}.Merge(WorkspaceFilter{
-		Readable: id.WorkspaceIDList{b},
-		Writable: id.WorkspaceIDList{a},
+		Readable: accountsid.WorkspaceIDList{b},
+		Writable: accountsid.WorkspaceIDList{a},
 	}))
-	assert.Equal(t, WorkspaceFilter{Readable: id.WorkspaceIDList{}}, WorkspaceFilter{}.Merge(WorkspaceFilter{Readable: user.WorkspaceIDList{}}))
-	assert.Equal(t, WorkspaceFilter{Readable: id.WorkspaceIDList{}}, WorkspaceFilter{Readable: user.WorkspaceIDList{}}.Merge(WorkspaceFilter{}))
-	assert.Equal(t, WorkspaceFilter{Writable: id.WorkspaceIDList{}}, WorkspaceFilter{}.Merge(WorkspaceFilter{Writable: user.WorkspaceIDList{}}))
-	assert.Equal(t, WorkspaceFilter{Writable: id.WorkspaceIDList{}}, WorkspaceFilter{Writable: user.WorkspaceIDList{}}.Merge(WorkspaceFilter{}))
+	assert.Equal(t, WorkspaceFilter{Readable: accountsid.WorkspaceIDList{}}, WorkspaceFilter{}.Merge(WorkspaceFilter{Readable: accountsuser.WorkspaceIDList{}}))
+	assert.Equal(t, WorkspaceFilter{Readable: accountsid.WorkspaceIDList{}}, WorkspaceFilter{Readable: accountsuser.WorkspaceIDList{}}.Merge(WorkspaceFilter{}))
+	assert.Equal(t, WorkspaceFilter{Writable: accountsid.WorkspaceIDList{}}, WorkspaceFilter{}.Merge(WorkspaceFilter{Writable: accountsuser.WorkspaceIDList{}}))
+	assert.Equal(t, WorkspaceFilter{Writable: accountsid.WorkspaceIDList{}}, WorkspaceFilter{Writable: accountsuser.WorkspaceIDList{}}.Merge(WorkspaceFilter{}))
 }

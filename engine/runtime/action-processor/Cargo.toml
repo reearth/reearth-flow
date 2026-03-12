@@ -10,6 +10,10 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+memory-stats = ["reearth-flow-common/memory-stats"]
+
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
@@ -32,9 +36,13 @@ base64.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 csv.workspace = true
+earcut.workspace = true
+fastxml.workspace = true
 flatgeom.workspace = true
+image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
+nalgebra.workspace = true
 num-traits.workspace = true
 num_cpus.workspace = true
 object_store.workspace = true
@@ -51,13 +59,14 @@ rstar.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
 zip.workspace = true
+zstd.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
-tempfile.workspace = true

@@ -1,8 +1,17 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use nusamai_projection::crs::EpsgCode;
+use proj::Proj;
+
+// Thread-local cache for PROJ transformations.
+// Each thread maintains its own cache to ensure thread-safety without requiring
+// unsafe Send/Sync implementations on types containing proj::Proj.
+thread_local! {
+    static PROJ_CACHE: RefCell<HashMap<(String, String), Proj>> = RefCell::new(HashMap::new());
+}
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
+    line::Line,
     line_string::{LineString2D, LineString3D},
     multi_line_string::{MultiLineString2D, MultiLineString3D},
     multi_point::{MultiPoint2D, MultiPoint3D},
@@ -45,6 +54,11 @@ fn transform_geometry_2d(
 ) -> Result<Geometry2D<f64>, BoxedError> {
     match geom {
         Geometry2D::Point(p) => Ok(Geometry2D::Point(transform_point_2d(p, proj)?)),
+        Geometry2D::Line(line) => {
+            let start = transform_point_2d(&line.start_point(), proj)?;
+            let end = transform_point_2d(&line.end_point(), proj)?;
+            Ok(Geometry2D::Line(Line::new(start.0, end.0)))
+        }
         Geometry2D::LineString(ls) => {
             let coords: Result<Vec<_>, BoxedError> = ls
                 .coords()
@@ -154,6 +168,11 @@ fn transform_geometry_3d(
 ) -> Result<Geometry3D<f64>, BoxedError> {
     match geom {
         Geometry3D::Point(p) => Ok(Geometry3D::Point(transform_point_3d(p, proj)?)),
+        Geometry3D::Line(line) => {
+            let start = transform_point_3d(&line.start_point(), proj)?;
+            let end = transform_point_3d(&line.end_point(), proj)?;
+            Ok(Geometry3D::Line(Line::new_(start.0, end.0)))
+        }
         Geometry3D::LineString(ls) => {
             let coords: Result<Vec<_>, BoxedError> = ls
                 .coords()
@@ -364,11 +383,40 @@ pub struct HorizontalReprojector {
     target_epsg_ast: rhai::AST,
 }
 
-impl Processor for HorizontalReprojector {
-    fn num_threads(&self) -> usize {
-        2
-    }
+/// Helper function to get or create a cached Proj transformation.
+/// Uses thread-local storage to ensure thread-safety.
+fn get_or_create_proj(from_crs: &str, to_crs: &str) -> Result<(), BoxedError> {
+    use std::collections::hash_map::Entry;
+    PROJ_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let key = (from_crs.to_string(), to_crs.to_string());
+        if let Entry::Vacant(e) = cache.entry(key) {
+            let proj = Proj::new_known_crs(from_crs, to_crs, None)?;
+            e.insert(proj);
+        }
+        Ok(())
+    })
+}
 
+/// Helper function to use a cached Proj transformation.
+/// The callback receives a reference to the Proj instance.
+fn with_proj<F, R>(from_crs: &str, to_crs: &str, f: F) -> Result<R, BoxedError>
+where
+    F: FnOnce(&Proj) -> Result<R, BoxedError>,
+{
+    PROJ_CACHE.with(|cache| {
+        let cache = cache.borrow();
+        let key = (from_crs.to_string(), to_crs.to_string());
+        let proj = cache.get(&key).ok_or_else(|| {
+            GeometryProcessorError::HorizontalReprojector(
+                "Proj not found in cache - this should not happen".to_string(),
+            )
+        })?;
+        f(proj)
+    })
+}
+
+impl Processor for HorizontalReprojector {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -408,43 +456,42 @@ impl Processor for HorizontalReprojector {
         })?;
         let target_epsg = target_epsg as EpsgCode;
 
-        // Create projection for this transformation
+        // Get or create the projection in thread-local cache
         let from_crs = format!("EPSG:{source_epsg}");
         let to_crs = format!("EPSG:{target_epsg}");
-
-        let proj_transform = proj::Proj::new_known_crs(&from_crs, &to_crs, None).map_err(|e| {
-            GeometryProcessorError::HorizontalReprojector(format!(
-                "Failed to create PROJ transformation from {from_crs} to {to_crs}: {e}"
-            ))
-        })?;
+        get_or_create_proj(&from_crs, &to_crs)?;
 
         match &geometry.value {
             GeometryValue::FlowGeometry2D(geom) => {
+                let transformed =
+                    with_proj(&from_crs, &to_crs, |proj| transform_geometry_2d(geom, proj))?;
                 let mut feature = feature.clone();
-                let transformed = transform_geometry_2d(geom, &proj_transform)?;
-                feature.geometry.value = GeometryValue::FlowGeometry2D(transformed);
-                feature.geometry.epsg = Some(target_epsg);
+                feature.geometry_mut().value = GeometryValue::FlowGeometry2D(transformed);
+                feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geom) => {
+                let transformed =
+                    with_proj(&from_crs, &to_crs, |proj| transform_geometry_3d(geom, proj))?;
                 let mut feature = feature.clone();
-                let transformed = transform_geometry_3d(geom, &proj_transform)?;
-                feature.geometry.value = GeometryValue::FlowGeometry3D(transformed);
-                feature.geometry.epsg = Some(target_epsg);
+                feature.geometry_mut().value = GeometryValue::FlowGeometry3D(transformed);
+                feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(ref geos) => {
                 let mut feature = feature.clone();
                 let mut transformed_geos = geos.clone();
-                transformed_geos
-                    .transform_horizontal(|x, y| {
-                        proj_transform.convert((x, y)).map_err(|e| {
-                            GeometryProcessorError::HorizontalReprojector(e.to_string())
+                with_proj(&from_crs, &to_crs, |proj| {
+                    transformed_geos
+                        .transform_horizontal(|x, y| {
+                            proj.convert((x, y)).map_err(|e| {
+                                GeometryProcessorError::HorizontalReprojector(e.to_string())
+                            })
                         })
-                    })
-                    .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })?;
-                feature.geometry.value = GeometryValue::CityGmlGeometry(transformed_geos);
-                feature.geometry.epsg = Some(target_epsg);
+                        .map_err(|e: GeometryProcessorError| -> BoxedError { e.into() })
+                })?;
+                feature.geometry_mut().value = GeometryValue::CityGmlGeometry(transformed_geos);
+                feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::None => {
@@ -454,7 +501,11 @@ impl Processor for HorizontalReprojector {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

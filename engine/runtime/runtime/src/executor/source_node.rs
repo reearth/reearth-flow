@@ -284,6 +284,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 feature_id: Some(feature.id),
                             });
 
+                            source.channel_manager.wait_until_downstream_empty();
                             source.channel_manager.send_op(ExecutorContext::new(
                                 feature.clone(),
                                 port.clone(),
@@ -374,6 +375,7 @@ pub async fn create_source_node<F>(
             senders,
             runtime.clone(),
             dag.event_hub().clone(),
+            dag.executor_id(),
         );
         let features_produced = Arc::new(AtomicU64::new(0));
         sources.push(RunningSource {

@@ -9,14 +9,16 @@ import { AnyWorkflowVariable } from "@flow/types";
 export default ({
   onDebugRunStart,
   onDebugRunStop,
+  refetchWorkflowVariables,
+
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  refetchWorkflowVariables: () => void;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
   const [currentProject] = useCurrentProject();
-
   const [showOverlayElement, setshowOverlayElement] = useState<
     | "debugStart"
     | "debugStop"
@@ -29,8 +31,10 @@ export default ({
   const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
   const handleShowDebugActiveRunsPopover = () =>
     setshowOverlayElement("debugRuns");
-  const handleShowDebugWorkflowVariablesDialog = () =>
+  const handleShowDebugWorkflowVariablesDialog = () => {
+    refetchWorkflowVariables();
     setshowOverlayElement("debugWorkflowVariables");
+  };
   const handlePopoverClose = () => setshowOverlayElement(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
@@ -39,18 +43,19 @@ export default ({
   const { value: debugRunState, updateValue: updateDebugRunState } =
     useIndexedDB("debugRun");
 
-  const debugJobId = useMemo(
+  const debugJobState = useMemo(
     () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
 
-  const debugJob = useGetJob(debugJobId).job;
+  const { job, refetch } = useGetJob(debugJobState?.jobId);
+
+  const debugJob = job;
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
-    debugJobId,
+    debugJobState?.jobId,
     !debugJob ||
       debugJob?.status === "completed" ||
       debugJob?.status === "failed" ||
@@ -101,6 +106,17 @@ export default ({
     if (!jobState) return;
     await updateDebugRunState({ jobs: jobState });
   };
+
+  useEffect(() => {
+    if (
+      (realTimeJobStatus === "completed" ||
+        realTimeJobStatus === "failed" ||
+        realTimeJobStatus === "cancelled") &&
+      debugJobState?.status !== realTimeJobStatus
+    ) {
+      refetch();
+    }
+  }, [realTimeJobStatus, debugJobState, refetch]);
 
   return {
     showOverlayElement,

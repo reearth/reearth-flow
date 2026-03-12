@@ -1,0 +1,30 @@
+id: 00caad2a-9f7d-4189-b479-153fa9ea36e5
+name: "Source Runtime Error Test"
+entryGraphId: 7a8b9c0d-1e2f-3456-ef12-345678900005
+with:
+  workerArtifactPath: null
+graphs:
+  - id: 7a8b9c0d-1e2f-3456-ef12-345678900005
+    name: main_graph
+    nodes:
+      - id: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            let x = non_existent_function();
+            [#{"test": x}]
+      - id: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "result.json")
+    edges:
+      - id: e1f90a3e-61d3-48e2-a328-e7226c2ad1ae
+        from: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
+        fromPort: default
+        toPort: default

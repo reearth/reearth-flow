@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:gml="http://www.opengis.net/gml" gml:id="DataQualityAttribute_geometrySrcDesc">
+  <gml:name>DataQualityAttribute_geometrySrcDesc</gml:name>
+  <gml:dictionaryEntry>
+    <gml:Definition gml:id="DataQualityAttribute_geometrySrcDesc_5">
+      <gml:name>5</gml:name>
+      <gml:description>その他</gml:description>
+    </gml:Definition>
+  </gml:dictionaryEntry>
+</gml:Dictionary>

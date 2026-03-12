@@ -7,20 +7,19 @@ use tokio::sync::Semaphore;
 use tracing::info;
 use walkdir::WalkDir;
 
-use crate::types::metadata::Metadata;
+use reearth_flow_worker::errors::{self, Error};
+use reearth_flow_worker::types::metadata::Metadata;
 
 pub(crate) async fn upload_artifact(
     storage_resolver: &Arc<StorageResolver>,
     metadata: &Metadata,
-) -> crate::errors::Result<()> {
+) -> errors::Result<()> {
     let local_artifact_root_path =
         dir::get_job_root_dir_path("workers", metadata.job_id).map_err(|e| {
-            crate::errors::Error::failed_to_upload_artifact(format!(
-                "Failed to get job root dir: {e}"
-            ))
+            Error::failed_to_upload_artifact(format!("Failed to get job root dir: {e}"))
         })?;
     let remote_artifact_root_path = Uri::from_str(metadata.artifact_base_url.as_str())
-        .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+        .map_err(Error::failed_to_upload_artifact)?;
     let uris = WalkDir::new(local_artifact_root_path.clone())
         .into_iter()
         .filter_map(Result::ok)
@@ -49,7 +48,7 @@ pub(crate) async fn upload_artifact(
             .to_string()
             .as_str(),
     )
-    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+    .map_err(Error::failed_to_upload_artifact)?;
 
     let semaphore = Arc::new(Semaphore::new(5));
 
@@ -62,38 +61,34 @@ pub(crate) async fn upload_artifact(
             async move {
                 let storage = storage_resolver
                     .resolve(uri)
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                    .map_err(Error::failed_to_upload_artifact)?;
                 let bytes = storage
                     .get(uri.path().as_path())
                     .await
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                    .map_err(Error::failed_to_upload_artifact)?;
                 let bytes = bytes
                     .bytes()
                     .await
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                    .map_err(Error::failed_to_upload_artifact)?;
 
                 let s = uri.to_string();
                 let s = s.replace(&local_artifact_root_path.to_string(), "");
                 let s = s.trim_start_matches(MAIN_SEPARATOR).to_string();
                 let location = remote_artifact_root_path
                     .join(metadata.job_id.to_string())
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
-                let location = location
-                    .join(s)
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                    .map_err(Error::failed_to_upload_artifact)?;
+                let location = location.join(s).map_err(Error::failed_to_upload_artifact)?;
                 let root_storage = storage_resolver
                     .resolve(&location)
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                    .map_err(Error::failed_to_upload_artifact)?;
 
-                let _permit_guard = permit
-                    .await
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                let _permit_guard = permit.await.map_err(Error::failed_to_upload_artifact)?;
 
                 info!("Uploading artifact from {:?} to {:?}", uri, location);
                 root_storage
                     .put(location.path().as_path(), Bytes::from(bytes.to_vec()))
                     .await
-                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+                    .map_err(Error::failed_to_upload_artifact)?;
                 Ok(())
             }
         })
@@ -106,11 +101,11 @@ pub(crate) async fn upload_artifact(
 pub(crate) fn artifact_job_root_uri(
     metadata: &Metadata,
     job_id: uuid::Uuid,
-) -> crate::errors::Result<Uri> {
+) -> errors::Result<Uri> {
     let base = Uri::from_str(metadata.artifact_base_url.as_str())
-        .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+        .map_err(Error::failed_to_upload_artifact)?;
     base.join(job_id.to_string())
-        .map_err(crate::errors::Error::failed_to_upload_artifact)
+        .map_err(Error::failed_to_upload_artifact)
 }
 
 /// Builds the remote artifact job subdirectory URI (e.g., GCS) for the given job.
@@ -118,9 +113,9 @@ pub(crate) fn artifact_job_subdir_root_uri(
     metadata: &Metadata,
     job_id: uuid::Uuid,
     subdir: &str,
-) -> crate::errors::Result<Uri> {
+) -> errors::Result<Uri> {
     let job_root = artifact_job_root_uri(metadata, job_id)?;
     job_root
         .join(subdir)
-        .map_err(crate::errors::Error::failed_to_upload_artifact)
+        .map_err(Error::failed_to_upload_artifact)
 }

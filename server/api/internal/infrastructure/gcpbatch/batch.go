@@ -8,15 +8,18 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
 	"github.com/google/uuid"
 	"github.com/googleapis/gax-go/v2"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type BatchConfig struct {
@@ -41,9 +44,12 @@ type BatchConfig struct {
 	BootDiskSizeGB                  int
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
+	MaxRunDurationSeconds           int
+	MaxRetryCount                   int
 	TaskCount                       int
 	CompressIntermediateData        bool
 	FeatureWriterDisable            bool
+	UseSpotVMs                      bool
 }
 
 type BatchClient interface {
@@ -93,7 +99,7 @@ func (b *BatchRepo) SubmitJob(
 	workflowsURL, metadataURL string,
 	variables map[string]string,
 	projectID id.ProjectID,
-	workspaceID id.WorkspaceID,
+	workspaceID accountsid.WorkspaceID,
 	previousJobID *id.JobID,
 	startNodeID *uuid.UUID,
 ) (string, error) {
@@ -165,8 +171,34 @@ func (b *BatchRepo) SubmitJob(
 		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
+	maxRunDuration := b.config.MaxRunDurationSeconds
+	if maxRunDuration <= 0 {
+		maxRunDuration = 21600 // default 6 hours
+	}
+
+	// Configure task retry for spot VM preemption.
+	// MaxRetryCount and LifecyclePolicies are only set when using spot VMs to avoid
+	// unintended retries on standard VMs. Without lifecycle policies, GCP Batch retries
+	// on any non-zero exit code, which is not desired for standard VM failures.
+	var maxRetryCount int32
+	var lifecyclePolicies []*batchpb.LifecyclePolicy
+	if b.config.UseSpotVMs && b.config.MaxRetryCount > 0 {
+		maxRetryCount = int32(b.config.MaxRetryCount)
+		// Exit code 50001 is emitted by GCP Batch when a spot VM is preempted.
+		// See: https://cloud.google.com/batch/docs/automate-task-retries
+		lifecyclePolicies = []*batchpb.LifecyclePolicy{{
+			Action: batchpb.LifecyclePolicy_RETRY_TASK,
+			ActionCondition: &batchpb.LifecyclePolicy_ActionCondition{
+				ExitCodes: []int32{50001},
+			},
+		}}
+	}
+
 	taskSpec := &batchpb.TaskSpec{
-		ComputeResource: computeResource,
+		ComputeResource:   computeResource,
+		MaxRetryCount:     maxRetryCount,
+		LifecyclePolicies: lifecyclePolicies,
+		MaxRunDuration:    durationpb.New(time.Duration(maxRunDuration) * time.Second),
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},
@@ -222,8 +254,13 @@ func (b *BatchRepo) SubmitJob(
 		SizeGb: int64(b.config.BootDiskSizeGB),
 	}
 
+	provisioningModel := batchpb.AllocationPolicy_STANDARD
+	if b.config.UseSpotVMs {
+		provisioningModel = batchpb.AllocationPolicy_SPOT
+	}
+
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
-		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
+		ProvisioningModel: provisioningModel,
 		MachineType:       b.config.MachineType,
 		BootDisk:          bootDisk,
 	}

@@ -105,7 +105,7 @@ impl Processor for VertexCounter {
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.coords_count().into()),
                 );
@@ -113,7 +113,7 @@ impl Processor for VertexCounter {
             }
             GeometryValue::FlowGeometry3D(geometry) => {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.coords_count().into()),
                 );
@@ -137,7 +137,7 @@ impl Processor for VertexCounter {
                     })
                     .sum();
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.output_attribute.clone(),
                     AttributeValue::Number(vertex_count.into()),
                 );
@@ -147,7 +147,11 @@ impl Processor for VertexCounter {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -164,7 +168,7 @@ mod tests {
         geometry::Geometry2D, line_string::LineString, polygon::Polygon,
     };
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::{Attribute, Feature, Geometry, GeometryValue};
+    use reearth_flow_types::{feature::Attributes, Attribute, Feature, Geometry, GeometryValue};
 
     #[test]
     fn test_vertex_counter_point_2d() {
@@ -174,13 +178,14 @@ mod tests {
             output_attribute: Attribute::new("vertexCount"),
         };
 
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Default::default())),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();
@@ -206,13 +211,14 @@ mod tests {
         };
 
         let line_string = LineString::from(vec![(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]);
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string)),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();
@@ -246,13 +252,14 @@ mod tests {
             (0.0, 0.0),
         ]);
         let polygon = Polygon::new(exterior, vec![]);
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();
@@ -293,13 +300,14 @@ mod tests {
             (1.0, 1.0),
         ]);
         let polygon = Polygon::new(exterior, vec![interior]);
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();
@@ -325,13 +333,14 @@ mod tests {
             output_attribute: Attribute::new("vertexCount"),
         };
 
-        let feature = Feature {
-            geometry: Geometry {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::None,
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &fw).unwrap();

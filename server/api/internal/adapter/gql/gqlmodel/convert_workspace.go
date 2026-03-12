@@ -1,56 +1,48 @@
 package gqlmodel
 
 import (
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	"github.com/reearth/reearth-accounts/server/pkg/role"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 )
 
-func ToWorkspace(t *workspace.Workspace) *Workspace {
+func ToWorkspace(t *accountsworkspace.Workspace) *Workspace {
 	if t == nil {
 		return nil
 	}
 
-	members := make([]*WorkspaceMember, 0, len(t.Members()))
+	members := make([]*WorkspaceMember, 0, t.Members().Count())
 
-	for _, member := range t.Members() {
-		switch m := member.(type) {
-		case workspace.UserMember:
-			workspaceMember := &WorkspaceMember{
-				UserID: IDFrom(m.UserID),
-				Role:   Role(m.Role),
-			}
-			if m.User != nil {
-				workspaceMember.User = &User{
-					ID:    IDFrom(m.User.ID),
-					Name:  m.User.Name,
-					Email: m.User.Email,
-					Host:  m.Host,
-				}
-			}
-			members = append(members, workspaceMember)
-		case workspace.IntegrationMember:
-			// For IntegrationMember, the current WorkspaceMember structure does not support it.
-			continue
+	for userID, memberInfo := range t.Members().Users() {
+		workspaceMember := &WorkspaceMember{
+			UserID: IDFrom(userID),
+			Role:   Role(memberInfo.Role),
+			User: &User{
+				ID: IDFrom(userID),
+			},
 		}
+
+		members = append(members, workspaceMember)
 	}
 
 	return &Workspace{
 		ID:       IDFrom(t.ID()),
 		Name:     t.Name(),
-		Personal: t.Personal(),
+		Personal: t.IsPersonal(),
 		Members:  members,
 	}
 }
 
-func FromRole(r Role) workspace.Role {
+func FromRole(r Role) role.RoleType {
 	switch r {
-	case RoleReader:
-		return workspace.RoleReader
-	case RoleWriter:
-		return workspace.RoleWriter
-	case RoleMaintainer:
-		return workspace.RoleMaintainer
 	case RoleOwner:
-		return workspace.RoleOwner
+		return role.RoleOwner
+	case RoleMaintainer:
+		return role.RoleMaintainer
+	case RoleWriter:
+		return role.RoleWriter
+	case RoleReader:
+		return role.RoleReader
+	default:
+		return role.RoleType("")
 	}
-	return workspace.Role("")
 }

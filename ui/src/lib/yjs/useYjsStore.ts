@@ -42,6 +42,7 @@ export default ({
     yWorkflows,
     currentWorkflowId,
     undoTrackerActionWrapper,
+    rawWorkflows,
   });
 
   const { handleYNodesAdd, handleYNodesChange, handleYNodesDataUpdate } =

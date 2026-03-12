@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::algorithm::relate::Relate;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -96,6 +97,21 @@ pub struct SpatialFilterParams {
     /// Optional attribute name to store the number of matching filters
     #[serde(default)]
     pub output_match_count_attribute: Option<Attribute>,
+
+    /// # Merge Filter Attributes
+    /// If true, copy attributes from matched filter feature(s) onto the candidate.
+    /// Only applies to features routed to the passed port.
+    /// In OR mode (pass_on_multiple_matches: true), only the first matching filter's
+    /// attributes are merged. In AND mode, attributes from all matched filters are
+    /// merged in order; if multiple filters share a key, the last filter's value wins.
+    #[serde(default)]
+    pub merge_filter_attributes: bool,
+
+    /// # Merged Attributes Prefix
+    /// Optional prefix applied to merged filter attribute names to avoid collisions.
+    /// For example, a prefix of "filter_" turns a filter attribute "zone" into "filter_zone".
+    #[serde(default)]
+    pub merged_attributes_prefix: Option<String>,
 }
 
 fn default_pass_on_multiple() -> bool {
@@ -108,6 +124,8 @@ impl Default for SpatialFilterParams {
             predicate: SpatialPredicate::Intersects,
             pass_on_multiple_matches: true,
             output_match_count_attribute: None,
+            merge_filter_attributes: false,
+            merged_attributes_prefix: None,
         }
     }
 }
@@ -183,14 +201,18 @@ impl Processor for SpatialFilter {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         if self.filters.is_empty() {
-            // No filters provided, reject all candidates
+            // No filters provided, pass all candidates (no restrictions)
             for candidate in &self.candidates {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     candidate.clone(),
-                    REJECTED_PORT.clone(),
+                    PASSED_PORT.clone(),
                 ));
             }
             return Ok(());
@@ -201,15 +223,15 @@ impl Processor for SpatialFilter {
             match &candidate.geometry.value {
                 GeometryValue::FlowGeometry2D(candidate_geo) => {
                     let result = test_2d_geometry(candidate_geo, &self.filters, &self.params);
-                    forward_result(result, candidate, &self.params, &ctx, fw);
+                    forward_result(result, candidate, &self.filters, &self.params, &ctx, fw);
                 }
                 GeometryValue::FlowGeometry3D(candidate_geo) => {
                     let result = test_3d_geometry(candidate_geo, &self.filters, &self.params);
-                    forward_result(result, candidate, &self.params, &ctx, fw);
+                    forward_result(result, candidate, &self.filters, &self.params, &ctx, fw);
                 }
                 GeometryValue::CityGmlGeometry(candidate_geo) => {
                     let result = test_citygml_geometry(candidate_geo, &self.filters, &self.params);
-                    forward_result(result, candidate, &self.params, &ctx, fw);
+                    forward_result(result, candidate, &self.filters, &self.params, &ctx, fw);
                 }
                 _ => {
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -231,11 +253,13 @@ impl Processor for SpatialFilter {
 struct TestResult {
     passed: bool,
     match_count: usize,
+    matched_filter_indices: Vec<usize>,
 }
 
 fn forward_result(
     result: TestResult,
     feature: &Feature,
+    filters: &[Feature],
     params: &SpatialFilterParams,
     ctx: &NodeContext,
     fw: &ProcessorChannelForwarder,
@@ -244,12 +268,25 @@ fn forward_result(
 
     // Add match count attribute if configured
     if let Some(ref attr_name) = params.output_match_count_attribute {
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             attr_name.clone(),
             AttributeValue::Number(serde_json::Number::from(result.match_count)),
         );
     }
 
+    // Add merge filter attribute if configured
+    if params.merge_filter_attributes {
+        for &filter_index in &result.matched_filter_indices {
+            let filter = &filters[filter_index];
+            for (key, value) in filter.attributes.iter() {
+                let merged_key = match &params.merged_attributes_prefix {
+                    Some(prefix) => Attribute::new(format!("{}{}", prefix, key)),
+                    None => key.clone(),
+                };
+                feature.attributes_mut().insert(merged_key, value.clone());
+            }
+        }
+    }
     let port = if result.passed {
         PASSED_PORT.clone()
     } else {
@@ -267,31 +304,57 @@ fn test_2d_geometry(
     params: &SpatialFilterParams,
 ) -> TestResult {
     let mut match_count = 0;
+    let mut matched_filter_indices: Vec<usize> = Vec::new();
 
-    for filter in filters {
-        if let GeometryValue::FlowGeometry2D(filter_geo) = &filter.geometry.value {
-            if test_predicate_2d(candidate, filter_geo, &params.predicate) {
-                match_count += 1;
-                if params.pass_on_multiple_matches {
-                    // OR logic: return early on first match
-                    return TestResult {
-                        passed: true,
-                        match_count,
-                    };
-                }
-            } else if !params.pass_on_multiple_matches {
-                // AND logic: return early on first non-match
-                return TestResult {
-                    passed: false,
-                    match_count,
-                };
+    for (i, filter) in filters.iter().enumerate() {
+        let filter_matches = match &filter.geometry.value {
+            GeometryValue::FlowGeometry2D(filter_geo) => {
+                test_predicate_2d(candidate, filter_geo, &params.predicate)
             }
+            GeometryValue::FlowGeometry3D(filter_geo) => {
+                // Project 3D filter to 2D (drop Z) and test
+                let filter_2d: Geometry2D<f64> = filter_geo.clone().into();
+                test_predicate_2d(candidate, &filter_2d, &params.predicate)
+            }
+            GeometryValue::CityGmlGeometry(citygml) => {
+                // Project CityGML filter polygons to 2D and test
+                citygml.gml_geometries.iter().any(|gml| {
+                    gml.polygons.iter().any(|poly| {
+                        let poly_2d: Polygon2D<f64> = poly.clone().into();
+                        let filter_2d = Geometry2D::Polygon(poly_2d);
+                        test_predicate_2d(candidate, &filter_2d, &params.predicate)
+                    })
+                })
+            }
+            _ => false,
+        };
+
+        if filter_matches {
+            match_count += 1;
+            if params.pass_on_multiple_matches {
+                // OR logic: return early on first match
+                return TestResult {
+                    passed: true,
+                    match_count,
+                    matched_filter_indices: vec![i],
+                };
+            } else {
+                // AND logic: accumulate index for potential attribute merging
+                matched_filter_indices.push(i);
+            }
+        } else if !params.pass_on_multiple_matches {
+            // AND logic: return early on first non-match
+            return TestResult {
+                passed: false,
+                match_count,
+                matched_filter_indices: Vec::new(),
+            };
         }
     }
 
     // If we get here:
     // - For OR logic (pass_on_multiple): no matches found, so fail
-    // - For AND logic (!pass_on_multiple): all matches passed, so pass
+    // - For AND logic (!pass_on_multiple): all filters matched, so pass
     TestResult {
         passed: if params.pass_on_multiple_matches {
             false
@@ -299,6 +362,7 @@ fn test_2d_geometry(
             match_count > 0
         },
         match_count,
+        matched_filter_indices,
     }
 }
 
@@ -308,9 +372,15 @@ fn test_3d_geometry(
     params: &SpatialFilterParams,
 ) -> TestResult {
     let mut match_count = 0;
+    let mut matched_filter_indices: Vec<usize> = Vec::new();
 
-    for filter in filters {
-        let matches = match &filter.geometry.value {
+    for (i, filter) in filters.iter().enumerate() {
+        let filter_matches = match &filter.geometry.value {
+            GeometryValue::FlowGeometry2D(filter_geo) => {
+                // Project 3D candidate to 2D (drop Z) and test against 2D filter
+                let candidate_2d: Geometry2D<f64> = candidate.clone().into();
+                test_predicate_2d(&candidate_2d, filter_geo, &params.predicate)
+            }
             GeometryValue::FlowGeometry3D(filter_geo) => {
                 test_predicate_3d(candidate, filter_geo, &params.predicate)
             }
@@ -325,18 +395,22 @@ fn test_3d_geometry(
             _ => false,
         };
 
-        if matches {
+        if filter_matches {
             match_count += 1;
             if params.pass_on_multiple_matches {
                 return TestResult {
                     passed: true,
                     match_count,
+                    matched_filter_indices: vec![i],
                 };
+            } else {
+                matched_filter_indices.push(i);
             }
         } else if !params.pass_on_multiple_matches {
             return TestResult {
                 passed: false,
                 match_count,
+                matched_filter_indices: Vec::new(),
             };
         }
     }
@@ -348,6 +422,7 @@ fn test_3d_geometry(
             match_count > 0
         },
         match_count,
+        matched_filter_indices,
     }
 }
 
@@ -357,6 +432,7 @@ fn test_citygml_geometry(
     params: &SpatialFilterParams,
 ) -> TestResult {
     let mut match_count = 0;
+    let mut matched_filter_indices: Vec<usize> = Vec::new();
 
     // Extract all polygons from candidate CityGML
     let candidate_polygons: Vec<_> = candidate
@@ -369,11 +445,20 @@ fn test_citygml_geometry(
         return TestResult {
             passed: false,
             match_count: 0,
+            matched_filter_indices: Vec::new(),
         };
     }
 
-    for filter in filters {
-        let matches = match &filter.geometry.value {
+    for (i, filter) in filters.iter().enumerate() {
+        let filter_matches = match &filter.geometry.value {
+            GeometryValue::FlowGeometry2D(filter_geo) => {
+                // Project CityGML 3D polygons to 2D (drop Z) and test against 2D filter
+                candidate_polygons.iter().any(|poly| {
+                    let poly_2d: Polygon2D<f64> = (*poly).clone().into();
+                    let candidate_geo = Geometry2D::Polygon(poly_2d);
+                    test_predicate_2d(&candidate_geo, filter_geo, &params.predicate)
+                })
+            }
             GeometryValue::FlowGeometry3D(filter_geo) => {
                 // Test if any candidate polygon matches the filter
                 candidate_polygons
@@ -397,18 +482,22 @@ fn test_citygml_geometry(
             _ => false,
         };
 
-        if matches {
+        if filter_matches {
             match_count += 1;
             if params.pass_on_multiple_matches {
                 return TestResult {
                     passed: true,
                     match_count,
+                    matched_filter_indices: vec![i],
                 };
+            } else {
+                matched_filter_indices.push(i);
             }
         } else if !params.pass_on_multiple_matches {
             return TestResult {
                 passed: false,
                 match_count,
+                matched_filter_indices: Vec::new(),
             };
         }
     }
@@ -420,6 +509,7 @@ fn test_citygml_geometry(
             match_count > 0
         },
         match_count,
+        matched_filter_indices,
     }
 }
 
@@ -503,6 +593,7 @@ mod tests {
     use reearth_flow_geometry::types::polygon::Polygon2D;
     use reearth_flow_runtime::executor_operation::NodeContext;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::feature::Attributes;
     use reearth_flow_types::Geometry;
 
     use crate::tests::utils::create_default_execute_context;
@@ -547,28 +638,32 @@ mod tests {
                 predicate: SpatialPredicate::Intersects,
                 pass_on_multiple_matches: true,
                 output_match_count_attribute: None,
+                merge_filter_attributes: false,
+                merged_attributes_prefix: None,
             },
             filters: Vec::new(),
             candidates: Vec::new(),
         };
 
-        let filter_feature = Feature {
-            geometry: Geometry {
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                     create_filter_polygon_2d(),
                 )),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
-        let candidate_feature = Feature {
-            geometry: Geometry {
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
         // Process filter
         let noop = NoopChannelForwarder::default();
@@ -596,30 +691,34 @@ mod tests {
                 predicate: SpatialPredicate::Disjoint,
                 pass_on_multiple_matches: true,
                 output_match_count_attribute: None,
+                merge_filter_attributes: false,
+                merged_attributes_prefix: None,
             },
             filters: Vec::new(),
             candidates: Vec::new(),
         };
 
-        let filter_feature = Feature {
-            geometry: Geometry {
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                     create_filter_polygon_2d(),
                 )),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
-        let candidate_feature = Feature {
-            geometry: Geometry {
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                     create_disjoint_polygon_2d(),
                 )),
                 ..Default::default()
             },
-            ..Default::default()
-        };
+            Default::default(),
+        );
 
         // Process filter
         let noop = NoopChannelForwarder::default();
@@ -652,10 +751,10 @@ mod tests {
 
     #[test]
     fn test_spatial_filter_no_filters() {
-        let filter = SpatialFilter {
+        let mut filter = SpatialFilter {
             params: SpatialFilterParams::default(),
             filters: Vec::new(),
-            candidates: vec![Feature::default()],
+            candidates: vec![Feature::new_with_attributes(Attributes::new())],
         };
 
         let noop = NoopChannelForwarder::default();
@@ -667,8 +766,276 @@ mod tests {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 1);
             assert_eq!(
-                ports[0], *REJECTED_PORT,
-                "No filters should reject candidates"
+                ports[0], *PASSED_PORT,
+                "No filters should pass all candidates"
+            );
+        }
+    }
+
+    #[test]
+    fn test_merge_filter_attributes_onto_passed_candidate() {
+        let mut filter_attrs = Attributes::new();
+        filter_attrs.insert(
+            Attribute::new("zone"),
+            AttributeValue::String("commercial".to_string()),
+        );
+
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            filter_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: true,
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: None,
+            },
+            filters: vec![filter_feature],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            let ports = noop.send_ports.lock().unwrap();
+            assert_eq!(features.len(), 1);
+            assert_eq!(ports[0], *PASSED_PORT);
+            let zone = features[0].attributes.get(&Attribute::new("zone"));
+            assert_eq!(
+                zone,
+                Some(&AttributeValue::String("commercial".to_string())),
+                "Filter attribute 'zone' should be merged onto passed candidate"
+            );
+        }
+    }
+
+    #[test]
+    fn test_merge_filter_attributes_with_prefix() {
+        let mut filter_attrs = Attributes::new();
+        filter_attrs.insert(
+            Attribute::new("name"),
+            AttributeValue::String("zone_a".to_string()),
+        );
+
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            filter_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: true,
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: Some("filter_".to_string()),
+            },
+            filters: vec![filter_feature],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1);
+            let prefixed = features[0].attributes.get(&Attribute::new("filter_name"));
+            let unprefixed = features[0].attributes.get(&Attribute::new("name"));
+            assert_eq!(
+                prefixed,
+                Some(&AttributeValue::String("zone_a".to_string())),
+                "Attribute should appear under prefixed key"
+            );
+            assert!(
+                unprefixed.is_none(),
+                "Attribute should not appear under unprefixed key"
+            );
+        }
+    }
+
+    #[test]
+    fn test_merge_filter_attributes_not_applied_to_failed_candidate() {
+        let mut filter_attrs = Attributes::new();
+        filter_attrs.insert(
+            Attribute::new("zone"),
+            AttributeValue::String("commercial".to_string()),
+        );
+
+        let filter_feature = Feature::new_with_attributes_and_geometry(
+            filter_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        // Disjoint candidate: will not intersect the filter, so routed to failed port
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_disjoint_polygon_2d(),
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: true,
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: None,
+            },
+            filters: vec![filter_feature],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            let ports = noop.send_ports.lock().unwrap();
+            assert_eq!(ports[0], *FAILED_PORT);
+            let zone = features[0].attributes.get(&Attribute::new("zone"));
+            assert!(
+                zone.is_none(),
+                "Filter attributes should not be merged onto failed candidates"
+            );
+        }
+    }
+
+    #[test]
+    fn test_merge_filter_attributes_and_mode_multiple_filters() {
+        // Filter 1: overlaps candidate from one side, has attribute "zone"
+        let mut filter1_attrs = Attributes::new();
+        filter1_attrs.insert(
+            Attribute::new("zone"),
+            AttributeValue::String("commercial".to_string()),
+        );
+        let filter1 = Feature::new_with_attributes_and_geometry(
+            filter1_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(), // (5,5)-(15,15), intersects (0,0)-(10,10)
+                )),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        // Filter 2: also overlaps candidate, has attribute "category"
+        let mut filter2_attrs = Attributes::new();
+        filter2_attrs.insert(
+            Attribute::new("category"),
+            AttributeValue::String("retail".to_string()),
+        );
+        let exterior = LineString2D::new(vec![
+            Coordinate2D::new_(-5.0, -5.0),
+            Coordinate2D::new_(5.0, -5.0),
+            Coordinate2D::new_(5.0, 5.0),
+            Coordinate2D::new_(-5.0, 5.0),
+            Coordinate2D::new_(-5.0, -5.0),
+        ]);
+        let filter2 = Feature::new_with_attributes_and_geometry(
+            filter2_attrs,
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(Polygon2D::new(
+                    exterior,
+                    vec![],
+                ))),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let candidate_feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry {
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+
+        let mut spatial_filter = SpatialFilter {
+            params: SpatialFilterParams {
+                predicate: SpatialPredicate::Intersects,
+                pass_on_multiple_matches: false, // AND mode: all filters must match
+                output_match_count_attribute: None,
+                merge_filter_attributes: true,
+                merged_attributes_prefix: None,
+            },
+            filters: vec![filter1, filter2],
+            candidates: vec![candidate_feature],
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+        let ctx = NodeContext::default();
+        let _ = spatial_filter.finish(ctx, &fw);
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            let ports = noop.send_ports.lock().unwrap();
+            assert_eq!(ports[0], *PASSED_PORT);
+            assert_eq!(
+                features[0].attributes.get(&Attribute::new("zone")),
+                Some(&AttributeValue::String("commercial".to_string())),
+                "Attribute from filter 1 should be merged"
+            );
+            assert_eq!(
+                features[0].attributes.get(&Attribute::new("category")),
+                Some(&AttributeValue::String("retail".to_string())),
+                "Attribute from filter 2 should be merged"
             );
         }
     }

@@ -16,9 +16,11 @@ import { toast } from "../NotificationSystem/useToast";
 export default ({
   rawWorkflows,
   yAwareness,
+  onProjectSnapshotSave,
 }: {
   rawWorkflows: Workflow[];
   yAwareness: Awareness;
+  onProjectSnapshotSave: () => Promise<void>;
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
@@ -29,9 +31,8 @@ export default ({
   });
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
-  const { workflowVariables } = useGetWorkflowVariables(
-    currentProject?.id ?? "",
-  );
+  const { workflowVariables, refetch: refetchWorkflowVariables } =
+    useGetWorkflowVariables(currentProject?.id ?? "");
 
   const [customDebugRunWorkflowVariables, setCustomDebugRunWorkflowVariables] =
     useState<AnyWorkflowVariable[] | undefined>(undefined);
@@ -74,7 +75,12 @@ export default ({
       );
 
       if (!engineReadyWorkflow) return;
-
+      try {
+        await onProjectSnapshotSave();
+      } catch {
+        // Abort run if snapshot save fails
+        return;
+      }
       const data = await runProject(
         currentProject.id,
         currentProject.workspaceId,
@@ -114,8 +120,6 @@ export default ({
           });
         }
         await updateValue({ jobs });
-        broadcastDebugRun(data.job.id, data.job.status);
-
         fitView({ duration: 400, padding: 0.5 });
       }
     },
@@ -123,11 +127,11 @@ export default ({
       currentProject,
       customDebugRunWorkflowVariables,
       rawWorkflows,
-      broadcastDebugRun,
       debugRunState?.jobs,
       fitView,
       updateValue,
       runProject,
+      onProjectSnapshotSave,
     ],
   );
 
@@ -156,15 +160,8 @@ export default ({
         debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
         [];
       await updateValue({ jobs });
-      broadcastDebugRun(null);
     }
-  }, [
-    currentProject?.id,
-    debugRunState?.jobs,
-    updateValue,
-    useJobCancel,
-    broadcastDebugRun,
-  ]);
+  }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
 
   const loadExternalDebugJob = useCallback(
     async (jobId: string, userName: string) => {
@@ -222,9 +219,17 @@ export default ({
     [],
   );
 
+  useEffect(() => {
+    broadcastDebugRun(
+      debugJob?.jobId ?? null,
+      debugJob?.status ? debugJob.status : undefined,
+    );
+  }, [debugJob?.jobId, debugJob?.status, broadcastDebugRun]);
+
   return {
     activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
+    refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,

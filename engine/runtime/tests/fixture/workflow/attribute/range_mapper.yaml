@@ -1,0 +1,72 @@
+id: 8c66c0a4-e1fa-41dd-a0c9-df3f6e01dd44
+name: "AttributeRangeMapper test"
+entryGraphId: e6863b71-953b-4d15-af56-396fc93fc619
+with:
+  outputFilePath:
+graphs:
+  - id: e6863b71-953b-4d15-af56-396fc93fc619
+    name: entrypoint
+    nodes:
+      - id: c1a91180-ab88-4c1a-aab5-48c242a218ea
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ id: "feature1", depth: 0.5 },
+              #{ id: "feature2", depth: 3.5 },
+              #{ id: "feature3", depth: 7.0 },
+              #{ id: "feature4", depth: 15.0 },
+              #{ id: "feature5", depth: 25.0 },
+              #{ id: "feature6", depth: 50.0 }
+            ]
+
+      - id: c1a91180-ab88-4c1a-aab5-48c242a218eb
+        name: AttributeRangeMapper
+        type: action
+        action: AttributeRangeMapper
+        with:
+          inputAttribute: "depth"
+          outputAttribute: "color"
+          rangeTable:
+            - from: 0.0
+              to: 0.5
+              outputValue: "#f7f5a9"
+            - from: 0.5
+              to: 3.0
+              outputValue: "#ffd8c0"
+            - from: 3.0
+              to: 5.0
+              outputValue: "#ffb7b7"
+            - from: 5.0
+              to: 10.0
+              outputValue: "#ff9191"
+            - from: 10.0
+              to: 20.0
+              outputValue: "#f285c9"
+            - from: 20.0
+              to: 40.0
+              outputValue: "#dc7adc"
+          defaultValue: "#cccccc"
+
+      - id: c1a91180-ab88-4c1a-aab5-48c242a218ec
+        name: Sink-Json-Writer
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: 3379a497-9e4e-40fb-8361-d2eeeb491773
+        from: c1a91180-ab88-4c1a-aab5-48c242a218ea
+        to: c1a91180-ab88-4c1a-aab5-48c242a218eb
+        fromPort: default
+        toPort: default
+
+      - id: 3379a497-9e4e-40fb-8361-d2eeeb491774
+        from: c1a91180-ab88-4c1a-aab5-48c242a218eb
+        to: c1a91180-ab88-4c1a-aab5-48c242a218ec
+        fromPort: default
+        toPort: default

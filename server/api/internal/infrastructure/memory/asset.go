@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
@@ -45,7 +46,7 @@ func (r *Asset) FindByIDs(_ context.Context, ids id.AssetIDList) ([]*asset.Asset
 	}), nil
 }
 
-func (r *Asset) FindByWorkspace(_ context.Context, wid id.WorkspaceID, filter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (r *Asset) FindByWorkspace(_ context.Context, wid accountsid.WorkspaceID, filter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	result := r.data.FindAll(func(k id.AssetID, v *asset.Asset) bool {
 		return v.Workspace() == wid && r.f.CanRead(v.Workspace()) && (filter.Keyword == nil || strings.Contains(v.Name(), *filter.Keyword))
 	})
@@ -89,7 +90,7 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid id.WorkspaceID, filter re
 	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
-func (r *Asset) TotalSizeByWorkspace(_ context.Context, wid id.WorkspaceID) (t uint64, err error) {
+func (r *Asset) TotalSizeByWorkspace(_ context.Context, wid accountsid.WorkspaceID) (t uint64, err error) {
 	r.data.Range(func(k id.AssetID, v *asset.Asset) bool {
 		if v.Workspace() == wid && r.f.CanRead(v.Workspace()) {
 			t += v.Size()

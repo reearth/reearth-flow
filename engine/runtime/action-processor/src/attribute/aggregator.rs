@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -177,6 +177,10 @@ enum Method {
 }
 
 impl Processor for AttributeAggregator {
+    fn is_accumulating(&self) -> bool {
+        false
+    }
+
     fn num_threads(&self) -> usize {
         2
     }
@@ -241,7 +245,11 @@ impl Processor for AttributeAggregator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context(), fw);
         Ok(())
     }
@@ -254,18 +262,18 @@ impl Processor for AttributeAggregator {
 impl AttributeAggregator {
     pub(crate) fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
         self.buffer.par_iter().for_each(|(key, value)| {
-            let mut feature = Feature::new();
+            let mut feature = Feature::new_with_attributes(Attributes::new());
             let AttributeValue::Array(aggregates) = key else {
                 return;
             };
             for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
-                feature.attributes.insert(
-                    aggregate_attribute.new_attribute.clone(),
+                feature.insert(
+                    &aggregate_attribute.new_attribute,
                     aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
                 );
             }
-            feature.attributes.insert(
-                self.calculation_attribute.clone(),
+            feature.insert(
+                &self.calculation_attribute,
                 AttributeValue::Number(serde_json::Number::from(*value)),
             );
             fw.send(ExecutorContext::new_with_context_feature_and_port(

@@ -1,0 +1,170 @@
+[
+  {
+    "id": "47280a9e-83c6-4a1c-bf3e-8fa13f4df5f1",
+    "attributes": {
+      "json_featuretype": "2DForcer_2D",
+      "DailyRadiationRate": 2267.263292804444,
+      "α_slope": "167.30573391207932 * 3.141592653589793/180",
+      "θ_slope": "0.00015489463720272733 * 3.141592653589793/180",
+      "join_key": "\"key\"",
+      "gml_id": "roof_Gkaga00264_p51354_0",
+      "gml_parent_id": "bldg_28fcc603-9e39-48f9-8223-2c2867643c5b",
+      "citygml_target_uri": "http://www.opengis.net/citygml/building/2.0",
+      "citygml_feature_role": "boundedBy",
+      "_part_number": "0",
+      "_geometry_name": "surfaceMember",
+      "_area": 465.92476361435183,
+      "_coordcount": "5",
+      "normalX": "-5.937718361187324e-7",
+      "normalY": "2.636003421332222e-6",
+      "normalZ": "0.9999999999963495",
+      "Slope": "0.00015489463720272733",
+      "signedArea2D": "465.9247636126893",
+      "Azimuth": "167.30573391207932",
+      "_elevation": 14.60191514,
+      "year": "2018",
+      "transmissivity": 1,
+      "max_daylight_hours": 380,
+      "daylight_hours": "151.25000095367432",
+      "daylight_hours_num": "7.5",
+      "days_less_then_1h_daylight": null,
+      "days_less_then_1h_daylight_num": null,
+      "days_over_40%_daylight_late": null,
+      "days_over_40%_daylight_late_num": null,
+      "sunshine_rate": 0.39759036395270353,
+      "cloud_rate": 0.6024096360472965,
+      "is_not_9999": 1,
+      "snow_correction_factor": 0.9927989130434817,
+      "CosIncidenceAngle": 0.8100416128145567,
+      "solarRadiation": 855706.9908387382,
+      "total_weather_correction": 0.39472728116880634,
+      "P": 451.26191434514357,
+      "_inside_x": -310259.82708918105,
+      "_inside_y": 41879.00352975327,
+      "_inside_z": 14.60195882,
+      "has_shadow": "true",
+      "shadow_impact_score": 0.958,
+      "has_reflection_target": "false",
+      "reflection_intensity": 1,
+      "P_improved": 37.9060008049921,
+      "color_r": "255",
+      "color_g": "242",
+      "color_b": "0",
+      "color_hex": "#FFF200",
+      "color_category": "very_low",
+      "fme_color": "255,242,0",
+      "json_ogc_wkt_crs": "PROJCS[\"JGD2011 / Japan Plane Rectangular CS IX\",GEOGCS[\"JGD2011\",DATUM[\"Japanese_Geodetic_Datum_2011\",SPHEROID[\"GRS 1980\",6378137,298.257222101,AUTHORITY[\"EPSG\",\"7019\"]],AUTHORITY[\"EPSG\",\"1128\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"6668\"]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",36],PARAMETER[\"central_meridian\",139.833333333333],PARAMETER[\"scale_factor\",0.9999],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AUTHORITY[\"EPSG\",\"6677\"]]"
+    },
+    "geometry": {
+      "epsg": 6677,
+      "value": {
+        "flowGeometry2D": {
+          "polygon": {
+            "exterior": [
+              [-310252.8964891869, 41896.794929644, null],
+              [-310265.7805645678, 41897.5564109436, null],
+              [-310266.7576891752, 41861.1195623785, null],
+              [-310254.0772755437, 41860.450648563, null],
+              [-310252.8964891869, 41896.794929644, null]
+            ],
+            "interiors": []
+          }
+        }
+      }
+    },
+    "metadata": {}
+  },
+  {
+    "id": "5c3b1a8e-9f4d-4b2c-a1e5-9c8d4f6e7a2b",
+    "attributes": {
+      "json_featuretype": "2DForcer_2D",
+      "DailyRadiationRate": 2267.263292804444,
+      "α_slope": "170.71252143494422 * 3.141592653589793/180",
+      "θ_slope": "0.00017747674387775408 * 3.141592653589793/180",
+      "join_key": "\"key\"",
+      "gml_id": "roof_Gkaga00264_p51353_1",
+      "gml_parent_id": "bldg_28fcc603-9e39-48f9-8223-2c2867643c5b",
+      "citygml_target_uri": "http://www.opengis.net/citygml/building/2.0",
+      "citygml_feature_role": "boundedBy",
+      "_part_number": "0",
+      "_geometry_name": "surfaceMember",
+      "_area": 3703.302387118428,
+      "_coordcount": "16",
+      "normalX": "-4.996549994360372e-7",
+      "normalY": "3.055397985285995e-6",
+      "normalZ": "0.9999999999952074",
+      "Slope": "0.00017747674387775408",
+      "signedArea2D": "3932.8549272747478",
+      "Azimuth": "170.71252143494422",
+      "_elevation": 13.52708028,
+      "year": "2018",
+      "transmissivity": 1,
+      "max_daylight_hours": 380,
+      "daylight_hours": "151.25000095367432",
+      "daylight_hours_num": "7.5",
+      "days_less_then_1h_daylight": null,
+      "days_less_then_1h_daylight_num": null,
+      "days_over_40%_daylight_late": null,
+      "days_over_40%_daylight_late_num": null,
+      "sunshine_rate": 0.39759036395270353,
+      "cloud_rate": 0.6024096360472965,
+      "is_not_9999": 1,
+      "snow_correction_factor": 0.9927989130434817,
+      "CosIncidenceAngle": 0.8100416087878878,
+      "solarRadiation": 6801402.229647,
+      "total_weather_correction": 0.39472728116880634,
+      "P": 3586.757877686008,
+      "_inside_x": -310259.49063134036,
+      "_inside_y": 41879.03071885271,
+      "_inside_z": 13.527061,
+      "has_shadow": "true",
+      "shadow_impact_score": 0.954,
+      "has_reflection_target": "false",
+      "reflection_intensity": 1,
+      "P_improved": 329.98172474711305,
+      "color_r": "255",
+      "color_g": "144",
+      "color_b": "0",
+      "color_hex": "#FF9000",
+      "color_category": "medium",
+      "fme_color": "255,144,0",
+      "json_ogc_wkt_crs": "PROJCS[\"JGD2011 / Japan Plane Rectangular CS IX\",GEOGCS[\"JGD2011\",DATUM[\"Japanese_Geodetic_Datum_2011\",SPHEROID[\"GRS 1980\",6378137,298.257222101,AUTHORITY[\"EPSG\",\"7019\"]],AUTHORITY[\"EPSG\",\"1128\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"6668\"]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",36],PARAMETER[\"central_meridian\",139.833333333333],PARAMETER[\"scale_factor\",0.9999],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AUTHORITY[\"EPSG\",\"6677\"]]"
+    },
+    "geometry": {
+      "epsg": 6677,
+      "value": {
+        "flowGeometry2D": {
+          "multiPolygon": [
+            {
+              "exterior": [
+                [-310267.0888079658, 41848.7721132325, null],
+                [-310254.4682960499, 41848.415019681, null],
+                [-310223.4308525211, 41847.5368247845, null],
+                [-310222.3228475879, 41902.1258949702, null],
+                [-310246.490992462, 41903.014165631, null],
+                [-310246.5127728097, 41909.7694226293, null],
+                [-310271.4923300045, 41910.5246129209, null],
+                [-310271.9375050442, 41903.2719625429, null],
+                [-310295.3670763533, 41904.1152656621, null],
+                [-310296.6584150928, 41849.6087764304, null],
+                [-310267.0888079658, 41848.7721132325, null]
+              ],
+              "interiors": []
+            },
+            {
+              "exterior": [
+                [-310254.0772739153, 41860.4506425806, null],
+                [-310266.7576896756, 41861.1195565138, null],
+                [-310265.7805649118, 41897.5564112451, null],
+                [-310252.8964873591, 41896.7949298138, null],
+                [-310254.0772739153, 41860.4506425806, null]
+              ],
+              "interiors": []
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {}
+  }
+]

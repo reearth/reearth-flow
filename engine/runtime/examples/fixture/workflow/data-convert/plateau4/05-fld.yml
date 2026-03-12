@@ -60,15 +60,6 @@ graphs:
         env.get("__value")["path"]
       codelistsPath: codelists
       schemasPath: schemas
-  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilterByPackage
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-        outputPort: default
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
@@ -114,11 +105,6 @@ graphs:
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
-    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    fromPort: default
-    toPort: default
-  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
-    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
@@ -162,6 +148,15 @@ graphs:
       flatten: true
       dataset: |
         env.get("__value")["path"]
+  - id: 65852d63-eb2c-486c-95d5-2646874d11a2
+    name: TargetPackagesFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
   - id: e2441531-649a-4dcd-916f-ac59f7d56de3
     name: AttributeManagerPreFlattener
     type: action
@@ -171,6 +166,16 @@ graphs:
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+      - attribute: __scale
+        method: create
+        value: |
+          let pkg = env.get("__value")["package"];
+          if pkg == "fld" {
+            let file_name = file::extract_filename(env.get("__value")["name"]);
+            str::extract_single_by_regex("_(l[12])[_.]", file_name)
+          } else {
+            ""
+          }
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -179,16 +184,28 @@ graphs:
     name: AttributeFlattener
     type: action
     action: PLATEAU4.AttributeFlattener
+  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    name: AttributeManagerRename
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: cityName
+        method: rename
+        value: city_name
+      - attribute: cityCode
+        method: rename
+        value: city_code
   - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    name: AttributeMapper
+    name: AttributeMapperSchema
     type: action
     action: AttributeMapper
     with:
       mappers:
       - attribute: city_code
-        valueAttribute: cityCode
+        valueAttribute: city_code
       - attribute: city_name
-        valueAttribute: cityName
+        valueAttribute: city_name
       - attribute: feature_type
         valueAttribute: feature_type
       - attribute: attributes
@@ -206,23 +223,17 @@ graphs:
       - attribute: uro:rank
         valueAttribute: uro:rank
       - attribute: uro:rank_code
-        valueAttribute: uro:rank_code
+        expr: '0'
       - attribute: uro:rankOrg
         valueAttribute: uro:rankOrg
       - attribute: uro:rankOrg_code
-        valueAttribute: uro:rankOrg_code
+        expr: '0'
       - attribute: uro:adminType
         valueAttribute: uro:adminType
       - attribute: uro:scale
         valueAttribute: uro:scale
       - attribute: uro:geometrySrcDescLod1
         valueAttribute: uro:geometrySrcDescLod1
-      - attribute: __package
-        valueAttribute: package
-      - attribute: __name
-        valueAttribute: name
-      - attribute: __udxDirs
-        valueAttribute: udxDirs
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojector
     type: action
@@ -241,24 +252,21 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
-      skipUnexposedAttributes: true
-      dracoCompression: false
       output: |
-        let udx_dirs = env.get("__value")["__udxDirs"];
+        let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
         file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let citygml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let parts = citygml.split("_op_");
-        let pkg = env.get("__value")["__package"];
+        let pkg = env.get("__value")["package"];
         citygml = parts[0];
-        let udx_dirs = env.get("__value")["__udxDirs"];
+        let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
-        let scale = "";
-        if pkg == "fld" {
-          let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
-          scale = "_" + name.split("_").pop();
+        let scale = env.get("__value")["__scale"];
+        if scale != "" {
+          scale = "_" + scale;
         }
         file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
@@ -270,13 +278,12 @@ graphs:
       - attribute: dict_name
         method: create
         value: |
-          let udx_dirs = env.get("__value")["__udxDirs"];
+          let udx_dirs = env.get("__value")["udxDirs"];
           let parts = udx_dirs.split("/");
           let last_segment = parts[parts.len() - 1];
-          let pkg = env.get("__value")["__package"];
-          if pkg == "fld" {
-            let name = file::extract_filename_without_ext(env.get("__value")["__name"]);
-            let scale = name.split("_").pop();
+          let pkg = env.get("__value")["package"];
+          let scale = env.get("__value")["__scale"];
+          if scale != "" {
             last_segment + "_" + scale
           } else {
             last_segment
@@ -287,7 +294,7 @@ graphs:
     action: AttributeDuplicateFilter
     with:
       filterBy:
-      - __package
+      - package
       - dict_name
   - id: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
     name: JsonWriterDict
@@ -299,7 +306,7 @@ graphs:
       converter: |
         let packages = #{};
         for feature in env.get("__features") {
-          let pkg = feature["__package"];
+          let pkg = feature["package"];
           if pkg == () { continue; }
           if packages[pkg] == () {
             packages[pkg] = [];
@@ -334,6 +341,11 @@ graphs:
     toPort: default
   - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
     from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+    to: 65852d63-eb2c-486c-95d5-2646874d11a2
+    fromPort: default
+    toPort: default
+  - id: 73000674-a2bc-4faa-8e7a-d03d4f21d7ad
+    from: 65852d63-eb2c-486c-95d5-2646874d11a2
     to: e2441531-649a-4dcd-916f-ac59f7d56de3
     fromPort: default
     toPort: default
@@ -342,15 +354,20 @@ graphs:
     to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     fromPort: default
     toPort: default
+  - id: e862f11a-88a6-4c1b-a743-ba80253039df
+    from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+    to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    fromPort: default
+    toPort: default
+  - id: f2e3d4c5-b6a7-8901-cdef-234567890abc
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+    fromPort: default
+    toPort: default
   - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
     from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     to: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    fromPort: default
-    toPort: default
-  - id: e862f11a-88a6-4c1b-a743-ba80253039df
-    from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
-    fromPort: default
+    fromPort: schema
     toPort: default
   - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
     from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
@@ -362,8 +379,13 @@ graphs:
     to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     fromPort: default
     toPort: default
-  - id: 48893ceb-2d37-4ca2-b5c0-184ea4128409
+  - id: f1e2d3c4-b5a6-9788-0fed-cba987654321
     from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+    to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+    fromPort: default
+    toPort: schema
+  - id: 48893ceb-2d37-4ca2-b5c0-184ea4128409
+    from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     to: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     fromPort: default
     toPort: default

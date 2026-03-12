@@ -345,6 +345,9 @@ pub fn extract_feature_properties(
         let values_view = &buffer_views[values_idx];
         let data = &binary_blob[values_view.offset()..values_view.offset() + values_view.length()];
 
+        // Get noData value from schema if it exists (used by both string and numeric properties)
+        let no_data = get_no_data(prop_name);
+
         // String property
         if let Some(offsets_idx) = prop_def.get("stringOffsets").and_then(|v| v.as_u64()) {
             let offsets_view = &buffer_views[offsets_idx as usize];
@@ -358,7 +361,17 @@ pub fn extract_feature_properties(
             for i in 0..count {
                 let s = std::str::from_utf8(&data[offsets[i] as usize..offsets[i + 1] as usize])
                     .map_err(|e| GltfReaderError::Buffer(format!("Invalid UTF-8: {}", e)))?;
-                feature_props[i].insert(prop_name.clone(), Value::String(s.to_string()));
+
+                // Check if this string matches noData
+                let is_no_data = no_data
+                    .and_then(|nd| nd.as_str())
+                    .map(|nd| s == nd)
+                    .unwrap_or(false);
+
+                // Only insert if not noData
+                if !is_no_data {
+                    feature_props[i].insert(prop_name.clone(), Value::String(s.to_string()));
+                }
             }
             continue;
         }
@@ -367,9 +380,6 @@ pub fn extract_feature_properties(
         let component_type = get_component_type(prop_name).ok_or_else(|| {
             GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name))
         })?;
-
-        // Get noData value from schema if it exists
-        let no_data = get_no_data(prop_name);
 
         for i in 0..count {
             let value = match component_type {

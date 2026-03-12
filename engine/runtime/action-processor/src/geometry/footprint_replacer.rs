@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::bool_ops::BooleanOps,
+    algorithm::{area2d::Area2D, bool_ops::BooleanOps},
     types::{
         coordinate::Coordinate2D,
         geometry::{Geometry2D, Geometry3D},
@@ -102,7 +102,7 @@ impl Processor for FootprintReplacer {
         Ok(())
     }
 
-    fn finish(&self, _: NodeContext, _: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(&mut self, _: NodeContext, _: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -199,6 +199,11 @@ fn project_polygon_to_2d(polygon: &Polygon3D<f64>) -> Polygon2D<f64> {
     Polygon2D::new(LineString2D::new(exterior), interiors)
 }
 
+/// Minimum area threshold for projected polygons.  Polygons whose XY
+/// projection has an area smaller than this are considered degenerate
+/// (e.g. vertical wall faces) and are excluded from the footprint.
+const MIN_PROJECTED_AREA: f64 = 1e-6;
+
 /// Create footprint from a collection of 3D polygons
 fn create_footprint_from_polygons(
     feature: &Feature,
@@ -215,6 +220,11 @@ fn create_footprint_from_polygons(
             continue;
         }
 
+        // Skip near-zero-area projections (e.g. vertical wall faces)
+        if projected.unsigned_area2d() < MIN_PROJECTED_AREA {
+            continue;
+        }
+
         projected_polygons.push(projected);
     }
 
@@ -222,21 +232,21 @@ fn create_footprint_from_polygons(
         return None;
     }
 
-    // Compute the union of all projected polygons
-    let combined_polygons =
-        projected_polygons
-            .iter()
-            .fold(None, |acc: Option<MultiPolygon2D<f64>>, polygon| {
-                let multi_polygon = MultiPolygon2D::new(vec![polygon.clone()]);
-                if let Some(acc) = acc {
-                    Some(acc.union(&multi_polygon))
-                } else {
-                    Some(multi_polygon)
-                }
-            })?;
+    // Union all projected polygons in a single pass.
+    // Splitting into two MultiPolygons and calling union() once lets i_overlay's
+    // sweep-line dissolve all overlaps in one pass with the NonZero fill rule,
+    // instead of doing N-1 sequential union operations that accumulate vertex noise.
+    let combined_polygons = if projected_polygons.len() == 1 {
+        MultiPolygon2D::new(projected_polygons)
+    } else {
+        let mid = projected_polygons.len() / 2;
+        let group_b = MultiPolygon2D::new(projected_polygons.split_off(mid));
+        let group_a = MultiPolygon2D::new(projected_polygons);
+        group_a.union(&group_b)
+    };
 
     let mut result_feature = feature.clone();
-    result_feature.geometry.value =
+    result_feature.geometry_mut().value =
         GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(combined_polygons));
 
     Some(result_feature)

@@ -171,9 +171,9 @@ impl Processor for ThreeDimensionRotator {
                         rotate_query,
                         Some(Point3D::new_(origin_x, origin_y, origin_z)),
                     );
-                    let mut geometry = geometry.clone();
-                    geometry.value = GeometryValue::FlowGeometry3D(rotate);
-                    Some(geometry)
+                    let mut geom = (**geometry).clone();
+                    geom.value = GeometryValue::FlowGeometry3D(rotate);
+                    Some(geom)
                 } else {
                     None
                 }
@@ -183,7 +183,7 @@ impl Processor for ThreeDimensionRotator {
 
         if let Some(geometry) = geometry {
             let mut feature = ctx.feature.clone();
-            feature.geometry = geometry;
+            feature.geometry = Arc::new(geometry);
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
@@ -191,7 +191,11 @@ impl Processor for ThreeDimensionRotator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

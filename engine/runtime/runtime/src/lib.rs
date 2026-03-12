@@ -1,4 +1,5 @@
 pub mod builder_dag;
+pub mod cache;
 pub mod dag_schemas;
 pub mod epoch;
 pub mod errors;

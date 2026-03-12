@@ -1,0 +1,136 @@
+[
+  {
+    "id": "document",
+    "version": "1.0",
+    "clock": {
+      "interval": "2024-01-01T00:00:00Z/2024-01-01T00:10:00Z",
+      "currentTime": "2024-01-01T00:00:00Z",
+      "multiplier": 60,
+      "range": "LOOP_STOP",
+      "step": "SYSTEM_CLOCK_MULTIPLIER"
+    }
+  },
+  {
+    "id": "vehicle-a",
+    "name": "Vehicle Alpha",
+    "availability": "2024-01-01T00:00:00Z/2024-01-01T00:10:00Z",
+    "position": {
+      "epoch": "2024-01-01T00:00:00Z",
+      "interpolationAlgorithm": "LAGRANGE",
+      "interpolationDegree": 5,
+      "cartographicDegrees": [
+        0,    139.6917, 35.6895, 50.0,
+        120,  139.7003, 35.6900, 52.0,
+        240,  139.7100, 35.6920, 48.0,
+        360,  139.7200, 35.6950, 55.0,
+        480,  139.7300, 35.6980, 60.0,
+        600,  139.7400, 35.7010, 45.0
+      ]
+    },
+    "point": {
+      "pixelSize": 12,
+      "color": { "rgba": [255, 0, 0, 255] },
+      "outlineColor": { "rgba": [255, 255, 255, 255] },
+      "outlineWidth": 2
+    },
+    "label": {
+      "text": "Vehicle Alpha",
+      "font": "12pt sans-serif",
+      "style": "FILL_AND_OUTLINE",
+      "outlineWidth": 2,
+      "verticalOrigin": "BOTTOM",
+      "pixelOffset": { "cartesian2": [0, -15] }
+    },
+    "path": {
+      "material": {
+        "solidColor": {
+          "color": { "rgba": [255, 0, 0, 128] }
+        }
+      },
+      "width": 2,
+      "leadTime": 0,
+      "trailTime": 600
+    }
+  },
+  {
+    "id": "vehicle-b",
+    "name": "Vehicle Bravo",
+    "availability": "2024-01-01T00:00:00Z/2024-01-01T00:10:00Z",
+    "position": {
+      "epoch": "2024-01-01T00:00:00Z",
+      "interpolationAlgorithm": "LINEAR",
+      "interpolationDegree": 1,
+      "cartographicDegrees": [
+        0,    139.7500, 35.6800, 30.0,
+        150,  139.7450, 35.6850, 35.0,
+        300,  139.7380, 35.6880, 32.0,
+        450,  139.7300, 35.6900, 28.0,
+        600,  139.7220, 35.6950, 40.0
+      ]
+    },
+    "point": {
+      "pixelSize": 12,
+      "color": { "rgba": [0, 100, 255, 255] },
+      "outlineColor": { "rgba": [255, 255, 255, 255] },
+      "outlineWidth": 2
+    },
+    "label": {
+      "text": "Vehicle Bravo",
+      "font": "12pt sans-serif",
+      "style": "FILL_AND_OUTLINE",
+      "outlineWidth": 2,
+      "verticalOrigin": "BOTTOM",
+      "pixelOffset": { "cartesian2": [0, -15] }
+    },
+    "path": {
+      "material": {
+        "solidColor": {
+          "color": { "rgba": [0, 100, 255, 128] }
+        }
+      },
+      "width": 2,
+      "leadTime": 0,
+      "trailTime": 600
+    }
+  },
+  {
+    "id": "static-poi",
+    "name": "Tokyo Tower",
+    "description": "A static point of interest (no timeseries)",
+    "position": {
+      "cartographicDegrees": [139.7454, 35.6586, 333.0]
+    },
+    "point": {
+      "pixelSize": 14,
+      "color": { "rgba": [255, 200, 0, 255] },
+      "outlineColor": { "rgba": [0, 0, 0, 255] },
+      "outlineWidth": 2
+    },
+    "label": {
+      "text": "Tokyo Tower",
+      "font": "14pt sans-serif",
+      "style": "FILL_AND_OUTLINE",
+      "outlineWidth": 2,
+      "verticalOrigin": "BOTTOM",
+      "pixelOffset": { "cartesian2": [0, -18] }
+    }
+  },
+  {
+    "id": "satellite-1",
+    "name": "Satellite with ISO timestamps",
+    "availability": "2024-01-01T00:00:00Z/2024-01-01T12:00:00Z",
+    "position": {
+      "interpolationAlgorithm": "LAGRANGE",
+      "interpolationDegree": 2,
+      "cartographicDegrees": [
+        "2024-01-01T00:00:00Z", 139.0, 36.0, 35786000.0,
+        "2024-01-01T06:00:00Z", 140.0, 36.5, 35786000.0,
+        "2024-01-01T12:00:00Z", 141.0, 37.0, 35786000.0
+      ]
+    },
+    "point": {
+      "pixelSize": 8,
+      "color": { "rgba": [0, 255, 100, 255] }
+    }
+  }
+]

@@ -10,9 +10,9 @@ use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
 use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
-use itertools::Itertools;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use reearth_flow_common::uri::Uri;
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -22,8 +22,6 @@ use reearth_flow_types::material::{self, Material};
 use reearth_flow_types::{Expr, GeometryType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 use tempfile::tempdir;
 
@@ -32,6 +30,7 @@ use crate::atlas::{
     encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export,
 };
 use crate::errors::SinkError;
+use crate::zip_eq_logged::ZipEqLoggedExt;
 
 #[derive(Debug, Clone, Default)]
 pub struct GltfWriterSinkFactory;
@@ -391,18 +390,18 @@ impl GltfWriter {
                     for (((poly, poly_uv), poly_mat), poly_tex) in entry
                         .polygons
                         .iter()
-                        .zip_eq(
+                        .zip_eq_logged(
                             city_gml
                                 .polygon_uvs
                                 .range(entry.pos as usize..(entry.pos + entry.len) as usize)
                                 .into_iter(),
                         )
-                        .zip_eq(
+                        .zip_eq_logged(
                             city_gml.polygon_materials
                                 [entry.pos as usize..(entry.pos + entry.len) as usize]
                                 .iter(),
                         )
-                        .zip_eq(
+                        .zip_eq_logged(
                             city_gml.polygon_textures
                                 [entry.pos as usize..(entry.pos + entry.len) as usize]
                                 .iter(),
@@ -431,10 +430,13 @@ impl GltfWriter {
                         };
                         let (mat_idx, _) = materials.insert_full(mat);
                         let mut ring_buffer: Vec<[f64; 5]> = Vec::new();
-                        poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
-                            |(ri, (ring, uv_ring))| {
-                                ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
-                                    |(c, uv)| {
+                        poly.rings()
+                            .zip_eq_logged(poly_uv.rings())
+                            .enumerate()
+                            .for_each(|(ri, (ring, uv_ring))| {
+                                ring.iter_closed()
+                                    .zip_eq_logged(uv_ring.iter_closed())
+                                    .for_each(|(c, uv)| {
                                         let [lng, lat, height] = c;
                                         ring_buffer.push([lng, lat, height, uv[0], uv[1]]);
 
@@ -444,16 +446,14 @@ impl GltfWriter {
                                         local_bvol.max_lat = local_bvol.max_lat.max(lat);
                                         local_bvol.min_height = local_bvol.min_height.min(height);
                                         local_bvol.max_height = local_bvol.max_height.max(height);
-                                    },
-                                );
+                                    });
                                 if ri == 0 {
                                     class_feature.polygons.add_exterior(ring_buffer.drain(..));
                                     class_feature.polygon_material_ids.push(mat_idx as u32);
                                 } else {
                                     class_feature.polygons.add_interior(ring_buffer.drain(..));
                                 }
-                            },
-                        );
+                            });
                     }
                 }
                 GeometryType::Curve => {

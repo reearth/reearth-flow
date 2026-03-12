@@ -145,7 +145,11 @@ impl Processor for MaxLodExtractor {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context(), fw);
         Ok(())
     }
@@ -160,7 +164,7 @@ impl MaxLodExtractor {
         self.buffer.iter().for_each(|(_, buffer)| {
             if let Some(feature) = buffer.features.first() {
                 let mut feature = feature.clone();
-                feature.attributes.insert(
+                feature.attributes_mut().insert(
                     self.max_lod_attribute.clone(),
                     AttributeValue::Number(serde_json::Number::from(buffer.max_lod)),
                 );

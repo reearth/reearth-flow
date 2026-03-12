@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -110,10 +111,10 @@ impl Processor for Offsetter {
                     self.params.offset_y.unwrap_or(0f64),
                     self.params.offset_z.unwrap_or(0f64),
                 );
-                feature.geometry = Geometry {
+                feature.geometry = Arc::new(Geometry {
                     epsg,
                     value: GeometryValue::CityGmlGeometry(geos),
-                };
+                });
             }
             GeometryValue::FlowGeometry3D(mut geos) => {
                 geos.transform_offset(
@@ -121,10 +122,10 @@ impl Processor for Offsetter {
                     self.params.offset_y.unwrap_or(0f64),
                     self.params.offset_z.unwrap_or(0f64),
                 );
-                feature.geometry = Geometry {
+                feature.geometry = Arc::new(Geometry {
                     epsg,
                     value: GeometryValue::FlowGeometry3D(geos),
-                };
+                });
             }
             GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
         }
@@ -132,7 +133,11 @@ impl Processor for Offsetter {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

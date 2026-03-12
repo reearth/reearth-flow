@@ -67,7 +67,11 @@ impl Processor for FeatureDuplicateFilter {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         for feature in self.buffer.iter() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -86,6 +90,7 @@ impl Processor for FeatureDuplicateFilter {
 #[cfg(test)]
 mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::feature::Attributes;
 
     use crate::tests::utils::create_default_execute_context;
 
@@ -95,7 +100,7 @@ mod tests {
     fn test_filter() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
         let mut filter = FeatureDuplicateFilter {
             buffer: HashSet::new(),
@@ -103,7 +108,7 @@ mod tests {
         filter.process(ctx, &fw).unwrap();
         let ctx = create_default_execute_context(&feature);
         filter.process(ctx, &fw).unwrap();
-        let feature = Feature::default();
+        let feature = Feature::new_with_attributes(Attributes::new());
         let ctx = create_default_execute_context(&feature);
         filter.process(ctx, &fw).unwrap();
         filter.finish(NodeContext::default(), &fw).unwrap();

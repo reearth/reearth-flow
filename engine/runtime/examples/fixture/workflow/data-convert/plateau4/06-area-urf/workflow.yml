@@ -48,6 +48,16 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: d2e97a03-3a15-4245-9c50-25ba34677c67
+        name: TargetPackagesFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+              outputPort: default
+
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         name: AttributeManagerPreFlattener
         type: action
@@ -82,12 +92,6 @@ graphs:
         action: AttributeManager
         with:
           operations:
-          - attribute: featureId
-            method: remove
-          - attribute: featureParentId
-            method: remove
-          - attribute: geometryName
-            method: remove
           - attribute: cityCode
             method: rename
             value: city_code
@@ -97,45 +101,9 @@ graphs:
           - attribute: lod
             method: rename
             value: __lod
-          - attribute: gmlId
-            method: remove
-          - attribute: gmlPropertyName
-            method: remove
-          - attribute: fileIndex
-            method: remove
-          - attribute: root
-            method: remove
-          - attribute: cityGmlPath
-            method: remove
-          - attribute: admin
-            method: remove
-          - attribute: area
-            method: remove
           - attribute: package
             method: rename
             value: __package
-          - attribute: extension
-            method: remove
-          - attribute: dirRoot
-            method: remove
-          - attribute: gmlRootId
-            method: remove
-          - attribute: maxLod
-            method: remove
-          - attribute: dirSchemas
-            method: remove
-          - attribute: dirCodelists
-            method: remove
-          - attribute: path
-            method: remove
-          - attribute: name
-            method: remove
-          - attribute: udxDirs
-            method: remove
-          - attribute: featureType
-            method: remove
-          - attribute: gmlName
-            method: remove
 
       - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
         name: FilterUrfPackage
@@ -244,6 +212,11 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: d2e97a03-3a15-4245-9c50-25ba34677c67
+        fromPort: default
+        toPort: default
+      - id: 1ee68611-1a29-4443-8986-cd497f0d6a27
+        from: d2e97a03-3a15-4245-9c50-25ba34677c67
         to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         fromPort: default
         toPort: default
@@ -292,3 +265,9 @@ graphs:
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
+      # AttributeFlattener -> MvtWriter (schema)
+      - id: 9314a900-1ffc-a149-2820-e0c55201b345
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: schema
+        toPort: schema

@@ -46,7 +46,6 @@ cargo test --workspace --all-targets --all-features --exclude plateau-gis-qualit
 [tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
-export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test -p workflow-tests ${@:-}
 ''']
 
@@ -55,7 +54,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
-cargo run -p plateau-tiles-test ${@:-}
+cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 
 [tasks.doc]
@@ -73,7 +72,6 @@ rm -rf target/debug/deps/${PROJ_NAME}-*
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zinstrument-coverage"
 export LLVM_PROFILE_FILE="${PROJ_NAME}-%p-%m.profraw"
-export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 
 cargo build --workspace --verbose
 cargo test --workspace --verbose
@@ -188,7 +186,10 @@ WORKFLOW_CONV=(
   "05-fld"
   "06-area-urf"
   "07-brid-tun-cons"
+  "08-ubld"
+  "09-unf"
   "10-wtr"
+  "11-gen"
 )
 
 BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/
@@ -202,6 +203,10 @@ WORKFLOW_QC=(
   "07-lsld"
   "08-dem"
   "09-brid-tun-ubld"
+  "10-cons"
+  "11-wtr"
+  "12-unf"
+  "13-gen"
 )
 
 process_workflows() {
@@ -217,6 +222,9 @@ process_workflows() {
 
 process_workflows "$BASEPATH_CONV" "${WORKFLOW_CONV[@]}"
 process_workflows "$BASEPATH_QC" "${WORKFLOW_QC[@]}"
+
+# Solar radiation workflow
+yaml-include ./runtime/examples/fixture/workflow/solar-radiation/workflow.yml > ./runtime/examples/fixture/workflow/solar-radiation/solar-radiation.yml
 ''']
 
 [tasks.check-generate-examples-cms-workflow]

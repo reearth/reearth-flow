@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestToProject(t *testing.T) {
 	pId := project.NewID()
-	wsId := workspace.NewID()
+	wsId := accountsworkspace.NewID()
 	now := time.Now().Truncate(time.Millisecond)
 
 	tests := []struct {

@@ -31,12 +31,22 @@ use super::tiling::TileContent;
 use super::tiling::TileMetadata;
 use super::tiling::VectorLayer;
 
+#[derive(
+    bytemuck::Pod, bytemuck::Zeroable, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, std::fmt::Debug,
+)]
+#[repr(C)]
+pub(super) struct SortKey {
+    tile_id: u64,
+    // feature order must be preserved to correctly display z-order within a tile (used by lsld)
+    seq: u64,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
     ctx: Context,
     upstream: &[(Feature, String)],
     tile_id_conv: TileIdMethod,
-    sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
+    sender_sliced: std::sync::mpsc::SyncSender<(SortKey, Vec<u8>)>,
     output_path: &Uri,
     min_zoom: u8,
     max_zoom: u8,
@@ -51,8 +61,9 @@ pub(super) fn geometry_slicing_stage(
     // Convert CityObjects to sliced features
     upstream
         .iter()
+        .enumerate()
         .par_bridge()
-        .try_for_each(|(feature, layer_name)| {
+        .try_for_each(|(seq, (feature, layer_name))| {
             let max_detail = 12; // 4096
             let buffer_pixels = 5;
 
@@ -75,7 +86,7 @@ pub(super) fn geometry_slicing_stage(
                         multi_polygons: mpoly,
                         multi_line_strings: MultiLineString2::new(),
                         multi_points: MultiPoint2::new(),
-                        properties: feature.attributes.clone(),
+                        properties: (*feature.attributes).clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
@@ -83,7 +94,11 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                    let key = SortKey {
+                        tile_id,
+                        seq: seq as u64,
+                    };
+                    if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
                     Ok(())
@@ -94,7 +109,7 @@ pub(super) fn geometry_slicing_stage(
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: line_strings,
                         multi_points: MultiPoint2::new(),
-                        properties: feature.attributes.clone(),
+                        properties: (*feature.attributes).clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
@@ -102,7 +117,11 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                    let key = SortKey {
+                        tile_id,
+                        seq: seq as u64,
+                    };
+                    if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
                     Ok(())
@@ -113,7 +132,7 @@ pub(super) fn geometry_slicing_stage(
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: MultiLineString2::new(),
                         multi_points: points,
-                        properties: feature.attributes.clone(),
+                        properties: (*feature.attributes).clone(),
                     };
                     let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
@@ -121,7 +140,11 @@ pub(super) fn geometry_slicing_stage(
                         ))
                     })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                    let key = SortKey {
+                        tile_id,
+                        seq: seq as u64,
+                    };
+                    if sender_sliced.send((key, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
                     };
                     Ok(())
@@ -200,7 +223,7 @@ pub(super) fn geometry_slicing_stage(
 }
 
 pub(super) fn feature_sorting_stage(
-    receiver_sliced: std::sync::mpsc::Receiver<(u64, Vec<u8>)>,
+    receiver_sliced: std::sync::mpsc::Receiver<(SortKey, Vec<u8>)>,
     sender_sorted: std::sync::mpsc::SyncSender<(u64, Vec<Vec<u8>>)>,
 ) -> crate::errors::Result<()> {
     let config = kv_extsort::SortConfig::default().max_chunk_bytes(256 * 1024 * 1024);
@@ -208,12 +231,13 @@ pub(super) fn feature_sorting_stage(
     let sorted_iter = kv_extsort::sort(
         receiver_sliced
             .into_iter()
-            .map(|(tile_id, body)| std::result::Result::<_, Infallible>::Ok((tile_id, body))),
+            .map(|(key, body)| std::result::Result::<_, Infallible>::Ok((key, body))),
         config,
     );
 
+    // Group by tile_id only (not the full SortKey), features within each tile are already sorted by seq
     for ((_, tile_id), grouped) in &sorted_iter.chunk_by(|feat| match feat {
-        Ok((tile_id, _)) => (false, *tile_id),
+        Ok((key, _)) => (false, key.tile_id),
         Err(_) => (true, 0),
     }) {
         let grouped = grouped
@@ -251,8 +275,6 @@ pub(super) fn tile_writing_stage(
     output_path: &Uri,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
-    skip_unexposed_attributes: bool,
-    colon_to_underscore: bool,
     default_extent: i32,
 ) -> crate::errors::Result<()> {
     let min_extent: i32 = 512;
@@ -276,8 +298,6 @@ pub(super) fn tile_writing_stage(
                 let bytes = make_tile(
                     extent,
                     &serialized_feats,
-                    skip_unexposed_attributes,
-                    colon_to_underscore,
                 )?;
                 let compressed_size = {
                     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
@@ -309,8 +329,6 @@ pub(super) fn tile_writing_stage(
 pub(super) fn make_tile(
     extent: i32,
     serialized_feats: &[Vec<u8>],
-    skip_unexposed_attributes: bool,
-    colon_to_underscore: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
@@ -439,18 +457,8 @@ pub(super) fn make_tile(
         let layer = {
             let layer = layers.entry(feature.typename).or_default();
 
-            // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                // skip keys starting with "__"
-                if skip_unexposed_attributes && key.as_ref().starts_with("__") {
-                    continue;
-                }
-                let key_string = if colon_to_underscore {
-                    key.inner().replace(":", "_")
-                } else {
-                    key.inner().to_string()
-                };
-                convert_properties(&mut layer.tags_enc, &key_string, value);
+                convert_properties(&mut layer.tags_enc, &key.inner().to_string(), value);
             }
             layer
         };

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 use itertools::Itertools;
 use nusamai_projection::crs::{EPSG_WGS84_GEOGRAPHIC_2D, EPSG_WGS84_GEOGRAPHIC_3D};
@@ -13,7 +15,9 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
 
     fn try_from(geom: Feature) -> Result<Self> {
         let properites = from_attribute_value_map_to_geojson_object(&geom.attributes);
-        let geojson_features = match geom.geometry.value {
+        // Clone geometry value since it's Arc-wrapped
+        let geometry_value = geom.geometry.value.clone();
+        let geojson_features = match geometry_value {
             GeometryValue::CityGmlGeometry(gml_geometry) => gml_geometry
                 .gml_geometries
                 .into_iter()
@@ -131,11 +135,11 @@ impl TryFrom<geojson::Feature> for Feature {
                     uuid::Uuid::new_v4()
                 }
             }),
-            attributes,
-            geometry: crate::Geometry {
+            attributes: Arc::new(attributes),
+            geometry: Arc::new(crate::Geometry {
                 epsg: Some(epsg),
                 value: geometry,
-            },
+            }),
             metadata: Default::default(),
         })
     }

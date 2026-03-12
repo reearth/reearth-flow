@@ -12,7 +12,7 @@ use rayon::prelude::*;
 
 use crate::algorithm::bounding_rect::BoundingRect;
 use crate::algorithm::ray_intersection::{IncludeOrigin, Ray3D, RayHit, RayIntersection3D};
-use crate::types::geometry::Geometry3D;
+use crate::types::triangular_mesh::TriangularMesh;
 
 /// Wrapper that stores geometry index and bounding box for BVH construction.
 /// Does not clone the actual geometry data.
@@ -27,8 +27,8 @@ pub struct BvhGeometryRef {
 }
 
 impl BvhGeometryRef {
-    /// Create a new BVH geometry reference from a geometry's bounding box.
-    pub fn new(index: usize, geometry: &Geometry3D<f64>) -> Option<Self> {
+    /// Create a new BVH geometry reference from a triangular mesh's bounding box.
+    pub fn new(index: usize, geometry: &TriangularMesh<f64, f64>) -> Option<Self> {
         let rect = geometry.bounding_rect()?;
         let min = rect.min();
         let max = rect.max();
@@ -64,10 +64,10 @@ impl BHShape<f64, 3> for BvhGeometryRef {
 }
 
 /// Accelerated geometry collection for ray intersection.
-/// Builds BVH from geometry bounding boxes and references the original geometry slice.
+/// Builds BVH from pre-triangulated mesh bounding boxes and references the original mesh slice.
 pub struct AcceleratedGeometrySet<'a> {
-    /// Original geometries (borrowed, not cloned)
-    geometries: &'a [Geometry3D<f64>],
+    /// Original triangular meshes (borrowed, not cloned)
+    geometries: &'a [TriangularMesh<f64, f64>],
     /// BVH references with bounding boxes
     bvh_refs: Vec<BvhGeometryRef>,
     /// The BVH structure
@@ -75,9 +75,9 @@ pub struct AcceleratedGeometrySet<'a> {
 }
 
 impl<'a> AcceleratedGeometrySet<'a> {
-    /// Build BVH from geometry bounding boxes using parallel construction.
-    /// This is O(n log n) where n = number of geometries.
-    pub fn build(geometries: &'a [Geometry3D<f64>]) -> Self {
+    /// Build BVH from mesh bounding boxes using parallel construction.
+    /// This is O(n log n) where n = number of meshes.
+    pub fn build(geometries: &'a [TriangularMesh<f64, f64>]) -> Self {
         let mut bvh_refs: Vec<BvhGeometryRef> = geometries
             .par_iter()
             .enumerate()
@@ -218,27 +218,35 @@ mod tests {
     use crate::types::coordinate::Coordinate3D;
     use crate::types::triangle::Triangle3D;
 
+    fn mesh_from_triangle(
+        v0: Coordinate3D<f64>,
+        v1: Coordinate3D<f64>,
+        v2: Coordinate3D<f64>,
+    ) -> TriangularMesh<f64, f64> {
+        TriangularMesh::from_single_triangle(Triangle3D::new(v0, v1, v2))
+    }
+
     #[test]
     fn test_accelerated_ray_intersection() {
         let geometries = vec![
             // Triangle 1 at z=1
-            Geometry3D::Triangle(Triangle3D::new(
+            mesh_from_triangle(
                 Coordinate3D::new__(0.0, 0.0, 1.0),
                 Coordinate3D::new__(2.0, 0.0, 1.0),
                 Coordinate3D::new__(1.0, 2.0, 1.0),
-            )),
+            ),
             // Triangle 2 at z=2
-            Geometry3D::Triangle(Triangle3D::new(
+            mesh_from_triangle(
                 Coordinate3D::new__(0.0, 0.0, 2.0),
                 Coordinate3D::new__(2.0, 0.0, 2.0),
                 Coordinate3D::new__(1.0, 2.0, 2.0),
-            )),
+            ),
             // Triangle 3 far away
-            Geometry3D::Triangle(Triangle3D::new(
+            mesh_from_triangle(
                 Coordinate3D::new__(10.0, 0.0, 0.0),
                 Coordinate3D::new__(11.0, 0.0, 0.0),
                 Coordinate3D::new__(10.0, 1.0, 0.0),
-            )),
+            ),
         ];
 
         let accel_set = AcceleratedGeometrySet::build(&geometries);
@@ -262,11 +270,11 @@ mod tests {
 
     #[test]
     fn test_accelerated_ray_miss() {
-        let geometries = vec![Geometry3D::Triangle(Triangle3D::new(
+        let geometries = vec![mesh_from_triangle(
             Coordinate3D::new__(0.0, 0.0, 0.0),
             Coordinate3D::new__(1.0, 0.0, 0.0),
             Coordinate3D::new__(0.0, 1.0, 0.0),
-        ))];
+        )];
 
         let accel_set = AcceleratedGeometrySet::build(&geometries);
 
@@ -282,11 +290,11 @@ mod tests {
 
     #[test]
     fn test_accelerated_ray_origin_exclusion() {
-        let geometries = vec![Geometry3D::Triangle(Triangle3D::new(
+        let geometries = vec![mesh_from_triangle(
             Coordinate3D::new__(0.0, 0.0, 0.0),
             Coordinate3D::new__(1.0, 0.0, 0.0),
             Coordinate3D::new__(0.0, 1.0, 0.0),
-        ))];
+        )];
 
         let accel_set = AcceleratedGeometrySet::build(&geometries);
 
@@ -308,15 +316,15 @@ mod tests {
 
     #[test]
     fn test_closest_ray_intersection_early_termination() {
-        // Create many triangles at increasing z distances
-        let geometries: Vec<Geometry3D<f64>> = (0..100)
+        // Create many triangular meshes at increasing z distances
+        let geometries: Vec<TriangularMesh<f64, f64>> = (0..100)
             .map(|i| {
                 let z = i as f64;
-                Geometry3D::Triangle(Triangle3D::new(
+                mesh_from_triangle(
                     Coordinate3D::new__(0.0, 0.0, z),
                     Coordinate3D::new__(2.0, 0.0, z),
                     Coordinate3D::new__(1.0, 2.0, z),
-                ))
+                )
             })
             .collect();
 

@@ -5,12 +5,13 @@ import { Map as YMap } from "yjs";
 
 import { config } from "@flow/config";
 import {
+  DEFAULT_EDGE_PORT,
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
 } from "@flow/global-constants";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
-import type { Action, Edge, Node, NodeType } from "@flow/types";
+import type { Action, Edge, Node, NodeType, Workflow } from "@flow/types";
 import { generateUUID, isDefined } from "@flow/utils";
 
 import {
@@ -20,11 +21,14 @@ import {
   yWorkflowConstructor,
 } from "./conversions";
 import type { YNode, YNodesMap, YEdgesMap, YWorkflow } from "./types";
+import { computeWorkflowPath } from "./utils/computeWorkflowPath";
+import { updateNestedSubworkflowPaths } from "./utils/updateNestedSubworkflowPaths";
 
 export default ({
   yWorkflows,
   currentWorkflowId,
   undoTrackerActionWrapper,
+  rawWorkflows,
 }: {
   yWorkflows: YMap<YWorkflow>;
   currentWorkflowId: string;
@@ -32,6 +36,7 @@ export default ({
     callback: () => void,
     originPrepend?: string,
   ) => void;
+  rawWorkflows: Workflow[];
 }) => {
   const t = useT();
   const { api } = config();
@@ -57,6 +62,11 @@ export default ({
     ) => {
       const { inputRouter, outputRouter } = routers;
 
+      const parentPath = computeWorkflowPath(rawWorkflows, currentWorkflowId);
+      const newSubworkflowPath = parentPath
+        ? `${parentPath}.${workflowId}`
+        : workflowId;
+
       const inputNodeId = generateUUID();
       // newInputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newInputNode: Node = {
@@ -69,6 +79,7 @@ export default ({
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
+          workflowPath: newSubworkflowPath,
         },
       };
 
@@ -84,6 +95,7 @@ export default ({
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
+          workflowPath: newSubworkflowPath,
         },
       };
 
@@ -110,13 +122,14 @@ export default ({
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
           subworkflowId: workflowId,
+          workflowPath: parentPath,
         },
         selected: true,
       });
 
       return { newYWorkflow, newSubworkflowNode };
     },
-    [],
+    [rawWorkflows, currentWorkflowId],
   );
 
   const handleYWorkflowAdd = useCallback(
@@ -203,6 +216,17 @@ export default ({
             y: Math.min(...selectedNodes.map((n) => n.position.y)),
           };
 
+          const workflowId = generateUUID();
+          const workflowName = t("Subworkflow");
+
+          const parentPath = computeWorkflowPath(
+            rawWorkflows,
+            currentWorkflowId,
+          );
+          const subworkflowNodePath = parentPath
+            ? `${parentPath}.${workflowId}`
+            : workflowId;
+
           // Adjust positions to be relative to new workflow and center around initial position
           const adjustedNodes = allIncludedNodes.map((node) => ({
             ...node,
@@ -213,6 +237,10 @@ export default ({
                   y: node.position.y - position.y + 200,
                 },
             selected: false,
+            data: {
+              ...node.data,
+              workflowPath: subworkflowNodePath,
+            },
           }));
 
           const internalEdges = edges.filter(
@@ -226,9 +254,6 @@ export default ({
             const targetSelected = allIncludedNodeIds.has(edge.target);
             return sourceSelected !== targetSelected;
           });
-
-          const workflowId = generateUUID();
-          const workflowName = t("Subworkflow");
 
           const additionalRouterNodes: Node[] = [];
           const additionalInternalEdges: Edge[] = [];
@@ -340,7 +365,7 @@ export default ({
                 if (instanceNum !== undefined) {
                   portName += `-${instanceNum}`;
                 }
-                portName += `-${edge.targetHandle}`;
+                portName += `-${edge.targetHandle ?? DEFAULT_EDGE_PORT}`;
 
                 const inputRouter: Node = {
                   id: inputRouterId,
@@ -353,6 +378,7 @@ export default ({
                     officialName: routers.inputRouter.name,
                     outputs: routers.inputRouter.outputPorts,
                     params: { routingPort: portName },
+                    workflowPath: subworkflowNodePath,
                   },
                 };
 
@@ -410,12 +436,11 @@ export default ({
                 const sourceNodeName =
                   nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
                 const instanceNum = nodeInstanceNumbers.get(edge.source);
-
                 portName = sourceNodeName;
                 if (instanceNum !== undefined) {
                   portName += `-${instanceNum}`;
                 }
-                portName += `-${edge.sourceHandle}`;
+                portName += `-${edge.sourceHandle ?? DEFAULT_EDGE_PORT}`;
 
                 const outputRouter: Node = {
                   id: outputRouterId,
@@ -428,6 +453,7 @@ export default ({
                     officialName: routers.outputRouter.name,
                     inputs: routers.outputRouter.inputPorts,
                     params: { routingPort: portName },
+                    workflowPath: subworkflowNodePath,
                   },
                 };
 
@@ -478,6 +504,13 @@ export default ({
             ...internalEdges,
             ...additionalInternalEdges,
           ];
+
+          // Recursively update workflowPath for nodes inside nested subworkflows
+          updateNestedSubworkflowPaths(
+            yWorkflows,
+            adjustedNodes,
+            subworkflowNodePath,
+          );
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
@@ -579,6 +612,8 @@ export default ({
     [
       yWorkflows,
       currentYWorkflow,
+      currentWorkflowId,
+      rawWorkflows,
       t,
       createYWorkflow,
       fetchRouterConfigs,

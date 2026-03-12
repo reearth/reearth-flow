@@ -1,0 +1,21 @@
+# test gen (generic)
+citygml_zip_name = "40223_koga-shi_city_2024_citygml_1_op_gen.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.gen:genericAttribute" = { comparator = "list_to_dict", key = ".name" }
+
+[tests.mvt_lines]
+zoom = [12, 16]
+threshold = 0.01
+
+[tests.mvt_polygons]
+zoom = [12, 16]
+threshold = 0.01
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+
+[filter.tree]
+"udx/gen/" = ["50304358_gen_6697_f20_op.gml"]

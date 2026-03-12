@@ -11,7 +11,7 @@ use serde_json::Number;
 
 use reearth_flow_common::str::base64_encode;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_common::xml::XmlXpathValue;
+use reearth_flow_common::xml::{xpath_value_to_json, XmlXpathValue};
 
 use crate::datetime::DateTime;
 use crate::error;
@@ -264,6 +264,16 @@ impl Display for AttributeValue {
     }
 }
 
+impl TryFrom<f64> for AttributeValue {
+    type Error = error::Error;
+
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        Number::from_f64(value)
+            .map(AttributeValue::Number)
+            .ok_or_else(|| error::Error::validate("f64 value is NaN or infinite"))
+    }
+}
+
 impl From<serde_json::Value> for AttributeValue {
     fn from(value: serde_json::Value) -> Self {
         match value {
@@ -366,9 +376,7 @@ impl From<nusamai_citygml::Value> for AttributeValue {
 
 impl From<XmlXpathValue> for AttributeValue {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<AttributeValue>::into(
-            value.to_string().parse::<serde_json::Value>().unwrap(),
-        )
+        std::convert::Into::<AttributeValue>::into(xpath_value_to_json(&value))
     }
 }
 

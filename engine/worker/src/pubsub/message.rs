@@ -5,12 +5,12 @@ use bytes::Bytes;
 use super::topic::Topic;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ValidatedMessage<M> {
-    pub(crate) id: uuid::Uuid,
+pub struct ValidatedMessage<M> {
+    pub id: uuid::Uuid,
     /// The timestamp when message was created in the publishing service.
-    pub(crate) timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
     /// The message data.
-    pub(crate) data: M,
+    pub data: M,
 }
 
 impl ValidatedMessage<Bytes> {
@@ -27,7 +27,7 @@ impl ValidatedMessage<Bytes> {
     }
 }
 
-pub(crate) trait EncodableMessage: Send + Sync + Debug {
+pub trait EncodableMessage: Send + Sync + Debug {
     type Error: Send + Sync + Debug + Display;
 
     fn topic(&self) -> Topic;

@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ use crate::pubsub::{
     topic::Topic,
 };
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum UserFacingLogLevel {
     Info,

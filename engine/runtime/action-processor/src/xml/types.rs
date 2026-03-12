@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use reearth_flow_common::xml;
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -84,5 +83,3 @@ pub struct XmlValidatorParam {
     pub input_type: XmlInputType,
     pub validation_type: ValidationType,
 }
-
-pub type SchemaStore = HashMap<Vec<(String, String)>, xml::XmlSchemaValidationContext>;

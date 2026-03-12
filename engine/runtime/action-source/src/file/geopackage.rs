@@ -19,7 +19,9 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    metadata::Metadata, Attribute, AttributeValue, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -368,10 +370,9 @@ fn row_to_feature(
         }
     }
 
-    let mut feature = Feature::new();
-    feature.attributes = attributes;
+    let mut feature = Feature::new_with_attributes(attributes);
     if let Some(geom) = geometry {
-        feature.geometry = geom;
+        feature.geometry = Arc::new(geom);
     }
 
     Ok(feature)
@@ -1224,9 +1225,8 @@ async fn read_layer_tiles(
         let bounds = calculate_tile_bounds(zoom, col, tile_row);
         let geometry = create_tile_bounds_geometry(bounds);
 
-        let mut feature = Feature::new();
-        feature.attributes = attributes;
-        feature.geometry = geometry;
+        let feature =
+            Feature::new_with_attributes_and_geometry(attributes, geometry, Metadata::default());
         features.push(feature);
     }
 
@@ -1342,8 +1342,7 @@ async fn read_srs_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, SourceE
             );
         }
 
-        let mut feature = Feature::new();
-        feature.attributes = attributes;
+        let feature = Feature::new_with_attributes(attributes);
         features.push(feature);
     }
 
@@ -1405,8 +1404,7 @@ async fn read_extensions_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, 
             );
         }
 
-        let mut feature = Feature::new();
-        feature.attributes = attributes;
+        let feature = Feature::new_with_attributes(attributes);
         features.push(feature);
     }
 

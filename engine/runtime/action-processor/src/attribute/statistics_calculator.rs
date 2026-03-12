@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -182,6 +182,10 @@ struct Calculation {
 }
 
 impl Processor for StatisticsCalculator {
+    fn is_accumulating(&self) -> bool {
+        false
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -250,7 +254,11 @@ impl Processor for StatisticsCalculator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         let mut features = HashMap::<String, HashMap<Attribute, NumericValue>>::new();
         for (new_attribute, value) in &self.aggregate_buffer {
             for (aggregate_key, count) in value {
@@ -263,9 +271,8 @@ impl Processor for StatisticsCalculator {
             }
         }
         for (aggregate_key, value) in features {
-            let mut feature = Feature::new();
+            let mut feature = Feature::new_with_attributes(Attributes::new());
 
-            // Add group_by attributes to the output feature
             if let Some(group_by_attrs) = self.group_by.as_ref() {
                 let group_values: Vec<&str> = aggregate_key.split('|').collect();
                 for (attr, attr_value) in group_by_attrs.iter().zip(group_values.iter()) {
@@ -273,12 +280,10 @@ impl Processor for StatisticsCalculator {
                 }
             }
 
-            // Add group_id if specified
             if let Some(group_id) = self.group_id.as_ref() {
                 feature.insert(group_id, AttributeValue::String(aggregate_key.clone()));
             }
 
-            // Add calculated statistics
             for (new_attribute, count) in &value {
                 feature.insert(new_attribute.clone(), count.to_attribute_value());
             }

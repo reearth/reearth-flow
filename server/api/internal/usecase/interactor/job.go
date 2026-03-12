@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -164,7 +165,7 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 
 func (i *Job) FindByWorkspace(
 	ctx context.Context,
-	wsID id.WorkspaceID,
+	wsID accountsid.WorkspaceID,
 	p *interfaces.PaginationParam,
 	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {

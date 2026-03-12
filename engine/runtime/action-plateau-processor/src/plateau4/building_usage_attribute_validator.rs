@@ -254,7 +254,7 @@ impl Processor for BuildingUsageAttributeValidator {
         } else {
             Some("<未設定>".to_string())
         };
-        let mut attributes = feature.attributes.clone();
+        let mut attributes = (*feature.attributes).clone();
         let mut ports = Vec::<Port>::new();
         if !error_messages.is_empty() {
             attributes.insert(
@@ -283,7 +283,7 @@ impl Processor for BuildingUsageAttributeValidator {
         for port in ports {
             fw.send(ctx.new_with_feature_and_port(
                 Feature {
-                    attributes: attributes.clone(),
+                    attributes: Arc::new(attributes.clone()),
                     ..feature.clone()
                 },
                 port,
@@ -292,7 +292,11 @@ impl Processor for BuildingUsageAttributeValidator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -370,10 +374,10 @@ fn build_city_code_to_name(
         for child in &node.get_child_nodes() {
             match xml::get_readonly_node_tag(child).as_str() {
                 "gml:description" => {
-                    name = Some(child.get_content());
+                    name = child.get_content();
                 }
                 "gml:name" => {
-                    code = Some(child.get_content());
+                    code = child.get_content();
                 }
                 _ => {}
             }

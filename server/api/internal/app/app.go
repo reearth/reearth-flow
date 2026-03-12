@@ -121,6 +121,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	SetupActionRoutes(e)
 
 	SetupTriggerRoutes(e)
+	SetupJobRoutes(e)
 
 	serveFiles(e, cfg.Gateways.File)
 

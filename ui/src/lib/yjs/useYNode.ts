@@ -8,6 +8,7 @@ import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
+import { computeWorkflowPath } from "./utils/computeWorkflowPath";
 
 export default ({
   currentYWorkflow,
@@ -33,13 +34,14 @@ export default ({
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
 
-        newNodes.forEach((newNode) => {
-          if (newNode.selected) {
-            setSelectedNodeIds((snids) => {
-              return [...snids, newNode.id];
-            });
-          }
+        const selectedNewNodeIds = newNodes
+          .filter((n) => n.selected)
+          .map((n) => n.id);
+        if (selectedNewNodeIds.length > 0) {
+          setSelectedNodeIds(selectedNewNodeIds);
+        }
 
+        newNodes.forEach((newNode) => {
           // For routers without routingPort, generate unique port name
           const isRouterInput = newNode.data.officialName === "InputRouter";
           const isRouterOutput = newNode.data.officialName === "OutputRouter";
@@ -93,6 +95,13 @@ export default ({
               ...newNode.data.params,
               routingPort: uniquePortName,
             };
+          }
+          const currentWorkflowId = currentYWorkflow?.get("id")?.toString();
+          if (currentWorkflowId) {
+            newNode.data.workflowPath = computeWorkflowPath(
+              rawWorkflows,
+              currentWorkflowId,
+            );
           }
 
           yNodes.set(newNode.id, yNodeConstructor(newNode));

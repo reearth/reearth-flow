@@ -1,11 +1,13 @@
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, sync::Arc, vec};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
+    coordinate::Coordinate2D,
     face::Face,
     geometry::{Geometry2D, Geometry3D},
-    line_string::LineString,
-    polygon::Polygon,
+    line_string::{LineString, LineString2D},
+    multi_polygon::MultiPolygon2D,
+    polygon::{Polygon, Polygon2D},
     solid::{Solid2D, Solid3D},
 };
 use reearth_flow_runtime::{
@@ -149,7 +151,11 @@ impl Processor for GeometryPartExtractor {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -260,7 +266,7 @@ fn send_remaining_feature_with_empty_geometry(
 ) {
     let mut remaining_feature = original_feature.clone();
     // Create empty geometry but keep the same type structure
-    remaining_feature.geometry = Geometry::new();
+    remaining_feature.geometry = Arc::new(Geometry::default());
 
     fw.send(ctx.new_with_feature_and_port(remaining_feature, REMAINING_PORT.clone()));
 }
@@ -282,9 +288,9 @@ fn create_surface_feature_from_face_2d(
     let mut surface_feature = original_feature.clone();
     surface_feature.refresh_id();
 
-    let mut surface_geometry = original_feature.geometry.clone();
+    let mut surface_geometry = (*original_feature.geometry).clone();
     surface_geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
-    surface_feature.geometry = surface_geometry;
+    surface_feature.geometry = Arc::new(surface_geometry);
 
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
@@ -306,9 +312,9 @@ fn create_surface_feature_from_face_3d(
     let mut surface_feature = original_feature.clone();
     surface_feature.refresh_id();
 
-    let mut surface_geometry = original_feature.geometry.clone();
+    let mut surface_geometry = (*original_feature.geometry).clone();
     surface_geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-    surface_feature.geometry = surface_geometry;
+    surface_feature.geometry = Arc::new(surface_geometry);
 
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
@@ -334,14 +340,13 @@ fn create_surface_feature_from_citygml_polygon(
         feature_id: original_gml_geo.feature_id.clone(),
         feature_type: original_gml_geo.feature_type.clone(),
         polygons: vec![polygon.clone()],
-        len: 1,                     // Single surface has length 1
-        composite_surfaces: vec![], // Single surface doesn't need composite surfaces
-        line_strings: vec![],       // Single surface doesn't need line strings
-        points: vec![],             // Single surface doesn't need points
+        len: 1,               // Single surface has length 1
+        line_strings: vec![], // Single surface doesn't need line strings
+        points: vec![],       // Single surface doesn't need points
         ty: original_gml_geo.ty,
         gml_trait: None, // Extracted geometry loses original trait semantics
         lod: original_gml_geo.lod,
-        pos: original_gml_geo.pos,
+        pos: 0, // Extracted single-polygon feature starts at index 0 in the flat arrays
     };
 
     // Calculate the material and texture indices for this specific polygon
@@ -361,12 +366,16 @@ fn create_surface_feature_from_citygml_polygon(
         } else {
             vec![None]
         },
-        polygon_uvs: Default::default(),
+        polygon_uvs: if global_poly_idx < original_citygml.polygon_uvs.0.len() {
+            MultiPolygon2D::new(vec![original_citygml.polygon_uvs.0[global_poly_idx].clone()])
+        } else {
+            MultiPolygon2D::new(vec![create_placeholder_uv_polygon(polygon)])
+        },
     };
 
-    let mut surface_geometry = original_feature.geometry.clone();
+    let mut surface_geometry = (*original_feature.geometry).clone();
     surface_geometry.value = GeometryValue::CityGmlGeometry(new_citygml);
-    surface_feature.geometry = surface_geometry;
+    surface_feature.geometry = Arc::new(surface_geometry);
 
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
@@ -384,4 +393,32 @@ fn calculate_global_polygon_index(
         global_idx += geo_feature.polygons.len();
     }
     global_idx + poly_idx
+}
+
+/// Create a placeholder UV polygon matching the ring structure of a 3D polygon.
+/// Each vertex gets (0.0, 0.0) UV coordinates.
+fn create_placeholder_uv_polygon(
+    poly3d: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
+) -> Polygon2D<f64> {
+    let exterior_uvs: Vec<Coordinate2D<f64>> = poly3d
+        .exterior()
+        .0
+        .iter()
+        .map(|_| Coordinate2D::new_(0.0, 0.0))
+        .collect();
+
+    let interior_uvs: Vec<LineString2D<f64>> = poly3d
+        .interiors()
+        .iter()
+        .map(|ring| {
+            let coords: Vec<Coordinate2D<f64>> = ring
+                .0
+                .iter()
+                .map(|_| Coordinate2D::new_(0.0, 0.0))
+                .collect();
+            LineString2D::new(coords)
+        })
+        .collect();
+
+    Polygon2D::new(LineString2D::new(exterior_uvs), interior_uvs)
 }

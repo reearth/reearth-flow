@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/gavv/httpexpect/v2"
+	usermockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user/mockrepo"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -21,8 +21,8 @@ func TestCreateTimeDrivenTrigger(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -254,8 +254,8 @@ func TestUpdateTrigger(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -439,8 +439,8 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,

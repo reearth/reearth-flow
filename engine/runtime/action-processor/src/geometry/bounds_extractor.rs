@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue};
 use reearth_flow_types::{CityGmlGeometry, GeometryValue};
 
 use num_traits::NumCast;
@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use super::errors::GeometryProcessorError;
+use super::utils::finite_z;
 
 #[derive(Debug, Clone)]
 pub struct Bounds {
@@ -27,8 +28,8 @@ pub struct Bounds {
     pub max_x: f64,
     pub min_y: f64,
     pub max_y: f64,
-    pub min_z: f64,
-    pub max_z: f64,
+    pub min_z: Option<f64>,
+    pub max_z: Option<f64>,
 }
 
 impl Bounds {
@@ -44,11 +45,13 @@ impl Bounds {
     fn max_y_value(&self) -> AttributeValue {
         AttributeValue::Number(Number::from_f64(self.max_y).unwrap_or_else(|| Number::from(0)))
     }
-    fn min_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.min_z).unwrap_or_else(|| Number::from(0)))
+    fn min_z_value(&self) -> Option<AttributeValue> {
+        self.min_z
+            .and_then(|z| Number::from_f64(z).map(AttributeValue::Number))
     }
-    fn max_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.max_z).unwrap_or_else(|| Number::from(0)))
+    fn max_z_value(&self) -> Option<AttributeValue> {
+        self.max_z
+            .and_then(|z| Number::from_f64(z).map(AttributeValue::Number))
     }
 }
 
@@ -154,45 +157,49 @@ impl Processor for BoundsExtractor {
             GeometryValue::FlowGeometry3D(flow_3d) => Self::calc_3d(&flow_3d),
         };
         if let Some(bounds) = bounds {
-            let mut attributes = feature.attributes.clone();
+            let mut new_feature = feature.clone();
 
-            attributes.insert(
+            new_feature.insert(
                 self.params.xmin.clone().unwrap_or(Attribute::new("xmin")),
                 bounds.min_x_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.xmax.clone().unwrap_or(Attribute::new("xmax")),
                 bounds.max_x_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.ymin.clone().unwrap_or(Attribute::new("ymin")),
                 bounds.min_y_value(),
             );
-            attributes.insert(
+            new_feature.insert(
                 self.params.ymax.clone().unwrap_or(Attribute::new("ymax")),
                 bounds.max_y_value(),
             );
-            attributes.insert(
-                self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
-                bounds.min_z_value(),
-            );
-            attributes.insert(
-                self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
-                bounds.max_z_value(),
-            );
+            if let Some(min_z) = bounds.min_z_value() {
+                new_feature.insert(
+                    self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
+                    min_z,
+                );
+            }
+            if let Some(max_z) = bounds.max_z_value() {
+                new_feature.insert(
+                    self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
+                    max_z,
+                );
+            }
 
-            let feature = Feature {
-                attributes,
-                ..feature.clone()
-            };
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
         };
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -209,8 +216,16 @@ impl BoundsExtractor {
                 cb.max_x = cb.max_x.max(nb.max_x);
                 cb.min_y = cb.min_y.min(nb.min_y);
                 cb.max_y = cb.max_y.max(nb.max_y);
-                cb.min_z = cb.min_z.min(nb.min_z);
-                cb.max_z = cb.max_z.max(nb.max_z);
+                cb.min_z = match (cb.min_z, nb.min_z) {
+                    (Some(a), Some(b)) => Some(a.min(b)),
+                    (Some(a), None) | (None, Some(a)) => Some(a),
+                    (None, None) => None,
+                };
+                cb.max_z = match (cb.max_z, nb.max_z) {
+                    (Some(a), Some(b)) => Some(a.max(b)),
+                    (Some(a), None) | (None, Some(a)) => Some(a),
+                    (None, None) => None,
+                };
                 Some(cb)
             }
             (None, Some(nb)) => Some(nb),
@@ -227,6 +242,7 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
+        let z_val = finite_z(coord.z);
         Self::update_bounds(
             bounds,
             Some(Bounds {
@@ -234,8 +250,8 @@ impl BoundsExtractor {
                 max_x: NumCast::from(coord.x).unwrap(),
                 min_y: NumCast::from(coord.y).unwrap(),
                 max_y: NumCast::from(coord.y).unwrap(),
-                min_z: NumCast::from(coord.z).unwrap(),
-                max_z: NumCast::from(coord.z).unwrap(),
+                min_z: z_val,
+                max_z: z_val,
             }),
         )
     }
@@ -245,13 +261,14 @@ impl BoundsExtractor {
         T: CoordNum + NumCast + PartialOrd + Debug + Copy,
         Z: CoordNum,
     {
+        let z_val = finite_z(point.z());
         Some(Bounds {
             min_x: NumCast::from(point.x()).unwrap(),
             max_x: NumCast::from(point.x()).unwrap(),
             min_y: NumCast::from(point.y()).unwrap(),
             max_y: NumCast::from(point.y()).unwrap(),
-            min_z: NumCast::from(point.z()).unwrap(),
-            max_z: NumCast::from(point.z()).unwrap(),
+            min_z: z_val,
+            max_z: z_val,
         })
     }
 

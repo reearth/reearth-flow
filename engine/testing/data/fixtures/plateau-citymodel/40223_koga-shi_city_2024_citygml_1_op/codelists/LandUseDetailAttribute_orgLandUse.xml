@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_02bc3227-d5e7-42c9-89b5-d2105gde54a6">
+<gml:name>LandUseDetailAttribute_orgLandUse</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_1">
+<gml:description>官公庁施設</gml:description>
+<gml:name>1110</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_2">
+<gml:description>教育文化施設_教育施設</gml:description>
+<gml:name>1121</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_3">
+<gml:description>教育文化施設_文化施設</gml:description>
+<gml:name>1122</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_4">
+<gml:description>教育文化施設_宗教施設</gml:description>
+<gml:name>1123</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_5">
+<gml:description>厚生医療施設_医療施設</gml:description>
+<gml:name>1131</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_6">
+<gml:description>厚生医療施設_厚生施設</gml:description>
+<gml:name>1132</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_7">
+<gml:description>供給処理施設_供給施設</gml:description>
+<gml:name>1141</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_8">
+<gml:description>供給処理施設_処理施設</gml:description>
+<gml:name>1142</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_9">
+<gml:description>事務所建築物</gml:description>
+<gml:name>1210</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_10">
+<gml:description>専用商業施設_商業施設</gml:description>
+<gml:name>1221</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_11">
+<gml:description>専用商業施設_公衆浴場等</gml:description>
+<gml:name>1222</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_12">
+<gml:description>住商併用建物</gml:description>
+<gml:name>1230</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_13">
+<gml:description>宿泊・遊興施設_宿泊施設</gml:description>
+<gml:name>1241</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_14">
+<gml:description>宿泊・遊興施設_遊興施設</gml:description>
+<gml:name>1242</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_15">
+<gml:description>スポーツ・興行施設_スポーツ施設</gml:description>
+<gml:name>1251</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_16">
+<gml:description>スポーツ・興行施設_興行施設</gml:description>
+<gml:name>1252</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_17">
+<gml:description>独立住宅</gml:description>
+<gml:name>1310</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_18">
+<gml:description>集合住宅</gml:description>
+<gml:name>1320</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_19">
+<gml:description>専用工場</gml:description>
+<gml:name>1410</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_20">
+<gml:description>住居併用工場</gml:description>
+<gml:name>1420</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_21">
+<gml:description>倉庫運輸関係施設_運輸施設等</gml:description>
+<gml:name>1431</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_22">
+<gml:description>倉庫運輸関係施設_倉庫施設等</gml:description>
+<gml:name>1432</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_23">
+<gml:description>農林漁業施設</gml:description>
+<gml:name>1500</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_24">
+<gml:description>屋外利用地・仮設建物_太陽光発電</gml:description>
+<gml:name>2101</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_25">
+<gml:description>屋外利用地・仮設建物_屋外駐車場</gml:description>
+<gml:name>2102</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_26">
+<gml:description>屋外利用地・仮設建物_その他</gml:description>
+<gml:name>2103</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_27">
+<gml:description>公園、運動場等_ゴルフ場</gml:description>
+<gml:name>3001</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_28">
+<gml:description>公園、運動場等_その他</gml:description>
+<gml:name>3002</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_29">
+<gml:description>未利用地等</gml:description>
+<gml:name>4000</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_30">
+<gml:description>道路</gml:description>
+<gml:name>5100</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_31">
+<gml:description>鉄道・港湾等</gml:description>
+<gml:name>5200</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_32">
+<gml:description>田</gml:description>
+<gml:name>6110</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_33">
+<gml:description>畑</gml:description>
+<gml:name>6120</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_34">
+<gml:description>樹園地</gml:description>
+<gml:name>6130</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_35">
+<gml:description>採草放牧地</gml:description>
+<gml:name>6200</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_36">
+<gml:description>水面・河川・水路</gml:description>
+<gml:name>7000</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_37">
+<gml:description>原野</gml:description>
+<gml:name>8000</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_38">
+<gml:description>森林</gml:description>
+<gml:name>9000</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_39">
+<gml:description>その他</gml:description>
+<gml:name>2200</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_40">
+<gml:description>不明</gml:description>
+<gml:name>0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="LandUseDetailAttribute_orgLandUse_41">
+<gml:description>不整合</gml:description>
+<gml:name>90</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

@@ -1,5 +1,5 @@
 use super::errors::PlateauProcessorError;
-use nusamai_citygml::GML31_NS;
+use fastxml::transform::StreamTransformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
@@ -14,8 +14,11 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 static ERROR_PORT: Lazy<Port> = Lazy::new(|| Port::new("error"));
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
@@ -309,118 +312,145 @@ impl FaceExtractor {
         self.buffer
             .set_base_feature(file_path.clone(), ctx.feature.clone());
 
-        let document = xml::parse(xml_content).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to parse XML: {e}"))
-        })?;
-        let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to create XML context: {e}"))
-        })?;
-        let root_node = xml::get_root_readonly_node(&document).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to get root node: {e}"))
-        })?;
+        // Collect (gml_id, pos_text) pairs via streaming, then process them
+        let collected: Rc<RefCell<Vec<(String, String)>>> = Rc::new(RefCell::new(Vec::new()));
+        let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
 
-        // Find all WaterBody elements
-        let water_bodies = xml::find_readonly_nodes_by_xpath(
-            &xml_ctx,
-            "//wtr:WaterBody",
-            &root_node,
-        )
-        .map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to find WaterBody elements: {e}"))
-        })?;
+        let transformer = StreamTransformer::new(&xml_content)
+            .with_root_namespaces()
+            .map_err(|e| {
+                PlateauProcessorError::FaceExtractor(format!(
+                    "Failed to create StreamTransformer: {e:?}"
+                ))
+            })?;
 
-        for water_body_node in water_bodies {
-            // Get gml:id
-            let gml_id = water_body_node
-                .get_attribute_ns(
-                    "id",
-                    String::from_utf8(GML31_NS.into_inner().to_vec())
-                        .map_err(|e| {
-                            PlateauProcessorError::FaceExtractor(format!(
-                                "Failed to convert namespace: {e}"
-                            ))
-                        })?
-                        .as_str(),
-                )
-                .unwrap_or_else(|| "unknown".to_string());
+        let collected_clone = Rc::clone(&collected);
+        let stream_error_clone = Rc::clone(&stream_error);
+        transformer
+            .on("//wtr:WaterBody", move |node| {
+                if stream_error_clone.borrow().is_some() {
+                    return;
+                }
 
-            // Find all gml:posList elements under this WaterBody
-            let pos_lists =
-                xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:posList", &water_body_node)
-                    .map_err(|e| {
-                        PlateauProcessorError::FaceExtractor(format!(
-                            "Failed to find posList elements: {e}"
-                        ))
-                    })?;
-
-            for pos_list_node in pos_lists {
-                // Get posList text content
-                let pos_text = pos_list_node.get_content();
-
-                // Parse coordinates
-                let coords = self.parse_pos_list(&pos_text)?;
-
-                // Validate
-                let result = Self::validate_pos_list(&coords);
-
-                // Create feature for this surface
-                let mut feature = ctx.feature.clone();
-                feature.refresh_id();
-
-                // Create polygon geometry from coordinates
-                use reearth_flow_geometry::types::{
-                    coordinate::Coordinate, geometry::Geometry3D, line_string::LineString3D,
-                    polygon::Polygon3D,
+                let doc = node.document();
+                let mut xml_ctx = match xml::create_context(doc) {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
                 };
-                use reearth_flow_types::geometry::{Geometry, GeometryValue};
+                for (prefix, uri) in node.namespaces() {
+                    let _ = xml_ctx.register_namespace(prefix, uri);
+                }
+                let root_node = match xml::get_root_readonly_node(doc) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
 
-                // Output in standard geographic order: x=lon, y=lat
-                // This matches what ExtendedTransverseMercatorProjection.project_forward(lng, lat, z) expects
-                let points: Vec<Coordinate> = coords
-                    .iter()
-                    .map(|(lon, lat, height)| Coordinate {
-                        x: *lon,
-                        y: *lat,
-                        z: *height,
-                    })
-                    .collect();
+                let gml_id = root_node
+                    .get_attribute_ns("id", "http://www.opengis.net/gml")
+                    .unwrap_or_else(|| "unknown".to_string());
 
-                if !points.is_empty() {
-                    let polygon = Polygon3D::new(LineString3D::new(points), vec![]);
-                    feature.geometry = Geometry {
-                        epsg: Some(6697), // JGD2011 geographic
-                        value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
+                let pos_lists =
+                    match xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:posList", &root_node)
+                    {
+                        Ok(nodes) => nodes,
+                        Err(e) => {
+                            *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                            return;
+                        }
                     };
+
+                for pos_list_node in pos_lists {
+                    let pos_text = pos_list_node.get_content().unwrap_or_default();
+                    collected_clone
+                        .borrow_mut()
+                        .push((gml_id.clone(), pos_text));
                 }
+            })
+            .for_each()
+            .map_err(|e| {
+                PlateauProcessorError::FaceExtractor(format!("StreamTransformer error: {e:?}"))
+            })?;
 
-                feature.attributes.insert(
-                    Attribute::new("gml_id"),
-                    AttributeValue::String(gml_id.clone()),
-                );
+        if let Some(err) = Rc::try_unwrap(stream_error)
+            .expect("all callback references should be dropped after for_each()")
+            .into_inner()
+        {
+            return Err(PlateauProcessorError::FaceExtractor(err).into());
+        }
 
-                if result.is_incorrect_num_vertices {
-                    feature.attributes.insert(
-                        Attribute::new(ATTR_IS_INCORRECT_NUM_VERTICES),
-                        AttributeValue::Number(serde_json::Number::from(1)),
-                    );
-                }
+        let collected = Rc::try_unwrap(collected)
+            .expect("all callback references should be dropped after for_each()")
+            .into_inner();
 
-                if result.is_not_closed {
-                    feature.attributes.insert(
-                        Attribute::new(ATTR_IS_NOT_CLOSED),
-                        AttributeValue::Number(serde_json::Number::from(1)),
-                    );
-                }
+        for (gml_id, pos_text) in collected {
+            // Parse coordinates
+            let coords = self.parse_pos_list(&pos_text)?;
 
-                if result.is_wrong_orientation {
-                    feature.attributes.insert(
-                        Attribute::new(ATTR_IS_WRONG_ORIENTATION),
-                        AttributeValue::Number(serde_json::Number::from(1)),
-                    );
-                }
+            // Validate
+            let result = Self::validate_pos_list(&coords);
 
-                self.buffer.add_result(feature, result);
+            // Create feature for this surface
+            let mut feature = ctx.feature.clone();
+            feature.refresh_id();
+
+            // Create polygon geometry from coordinates
+            use reearth_flow_geometry::types::{
+                coordinate::Coordinate, geometry::Geometry3D, line_string::LineString3D,
+                polygon::Polygon3D,
+            };
+            use reearth_flow_types::geometry::{Geometry, GeometryValue};
+
+            // Output in standard geographic order: x=lon, y=lat
+            // This matches what ExtendedTransverseMercatorProjection.project_forward(lng, lat, z) expects
+            let points: Vec<Coordinate> = coords
+                .iter()
+                .map(|(lon, lat, height)| Coordinate {
+                    x: *lon,
+                    y: *lat,
+                    z: *height,
+                })
+                .collect();
+
+            if !points.is_empty() {
+                let polygon = Polygon3D::new(LineString3D::new(points), vec![]);
+                feature.geometry = Arc::new(Geometry {
+                    epsg: Some(6697), // JGD2011 geographic
+                    value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
+                });
             }
+
+            feature
+                .attributes_mut()
+                .insert(Attribute::new("gml_id"), AttributeValue::String(gml_id));
+
+            if result.is_incorrect_num_vertices {
+                feature.attributes_mut().insert(
+                    Attribute::new(ATTR_IS_INCORRECT_NUM_VERTICES),
+                    AttributeValue::Number(serde_json::Number::from(1)),
+                );
+            }
+
+            if result.is_not_closed {
+                feature.attributes_mut().insert(
+                    Attribute::new(ATTR_IS_NOT_CLOSED),
+                    AttributeValue::Number(serde_json::Number::from(1)),
+                );
+            }
+
+            if result.is_wrong_orientation {
+                feature.attributes_mut().insert(
+                    Attribute::new(ATTR_IS_WRONG_ORIENTATION),
+                    AttributeValue::Number(serde_json::Number::from(1)),
+                );
+            }
+
+            self.buffer.add_result(feature, result);
         }
 
         Ok(())
@@ -452,27 +482,27 @@ impl FaceExtractor {
             // Clone the base feature (input feature) and add error count attributes
             let mut summary_feature = base_feature;
 
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("__is_summary"),
                 AttributeValue::Number(serde_json::Number::from(1)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_file_path"),
                 AttributeValue::String(file_path),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_instances"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_instances)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_incorrect_num_vertices"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_incorrect_num_vertices)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_not_closed"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_not_closed)),
             );
-            summary_feature.attributes.insert(
+            summary_feature.attributes_mut().insert(
                 Attribute::new("_num_wrong_orientation"),
                 AttributeValue::Number(serde_json::Number::from(stats.num_wrong_orientation)),
             );
@@ -483,7 +513,7 @@ impl FaceExtractor {
                 summary_feature.attributes.get(&Attribute::new("udxDirs"))
             {
                 let json_filename = format!("summary_{}.json", udx_dirs.replace('/', "_"));
-                summary_feature.attributes.insert(
+                summary_feature.attributes_mut().insert(
                     Attribute::new("_json_filename"),
                     AttributeValue::String(json_filename),
                 );
@@ -539,7 +569,11 @@ impl Processor for FaceExtractor {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Cast self to mutable to flush buffer
         // This is safe because finish is called once at the end
         let mut mutable_self = self.clone();

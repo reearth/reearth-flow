@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/gavv/httpexpect/v2"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/user"
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	docUId = user.NewID()
+	docUId = accountsuser.NewID()
 	docPId = id.NewProjectID()
 
 	rollbackResults = map[int]*ws.Document{

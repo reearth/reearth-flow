@@ -50,6 +50,19 @@ impl DocumentUseCase {
         }
     }
 
+    pub async fn get_latest(&self, doc_id: &str) -> Result<Document, DocumentUseCaseError> {
+        match self.repository.fetch_latest(doc_id).await {
+            Ok(Some(document)) => Ok(document),
+            Ok(None) => Err(DocumentUseCaseError::NotFound {
+                document_id: doc_id.to_string(),
+            }),
+            Err(err) => Err(DocumentUseCaseError::Unexpected {
+                message: format!("failed to get latest document '{}'", doc_id),
+                source: err,
+            }),
+        }
+    }
+
     pub async fn get_history(
         &self,
         doc_id: &str,

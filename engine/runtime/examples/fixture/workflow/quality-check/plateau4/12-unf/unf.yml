@@ -1,0 +1,942 @@
+# Underground Facility (地下埋設物) quality check subgraph
+# LOD1-2 expects Solid, LOD3-4 expects MultiSurface/CompositeSurface
+# Uses GeometryFilter to detect invalid geometry types
+# Uses SolidBoundaryValidator to validate solids for LOD1-2
+# Uses SurfaceValidator for surface errors
+# Uses CompositeSurfaceContinuityFilter for LOD3-4 CompositeSurface continuity
+id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d82
+name: "UNF.UndergroundFacilityValidation"
+nodes:
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6f
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  # LOD splitter
+  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d83
+    name: LodSplitterWithDM
+    type: subGraph
+    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+  # ===== LOD1-2: Detect non-Solid geometry using GeometryFilter =====
+  - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    name: GeometryFilterLod12
+    type: action
+    action: GeometryFilter
+    with:
+      filterType: geometryType
+
+  # Invalid spatial attribute type for LOD1-2 (expects Solid)
+  - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    name: AttributeManagerInvalidSpatialAttrTypeLod12
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: Folder
+          method: create
+          value: |
+            env.get("__value").udxDirs ?? ""
+        - attribute: Index
+          method: create
+          value: |
+            env.get("__value").fileIndex ?? 0
+        - attribute: Filename
+          method: create
+          value: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          method: create
+          value: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          method: create
+          value: |
+            env.get("__value").lod ?? "2"
+        - attribute: "gml:id"
+          method: create
+          value: |
+            env.get("__value").gmlId ?? ""
+        - attribute: "無効な空間属性の型"
+          method: create
+          value: |
+            env.get("__value").geometryName ?? "Unknown"
+        - attribute: udxDirs
+          method: remove
+        - attribute: fileIndex
+          method: remove
+        - attribute: gmlFilename
+          method: remove
+        - attribute: featureType
+          method: remove
+        - attribute: lod
+          method: remove
+        - attribute: gmlId
+          method: remove
+        - attribute: cityGmlAttributes
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: schemas
+          method: remove
+        - attribute: featureId
+          method: remove
+        - attribute: featureIndex
+          method: remove
+        - attribute: featureParentId
+          method: remove
+        - attribute: geometryName
+          method: remove
+        - attribute: gmlName
+          method: remove
+        - attribute: gmlPath
+          method: remove
+        - attribute: gmlPropertyName
+          method: remove
+        - attribute: gmlRootId
+          method: remove
+        - attribute: maxLod
+          method: remove
+        - attribute: featureTypeName
+          method: remove
+
+  # ===== LOD3-4: Detect non-Surface geometry using GeometryFilter =====
+  - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    name: GeometryFilterLod34
+    type: action
+    action: GeometryFilter
+    with:
+      filterType: geometryType
+
+  # Invalid spatial attribute type for LOD3-4 (expects Surface/CompositeSurface/MultiSurface)
+  - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    name: AttributeManagerInvalidSpatialAttrTypeLod34
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: Folder
+          method: create
+          value: |
+            env.get("__value").udxDirs ?? ""
+        - attribute: Index
+          method: create
+          value: |
+            env.get("__value").fileIndex ?? 0
+        - attribute: Filename
+          method: create
+          value: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          method: create
+          value: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          method: create
+          value: |
+            env.get("__value").lod ?? "3"
+        - attribute: "gml:id"
+          method: create
+          value: |
+            env.get("__value").gmlId ?? ""
+        - attribute: "無効な空間属性の型"
+          method: create
+          value: |
+            env.get("__value").geometryName ?? "Unknown"
+        - attribute: udxDirs
+          method: remove
+        - attribute: fileIndex
+          method: remove
+        - attribute: gmlFilename
+          method: remove
+        - attribute: featureType
+          method: remove
+        - attribute: lod
+          method: remove
+        - attribute: gmlId
+          method: remove
+        - attribute: cityGmlAttributes
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: schemas
+          method: remove
+        - attribute: featureId
+          method: remove
+        - attribute: featureIndex
+          method: remove
+        - attribute: featureParentId
+          method: remove
+        - attribute: geometryName
+          method: remove
+        - attribute: gmlName
+          method: remove
+        - attribute: gmlPath
+          method: remove
+        - attribute: gmlPropertyName
+          method: remove
+        - attribute: gmlRootId
+          method: remove
+        - attribute: maxLod
+          method: remove
+        - attribute: featureTypeName
+          method: remove
+
+  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
+    name: FeatureWriterInvalidSpatialAttr
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_無効な空間属性の型.csv")
+
+  - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
+    name: StatisticsCalculatorInvalidSpatialAttr
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - Filename
+        - FeatureType
+        - LOD
+      calculations:
+        - newAttribute: _num_invalid_spatial_attr
+          expr: '1'
+
+  - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2e
+    name: OutputRouterInvalidSpatialAttr
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountInvalidSpatialAttr
+
+  # ===== LOD1-2: SolidBoundaryValidator =====
+  - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
+    name: SolidBoundaryValidatorLod12
+    type: action
+    action: SolidBoundaryValidator
+    with:
+      tolerance: |
+        0.01
+
+  - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5b
+    name: FeatureFilterSolidIssues
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            let issue = env.get("__value").solid_boundary_issues.issue;
+            issue == "NotA2Manifold"
+          outputPort: notClosed
+
+  # Non-watertight solid (NotA2Manifold)
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
+    name: AttributeMapperNotClosed
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: issue
+          expr: |
+            "SurfaceNotClosed"
+
+  - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
+    name: FeatureWriterNotClosed
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_LOD1-2非水密立体.csv")
+
+  - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e
+    name: StatisticsCalculatorNotClosed
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - filename
+        - feature_type
+        - lod
+      calculations:
+        - newAttribute: _num_not_closed_solid
+          expr: '1'
+
+  - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d93
+    name: OutputRouterNotClosed
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountNotClosedSolid
+
+  # Other solid errors
+  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e10
+    name: AttributeMapperOtherSolidErrors
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: issue
+          expr: |
+            "Invalid Solid Boundaries"
+
+  - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b
+    name: FeatureWriterOtherSolidErrors
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_LOD1-2立体のエラー.csv")
+
+  - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2c
+    name: StatisticsCalculatorOtherSolidErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - filename
+        - feature_type
+        - lod
+      calculations:
+        - newAttribute: _num_other_solid_errors
+          expr: '1'
+
+  - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
+    name: OutputRouterOtherSolidErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountOtherSolidErrors
+
+  # ===== LOD1-2: SurfaceValidator for boundary surface errors =====
+  - id: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    name: SurfaceValidatorLod12
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    name: AttributeMapperBoundarySurfaceErrors
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr: |
+            env.get("__value").udxDirs ?? "unf"
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex ?? 1
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          expr: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          expr: |
+            env.get("__value").lod ?? "2"
+        - attribute: "gml:id"
+          expr: |
+            env.get("__value").gmlId ?? ""
+        - attribute: エラー数
+          expr: |
+            1
+        - attribute: エラー内容
+          expr: |
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
+            }
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
+
+  - id: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    name: FeatureWriterBoundarySurfaceErrors
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_LOD1-2境界面のエラー.csv")
+
+  - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    name: StatisticsCalculatorBoundarySurfaceErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - Filename
+        - FeatureType
+        - LOD
+      calculations:
+        - newAttribute: _num_boundary_surface_errors
+          expr: '1'
+
+  - id: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+    name: OutputRouterBoundarySurfaceErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountBoundarySurfaceErrors
+
+  # ===== LOD3-4: SurfaceValidator for surface errors =====
+  - id: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    name: SurfaceValidatorLod34
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    name: AttributeMapperLod34SurfaceErrors
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr: |
+            env.get("__value").udxDirs ?? "unf"
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex ?? 1
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          expr: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          expr: |
+            env.get("__value").lod ?? "3"
+        - attribute: "gml:id"
+          expr: |
+            env.get("__value").gmlId ?? ""
+        - attribute: エラー数
+          expr: |
+            1
+        - attribute: エラー内容
+          expr: |
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
+            }
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
+
+  - id: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    name: FeatureWriterLod34SurfaceErrors
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_LOD3-4面のエラー.csv")
+
+  - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    name: StatisticsCalculatorLod34SurfaceErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - Filename
+        - FeatureType
+        - LOD
+      calculations:
+        - newAttribute: _num_lod34_surface_errors
+          expr: '1'
+
+  - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+    name: OutputRouterLod34SurfaceErrors
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod34SurfaceErrors
+
+  # ===== LOD3-4: CompositeSurfaceContinuityFilter =====
+  - id: 20a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    name: CompositeSurfaceContinuityFilterLod34
+    type: action
+    action: PLATEAU4.CompositeSurfaceContinuityFilter
+
+  - id: 21a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    name: AttributeMapperDiscontinuousCS
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr: |
+            env.get("__value").udxDirs ?? "unf"
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex ?? 1
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename ?? ""
+        - attribute: FeatureType
+          expr: |
+            let ft = env.get("__value").featureType ?? "UndergroundFacility";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
+        - attribute: LOD
+          expr: |
+            env.get("__value").lod ?? "3"
+        - attribute: "gml:id"
+          expr: |
+            env.get("__value").gmlId ?? ""
+        - attribute: 不連続パート数
+          expr: |
+            env.get("__value").discontinuous_parts_count ?? 0
+
+  - id: 22a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    name: FeatureWriterDiscontinuousCS
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "12_地下埋設物_不連続なCompositeSurface.csv")
+
+  - id: 23a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    name: StatisticsCalculatorDiscontinuousCS
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - Filename
+        - FeatureType
+        - LOD
+      calculations:
+        - newAttribute: _num_discontinuous_cs
+          expr: '1'
+
+  - id: 24a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+    name: OutputRouterDiscontinuousCS
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountDiscontinuousCS
+
+  # File output router
+  - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    name: OutputRouterFileOutput
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileOutput
+
+edges:
+  # Input → LodSplitter
+  - id: 01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7
+    from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6f
+    to: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d83
+    fromPort: default
+    toPort: default
+
+  # ===== LOD1 → GeometryFilterLod12 =====
+  - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d8
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d83
+    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    fromPort: lod1
+    toPort: default
+
+  # LOD2 → GeometryFilterLod12
+  - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d9
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d83
+    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    fromPort: lod2
+    toPort: default
+
+  # GeometryFilterLod12 (surface = invalid for LOD1-2)
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e0
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    fromPort: surface
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e1
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    fromPort: curve
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e2
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    fromPort: point
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e3
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    fromPort: triangle
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e4
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    fromPort: unfiltered
+    toPort: default
+
+  # ===== LOD3 → GeometryFilterLod34 =====
+  - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6da
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d83
+    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    fromPort: lod3
+    toPort: default
+
+  # LOD4 → GeometryFilterLod34
+  - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6db
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d83
+    to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    fromPort: lod4
+    toPort: default
+
+  # GeometryFilterLod34 (solid = invalid for LOD3-4)
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e5
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    fromPort: solid
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e6
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    fromPort: curve
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e7
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    fromPort: point
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    fromPort: triangle
+    toPort: default
+
+  - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    fromPort: unfiltered
+    toPort: default
+
+  # ===== Invalid spatial attr type (LOD1-2 and LOD3-4 merge) → Writer → Stats → Output =====
+  - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f0
+    from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
+    fromPort: default
+    toPort: default
+
+  - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f1
+    from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter → FileOutput
+  - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a1
+    from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    fromPort: default
+    toPort: default
+
+  # AttributeManager → StatisticsCalculator
+  - id: 06f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b2
+    from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f91
+    to: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
+    fromPort: default
+    toPort: default
+
+  - id: 06f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b3
+    from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f92
+    to: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
+    fromPort: default
+    toPort: default
+
+  # StatisticsCalculator → OutputRouter
+  - id: 07a8b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c3
+    from: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
+    to: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2e
+    fromPort: default
+    toPort: default
+
+  # ===== LOD1-2 solid (from GeometryFilter) → SolidBoundaryValidator =====
+  - id: 08b9c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d4
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
+    fromPort: solid
+    toPort: default
+
+  # SolidBoundaryValidator (failed) → FeatureFilter
+  - id: 10d1e2f3-a4b5-c6d7-e8f9-a0b1c2d3e4f6
+    from: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
+    to: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5b
+    fromPort: failed
+    toPort: default
+
+  # FeatureFilter (notClosed) → Non-watertight
+  - id: 11e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a7
+    from: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5b
+    to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
+    fromPort: notClosed
+    toPort: default
+
+  - id: 12f3a4b5-c6d7-e8f9-a0b1-c2d3e4f5a6b8
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
+    to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
+    fromPort: default
+    toPort: default
+
+  - id: 13a4b5c6-d7e8-f9a0-b1c2-d3e4f5a6b7c9
+    from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    fromPort: default
+    toPort: default
+
+  - id: 14b5c6d7-e8f9-a0b1-c2d3-e4f5a6b7c8da
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
+    to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e
+    fromPort: default
+    toPort: default
+
+  - id: 15c6d7e8-f9a0-b1c2-d3e4-f5a6b7c8d9e1
+    from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e
+    to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d93
+    fromPort: default
+    toPort: default
+
+  # FeatureFilter (other errors) → Other solid errors
+  - id: 16d7e8f9-a0b1-c2d3-e4f5-a6b7c8d9e0f2
+    from: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5b
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e10
+    fromPort: unfiltered
+    toPort: default
+
+  - id: 17e8f9a0-b1c2-d3e4-f5a6-b7c8d9e0f1a3
+    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e10
+    to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b
+    fromPort: default
+    toPort: default
+
+  - id: 18f9a0b1-c2d3-e4f5-a6b7-c8d9e0f1a2b4
+    from: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    fromPort: default
+    toPort: default
+
+  - id: 19a0b1c2-d3e4-f5a6-b7c8-d9e0f1a2b3c5
+    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e10
+    to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2c
+    fromPort: default
+    toPort: default
+
+  - id: 20b1c2d3-e4f5-a6b7-c8d9-e0f1a2b3c4d6
+    from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2c
+    to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
+    fromPort: default
+    toPort: default
+
+  # ===== LOD1-2 → SurfaceValidator for boundary surface errors =====
+  - id: 21c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e7
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
+    to: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    fromPort: solid
+    toPort: default
+
+  # SurfaceValidator (invalidSurface) → AttributeMapper
+  - id: 23e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a9
+    from: 01a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    to: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    fromPort: invalidSurface
+    toPort: default
+
+  - id: 24f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8ba
+    from: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    to: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    fromPort: default
+    toPort: default
+
+  - id: 25a6b7c8-d9e0-f1a2-b3c4-d5e6f7a8b9c1
+    from: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    fromPort: default
+    toPort: default
+
+  - id: 26b7c8d9-e0f1-a2b3-c4d5-e6f7a8b9c0d2
+    from: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    to: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    fromPort: default
+    toPort: default
+
+  - id: 27c8d9e0-f1a2-b3c4-d5e6-f7a8b9c0d1e3
+    from: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    to: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+    fromPort: default
+    toPort: default
+
+  # ===== LOD3-4 surface → SurfaceValidator =====
+  - id: 30a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c6
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    fromPort: surface
+    toPort: default
+
+  # SurfaceValidator (invalidSurface) → AttributeMapper
+  - id: 31b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d7
+    from: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    to: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    fromPort: invalidSurface
+    toPort: default
+
+  - id: 32c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e8
+    from: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    to: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    fromPort: default
+    toPort: default
+
+  - id: 33d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f9
+    from: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    fromPort: default
+    toPort: default
+
+  - id: 34e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8aa
+    from: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    to: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    fromPort: default
+    toPort: default
+
+  - id: 35f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b1
+    from: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    to: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+    fromPort: default
+    toPort: default
+
+  # ===== LOD3-4 surface → CompositeSurfaceContinuityFilter =====
+  - id: 40a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c6
+    from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
+    to: 20a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    fromPort: surface
+    toPort: default
+
+  # CompositeSurfaceContinuityFilter (failed) → AttributeMapper
+  - id: 41b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d7
+    from: 20a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c2
+    to: 21a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    fromPort: failed
+    toPort: default
+
+  - id: 42c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e8
+    from: 21a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    to: 22a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    fromPort: default
+    toPort: default
+
+  - id: 43d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f9
+    from: 22a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+    fromPort: default
+    toPort: default
+
+  - id: 44e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8aa
+    from: 21a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c3
+    to: 23a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    fromPort: default
+    toPort: default
+
+  - id: 45f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b1
+    from: 23a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
+    to: 24a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+    fromPort: default
+    toPort: default
+
+ports:
+  outputs:
+    - id: errorCountInvalidSpatialAttr
+      nodeId: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2e
+      port: default
+    - id: errorCountNotClosedSolid
+      nodeId: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d93
+      port: default
+    - id: errorCountOtherSolidErrors
+      nodeId: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
+      port: default
+    - id: errorCountBoundarySurfaceErrors
+      nodeId: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+      port: default
+    - id: errorCountLod34SurfaceErrors
+      nodeId: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+      port: default
+    - id: errorCountDiscontinuousCS
+      nodeId: 24a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
+      port: default
+    - id: fileOutput
+      nodeId: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4f
+      port: default

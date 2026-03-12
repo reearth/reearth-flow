@@ -744,6 +744,84 @@ Transform Feature Attributes Using Expressions and Mappings
 ### Category
 * Attribute
 
+## AttributeRangeMapper
+### Type
+* processor
+### Description
+Map attribute values to ranges and assign corresponding output values
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeRangeMapper Parameters",
+  "type": "object",
+  "required": [
+    "inputAttribute",
+    "outputAttribute",
+    "rangeTable"
+  ],
+  "properties": {
+    "defaultValue": {
+      "title": "Default Value",
+      "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+    },
+    "inputAttribute": {
+      "title": "Input Attribute",
+      "description": "The attribute to evaluate for range mapping",
+      "type": "string"
+    },
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "The attribute to store the mapped value",
+      "type": "string"
+    },
+    "rangeTable": {
+      "title": "Range Lookup Table",
+      "description": "List of ranges and their corresponding output values",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/RangeEntry"
+      }
+    }
+  },
+  "definitions": {
+    "RangeEntry": {
+      "title": "Range Entry",
+      "type": "object",
+      "required": [
+        "from",
+        "outputValue",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "title": "From (Minimum)",
+          "description": "The minimum value of the range (inclusive)",
+          "type": "number",
+          "format": "double"
+        },
+        "outputValue": {
+          "title": "Output Value",
+          "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+        },
+        "to": {
+          "title": "To (Maximum)",
+          "description": "The maximum value of the range (exclusive)",
+          "type": "number",
+          "format": "double"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## BoundaryExtractor
 ### Type
 * processor
@@ -1185,7 +1263,52 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 ### Description
 Replace Feature Geometry with Center Point
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CenterPointReplacerParam",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "description": "The method used to compute the replacement center point.",
+      "default": "centerOfGravity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CenterPointMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CenterPointMode": {
+      "description": "Method used to compute the center point of a geometry.",
+      "oneOf": [
+        {
+          "description": "Computes the centroid (center of gravity) of the geometry.",
+          "type": "string",
+          "enum": [
+            "centerOfGravity"
+          ]
+        },
+        {
+          "description": "Computes the center of the geometry's bounding box.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
+          "type": "string",
+          "enum": [
+            "anyInsidePoint"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -1482,6 +1605,137 @@ Generate Convex Hull Polygons from Grouped Features
 ### Category
 * Geometry
 
+## CoordinateExtractor
+### Type
+* processor
+### Description
+Extracts coordinates from geometry vertices into feature attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Extractor Parameters",
+  "type": "object",
+  "required": [
+    "mode"
+  ],
+  "properties": {
+    "defaultZValue": {
+      "title": "Default Z Value",
+      "description": "Z value to use for 2D geometries that have no Z coordinate.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "mode": {
+      "title": "Extraction Mode",
+      "description": "How to extract coordinates from geometry vertices.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateExtractionMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "CoordinateExtractionMode": {
+      "description": "Extraction mode: determines how coordinates are output.",
+      "oneOf": [
+        {
+          "description": "Extract all vertices into a list attribute.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "coordinatesListName": {
+              "title": "Coordinates List Name",
+              "description": "Name of the list attribute that will store coordinate objects (default: \"_indices\")",
+              "default": "_indices",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "allCoordinates"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Extract a single vertex by index.",
+          "type": "object",
+          "required": [
+            "coordinateIndex",
+            "type"
+          ],
+          "properties": {
+            "coordinateIndex": {
+              "title": "Coordinate Index",
+              "description": "Index of the coordinate to extract. 0 = first vertex, negative values count from end (-1 = last).",
+              "type": "integer",
+              "format": "int64"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "specifyCoordinate"
+              ]
+            },
+            "xAttribute": {
+              "title": "X Attribute Name",
+              "description": "Name of the X coordinate attribute (default: \"_x\")",
+              "default": "_x",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "yAttribute": {
+              "title": "Y Attribute Name",
+              "description": "Name of the Y coordinate attribute (default: \"_y\")",
+              "default": "_y",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "zAttribute": {
+              "title": "Z Attribute Name",
+              "description": "Name of the Z coordinate attribute (default: \"_z\")",
+              "default": "_z",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## CsvReader
 ### Type
 * source
@@ -1510,6 +1764,14 @@ Read Features from CSV or TSV File
         }
       ]
     },
+    "encoding": {
+      "title": "Character Encoding",
+      "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "format": {
       "title": "File Format",
       "description": "Choose the delimiter format for the input file",
@@ -1530,6 +1792,16 @@ Read Features from CSV or TSV File
           "type": "null"
         }
       ]
+    },
+    "headerRows": {
+      "title": "Header Row Count",
+      "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0.0
     },
     "inline": {
       "title": "Inline Content",
@@ -1784,7 +2056,7 @@ Writes features to CSV or TSV files.
 ### Type
 * source
 ### Description
-Reads geographic features from CZML (Cesium Language) files for 3D visualization
+Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data
 ### Parameters
 ```json
 {
@@ -1828,11 +2100,47 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
       "description": "If true, skips the document packet (first packet with version/clock info)",
       "default": true,
       "type": "boolean"
+    },
+    "timeSampling": {
+      "title": "Time Sampling Strategy",
+      "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter.",
+      "default": "preserveRaw",
+      "allOf": [
+        {
+          "$ref": "#/definitions/TimeSamplingStrategy"
+        }
+      ]
     }
   },
   "definitions": {
     "Expr": {
       "type": "string"
+    },
+    "TimeSamplingStrategy": {
+      "description": "Strategy for handling time-dynamic CZML properties.",
+      "oneOf": [
+        {
+          "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+          "type": "string",
+          "enum": [
+            "allSamples"
+          ]
+        },
+        {
+          "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+          "type": "string",
+          "enum": [
+            "firstSampleOnly"
+          ]
+        },
+        {
+          "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter.",
+          "type": "string",
+          "enum": [
+            "preserveRaw"
+          ]
+        }
+      ]
     }
   }
 }
@@ -1847,17 +2155,38 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
 ### Type
 * sink
 ### Description
-Export Features as CZML for Cesium Visualization
+Export features as CZML for Cesium visualization. Supports static entities and time-animated timeseries. Configure timeField, groupTimeseriesBy, and epoch (for numeric times) to enable animation.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CzmlWriter Parameters",
+  "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```",
   "type": "object",
   "required": [
     "output"
   ],
   "properties": {
+    "colorAttribute": {
+      "title": "Color Attribute",
+      "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "epoch": {
+      "title": "Epoch",
+      "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "groupBy": {
       "title": "Group By Attributes",
       "description": "Attributes used to group features into separate CZML files",
@@ -1869,12 +2198,74 @@ Export Features as CZML for Cesium Visualization
         "$ref": "#/definitions/Attribute"
       }
     },
+    "groupTimeseriesBy": {
+      "title": "Group Timeseries By",
+      "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "heightAttribute": {
+      "title": "Height Attribute",
+      "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "interpolationAlgorithm": {
+      "title": "Interpolation Algorithm",
+      "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
+      "default": "LINEAR",
+      "allOf": [
+        {
+          "$ref": "#/definitions/InterpolationAlgorithm"
+        }
+      ]
+    },
+    "interpolationDegree": {
+      "title": "Interpolation Degree",
+      "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE).",
+      "default": 1,
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "opacity": {
+      "title": "Opacity",
+      "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
+      "default": 180,
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
     "output": {
       "title": "Output File Path",
       "description": "Path where the CZML file will be written",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "timeField": {
+      "title": "Time Field",
+      "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
         }
       ]
     }
@@ -1885,6 +2276,32 @@ Export Features as CZML for Cesium Visualization
     },
     "Expr": {
       "type": "string"
+    },
+    "InterpolationAlgorithm": {
+      "description": "Interpolation algorithm for Cesium time-dynamic properties.",
+      "oneOf": [
+        {
+          "description": "Linear interpolation between samples (degree 1).",
+          "type": "string",
+          "enum": [
+            "LINEAR"
+          ]
+        },
+        {
+          "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5).",
+          "type": "string",
+          "enum": [
+            "LAGRANGE"
+          ]
+        },
+        {
+          "description": "Hermite spline interpolation using tangent data.",
+          "type": "string",
+          "enum": [
+            "HERMITE"
+          ]
+        }
+      ]
     }
   }
 }
@@ -2487,6 +2904,147 @@ Filter Features Based on Custom Conditions
 ### Category
 * Feature
 
+## FeatureJoiner
+### Type
+* processor
+### Description
+Joins requestor and supplier features based on matching attribute values with configurable join types
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureJoiner Parameters",
+  "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
+  "type": "object",
+  "required": [
+    "joinType"
+  ],
+  "properties": {
+    "conflictResolution": {
+      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ConflictResolution"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "joinType": {
+      "description": "Join type: inner, left, or full",
+      "allOf": [
+        {
+          "$ref": "#/definitions/JoinType"
+        }
+      ]
+    },
+    "requestorAttribute": {
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "requestorAttributeValue": {
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "supplierAttribute": {
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttributeValue": {
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "ConflictResolution": {
+      "oneOf": [
+        {
+          "description": "Requestor attributes win on conflict",
+          "type": "string",
+          "enum": [
+            "requestorWins"
+          ]
+        },
+        {
+          "description": "Supplier attributes win on conflict (default)",
+          "type": "string",
+          "enum": [
+            "supplierWins"
+          ]
+        }
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "JoinType": {
+      "oneOf": [
+        {
+          "description": "Only emit features where a match exists",
+          "type": "string",
+          "enum": [
+            "inner"
+          ]
+        },
+        {
+          "description": "Emit all requestor features (default)",
+          "type": "string",
+          "enum": [
+            "left"
+          ]
+        },
+        {
+          "description": "Emit all features from both sides",
+          "type": "string",
+          "enum": [
+            "full"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* requestor
+* supplier
+### Output Ports
+* joined
+* unjoinedRequestor
+* unjoinedSupplier
+### Category
+* Feature
+
 ## FeatureLodFilter
 ### Type
 * processor
@@ -2642,11 +3200,29 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
             }
           ]
         },
+        "encoding": {
+          "title": "Character Encoding",
+          "description": "Character encoding for the CSV file. If not specified, defaults to UTF-8. Supported: UTF-8, Shift-JIS, EUC-JP, Windows-1252, ISO-8859-1, etc.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
             "csv"
           ]
+        },
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
         },
         "offset": {
           "description": "The offset of the first row to read",
@@ -2677,11 +3253,29 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
             }
           ]
         },
+        "encoding": {
+          "title": "Character Encoding",
+          "description": "Character encoding for the TSV file. If not specified, defaults to UTF-8. Supported: UTF-8, Shift-JIS, EUC-JP, Windows-1252, ISO-8859-1, etc.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
             "tsv"
           ]
+        },
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
         },
         "offset": {
           "description": "The offset of the first row to read",
@@ -3648,7 +4242,46 @@ Replace Feature Geometry from Attribute
 ### Description
 Split Multi-Geometries into Individual Features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometrySplitterParam",
+  "description": "Parameters for GeometrySplitter",
+  "type": "object",
+  "properties": {
+    "splitLevel": {
+      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
+      "default": "element",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SplitLevel"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "SplitLevel": {
+      "description": "Split level for CityGML geometry",
+      "oneOf": [
+        {
+          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
+          "type": "string",
+          "enum": [
+            "element"
+          ]
+        },
+        {
+          "description": "Split down to individual polygons within each element",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -3687,9 +4320,7 @@ Validate Feature Geometry Quality
         {
           "type": "string",
           "enum": [
-            "duplicatePoints",
-            "corruptGeometry",
-            "selfIntersection"
+            "duplicatePoints"
           ]
         },
         {
@@ -3700,6 +4331,40 @@ Validate Feature Geometry Quality
           "properties": {
             "duplicateConsecutivePoints": {
               "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
+          "type": "object",
+          "required": [
+            "corruptGeometry"
+          ],
+          "properties": {
+            "corruptGeometry": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
+          "type": "object",
+          "required": [
+            "selfIntersection"
+          ],
+          "properties": {
+            "selfIntersection": {
+              "type": [
+                "number",
+                "null"
+              ],
               "format": "double"
             }
           },
@@ -3855,6 +4520,62 @@ Writes 3D features to GLTF format with optional texture attachment
 ### Output Ports
 ### Category
 * File
+
+## GridDivider
+### Type
+* processor
+### Description
+Divide Polygons into Regular Grid Cells
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GridDivider Parameters",
+  "type": "object",
+  "required": [
+    "unitSquareSize"
+  ],
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features - each group gets its own grid origin",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "keepSquareOnly": {
+      "title": "Keep Square Only",
+      "description": "If true, only output complete grid squares (discard edge pieces). Default: false",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "unitSquareSize": {
+      "title": "Unit Square Size",
+      "description": "Side length of each grid cell (in the same units as the geometry coordinates)",
+      "type": "number",
+      "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
 
 ## HTTPCaller
 ### Type
@@ -5147,6 +5868,113 @@ Reproject Geometry to Different Coordinate System
 ### Category
 * Geometry
 
+## ImageRasterizer
+### Type
+* processor
+### Description
+Convert vector geometries to raster image format
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Image Rasterizer Parameters",
+  "description": "Configure how to convert vector geometries to raster images",
+  "type": "object",
+  "properties": {
+    "imageWidth": {
+      "description": "The width of image",
+      "default": 1000,
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "onOverlap": {
+      "title": "On Overlap",
+      "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/OnOverlap"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "saveTo": {
+      "title": "Save To",
+      "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "OnOverlap": {
+      "description": "Overlap resolution strategy for rasterized pixels",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "takeLast",
+            "takeFirst"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "max"
+          ],
+          "properties": {
+            "max": {
+              "$ref": "#/definitions/Expr"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "min"
+          ],
+          "properties": {
+            "min": {
+              "$ref": "#/definitions/Expr"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Saturating-add RGB channels of all overlapping polygons.",
+          "type": "string",
+          "enum": [
+            "sum"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+* textureCoordinates
+### Output Ports
+* default
+* textured
+* textureBounds
+### Category
+* Geometry
+
 ## InputRouter
 ### Type
 * processor
@@ -5188,6 +6016,141 @@ Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to
 * rejected
 ### Category
 * Geometry
+
+## JSONFragmenter
+### Type
+* processor
+### Description
+Fragments JSON documents into individual features based on a JSONPath query
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JSONFragmenter Parameters",
+  "description": "Configuration for fragmenting JSON documents into individual features.",
+  "oneOf": [
+    {
+      "description": "Read JSON from a feature attribute",
+      "type": "object",
+      "required": [
+        "inputSource",
+        "jsonAttribute",
+        "jsonQuery"
+      ],
+      "properties": {
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "attribute"
+          ]
+        },
+        "jsonAttribute": {
+          "description": "The attribute containing the JSON text to fragment",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
+        "rejectNoFragments": {
+          "description": "If true, reject features that produce no fragments",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "description": "Read JSON from a file path or URL",
+      "type": "object",
+      "required": [
+        "inputSource",
+        "jsonQuery",
+        "path"
+      ],
+      "properties": {
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "fileUrl"
+          ]
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "path": {
+          "description": "Expression evaluating to the file path or URL containing JSON",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
+        "rejectNoFragments": {
+          "description": "If true, reject features that produce no fragments",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Feature
 
 ## JsonReader
 ### Type
@@ -5604,6 +6567,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File
@@ -6133,7 +7097,20 @@ Extracts attributes from XML fragments based on a schema definition
 ### Description
 Flatten attributes for building feature
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeFlattener Parameters",
+  "type": "object",
+  "properties": {
+    "existingFlattenAttributes": {
+      "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
+      "default": false,
+      "type": "boolean"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -6368,6 +7345,22 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 * PLATEAU
 * Geometry
 
+## PLATEAU4.CompositeSurfaceContinuityFilter
+### Type
+* processor
+### Description
+Checks if a CompositeSurface is continuous (all parts share edges)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* passed
+* failed
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU4.DestinationMeshCodeExtractor
 ### Type
 * processor
@@ -6557,6 +7550,47 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
 ### Category
 * PLATEAU
 
+## PLATEAU4.GmlNameCodeSpaceValidator
+### Type
+* processor
+### Description
+Validates that gml:name elements have codeSpace attributes (coded values)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GmlNameCodeSpaceValidator Parameters",
+  "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "description": "Expression to get the path to the CityGML file",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* gmlNameErrors
+* stats
+### Category
+* PLATEAU
+
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor
@@ -6664,6 +7698,323 @@ Extract object list
 * default
 ### Output Ports
 * default
+### Category
+* PLATEAU
+
+## PLATEAU4.SolarCityGmlAttributeInserter
+### Type
+* processor
+### Description
+Inserts solar radiation measurement attributes into original CityGML files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlAttributeInserterParam",
+  "description": "Configuration for inserting measurement attributes into CityGML files.",
+  "type": "object",
+  "required": [
+    "measurements",
+    "outputDir"
+  ],
+  "properties": {
+    "gmlIdAttribute": {
+      "description": "Attribute name on element features holding gml:id (default: \"gmlId\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "measurements": {
+      "description": "Measurement definitions to insert as gen:measureAttribute elements",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MeasurementDef"
+      }
+    },
+    "outputDir": {
+      "description": "Output directory expression for modified CityGML files",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "pathAttribute": {
+      "description": "Attribute name on path features holding the file path (default: \"path\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceEpsg": {
+      "description": "The projected CRS EPSG code used for rasterization (needed for UV computation)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "textureImagePath": {
+      "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "MeasurementDef": {
+      "description": "A single measurement attribute definition.",
+      "type": "object",
+      "required": [
+        "attribute",
+        "name",
+        "uom"
+      ],
+      "properties": {
+        "attribute": {
+          "description": "Feature attribute key holding the numeric value (e.g. \"totalSolarRadiation\")",
+          "type": "string"
+        },
+        "name": {
+          "description": "XML name attribute value (e.g. \"年間予測日射量\")",
+          "type": "string"
+        },
+        "uom": {
+          "description": "Unit of measurement (e.g. \"kWh\")",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* path
+* element
+* textureBounds
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU4.SolarPositionCalculator
+### Type
+* processor
+### Description
+Calculates solar position (altitude and azimuth) for geographic features using Spencer's algorithm
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolarPositionCalculatorParam",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "sourceEpsg",
+        "time",
+        "type"
+      ],
+      "properties": {
+        "outputBelowHorizon": {
+          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
+          "default": false,
+          "type": "boolean"
+        },
+        "outputType": {
+          "description": "Output type: unit normal vector or altitude/azimuth angles",
+          "default": "unitNormalVector",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputType"
+            }
+          ]
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time": {
+          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "time"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "end",
+        "sourceEpsg",
+        "start",
+        "step",
+        "stepUnit",
+        "type"
+      ],
+      "properties": {
+        "end": {
+          "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\") or date-only format (e.g., \"2025-01-12\" or \"2025-01-12+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "outputBelowHorizon": {
+          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
+          "default": false,
+          "type": "boolean"
+        },
+        "outputType": {
+          "description": "Output type: unit normal vector or altitude/azimuth angles",
+          "default": "unitNormalVector",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputType"
+            }
+          ]
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "step": {
+          "description": "Step value expression evaluating to an integer",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "stepUnit": {
+          "description": "Unit for the step value",
+          "allOf": [
+            {
+              "$ref": "#/definitions/StepUnit"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "duration"
+          ]
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "OutputType": {
+      "description": "Output type for solar position calculation",
+      "oneOf": [
+        {
+          "description": "Output as unit normal vector (x, y, z) in ENU coordinate system",
+          "type": "string",
+          "enum": [
+            "unitNormalVector"
+          ]
+        },
+        {
+          "description": "Output as altitude and azimuth angles in degrees",
+          "type": "string",
+          "enum": [
+            "altitudeAndAzimuth"
+          ]
+        },
+        {
+          "description": "Output both unit normal vector and altitude/azimuth angles",
+          "type": "string",
+          "enum": [
+            "both"
+          ]
+        }
+      ]
+    },
+    "StepUnit": {
+      "type": "string",
+      "enum": [
+        "second",
+        "minute",
+        "hour",
+        "day"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 
@@ -6826,11 +8177,27 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
   "description": "Configure unshared edge detection behavior",
   "type": "object",
   "properties": {
+    "groupBy": {
+      "description": "Group By Attributes. When specified, edge detection is performed independently within each group. Features with the same values for these attributes are grouped together.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "tolerance": {
       "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
       "default": 0.1,
       "type": "number",
       "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
     }
   }
 }
@@ -7025,6 +8392,18 @@ Computes intersection points between rays and geometries
         }
       ]
     },
+    "geomId": {
+      "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "includeRayOrigin": {
       "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
       "default": null,
@@ -7034,6 +8413,15 @@ Computes intersection points between rays and geometries
         },
         {
           "type": "null"
+        }
+      ]
+    },
+    "outputGeometryType": {
+      "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
+      "default": "pointOfIntersection",
+      "allOf": [
+        {
+          "$ref": "#/definitions/OutputGeometryType"
         }
       ]
     },
@@ -7072,6 +8460,25 @@ Computes intersection points between rays and geometries
     },
     "Expr": {
       "type": "string"
+    },
+    "OutputGeometryType": {
+      "description": "Output geometry type for ray intersection results",
+      "oneOf": [
+        {
+          "description": "Output a point at the intersection location (default behavior)",
+          "type": "string",
+          "enum": [
+            "pointOfIntersection"
+          ]
+        },
+        {
+          "description": "Output a line segment from ray origin to intersection point",
+          "type": "string",
+          "enum": [
+            "lineSegmentToIntersection"
+          ]
+        }
+      ]
     },
     "RayDefinition": {
       "description": "Defines how ray data is extracted from feature attributes.",
@@ -7143,6 +8550,7 @@ Computes intersection points between rays and geometries
 * geom
 ### Output Ports
 * intersection
+* no_intersection
 * rejected
 ### Category
 * Geometry
@@ -7209,6 +8617,172 @@ Executes Rhai script expressions to conditionally process and transform features
 * default
 ### Category
 * Feature
+
+## Rotator3D
+### Type
+* processor
+### Description
+Rotate a 3D polygon using from/to vectors or axis-angle specification
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rotator3D Parameters",
+  "description": "Configure the rotation for a 3D polygon",
+  "type": "object",
+  "required": [
+    "rotation"
+  ],
+  "properties": {
+    "rotation": {
+      "title": "Rotation",
+      "description": "The rotation specification: either from/to vectors or axis-angle",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RotationParam"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "RotationParam": {
+      "description": "Rotation specification",
+      "oneOf": [
+        {
+          "description": "Rotation defined by two vectors (from and to)",
+          "type": "object",
+          "required": [
+            "fromX",
+            "fromY",
+            "fromZ",
+            "toX",
+            "toY",
+            "toZ",
+            "type"
+          ],
+          "properties": {
+            "fromX": {
+              "description": "X component of the source direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "fromY": {
+              "description": "Y component of the source direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "fromZ": {
+              "description": "Z component of the source direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "toX": {
+              "description": "X component of the target direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "toY": {
+              "description": "Y component of the target direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "toZ": {
+              "description": "Z component of the target direction vector",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "fromToVectors"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Rotation defined by an axis and angle",
+          "type": "object",
+          "required": [
+            "angle",
+            "axisX",
+            "axisY",
+            "axisZ",
+            "type"
+          ],
+          "properties": {
+            "angle": {
+              "description": "Rotation angle in degrees",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "axisX": {
+              "description": "X component of the rotation axis",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "axisY": {
+              "description": "Y component of the rotation axis",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "axisZ": {
+              "description": "Z component of the rotation axis",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expr"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "axisAngle"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
 
 ## ShapefileReader
 ### Type
@@ -7381,6 +8955,21 @@ Filter Features by Spatial Relationship
   "description": "Configure spatial relationship testing between filter and candidate geometries",
   "type": "object",
   "properties": {
+    "mergeFilterAttributes": {
+      "title": "Merge Filter Attributes",
+      "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+      "default": false,
+      "type": "boolean"
+    },
+    "mergedAttributesPrefix": {
+      "title": "Merged Attributes Prefix",
+      "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\".",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
       "description": "Optional attribute name to store the number of matching filters",

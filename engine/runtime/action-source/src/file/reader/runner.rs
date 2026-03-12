@@ -32,6 +32,9 @@ pub(crate) fn get_input_path(
         .expr_engine
         .eval_scope::<String>(path.as_ref(), &scope)
         .unwrap_or_else(|_| path.to_string());
+    if path.is_empty() {
+        return Ok(None);
+    }
     let uri = Uri::from_str(path.as_str());
     let Ok(uri) = uri else {
         return Err("Invalid path".to_string());

@@ -9,13 +9,15 @@ use std::{
     },
 };
 
+use nusamai_citygml::schema::TypeRef;
+
 use atlas_packer::{
     export::WebpAtlasExporter,
     pack::AtlasPacker,
     texture::cache::{TextureCache, TextureSizeCache},
 };
 use bytemuck::Zeroable;
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
@@ -34,7 +36,6 @@ use crate::file::mvt::tileid::TileIdMethod;
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
-    schema: &nusamai_citygml::schema::Schema,
     tile_id_conv: TileIdMethod,
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
@@ -44,7 +45,6 @@ pub(super) fn geometry_slicing_stage(
     upstream.iter().par_bridge().try_for_each(|parcel| {
         slice_to_tiles(
             parcel,
-            schema,
             min_zoom,
             max_zoom,
             attach_texture,
@@ -233,6 +233,133 @@ fn transform_features(
     Ok(features)
 }
 
+/// Property metadata for tileset.json properties
+#[derive(Debug, Clone, Default)]
+struct PropertyMetadata {
+    minimum: Option<serde_json::Number>,
+    maximum: Option<serde_json::Number>,
+}
+
+impl PropertyMetadata {
+    fn merge(&mut self, other: &PropertyMetadata) {
+        // Merge minimum
+        if let Some(other_min) = &other.minimum {
+            match &self.minimum {
+                Some(self_min) => {
+                    if let (Some(a), Some(b)) = (other_min.as_f64(), self_min.as_f64()) {
+                        if a < b {
+                            self.minimum = Some(other_min.clone());
+                        }
+                    }
+                }
+                None => self.minimum = Some(other_min.clone()),
+            }
+        }
+        // Merge maximum
+        if let Some(other_max) = &other.maximum {
+            match &self.maximum {
+                Some(self_max) => {
+                    if let (Some(a), Some(b)) = (other_max.as_f64(), self_max.as_f64()) {
+                        if a > b {
+                            self.maximum = Some(other_max.clone());
+                        }
+                    }
+                }
+                None => self.maximum = Some(other_max.clone()),
+            }
+        }
+    }
+}
+
+/// Collect property statistics from features based on schema type information
+fn collect_property_stats(
+    features: &[&GltfFeature],
+    typename: &str,
+    schema: &Schema,
+) -> IndexMap<String, PropertyMetadata> {
+    use nusamai_citygml::schema::TypeDef;
+    use reearth_flow_types::AttributeValue;
+
+    let mut stats: IndexMap<String, PropertyMetadata> = IndexMap::new();
+
+    let Some(TypeDef::Feature(feature_def)) = schema.types.get(typename) else {
+        return stats;
+    };
+
+    for feature in features {
+        for (key, value) in &feature.attributes {
+            let Some(attr_def) = feature_def.attributes.get(key) else {
+                continue;
+            };
+
+            // Only collect stats for numeric types
+            let numeric_value: Option<serde_json::Number> = match attr_def.type_ref {
+                TypeRef::Integer => match value {
+                    AttributeValue::Number(n) => n.as_i64().map(serde_json::Number::from),
+                    AttributeValue::String(s) => {
+                        s.parse::<i64>().ok().map(serde_json::Number::from)
+                    }
+                    _ => None,
+                },
+                TypeRef::NonNegativeInteger => match value {
+                    AttributeValue::Number(n) => n.as_u64().map(serde_json::Number::from),
+                    AttributeValue::String(s) => {
+                        s.parse::<u64>().ok().map(serde_json::Number::from)
+                    }
+                    _ => None,
+                },
+                TypeRef::Double | TypeRef::Measure => match value {
+                    AttributeValue::Number(n) => Some(n.clone()),
+                    AttributeValue::String(s) => serde_json::from_str::<serde_json::Number>(s).ok(),
+                    _ => None,
+                },
+                _ => None,
+            };
+
+            if let Some(num) = numeric_value {
+                let metadata = stats.entry(key.clone()).or_default();
+                // Update minimum
+                match &metadata.minimum {
+                    Some(current) => {
+                        if let (Some(new_val), Some(cur_val)) = (num.as_f64(), current.as_f64()) {
+                            if new_val < cur_val {
+                                metadata.minimum = Some(num.clone());
+                            }
+                        }
+                    }
+                    None => metadata.minimum = Some(num.clone()),
+                }
+                // Update maximum
+                match &metadata.maximum {
+                    Some(current) => {
+                        if let (Some(new_val), Some(cur_val)) = (num.as_f64(), current.as_f64()) {
+                            if new_val > cur_val {
+                                metadata.maximum = Some(num.clone());
+                            }
+                        }
+                    }
+                    None => metadata.maximum = Some(num),
+                }
+            } else {
+                // Non-numeric key: still track as seen
+                stats.entry(key.clone()).or_default();
+            }
+        }
+    }
+
+    stats
+}
+
+/// Merge per-tile property stats into globals
+fn merge_property_stats(
+    global_stats: &mut IndexMap<String, PropertyMetadata>,
+    local: IndexMap<String, PropertyMetadata>,
+) {
+    for (key, local_meta) in local {
+        global_stats.entry(key).or_default().merge(&local_meta);
+    }
+}
+
 pub(super) fn tile_writing_stage(
     ctx: Context,
     output_path: Uri,
@@ -243,6 +370,19 @@ pub(super) fn tile_writing_stage(
     draco_compression: bool,
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
+
+    // Pre-initialize property_stats from schema to preserve attribute order
+    let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = {
+        let mut stats = IndexMap::new();
+        for typedef in schema.types.values() {
+            if let nusamai_citygml::schema::TypeDef::Feature(fdef) = typedef {
+                for key in fdef.attributes.keys() {
+                    stats.insert(key.clone(), PropertyMetadata::default());
+                }
+            }
+        }
+        Arc::new(Mutex::new(stats))
+    };
 
     // Texture cache (use default cache size)
     let texture_cache = TextureCache::new(200_000_000);
@@ -273,6 +413,10 @@ pub(super) fn tile_writing_stage(
 
             // Encode metadata and filter valid features
             let valid_features = encode_metadata(&features, &typename, &mut metadata_encoder);
+
+            // Collect property stats from valid features only
+            let tile_stats = collect_property_stats(&valid_features, &typename, schema);
+            merge_property_stats(&mut property_stats.lock().unwrap(), tile_stats);
 
             // Prepare texture packing
             let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
@@ -344,6 +488,39 @@ pub(super) fn tile_writing_stage(
         tree.add_content(content);
     }
 
+    // Convert property stats to tileset properties format
+    let properties = {
+        let stats = property_stats.lock().unwrap();
+        if stats.is_empty() {
+            None
+        } else {
+            let props: IndexMap<String, serde_json::Value> = stats
+                .iter()
+                .map(|(key, meta)| {
+                    let mut obj = serde_json::Map::new();
+                    if let Some(min) = &meta.minimum {
+                        obj.insert(
+                            "minimum".to_string(),
+                            serde_json::Value::Number(min.clone()),
+                        );
+                    }
+                    if let Some(max) = &meta.maximum {
+                        obj.insert(
+                            "maximum".to_string(),
+                            serde_json::Value::Number(max.clone()),
+                        );
+                    }
+                    (key.clone(), serde_json::Value::Object(obj))
+                })
+                .collect();
+            if props.is_empty() {
+                None
+            } else {
+                Some(props)
+            }
+        }
+    };
+
     let tileset = cesiumtiles::tileset::Tileset {
         asset: cesiumtiles::tileset::Asset {
             version: "1.1".to_string(),
@@ -351,6 +528,7 @@ pub(super) fn tile_writing_stage(
         },
         root: tree.into_tileset_root(),
         geometric_error: 1e+100,
+        properties,
         ..Default::default()
     };
 

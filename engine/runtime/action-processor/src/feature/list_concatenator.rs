@@ -119,7 +119,7 @@ impl Processor for ListConcatenator {
         let concatenated = values.join(&self.separate_character);
 
         // Add the result as a new attribute
-        feature.attributes.insert(
+        feature.attributes_mut().insert(
             self.output_attribute_name.clone(),
             AttributeValue::String(concatenated),
         );
@@ -128,7 +128,11 @@ impl Processor for ListConcatenator {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

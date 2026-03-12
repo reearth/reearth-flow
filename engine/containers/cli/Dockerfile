@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.91-slim-bookworm AS builder
+FROM rust:1.93.1-slim-trixie AS builder
 
 ARG NAME=reearth-flow
 WORKDIR /usr/src/${NAME}
@@ -23,7 +23,6 @@ RUN  \
     libc-dev \
     # Required libraries
     libssl-dev \
-    libxml2-dev \
     pkg-config \
     clang \
     libdbus-1-dev \
@@ -39,11 +38,12 @@ RUN \
     --mount=type=bind,source=runtime,target=runtime \
     --mount=type=bind,source=cli,target=cli \
     --mount=type=bind,source=plateau-gis-quality-checker,target=plateau-gis-quality-checker \
-    --mount=type=bind,source=plateau-tiles-test,target=plateau-tiles-test \
+    --mount=type=bind,source=testing/plateau-tiles-test,target=testing/plateau-tiles-test \
+    --mount=type=bind,source=testing/workflow-tests,target=testing/workflow-tests \
     --mount=type=bind,source=worker,target=worker \
     cargo build --package reearth-flow-cli --bin reearth-flow --release && mv target/release/reearth-flow /tmp/reearth-flow
 
-FROM debian:bookworm-slim AS final
+FROM debian:trixie-slim AS final
 
 RUN \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -51,7 +51,6 @@ RUN \
     apt-get update && \
     apt-get install -y \
     ca-certificates \
-    libxml2 \
     python3 \
     libproj25 && \
     rm -rf /var/lib/apt/lists/*

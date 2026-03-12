@@ -1,7 +1,8 @@
 import {
+  CornersOutIcon,
   DotsThreeVerticalIcon,
+  EyeIcon,
   GlobeIcon,
-  MapPinAreaIcon,
   TargetIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useMemo, useRef } from "react";
@@ -16,64 +17,51 @@ import {
 import ThreeJSViewer, {
   type ThreeJSViewerRef,
 } from "@flow/components/visualizations/ThreeJS";
-import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 import type { JobState } from "@flow/stores";
 
-import ThreeDViewer from "./components/ThreeDViewer";
-import TwoDViewer from "./components/TwoDViewer";
+import GeoViewer from "./components/GeoViewer";
 import useHooks from "./hooks";
 
 type Props = {
-  fileType: SupportedDataTypes | null;
   selectedOutputData: any;
   debugJobState?: JobState;
   onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
   selectedFeatureId: string | null;
   // enableClustering?: boolean;
-  mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onShowFeatureDetailsOverlay: (value: boolean) => void;
+  detailsOverlayOpen: boolean;
   detectedGeometryType: string | null;
   visualizerType: "2d-map" | "3d-map" | "3d-model";
 };
 const DebugPreview: React.FC<Props> = ({
-  fileType,
   debugJobState,
   selectedOutputData,
   dataURLs,
   onConvertedSelectedFeature,
-  mapRef,
   cesiumViewerRef,
   selectedFeatureId,
   onSelectedFeature,
   onFlyToSelectedFeature,
+  onShowFeatureDetailsOverlay,
+  detailsOverlayOpen,
   detectedGeometryType,
   visualizerType,
 }) => {
   const t = useT();
   const threeJSViewerRef = useRef<ThreeJSViewerRef>(null);
 
-  const handleResetClick = useCallback(() => {
-    threeJSViewerRef.current?.resetCamera();
-  }, []);
-
-  // Determine if we should show the viewer based on data availability
-
-  const { handleMapLoad } = useHooks({
-    mapRef,
-    selectedOutputData,
-  });
-
   const { featureMap, processedOutputData } = useMemo(() => {
     if (!selectedOutputData?.features) {
       return { featureMap: null, processedOutputData: selectedOutputData };
     }
 
-    const map = new Map<string | number, any>();
+    const map = new Map<string, any>();
     const processedFeatures = selectedOutputData.features.map((f: any) => {
       const processedFeature = {
         ...f,
@@ -99,6 +87,7 @@ const DebugPreview: React.FC<Props> = ({
     };
   }, [selectedOutputData]);
 
+  // Determine if we should show the viewer based on data availability
   const convertFeature = useCallback(
     (featureId: string | null) => {
       if (!featureId || !featureMap) return null;
@@ -125,20 +114,33 @@ const DebugPreview: React.FC<Props> = ({
     return converted;
   }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
 
+  const {
+    showSelectedFeatureOnly,
+    handleGeoViewerReset,
+    handleThreeJsReset,
+    handleShowSelectedFeatureOnly,
+    setCityGmlBoundingSphere,
+  } = useHooks({
+    cesiumViewerRef,
+    threeJSViewerRef,
+    selectedOutputData,
+    convertedSelectedFeature,
+  });
+
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
-      {visualizerType === "2d-map" ? (
+      {visualizerType === "2d-map" || visualizerType === "3d-map" ? (
         <div className="h-full">
-          {/* 2D Viewer Header with actions */}
+          {/* Geo Viewer Header */}
           <div className="py-1">
             <div className="flex w-full justify-between p-1">
-              <div className="flex items-center gap-1 px-2">
-                <MapPinAreaIcon size={16} />
+              <div className="flex items-center gap-1 rounded-md px-3 py-2">
+                <GlobeIcon size={16} />
                 <p className="text-sm font-medium select-none">
-                  {t("2D Viewer")}
+                  {t("Geo Viewer")}
                 </p>
                 {detectedGeometryType && (
-                  <span className="rounded px-2 text-xs text-muted-foreground">
+                  <span className="rounded px-2 py-1 text-xs text-muted-foreground">
                     {detectedGeometryType}
                   </span>
                 )}
@@ -153,58 +155,41 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {/* {fileType === "geojson" && (
-                    <DropdownMenuCheckboxItem
-                      checked={enableClustering}
-                      onCheckedChange={(checked) =>
-                        onEnableClusteringChange(!!checked)
-                      }>
-                      {t("Enable Clustering")}
-                    </DropdownMenuCheckboxItem>
-                  )} */}
-                  <DropdownMenuItem onClick={() => handleMapLoad(true)}>
-                    <TargetIcon />
+                  <DropdownMenuItem onClick={handleGeoViewerReset}>
+                    <CornersOutIcon />
                     {t("Center Data")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!convertedSelectedFeature}
+                    onClick={() =>
+                      onFlyToSelectedFeature?.(convertedSelectedFeature)
+                    }>
+                    <TargetIcon />
+                    {t("Fly to Selected Feature")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!convertedSelectedFeature}
+                    onClick={handleShowSelectedFeatureOnly}>
+                    <EyeIcon />
+                    {showSelectedFeatureOnly
+                      ? t("Show All Features")
+                      : t("Show Selected Feature Only")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
-          <div className="h-[calc(100%-55px)] overflow-hidden rounded-md">
-            <TwoDViewer
-              fileContent={processedOutputData}
-              fileType={fileType}
-              enableClustering={false}
-              convertedSelectedFeature={convertedSelectedFeature}
-              mapRef={mapRef}
-              onMapLoad={handleMapLoad}
-              onSelectedFeature={onSelectedFeature}
-              onFlyToSelectedFeature={onFlyToSelectedFeature}
-            />
-          </div>
-        </div>
-      ) : visualizerType === "3d-map" ? (
-        <div className="h-full">
-          {/* 3D Viewer Header */}
-          <div className="py-1">
-            <div className="flex items-center gap-1 rounded-md px-3 py-2">
-              <GlobeIcon size={16} />
-              <p className="text-sm font-medium select-none">
-                {t("3D Viewer")}
-              </p>
-              {detectedGeometryType && (
-                <span className="rounded px-2 py-1 text-xs text-muted-foreground">
-                  {detectedGeometryType}
-                </span>
-              )}
-            </div>
-          </div>
           <div className="h-[calc(100%-55px)]" id="cesiumContainer">
-            <ThreeDViewer
-              fileContent={selectedOutputData}
-              fileType={fileType}
+            <GeoViewer
+              fileContent={processedOutputData}
+              visualizerType={visualizerType}
               cesiumViewerRef={cesiumViewerRef}
+              selectedFeaturedId={selectedFeatureId}
+              detailsOverlayOpen={detailsOverlayOpen}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
               onSelectedFeature={onSelectedFeature}
+              onShowFeatureDetailsOverlay={onShowFeatureDetailsOverlay}
+              setCityGmlBoundingSphere={setCityGmlBoundingSphere}
             />
           </div>
         </div>
@@ -234,7 +219,7 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleResetClick}>
+                  <DropdownMenuItem onClick={handleThreeJsReset}>
                     <TargetIcon />
                     {t("Reset Camera")}
                   </DropdownMenuItem>

@@ -1,0 +1,33 @@
+id: "b0b0b0b0-0001-4000-8000-000000000001"
+name: "CZML Timeseries Roundtrip Test (Option B - PreserveRaw)"
+entryGraphId: "b0b0b0b0-0001-4000-8000-000000000010"
+with:
+  outputFilePath: "/tmp/czml-timeseries-roundtrip-output.czml"
+
+graphs:
+  - id: "b0b0b0b0-0001-4000-8000-000000000010"
+    name: "Read and Write CZML Timeseries"
+    nodes:
+      - id: "b0b0b0b0-0001-4000-8000-000000000100"
+        name: "Read CZML (PreserveRaw)"
+        type: "action"
+        action: "CzmlReader"
+        with:
+          dataset: "runtime/tests/fixture/testdata/file/reader/czml/timeseries.czml"
+          force2d: false
+          skipDocumentPacket: true
+          timeSampling: "preserveRaw"
+
+      - id: "b0b0b0b0-0001-4000-8000-000000000200"
+        name: "Write CZML (Embedded)"
+        type: "action"
+        action: "CzmlWriter"
+        with:
+          output: "env.get(\"outputFilePath\")"
+
+    edges:
+      - id: "b0b0b0b0-0001-4000-8000-000000001000"
+        from: "b0b0b0b0-0001-4000-8000-000000000100"
+        to: "b0b0b0b0-0001-4000-8000-000000000200"
+        fromPort: "default"
+        toPort: "default"

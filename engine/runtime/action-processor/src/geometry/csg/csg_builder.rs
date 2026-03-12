@@ -1,10 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
+use earcut::{utils3d::project3d_to_2d, Earcut};
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
+    coordinate::Coordinate3D,
     csg::{CSGChild, CSGOperation, CSG},
     face::Face,
     geometry::Geometry3D as FlowGeometry3D,
+    polygon::Polygon3D,
     solid::Solid3D,
 };
 use reearth_flow_runtime::{
@@ -15,7 +18,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Expr, Feature, Geometry, GeometryType, GeometryValue,
+    Attribute, AttributeValue, Attributes, Expr, Feature, Geometry, GeometryType, GeometryValue,
 };
 use rhai::Dynamic;
 use schemars::JsonSchema;
@@ -140,6 +143,10 @@ pub struct CSGBuilder {
 }
 
 impl Processor for CSGBuilder {
+    fn is_accumulating(&self) -> bool {
+        false
+    }
+
     fn num_threads(&self) -> usize {
         2
     }
@@ -204,7 +211,11 @@ impl Processor for CSGBuilder {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         // Send all unpaired features to the rejected port
         for feature in self.left_buffer.values() {
             let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
@@ -252,13 +263,13 @@ impl CSGBuilder {
                 }
             },
             GeometryValue::CityGmlGeometry(cg) => {
-                let faces: Vec<Face> = cg
+                let polygons: Vec<Polygon3D<f64>> = cg
                     .gml_geometries
                     .iter()
                     .filter(|gml_geometry| gml_geometry.ty == GeometryType::Solid)
                     .flat_map(|gml_geometry| gml_geometry.polygons.clone())
-                    .map(|polygon| polygon.exterior().clone().into())
-                    .collect::<Vec<_>>();
+                    .collect();
+                let faces = polygons_to_faces(&polygons);
                 if faces.is_empty() {
                     // No solid faces found, send both to rejected
                     fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
@@ -286,13 +297,13 @@ impl CSGBuilder {
                 }
             },
             GeometryValue::CityGmlGeometry(cg) => {
-                let faces: Vec<Face> = cg
+                let polygons: Vec<Polygon3D<f64>> = cg
                     .gml_geometries
                     .iter()
                     .filter(|gml_geometry| gml_geometry.ty == GeometryType::Solid)
                     .flat_map(|gml_geometry| gml_geometry.polygons.clone())
-                    .map(|polygon| polygon.exterior().clone().into())
-                    .collect::<Vec<_>>();
+                    .collect();
+                let faces = polygons_to_faces(&polygons);
                 if faces.is_empty() {
                     // No solid faces found, send both to rejected
                     fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
@@ -351,16 +362,16 @@ impl CSGBuilder {
             right_csg_child.clone(),
             CSGOperation::Intersection,
         );
-        let mut intersection_feature = Feature::new();
-        intersection_feature.geometry = Geometry {
+        let mut intersection_feature = Feature::new_with_attributes(Attributes::new());
+        intersection_feature.geometry = Arc::new(Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(intersection_csg))),
-        };
+        });
 
         // Add list attribute if created
         if let Some((attr_key, attr_value)) = &list_attribute {
             intersection_feature
-                .attributes
+                .attributes_mut()
                 .insert(attr_key.clone(), attr_value.clone());
         }
 
@@ -372,16 +383,16 @@ impl CSGBuilder {
             right_csg_child.clone(),
             CSGOperation::Union,
         );
-        let mut union_feature = Feature::new();
-        union_feature.geometry = Geometry {
+        let mut union_feature = Feature::new_with_attributes(Attributes::new());
+        union_feature.geometry = Arc::new(Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(union_csg))),
-        };
+        });
 
         // Add list attribute if created
         if let Some((attr_key, attr_value)) = &list_attribute {
             union_feature
-                .attributes
+                .attributes_mut()
                 .insert(attr_key.clone(), attr_value.clone());
         }
 
@@ -389,16 +400,16 @@ impl CSGBuilder {
 
         // Create and send difference CSG (left - right)
         let difference_csg = CSG::new(left_csg_child, right_csg_child, CSGOperation::Difference);
-        let mut difference_feature = Feature::new();
-        difference_feature.geometry = Geometry {
+        let mut difference_feature = Feature::new_with_attributes(Attributes::new());
+        difference_feature.geometry = Arc::new(Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(difference_csg))),
-        };
+        });
 
         // Add list attribute if created
         if let Some((attr_key, attr_value)) = &list_attribute {
             difference_feature
-                .attributes
+                .attributes_mut()
                 .insert(attr_key.clone(), attr_value.clone());
         }
 
@@ -406,4 +417,82 @@ impl CSGBuilder {
 
         Ok(())
     }
+}
+
+/// Convert CityGML polygons (which may have interior rings/holes) to Face objects.
+/// Polygons without holes are converted directly from their exterior ring.
+/// Polygons with holes are triangulated using earcut so the holes are respected.
+fn polygons_to_faces(polygons: &[Polygon3D<f64>]) -> Vec<Face> {
+    let mut faces = Vec::new();
+    let mut earcutter = Earcut::new();
+    let mut buf3d: Vec<[f64; 3]> = Vec::new();
+    let mut buf2d: Vec<[f64; 2]> = Vec::new();
+    let mut index_buf: Vec<u32> = Vec::new();
+
+    for polygon in polygons {
+        if polygon.interiors().is_empty() {
+            // No holes: use exterior ring directly as a face
+            faces.push(polygon.exterior().clone().into());
+        } else {
+            // Has holes: triangulate with earcut to preserve the holes
+            buf3d.clear();
+            buf2d.clear();
+            index_buf.clear();
+
+            // Collect all coordinates: exterior ring first (without closing point),
+            // then each interior ring (without closing points).
+            // earcut expects implicitly-closed rings.
+            let ext = polygon.exterior();
+            let ext_count = if ext.is_closed() && ext.0.len() > 1 {
+                ext.0.len() - 1
+            } else {
+                ext.0.len()
+            };
+            for c in &ext.0[..ext_count] {
+                buf3d.push([c.x, c.y, c.z]);
+            }
+            let num_outer = ext_count;
+
+            let mut hole_indices: Vec<u32> = Vec::new();
+            for interior in polygon.interiors() {
+                hole_indices.push(buf3d.len() as u32);
+                let int_count = if interior.is_closed() && interior.0.len() > 1 {
+                    interior.0.len() - 1
+                } else {
+                    interior.0.len()
+                };
+                for c in &interior.0[..int_count] {
+                    buf3d.push([c.x, c.y, c.z]);
+                }
+            }
+
+            // Project 3D coordinates to 2D for earcut
+            if !project3d_to_2d(&buf3d, num_outer, &mut buf2d) {
+                // Projection failed (degenerate polygon); fall back to exterior only
+                faces.push(polygon.exterior().clone().into());
+                continue;
+            }
+
+            earcutter.earcut(buf2d.iter().cloned(), &hole_indices, &mut index_buf);
+
+            // Convert triangle indices back to Face objects
+            let coords_3d: Vec<Coordinate3D<f64>> = buf3d
+                .iter()
+                .map(|&[x, y, z]| Coordinate3D::new__(x, y, z))
+                .collect();
+
+            for tri in index_buf.chunks_exact(3) {
+                let i0 = tri[0] as usize;
+                let i1 = tri[1] as usize;
+                let i2 = tri[2] as usize;
+                faces.push(Face::new(vec![
+                    coords_3d[i0],
+                    coords_3d[i1],
+                    coords_3d[i2],
+                    coords_3d[i0], // close the ring
+                ]));
+            }
+        }
+    }
+    faces
 }

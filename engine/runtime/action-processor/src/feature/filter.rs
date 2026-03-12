@@ -160,11 +160,19 @@ impl Processor for FeatureFilter {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 
     fn name(&self) -> &str {
         "FeatureFilter"
+    }
+
+    fn num_threads(&self) -> usize {
+        5
     }
 }

@@ -120,8 +120,8 @@ impl Processor for Extruder {
         if geometry.is_empty() {
             return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());
         };
-        let geometry = geometry.clone();
-        let GeometryValue::FlowGeometry3D(flow_geometry) = &geometry.value else {
+        let geom_inner = (**geometry).clone();
+        let GeometryValue::FlowGeometry3D(flow_geometry) = &geom_inner.value else {
             return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
         };
         let FlowGeometry3D::Polygon(polygon) = flow_geometry else {
@@ -130,15 +130,19 @@ impl Processor for Extruder {
         let solid = polygon.extrude(height);
         let geometry = Geometry {
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::Solid(solid)),
-            ..geometry
+            ..geom_inner
         };
         let mut feature = feature.clone();
-        feature.geometry = geometry;
+        feature.geometry = Arc::new(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
         Ok(())
     }
 

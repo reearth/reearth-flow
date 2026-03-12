@@ -15,6 +15,7 @@ use super::{
     closed_curve_filter::ClosedCurveFilterFactory,
     coercer::GeometryCoercerFactory,
     convex_hull_accumulator::ConvexHullAccumulatorFactory,
+    coordinate_extractor::CoordinateExtractorFactory,
     csg::{CSGBuilderFactory, CSGEvaluatorFactory},
     dimension_filter::DimensionFilterFactory,
     dissolver::DissolverFactory,
@@ -24,9 +25,11 @@ use super::{
     filter::GeometryFilterFactory,
     footprint_replacer::FootprintReplacerFactory,
     geometry_part_extractor::GeometryPartExtractorFactory,
+    grid_divider::GridDividerFactory,
     hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory,
     horizontal_reprojector::HorizontalReprojectorFactory,
+    image_rasterizer::ImageRasterizerFactory,
     jp_standard_grid_accumulator::JPStandardGridAccumulatorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory,
     offsetter::OffsetterFactory,
@@ -37,6 +40,7 @@ use super::{
     refiner::RefinerFactory,
     remover::GeometryRemoverFactory,
     replacer::GeometryReplacerFactory,
+    rotator_3d::Rotator3DFactory,
     solid_boundary_validator::SolidBoundaryValidatorFactory,
     spatial_filter::SpatialFilterFactory,
     splitter::GeometrySplitterFactory,
@@ -102,6 +106,10 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<SpatialFilterFactory>::default(),
         Box::<PolygonNormalExtractorFactory>::default(),
         Box::<RayIntersectorFactory>::default(),
+        Box::<ImageRasterizerFactory>::default(),
+        Box::<GridDividerFactory>::default(),
+        Box::<Rotator3DFactory>::default(),
+        Box::<CoordinateExtractorFactory>::default(),
     ];
     factories
         .into_iter()

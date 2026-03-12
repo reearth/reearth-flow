@@ -1,3 +1,4 @@
+mod accumulating_coordinator;
 pub mod dag_executor;
 pub mod execution_dag;
 pub mod node;

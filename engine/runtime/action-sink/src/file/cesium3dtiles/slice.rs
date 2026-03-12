@@ -7,17 +7,17 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 use reearth_flow_types::{
     material::{self, Material},
-    AttributeValue, Feature, GeometryType,
+    Feature, GeometryType,
 };
 
 use super::{tiling, tiling::zxy_from_lng_lat};
 use crate::atlas::GltfFeature;
+use crate::zip_eq_logged::ZipEqLoggedExt;
 
 pub type TileZXYName = (u8, u32, u32);
 
 pub fn slice_to_tiles<E>(
     feature: &Feature,
-    schema: &nusamai_citygml::schema::Schema,
     min_zoom: u8,
     max_zoom: u8,
     attach_texture: bool,
@@ -58,10 +58,6 @@ pub fn slice_to_tiles<E>(
         .sorted()
         .dedup()
         .collect();
-    let Some(feature_type) = feature.feature_type() else {
-        return Ok(());
-    };
-    let feature_schema = schema.types.get(&feature_type).unwrap();
     for entry in city_gml.gml_geometries.iter() {
         match entry.ty {
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
@@ -69,18 +65,18 @@ pub fn slice_to_tiles<E>(
                 for (((poly, poly_uv), poly_mat), poly_tex) in entry
                     .polygons
                     .iter()
-                    .zip_eq(
+                    .zip_eq_logged(
                         city_gml
                             .polygon_uvs
                             .range(entry.pos as usize..(entry.pos + entry.len) as usize)
                             .into_iter(),
                     )
-                    .zip_eq(
+                    .zip_eq_logged(
                         city_gml.polygon_materials
                             [entry.pos as usize..(entry.pos + entry.len) as usize]
                             .iter(),
                     )
-                    .zip_eq(
+                    .zip_eq_logged(
                         city_gml.polygon_textures
                             [entry.pos as usize..(entry.pos + entry.len) as usize]
                             .iter(),
@@ -152,13 +148,8 @@ pub fn slice_to_tiles<E>(
                                             polygons: MultiPolygon::new(),
                                             attributes: feature
                                                 .attributes
-                                                .clone()
-                                                .into_iter()
-                                                .filter(|(_, v)| v.convertible_nusamai_type_ref())
-                                                .filter(|(k, _)| {
-                                                    feature_schema.fields().contains(&k.to_string())
-                                                })
-                                                .map(|(k, v)| (k.to_string(), v))
+                                                .iter()
+                                                .map(|(k, v)| (k.to_string(), v.clone()))
                                                 .collect(),
                                             polygon_material_ids: Default::default(),
                                             materials: Default::default(), // set later
@@ -176,39 +167,29 @@ pub fn slice_to_tiles<E>(
                                         polygons: MultiPolygon::new(),
                                         attributes: feature
                                             .attributes
-                                            .clone()
-                                            .into_iter()
-                                            .filter(|(_, v)| v.convertible_nusamai_type_ref())
-                                            .filter(|(k, _)| {
-                                                feature_schema.fields().contains(&k.to_string())
-                                            })
-                                            .map(|(k, v)| match v {
-                                                AttributeValue::DateTime(value) => (
-                                                    k.to_string(),
-                                                    AttributeValue::String(value.to_string()),
-                                                ),
-                                                _ => (k.to_string(), v),
-                                            })
+                                            .iter()
+                                            .map(|(k, v)| (k.to_string(), v.clone()))
                                             .collect(),
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later
                                     });
                             assert!(poly.rings().count() == poly_uv.rings().count());
-                            poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
-                                |(ri, (ring, uv_ring))| {
-                                    ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
-                                        |(c, uv)| {
+                            poly.rings()
+                                .zip_eq_logged(poly_uv.rings())
+                                .enumerate()
+                                .for_each(|(ri, (ring, uv_ring))| {
+                                    ring.iter_closed()
+                                        .zip_eq_logged(uv_ring.iter_closed())
+                                        .for_each(|(c, uv)| {
                                             ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
-                                        },
-                                    );
+                                        });
                                     if ri == 0 {
                                         sliced_feature.polygons.add_exterior(ring_buffer.drain(..));
                                         sliced_feature.polygon_material_ids.push(mat_idx as u32);
                                     } else {
                                         sliced_feature.polygons.add_interior(ring_buffer.drain(..));
                                     }
-                                },
-                            );
+                                });
                         }
                     }
                 }
@@ -263,13 +244,13 @@ fn slice_polygon(
 
         // todo?: check interior bbox to optimize
 
-        for (ri, (ring, uv_ring)) in poly.rings().zip_eq(poly_uv.rings()).enumerate() {
+        for (ri, (ring, uv_ring)) in poly.rings().zip_eq_logged(poly_uv.rings()).enumerate() {
             if ring.raw_coords().is_empty() {
                 continue;
             }
             ring_buffer.clear();
             ring.iter_closed()
-                .zip_eq(uv_ring.iter_closed())
+                .zip_eq_logged(uv_ring.iter_closed())
                 .fold(None, |a, b| {
                     let Some((a, a_uv)) = a else { return Some(b) };
                     let (b, b_uv) = b;
@@ -325,7 +306,7 @@ fn slice_polygon(
 
     // Slice along X-axis
     let mut poly_buf: Polygon<[f64; 5]> = Polygon::new();
-    for (yi, y_sliced_poly) in y_range.zip_eq(y_sliced_polys.iter()) {
+    for (yi, y_sliced_poly) in y_range.zip_eq_logged(y_sliced_polys.iter()) {
         let x_iter = {
             let (min_x, max_x) = y_sliced_poly
                 .exterior()

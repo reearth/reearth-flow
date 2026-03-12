@@ -6,6 +6,8 @@ import (
 	"io"
 	"testing"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
@@ -13,8 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/file"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	reearthxworkspace "github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
 	"github.com/reearth/reearthx/appx"
@@ -26,7 +26,7 @@ func TestAsset_Create(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -57,7 +57,7 @@ func TestAsset_Create(t *testing.T) {
 	buf := bytes.NewBufferString("Hello")
 	buflen := int64(buf.Len())
 	res, err := uc.Create(ctx, interfaces.CreateAssetParam{
-		WorkspaceID: workspace.ID(ws.ID()),
+		WorkspaceID: accountsworkspace.ID(ws.ID()),
 		File: &file.File{
 			Content:     io.NopCloser(buf),
 			Path:        "hoge.txt",
@@ -68,7 +68,7 @@ func TestAsset_Create(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.NotEmpty(t, res.ID())
-	assert.Equal(t, workspace.ID(ws.ID()), res.Workspace())
+	assert.Equal(t, accountsworkspace.ID(ws.ID()), res.Workspace())
 	assert.Equal(t, "hoge.txt", res.Name())
 	assert.Equal(t, uint64(buflen), res.Size())
 	assert.Equal(t, "", res.ContentType())

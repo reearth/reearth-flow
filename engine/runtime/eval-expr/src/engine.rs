@@ -13,6 +13,27 @@ use crate::module::math::math_module;
 use crate::module::xml::xml_module;
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 
+/// Inner environment exposed to Rhai scripts as "env" at the Engine level.
+/// This is separate from `Engine` to avoid a cyclic reference.
+#[derive(Debug, Clone)]
+pub(crate) struct EngineEnv {
+    vars: ShareLock<Vars>,
+}
+
+impl EngineEnv {
+    pub fn get(&self, name: &str) -> Option<Value> {
+        let vars = self.vars.read().unwrap();
+        vars.get(name).cloned()
+    }
+
+    pub fn set(&self, name: &str, value: Value) {
+        let mut vars = self.vars.write().unwrap();
+        vars.entry(name.to_string())
+            .and_modify(|i| *i = value.clone())
+            .or_insert(value);
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Engine {
     pub(crate) script_engine: Arc<ScriptEngine>,
@@ -29,7 +50,7 @@ impl Engine {
         script_engine.set_allow_looping(true);
         script_engine.set_allow_anonymous_fn(true);
         script_engine.set_allow_shadowing(true);
-        let scope = rhai::Scope::new();
+
         [
             rhai::exported_module!(env_module),
             rhai::exported_module!(scope_module),
@@ -52,17 +73,20 @@ impl Engine {
             .register_static_module("datetime", rhai::exported_module!(datetime_module).into());
         script_engine.register_static_module("math", rhai::exported_module!(math_module).into());
 
-        let engine = Self {
-            script_engine: Arc::new(script_engine),
-            scope: Arc::new(RwLock::new(scope)),
-            vars: Arc::new(RwLock::new(Vars::new())),
-        };
-        engine.init();
-        engine
-    }
+        let vars = Arc::new(RwLock::new(Vars::new()));
 
-    pub fn init(&self) {
-        self.scope.write().unwrap().set_or_push("env", self.clone());
+        let env = EngineEnv {
+            vars: Arc::clone(&vars),
+        };
+
+        let mut rhai_scope = rhai::Scope::new();
+        rhai_scope.set_or_push("env", env);
+
+        Self {
+            script_engine: Arc::new(script_engine),
+            scope: Arc::new(RwLock::new(rhai_scope)),
+            vars,
+        }
     }
 
     pub fn new_scope(&self) -> Scope {

@@ -103,7 +103,7 @@ impl From<Vec<String>> for Record {
         let xpath = xpath.replace("(", "").replace(")", "").replace(".", "/");
 
         let is_unknown_value = columns.get(13).cloned().unwrap_or("".to_string());
-        let required = !is_unknown_value.is_empty();
+        let required = is_cell_marked(&is_unknown_value);
         Self {
             feature_prefix,
             feature_type,
@@ -420,7 +420,7 @@ fn open_workbook(bytes: Bytes) -> Result<Xlsx<Cursor<Bytes>>, Error> {
 fn should_process_row(columns: &[String]) -> bool {
     let has_create = columns
         .get(8)
-        .map(|is_create| !is_create.is_empty())
+        .map(|is_create| is_cell_marked(is_create))
         .unwrap_or(false);
 
     let has_valid_category = columns
@@ -581,5 +581,39 @@ fn process_object_list(objectlist: &mut ObjectListMap) {
                 }
             }
         }
+    }
+}
+
+/// Checks if a cell value has a mark (e.g., circle mark "○").
+/// Returns true if the cell contains any non-whitespace characters.
+/// Ignores full-width spaces (U+3000), half-width spaces (U+0020), and other whitespace.
+fn is_cell_marked(value: &str) -> bool {
+    !value.chars().all(|c| c.is_whitespace())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_cell_marked() {
+        // Marked cells (should return true)
+        assert!(is_cell_marked("○"));
+        assert!(is_cell_marked("●"));
+        assert!(is_cell_marked("あ"));
+        assert!(is_cell_marked("abc"));
+        assert!(is_cell_marked(" ○ ")); // mark with surrounding spaces
+        assert!(is_cell_marked("　○　")); // mark with surrounding full-width spaces
+
+        // Empty or whitespace-only cells (should return false)
+        assert!(!is_cell_marked(""));
+        assert!(!is_cell_marked(" ")); // single half-width space
+        assert!(!is_cell_marked("  ")); // multiple half-width spaces
+        assert!(!is_cell_marked("　")); // single full-width space (U+3000)
+        assert!(!is_cell_marked("　　")); // multiple full-width spaces
+        assert!(!is_cell_marked(" 　 ")); // mixed half-width and full-width spaces
+        assert!(!is_cell_marked("\t")); // tab
+        assert!(!is_cell_marked("\n")); // newline
+        assert!(!is_cell_marked(" \t\n　")); // mixed whitespace
     }
 }

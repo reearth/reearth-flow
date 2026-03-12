@@ -86,6 +86,7 @@ Runtime behavior controlled by `FLOW_RUNTIME_*` variables:
 - `FLOW_RUNTIME_THREAD_POOL_SIZE` - Worker thread count (default: 30)
 - `FLOW_RUNTIME_CHANNEL_BUFFER_SIZE` - Inter-node channel buffer (default: 256)
 - `FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD` - Sink flush threshold (default: 512)
+- `FLOW_RUNTIME_ACCUMULATING_FINISH_CONCURRENCY` - Maximum number of accumulating processors that can run `finish()` concurrently (default: 1). Accumulating processors (e.g., aggregators, sorters) buffer data during processing and emit results during `finish()`. Setting this to 1 serializes finish operations to reduce peak memory usage. Increase if you have sufficient memory and want more parallelism.
 
 Workflow variables use `FLOW_VAR_*` prefix for environment injection.
 

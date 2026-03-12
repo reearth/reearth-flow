@@ -3,6 +3,7 @@ package asset
 import (
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	reearthxasset "github.com/reearth/reearthx/asset/domain/asset"
@@ -84,8 +85,8 @@ func ConvertFromReearthx(rxAsset *reearthxasset.Asset) *AssetWrapper {
 
 func ConvertToReearthx(
 	projectID id.ProjectID,
-	workspaceID id.WorkspaceID,
-	userID *id.UserID,
+	workspaceID accountsid.WorkspaceID,
+	userID *accountsid.UserID,
 	integrationID *id.IntegrationID,
 	fileName string,
 	size uint64,
@@ -146,22 +147,22 @@ func (w *AssetWrapper) Project() id.ProjectID {
 	return flowProject
 }
 
-func (w *AssetWrapper) Workspace() id.WorkspaceID {
+func (w *AssetWrapper) Workspace() accountsid.WorkspaceID {
 	// TODO: after migration, remove this cast
-	return id.WorkspaceID(w.asset.Workspace())
+	return accountsid.WorkspaceID(w.asset.Workspace())
 }
 
 func (w *AssetWrapper) CreatedAt() time.Time {
 	return w.asset.CreatedAt()
 }
 
-func (w *AssetWrapper) User() *id.UserID {
+func (w *AssetWrapper) User() *accountsid.UserID {
 	a := w.asset.User()
 	if a == nil {
 		return nil
 	}
 	// TODO: after migration, remove this cast
-	uid := id.UserID(*a)
+	uid := accountsid.UserID(*a)
 	return &uid
 }
 

@@ -1,6 +1,19 @@
 import bbox from "@turf/bbox";
-import { Cartesian3, GeoJsonDataSource } from "cesium";
-import { MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import {
+  BoundingSphere,
+  Cartesian3,
+  HeadingPitchRange,
+  Math as CesiumMath,
+  Rectangle,
+} from "cesium";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
@@ -20,7 +33,6 @@ export default () => {
   );
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
   const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
@@ -68,7 +80,7 @@ export default () => {
     if (!outputURLs) return undefined;
     return outputURLs.map((url) => ({
       url,
-      name: url.split("/").pop() || url,
+      name: decodeURIComponent(url.split("/").pop() || url),
     }));
   }, [outputURLs]);
 
@@ -126,6 +138,57 @@ export default () => {
     setFullscreenDebug((prev) => !prev);
   };
 
+  const getFeatureBoundingSphereFromBounds = (gmlGeometries: any[]) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let minZ = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let maxZ = -Infinity;
+    let found = false;
+
+    for (const geom of gmlGeometries) {
+      if (!Array.isArray(geom.polygons)) continue;
+
+      for (const polygon of geom.polygons) {
+        for (const coord of polygon.exterior || []) {
+          if (
+            coord &&
+            typeof coord.x === "number" &&
+            typeof coord.y === "number"
+          ) {
+            const z = typeof coord.z === "number" ? coord.z : 0;
+
+            minX = Math.min(minX, coord.x);
+            minY = Math.min(minY, coord.y);
+            minZ = Math.min(minZ, z);
+
+            maxX = Math.max(maxX, coord.x);
+            maxY = Math.max(maxY, coord.y);
+            maxZ = Math.max(maxZ, z);
+
+            found = true;
+          }
+        }
+      }
+    }
+
+    if (!found) return null;
+
+    const corners = [
+      Cartesian3.fromDegrees(minX, minY, minZ),
+      Cartesian3.fromDegrees(minX, minY, maxZ),
+      Cartesian3.fromDegrees(minX, maxY, minZ),
+      Cartesian3.fromDegrees(minX, maxY, maxZ),
+      Cartesian3.fromDegrees(maxX, minY, minZ),
+      Cartesian3.fromDegrees(maxX, minY, maxZ),
+      Cartesian3.fromDegrees(maxX, maxY, minZ),
+      Cartesian3.fromDegrees(maxX, maxY, maxZ),
+    ];
+
+    return BoundingSphere.fromPoints(corners);
+  };
+
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
       if (!selectedFeature) return;
@@ -138,259 +201,136 @@ export default () => {
         currentDetectedGeometryType === "CityGmlGeometry" ||
         currentDetectedGeometryType === "FlowGeometry3D";
 
-      if (is3D && cesiumViewerRef.current) {
-        // 3D Cesium viewer - zoom to entities by feature ID
-        try {
-          // Access the actual Cesium viewer from Resium component
-          const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+      if (cesiumViewerRef.current) {
+        const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+        if (is3D) {
+          try {
+            const featureId = selectedFeature.id;
+            if (!featureId) return;
 
-          if (!cesiumViewer) {
-            console.warn("Cesium viewer not initialized yet");
-            return;
-          }
+            const geometry = selectedFeature.geometry;
 
-          const featureId = selectedFeature.id;
-          if (!featureId) {
-            console.warn("No feature ID found for Cesium zoom");
-            return;
-          }
+            if (geometry?.type === "CityGmlGeometry") {
+              const gmlGeometries =
+                geometry.gmlGeometries ||
+                geometry.value?.cityGmlGeometry?.gmlGeometries;
+              const positions: Cartesian3[] = [];
+              if (!Array.isArray(gmlGeometries)) return;
+              for (const geom of gmlGeometries) {
+                if (!Array.isArray(geom.polygons)) continue;
 
-          // Safety check for entities collection
-          if (!cesiumViewer.entities || !cesiumViewer.entities.values) {
-            console.warn("Cesium entities collection not available yet");
-            return;
-          }
+                for (const polygon of geom.polygons) {
+                  const rings = [
+                    ...(polygon.exterior ? [polygon.exterior] : []),
+                    ...(Array.isArray(polygon.interiors)
+                      ? polygon.interiors
+                      : []),
+                  ];
 
-          // Find all entities that belong to this feature
-          const matchingEntities = cesiumViewer.entities.values.filter(
-            (entity: any) => {
-              // Method 1: Direct entity ID match (CityGML entities)
-              if (
-                entity.id === featureId ||
-                JSON.stringify(entity.id) === JSON.stringify(featureId)
-              ) {
-                return true;
-              }
-
-              // Method 2: Check buildingId property (CityGML surface entities)
-              const buildingId = entity.properties?.getValue()?.buildingId;
-              if (
-                buildingId &&
-                (buildingId === featureId ||
-                  JSON.stringify(buildingId) === JSON.stringify(featureId))
-              ) {
-                return true;
-              }
-
-              // Method 3: Check compound ID prefix (CityGML surface entities like "buildingId_wall_1")
-              if (
-                entity.id &&
-                typeof entity.id === "string" &&
-                entity.id.includes("_")
-              ) {
-                const baseId = entity.id.split("_")[0];
-                if (
-                  baseId === featureId ||
-                  JSON.stringify(baseId) === JSON.stringify(featureId)
-                ) {
-                  return true;
-                }
-              }
-
-              // Method 4: Check GeoJSON entity properties for original feature data
-              try {
-                const entityProps = entity.properties?.getValue();
-                if (entityProps) {
-                  // Check if this entity has original GeoJSON feature data
-                  const originalId = entityProps.id;
-                  if (
-                    originalId === featureId ||
-                    JSON.stringify(originalId) === JSON.stringify(featureId)
-                  ) {
-                    return true;
-                  }
-
-                  // Also check all property keys for potential ID matches
-                  for (const [key, value] of Object.entries(entityProps)) {
-                    if (
-                      key.toLowerCase().includes("id") &&
-                      (value === featureId ||
-                        JSON.stringify(value) === JSON.stringify(featureId))
-                    ) {
-                      return true;
+                  for (const ring of rings) {
+                    if (!Array.isArray(ring)) continue;
+                    for (const coord of ring || []) {
+                      if (
+                        coord &&
+                        typeof coord.x === "number" &&
+                        typeof coord.y === "number"
+                      ) {
+                        positions.push(
+                          Cartesian3.fromDegrees(
+                            coord.x,
+                            coord.y,
+                            typeof coord.z === "number" ? coord.z : 0,
+                          ),
+                        );
+                      }
                     }
                   }
                 }
-              } catch {
-                // Silent fail for property access errors
               }
 
-              return false;
-            },
-          );
+              if (positions.length === 0) return;
 
-          if (matchingEntities.length > 0) {
-            // Validate entities have reasonable coordinates
-            const validEntities = matchingEntities.filter((entity: any) => {
-              try {
-                if (entity.polygon?.hierarchy?.getValue) {
-                  const hierarchy = entity.polygon.hierarchy.getValue();
-                  if (hierarchy?.positions) {
-                    // Check if any position has invalid coordinates
-                    return hierarchy.positions.every(
-                      (pos: any) =>
-                        pos &&
-                        typeof pos.x === "number" &&
-                        !isNaN(pos.x) &&
-                        isFinite(pos.x) &&
-                        typeof pos.y === "number" &&
-                        !isNaN(pos.y) &&
-                        isFinite(pos.y) &&
-                        typeof pos.z === "number" &&
-                        !isNaN(pos.z) &&
-                        isFinite(pos.z),
+              const sphere = getFeatureBoundingSphereFromBounds(gmlGeometries);
+              if (!sphere) return;
+
+              const paddedSphere = new BoundingSphere(
+                sphere.center,
+                Math.max(sphere.radius * 1.2, 10),
+              );
+
+              cesiumViewerRef.current?.cesiumElement.camera.flyToBoundingSphere(
+                paddedSphere,
+                {
+                  duration: 1.5,
+                  offset: new HeadingPitchRange(
+                    0,
+                    CesiumMath.toRadians(-35),
+                    paddedSphere.radius * 2.5,
+                  ),
+                },
+              );
+            } else {
+              // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
+              const matchingEntities =
+                cesiumViewerRef.current?.cesiumElement.entities.values.filter(
+                  (entity: any) => {
+                    const props = entity.properties?.getValue?.();
+                    return (
+                      props?._originalId === featureId ||
+                      entity.id === featureId
                     );
-                  }
-                }
-                return true; // If no polygon, assume valid
-              } catch {
-                return false;
-              }
-            });
-
-            if (validEntities.length === 0) {
-              console.warn(
-                "No valid entities found - all have invalid coordinates",
-              );
-              return;
-            }
-
-            try {
-              // Try different zoom approaches to handle potential coordinate issues
-
-              // Approach 1: Simple zoomTo without offset on valid entities
-              cesiumViewer.zoomTo(validEntities);
-            } catch (zoomError) {
-              console.warn(
-                "Direct zoomTo failed, trying fallback approach:",
-                zoomError,
-              );
-
-              try {
-                // Approach 2: Zoom to first valid entity only
-                if (validEntities[0]) {
-                  cesiumViewer.zoomTo(validEntities[0]);
-                }
-              } catch (fallbackError) {
-                console.error("All zoom approaches failed:", fallbackError);
-
-                // Approach 3: Manual camera positioning using entity bounds
-                try {
-                  const entity = validEntities[0];
-                  if (entity.position) {
-                    const position = entity.position.getValue();
-                    if (position) {
-                      cesiumViewer.camera.lookAt(
-                        position,
-                        new Cartesian3(100, 100, 100), // Simple offset
+                  },
+                );
+              if (matchingEntities.length > 0) {
+                cesiumViewerRef.current?.cesiumElement.zoomTo(matchingEntities);
+              } else {
+                // Search in data sources as fallback
+                for (const dataSource of cesiumViewer.dataSources) {
+                  const matching = dataSource.entities.values.filter(
+                    (entity: any) => {
+                      const props = entity.properties?.getValue?.();
+                      return (
+                        props?._originalId === featureId ||
+                        entity.id === featureId
                       );
-                    }
-                  }
-                } catch (manualError) {
-                  console.error(
-                    "Manual camera positioning failed:",
-                    manualError,
+                    },
                   );
+                  if (matching.length > 0) {
+                    cesiumViewer.zoomTo(matching);
+                    break;
+                  }
                 }
               }
             }
-          } else {
-            console.warn(
-              "No matching Cesium entities found for feature ID:",
-              featureId,
+          } catch (err) {
+            console.error("Error zooming to Cesium feature:", err);
+          }
+        } else {
+          try {
+            const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+
+            const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
+            const sphere = BoundingSphere.fromRectangle3D(rect);
+            const paddedSphere = new BoundingSphere(
+              sphere.center,
+              Math.max(sphere.radius * 1.5, 500),
             );
 
-            // Fallback: Try to zoom to feature using its original geometry
-            // This is useful for simple GeoJSON data where entity matching fails
-            try {
-              if (selectedFeature.geometry) {
-                console.log("Attempting fallback zoom using feature geometry");
-
-                // Create a temporary entity from the feature geometry to zoom to
-                const tempEntity = cesiumViewer.entities.add({
-                  id: `temp_zoom_${featureId}`,
-                  position: undefined, // Will be determined by geometry
-                });
-
-                // Try to set geometry on temp entity and zoom to it
-                if (
-                  selectedFeature.geometry.type === "Point" &&
-                  selectedFeature.geometry.coordinates
-                ) {
-                  const [lng, lat, height = 0] =
-                    selectedFeature.geometry.coordinates;
-                  tempEntity.position = Cartesian3.fromDegrees(
-                    lng,
-                    lat,
-                    height,
-                  );
-
-                  cesiumViewer.zoomTo(tempEntity);
-                } else {
-                  // For other geometry types, try to use Cesium's GeoJSON processing
-                  // Create a minimal feature collection for this single feature
-                  const tempGeoJSON = {
-                    type: "FeatureCollection",
-                    features: [selectedFeature],
-                  };
-
-                  // Load as temporary data source and zoom to it
-                  GeoJsonDataSource.load(tempGeoJSON)
-                    .then((dataSource: any) => {
-                      cesiumViewer.dataSources.add(dataSource);
-                      cesiumViewer.zoomTo(dataSource.entities);
-                      // Clean up after zoom
-                      setTimeout(() => {
-                        cesiumViewer.dataSources.remove(dataSource);
-                      }, 1000);
-                    })
-                    .catch(() => {
-                      // Final fallback: just zoom to a reasonable area
-                      console.warn(
-                        "All zoom methods failed, using default view",
-                      );
-                    });
-                }
-
-                // Clean up temp entity
-                setTimeout(() => {
-                  cesiumViewer.entities.removeById(`temp_zoom_${featureId}`);
-                }, 500);
-              }
-            } catch (fallbackError) {
-              console.error("Fallback zoom method also failed:", fallbackError);
-            }
+            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
+              duration: 1.5,
+              offset: new HeadingPitchRange(
+                0,
+                CesiumMath.toRadians(-90),
+                paddedSphere.radius * 2,
+              ),
+            });
+          } catch (error) {
+            console.error("Error calculating bounding box for feature:", error);
           }
-        } catch (err) {
-          console.error("Error zooming to Cesium feature:", err);
-        }
-      } else if (!is3D && mapRef.current) {
-        // 2D MapLibre viewer - use existing bbox approach
-        try {
-          const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-          mapRef.current.fitBounds(
-            [
-              [minLng, minLat],
-              [maxLng, maxLat],
-            ],
-            { padding: 0, duration: 500, maxZoom: 15 },
-          );
-        } catch (err) {
-          console.error("Error computing bbox for selectedFeature:", err);
         }
       }
     },
-    [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
+    [streamingQuery.detectedGeometryType, cesiumViewerRef],
   );
 
   const formattedData = useDataColumnizer({
@@ -401,7 +341,7 @@ export default () => {
   const featureIdMap = useMemo(() => {
     if (!formattedData.tableData) return null;
 
-    const map = new Map<string | number, any>();
+    const map = new Map<string, any>();
     formattedData.tableData.forEach((row: any) => {
       const id = row.id;
       const normalizedId = JSON.parse(id);
@@ -420,6 +360,14 @@ export default () => {
     if (!detailsOverlayOpen || !selectedFeature) return null;
     return selectedFeature;
   }, [detailsOverlayOpen, selectedFeature]);
+
+  useEffect(() => {
+    if (!selectedFeatureId || !featureIdMap) return;
+    if (!featureIdMap.has(selectedFeatureId)) {
+      setSelectedFeatureId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureIdMap]);
 
   const handleFeatureSelect = useCallback(
     (featureId: string | null) => {
@@ -449,8 +397,8 @@ export default () => {
     [convertedSelectedFeature, handleFlyToSelectedFeature, handleFeatureSelect],
   );
 
-  const handleCloseFeatureDetails = useCallback(() => {
-    setDetailsOverlayOpen(false);
+  const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
+    setDetailsOverlayOpen(value);
   }, []);
 
   const handleRemoveDataURL = useCallback(
@@ -528,8 +476,6 @@ export default () => {
   return {
     debugJobId,
     debugJobState,
-    fileType,
-    mapRef,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -539,7 +485,6 @@ export default () => {
     outputDataForDownload,
     selectedOutputData,
     // enableClustering,
-    selectedFeature,
     selectedFeatureId,
     detailsOverlayOpen,
     detailsFeature,
@@ -556,7 +501,7 @@ export default () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    handleCloseFeatureDetails,
+    handleShowFeatureDetailsOverlay,
 
     // Data loading features (always available now)
     streamingQuery: streamingQuery,
