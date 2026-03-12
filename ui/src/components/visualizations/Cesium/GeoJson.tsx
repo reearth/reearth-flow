@@ -91,18 +91,18 @@ const GeoJsonData: React.FC<Props> = ({
   }, [sanitizedData]);
 
   const updateVisibility = useCallback(() => {
-    const ds = dataSourceRef.current;
-    if (!ds) return;
-    ds.entities.values.forEach((entity: Entity) => {
-      if (!showSelectedFeatureOnly) {
-        entity.show = true;
-        return;
-      }
+    featureMapRef.current.forEach((records, _id) => {
+      records.forEach(({ entity }) => {
+        if (!showSelectedFeatureOnly) {
+          entity.show = true;
+          return;
+        }
 
-      const props = entity.properties?.getValue?.();
-      const id = props?._originalId ?? entity.id;
+        const props = entity.properties?.getValue?.();
+        const entityId = props?._originalId ?? entity.id;
 
-      entity.show = id === selectedFeatureId;
+        entity.show = entityId === selectedFeatureId;
+      });
     });
   }, [selectedFeatureId, showSelectedFeatureOnly]);
 
