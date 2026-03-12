@@ -129,7 +129,7 @@ impl BuilderDag {
                 };
                 let sources = std::mem::take(&mut affecting_sources[node_index]);
                 let Some(source) = sources.into_iter().next() else {
-                    continue; // orphaned sink (no connected source) — skip, like orphaned sources/processors
+                    continue; // orphaned sink (no connected source)
                 };
                 let node_index = NodeIndex::new(node_index);
                 if sink.name() != node.node.action() {
