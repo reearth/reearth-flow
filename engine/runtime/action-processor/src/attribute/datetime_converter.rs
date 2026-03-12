@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use chrono::{Datelike, FixedOffset, NaiveDate};
+use chrono::Datelike;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -8,6 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::datetime::DateTime;
 use reearth_flow_types::AttributeValue;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,32 +17,6 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 const FAILED_PORT: &str = "failed";
-
-/// Internal enum representing the parsed datetime value.
-/// Follows the "correct typing" principle:
-/// - NaiveDate: for date-only values (no timezone)
-/// - DateTime<Utc>: for absolute timestamps or when timezone is unknown
-/// - DateTime<FixedOffset>: for datetime strings that include timezone info
-#[derive(Debug, Clone)]
-enum DateTimeValue {
-    NaiveDate(NaiveDate),
-    Utc(chrono::DateTime<chrono::Utc>),
-    FixedOffset(chrono::DateTime<FixedOffset>),
-}
-
-impl DateTimeValue {
-    /// Convert to DateTime<Utc> for formatting to formats that require UTC
-    fn to_utc(&self) -> chrono::DateTime<chrono::Utc> {
-        match self {
-            DateTimeValue::NaiveDate(d) => chrono::DateTime::from_naive_utc_and_offset(
-                d.and_hms_opt(0, 0, 0).unwrap(),
-                chrono::Utc,
-            ),
-            DateTimeValue::Utc(dt) => *dt,
-            DateTimeValue::FixedOffset(dt) => dt.with_timezone(&chrono::Utc),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct DateTimeConverterFactory;
@@ -220,7 +195,7 @@ impl Processor for DateTimeConverter {
 fn parse_datetime(
     value: &AttributeValue,
     format: &DateTimeInputFormat,
-) -> Result<DateTimeValue, String> {
+) -> Result<DateTime, String> {
     // Extract string and/or numeric values based on input type
     match value {
         AttributeValue::String(s) => {
@@ -243,7 +218,7 @@ fn parse_from_string_and_number(
     i64_val: Option<i64>,
     f64_val: Option<f64>,
     format: &DateTimeInputFormat,
-) -> Result<DateTimeValue, String> {
+) -> Result<DateTime, String> {
     // Get effective i64 value: use i64_val if available, otherwise truncate f64_val
     let effective_i64 = i64_val.or_else(|| f64_val.map(|f| f.trunc() as i64));
 
@@ -258,27 +233,27 @@ fn parse_from_string_and_number(
                 if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
                     let year = dt.year();
                     if (1970..=2100).contains(&year) {
-                        return Ok(DateTimeValue::Utc(dt));
+                        return Ok(DateTime::Utc(dt));
                     }
                 }
                 // Fallback: try milliseconds
                 if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
-                    return Ok(DateTimeValue::Utc(dt));
+                    return Ok(DateTime::Utc(dt));
                 }
             }
             // Try string formats (RFC3339, YYYY-MM-DD, etc.)
             if let Some(s) = str_val {
                 // Try RFC3339 first - may include timezone info
                 if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
-                    return Ok(DateTimeValue::FixedOffset(dt));
+                    return Ok(DateTime::FixedOffset(dt));
                 }
                 // Try other formats that result in Utc
                 if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
-                    return Ok(DateTimeValue::Utc(dt));
+                    return Ok(DateTime::Utc(dt));
                 }
                 // Try date-only format
                 if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-                    return Ok(DateTimeValue::NaiveDate(d));
+                    return Ok(DateTime::NaiveDate(d));
                 }
             }
             Err("Could not auto-detect datetime format".to_string())
@@ -287,26 +262,26 @@ fn parse_from_string_and_number(
             let s = str_val.ok_or("Expected string value for RFC3339")?;
             // RFC3339 may include timezone - parse as FixedOffset to preserve it
             chrono::DateTime::parse_from_rfc3339(s)
-                .map(DateTimeValue::FixedOffset)
+                .map(DateTime::FixedOffset)
                 .map_err(|e| format!("Failed to parse RFC3339: {e}"))
         }
         DateTimeInputFormat::UnixS => {
             let n = effective_i64.ok_or("Expected numeric value for Unix timestamp")?;
             reearth_flow_common::datetime::try_from_unix_s(n)
-                .map(DateTimeValue::Utc)
+                .map(DateTime::Utc)
                 .map_err(|e| format!("Failed to parse Unix timestamp (seconds): {e}"))
         }
         DateTimeInputFormat::UnixMs => {
             let n = effective_i64.ok_or("Expected numeric value for Unix timestamp")?;
             reearth_flow_common::datetime::try_from_unix_ms(n)
-                .map(DateTimeValue::Utc)
+                .map(DateTime::Utc)
                 .map_err(|e| format!("Failed to parse Unix timestamp (milliseconds): {e}"))
         }
         DateTimeInputFormat::Date => {
             let s = str_val.ok_or("Expected string value for Date format")?;
             // Parse YYYY-MM-DD format - store as NaiveDate (no timezone)
             chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
-                .map(DateTimeValue::NaiveDate)
+                .map(DateTime::NaiveDate)
                 .map_err(|e| format!("Failed to parse Date: {e}"))
         }
         DateTimeInputFormat::Custom(fmt) => {
@@ -314,19 +289,20 @@ fn parse_from_string_and_number(
             // Custom formats without timezone info are parsed as NaiveDateTime, stored as Utc
             let naive_dt = chrono::NaiveDateTime::parse_from_str(s, fmt)
                 .map_err(|e| format!("Failed to parse custom format: {e}"))?;
-            Ok(DateTimeValue::Utc(
-                chrono::DateTime::from_naive_utc_and_offset(naive_dt, chrono::Utc),
-            ))
+            Ok(DateTime::Utc(chrono::DateTime::from_naive_utc_and_offset(
+                naive_dt,
+                chrono::Utc,
+            )))
         }
     }
 }
 
-fn format_datetime(dt: &DateTimeValue, format: &DateTimeOutputFormat) -> AttributeValue {
+fn format_datetime(dt: &DateTime, format: &DateTimeOutputFormat) -> AttributeValue {
     match format {
         DateTimeOutputFormat::Rfc3339 => {
             // Output RFC3339 - preserve timezone info if available
             match dt {
-                DateTimeValue::FixedOffset(dt) => AttributeValue::String(dt.to_rfc3339()),
+                DateTime::FixedOffset(dt) => AttributeValue::String(dt.to_rfc3339()),
                 _ => {
                     AttributeValue::String(reearth_flow_common::datetime::to_rfc3339(&dt.to_utc()))
                 }
@@ -334,39 +310,21 @@ fn format_datetime(dt: &DateTimeValue, format: &DateTimeOutputFormat) -> Attribu
         }
         DateTimeOutputFormat::UnixS => {
             // Unix timestamps are always UTC
-            let ts = dt.to_utc().timestamp();
+            let ts = dt.timestamp();
             AttributeValue::Number(serde_json::Number::from(ts))
         }
         DateTimeOutputFormat::UnixMs => {
             // Unix timestamps are always UTC
-            let ts = dt.to_utc().timestamp_millis();
+            let ts = dt.timestamp_millis();
             AttributeValue::Number(serde_json::Number::from(ts))
         }
         DateTimeOutputFormat::Date => {
             // Date-only output
-            match dt {
-                DateTimeValue::NaiveDate(d) => {
-                    AttributeValue::String(d.format("%Y-%m-%d").to_string())
-                }
-                DateTimeValue::Utc(dt) => AttributeValue::String(dt.format("%Y-%m-%d").to_string()),
-                DateTimeValue::FixedOffset(dt) => {
-                    AttributeValue::String(dt.format("%Y-%m-%d").to_string())
-                }
-            }
+            AttributeValue::String(dt.format("%Y-%m-%d"))
         }
         DateTimeOutputFormat::Custom(fmt) => {
-            // Custom format - use appropriate formatter based on type
-            match dt {
-                DateTimeValue::NaiveDate(d) => {
-                    // Format as midnight of that date for custom datetime formats
-                    let naive_dt = d.and_hms_opt(0, 0, 0).unwrap();
-                    AttributeValue::String(naive_dt.format(fmt).to_string())
-                }
-                DateTimeValue::Utc(dt) => AttributeValue::String(dt.format(fmt).to_string()),
-                DateTimeValue::FixedOffset(dt) => {
-                    AttributeValue::String(dt.format(fmt).to_string())
-                }
-            }
+            // Custom format - use the DateTime's format method
+            AttributeValue::String(dt.format(fmt))
         }
     }
 }
@@ -631,7 +589,7 @@ mod tests {
 
         // Verify it's stored as FixedOffset
         match dt {
-            DateTimeValue::FixedOffset(dt) => {
+            DateTime::FixedOffset(dt) => {
                 assert_eq!(dt.offset().local_minus_utc(), 5 * 3600 + 30 * 60); // +05:30
             }
             _ => panic!("Expected FixedOffset, got {:?}", dt),
@@ -672,7 +630,7 @@ mod tests {
 
         // Verify it's stored as NaiveDate
         match dt {
-            DateTimeValue::NaiveDate(d) => {
+            DateTime::NaiveDate(d) => {
                 assert_eq!(d.year(), 2021);
                 assert_eq!(d.month(), 1);
                 assert_eq!(d.day(), 15);
