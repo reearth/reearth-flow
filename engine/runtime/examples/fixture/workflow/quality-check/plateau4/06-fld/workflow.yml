@@ -110,7 +110,7 @@ graphs:
             - attribute: "_fld_scale"
               method: create
               value: |
-                let filename = env.get("__value")["_gml_filename"];
+                let filename = env.get("__value")["name"];
                 if filename == () {
                   return ();
                 }
@@ -215,6 +215,9 @@ graphs:
         action: PLATEAU4.UnsharedEdgeDetector
         with:
           tolerance: 1.0  # 1 meter tolerance for edge matching
+          groupBy:
+            - "_fld_scale"
+            - "udxDirs"
 
       # AttributeAggregator: Count unshared edges
       - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
