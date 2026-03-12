@@ -15,6 +15,12 @@ import {
   ShowGeometryInstanceAttribute,
 } from "cesium";
 
+import {
+  sampleMeshPositions,
+  triangularMeshToGeometryInstance,
+  type TriangularMeshData,
+} from "./flowGeometry3DToPrimitives";
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type CityGmlGeometry = {
@@ -50,12 +56,16 @@ export type FeatureInstanceData = {
   absoluteInstanceIds: object[];
   /** GeometryInstance id objects stored in the shared groundPrimitive */
   groundInstanceIds: object[];
+  /** GeometryInstance id objects stored in the shared meshPrimitive */
+  meshInstanceIds: object[];
   lodPrimitiveCollection: PrimitiveCollection | null;
 };
 
 export type PrimitivesResult = {
   absolutePrimitive: Primitive | null;
   groundPrimitive: GroundPrimitive | null;
+  /** Flat-shaded primitive for TriangularMesh geometry within gmlGeometries */
+  meshPrimitive: Primitive | null;
   featureMap: Map<string, FeatureInstanceData>;
   boundingSphere: BoundingSphere | null;
 };
@@ -182,7 +192,6 @@ function coordsToPositions(coordinates: any[]): Cartesian3[] {
 
 /**
  * Determine surface type color (floor/roof/wall) for a single polygon.
- * Mirrors the heuristic used in the old processPolygons function.
  */
 function getSurfaceTypeColor(polygon: any, globalMinZ: number): Color {
   const exterior: any[] = polygon.exterior || [];
@@ -206,8 +215,6 @@ function getSurfaceTypeColor(polygon: any, globalMinZ: number): Color {
 
 /**
  * Resolve per-polygon color from CityGML material data.
- * Checks polygonMaterials → diffuseColor, falls back to defaultColor.
- * Note: PerInstanceColorAppearance does not support textures; polygonTextures is skipped.
  */
 function resolveAppearanceColor(
   globalIndex: number,
@@ -246,6 +253,7 @@ export function convertFeatureCollectionToPrimitives(
 ): PrimitivesResult {
   const absoluteInstances: GeometryInstance[] = [];
   const groundInstances: GeometryInstance[] = [];
+  const meshInstances: GeometryInstance[] = [];
   const featureMap = new Map<string, FeatureInstanceData>();
   const sampledPositions: Cartesian3[] = [];
 
@@ -255,16 +263,17 @@ export function convertFeatureCollectionToPrimitives(
 
     if (!featureId) continue;
 
-    const gmlGeometries =
-      geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-    if (!gmlGeometries || !Array.isArray(gmlGeometries)) continue;
-
     const entry: FeatureInstanceData = {
       feature,
       absoluteInstanceIds: [],
       groundInstanceIds: [],
+      meshInstanceIds: [],
       lodPrimitiveCollection: null,
     };
+
+    const gmlGeometries =
+      geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
+    if (!gmlGeometries || !Array.isArray(gmlGeometries)) continue;
 
     // ── DEM ─────────────────────────────────────────────────────────────────
     if (isDemFeature(properties)) {
@@ -339,6 +348,33 @@ export function convertFeatureCollectionToPrimitives(
         );
       }
       if (selectedGeometries.length === 0) selectedGeometries = gmlGeometries;
+
+      // ── TriangularMesh path ───────────────────────────────────────────────
+      const meshGeometries = selectedGeometries.filter(
+        (g: any) => g.triangularMesh,
+      );
+      if (meshGeometries.length > 0) {
+        for (const [index, geom] of meshGeometries.entries()) {
+          const mesh = geom.triangularMesh as TriangularMeshData;
+          const instanceId: InstanceId = {
+            _originalId: featureId,
+            featureId,
+            instanceId: `${featureId}_mesh_${index}`,
+          };
+          const instance = triangularMeshToGeometryInstance(
+            mesh,
+            typeConfig.color,
+            instanceId,
+          );
+          if (instance) {
+            meshInstances.push(instance);
+            entry.meshInstanceIds.push(instanceId);
+            sampleMeshPositions(mesh, sampledPositions, 500);
+          }
+        }
+        featureMap.set(featureId, entry);
+        continue;
+      }
 
       const allPolygons: any[] = [];
       for (const geom of selectedGeometries) {
@@ -419,6 +455,33 @@ export function convertFeatureCollectionToPrimitives(
     }
     // ── Unknown type → ground with CYAN ─────────────────────────────────────
     else {
+      // TriangularMesh in unknown-type features → mesh primitive with CYAN
+      const unknownMeshGeoms = gmlGeometries.filter(
+        (g: any) => g.triangularMesh,
+      );
+      if (unknownMeshGeoms.length > 0) {
+        for (const geom of unknownMeshGeoms) {
+          const mesh = geom.triangularMesh as TriangularMeshData;
+          const instanceId: InstanceId = {
+            _originalId: featureId,
+            featureId,
+            instanceId: `${featureId}_mesh_unknown_0`,
+          };
+          const instance = triangularMeshToGeometryInstance(
+            mesh,
+            Color.CYAN.withAlpha(0.8),
+            instanceId,
+          );
+          if (instance) {
+            meshInstances.push(instance);
+            entry.meshInstanceIds.push(instanceId);
+            sampleMeshPositions(mesh, sampledPositions, 500);
+          }
+        }
+        featureMap.set(featureId, entry);
+        continue;
+      }
+
       const allPolygons: any[] = [];
       for (const geom of gmlGeometries) {
         if (Array.isArray(geom.polygons)) allPolygons.push(...geom.polygons);
@@ -481,12 +544,32 @@ export function convertFeatureCollectionToPrimitives(
         })
       : null;
 
+  // asynchronous: false — custom Geometry has no _workerName, so must be synchronous
+  const meshPrimitive =
+    meshInstances.length > 0
+      ? new Primitive({
+          geometryInstances: meshInstances,
+          appearance: new PerInstanceColorAppearance({
+            translucent: true,
+            flat: false,
+            closed: false,
+          }),
+          asynchronous: false,
+        })
+      : null;
+
   const boundingSphere =
     sampledPositions.length > 0
       ? BoundingSphere.fromPoints(sampledPositions)
       : null;
 
-  return { absolutePrimitive, groundPrimitive, featureMap, boundingSphere };
+  return {
+    absolutePrimitive,
+    groundPrimitive,
+    meshPrimitive,
+    featureMap,
+    boundingSphere,
+  };
 }
 
 /**
@@ -521,6 +604,34 @@ export function createLodUpgradePrimitiveCollection(
   }
 
   if (lodGeometries.length === 0) return null;
+
+  // ── TriangularMesh LOD path ──────────────────────────────────────────────
+  const meshGeometries = lodGeometries.filter((g: any) => g.triangularMesh);
+  if (meshGeometries.length > 0) {
+    const fillInstances: GeometryInstance[] = [];
+    for (const [index, geom] of meshGeometries.entries()) {
+      const mesh = geom.triangularMesh as TriangularMeshData;
+      const defaultColor = typeConfig?.color ?? Color.GRAY.withAlpha(0.8);
+      const instance = triangularMeshToGeometryInstance(mesh, defaultColor, {
+        featureId,
+        instanceId: `${featureId}_fill_lod_mesh_${index}`,
+      });
+      if (instance) fillInstances.push(instance);
+    }
+    if (fillInstances.length === 0) return null;
+    const meshPrimitive = new Primitive({
+      geometryInstances: fillInstances,
+      appearance: new PerInstanceColorAppearance({
+        flat: true,
+        translucent: true,
+        closed: false,
+      }),
+      asynchronous: false,
+    });
+    const col = new PrimitiveCollection();
+    col.add(meshPrimitive);
+    return col;
+  }
 
   const allPolygons: any[] = [];
   for (const geom of lodGeometries) {

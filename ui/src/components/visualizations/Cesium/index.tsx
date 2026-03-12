@@ -16,6 +16,7 @@ import {
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
 import CityGmlData from "./CityGmlData";
+import FlowGeometry3DData from "./FlowGeometry3DData";
 import GeoJsonData from "./GeoJson";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
@@ -121,15 +122,21 @@ const CesiumViewer: React.FC<Props> = ({
   );
 
   // Separate features by geometry type
-  const { geoJsonData, cityGmlData } = useMemo(() => {
+  const { geoJsonData, cityGmlData, flowGeometry3DData } = useMemo(() => {
     const features = fileContent?.features || [];
 
     const geoJsonFeatures = features.filter(
-      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
+      (feature: any) =>
+        feature?.geometry?.type !== "CityGmlGeometry" &&
+        feature?.geometry?.type !== "FlowGeometry3D",
     );
 
     const cityGmlFeatures = features.filter(
       (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
+    );
+
+    const flowGeometry3DFeatures = features.filter(
+      (feature: any) => feature?.geometry?.type === "FlowGeometry3D",
     );
 
     return {
@@ -140,6 +147,13 @@ const CesiumViewer: React.FC<Props> = ({
       cityGmlData:
         cityGmlFeatures.length > 0
           ? { type: "FeatureCollection" as const, features: cityGmlFeatures }
+          : null,
+      flowGeometry3DData:
+        flowGeometry3DFeatures.length > 0
+          ? {
+              type: "FeatureCollection" as const,
+              features: flowGeometry3DFeatures,
+            }
           : null,
     };
   }, [fileContent]);
@@ -177,6 +191,16 @@ const CesiumViewer: React.FC<Props> = ({
               setCityGmlBoundingSphere={setCityGmlBoundingSphere}
               selectedFeatureId={selectedFeatureId}
               detailsOverlayOpen={detailsOverlayOpen}
+              showSelectedFeatureOnly={showSelectedFeatureOnly}
+            />
+          )}
+
+          {/* FlowGeometry3D features (triangular meshes and lines) */}
+          {flowGeometry3DData && (
+            <FlowGeometry3DData
+              flowGeometry3DData={flowGeometry3DData}
+              setBoundingSphere={setCityGmlBoundingSphere}
+              selectedFeatureId={selectedFeatureId}
               showSelectedFeatureOnly={showSelectedFeatureOnly}
             />
           )}
