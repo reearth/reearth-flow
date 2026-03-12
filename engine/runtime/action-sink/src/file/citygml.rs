@@ -185,7 +185,11 @@ pub fn write_citygml_to_storage(
                 continue;
             }
 
-            let gml_id_str = feature.id.to_string();
+            let gml_id_str = feature
+                .metadata
+                .feature_id
+                .clone()
+                .unwrap_or_else(|| feature.id.to_string());
             let appearance_opt: Option<&AppearanceBundle> = if appearance.has_content() {
                 Some(&appearance)
             } else {

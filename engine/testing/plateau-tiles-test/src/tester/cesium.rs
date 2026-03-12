@@ -3,6 +3,9 @@ use crate::align_cesium::{
 };
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::{analyze_attributes, CastConfig};
+use crate::geom_stats::{
+    compute_area_weighted_winding, compute_bbox, compute_centroid, compute_total_area,
+};
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -263,20 +266,6 @@ impl DetailLevelComparisonResult {
     }
 }
 
-fn compute_total_area(triangles: &[[usize; 3]], positions: &[Coordinate]) -> f64 {
-    triangles
-        .iter()
-        .map(|tri| {
-            let p0 = positions[tri[0]];
-            let p1 = positions[tri[1]];
-            let p2 = positions[tri[2]];
-            let v1 = p1 - p0;
-            let v2 = p2 - p0;
-            v1.cross(&v2).norm() / 2.0
-        })
-        .sum()
-}
-
 fn compare_detail_level(
     ident: &str,
     fme_level: &DetailLevel,
@@ -402,83 +391,6 @@ fn compare_detail_level(
     }
 
     Ok(result)
-}
-
-/// Compute axis-aligned bounding box from triangles and vertex positions
-fn compute_bbox(
-    triangles: &[[usize; 3]],
-    positions: &[Coordinate],
-) -> Result<(Coordinate, Coordinate), String> {
-    if triangles.is_empty() {
-        return Err("Cannot compute bbox: no triangles".to_string());
-    }
-
-    let mut min = Coordinate::from((f64::INFINITY, f64::INFINITY, f64::INFINITY));
-    let mut max = Coordinate::from((f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY));
-
-    for triangle in triangles {
-        for &idx in triangle {
-            let pos = positions
-                .get(idx)
-                .ok_or_else(|| format!("Invalid vertex index {}", idx))?;
-            min.x = min.x.min(pos.x);
-            min.y = min.y.min(pos.y);
-            min.z = min.z.min(pos.z);
-            max.x = max.x.max(pos.x);
-            max.y = max.y.max(pos.y);
-            max.z = max.z.max(pos.z);
-        }
-    }
-
-    Ok((min, max))
-}
-
-/// Compute area-weighted centroid from triangles and vertex positions
-fn compute_centroid(
-    triangles: &[[usize; 3]],
-    positions: &[Coordinate],
-) -> Result<Coordinate, String> {
-    if triangles.is_empty() {
-        return Err("Cannot compute centroid: no triangles".to_string());
-    }
-
-    let mut weighted_sum = Coordinate::from((0.0, 0.0, 0.0));
-    let mut total_area = 0.0;
-
-    for triangle in triangles {
-        let p0 = positions[triangle[0]];
-        let p1 = positions[triangle[1]];
-        let p2 = positions[triangle[2]];
-
-        // Compute triangle centroid (average of three vertices)
-        let tri_centroid = Coordinate::from((
-            (p0.x + p1.x + p2.x) / 3.0,
-            (p0.y + p1.y + p2.y) / 3.0,
-            (p0.z + p1.z + p2.z) / 3.0,
-        ));
-
-        // Compute triangle area using cross product: ||(p1-p0) × (p2-p0)|| / 2
-        let v1 = p1 - p0;
-        let v2 = p2 - p0;
-        let cross = v1.cross(&v2);
-        let area = cross.norm() / 2.0;
-
-        // Accumulate area-weighted centroid
-        weighted_sum.x += tri_centroid.x * area;
-        weighted_sum.y += tri_centroid.y * area;
-        weighted_sum.z += tri_centroid.z * area;
-        total_area += area;
-    }
-
-    if total_area == 0.0 {
-        return Err("Cannot compute centroid: total area is zero".to_string());
-    }
-
-    Ok(Coordinate::from((
-        weighted_sum.x / total_area,
-        weighted_sum.y / total_area,
-        weighted_sum.z / total_area,
-    )))
 }
 
 /// Test face-weighted average color by comparing material base color × vertex color
@@ -616,45 +528,6 @@ fn is_near_default_color(color: &[f32; 4], default: &[f32; 4]) -> bool {
         && (color[3] - default[3]).abs() <= DEFAULT_TOLERANCE
 }
 
-/// Compute the area-weighted average winding direction from triangle geometry.
-/// Each triangle contributes its unit normal weighted by area (= cross/2).
-/// The sum is divided by total area, giving a dimensionless vector with magnitude in [0, 1].
-fn compute_area_weighted_winding_vector(
-    triangles: &[[usize; 3]],
-    positions: &[Coordinate],
-) -> Result<[f64; 3], String> {
-    if triangles.is_empty() {
-        return Err("Cannot compute average winding: no triangles".to_string());
-    }
-
-    let mut weighted = [0.0f64; 3];
-    let mut total_area = 0.0f64;
-
-    for triangle in triangles {
-        let p0 = positions[triangle[0]];
-        let p1 = positions[triangle[1]];
-        let p2 = positions[triangle[2]];
-        let v1 = p1 - p0;
-        let v2 = p2 - p0;
-        let cross = v1.cross(&v2);
-        // cross / 2 == unit_normal * triangle_area
-        weighted[0] += cross.x / 2.0;
-        weighted[1] += cross.y / 2.0;
-        weighted[2] += cross.z / 2.0;
-        total_area += cross.norm() / 2.0;
-    }
-
-    if total_area == 0.0 {
-        return Err("Cannot compute average winding: total area is zero".to_string());
-    }
-
-    Ok([
-        weighted[0] / total_area,
-        weighted[1] / total_area,
-        weighted[2] / total_area,
-    ])
-}
-
 /// Compare area-weighted average winding vectors between FME and Flow in Euclidean space.
 /// Both vectors are dimensionless with magnitude in [0, 1].
 /// Returns the error normalized by the tolerance (0.0 = perfect match, 1.0 = at threshold).
@@ -665,14 +538,10 @@ fn test_area_weighted_average_winding(
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
 ) -> Result<f64, String> {
-    let fme_vec = compute_area_weighted_winding_vector(
-        &fme_level.triangles,
-        &fme_geometries.vertex_positions,
-    )?;
-    let flow_vec = compute_area_weighted_winding_vector(
-        &flow_level.triangles,
-        &flow_geometries.vertex_positions,
-    )?;
+    let fme_vec =
+        compute_area_weighted_winding(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+    let flow_vec =
+        compute_area_weighted_winding(&flow_level.triangles, &flow_geometries.vertex_positions)?;
 
     let diff_magnitude = ((fme_vec[0] - flow_vec[0]).powi(2)
         + (fme_vec[1] - flow_vec[1]).powi(2)

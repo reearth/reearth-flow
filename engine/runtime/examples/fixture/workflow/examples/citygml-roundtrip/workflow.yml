@@ -46,6 +46,17 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: aa11bb22-cc33-dd44-ee55-ff6677889900
+        name: AttributeManagerAfterReader
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: gml_id
+            method: create
+            value: |
+              env.get("__feature_id")
+
       - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
         name: FeatureWriter
         type: action
@@ -65,6 +76,17 @@ graphs:
           flatten: false
           dataset: |
             env.get("__value")["filePath"]
+
+      - id: bb22cc33-dd44-ee55-ff66-778899001122
+        name: AttributeManagerAfterReadback
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: gml_id
+            method: create
+            value: |
+              env.get("__feature_id")
 
       - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
         name: VerticalReprojector
@@ -117,6 +139,12 @@ graphs:
 
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
         from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+        to: aa11bb22-cc33-dd44-ee55-ff6677889900
+        fromPort: default
+        toPort: default
+
+      - id: aa11bb22-cc33-dd44-ee55-ff6677889901
+        from: aa11bb22-cc33-dd44-ee55-ff6677889900
         to: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
         fromPort: default
         toPort: default
@@ -129,6 +157,12 @@ graphs:
 
       - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
         from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+        to: bb22cc33-dd44-ee55-ff66-778899001122
+        fromPort: default
+        toPort: default
+
+      - id: bb22cc33-dd44-ee55-ff66-778899001123
+        from: bb22cc33-dd44-ee55-ff66-778899001122
         to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
         fromPort: default
         toPort: default
@@ -140,7 +174,7 @@ graphs:
         toPort: default
 
       - id: 3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f
-        from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
+        from: aa11bb22-cc33-dd44-ee55-ff6677889900
         to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         fromPort: default
         toPort: default
