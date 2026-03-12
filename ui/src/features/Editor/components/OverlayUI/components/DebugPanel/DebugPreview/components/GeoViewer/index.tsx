@@ -2,13 +2,11 @@ import { BoundingSphere } from "cesium";
 import { memo } from "react";
 
 import { CesiumViewer, RenderFallback } from "@flow/components";
-import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
   className?: string;
   fileContent: any | null;
-  fileType: SupportedDataTypes | null;
   visualizerType: "2d-map" | "3d-map";
   cesiumViewerRef: React.RefObject<any>;
   selectedFeaturedId?: string | null;
@@ -22,7 +20,6 @@ type Props = {
 const GeoViewer: React.FC<Props> = ({
   className,
   fileContent,
-  fileType,
   visualizerType,
   cesiumViewerRef,
   selectedFeaturedId,
@@ -40,7 +37,6 @@ const GeoViewer: React.FC<Props> = ({
       <div className={`relative size-full ${className}`}>
         <CesiumViewer
           fileContent={fileContent}
-          fileType={fileType}
           visualizerType={visualizerType}
           viewerRef={cesiumViewerRef}
           selectedFeatureId={selectedFeaturedId}

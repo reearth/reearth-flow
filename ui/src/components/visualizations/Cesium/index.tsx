@@ -13,8 +13,6 @@ import {
   ViewerProps,
 } from "resium";
 
-import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
-
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
 
@@ -34,7 +32,6 @@ const defaultCesiumProps: Partial<ViewerProps> = {
 
 type Props = {
   fileContent: any | null;
-  fileType: SupportedDataTypes | null;
   visualizerType: "2d-map" | "3d-map";
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
@@ -47,7 +44,6 @@ type Props = {
 
 const CesiumViewer: React.FC<Props> = ({
   fileContent,
-  fileType,
   visualizerType,
   viewerRef,
   selectedFeatureId,
@@ -125,13 +121,16 @@ const CesiumViewer: React.FC<Props> = ({
   const { geoJsonData, cityGmlData } = useMemo(() => {
     const features = fileContent?.features || [];
 
-    const geoJsonFeatures = features.filter(
-      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
-    );
+    const geoJsonFeatures: any[] = [];
+    const cityGmlFeatures: any[] = [];
 
-    const cityGmlFeatures = features.filter(
-      (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
-    );
+    for (const feature of features) {
+      if (feature?.geometry?.type === "CityGmlGeometry") {
+        cityGmlFeatures.push(feature);
+      } else {
+        geoJsonFeatures.push(feature);
+      }
+    }
 
     return {
       geoJsonData:
@@ -166,7 +165,7 @@ const CesiumViewer: React.FC<Props> = ({
         </ScreenSpaceEventHandler>
       )}
 
-      {isLoaded && fileType === "geojson" && (
+      {isLoaded && (
         <>
           {/* Standard GeoJSON features */}
           {geoJsonData && (

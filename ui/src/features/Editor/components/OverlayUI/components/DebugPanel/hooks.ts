@@ -316,17 +316,14 @@ export default () => {
               Math.max(sphere.radius * 1.5, 500),
             );
 
-            cesiumViewerRef.current?.cesiumElement.camera.flyToBoundingSphere(
-              paddedSphere,
-              {
-                duration: 1.5,
-                offset: new HeadingPitchRange(
-                  0,
-                  CesiumMath.toRadians(-90),
-                  paddedSphere.radius * 2,
-                ),
-              },
-            );
+            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
+              duration: 1.5,
+              offset: new HeadingPitchRange(
+                0,
+                CesiumMath.toRadians(-90),
+                paddedSphere.radius * 2,
+              ),
+            });
           } catch (error) {
             console.error("Error calculating bounding box for feature:", error);
           }
@@ -479,7 +476,6 @@ export default () => {
   return {
     debugJobId,
     debugJobState,
-    fileType,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,

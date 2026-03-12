@@ -38,7 +38,6 @@ const DebugPanel: React.FC = () => {
   const {
     debugJobId,
     debugJobState,
-    fileType,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -262,7 +261,6 @@ const DebugPanel: React.FC = () => {
                         <DebugPreview
                           debugJobState={debugJobState}
                           dataURLs={dataURLs}
-                          fileType={fileType}
                           selectedOutputData={selectedOutputData}
                           selectedFeatureId={selectedFeatureId}
                           cesiumViewerRef={cesiumViewerRef}

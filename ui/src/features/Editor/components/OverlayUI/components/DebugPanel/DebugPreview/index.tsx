@@ -17,7 +17,6 @@ import {
 import ThreeJSViewer, {
   type ThreeJSViewerRef,
 } from "@flow/components/visualizations/ThreeJS";
-import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 import type { JobState } from "@flow/stores";
 
@@ -25,7 +24,6 @@ import GeoViewer from "./components/GeoViewer";
 import useHooks from "./hooks";
 
 type Props = {
-  fileType: SupportedDataTypes | null;
   selectedOutputData: any;
   debugJobState?: JobState;
   onConvertedSelectedFeature: (value: any) => void;
@@ -42,7 +40,6 @@ type Props = {
   visualizerType: "2d-map" | "3d-map" | "3d-model";
 };
 const DebugPreview: React.FC<Props> = ({
-  fileType,
   debugJobState,
   selectedOutputData,
   dataURLs,
@@ -185,7 +182,6 @@ const DebugPreview: React.FC<Props> = ({
           <div className="h-[calc(100%-55px)]" id="cesiumContainer">
             <GeoViewer
               fileContent={processedOutputData}
-              fileType={fileType}
               visualizerType={visualizerType}
               cesiumViewerRef={cesiumViewerRef}
               selectedFeaturedId={selectedFeatureId}
