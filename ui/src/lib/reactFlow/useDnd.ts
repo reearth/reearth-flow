@@ -68,7 +68,7 @@ export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
 
       onNodesAdd?.([newNode]);
     },
-    [screenToFlowPosition, t, onWorkflowAdd, onNodesAdd, onNodePickerOpen],
+    [t, screenToFlowPosition, onWorkflowAdd, onNodesAdd, onNodePickerOpen],
   );
 
   return { handleNodeDragOver, handleNodeDrop };
