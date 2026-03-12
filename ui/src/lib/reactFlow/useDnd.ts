@@ -20,11 +20,7 @@ type Props = {
 
 // This is used for drag and drop functionality in to the canvas
 // This is not used for node dnd within the canvas. That is done internally by react-flow
-export default ({
-  onWorkflowAdd,
-  onNodesAdd,
-  onNodePickerOpen,
-}: Props) => {
+export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
   const t = useT();
   const { screenToFlowPosition } = useReactFlow();
 
