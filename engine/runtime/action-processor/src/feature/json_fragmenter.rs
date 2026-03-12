@@ -51,7 +51,7 @@ impl ProcessorFactory for JSONFragmenterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: JSONFragmenterParam = if let Some(with) = with {
+        let mut params: JSONFragmenterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::JSONFragmenterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -68,6 +68,7 @@ impl ProcessorFactory for JSONFragmenterFactory {
             )
             .into());
         };
+        params.sanitize();
         Ok(Box::new(JSONFragmenter { params }))
     }
 }
@@ -122,6 +123,17 @@ impl JSONFragmenterParam {
         match self {
             JSONFragmenterParam::Attribute { options, .. }
             | JSONFragmenterParam::FileUrl { options, .. } => options,
+        }
+    }
+
+    /// Strip UI expression wrappers (e.g. `env.get("__value").field`) from
+    /// the attribute name so it matches the plain feature attribute key.
+    fn sanitize(&mut self) {
+        if let JSONFragmenterParam::Attribute { json_attribute, .. } = self {
+            let s = json_attribute.inner();
+            if let Some(rest) = s.strip_prefix("env.get(\"__value\").") {
+                *json_attribute = Attribute::new(rest);
+            }
         }
     }
 }
