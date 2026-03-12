@@ -35,6 +35,12 @@ export type UpdateMe = {
 
 export type AwarenessUser = {
   clientId: number;
+  selectionRect?: {
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  };
   cursor?: {
     x: number;
     y: number;

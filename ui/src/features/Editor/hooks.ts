@@ -358,7 +358,7 @@ export default ({
     }
   };
 
-  const { self, users, handlePaneMouseMove } = useAwarenessCursor({
+  const { self, users, handlePointerDown } = useAwarenessCursor({
     yAwareness,
   });
 
@@ -456,11 +456,11 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
-    handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
     selectedNodeIds,
     setShowSearchPanel,
+    handlePointerDown,
   };
 };

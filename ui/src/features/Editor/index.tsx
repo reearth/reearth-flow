@@ -85,11 +85,12 @@ export default function Editor({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
-    handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodesDisable,
     handlePaneClick,
+
+    handlePointerDown,
     setShowSearchPanel,
     selectedNodeIds,
   } = useHooks({
@@ -116,7 +117,7 @@ export default function Editor({
   );
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col" onPointerDown={handlePointerDown}>
       <EditorProvider value={editorContext}>
         <div
           className={`flex flex-1 flex-col ${spotlightUser ? "border" : ""}`}
@@ -189,7 +190,6 @@ export default function Editor({
               onCopy={handleCopy}
               onCut={handleCut}
               onPaste={handlePaste}
-              onPaneMouseMove={handlePaneMouseMove}
               onNodesDisable={handleNodesDisable}
               onPaneClick={handlePaneClick}
               onDebugRunStartFromSelectedNode={

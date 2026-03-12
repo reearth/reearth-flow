@@ -1,77 +1,161 @@
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
-import { MouseEvent, useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 
-import { AwarenessUser } from "@flow/types";
+import type { AwarenessUser } from "@flow/types";
 
-export default ({ yAwareness }: { yAwareness: Awareness }) => {
+type PointerDownEvent = React.PointerEvent<Element>;
+
+export default function useFlowPresence({
+  yAwareness,
+}: {
+  yAwareness: Awareness;
+}) {
   const rawSelf = useSelf(yAwareness);
   const rawUsers = useUsers(yAwareness);
   const { screenToFlowPosition } = useReactFlow();
+  const { x, y, zoom } = useViewport();
+
+  const isSelectingRef = useRef(false);
+  const selectionStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const latestViewportRef = useRef({ x, y, zoom });
+  latestViewportRef.current = { x, y, zoom };
 
   const self: AwarenessUser = {
     clientId: rawSelf?.clientID,
     userName: rawSelf?.userName || "Unknown user",
     color: rawSelf?.color || "#ffffff",
     cursor: rawSelf?.cursor || { x: 0, y: 0 },
+    viewport: rawSelf?.viewport,
+    currentWorkflowId: rawSelf?.currentWorkflowId,
+    selectionRect: rawSelf?.selectionRect || null,
   };
 
   const users = Array.from(
     rawUsers.entries() as IterableIterator<[number, AwarenessUser]>,
   )
-    .filter(([key]) => key !== yAwareness?.clientID)
+    .filter(([key]) => key !== yAwareness.clientID)
     .reduce<Record<string, AwarenessUser>>((acc, [key, value]) => {
-      if (!value.userName) {
-        return acc;
-      }
+      if (!value.userName) return acc;
       acc[key.toString()] = value;
       return acc;
     }, {});
 
-  const { x, y, zoom } = useViewport();
-
-  const latestViewportRef = useRef<{ x: number; y: number; zoom: number }>({
-    x,
-    y,
-    zoom,
-  });
-
-  latestViewportRef.current = { x, y, zoom };
-
-  const throttledMouseMove = useMemo(
+  const throttledPresenceUpdate = useMemo(
     () =>
       throttle(
-        (
-          event: MouseEvent<Element, globalThis.MouseEvent>,
-          awareness: Awareness,
-          positionFn: typeof screenToFlowPosition,
-        ) => {
-          const flowPosition = positionFn(
-            {
-              x: event.clientX,
-              y: event.clientY,
-            },
+        (clientX: number, clientY: number) => {
+          const flowPosition = screenToFlowPosition(
+            { x: clientX, y: clientY },
             { snapToGrid: false },
           );
 
-          awareness.setLocalStateField("cursor", flowPosition);
-          awareness.setLocalStateField("viewport", latestViewportRef.current);
+          yAwareness.setLocalStateField("cursor", flowPosition);
+          yAwareness.setLocalStateField("viewport", latestViewportRef.current);
         },
         32,
         { leading: true, trailing: true },
       ),
-    [],
+    [screenToFlowPosition, yAwareness],
   );
 
-  const handlePaneMouseMove = useCallback(
-    (event: MouseEvent) => {
-      if (Object.keys(users).length === 0) return;
-      throttledMouseMove(event, yAwareness, screenToFlowPosition);
+  const updateSelectionRect = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isSelectingRef.current || !selectionStartRef.current) return;
+
+      const flowPosition = screenToFlowPosition(
+        { x: clientX, y: clientY },
+        { snapToGrid: false },
+      );
+
+      const nextRect = {
+        startX: selectionStartRef.current.x,
+        startY: selectionStartRef.current.y,
+        currentX: flowPosition.x,
+        currentY: flowPosition.y,
+      };
+
+      yAwareness.setLocalStateField("selectionRect", nextRect);
     },
-    [yAwareness, users, screenToFlowPosition, throttledMouseMove],
+    [screenToFlowPosition, yAwareness],
   );
 
-  return { self, users, handlePaneMouseMove };
-};
+  const handlePointerDown = useCallback(
+    (event: PointerDownEvent) => {
+      const flowPosition = screenToFlowPosition(
+        { x: event.clientX, y: event.clientY },
+        { snapToGrid: false },
+      );
+
+      yAwareness.setLocalStateField("cursor", flowPosition);
+      yAwareness.setLocalStateField("viewport", latestViewportRef.current);
+
+      if (!event.shiftKey || event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      isSelectingRef.current = true;
+      selectionStartRef.current = {
+        x: flowPosition.x,
+        y: flowPosition.y,
+      };
+
+      yAwareness.setLocalStateField("selectionRect", {
+        startX: flowPosition.x,
+        startY: flowPosition.y,
+        currentX: flowPosition.x,
+        currentY: flowPosition.y,
+      });
+    },
+    [screenToFlowPosition, yAwareness],
+  );
+
+  const clearSelectionRect = useCallback(() => {
+    isSelectingRef.current = false;
+    selectionStartRef.current = null;
+    yAwareness.setLocalStateField("selectionRect", null);
+  }, [yAwareness]);
+
+  useEffect(() => {
+    const handleWindowPointerMove = (event: PointerEvent) => {
+      throttledPresenceUpdate(event.clientX, event.clientY);
+
+      if (isSelectingRef.current) {
+        updateSelectionRect(event.clientX, event.clientY);
+      }
+    };
+
+    const handleWindowPointerUp = () => {
+      clearSelectionRect();
+    };
+
+    const handleWindowBlur = () => {
+      clearSelectionRect();
+    };
+
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", handleWindowPointerUp);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerUp);
+      window.removeEventListener("blur", handleWindowBlur);
+      throttledPresenceUpdate.cancel();
+    };
+  }, [throttledPresenceUpdate, updateSelectionRect, clearSelectionRect]);
+
+  return {
+    self,
+    users,
+    handlePointerDown,
+    isSelectingRef,
+    selectionStartRef,
+  };
+}
