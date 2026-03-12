@@ -115,7 +115,6 @@ const GeoJsonData: React.FC<Props> = ({
         entity,
         origPolygonMaterial,
         origPolygonOutlineColor,
-        origPointColor,
         origPolylineMaterial,
         origBillboardColor,
       }) => {
@@ -125,13 +124,12 @@ const GeoJsonData: React.FC<Props> = ({
           if (origPolygonOutlineColor !== undefined)
             entity.polygon.outlineColor = origPolygonOutlineColor;
         }
-        if (entity.point && origPointColor !== undefined) {
-          entity.point.color = origPointColor;
-        }
+
         if (entity.polyline && origPolylineMaterial !== undefined) {
           entity.polyline.material = origPolylineMaterial;
         }
-        if (entity.billboard && origBillboardColor !== undefined) {
+
+        if (entity.billboard) {
           entity.billboard.color = origBillboardColor;
         }
       },
@@ -146,9 +144,6 @@ const GeoJsonData: React.FC<Props> = ({
       if (entity.polygon) {
         entity.polygon.material = new ColorMaterialProperty(HIGHLIGHT_FILL);
         entity.polygon.outlineColor = new ConstantProperty(HIGHLIGHT_COLOR);
-      }
-      if (entity.point) {
-        entity.point.color = new ConstantProperty(HIGHLIGHT_COLOR);
       }
       if (entity.billboard) {
         entity.billboard.color = new ConstantProperty(HIGHLIGHT_COLOR);
@@ -192,7 +187,6 @@ const GeoJsonData: React.FC<Props> = ({
           entity,
           origPolygonMaterial: entity.polygon?.material,
           origPolygonOutlineColor: entity.polygon?.outlineColor,
-          origPointColor: entity.point?.color,
           origPolylineMaterial: entity.polyline?.material,
           origBillboardColor: entity.billboard?.color,
         };
