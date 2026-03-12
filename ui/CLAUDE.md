@@ -17,7 +17,7 @@ Re:Earth Flow UI is a React/TypeScript frontend for building visual geospatial d
 - **TanStack Query + Jotai** for state management
 - **Tailwind CSS + Radix UI** for styling and components
 - **GraphQL + graphql-request** for API communication
-- **Cesium + MapLibre** for 3D/2D geospatial visualization
+- **Cesium** for 2D/3D geospatial visualization
 
 ## Development Commands
 
@@ -145,7 +145,7 @@ ui/
 **Key Components**:
 - **SchemaForm** - Dynamic form generation from JSON schemas (action configuration)
 - **DataTable** - Sortable, filterable tables with pagination
-- **Visualizations** - Cesium 3D and MapLibre 2D map components
+- **Visualizations** - Cesium 2D/3D map components
 - **Dialog/Modal** - Accessible overlays for workflows
 - **Dropdown/Select** - Type-safe selection components
 
