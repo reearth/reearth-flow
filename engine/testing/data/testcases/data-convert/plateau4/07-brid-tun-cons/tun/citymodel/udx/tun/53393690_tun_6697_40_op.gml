@@ -2964,49 +2964,6 @@
 					<uro:scale codeSpace="../../codelists/RiverFloodingRiskAttribute_scale.xml">2</uro:scale>
 				</uro:RiverFloodingRiskAttribute>
 			</uro:tunDisasterRiskAttribute>
-			<uro:tunDmAttribute>
-				<uro:DmGeometricAttribute>
-					<uro:dmCode codeSpace="../../codelists/Common_dmCode.xml">2219</uro:dmCode>
-					<uro:meshCode>09LD281</uro:meshCode>
-					<uro:geometryType codeSpace="../../codelists/Common_geometryType.xml">E2</uro:geometryType>
-					<uro:mapLevel codeSpace="../../codelists/Common_MapLevel.xml">2500</uro:mapLevel>
-					<uro:shapeType codeSpace="../../codelists/Common_shapeType.xml">0</uro:shapeType>
-					<uro:lod0Geometry>
-						<gml:MultiCurve>
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.66420660474714 139.75608595379262 0 35.66422259403692 139.75606695162602 0 35.66421423701993 139.7560628128038 0 35.66420660474714 139.75608595379262 0</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.66408136042921 139.75599700564607 0 35.664082085187495 139.75602428541333 0 35.66408971744863 139.75600114445464 0 35.66408136042921 139.75599700564607 0</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.66408971744863 139.75600114445464 0 35.66421423701993 139.7560628128038 0</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.667328558435194 139.7486832167425 0 35.667366425060365 139.74865423226655 0 35.66733655759983 139.74869891039194 0 35.667328558435194 139.7486832167425 0</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.66717446532998 139.74838090117467 0 35.667328558435194 139.7486832167425 0</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.66717446532998 139.74838090117467 0 35.66721233188323 139.74835191661194 0 35.66716684492422 139.74836595075448 0 35.66717446532998 139.74838090117467 0</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-						</gml:MultiCurve>
-					</uro:lod0Geometry>
-				</uro:DmGeometricAttribute>
-			</uro:tunDmAttribute>
 			<uro:tunDataQualityAttribute>
 				<uro:DataQualityAttribute>
 					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">202</uro:geometrySrcDescLod0>
