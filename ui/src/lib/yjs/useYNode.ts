@@ -34,13 +34,14 @@ export default ({
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
 
-        newNodes.forEach((newNode) => {
-          if (newNode.selected) {
-            setSelectedNodeIds((snids) => {
-              return [...snids, newNode.id];
-            });
-          }
+        const selectedNewNodeIds = newNodes
+          .filter((n) => n.selected)
+          .map((n) => n.id);
+        if (selectedNewNodeIds.length > 0) {
+          setSelectedNodeIds(selectedNewNodeIds);
+        }
 
+        newNodes.forEach((newNode) => {
           // For routers without routingPort, generate unique port name
           const isRouterInput = newNode.data.officialName === "InputRouter";
           const isRouterOutput = newNode.data.officialName === "OutputRouter";
