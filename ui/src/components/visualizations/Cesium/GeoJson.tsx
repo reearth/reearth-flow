@@ -91,7 +91,7 @@ const GeoJsonData: React.FC<Props> = ({
   }, [sanitizedData]);
 
   const updateVisibility = useCallback(() => {
-    featureMapRef.current.forEach((records, _id) => {
+    featureMapRef.current.forEach((records) => {
       records.forEach(({ entity }) => {
         if (!showSelectedFeatureOnly) {
           entity.show = true;
