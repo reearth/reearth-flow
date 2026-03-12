@@ -9,9 +9,4 @@ export const attributions = [
     description: "3D geospatial visualization engine",
     url: "https://cesium.com",
   },
-  {
-    name: "MapLibre GL JS (maplibre-gl) - BSD-3-Clause License",
-    description: "Interactive vector maps in web browsers",
-    url: "https://maplibre.org",
-  },
 ];

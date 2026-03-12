@@ -2,13 +2,12 @@ import { BoundingSphere } from "cesium";
 import { memo } from "react";
 
 import { CesiumViewer, RenderFallback } from "@flow/components";
-import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
   className?: string;
   fileContent: any | null;
-  fileType: SupportedDataTypes | null;
+  visualizerType: "2d-map" | "3d-map";
   cesiumViewerRef: React.RefObject<any>;
   selectedFeaturedId?: string | null;
   detailsOverlayOpen: boolean;
@@ -18,10 +17,10 @@ type Props = {
   setCityGmlBoundingSphere: (value: BoundingSphere | null) => void;
 };
 
-const ThreeDViewer: React.FC<Props> = ({
+const GeoViewer: React.FC<Props> = ({
   className,
   fileContent,
-  fileType,
+  visualizerType,
   cesiumViewerRef,
   selectedFeaturedId,
   detailsOverlayOpen,
@@ -33,12 +32,12 @@ const ThreeDViewer: React.FC<Props> = ({
   const t = useT();
   return (
     <RenderFallback
-      message={t("3D Viewer Could Not Be Loaded. Check if the data is valid.")}
+      message={t("Geo Viewer Could Not Be Loaded. Check if the data is valid.")}
       textSize="sm">
       <div className={`relative size-full ${className}`}>
         <CesiumViewer
           fileContent={fileContent}
-          fileType={fileType}
+          visualizerType={visualizerType}
           viewerRef={cesiumViewerRef}
           selectedFeatureId={selectedFeaturedId}
           detailsOverlayOpen={detailsOverlayOpen}
@@ -52,4 +51,4 @@ const ThreeDViewer: React.FC<Props> = ({
   );
 };
 
-export default memo(ThreeDViewer);
+export default memo(GeoViewer);
