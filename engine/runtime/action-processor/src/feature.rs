@@ -4,6 +4,7 @@ pub(crate) mod errors;
 pub(crate) mod file_path_extractor;
 pub(crate) mod filter;
 pub(crate) mod joiner;
+pub(crate) mod json_fragmenter;
 pub(crate) mod list_concatenator;
 pub(crate) mod list_exploder;
 pub(crate) mod list_indexer;
