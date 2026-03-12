@@ -196,12 +196,16 @@ fn parse_datetime(
     value: &AttributeValue,
     format: &DateTimeInputFormat,
 ) -> Result<DateTime, String> {
-    // Extract string and/or numeric values based on input type
+    // Handle different input types
     match value {
+        // If already a DateTime, return it directly (no parsing needed)
+        AttributeValue::DateTime(dt) => Ok(dt.clone()),
+        // String input - may be numeric timestamp or formatted datetime string
         AttributeValue::String(s) => {
             let i64_val = s.parse::<i64>().ok();
             parse_from_string_and_number(Some(s), i64_val, None, format)
         }
+        // Number input - Unix timestamp
         AttributeValue::Number(n) => {
             let s = n.to_string();
             // Try integer first, then float (truncating to handle values like 1700000000.0)
@@ -332,6 +336,7 @@ fn format_datetime(dt: &DateTime, format: &DateTimeOutputFormat) -> AttributeVal
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
     use reearth_flow_types::{Attributes, Feature};
 
     fn create_test_feature(attr_name: &str, value: AttributeValue) -> Feature {
@@ -686,6 +691,85 @@ mod tests {
         assert_eq!(
             output_feature.get("createdAtTimestamp"),
             Some(&AttributeValue::Number(1609459200i64.into()))
+        );
+    }
+
+    #[test]
+    fn test_convert_from_typed_datetime() {
+        // Test that DateTimeConverter can handle AttributeValue::DateTime input
+        // (e.g., from file metadata extractors or other processors)
+        use crate::tests::utils::create_default_execute_context;
+        use chrono::Utc;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+        use reearth_flow_types::datetime::DateTime;
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        // Create a feature with a typed DateTime attribute (as if from another processor)
+        let typed_datetime = DateTime::Utc(Utc::now());
+        let expected_timestamp = typed_datetime.timestamp();
+        feature.insert(
+            "fileModifiedTime".to_string(),
+            AttributeValue::DateTime(typed_datetime),
+        );
+
+        let params = DateTimeConverterParam {
+            attribute: "fileModifiedTime".to_string(),
+            input_format: DateTimeInputFormat::Auto, // Should be ignored for typed DateTime
+            output_format: DateTimeOutputFormat::UnixS,
+            output_attribute: None, // Overwrite in place
+        };
+        let mut processor = DateTimeConverter { params };
+
+        // Use NoopChannelForwarder to capture outputs
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+
+        // Create context using the helper
+        let ctx = create_default_execute_context(&feature);
+        processor.process(ctx, &fw).unwrap();
+
+        // Check the output feature
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        let output_feature = &features[0];
+
+        // Should convert to Unix timestamp (number)
+        let output_value = output_feature.get("fileModifiedTime").unwrap();
+        assert!(
+            matches!(output_value, AttributeValue::Number(n) if n.as_i64() == Some(expected_timestamp)),
+            "Expected DateTime to be converted to Unix timestamp number"
+        );
+    }
+
+    #[test]
+    fn test_convert_from_typed_datetime_with_timezone() {
+        // Test converting a DateTime::FixedOffset to RFC3339 preserves timezone
+        use chrono::FixedOffset;
+        use reearth_flow_types::datetime::DateTime;
+
+        // Create a FixedOffset DateTime (as if from parsing "2021-01-01T12:00:00+05:30")
+        let offset = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+        let dt = offset.with_ymd_and_hms(2021, 1, 1, 12, 0, 0).unwrap();
+        let typed_datetime = DateTime::FixedOffset(dt);
+
+        let feature = create_test_feature("timestamp", AttributeValue::DateTime(typed_datetime));
+
+        let input_value = feature.get("timestamp").unwrap();
+        let parsed = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+
+        // Verify it preserves the FixedOffset variant
+        match parsed {
+            DateTime::FixedOffset(dt) => {
+                assert_eq!(dt.offset().local_minus_utc(), 5 * 3600 + 30 * 60);
+            }
+            _ => panic!("Expected FixedOffset to be preserved"),
+        }
+
+        // Convert to RFC3339 should preserve timezone
+        let result = format_datetime(&parsed, &DateTimeOutputFormat::Rfc3339);
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T12:00:00+05:30".to_string())
         );
     }
 }

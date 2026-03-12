@@ -2,7 +2,7 @@ use chrono::{
     offset::LocalResult, DateTime as ChronoDateTime, Datelike, FixedOffset, NaiveDate,
     SecondsFormat, TimeZone, Utc,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::Visitor, Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
@@ -11,7 +11,10 @@ use std::str::FromStr;
 /// - NaiveDate: for date-only values (no timezone)
 /// - Utc: for absolute timestamps or when timezone is unknown
 /// - FixedOffset: for datetime strings that include timezone info
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Hash)]
+///
+/// Note: Uses custom serde to serialize/deserialize as a plain RFC3339 string
+/// for backward compatibility with existing JSON data.
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum DateTime {
     NaiveDate(NaiveDate),
     Utc(ChronoDateTime<Utc>),
@@ -96,6 +99,60 @@ impl DateTime {
     }
 }
 
+/// Custom Serialize implementation to maintain backward compatibility.
+/// Serializes as a plain RFC3339 string.
+impl Serialize for DateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_rfc3339())
+    }
+}
+
+/// Custom Deserialize implementation to maintain backward compatibility.
+/// Parses from a string into the appropriate variant.
+impl<'de> Deserialize<'de> for DateTime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct DateTimeVisitor;
+
+        impl<'de> Visitor<'de> for DateTimeVisitor {
+            type Value = DateTime;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a datetime string in RFC3339 format")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                // Try RFC3339 with timezone first
+                if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(v) {
+                    return Ok(DateTime::FixedOffset(dt));
+                }
+                // Try other formats via common datetime
+                if let Ok(dt) = reearth_flow_common::datetime::try_from(v) {
+                    return Ok(DateTime::Utc(dt));
+                }
+                // Try date-only format
+                if let Ok(d) = NaiveDate::parse_from_str(v, "%Y-%m-%d") {
+                    return Ok(DateTime::NaiveDate(d));
+                }
+                Err(serde::de::Error::custom(format!(
+                    "invalid datetime format: {}",
+                    v
+                )))
+            }
+        }
+
+        deserializer.deserialize_str(DateTimeVisitor)
+    }
+}
+
 impl TryFrom<i64> for DateTime {
     type Error = ();
     fn try_from(secs: i64) -> Result<Self, Self::Error> {
@@ -177,5 +234,96 @@ impl TryFrom<(i64, u32)> for DateTime {
 impl Display for DateTime {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(&self.to_raw(), f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serialize_as_string() {
+        // Utc variant
+        let dt = DateTime::Utc(Utc::now());
+        let json = serde_json::to_string(&dt).unwrap();
+        // Should be a plain string, not a tagged enum
+        assert!(json.starts_with('"') && json.ends_with('"'));
+        assert!(!json.contains("Utc"));
+
+        // FixedOffset variant
+        let dt = DateTime::FixedOffset(
+            FixedOffset::east_opt(5 * 3600 + 30 * 60)
+                .unwrap()
+                .with_ymd_and_hms(2021, 1, 1, 12, 0, 0)
+                .unwrap(),
+        );
+        let json = serde_json::to_string(&dt).unwrap();
+        assert!(json.starts_with('"') && json.ends_with('"'));
+        assert!(json.contains("+05:30"));
+
+        // NaiveDate variant
+        let dt = DateTime::NaiveDate(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap());
+        let json = serde_json::to_string(&dt).unwrap();
+        assert!(json.starts_with('"') && json.ends_with('"'));
+    }
+
+    #[test]
+    fn test_deserialize_from_rfc3339_utc() {
+        let json = "\"2021-01-01T00:00:00Z\"";
+        let dt: DateTime = serde_json::from_str(json).unwrap();
+        match dt {
+            DateTime::Utc(_) => {}
+            DateTime::FixedOffset(_) => {}
+            _ => panic!("Expected Utc or FixedOffset variant for UTC timestamp"),
+        }
+        assert_eq!(dt.timestamp(), 1609459200);
+    }
+
+    #[test]
+    fn test_deserialize_from_rfc3339_with_timezone() {
+        let json = "\"2021-01-01T12:00:00+05:30\"";
+        let dt: DateTime = serde_json::from_str(json).unwrap();
+        match dt {
+            DateTime::FixedOffset(dt) => {
+                assert_eq!(dt.offset().local_minus_utc(), 5 * 3600 + 30 * 60);
+            }
+            _ => panic!("Expected FixedOffset variant"),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_from_date_only() {
+        let json = "\"2021-01-01\"";
+        let dt: DateTime = serde_json::from_str(json).unwrap();
+        // Date-only string may be parsed as Utc (with time 00:00:00) or NaiveDate
+        // depending on which parser matches first
+        match dt {
+            DateTime::NaiveDate(d) => {
+                assert_eq!(d.year(), 2021);
+                assert_eq!(d.month(), 1);
+                assert_eq!(d.day(), 1);
+            }
+            DateTime::Utc(dt) => {
+                assert_eq!(dt.year(), 2021);
+                assert_eq!(dt.month(), 1);
+                assert_eq!(dt.day(), 1);
+            }
+            _ => panic!("Expected NaiveDate or Utc variant for date-only string"),
+        }
+    }
+
+    #[test]
+    fn test_roundtrip_serialization() {
+        // Test that serialize -> deserialize preserves the value
+        let dt = DateTime::FixedOffset(
+            FixedOffset::east_opt(5 * 3600 + 30 * 60)
+                .unwrap()
+                .with_ymd_and_hms(2021, 1, 1, 12, 0, 0)
+                .unwrap(),
+        );
+        let json = serde_json::to_string(&dt).unwrap();
+        let dt2: DateTime = serde_json::from_str(&json).unwrap();
+        // Timestamps should be equal
+        assert_eq!(dt.timestamp(), dt2.timestamp());
     }
 }
