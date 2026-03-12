@@ -86,8 +86,7 @@ pub fn write_citygml_to_storage(
         let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value else {
             continue;
         };
-        let (_, appearance) = convert_citygml_geometry(geom, lod_mask);
-        for texture in &appearance.textures {
+        for texture in &geom.textures {
             let src_str = texture.uri.to_string();
             if uri_remap.contains_key(&src_str) {
                 continue;
