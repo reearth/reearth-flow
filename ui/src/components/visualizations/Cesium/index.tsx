@@ -150,11 +150,7 @@ const CesiumViewer: React.FC<Props> = ({
     <Viewer
       ref={viewerRef}
       sceneMode={
-        visualizerType
-          ? visualizerType === "2d-map"
-            ? SceneMode.SCENE2D
-            : SceneMode.SCENE3D
-          : SceneMode.SCENE3D
+        visualizerType === "2d-map" ? SceneMode.SCENE2D : SceneMode.SCENE3D
       }
       full
       {...defaultCesiumProps}>
