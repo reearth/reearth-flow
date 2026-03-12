@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::Datelike;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -169,7 +170,7 @@ impl Processor for DateTimeConverter {
         let output_value = format_datetime(&datetime, &self.params.output_format);
 
         // Write to output attribute
-        feature.insert(output_attr, AttributeValue::String(output_value));
+        feature.insert(output_attr, output_value);
 
         // Send to output port
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -223,47 +224,18 @@ fn parse_from_string_and_number(
     match format {
         DateTimeInputFormat::Auto => {
             // Try numeric formats first (Unix timestamps) - handles numeric strings like "1609459200"
-            // Prefer using the digit count of the original numeric string (if available)
-            if let Some(s) = str_val {
-                // Check if the string looks like an integer: optional leading '-' followed by digits
-                let digits = if let Some(rest) = s.strip_prefix('-') {
-                    rest
-                } else {
-                    s
-                };
-                let is_integer_like =
-                    !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit());
-                if is_integer_like {
-                    if let Some(n) = effective_i64 {
-                        let digit_count = digits.len();
-                        // Decide which unit to try first based on digit count
-                        // Shorter (e.g., 10-digit) values are more likely seconds;
-                        // longer (e.g., 12–13-digit) values are more likely milliseconds.
-                        let try_ms_first = digit_count >= 12;
-                        if try_ms_first {
-                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
-                                return Ok(dt);
-                            }
-                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
-                                return Ok(dt);
-                            }
-                        } else {
-                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
-                                return Ok(dt);
-                            }
-                            if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
-                                return Ok(dt);
-                            }
-                        }
+            // For auto-detection, numerical values always default to Unix seconds (not milliseconds)
+            // to avoid misinterpreting historical data near 1970
+            if let Some(n) = effective_i64 {
+                // Try seconds first, but validate the result is reasonable (between 1970 and 2100)
+                // to avoid misinterpreting millisecond timestamps as seconds
+                if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
+                    let year = dt.year();
+                    if (1970..=2100).contains(&year) {
+                        return Ok(dt);
                     }
                 }
-            }
-
-            // Fallback: if we have a numeric value (e.g., from a Number), try both units
-            if let Some(n) = effective_i64 {
-                if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
-                    return Ok(dt);
-                }
+                // Fallback: try milliseconds
                 if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_ms(n) {
                     return Ok(dt);
                 }
@@ -316,13 +288,25 @@ fn parse_from_string_and_number(
     }
 }
 
-fn format_datetime(dt: &chrono::DateTime<chrono::Utc>, format: &DateTimeOutputFormat) -> String {
+fn format_datetime(dt: &chrono::DateTime<chrono::Utc>, format: &DateTimeOutputFormat) -> AttributeValue {
     match format {
-        DateTimeOutputFormat::Rfc3339 => reearth_flow_common::datetime::to_rfc3339(dt),
-        DateTimeOutputFormat::UnixS => reearth_flow_common::datetime::to_unix_s(dt).to_string(),
-        DateTimeOutputFormat::UnixMs => reearth_flow_common::datetime::to_unix_ms(dt).to_string(),
-        DateTimeOutputFormat::Date => reearth_flow_common::datetime::to_date_string(dt),
-        DateTimeOutputFormat::Custom(fmt) => reearth_flow_common::datetime::format_with(dt, fmt),
+        DateTimeOutputFormat::Rfc3339 => {
+            AttributeValue::String(reearth_flow_common::datetime::to_rfc3339(dt))
+        }
+        DateTimeOutputFormat::UnixS => {
+            let ts = reearth_flow_common::datetime::to_unix_s(dt);
+            AttributeValue::Number(serde_json::Number::from(ts))
+        }
+        DateTimeOutputFormat::UnixMs => {
+            let ts = reearth_flow_common::datetime::to_unix_ms(dt);
+            AttributeValue::Number(serde_json::Number::from(ts))
+        }
+        DateTimeOutputFormat::Date => {
+            AttributeValue::String(reearth_flow_common::datetime::to_date_string(dt))
+        }
+        DateTimeOutputFormat::Custom(fmt) => {
+            AttributeValue::String(reearth_flow_common::datetime::format_with(dt, fmt))
+        }
     }
 }
 
@@ -348,7 +332,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::UnixS);
 
-        assert_eq!(result, "1609459200");
+        assert_eq!(result, AttributeValue::Number(1609459200i64.into()));
     }
 
     #[test]
@@ -362,7 +346,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -376,7 +360,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixMs).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -387,7 +371,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Date).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -405,7 +389,7 @@ mod tests {
         .unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T12:30:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T12:30:00+00:00".to_string()));
     }
 
     #[test]
@@ -419,7 +403,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::UnixS);
 
-        assert_eq!(result, "1609459200");
+        assert_eq!(result, AttributeValue::Number(1609459200i64.into()));
     }
 
     #[test]
@@ -430,7 +414,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -444,7 +428,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Date);
 
-        assert_eq!(result, "2021-01-15");
+        assert_eq!(result, AttributeValue::String("2021-01-15".to_string()));
     }
 
     #[test]
@@ -461,7 +445,7 @@ mod tests {
             &DateTimeOutputFormat::Custom("%d/%m/%Y %H:%M".to_string()),
         );
 
-        assert_eq!(result, "01/01/2021 00:00");
+        assert_eq!(result, AttributeValue::String("01/01/2021 00:00".to_string()));
     }
 
     #[test]
@@ -490,7 +474,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -507,7 +491,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -522,12 +506,15 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
     fn test_auto_unix_ms_timestamp_string() {
         // Test auto-detect with Unix timestamp in milliseconds as string
+        // Note: With the updated logic, auto-detection defaults to seconds first,
+        // so a 13-digit value like 1609459200000 will be parsed as seconds (invalid/far future)
+        // then fall back to milliseconds. For reliable ms parsing, use UnixMs input format.
         let feature = create_test_feature(
             "timestamp",
             AttributeValue::String("1609459200000".to_string()),
@@ -537,7 +524,7 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, "2021-01-01T00:00:00+00:00");
+        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
     }
 
     #[test]
@@ -579,10 +566,10 @@ mod tests {
             Some(&AttributeValue::String("2021-01-01T00:00:00Z".to_string()))
         );
 
-        // New attribute should have the converted value
+        // New attribute should have the converted value as a number
         assert_eq!(
             output_feature.get("createdAtTimestamp"),
-            Some(&AttributeValue::String("1609459200".to_string()))
+            Some(&AttributeValue::Number(1609459200i64.into()))
         );
     }
 }
