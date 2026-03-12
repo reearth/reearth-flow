@@ -25,7 +25,6 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   fullscreenButton: false,
   sceneModePicker: false,
   infoBox: false,
-  // sceneMode: SceneMode.SCENE3D,
   homeButton: false,
   geocoder: false,
   animation: false,
