@@ -4,6 +4,7 @@ import {
   Cartesian3,
   HeadingPitchRange,
   Math as CesiumMath,
+  Rectangle,
 } from "cesium";
 import {
   MouseEvent,
@@ -32,7 +33,6 @@ export default () => {
   );
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
   const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
@@ -201,88 +201,78 @@ export default () => {
         currentDetectedGeometryType === "CityGmlGeometry" ||
         currentDetectedGeometryType === "FlowGeometry3D";
 
-      if (is3D && cesiumViewerRef.current) {
-        try {
-          const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
-          if (!cesiumViewer) return;
+      if (cesiumViewerRef.current) {
+        const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+        if (is3D) {
+          try {
+            const featureId = selectedFeature.id;
+            if (!featureId) return;
 
-          const featureId = selectedFeature.id;
-          if (!featureId) return;
+            const geometry = selectedFeature.geometry;
 
-          const geometry = selectedFeature.geometry;
+            if (geometry?.type === "CityGmlGeometry") {
+              const gmlGeometries =
+                geometry.gmlGeometries ||
+                geometry.value?.cityGmlGeometry?.gmlGeometries;
+              const positions: Cartesian3[] = [];
+              if (!Array.isArray(gmlGeometries)) return;
+              for (const geom of gmlGeometries) {
+                if (!Array.isArray(geom.polygons)) continue;
 
-          if (geometry?.type === "CityGmlGeometry") {
-            const gmlGeometries =
-              geometry.gmlGeometries ||
-              geometry.value?.cityGmlGeometry?.gmlGeometries;
-            const positions: Cartesian3[] = [];
-            if (!Array.isArray(gmlGeometries)) return;
-            for (const geom of gmlGeometries) {
-              if (!Array.isArray(geom.polygons)) continue;
+                for (const polygon of geom.polygons) {
+                  const rings = [
+                    ...(polygon.exterior ? [polygon.exterior] : []),
+                    ...(Array.isArray(polygon.interiors)
+                      ? polygon.interiors
+                      : []),
+                  ];
 
-              for (const polygon of geom.polygons) {
-                const rings = [
-                  ...(polygon.exterior ? [polygon.exterior] : []),
-                  ...(Array.isArray(polygon.interiors)
-                    ? polygon.interiors
-                    : []),
-                ];
-
-                for (const ring of rings) {
-                  if (!Array.isArray(ring)) continue;
-                  for (const coord of ring || []) {
-                    if (
-                      coord &&
-                      typeof coord.x === "number" &&
-                      typeof coord.y === "number"
-                    ) {
-                      positions.push(
-                        Cartesian3.fromDegrees(
-                          coord.x,
-                          coord.y,
-                          typeof coord.z === "number" ? coord.z : 0,
-                        ),
-                      );
+                  for (const ring of rings) {
+                    if (!Array.isArray(ring)) continue;
+                    for (const coord of ring || []) {
+                      if (
+                        coord &&
+                        typeof coord.x === "number" &&
+                        typeof coord.y === "number"
+                      ) {
+                        positions.push(
+                          Cartesian3.fromDegrees(
+                            coord.x,
+                            coord.y,
+                            typeof coord.z === "number" ? coord.z : 0,
+                          ),
+                        );
+                      }
                     }
                   }
                 }
               }
-            }
 
-            if (positions.length === 0) return;
+              if (positions.length === 0) return;
 
-            const sphere = getFeatureBoundingSphereFromBounds(gmlGeometries);
-            if (!sphere) return;
+              const sphere = getFeatureBoundingSphereFromBounds(gmlGeometries);
+              if (!sphere) return;
 
-            const paddedSphere = new BoundingSphere(
-              sphere.center,
-              Math.max(sphere.radius * 1.2, 10),
-            );
+              const paddedSphere = new BoundingSphere(
+                sphere.center,
+                Math.max(sphere.radius * 1.2, 10),
+              );
 
-            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
-              duration: 1.5,
-              offset: new HeadingPitchRange(
-                0,
-                CesiumMath.toRadians(-35),
-                paddedSphere.radius * 2.5,
-              ),
-            });
-          } else {
-            // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
-            const matchingEntities = cesiumViewer.entities.values.filter(
-              (entity: any) => {
-                const props = entity.properties?.getValue?.();
-                return (
-                  props?._originalId === featureId || entity.id === featureId
-                );
-              },
-            );
-            if (matchingEntities.length > 0) {
-              cesiumViewer.zoomTo(matchingEntities);
+              cesiumViewerRef.current?.cesiumElement.camera.flyToBoundingSphere(
+                paddedSphere,
+                {
+                  duration: 1.5,
+                  offset: new HeadingPitchRange(
+                    0,
+                    CesiumMath.toRadians(-35),
+                    paddedSphere.radius * 2.5,
+                  ),
+                },
+              );
             } else {
-              // Search in data sources as fallback
-              for (const dataSource of cesiumViewer.dataSources) {
-                const matching = dataSource.entities.values.filter(
+              // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
+              const matchingEntities =
+                cesiumViewerRef.current?.cesiumElement.entities.values.filter(
                   (entity: any) => {
                     const props = entity.properties?.getValue?.();
                     return (
@@ -291,33 +281,56 @@ export default () => {
                     );
                   },
                 );
-                if (matching.length > 0) {
-                  cesiumViewer.zoomTo(matching);
-                  break;
+              if (matchingEntities.length > 0) {
+                cesiumViewerRef.current?.cesiumElement.zoomTo(matchingEntities);
+              } else {
+                // Search in data sources as fallback
+                for (const dataSource of cesiumViewer.dataSources) {
+                  const matching = dataSource.entities.values.filter(
+                    (entity: any) => {
+                      const props = entity.properties?.getValue?.();
+                      return (
+                        props?._originalId === featureId ||
+                        entity.id === featureId
+                      );
+                    },
+                  );
+                  if (matching.length > 0) {
+                    cesiumViewer.zoomTo(matching);
+                    break;
+                  }
                 }
               }
             }
+          } catch (err) {
+            console.error("Error zooming to Cesium feature:", err);
           }
-        } catch (err) {
-          console.error("Error zooming to Cesium feature:", err);
-        }
-      } else if (!is3D && mapRef.current) {
-        // 2D MapLibre viewer - use existing bbox approach
-        try {
-          const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-          mapRef.current.fitBounds(
-            [
-              [minLng, minLat],
-              [maxLng, maxLat],
-            ],
-            { padding: 0, duration: 500, maxZoom: 15 },
-          );
-        } catch (err) {
-          console.error("Error computing bbox for selectedFeature:", err);
+        } else {
+          try {
+            const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+
+            const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
+            const sphere = BoundingSphere.fromRectangle3D(rect);
+            const paddedSphere = new BoundingSphere(
+              sphere.center,
+              Math.max(sphere.radius * 1.5, 500),
+            );
+
+            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
+              duration: 1.5,
+              offset: new HeadingPitchRange(
+                0,
+                CesiumMath.toRadians(-90),
+                paddedSphere.radius * 2,
+              ),
+            });
+          } catch (error) {
+            console.error("Error calculating bounding box for feature:", error);
+          }
         }
       }
     },
-    [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
+    [streamingQuery.detectedGeometryType, cesiumViewerRef],
   );
 
   const formattedData = useDataColumnizer({
@@ -463,8 +476,6 @@ export default () => {
   return {
     debugJobId,
     debugJobState,
-    fileType,
-    mapRef,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
