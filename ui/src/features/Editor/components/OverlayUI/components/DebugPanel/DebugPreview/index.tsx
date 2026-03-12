@@ -186,6 +186,7 @@ const DebugPreview: React.FC<Props> = ({
             <GeoViewer
               fileContent={processedOutputData}
               fileType={fileType}
+              visualizerType={visualizerType}
               cesiumViewerRef={cesiumViewerRef}
               selectedFeaturedId={selectedFeatureId}
               detailsOverlayOpen={detailsOverlayOpen}

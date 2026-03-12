@@ -9,6 +9,7 @@ type Props = {
   className?: string;
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  visualizerType: "2d-map" | "3d-map";
   cesiumViewerRef: React.RefObject<any>;
   selectedFeaturedId?: string | null;
   detailsOverlayOpen: boolean;
@@ -22,6 +23,7 @@ const GeoViewer: React.FC<Props> = ({
   className,
   fileContent,
   fileType,
+  visualizerType,
   cesiumViewerRef,
   selectedFeaturedId,
   detailsOverlayOpen,
@@ -39,6 +41,7 @@ const GeoViewer: React.FC<Props> = ({
         <CesiumViewer
           fileContent={fileContent}
           fileType={fileType}
+          visualizerType={visualizerType}
           viewerRef={cesiumViewerRef}
           selectedFeatureId={selectedFeaturedId}
           detailsOverlayOpen={detailsOverlayOpen}

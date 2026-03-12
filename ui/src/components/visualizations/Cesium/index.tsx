@@ -25,7 +25,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   fullscreenButton: false,
   sceneModePicker: false,
   infoBox: false,
-  sceneMode: SceneMode.SCENE3D,
+  // sceneMode: SceneMode.SCENE3D,
   homeButton: false,
   geocoder: false,
   animation: false,
@@ -36,6 +36,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
 type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  visualizerType: "2d-map" | "3d-map";
   viewerRef?: React.RefObject<any>;
   selectedFeatureId?: string | null;
   detailsOverlayOpen: boolean;
@@ -48,6 +49,7 @@ type Props = {
 const CesiumViewer: React.FC<Props> = ({
   fileContent,
   fileType,
+  visualizerType,
   viewerRef,
   selectedFeatureId,
   detailsOverlayOpen,
@@ -145,7 +147,17 @@ const CesiumViewer: React.FC<Props> = ({
   }, [fileContent]);
 
   return (
-    <Viewer ref={viewerRef} full {...defaultCesiumProps}>
+    <Viewer
+      ref={viewerRef}
+      sceneMode={
+        visualizerType
+          ? visualizerType === "2d-map"
+            ? SceneMode.SCENE2D
+            : SceneMode.SCENE3D
+          : SceneMode.SCENE3D
+      }
+      full
+      {...defaultCesiumProps}>
       {onSelectedFeature && (
         <ScreenSpaceEventHandler>
           <ScreenSpaceEvent
