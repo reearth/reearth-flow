@@ -647,7 +647,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
-    pub fn write_footer(&mut self) -> Result<(), SinkError> {
+    pub fn flush_appearances(&mut self) -> Result<(), SinkError> {
         let pending = std::mem::take(&mut self.pending_appearances);
         for (bundle, surfaces) in &pending {
             self.writer
@@ -658,6 +658,11 @@ impl<W: Write> CityGmlXmlWriter<W> {
                 .write_event(Event::End(BytesEnd::new("app:appearanceMember")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         }
+        Ok(())
+    }
+
+    pub fn write_footer(&mut self) -> Result<(), SinkError> {
+        self.flush_appearances()?;
         self.writer
             .write_event(Event::End(BytesEnd::new("core:CityModel")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -705,8 +710,7 @@ mod tests {
         ]
     }
 
-    /// Run write_city_object + write_footer on a single LOD-2 MultiSurface for a Building
-    /// and return the compact XML string (appearances emitted at CityModel level).
+    /// Write a single LOD-2 MultiSurface Building and return the XML output.
     fn write_building(surfaces: Vec<GmlSurface>, appearance: Option<&AppearanceBundle>) -> String {
         let entry = GeometryEntry {
             lod: 2,
@@ -722,11 +726,11 @@ mod tests {
             appearance,
         )
         .unwrap();
-        w.write_footer().unwrap();
+        w.flush_appearances().unwrap();
         String::from_utf8(buf).unwrap()
     }
 
-    // ── X3DMaterial ────────────────────────────────────────────────────────────
+    // X3DMaterial
 
     #[test]
     fn test_write_city_object_x3d_material() {
@@ -780,12 +784,11 @@ mod tests {
             r#"</app:X3DMaterial></app:surfaceDataMember>"#,
             r#"</app:Appearance>"#,
             r#"</app:appearanceMember>"#,
-            r#"</core:CityModel>"#,
         );
         assert_eq!(xml, expected);
     }
 
-    // ── ParameterizedTexture ───────────────────────────────────────────────────
+    // ParameterizedTexture
 
     #[test]
     fn test_write_city_object_parameterized_texture() {
@@ -843,7 +846,6 @@ mod tests {
             r#"</app:ParameterizedTexture></app:surfaceDataMember>"#,
             r#"</app:Appearance>"#,
             r#"</app:appearanceMember>"#,
-            r#"</core:CityModel>"#,
         );
         assert_eq!(xml, expected);
     }
