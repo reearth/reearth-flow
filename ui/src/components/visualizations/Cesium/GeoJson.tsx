@@ -45,7 +45,7 @@ function sanitizeCoords(coords: any): any {
 }
 
 function sanitizeGeoJson(geoJson: any) {
-  if (!geoJson) return geoJson;
+  if (!geoJson) return undefined;
 
   if (geoJson.type === "FeatureCollection") {
     geoJson.features = geoJson.features
