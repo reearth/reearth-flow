@@ -33,9 +33,10 @@ impl DateTimeValue {
     /// Convert to DateTime<Utc> for formatting to formats that require UTC
     fn to_utc(&self) -> chrono::DateTime<chrono::Utc> {
         match self {
-            DateTimeValue::NaiveDate(d) => {
-                chrono::DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), chrono::Utc)
-            }
+            DateTimeValue::NaiveDate(d) => chrono::DateTime::from_naive_utc_and_offset(
+                d.and_hms_opt(0, 0, 0).unwrap(),
+                chrono::Utc,
+            ),
             DateTimeValue::Utc(dt) => *dt,
             DateTimeValue::FixedOffset(dt) => dt.with_timezone(&chrono::Utc),
         }
@@ -313,10 +314,9 @@ fn parse_from_string_and_number(
             // Custom formats without timezone info are parsed as NaiveDateTime, stored as Utc
             let naive_dt = chrono::NaiveDateTime::parse_from_str(s, fmt)
                 .map_err(|e| format!("Failed to parse custom format: {e}"))?;
-            Ok(DateTimeValue::Utc(chrono::DateTime::from_naive_utc_and_offset(
-                naive_dt,
-                chrono::Utc,
-            )))
+            Ok(DateTimeValue::Utc(
+                chrono::DateTime::from_naive_utc_and_offset(naive_dt, chrono::Utc),
+            ))
         }
     }
 }
@@ -327,7 +327,9 @@ fn format_datetime(dt: &DateTimeValue, format: &DateTimeOutputFormat) -> Attribu
             // Output RFC3339 - preserve timezone info if available
             match dt {
                 DateTimeValue::FixedOffset(dt) => AttributeValue::String(dt.to_rfc3339()),
-                _ => AttributeValue::String(reearth_flow_common::datetime::to_rfc3339(&dt.to_utc())),
+                _ => {
+                    AttributeValue::String(reearth_flow_common::datetime::to_rfc3339(&dt.to_utc()))
+                }
             }
         }
         DateTimeOutputFormat::UnixS => {
@@ -343,9 +345,13 @@ fn format_datetime(dt: &DateTimeValue, format: &DateTimeOutputFormat) -> Attribu
         DateTimeOutputFormat::Date => {
             // Date-only output
             match dt {
-                DateTimeValue::NaiveDate(d) => AttributeValue::String(d.format("%Y-%m-%d").to_string()),
+                DateTimeValue::NaiveDate(d) => {
+                    AttributeValue::String(d.format("%Y-%m-%d").to_string())
+                }
                 DateTimeValue::Utc(dt) => AttributeValue::String(dt.format("%Y-%m-%d").to_string()),
-                DateTimeValue::FixedOffset(dt) => AttributeValue::String(dt.format("%Y-%m-%d").to_string()),
+                DateTimeValue::FixedOffset(dt) => {
+                    AttributeValue::String(dt.format("%Y-%m-%d").to_string())
+                }
             }
         }
         DateTimeOutputFormat::Custom(fmt) => {
@@ -356,9 +362,7 @@ fn format_datetime(dt: &DateTimeValue, format: &DateTimeOutputFormat) -> Attribu
                     let naive_dt = d.and_hms_opt(0, 0, 0).unwrap();
                     AttributeValue::String(naive_dt.format(fmt).to_string())
                 }
-                DateTimeValue::Utc(dt) => {
-                    AttributeValue::String(dt.format(fmt).to_string())
-                }
+                DateTimeValue::Utc(dt) => AttributeValue::String(dt.format(fmt).to_string()),
                 DateTimeValue::FixedOffset(dt) => {
                     AttributeValue::String(dt.format(fmt).to_string())
                 }
@@ -403,7 +407,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -417,7 +424,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixMs).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -428,7 +438,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Date).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -446,7 +459,10 @@ mod tests {
         .unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T12:30:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T12:30:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -471,7 +487,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -502,7 +521,10 @@ mod tests {
             &DateTimeOutputFormat::Custom("%d/%m/%Y %H:%M".to_string()),
         );
 
-        assert_eq!(result, AttributeValue::String("01/01/2021 00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("01/01/2021 00:00".to_string())
+        );
     }
 
     #[test]
@@ -531,7 +553,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -548,7 +573,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -563,7 +591,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -581,7 +612,10 @@ mod tests {
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
 
-        assert_eq!(result, AttributeValue::String("2021-01-01T00:00:00+00:00".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
     }
 
     #[test]
@@ -594,7 +628,7 @@ mod tests {
 
         let input_value = feature.get("timestamp").unwrap();
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
-        
+
         // Verify it's stored as FixedOffset
         match dt {
             DateTimeValue::FixedOffset(dt) => {
@@ -602,10 +636,13 @@ mod tests {
             }
             _ => panic!("Expected FixedOffset, got {:?}", dt),
         }
-        
+
         // Output as RFC3339 should preserve the original timezone
         let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
-        assert_eq!(result, AttributeValue::String("2021-01-01T12:00:00+05:30".to_string()));
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T12:00:00+05:30".to_string())
+        );
     }
 
     #[test]
@@ -618,7 +655,7 @@ mod tests {
 
         let input_value = feature.get("timestamp").unwrap();
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
-        
+
         // Output as UnixS should normalize to UTC
         let result = format_datetime(&dt, &DateTimeOutputFormat::UnixS);
         // 2021-01-01T00:00:00+05:30 = 2020-12-31T18:30:00Z = 1609439400
@@ -628,14 +665,11 @@ mod tests {
     #[test]
     fn test_date_only_preserved_as_naive() {
         // Test that date-only input is stored as NaiveDate
-        let feature = create_test_feature(
-            "date",
-            AttributeValue::String("2021-01-15".to_string()),
-        );
+        let feature = create_test_feature("date", AttributeValue::String("2021-01-15".to_string()));
 
         let input_value = feature.get("date").unwrap();
         let dt = parse_datetime(input_value, &DateTimeInputFormat::Date).unwrap();
-        
+
         // Verify it's stored as NaiveDate
         match dt {
             DateTimeValue::NaiveDate(d) => {
@@ -645,7 +679,7 @@ mod tests {
             }
             _ => panic!("Expected NaiveDate, got {:?}", dt),
         }
-        
+
         // Output as Date should preserve the date
         let result = format_datetime(&dt, &DateTimeOutputFormat::Date);
         assert_eq!(result, AttributeValue::String("2021-01-15".to_string()));
