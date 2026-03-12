@@ -107,3 +107,7 @@ path = "logging_test/07_sink_error.rs"
 [[test]]
 name = "test-logging-workflow-definition-error"
 path = "logging_test/08_workflow_definition_error.rs"
+
+[[test]]
+name = "test-logging-orphaned-sink"
+path = "logging_test/09_orphaned_sink.rs"
