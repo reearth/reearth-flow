@@ -5,12 +5,12 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import {
-  AwarenessSelectionsProvider,
-  type AwarenessSelectionsMap,
-} from "./AwarenessSelectionsContext";
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
-import { EditorContextType, EditorProvider } from "./editorContext";
+import {
+  EditorContextType,
+  EditorProvider,
+  type AwarenessSelectionsMap,
+} from "./editorContext";
 import useHooks from "./hooks";
 
 type Props = {
@@ -106,21 +106,6 @@ export default function Editor({
     undoTrackerActionWrapper,
   });
 
-  const editorContext = useMemo(
-    (): EditorContextType => ({
-      onNodesChange: handleNodesChange,
-      onNodeSettings: handleNodeSettings,
-      currentYWorkflow,
-      undoTrackerActionWrapper,
-    }),
-    [
-      handleNodesChange,
-      handleNodeSettings,
-      currentYWorkflow,
-      undoTrackerActionWrapper,
-    ],
-  );
-
   const awarenessSelectionsMap = useMemo((): AwarenessSelectionsMap => {
     const map: AwarenessSelectionsMap = {};
     Object.values(users).forEach((user) => {
@@ -132,9 +117,25 @@ export default function Editor({
     return map;
   }, [users]);
 
+  const editorContext = useMemo(
+    (): EditorContextType => ({
+      onNodesChange: handleNodesChange,
+      onNodeSettings: handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
+      awarenessSelectionsMap,
+    }),
+    [
+      handleNodesChange,
+      handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
+      awarenessSelectionsMap,
+    ],
+  );
+
   return (
     <div className="flex h-screen flex-col">
-      <AwarenessSelectionsProvider value={awarenessSelectionsMap}>
         <EditorProvider value={editorContext}>
           <div
             className={`flex flex-1 flex-col ${spotlightUser ? "border" : ""}`}
@@ -235,7 +236,6 @@ export default function Editor({
             )}
           </div>
         </EditorProvider>
-      </AwarenessSelectionsProvider>
     </div>
   );
 }

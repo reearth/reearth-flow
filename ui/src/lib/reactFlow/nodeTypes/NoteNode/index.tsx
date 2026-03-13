@@ -2,7 +2,7 @@ import { NoteIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { useAwarenessNodeSelections } from "@flow/features/Editor/AwarenessSelectionsContext";
+import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
 import type { Node } from "@flow/types";
 
 import { convertHextoRgba } from "../utils";

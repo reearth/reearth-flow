@@ -7,7 +7,7 @@ import {
 import { NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
-import { useAwarenessNodeSelections } from "@flow/features/Editor/AwarenessSelectionsContext";
+import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
 import type { Node } from "@flow/types";
 
 import { Handles } from "./components";
