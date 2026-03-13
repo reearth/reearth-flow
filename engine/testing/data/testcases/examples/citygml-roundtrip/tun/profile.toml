@@ -1,0 +1,6 @@
+citygml_zip_name = "53393690_tun_6697_40_op.zip"
+
+[convs.cesium_statistics.roundtrip]
+path = "citygml-roundtrip-3dtiles"
+truth_path = "cesium_statistics_roundtrip.json"
+generate_truth = false

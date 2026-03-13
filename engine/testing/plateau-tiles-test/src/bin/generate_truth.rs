@@ -1,3 +1,4 @@
+use plateau_tiles_test::conv::cesium_statistics;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::file::{extract_zip_to_tmp, zip_dir};
@@ -90,6 +91,26 @@ fn run(profile_path: &Path) -> Result<(), String> {
         zip_result?;
 
         println!("wrote mvt_png/{} -> {}", id, truth_zip_path.display());
+    }
+
+    for (id, entry) in &profile.convs.cesium_statistics {
+        if !entry.generate_truth {
+            continue;
+        }
+        let stem = Path::new(&entry.path)
+            .file_name()
+            .expect("convs.cesium_statistics path must have a file name");
+        let zip_path = fme_dir.join(stem).with_extension("zip");
+        let tmp_dir = extract_zip_to_tmp(&zip_path)?;
+        let output_path = fme_dir.join(&entry.truth_path);
+        let result = cesium_statistics::write_cesium_statistics(&tmp_dir, &output_path);
+        fs::remove_dir_all(&tmp_dir).ok();
+        result?;
+        println!(
+            "wrote cesium_statistics/{} -> {}",
+            id,
+            output_path.display()
+        );
     }
 
     Ok(())
