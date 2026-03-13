@@ -28,6 +28,40 @@ impl Default for DateTime {
 }
 
 impl DateTime {
+    /// Canonical string parsing for DateTime.
+    /// This is the single source of truth for parsing datetime strings.
+    ///
+    /// Parsing order:
+    /// 1. RFC3339: "Z" suffix → Utc, offset → FixedOffset
+    /// 2. Date-only: "%Y-%m-%d" → NaiveDate
+    /// 3. Other formats via common datetime → Utc
+    ///
+    /// Supported "other formats":
+    /// - "%Y/%m/%d %H:%M:%S"
+    /// - "%Y-%m-%d %H:%M:%S"
+    #[allow(clippy::result_unit_err)]
+    pub fn parse(s: &str) -> Result<Self, ()> {
+        // Try RFC3339 with timezone first
+        if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(s) {
+            // If the string ends with "Z", it's UTC - store as Utc variant
+            // Otherwise, store as FixedOffset to preserve the original offset
+            if s.ends_with('Z') {
+                return Ok(Self::Utc(dt.with_timezone(&Utc)));
+            }
+            return Ok(Self::FixedOffset(dt));
+        }
+        // Try date-only format BEFORE try_from, because try_from
+        // also handles %Y-%m-%d but converts it to DateTime<Utc>
+        // We want to preserve it as NaiveDate for correct typing
+        if let Ok(d) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+            return Ok(Self::NaiveDate(d));
+        }
+        // Try other formats via common datetime
+        if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
+            return Ok(Self::Utc(dt));
+        }
+        Err(())
+    }
     /// Convert to UTC datetime
     pub fn to_utc(&self) -> ChronoDateTime<Utc> {
         match self {
@@ -138,29 +172,9 @@ impl<'de> Deserialize<'de> for DateTime {
             where
                 E: serde::de::Error,
             {
-                // Try RFC3339 with timezone first
-                if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(v) {
-                    // If the string ends with "Z", it's UTC - store as Utc variant
-                    // Otherwise, store as FixedOffset to preserve the original offset
-                    if v.ends_with('Z') {
-                        return Ok(DateTime::Utc(dt.with_timezone(&Utc)));
-                    }
-                    return Ok(DateTime::FixedOffset(dt));
-                }
-                // Try date-only format BEFORE try_from, because try_from
-                // also handles %Y-%m-%d but converts it to DateTime<Utc>
-                // We want to preserve it as NaiveDate for correct typing
-                if let Ok(d) = NaiveDate::parse_from_str(v, "%Y-%m-%d") {
-                    return Ok(DateTime::NaiveDate(d));
-                }
-                // Try other formats via common datetime
-                if let Ok(dt) = reearth_flow_common::datetime::try_from(v) {
-                    return Ok(DateTime::Utc(dt));
-                }
-                Err(serde::de::Error::custom(format!(
-                    "invalid datetime format: {}",
-                    v
-                )))
+                DateTime::parse(v).map_err(|_| {
+                    serde::de::Error::custom(format!("invalid datetime format: {}", v))
+                })
             }
         }
 
@@ -220,19 +234,7 @@ impl TryFrom<String> for DateTime {
 impl TryFrom<&str> for DateTime {
     type Error = ();
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        // Try RFC3339 with timezone first
-        if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(s) {
-            return Ok(Self::FixedOffset(dt));
-        }
-        // Try other formats via common datetime
-        if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
-            return Ok(Self::Utc(dt));
-        }
-        // Try date-only format
-        if let Ok(d) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-            return Ok(Self::NaiveDate(d));
-        }
-        Err(())
+        Self::parse(s)
     }
 }
 

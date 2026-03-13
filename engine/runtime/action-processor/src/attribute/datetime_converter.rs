@@ -245,22 +245,10 @@ fn parse_from_string_and_number(
                     return Ok(DateTime::Utc(dt));
                 }
             }
-            // Try string formats (RFC3339, YYYY-MM-DD, etc.)
+            // Try string formats using the canonical DateTime::parse
             if let Some(s) = str_val {
-                // Try RFC3339 first - may include timezone info
-                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
-                    return Ok(DateTime::FixedOffset(dt));
-                }
-                // Try date-only format BEFORE try_from, because try_from
-                // also handles %Y-%m-%d but converts it to DateTime<Utc>
-                // We want to preserve it as NaiveDate for correct typing
-                if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-                    return Ok(DateTime::NaiveDate(d));
-                }
-                // Try other formats that result in Utc
-                if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
-                    return Ok(DateTime::Utc(dt));
-                }
+                return DateTime::parse(s)
+                    .map_err(|_| "Could not auto-detect datetime format".to_string());
             }
             Err("Could not auto-detect datetime format".to_string())
         }
