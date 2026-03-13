@@ -2324,8 +2324,7 @@ Convert datetime values between different formats
   "title": "DateTimeConverter Parameters",
   "type": "object",
   "required": [
-    "attribute",
-    "outputFormat"
+    "attribute"
   ],
   "properties": {
     "attribute": {
@@ -2350,7 +2349,8 @@ Convert datetime values between different formats
       ]
     },
     "outputFormat": {
-      "description": "Desired output format",
+      "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
+      "default": "auto",
       "allOf": [
         {
           "$ref": "#/definitions/DateTimeOutputFormat"
@@ -2363,7 +2363,7 @@ Convert datetime values between different formats
       "description": "Input format options for DateTimeConverter",
       "oneOf": [
         {
-          "description": "Auto-detect from known formats",
+          "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
           "type": "string",
           "enum": [
             "auto"
@@ -2415,6 +2415,13 @@ Convert datetime values between different formats
     "DateTimeOutputFormat": {
       "description": "Output format options for DateTimeConverter",
       "oneOf": [
+        {
+          "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
+          "type": "string",
+          "enum": [
+            "auto"
+          ]
+        },
         {
           "description": "RFC3339 / ISO 8601 format",
           "type": "string",
