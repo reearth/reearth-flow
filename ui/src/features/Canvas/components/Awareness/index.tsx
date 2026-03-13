@@ -4,7 +4,6 @@ import type { AwarenessUser } from "@flow/types";
 
 import GhostEdge from "./GhostEdge";
 import MultiCursor from "./MultiCursor";
-import NodeSelection from "./NodeSelection";
 import SelectionRectangle from "./SelectionRectangle";
 
 type AwarenessProps = {
@@ -23,7 +22,6 @@ const Awareness: React.FC<AwarenessProps> = ({ users, currentWorkflowId }) => {
             {user.cursor && <MultiCursor user={user} />}
             {user.selectionRect && <SelectionRectangle user={user} />}
             {user.draggingEdge && <GhostEdge user={user} />}
-            {user.selectedNodeIds && <NodeSelection user={user} />}
           </div>
         );
       })}

@@ -2,6 +2,7 @@ import { NoteIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
+import { useAwarenessNodeSelections } from "@flow/features/Editor/AwarenessSelectionsContext";
 import type { Node } from "@flow/types";
 
 import { convertHextoRgba } from "../utils";
@@ -14,7 +15,8 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
   const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
-
+  const awarenessSelections = useAwarenessNodeSelections(id);
+  const remoteColor = awarenessSelections[0]?.color;
   return (
     <>
       {props.selected && (
@@ -34,9 +36,6 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
           }}
           minWidth={minSize.width}
           minHeight={minSize.height}
-          // onResize={(r) => {
-          //   console.log("ADS: ", r);
-          // }}
         />
       )}
       <div
@@ -51,11 +50,15 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
           }
         }}
         style={{
+          ...(remoteColor ? { outline: `solid ${remoteColor}` } : {}),
           minWidth: minSize.width,
           minHeight: minSize.height,
         }}>
         <div
           className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg border-x border-t bg-secondary p-1 ${props.selected ? "border-border" : "border-transparent"}`}
+          style={{
+            ...(remoteColor ? { outline: `solid ${remoteColor}` } : {}),
+          }}
           ref={(element) => {
             if (element)
               element.style.setProperty(
