@@ -100,13 +100,22 @@ impl DateTime {
 }
 
 /// Custom Serialize implementation to maintain backward compatibility.
-/// Serializes as a plain RFC3339 string.
+/// Serializes according to the datetime variant:
+/// - NaiveDate: date only format (e.g., "2021-01-01")
+/// - Utc: RFC3339 without timezone suffix (e.g., "2021-01-01T00:00:00")
+/// - FixedOffset: full RFC3339 with timezone (e.g., "2021-01-01T00:00:00+00:00")
 impl Serialize for DateTime {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_rfc3339())
+        match self {
+            DateTime::NaiveDate(d) => serializer.serialize_str(&d.format("%Y-%m-%d").to_string()),
+            DateTime::Utc(dt) => {
+                serializer.serialize_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::AutoSi, false))
+            }
+            DateTime::FixedOffset(dt) => serializer.serialize_str(&dt.to_rfc3339()),
+        }
     }
 }
 
