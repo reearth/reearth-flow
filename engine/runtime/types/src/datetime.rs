@@ -1,6 +1,6 @@
 use chrono::{
-    offset::LocalResult, DateTime as ChronoDateTime, Datelike, FixedOffset, NaiveDate,
-    SecondsFormat, TimeZone, Utc,
+    offset::LocalResult, DateTime as ChronoDateTime, Datelike, FixedOffset, NaiveDate, TimeZone,
+    Utc,
 };
 use serde::{de::Visitor, Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
@@ -93,29 +93,28 @@ impl DateTime {
         }
     }
 
-    /// Convert the DateTime to a raw String
+    /// Convert the DateTime to a raw String.
+    /// The output format depends on the variant:
+    /// - NaiveDate: date only (e.g., "2021-01-01")
+    /// - Utc: RFC3339 with Z suffix (e.g., "2021-01-01T00:00:00Z")
+    /// - FixedOffset: RFC3339 with numeric offset (e.g., "2021-01-01T00:00:00+05:30")
     pub fn to_raw(&self) -> String {
-        self.to_utc().to_rfc3339_opts(SecondsFormat::AutoSi, true)
+        match self {
+            DateTime::NaiveDate(d) => d.format("%Y-%m-%d").to_string(),
+            DateTime::Utc(dt) => dt.to_rfc3339(),
+            DateTime::FixedOffset(dt) => dt.to_rfc3339(),
+        }
     }
 }
 
 /// Custom Serialize implementation to maintain backward compatibility.
-/// Serializes according to the datetime variant:
-/// - NaiveDate: date only format (e.g., "2021-01-01")
-/// - Utc: RFC3339 without timezone suffix (e.g., "2021-01-01T00:00:00")
-/// - FixedOffset: full RFC3339 with timezone (e.g., "2021-01-01T00:00:00+00:00")
+/// Serializes according to the datetime variant.
 impl Serialize for DateTime {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        match self {
-            DateTime::NaiveDate(d) => serializer.serialize_str(&d.format("%Y-%m-%d").to_string()),
-            DateTime::Utc(dt) => {
-                serializer.serialize_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::AutoSi, false))
-            }
-            DateTime::FixedOffset(dt) => serializer.serialize_str(&dt.to_rfc3339()),
-        }
+        serializer.serialize_str(&self.to_raw())
     }
 }
 
@@ -141,15 +140,22 @@ impl<'de> Deserialize<'de> for DateTime {
             {
                 // Try RFC3339 with timezone first
                 if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(v) {
+                    // If the string ends with "Z", it's UTC - store as Utc variant
+                    // Otherwise, store as FixedOffset to preserve the original offset
+                    if v.ends_with('Z') {
+                        return Ok(DateTime::Utc(dt.with_timezone(&Utc)));
+                    }
                     return Ok(DateTime::FixedOffset(dt));
+                }
+                // Try date-only format BEFORE try_from, because try_from
+                // also handles %Y-%m-%d but converts it to DateTime<Utc>
+                // We want to preserve it as NaiveDate for correct typing
+                if let Ok(d) = NaiveDate::parse_from_str(v, "%Y-%m-%d") {
+                    return Ok(DateTime::NaiveDate(d));
                 }
                 // Try other formats via common datetime
                 if let Ok(dt) = reearth_flow_common::datetime::try_from(v) {
                     return Ok(DateTime::Utc(dt));
-                }
-                // Try date-only format
-                if let Ok(d) = NaiveDate::parse_from_str(v, "%Y-%m-%d") {
-                    return Ok(DateTime::NaiveDate(d));
                 }
                 Err(serde::de::Error::custom(format!(
                     "invalid datetime format: {}",
@@ -304,20 +310,17 @@ mod tests {
     fn test_deserialize_from_date_only() {
         let json = "\"2021-01-01\"";
         let dt: DateTime = serde_json::from_str(json).unwrap();
-        // Date-only string may be parsed as Utc (with time 00:00:00) or NaiveDate
-        // depending on which parser matches first
+        // Date-only string is expected to be parsed as NaiveDate (not Utc)
         match dt {
             DateTime::NaiveDate(d) => {
                 assert_eq!(d.year(), 2021);
                 assert_eq!(d.month(), 1);
                 assert_eq!(d.day(), 1);
             }
-            DateTime::Utc(dt) => {
-                assert_eq!(dt.year(), 2021);
-                assert_eq!(dt.month(), 1);
-                assert_eq!(dt.day(), 1);
-            }
-            _ => panic!("Expected NaiveDate or Utc variant for date-only string"),
+            _ => panic!(
+                "Expected NaiveDate variant for date-only string, got {:?}",
+                dt
+            ),
         }
     }
 

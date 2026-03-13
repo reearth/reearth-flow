@@ -251,13 +251,15 @@ fn parse_from_string_and_number(
                 if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
                     return Ok(DateTime::FixedOffset(dt));
                 }
+                // Try date-only format BEFORE try_from, because try_from
+                // also handles %Y-%m-%d but converts it to DateTime<Utc>
+                // We want to preserve it as NaiveDate for correct typing
+                if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+                    return Ok(DateTime::NaiveDate(d));
+                }
                 // Try other formats that result in Utc
                 if let Ok(dt) = reearth_flow_common::datetime::try_from(s) {
                     return Ok(DateTime::Utc(dt));
-                }
-                // Try date-only format
-                if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-                    return Ok(DateTime::NaiveDate(d));
                 }
             }
             Err("Could not auto-detect datetime format".to_string())
