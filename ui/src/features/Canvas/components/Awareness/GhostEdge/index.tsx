@@ -49,12 +49,8 @@ const GhostEdge: React.FC<GhostEdgeProps> = ({ user }) => {
 
   return (
     <svg
+      className="pointer-events-none absolute top-0 left-0 overflow-visible"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        overflow: "visible",
-        pointerEvents: "none",
         zIndex: 2001,
       }}>
       <path
