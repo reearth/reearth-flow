@@ -8,7 +8,7 @@ import type { AwarenessUser } from "@flow/types";
 
 type PointerDownEvent = React.PointerEvent<Element>;
 
-export default function useFlowPresence({
+export default function useAwarenessPresence({
   yAwareness,
 }: {
   yAwareness: Awareness;
@@ -122,6 +122,35 @@ export default function useFlowPresence({
     yAwareness.setLocalStateField("selectionRect", null);
   }, [yAwareness]);
 
+  const setDraggingEdge = useCallback(
+    (
+      nodeId: string,
+      handleId: string | null,
+      handleType: "source" | "target" | null,
+    ) => {
+      yAwareness.setLocalStateField("draggingEdge", {
+        nodeId,
+        handleId,
+        handleType,
+      });
+    },
+    [yAwareness],
+  );
+
+  const clearDraggingEdge = useCallback(() => {
+    yAwareness.setLocalStateField("draggingEdge", null);
+  }, [yAwareness]);
+
+  const setSelectedNodes = useCallback(
+    (nodeIds: string[]) => {
+      yAwareness.setLocalStateField(
+        "selectedNodeIds",
+        nodeIds.length > 0 ? nodeIds : null,
+      );
+    },
+    [yAwareness],
+  );
+
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
       throttledPresenceUpdate(event.clientX, event.clientY);
@@ -157,5 +186,8 @@ export default function useFlowPresence({
     handlePointerDown,
     isSelectingRef,
     selectionStartRef,
+    setDraggingEdge,
+    clearDraggingEdge,
+    setSelectedNodes,
   };
 }

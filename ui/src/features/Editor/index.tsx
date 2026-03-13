@@ -91,6 +91,8 @@ export default function Editor({
     handlePaneClick,
 
     handlePointerDown,
+    handleConnectStart,
+    handleConnectEnd,
     setShowSearchPanel,
     selectedNodeIds,
   } = useHooks({
@@ -195,6 +197,8 @@ export default function Editor({
               onDebugRunStartFromSelectedNode={
                 handleFromSelectedNodeDebugRunStart
               }
+              onConnectStart={handleConnectStart}
+              onConnectEnd={handleConnectEnd}
             />
           </OverlayUI>
 

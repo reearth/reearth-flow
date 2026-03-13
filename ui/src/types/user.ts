@@ -55,6 +55,12 @@ export type AwarenessUser = {
   currentWorkflowId?: string;
   openWorkflowIds?: string[];
   debugRun?: UserDebugRun;
+  draggingEdge?: {
+    nodeId: string;
+    handleId: string | null;
+    handleType: "source" | "target" | null;
+  } | null;
+  selectedNodeIds?: string[] | null;
 };
 
 export type UserDebugRun = {

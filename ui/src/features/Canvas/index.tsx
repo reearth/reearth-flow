@@ -7,6 +7,7 @@ import {
   XYPosition,
   NodeChange,
   EdgeChange,
+  OnConnectStart,
 } from "@xyflow/react";
 import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
@@ -21,7 +22,8 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
 
-import { CanvasContextMenu, MultiCursor } from "./components";
+import { CanvasContextMenu } from "./components";
+import Awareness from "./components/Awareness";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -61,6 +63,8 @@ type Props = {
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onConnectStart?: OnConnectStart;
+  onConnectEnd?: () => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -86,6 +90,8 @@ const Canvas: React.FC<Props> = ({
   onNodesDisable,
   onPaneClick,
   onDebugRunStartFromSelectedNode,
+  onConnectStart,
+  onConnectEnd,
 }) => {
   const {
     handleNodesDeleteCleanup,
@@ -162,6 +168,8 @@ const Canvas: React.FC<Props> = ({
       onDragOver={handleNodeDragOver}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
+      onConnectStart={onConnectStart}
+      onConnectEnd={onConnectEnd}
       onBeforeDelete={onBeforeDelete}
       onSelectionEnd={onPaneClick}>
       <Background
@@ -171,7 +179,7 @@ const Canvas: React.FC<Props> = ({
         color="rgba(63, 63, 70, 1)"
       />
       {!readonly && users && currentWorkflowId && (
-        <MultiCursor users={users} currentWorkflowId={currentWorkflowId} />
+        <Awareness users={users} currentWorkflowId={currentWorkflowId} />
       )}
       {contextMenu && (
         <CanvasContextMenu
