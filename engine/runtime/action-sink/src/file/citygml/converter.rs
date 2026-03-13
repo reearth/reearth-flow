@@ -3,6 +3,7 @@ use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
+use reearth_flow_types::material::{Texture, X3DMaterial};
 
 #[derive(Debug, Clone)]
 pub struct GeometryEntry {
@@ -32,6 +33,14 @@ pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<Coordinate3D<f64>>,
     pub interiors: Vec<Vec<Coordinate3D<f64>>>,
+    /// Index into `AppearanceBundle::materials` (None if no material)
+    pub material_idx: Option<u32>,
+    /// Index into `AppearanceBundle::textures` (None if no texture)
+    pub texture_idx: Option<u32>,
+    /// UV coords for exterior ring, parallel to `exterior` vertices
+    pub uv_exterior: Vec<[f64; 2]>,
+    /// UV coords for each interior ring, parallel to `interiors` vertices
+    pub uv_interiors: Vec<Vec<[f64; 2]>>,
 }
 
 impl From<&Polygon3D<f64>> for GmlSurface {
@@ -44,7 +53,24 @@ impl From<&Polygon3D<f64>> for GmlSurface {
                 .iter()
                 .map(|ring| ring.0.clone())
                 .collect(),
+            material_idx: None,
+            texture_idx: None,
+            uv_exterior: Vec::new(),
+            uv_interiors: Vec::new(),
         }
+    }
+}
+
+/// Appearance data for a feature, parallel to the materials/textures in `CityGmlGeometry`.
+#[derive(Debug, Clone)]
+pub struct AppearanceBundle {
+    pub materials: Vec<X3DMaterial>,
+    pub textures: Vec<Texture>,
+}
+
+impl AppearanceBundle {
+    pub fn has_content(&self) -> bool {
+        !self.materials.is_empty() || !self.textures.is_empty()
     }
 }
 
@@ -172,8 +198,10 @@ impl CityObjectType {
 pub fn convert_citygml_geometry(
     geometry: &CityGmlGeometry,
     lod_filter: &LodMask,
-) -> Vec<GeometryEntry> {
-    geometry
+) -> (Vec<GeometryEntry>, AppearanceBundle) {
+    let need_appearance = !geometry.materials.is_empty() || !geometry.textures.is_empty();
+
+    let entries = geometry
         .gml_geometries
         .iter()
         .filter_map(|gml_geom| {
@@ -182,33 +210,60 @@ pub fn convert_citygml_geometry(
                 return None;
             }
             let property = gml_geom.gml_trait.as_ref().map(|t| t.property);
-            convert_gml_geometry(gml_geom).map(|elem| GeometryEntry {
+            convert_gml_geometry(gml_geom, geometry, need_appearance).map(|elem| GeometryEntry {
                 lod,
                 property,
                 element: elem,
             })
         })
-        .collect()
+        .collect();
+
+    let appearance = AppearanceBundle {
+        materials: geometry.materials.clone(),
+        textures: geometry.textures.clone(),
+    };
+
+    (entries, appearance)
 }
 
-fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
+fn convert_gml_geometry(
+    gml_geom: &GmlGeometry,
+    parent: &CityGmlGeometry,
+    need_appearance: bool,
+) -> Option<GmlElement> {
     match gml_geom.ty {
         GeometryType::Solid => {
             if gml_geom.polygons.is_empty() {
                 return None;
             }
+            let surfaces = gml_geom
+                .polygons
+                .iter()
+                .enumerate()
+                .map(|(i, poly)| {
+                    make_gml_surface(poly, gml_geom.pos as usize + i, parent, need_appearance)
+                })
+                .collect();
             Some(GmlElement::Solid {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom.polygons.iter().map(GmlSurface::from).collect(),
+                surfaces,
             })
         }
         GeometryType::Surface | GeometryType::Triangle => {
             if gml_geom.polygons.is_empty() {
                 return None;
             }
+            let surfaces = gml_geom
+                .polygons
+                .iter()
+                .enumerate()
+                .map(|(i, poly)| {
+                    make_gml_surface(poly, gml_geom.pos as usize + i, parent, need_appearance)
+                })
+                .collect();
             Some(GmlElement::MultiSurface {
                 id: gml_geom.id.clone(),
-                surfaces: gml_geom.polygons.iter().map(GmlSurface::from).collect(),
+                surfaces,
             })
         }
         GeometryType::Curve => {
@@ -225,6 +280,54 @@ fn convert_gml_geometry(gml_geom: &GmlGeometry) -> Option<GmlElement> {
             })
         }
         GeometryType::Point => None,
+    }
+}
+
+fn make_gml_surface(
+    poly: &Polygon3D<f64>,
+    poly_global_idx: usize,
+    parent: &CityGmlGeometry,
+    need_appearance: bool,
+) -> GmlSurface {
+    if !need_appearance {
+        return GmlSurface::from(poly);
+    }
+
+    let material_idx = parent
+        .polygon_materials
+        .get(poly_global_idx)
+        .copied()
+        .flatten();
+    let texture_idx = parent
+        .polygon_textures
+        .get(poly_global_idx)
+        .copied()
+        .flatten();
+
+    let (uv_exterior, uv_interiors) = if texture_idx.is_some() {
+        if let Some(uv_poly) = parent.polygon_uvs.0.get(poly_global_idx) {
+            let uv_ext = uv_poly.exterior().0.iter().map(|c| [c.x, c.y]).collect();
+            let uv_int = uv_poly
+                .interiors()
+                .iter()
+                .map(|ring| ring.0.iter().map(|c| [c.x, c.y]).collect())
+                .collect();
+            (uv_ext, uv_int)
+        } else {
+            (Vec::new(), Vec::new())
+        }
+    } else {
+        (Vec::new(), Vec::new())
+    };
+
+    GmlSurface {
+        id: None, // assigned by the writer using its id_counter
+        exterior: poly.exterior().0.clone(),
+        interiors: poly.interiors().iter().map(|ring| ring.0.clone()).collect(),
+        material_idx,
+        texture_idx,
+        uv_exterior,
+        uv_interiors,
     }
 }
 
