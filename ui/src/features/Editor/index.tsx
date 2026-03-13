@@ -93,7 +93,6 @@ export default function Editor({
     handleSpotlightUserDeselect,
     handleNodesDisable,
     handlePaneClick,
-
     handlePointerDown,
     handleConnectStart,
     handleConnectEnd,
@@ -134,7 +133,7 @@ export default function Editor({
   }, [users]);
 
   return (
-    <div className="flex h-screen flex-col" onPointerDown={handlePointerDown}>
+    <div className="flex h-screen flex-col">
       <AwarenessSelectionsProvider value={awarenessSelectionsMap}>
         <EditorProvider value={editorContext}>
           <div
@@ -215,6 +214,7 @@ export default function Editor({
                 }
                 onConnectStart={handleConnectStart}
                 onConnectEnd={handleConnectEnd}
+                onPointerDown={handlePointerDown}
               />
             </OverlayUI>
 

@@ -1,12 +1,10 @@
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 
 import type { AwarenessUser } from "@flow/types";
-
-type PointerDownEvent = React.PointerEvent<Element>;
 
 export default function useAwarenessPresence({
   yAwareness,
@@ -84,21 +82,21 @@ export default function useAwarenessPresence({
   );
 
   const handlePointerDown = useCallback(
-    (event: PointerDownEvent) => {
+    (e: MouseEvent) => {
       const flowPosition = screenToFlowPosition(
-        { x: event.clientX, y: event.clientY },
+        { x: e.clientX, y: e.clientY },
         { snapToGrid: false },
       );
 
       yAwareness.setLocalStateField("cursor", flowPosition);
       yAwareness.setLocalStateField("viewport", latestViewportRef.current);
 
-      if (!event.shiftKey || event.button !== 0) {
+      if (!e.shiftKey || e.button !== 0) {
         return;
       }
 
-      event.preventDefault();
-      event.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
 
       isSelectingRef.current = true;
       selectionStartRef.current = {

@@ -65,6 +65,7 @@ type Props = {
   ) => Promise<void>;
   onConnectStart?: OnConnectStart;
   onConnectEnd?: () => void;
+  onPointerDown?: (e: MouseEvent) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -92,6 +93,7 @@ const Canvas: React.FC<Props> = ({
   onDebugRunStartFromSelectedNode,
   onConnectStart,
   onConnectEnd,
+  onPointerDown,
 }) => {
   const {
     handleNodesDeleteCleanup,
@@ -132,6 +134,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
+      onPointerDown={onPointerDown}
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}
