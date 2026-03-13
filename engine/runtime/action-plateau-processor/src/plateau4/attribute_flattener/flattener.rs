@@ -310,7 +310,21 @@ impl Flattener {
         let country_list = country_array.as_vec()?;
         let country_obj = country_list.first()?.as_map()?;
 
-        country_obj.get("xAL:Locality").cloned()
+        match country_obj.get("xAL:Locality")? {
+            AttributeValue::Array(arr) => {
+                let joined = arr
+                    .iter()
+                    .filter_map(|v| v.as_string())
+                    .collect::<Vec<_>>()
+                    .join("");
+                if joined.is_empty() {
+                    None
+                } else {
+                    Some(AttributeValue::String(joined))
+                }
+            }
+            other => Some(other.clone()),
+        }
     }
 }
 

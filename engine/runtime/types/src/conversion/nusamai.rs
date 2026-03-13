@@ -432,6 +432,9 @@ impl AttributeValue {
                     nusamai_citygml::Value::Object(obj) => {
                         Self::process_object_value(result, obj);
                     }
+                    nusamai_citygml::Value::String(s) => {
+                        values.push(AttributeValue::String(s.clone()));
+                    }
                     _ => {
                         // Skip non-object, non-code types in array
                         tracing::warn!("Skip non-object in array for key: {} {:?}", key, attr);
@@ -443,6 +446,8 @@ impl AttributeValue {
             if has_codes {
                 result.insert(key.to_string(), AttributeValue::Array(values));
                 result.insert(format!("{key}_code"), AttributeValue::Array(codes));
+            } else if !values.is_empty() {
+                result.insert(key.to_string(), AttributeValue::Array(values));
             }
         }
     }
