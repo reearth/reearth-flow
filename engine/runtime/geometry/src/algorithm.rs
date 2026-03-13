@@ -24,6 +24,7 @@ pub mod euclidean_length;
 pub mod geo_distance_converter;
 pub mod geometry_cow;
 pub mod hole;
+pub mod interior_point;
 pub mod intersects;
 pub mod is_convex;
 pub mod kernels;

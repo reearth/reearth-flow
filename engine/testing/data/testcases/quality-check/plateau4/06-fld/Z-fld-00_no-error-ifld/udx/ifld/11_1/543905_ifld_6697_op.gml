@@ -7,7 +7,7 @@
     </gml:Envelope>
   </gml:boundedBy>
   <core:cityObjectMember>
-    <wtr:WaterBody gml:id="ifld_test_single_polygon">
+    <wtr:WaterBody gml:id="ifld_a1b2c3d4-e5f6-7890-abcd-1234567890ab">
       <gml:name>さいたま市内水浸水想定区域</gml:name>
       <core:creationDate>2024-02-29</core:creationDate>
       <wtr:class codeSpace="../../../codelists/WaterBody_class.xml">1140</wtr:class>
