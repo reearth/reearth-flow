@@ -1263,7 +1263,52 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 ### Description
 Replace Feature Geometry with Center Point
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CenterPointReplacerParam",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "description": "The method used to compute the replacement center point.",
+      "default": "centerOfGravity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CenterPointMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CenterPointMode": {
+      "description": "Method used to compute the center point of a geometry.",
+      "oneOf": [
+        {
+          "description": "Computes the centroid (center of gravity) of the geometry.",
+          "type": "string",
+          "enum": [
+            "centerOfGravity"
+          ]
+        },
+        {
+          "description": "Computes the center of the geometry's bounding box.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
+          "type": "string",
+          "enum": [
+            "anyInsidePoint"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -8132,11 +8177,27 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
   "description": "Configure unshared edge detection behavior",
   "type": "object",
   "properties": {
+    "groupBy": {
+      "description": "Group By Attributes. When specified, edge detection is performed independently within each group. Features with the same values for these attributes are grouped together.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "tolerance": {
       "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
       "default": 0.1,
       "type": "number",
       "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
     }
   }
 }
