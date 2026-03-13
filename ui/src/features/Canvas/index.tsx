@@ -171,7 +171,7 @@ const Canvas: React.FC<Props> = ({
       onConnectStart={onConnectStart}
       onConnectEnd={onConnectEnd}
       onBeforeDelete={onBeforeDelete}
-      onSelectionEnd={onPaneClick}>
+      onPaneClick={onPaneClick}>
       <Background
         className="bg-background dark:bg-background"
         variant={BackgroundVariant["Dots"]}

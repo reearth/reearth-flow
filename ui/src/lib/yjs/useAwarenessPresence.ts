@@ -31,7 +31,7 @@ export default function useAwarenessPresence({
     cursor: rawSelf?.cursor || { x: 0, y: 0 },
     viewport: rawSelf?.viewport,
     currentWorkflowId: rawSelf?.currentWorkflowId,
-    selectionRect: rawSelf?.selectionRect || null,
+    selectionRect: rawSelf?.selectionRect ?? undefined,
   };
 
   const users = Array.from(
@@ -154,6 +154,10 @@ export default function useAwarenessPresence({
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
       throttledPresenceUpdate(event.clientX, event.clientY);
+      const awarenessStates = yAwareness.getStates();
+      if (awarenessStates.size > 1) {
+        throttledPresenceUpdate(event.clientX, event.clientY);
+      }
 
       if (isSelectingRef.current) {
         updateSelectionRect(event.clientX, event.clientY);
@@ -178,7 +182,12 @@ export default function useAwarenessPresence({
       window.removeEventListener("blur", handleWindowBlur);
       throttledPresenceUpdate.cancel();
     };
-  }, [throttledPresenceUpdate, updateSelectionRect, clearSelectionRect]);
+  }, [
+    throttledPresenceUpdate,
+    updateSelectionRect,
+    clearSelectionRect,
+    yAwareness,
+  ]);
 
   return {
     self,

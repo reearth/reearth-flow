@@ -40,7 +40,7 @@ export type AwarenessUser = {
     startY: number;
     currentX: number;
     currentY: number;
-  };
+  } | null;
   cursor?: {
     x: number;
     y: number;
