@@ -4,6 +4,7 @@ use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
 use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
+use plateau_tiles_test::tester::cesium_statistics;
 use plateau_tiles_test::tester::json_attributes::{self, JsonFileConfig};
 use plateau_tiles_test::tester::json_attributes_v2::{self, JsonFileV2Config};
 use plateau_tiles_test::tester::json_object_key_order::{self, KeyOrderConfig};
@@ -145,6 +146,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/09-unf/unf",
     "data-convert/plateau4/10-wtr/wtr",
     "data-convert/plateau4/11-gen/mvt",
+    "examples/citygml-roundtrip/tun",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -317,6 +319,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                     )?;
                 }
                 Ok(())
+            });
+        }
+
+        if !profile.convs.cesium_statistics.is_empty() {
+            run_test("cesium_statistics", &relative_path_display, || {
+                cesium_statistics::test_cesium_statistics(
+                    &fme_source_dir,
+                    &flow_extracted_dir,
+                    &profile.convs.cesium_statistics,
+                )
             });
         }
 
