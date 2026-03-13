@@ -35,7 +35,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-orange-400/40 p-2 shadow-md shadow-secondary backdrop-blur-xs dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-orange-400/40 p-2 shadow-md shadow-secondary backdrop-blur-xs dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"} ${data.isDisabled ? "opacity-70" : ""}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
@@ -46,7 +46,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           }
         }}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg border-x border-t bg-secondary p-1 ${selected ? "border-orange-400/50" : "border-transparent"}`}
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg border-x border-t bg-secondary p-1 ${selected ? "border-orange-400/50" : "border-transparent"} ${data.isDisabled ? "opacity-70" : ""}`}
           ref={(element) => {
             if (element)
               element.style.setProperty(

@@ -379,10 +379,19 @@ export default ({
   const handleNodesDisable = useCallback(
     (ns?: Node[]) => {
       const nodesToUpdate =
-        ns?.map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled })) ||
+        ns?.map((n) => ({
+          nodeId: n.id,
+          type: n.type,
+          isDisabled: !n.data?.isDisabled,
+        })) ||
         nodes
           .filter((n) => n.selected)
-          .map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled }));
+          .map((n) => ({
+            nodeId: n.id,
+            type: n.type,
+            isDisabled: !n.data?.isDisabled,
+          }));
+      if (nodesToUpdate.some((n) => n.type === "note")) return;
 
       handleYNodesDataUpdate(nodesToUpdate);
     },
