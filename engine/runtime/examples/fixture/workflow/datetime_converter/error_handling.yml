@@ -1,0 +1,62 @@
+id: 550e8400-e29b-41d4-a716-446655440200
+name: "Test DateTimeConverter Error Handling"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440201
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440201
+    name: "DateTime Error Handling Graph"
+    nodes:
+      - id: 550e8400-e29b-41d4-a716-446655440202
+        name: "FeatureCreator"
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ timestamp: "2021-01-01T00:00:00Z" },
+              #{ timestamp: "invalid-datetime" },
+            ]
+
+      - id: 550e8400-e29b-41d4-a716-446655440203
+        name: "DateTimeConverter"
+        type: action
+        action: DateTimeConverter
+        with:
+          attribute: timestamp
+          inputFormat: rfc3339
+          outputFormat: unix_s
+
+      - id: 550e8400-e29b-41d4-a716-446655440204
+        name: "Output"
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "expected_output.json")
+
+      - id: 550e8400-e29b-41d4-a716-446655440205
+        name: "FailedOutput"
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "expected_failed.json")
+
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440206
+        from: 550e8400-e29b-41d4-a716-446655440202
+        to: 550e8400-e29b-41d4-a716-446655440203
+        fromPort: default
+        toPort: default
+      - id: 550e8400-e29b-41d4-a716-446655440207
+        from: 550e8400-e29b-41d4-a716-446655440203
+        to: 550e8400-e29b-41d4-a716-446655440204
+        fromPort: default
+        toPort: default
+      - id: 550e8400-e29b-41d4-a716-446655440208
+        from: 550e8400-e29b-41d4-a716-446655440203
+        to: 550e8400-e29b-41d4-a716-446655440205
+        fromPort: failed
+        toPort: default

@@ -1,0 +1,874 @@
+use std::collections::HashMap;
+
+use reearth_flow_runtime::{
+    errors::BoxedError,
+    event::EventHub,
+    executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+};
+use reearth_flow_types::datetime::DateTime;
+use reearth_flow_types::AttributeValue;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::errors::AttributeProcessorError;
+
+const FAILED_PORT: &str = "failed";
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct DateTimeConverterFactory;
+
+impl ProcessorFactory for DateTimeConverterFactory {
+    fn name(&self) -> &str {
+        "DateTimeConverter"
+    }
+
+    fn description(&self) -> &str {
+        "Convert datetime values between different formats"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(DateTimeConverterParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Attribute"]
+    }
+
+    fn get_input_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone(), Port::new(FAILED_PORT)]
+    }
+
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        let params: DateTimeConverterParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                AttributeProcessorError::DateTimeConverterFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                AttributeProcessorError::DateTimeConverterFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            return Err(AttributeProcessorError::DateTimeConverterFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
+        };
+
+        let processor = DateTimeConverter { params };
+        Ok(Box::new(processor))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct DateTimeConverter {
+    params: DateTimeConverterParam,
+}
+
+/// # DateTimeConverter Parameters
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DateTimeConverterParam {
+    /// Attribute containing the datetime value to convert
+    pub attribute: String,
+    /// Format of the input value (default: auto)
+    #[serde(default)]
+    pub input_format: DateTimeInputFormat,
+    /// Desired output format (default: auto).
+    /// Use `auto` to store as typed DateTime value (parser mode).
+    /// Use other formats to output as string/number (formatter mode).
+    #[serde(default)]
+    pub output_format: DateTimeOutputFormat,
+    /// Write result to a different attribute (leave input untouched)
+    /// Defaults to the same as `attribute`
+    #[serde(default)]
+    pub output_attribute: Option<String>,
+}
+
+/// Input format options for DateTimeConverter
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DateTimeInputFormat {
+    /// Auto-detect from known formats.
+    /// Note: Numeric values are always interpreted as Unix seconds.
+    /// For milliseconds, use the explicit `unix_ms` input format.
+    #[default]
+    Auto,
+    /// RFC3339 / ISO 8601 format
+    Rfc3339,
+    /// Unix timestamp in seconds
+    UnixS,
+    /// Unix timestamp in milliseconds
+    UnixMs,
+    /// Date only format (YYYY-MM-DD)
+    Date,
+    /// Custom format using chrono format specifiers
+    Custom(String),
+}
+
+/// Output format options for DateTimeConverter
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DateTimeOutputFormat {
+    /// Auto: Store as typed DateTime value (preserves the native variant).
+    /// Use this when you want the datetime as a proper DateTime type rather than a string.
+    #[default]
+    Auto,
+    /// RFC3339 / ISO 8601 format
+    Rfc3339,
+    /// Unix timestamp in seconds
+    UnixS,
+    /// Unix timestamp in milliseconds
+    UnixMs,
+    /// Date only format (YYYY-MM-DD)
+    Date,
+    /// Custom format using chrono format specifiers
+    Custom(String),
+}
+
+impl Processor for DateTimeConverter {
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let mut feature = ctx.feature.clone();
+        let output_attr = self
+            .params
+            .output_attribute
+            .as_ref()
+            .unwrap_or(&self.params.attribute)
+            .clone();
+
+        // Get the input value
+        let input_value = match feature.get(&self.params.attribute) {
+            Some(v) => v,
+            None => {
+                // Attribute not found, send to failed port
+                fw.send(ctx.new_with_feature_and_port(feature, Port::new(FAILED_PORT)));
+                return Ok(());
+            }
+        };
+
+        // Parse the datetime
+        let datetime = match parse_datetime(input_value, &self.params.input_format) {
+            Ok(dt) => dt,
+            Err(_) => {
+                // Parse failed, send to failed port
+                fw.send(ctx.new_with_feature_and_port(feature, Port::new(FAILED_PORT)));
+                return Ok(());
+            }
+        };
+
+        // Format the output
+        let output_value = format_datetime(&datetime, &self.params.output_format);
+
+        // Write to output attribute
+        feature.insert(output_attr, output_value);
+
+        // Send to output port
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+
+        Ok(())
+    }
+
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "DateTimeConverter"
+    }
+}
+
+fn parse_datetime(
+    value: &AttributeValue,
+    format: &DateTimeInputFormat,
+) -> Result<DateTime, String> {
+    // Handle different input types
+    match value {
+        // If already a DateTime, return it directly (no parsing needed)
+        AttributeValue::DateTime(dt) => Ok(dt.clone()),
+        // String input - may be numeric timestamp or formatted datetime string
+        AttributeValue::String(s) => {
+            let i64_val = s.parse::<i64>().ok();
+            parse_from_string_and_number(Some(s), i64_val, None, format)
+        }
+        // Number input - Unix timestamp
+        AttributeValue::Number(n) => {
+            let s = n.to_string();
+            // Try integer first, then float (truncating to handle values like 1700000000.0)
+            let i64_val = n.as_i64();
+            let f64_val = n.as_f64();
+            parse_from_string_and_number(Some(&s), i64_val, f64_val, format)
+        }
+        _ => Err("Unsupported value type for datetime conversion".to_string()),
+    }
+}
+
+fn parse_from_string_and_number(
+    str_val: Option<&str>,
+    i64_val: Option<i64>,
+    f64_val: Option<f64>,
+    format: &DateTimeInputFormat,
+) -> Result<DateTime, String> {
+    // Get effective i64 value: use i64_val if available, otherwise truncate f64_val
+    let effective_i64 = i64_val.or_else(|| f64_val.map(|f| f.trunc() as i64));
+
+    match format {
+        DateTimeInputFormat::Auto => {
+            // Try numeric formats first (Unix timestamps) - handles numeric strings like "1609459200"
+            // For auto-detection, numeric values are always interpreted as Unix seconds.
+            // Milliseconds are NOT auto-detected to avoid ambiguity with historical dates.
+            // Use explicit `unix_ms` input format for millisecond timestamps.
+            if let Some(n) = effective_i64 {
+                if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
+                    return Ok(DateTime::Utc(dt));
+                }
+            }
+            // Try string formats using the canonical DateTime::parse
+            if let Some(s) = str_val {
+                return DateTime::parse(s)
+                    .map_err(|_| "Could not auto-detect datetime format".to_string());
+            }
+            Err("Could not auto-detect datetime format".to_string())
+        }
+        DateTimeInputFormat::Rfc3339 => {
+            let s = str_val.ok_or("Expected string value for RFC3339")?;
+            // RFC3339 may include timezone - parse as FixedOffset to preserve it
+            chrono::DateTime::parse_from_rfc3339(s)
+                .map(DateTime::FixedOffset)
+                .map_err(|e| format!("Failed to parse RFC3339: {e}"))
+        }
+        DateTimeInputFormat::UnixS => {
+            let n = effective_i64.ok_or("Expected numeric value for Unix timestamp")?;
+            reearth_flow_common::datetime::try_from_unix_s(n)
+                .map(DateTime::Utc)
+                .map_err(|e| format!("Failed to parse Unix timestamp (seconds): {e}"))
+        }
+        DateTimeInputFormat::UnixMs => {
+            let n = effective_i64.ok_or("Expected numeric value for Unix timestamp")?;
+            reearth_flow_common::datetime::try_from_unix_ms(n)
+                .map(DateTime::Utc)
+                .map_err(|e| format!("Failed to parse Unix timestamp (milliseconds): {e}"))
+        }
+        DateTimeInputFormat::Date => {
+            let s = str_val.ok_or("Expected string value for Date format")?;
+            // Parse YYYY-MM-DD format - store as NaiveDate (no timezone)
+            chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                .map(DateTime::NaiveDate)
+                .map_err(|e| format!("Failed to parse Date: {e}"))
+        }
+        DateTimeInputFormat::Custom(fmt) => {
+            let s = str_val.ok_or("Expected string value for custom format")?;
+            // Custom formats without timezone info are parsed as NaiveDateTime, stored as Utc
+            let naive_dt = chrono::NaiveDateTime::parse_from_str(s, fmt)
+                .map_err(|e| format!("Failed to parse custom format: {e}"))?;
+            Ok(DateTime::Utc(chrono::DateTime::from_naive_utc_and_offset(
+                naive_dt,
+                chrono::Utc,
+            )))
+        }
+    }
+}
+
+fn format_datetime(dt: &DateTime, format: &DateTimeOutputFormat) -> AttributeValue {
+    match format {
+        DateTimeOutputFormat::Auto => {
+            // Store as typed DateTime (preserve the native variant)
+            AttributeValue::DateTime(dt.clone())
+        }
+        DateTimeOutputFormat::Rfc3339 => {
+            // Output RFC3339 - preserve timezone info if available
+            match dt {
+                DateTime::FixedOffset(dt) => AttributeValue::String(dt.to_rfc3339()),
+                _ => {
+                    AttributeValue::String(reearth_flow_common::datetime::to_rfc3339(&dt.to_utc()))
+                }
+            }
+        }
+        DateTimeOutputFormat::UnixS => {
+            // Unix timestamps are always UTC
+            let ts = dt.timestamp();
+            AttributeValue::Number(serde_json::Number::from(ts))
+        }
+        DateTimeOutputFormat::UnixMs => {
+            // Unix timestamps are always UTC
+            let ts = dt.timestamp_millis();
+            AttributeValue::Number(serde_json::Number::from(ts))
+        }
+        DateTimeOutputFormat::Date => {
+            // Date-only output
+            AttributeValue::String(dt.format("%Y-%m-%d"))
+        }
+        DateTimeOutputFormat::Custom(fmt) => {
+            // Custom format - use the DateTime's format method
+            AttributeValue::String(dt.format(fmt))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{Datelike, TimeZone};
+    use reearth_flow_types::{Attributes, Feature};
+
+    fn create_test_feature(attr_name: &str, value: AttributeValue) -> Feature {
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert(attr_name.to_string(), value);
+        feature
+    }
+
+    #[test]
+    fn test_parse_rfc3339_to_unix_s() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-01T00:00:00Z".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::UnixS);
+
+        assert_eq!(result, AttributeValue::Number(1609459200i64.into()));
+    }
+
+    #[test]
+    fn test_parse_unix_s_to_rfc3339() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("1609459200".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_unix_ms_to_rfc3339() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("1609459200000".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixMs).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_date_to_rfc3339() {
+        let feature = create_test_feature("date", AttributeValue::String("2021-01-01".to_string()));
+
+        let input_value = feature.get("date").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Date).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_custom_format() {
+        let feature = create_test_feature(
+            "date",
+            AttributeValue::String("01/01/2021 12:30".to_string()),
+        );
+
+        let input_value = feature.get("date").unwrap();
+        let dt = parse_datetime(
+            input_value,
+            &DateTimeInputFormat::Custom("%d/%m/%Y %H:%M".to_string()),
+        )
+        .unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T12:30:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_auto_rfc3339() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-01T00:00:00Z".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::UnixS);
+
+        assert_eq!(result, AttributeValue::Number(1609459200i64.into()));
+    }
+
+    #[test]
+    fn test_auto_date_only() {
+        let feature = create_test_feature("date", AttributeValue::String("2021-01-01".to_string()));
+
+        let input_value = feature.get("date").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_rfc3339_to_date() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-15T12:30:45Z".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Date);
+
+        assert_eq!(result, AttributeValue::String("2021-01-15".to_string()));
+    }
+
+    #[test]
+    fn test_rfc3339_to_custom_format() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-01T00:00:00Z".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
+        let result = format_datetime(
+            &dt,
+            &DateTimeOutputFormat::Custom("%d/%m/%Y %H:%M".to_string()),
+        );
+
+        assert_eq!(
+            result,
+            AttributeValue::String("01/01/2021 00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_failure() {
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("invalid-datetime".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let result = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_numeric_unix_timestamp() {
+        // Test with numeric (integer) input
+        use serde_json::Number;
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::Number(Number::from(1609459200i64)),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_float_unix_timestamp() {
+        // Test with float input (e.g., from schema processing that produces 1700000000.0)
+        use serde_json::Number;
+        let float_value: f64 = 1609459200.0;
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::Number(Number::from_f64(float_value).unwrap()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::UnixS).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_auto_unix_timestamp_string() {
+        // Test auto-detect with Unix timestamp as string (improved behavior)
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("1609459200".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn test_auto_unix_ms_timestamp_string() {
+        // Test auto-detect with Unix timestamp in milliseconds as string
+        // Note: Auto-detection ONLY supports Unix seconds, not milliseconds.
+        // This is by design to avoid ambiguity with historical dates.
+        // For milliseconds, use explicit UnixMs input format.
+        // A 13-digit value like 1609459200000 will be parsed as seconds,
+        // resulting in a far-future date (53091-10-19T00:00:00+00:00).
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("1609459200000".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+
+        // Auto mode treats 1609459200000 as seconds (far future: ~year 52971), not milliseconds
+        assert!(
+            matches!(result, AttributeValue::String(ref s) if s.contains("52971")),
+            "Expected far-future date when treating ms as seconds, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_rfc3339_with_timezone_preserved() {
+        // Test that RFC3339 strings with timezone info preserve the timezone
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-01T12:00:00+05:30".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
+
+        // Verify it's stored as FixedOffset
+        match dt {
+            DateTime::FixedOffset(dt) => {
+                assert_eq!(dt.offset().local_minus_utc(), 5 * 3600 + 30 * 60); // +05:30
+            }
+            _ => panic!("Expected FixedOffset, got {:?}", dt),
+        }
+
+        // Output as RFC3339 should preserve the original timezone
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Rfc3339);
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T12:00:00+05:30".to_string())
+        );
+    }
+
+    #[test]
+    fn test_rfc3339_utc_normalized_for_unix() {
+        // Test that RFC3339 with timezone gets normalized to UTC for unix output
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-01T00:00:00+05:30".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
+
+        // Output as UnixS should normalize to UTC
+        let result = format_datetime(&dt, &DateTimeOutputFormat::UnixS);
+        // 2021-01-01T00:00:00+05:30 = 2020-12-31T18:30:00Z = 1609439400
+        assert_eq!(result, AttributeValue::Number(1609439400i64.into()));
+    }
+
+    #[test]
+    fn test_date_only_preserved_as_naive() {
+        // Test that date-only input is stored as NaiveDate
+        let feature = create_test_feature("date", AttributeValue::String("2021-01-15".to_string()));
+
+        let input_value = feature.get("date").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Date).unwrap();
+
+        // Verify it's stored as NaiveDate
+        match dt {
+            DateTime::NaiveDate(d) => {
+                assert_eq!(d.year(), 2021);
+                assert_eq!(d.month(), 1);
+                assert_eq!(d.day(), 15);
+            }
+            _ => panic!("Expected NaiveDate, got {:?}", dt),
+        }
+
+        // Output as Date should preserve the date
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Date);
+        assert_eq!(result, AttributeValue::String("2021-01-15".to_string()));
+    }
+
+    #[test]
+    fn test_output_to_different_attribute() {
+        // Test that outputAttribute writes to a different attribute (leaves input untouched)
+        use crate::tests::utils::create_default_execute_context;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert(
+            "createdAt".to_string(),
+            AttributeValue::String("2021-01-01T00:00:00Z".to_string()),
+        );
+
+        let params = DateTimeConverterParam {
+            attribute: "createdAt".to_string(),
+            input_format: DateTimeInputFormat::Rfc3339,
+            output_format: DateTimeOutputFormat::UnixS,
+            output_attribute: Some("createdAtTimestamp".to_string()),
+        };
+        let mut processor = DateTimeConverter { params };
+
+        // Use NoopChannelForwarder to capture outputs
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+
+        // Create context using the helper
+        let ctx = create_default_execute_context(&feature);
+        processor.process(ctx, &fw).unwrap();
+
+        // Check the output feature
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        let output_feature = &features[0];
+
+        // Original attribute should be unchanged
+        assert_eq!(
+            output_feature.get("createdAt"),
+            Some(&AttributeValue::String("2021-01-01T00:00:00Z".to_string()))
+        );
+
+        // New attribute should have the converted value as a number
+        assert_eq!(
+            output_feature.get("createdAtTimestamp"),
+            Some(&AttributeValue::Number(1609459200i64.into()))
+        );
+    }
+
+    #[test]
+    fn test_convert_from_typed_datetime() {
+        // Test that DateTimeConverter can handle AttributeValue::DateTime input
+        // (e.g., from file metadata extractors or other processors)
+        use crate::tests::utils::create_default_execute_context;
+        use chrono::Utc;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+        use reearth_flow_types::datetime::DateTime;
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        // Create a feature with a typed DateTime attribute (as if from another processor)
+        let typed_datetime = DateTime::Utc(Utc::now());
+        let expected_timestamp = typed_datetime.timestamp();
+        feature.insert(
+            "fileModifiedTime".to_string(),
+            AttributeValue::DateTime(typed_datetime),
+        );
+
+        let params = DateTimeConverterParam {
+            attribute: "fileModifiedTime".to_string(),
+            input_format: DateTimeInputFormat::Auto, // Should be ignored for typed DateTime
+            output_format: DateTimeOutputFormat::UnixS,
+            output_attribute: None, // Overwrite in place
+        };
+        let mut processor = DateTimeConverter { params };
+
+        // Use NoopChannelForwarder to capture outputs
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+
+        // Create context using the helper
+        let ctx = create_default_execute_context(&feature);
+        processor.process(ctx, &fw).unwrap();
+
+        // Check the output feature
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        let output_feature = &features[0];
+
+        // Should convert to Unix timestamp (number)
+        let output_value = output_feature.get("fileModifiedTime").unwrap();
+        assert!(
+            matches!(output_value, AttributeValue::Number(n) if n.as_i64() == Some(expected_timestamp)),
+            "Expected DateTime to be converted to Unix timestamp number"
+        );
+    }
+
+    #[test]
+    fn test_convert_from_typed_datetime_with_timezone() {
+        // Test converting a DateTime::FixedOffset to RFC3339 preserves timezone
+        use chrono::FixedOffset;
+        use reearth_flow_types::datetime::DateTime;
+
+        // Create a FixedOffset DateTime (as if from parsing "2021-01-01T12:00:00+05:30")
+        let offset = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+        let dt = offset.with_ymd_and_hms(2021, 1, 1, 12, 0, 0).unwrap();
+        let typed_datetime = DateTime::FixedOffset(dt);
+
+        let feature = create_test_feature("timestamp", AttributeValue::DateTime(typed_datetime));
+
+        let input_value = feature.get("timestamp").unwrap();
+        let parsed = parse_datetime(input_value, &DateTimeInputFormat::Auto).unwrap();
+
+        // Verify it preserves the FixedOffset variant
+        match parsed {
+            DateTime::FixedOffset(dt) => {
+                assert_eq!(dt.offset().local_minus_utc(), 5 * 3600 + 30 * 60);
+            }
+            _ => panic!("Expected FixedOffset to be preserved"),
+        }
+
+        // Convert to RFC3339 should preserve timezone
+        let result = format_datetime(&parsed, &DateTimeOutputFormat::Rfc3339);
+        assert_eq!(
+            result,
+            AttributeValue::String("2021-01-01T12:00:00+05:30".to_string())
+        );
+    }
+
+    #[test]
+    fn test_output_auto_returns_typed_datetime() {
+        // Test output=auto (parser mode) returns a typed DateTime instead of string
+        let feature = create_test_feature(
+            "timestamp",
+            AttributeValue::String("2021-01-01T12:00:00+05:30".to_string()),
+        );
+
+        let input_value = feature.get("timestamp").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Rfc3339).unwrap();
+
+        // Output with Auto should return AttributeValue::DateTime
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Auto);
+
+        match result {
+            AttributeValue::DateTime(DateTime::FixedOffset(dt)) => {
+                assert_eq!(dt.offset().local_minus_utc(), 5 * 3600 + 30 * 60);
+                assert_eq!(
+                    dt.format("%Y-%m-%dT%H:%M:%S%:z").to_string(),
+                    "2021-01-01T12:00:00+05:30"
+                );
+            }
+            _ => panic!(
+                "Expected AttributeValue::DateTime(FixedOffset), got {:?}",
+                result
+            ),
+        }
+    }
+
+    #[test]
+    fn test_output_auto_preserves_naive_date() {
+        // Test output=auto preserves NaiveDate variant
+        let feature = create_test_feature("date", AttributeValue::String("2021-06-15".to_string()));
+
+        let input_value = feature.get("date").unwrap();
+        let dt = parse_datetime(input_value, &DateTimeInputFormat::Date).unwrap();
+
+        // Output with Auto should return AttributeValue::DateTime(NaiveDate)
+        let result = format_datetime(&dt, &DateTimeOutputFormat::Auto);
+
+        match result {
+            AttributeValue::DateTime(DateTime::NaiveDate(d)) => {
+                assert_eq!(d.year(), 2021);
+                assert_eq!(d.month(), 6);
+                assert_eq!(d.day(), 15);
+            }
+            _ => panic!(
+                "Expected AttributeValue::DateTime(NaiveDate), got {:?}",
+                result
+            ),
+        }
+    }
+
+    #[test]
+    fn test_input_auto_output_auto_is_parser_mode() {
+        // Test the complete parser mode: input=auto, output=auto
+        // This parses a string and stores as typed DateTime
+        use crate::tests::utils::create_default_execute_context;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert(
+            "createdAt".to_string(),
+            AttributeValue::String("2021-01-15T12:30:00Z".to_string()),
+        );
+
+        let params = DateTimeConverterParam {
+            attribute: "createdAt".to_string(),
+            input_format: DateTimeInputFormat::Auto,
+            output_format: DateTimeOutputFormat::Auto, // Parser mode
+            output_attribute: None,
+        };
+        let mut processor = DateTimeConverter { params };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+
+        let ctx = create_default_execute_context(&feature);
+        processor.process(ctx, &fw).unwrap();
+
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        let output_feature = &features[0];
+
+        // Should be stored as typed DateTime, not string
+        let output_value = output_feature.get("createdAt").unwrap();
+        match output_value {
+            AttributeValue::DateTime(dt) => {
+                // Should be Utc variant since input was RFC3339 with Z
+                match dt {
+                    DateTime::Utc(_) | DateTime::FixedOffset(_) => {
+                        // Expected - the timestamp should be correct
+                        assert_eq!(dt.timestamp(), 1610713800);
+                    }
+                    _ => panic!("Expected Utc or FixedOffset, got {:?}", dt),
+                }
+            }
+            _ => panic!("Expected AttributeValue::DateTime, got {:?}", output_value),
+        }
+    }
+}
