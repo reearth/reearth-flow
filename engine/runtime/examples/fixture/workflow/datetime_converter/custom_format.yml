@@ -1,0 +1,51 @@
+id: 550e8400-e29b-41d4-a716-446655440300
+name: "Test DateTimeConverter Custom Format"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440301
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440301
+    name: "DateTime Custom Format Graph"
+    nodes:
+      - id: 550e8400-e29b-41d4-a716-446655440302
+        name: "FeatureCreator"
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ date: "15/06/2021 14:30" },
+              #{ date: "01/01/2021 00:00" },
+            ]
+
+      - id: 550e8400-e29b-41d4-a716-446655440303
+        name: "DateTimeConverter"
+        type: action
+        action: DateTimeConverter
+        with:
+          attribute: date
+          inputFormat:
+            custom: "%d/%m/%Y %H:%M"
+          outputFormat:
+            custom: "%Y-%m-%dT%H:%M:%S"
+          outputAttribute: formattedDate
+
+      - id: 550e8400-e29b-41d4-a716-446655440304
+        name: "Output"
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "expected_output.json")
+
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440305
+        from: 550e8400-e29b-41d4-a716-446655440302
+        to: 550e8400-e29b-41d4-a716-446655440303
+        fromPort: default
+        toPort: default
+      - id: 550e8400-e29b-41d4-a716-446655440306
+        from: 550e8400-e29b-41d4-a716-446655440303
+        to: 550e8400-e29b-41d4-a716-446655440304
+        fromPort: default
+        toPort: default

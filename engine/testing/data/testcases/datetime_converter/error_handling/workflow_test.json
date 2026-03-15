@@ -1,0 +1,17 @@
+{
+  "description": "Test DateTimeConverter error handling with failed port",
+  "workflowPath": "datetime_converter/error_handling.yml",
+  "workflowVariables": [],
+  "intermediateAssertions": [
+    {
+      "edgeId": "550e8400-e29b-41d4-a716-446655440207",
+      "expectedFile": "expected_output.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "edgeId": "550e8400-e29b-41d4-a716-446655440208",
+      "expectedFile": "expected_failed.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ]
+}
