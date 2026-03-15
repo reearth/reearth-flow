@@ -2312,6 +2312,170 @@
       ]
     },
     {
+      "name": "DateTimeConverter",
+      "type": "processor",
+      "description": "Convert datetime values between different formats",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DateTimeConverter Parameters",
+        "type": "object",
+        "required": [
+          "attribute"
+        ],
+        "properties": {
+          "attribute": {
+            "description": "Attribute containing the datetime value to convert",
+            "type": "string"
+          },
+          "inputFormat": {
+            "description": "Format of the input value (default: auto)",
+            "default": "auto",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DateTimeInputFormat"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outputFormat": {
+            "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
+            "default": "auto",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DateTimeOutputFormat"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DateTimeInputFormat": {
+            "description": "Input format options for DateTimeConverter",
+            "oneOf": [
+              {
+                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+                "type": "string",
+                "enum": [
+                  "auto"
+                ]
+              },
+              {
+                "description": "RFC3339 / ISO 8601 format",
+                "type": "string",
+                "enum": [
+                  "rfc3339"
+                ]
+              },
+              {
+                "description": "Unix timestamp in seconds",
+                "type": "string",
+                "enum": [
+                  "unix_s"
+                ]
+              },
+              {
+                "description": "Unix timestamp in milliseconds",
+                "type": "string",
+                "enum": [
+                  "unix_ms"
+                ]
+              },
+              {
+                "description": "Date only format (YYYY-MM-DD)",
+                "type": "string",
+                "enum": [
+                  "date"
+                ]
+              },
+              {
+                "description": "Custom format using chrono format specifiers",
+                "type": "object",
+                "required": [
+                  "custom"
+                ],
+                "properties": {
+                  "custom": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "DateTimeOutputFormat": {
+            "description": "Output format options for DateTimeConverter",
+            "oneOf": [
+              {
+                "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
+                "type": "string",
+                "enum": [
+                  "auto"
+                ]
+              },
+              {
+                "description": "RFC3339 / ISO 8601 format",
+                "type": "string",
+                "enum": [
+                  "rfc3339"
+                ]
+              },
+              {
+                "description": "Unix timestamp in seconds",
+                "type": "string",
+                "enum": [
+                  "unix_s"
+                ]
+              },
+              {
+                "description": "Unix timestamp in milliseconds",
+                "type": "string",
+                "enum": [
+                  "unix_ms"
+                ]
+              },
+              {
+                "description": "Date only format (YYYY-MM-DD)",
+                "type": "string",
+                "enum": [
+                  "date"
+                ]
+              },
+              {
+                "description": "Custom format using chrono format specifiers",
+                "type": "object",
+                "required": [
+                  "custom"
+                ],
+                "properties": {
+                  "custom": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "failed"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "DimensionFilter",
       "type": "processor",
       "description": "Filters the dimension of features",

@@ -43,6 +43,10 @@ pub(super) enum AttributeProcessorError {
     RangeMapperFactory(String),
     #[error("Attribute RangeMapper error: {0}")]
     RangeMapper(String),
+    #[error("Attribute DateTimeConverterFactory error: {0}")]
+    DateTimeConverterFactory(String),
+    #[error("Attribute DateTimeConverter error: {0}")]
+    DateTimeConverter(String),
 }
 
 #[allow(dead_code)]

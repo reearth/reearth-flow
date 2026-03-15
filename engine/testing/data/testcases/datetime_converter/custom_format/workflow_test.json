@@ -1,0 +1,8 @@
+{
+  "description": "Test DateTimeConverter with custom input and output formats",
+  "workflowPath": "datetime_converter/custom_format.yml",
+  "workflowVariables": [],
+  "expectedOutput": {
+    "expectedFile": "expected_output.json"
+  }
+}
