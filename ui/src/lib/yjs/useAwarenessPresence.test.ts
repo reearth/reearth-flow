@@ -67,7 +67,7 @@ describe("useAwarenessPresence", () => {
 
   it("returns self and users correctly", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness }),
+      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
     );
     expect(result.current.self.userName).toBe("TestUser");
     expect(result.current.self.color).toBe("#123456");
@@ -76,7 +76,7 @@ describe("useAwarenessPresence", () => {
 
   it("handlePointerDown sets cursor and viewport", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness }),
+      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
     );
     const event = {
       clientX: 50,
@@ -102,7 +102,7 @@ describe("useAwarenessPresence", () => {
 
   it("handlePointerDown with shiftKey sets selectionRect", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness }),
+      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
     );
     const event = {
       clientX: 10,
@@ -127,7 +127,7 @@ describe("useAwarenessPresence", () => {
 
   it("setDraggingEdge sets draggingEdge field", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness }),
+      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
     );
     act(() => {
       result.current.setDraggingEdge("node1", "handle1", "source");
@@ -141,7 +141,7 @@ describe("useAwarenessPresence", () => {
 
   it("clearDraggingEdge clears draggingEdge field", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness }),
+      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
     );
     act(() => {
       result.current.clearDraggingEdge();
@@ -152,20 +152,18 @@ describe("useAwarenessPresence", () => {
     );
   });
 
-  it("setSelectedNodes sets selectedNodeIds field", () => {
-    const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness }),
+  it("syncs selectedNodeIds prop to awareness field", () => {
+    const { rerender } = renderHook(
+      ({ selectedNodeIds }: { selectedNodeIds: string[] }) =>
+        useAwarenessPresence({ yAwareness: awareness, selectedNodeIds }),
+      { initialProps: { selectedNodeIds: ["node1", "node2"] } },
     );
-    act(() => {
-      result.current.setSelectedNodes(["node1", "node2"]);
-    });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith(
       "selectedNodeIds",
       ["node1", "node2"],
     );
-    act(() => {
-      result.current.setSelectedNodes([]);
-    });
+
+    rerender({ selectedNodeIds: [] });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith(
       "selectedNodeIds",
       null,
