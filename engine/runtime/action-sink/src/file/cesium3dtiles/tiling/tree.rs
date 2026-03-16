@@ -96,18 +96,6 @@ impl Tile {
         }
     }
 
-    fn into_tileset_children(self) -> Vec<tileset::Tile> {
-        if !self.contents.is_empty() {
-            vec![self.into_tileset_tile()]
-        } else {
-            [self.child00, self.child01, self.child10, self.child11]
-                .into_iter()
-                .flatten()
-                .flat_map(|child| child.into_tileset_children())
-                .collect()
-        }
-    }
-
     fn into_tileset_tile(mut self) -> tileset::Tile {
         self.update_boundary();
 
@@ -115,7 +103,7 @@ impl Tile {
             let children: Vec<_> = [self.child00, self.child01, self.child10, self.child11]
                 .into_iter()
                 .flatten()
-                .flat_map(|child| child.into_tileset_children())
+                .map(|child| child.into_tileset_tile())
                 .collect();
             if children.is_empty() {
                 None
@@ -124,6 +112,7 @@ impl Tile {
             }
         };
 
+        let has_content = !self.contents.is_empty();
         let (content, contents) = {
             match self.contents.len() {
                 0 => (None, None),
@@ -149,8 +138,13 @@ impl Tile {
         };
 
         let (z, _, y) = self.zxy;
+        let ge = if has_content {
+            geometric_error(z, y)
+        } else {
+            1e+100
+        };
         tileset::Tile {
-            geometric_error: geometric_error(z, y),
+            geometric_error: ge,
             refine: Some(tileset::Refine::Replace),
             bounding_volume: tileset::BoundingVolume::new_region([
                 self.min_lng.to_radians(),
