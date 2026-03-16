@@ -7,6 +7,7 @@ import {
   XYPosition,
   NodeChange,
   EdgeChange,
+  OnConnectStart,
 } from "@xyflow/react";
 import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
@@ -21,7 +22,8 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
 
-import { CanvasContextMenu, MultiCursor } from "./components";
+import { CanvasContextMenu } from "./components";
+import Awareness from "./components/Awareness";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -56,12 +58,14 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
-  onPaneMouseMove?: (e: MouseEvent) => void;
   onPaneClick?: (e: MouseEvent) => void;
   onDebugRunStartFromSelectedNode?: (
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onConnectStart?: OnConnectStart;
+  onConnectEnd?: () => void;
+  onPointerDown?: (e: MouseEvent) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -84,10 +88,12 @@ const Canvas: React.FC<Props> = ({
   onCopy,
   onCut,
   onPaste,
-  onPaneMouseMove,
   onNodesDisable,
   onPaneClick,
   onDebugRunStartFromSelectedNode,
+  onConnectStart,
+  onConnectEnd,
+  onPointerDown,
 }) => {
   const {
     handleNodesDeleteCleanup,
@@ -128,6 +134,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
+      onPointerDown={onPointerDown}
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}
@@ -164,8 +171,9 @@ const Canvas: React.FC<Props> = ({
       onDragOver={handleNodeDragOver}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
+      onConnectStart={onConnectStart}
+      onConnectEnd={onConnectEnd}
       onBeforeDelete={onBeforeDelete}
-      onPaneMouseMove={onPaneMouseMove}
       onPaneClick={onPaneClick}>
       <Background
         className="bg-background dark:bg-background"
@@ -174,7 +182,7 @@ const Canvas: React.FC<Props> = ({
         color="rgba(63, 63, 70, 1)"
       />
       {!readonly && users && currentWorkflowId && (
-        <MultiCursor users={users} currentWorkflowId={currentWorkflowId} />
+        <Awareness users={users} currentWorkflowId={currentWorkflowId} />
       )}
       {contextMenu && (
         <CanvasContextMenu
