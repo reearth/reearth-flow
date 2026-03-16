@@ -560,61 +560,13 @@ impl XmlValidator {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{path::Path, sync::Arc};
 
     use super::*;
     use crate::tests::utils;
     use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
     use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry};
-
-    fn create_xml_validator(validation_type: ValidationType) -> XmlValidator {
-        let params = XmlValidatorParam {
-            attribute: Attribute::new("xml_content"),
-            input_type: XmlInputType::Text,
-            validation_type,
-        };
-
-        XmlValidator {
-            params,
-            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        }
-    }
-
-    fn create_feature_with_xml(xml_content: &str) -> Feature {
-        let mut attributes = IndexMap::new();
-        attributes.insert(
-            Attribute::new("xml_content"),
-            AttributeValue::String(xml_content.to_string()),
-        );
-
-        Feature::new_with_attributes_and_geometry(attributes, Geometry::new(), Default::default())
-    }
-
-    fn run_validator_test(
-        xml_content: &str,
-        validation_type: ValidationType,
-    ) -> (Port, Vec<Feature>) {
-        let feature = create_feature_with_xml(xml_content);
-        let mut validator = create_xml_validator(validation_type);
-
-        let ctx = utils::create_default_execute_context(&feature);
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-
-        let result = validator.process(ctx, &fw);
-        assert!(result.is_ok(), "XML validation processing should succeed");
-
-        match fw {
-            ProcessorChannelForwarder::Noop(noop_fw) => {
-                let send_ports = noop_fw.send_ports.lock().unwrap();
-                let send_features = noop_fw.send_features.lock().unwrap();
-                assert!(!send_ports.is_empty(), "Should have sent output");
-
-                (send_ports[0].clone(), send_features.clone())
-            }
-            _ => panic!("Expected Noop forwarder for testing"),
-        }
-    }
 
     #[test]
     fn test_xml_validator_syntax_validation() {
@@ -872,5 +824,318 @@ mod tests {
             port, *SUCCESS_PORT,
             "Should succeed when remote schema URL is unreachable"
         );
+    }
+
+    // Regression test for L02 false positive:
+    // "element 'bldg:opening' is not declared in schema" is incorrectly reported
+    // for valid PLATEAU CityGML files. The root cause is that check_schema_streaming
+    // creates a new SchemaResolver per xsi:schemaLocation entry, producing duplicate
+    // schemas that corrupt the type-children cache and cause WallSurfaceType to lose
+    // the inherited 'opening' element from AbstractBoundarySurfaceType.
+    #[test]
+    fn test_xml_validator_bldg_opening_false_positive_l02() {
+        // Minimal valid PLATEAU CityGML with bldg:opening inside WallSurface.
+        // The header and namespace declarations are copied from real data that
+        // triggered the false positive (53394509_bldg_6697_op.gml).
+        // Multiple schemaLocation entries are required to trigger the bug.
+        let gml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel
+    xmlns:app="http://www.opengis.net/citygml/appearance/2.0"
+    xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:brid="http://www.opengis.net/citygml/bridge/2.0"
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:dem="http://www.opengis.net/citygml/relief/2.0"
+    xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0"
+    xmlns:gen="http://www.opengis.net/citygml/generics/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0"
+    xmlns:luse="http://www.opengis.net/citygml/landuse/2.0"
+    xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0"
+    xmlns:sch="http://www.ascc.net/xml/schematron"
+    xmlns:smil20="http://www.w3.org/2001/SMIL20/"
+    xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language"
+    xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0"
+    xmlns:tran="http://www.opengis.net/citygml/transportation/2.0"
+    xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.2"
+    xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0"
+    xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0"
+    xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        https://www.geospatial.jp/iur/uro/3.2 ../../schemas/iur/uro/3.2/urbanObject.xsd
+        http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd
+        http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd
+        http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd
+        http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd
+        http://www.opengis.net/citygml/generics/2.0 http://schemas.opengis.net/citygml/generics/2.0/generics.xsd
+    ">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>35.6 139.7 0</gml:lowerCorner>
+            <gml:upperCorner>35.7 139.8 100</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="bldg_00000000-0000-0000-0000-000000000001">
+            <core:creationDate>2025-03-01</core:creationDate>
+            <bldg:measuredHeight uom="m">10.0</bldg:measuredHeight>
+            <bldg:lod0RoofEdge>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>35.6 139.7 0 35.6 139.71 0 35.61 139.71 0 35.61 139.7 0 35.6 139.7 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0RoofEdge>
+            <bldg:boundedBy>
+                <bldg:WallSurface gml:id="surface-00000000-0000-0000-0000-000000000001">
+                    <bldg:lod3MultiSurface>
+                        <gml:MultiSurface>
+                            <gml:surfaceMember>
+                                <gml:Polygon>
+                                    <gml:exterior>
+                                        <gml:LinearRing>
+                                            <gml:posList>35.6 139.7 0 35.6 139.7 10 35.6 139.71 10 35.6 139.71 0 35.6 139.7 0</gml:posList>
+                                        </gml:LinearRing>
+                                    </gml:exterior>
+                                </gml:Polygon>
+                            </gml:surfaceMember>
+                        </gml:MultiSurface>
+                    </bldg:lod3MultiSurface>
+                    <bldg:opening>
+                        <bldg:Window gml:id="wnd_00000000-0000-0000-0000-000000000001">
+                            <bldg:lod3MultiSurface>
+                                <gml:MultiSurface>
+                                    <gml:surfaceMember>
+                                        <gml:Polygon>
+                                            <gml:exterior>
+                                                <gml:LinearRing>
+                                                    <gml:posList>35.6 139.7 2 35.6 139.7 5 35.6 139.705 5 35.6 139.705 2 35.6 139.7 2</gml:posList>
+                                                </gml:LinearRing>
+                                            </gml:exterior>
+                                        </gml:Polygon>
+                                    </gml:surfaceMember>
+                                </gml:MultiSurface>
+                            </bldg:lod3MultiSurface>
+                        </bldg:Window>
+                    </bldg:opening>
+                </bldg:WallSurface>
+            </bldg:boundedBy>
+        </bldg:Building>
+    </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let layout = PlateauTestLayout {
+            udx_subdir: "bldg",
+            gml_filename: "53394509_bldg_6697_op.gml",
+            citymodel_name: "13101_chiyoda-ku_pref_2025_citygml_1_op",
+        };
+        let (_tmp_dir, port, features) =
+            run_file_validator_test(gml_content, &layout, ValidationType::SyntaxAndSchema);
+
+        // Extract validator error messages so they appear in the test output on failure
+        let error_messages: Vec<String> = features
+            .first()
+            .and_then(|f| f.attributes.get(&Attribute::new("xmlError")))
+            .and_then(|v| {
+                if let AttributeValue::Array(arr) = v {
+                    Some(arr)
+                } else {
+                    None
+                }
+            })
+            .map(|errors| {
+                errors
+                    .iter()
+                    .filter_map(|e| {
+                        if let AttributeValue::Map(m) = e {
+                            m.get("message").and_then(|v| {
+                                if let AttributeValue::String(s) = v {
+                                    Some(s.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        assert_eq!(
+            port, *SUCCESS_PORT,
+            "Valid CityGML with bldg:opening in WallSurface should pass schema validation.\n\
+             Validator errors: {error_messages:?}"
+        );
+    }
+
+    //
+    // Test utilities
+    //
+
+    fn create_xml_validator(validation_type: ValidationType) -> XmlValidator {
+        let params = XmlValidatorParam {
+            attribute: Attribute::new("xml_content"),
+            input_type: XmlInputType::Text,
+            validation_type,
+        };
+
+        XmlValidator {
+            params,
+            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        }
+    }
+
+    fn create_feature_with_xml(xml_content: &str) -> Feature {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("xml_content"),
+            AttributeValue::String(xml_content.to_string()),
+        );
+
+        Feature::new_with_attributes_and_geometry(attributes, Geometry::new(), Default::default())
+    }
+
+    fn run_validator_test(
+        xml_content: &str,
+        validation_type: ValidationType,
+    ) -> (Port, Vec<Feature>) {
+        let feature = create_feature_with_xml(xml_content);
+        let mut validator = create_xml_validator(validation_type);
+
+        let ctx = utils::create_default_execute_context(&feature);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+        let result = validator.process(ctx, &fw);
+        assert!(result.is_ok(), "XML validation processing should succeed");
+
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                let send_features = noop_fw.send_features.lock().unwrap();
+                assert!(!send_ports.is_empty(), "Should have sent output");
+
+                (send_ports[0].clone(), send_features.clone())
+            }
+            _ => panic!("Expected Noop forwarder for testing"),
+        }
+    }
+
+    /// Parameters for setting up a PLATEAU citymodel temp directory.
+    struct PlateauTestLayout {
+        /// GML filename (e.g. "53394509_bldg_6697_op.gml").
+        gml_filename: &'static str,
+        /// Subdirectory under `udx/` where the GML file is placed (e.g. "bldg", "tran").
+        udx_subdir: &'static str,
+        /// Fixture directory name under `testing/data/fixtures/plateau-citymodel/`.
+        citymodel_name: &'static str,
+    }
+
+    /// Set up a temp directory mimicking the PLATEAU citymodel structure for
+    /// file-based schema validation tests:
+    ///   <tmp>/
+    ///     udx/<subdir>/<filename>   (GML content written here)
+    ///     codelists -> <fixture>/codelists
+    ///     schemas   -> <fixture>/schemas
+    ///
+    /// Returns `(TempDir, Port, Vec<Feature>)` just like `run_validator_test`.
+    /// The caller must keep `TempDir` alive so the temp files are not deleted.
+    fn run_file_validator_test(
+        gml_content: &str,
+        layout: &PlateauTestLayout,
+        validation_type: ValidationType,
+    ) -> (tempfile::TempDir, Port, Vec<Feature>) {
+        let tmp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let tmp_path = tmp_dir.path();
+
+        let data_dir = tmp_path.join("udx").join(layout.udx_subdir);
+        std::fs::create_dir_all(&data_dir).expect("Failed to create udx subdirectory");
+
+        let fixture_base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testing/data/fixtures/plateau-citymodel")
+            .join(layout.citymodel_name);
+        let fixture_base = fixture_base.canonicalize().expect("Fixture base not found");
+
+        link_fixture_dir(&fixture_base.join("codelists"), &tmp_path.join("codelists"));
+        link_fixture_dir(&fixture_base.join("schemas"), &tmp_path.join("schemas"));
+
+        let gml_path = data_dir.join(layout.gml_filename);
+        std::fs::write(&gml_path, gml_content).expect("Failed to write GML file");
+
+        let params = XmlValidatorParam {
+            attribute: Attribute::new("xml_path"),
+            input_type: XmlInputType::File,
+            validation_type,
+        };
+
+        let mut validator = XmlValidator {
+            params,
+            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        };
+
+        let file_uri = format!("file://{}", gml_path.display());
+        let mut attributes = IndexMap::new();
+        attributes.insert(Attribute::new("xml_path"), AttributeValue::String(file_uri));
+        let feature = Feature::new_with_attributes_and_geometry(
+            attributes,
+            Geometry::new(),
+            Default::default(),
+        );
+
+        let ctx = utils::create_default_execute_context(&feature);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+        let result = validator.process(ctx, &fw);
+        assert!(result.is_ok(), "XML validation processing should succeed");
+
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                let send_features = noop_fw.send_features.lock().unwrap();
+                assert!(!send_ports.is_empty(), "Should have sent output");
+
+                (tmp_dir, send_ports[0].clone(), send_features.clone())
+            }
+            _ => panic!("Expected Noop forwarder for testing"),
+        }
+    }
+
+    /// Link (or copy on non-unix) a fixture subdirectory into the temp directory.
+    fn link_fixture_dir(fixture_src: &Path, dest: &Path) {
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(fixture_src, dest).unwrap_or_else(|e| {
+                panic!(
+                    "Failed to symlink {} -> {}: {e}",
+                    fixture_src.display(),
+                    dest.display()
+                )
+            });
+        }
+        #[cfg(not(unix))]
+        {
+            fn copy_dir_recursive(src: &Path, dst: &Path) {
+                std::fs::create_dir_all(dst).expect("Failed to create directory");
+                for entry in std::fs::read_dir(src).expect("Failed to read directory") {
+                    let entry = entry.expect("Failed to read entry");
+                    let dest_path = dst.join(entry.file_name());
+                    if entry.file_type().expect("Failed to get file type").is_dir() {
+                        copy_dir_recursive(&entry.path(), &dest_path);
+                    } else {
+                        std::fs::copy(entry.path(), &dest_path).expect("Failed to copy file");
+                    }
+                }
+            }
+            copy_dir_recursive(fixture_src, dest);
+        }
     }
 }
