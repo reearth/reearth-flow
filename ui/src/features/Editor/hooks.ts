@@ -364,14 +364,11 @@ export default ({
     handlePointerDown,
     setDraggingEdge,
     clearDraggingEdge,
-    setSelectedNodes,
+    awarenessSelectionsMap,
   } = useAwarenessPresence({
+    selectedNodeIds,
     yAwareness,
   });
-
-  useEffect(() => {
-    setSelectedNodes(selectedNodeIds);
-  }, [selectedNodeIds, setSelectedNodes]);
 
   const handleConnectStart: OnConnectStart = useCallback(
     (_event, params) => {
@@ -488,5 +485,6 @@ export default ({
     handlePointerDown,
     handleConnectStart,
     handleConnectEnd,
+    awarenessSelectionsMap,
   };
 };

@@ -7,10 +7,11 @@ import {
 } from "react";
 
 import type { YWorkflow } from "@flow/lib/yjs/types";
-import { NodeChange } from "@flow/types";
-
-export type AwarenessSelection = { color: string; userName: string };
-export type AwarenessSelectionsMap = Record<string, AwarenessSelection[]>;
+import {
+  NodeChange,
+  type AwarenessSelection,
+  type AwarenessSelectionsMap,
+} from "@flow/types";
 
 export type EditorContextType = {
   onNodesChange?: (changes: NodeChange[]) => void;

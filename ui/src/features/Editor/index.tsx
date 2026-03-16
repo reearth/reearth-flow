@@ -6,11 +6,7 @@ import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
-import {
-  EditorContextType,
-  EditorProvider,
-  type AwarenessSelectionsMap,
-} from "./editorContext";
+import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
 type Props = {
@@ -96,6 +92,7 @@ export default function Editor({
     handlePointerDown,
     handleConnectStart,
     handleConnectEnd,
+    awarenessSelectionsMap,
     setShowSearchPanel,
     selectedNodeIds,
   } = useHooks({
@@ -105,17 +102,6 @@ export default function Editor({
     undoManager,
     undoTrackerActionWrapper,
   });
-
-  const awarenessSelectionsMap = useMemo((): AwarenessSelectionsMap => {
-    const map: AwarenessSelectionsMap = {};
-    Object.values(users).forEach((user) => {
-      user.selectedNodeIds?.forEach((nodeId) => {
-        if (!map[nodeId]) map[nodeId] = [];
-        map[nodeId].push({ color: user.color, userName: user.userName });
-      });
-    });
-    return map;
-  }, [users]);
 
   const editorContext = useMemo(
     (): EditorContextType => ({

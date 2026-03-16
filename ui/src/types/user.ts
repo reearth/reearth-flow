@@ -33,6 +33,9 @@ export type UpdateMe = {
   me?: User;
 } & ApiResponse;
 
+export type AwarenessSelection = { color: string; userName: string };
+export type AwarenessSelectionsMap = Record<string, AwarenessSelection[]>;
+
 export type AwarenessUser = {
   clientId: number;
   selectionRect?: {

@@ -4,12 +4,14 @@ import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 
-import type { AwarenessUser } from "@flow/types";
+import type { AwarenessSelectionsMap, AwarenessUser } from "@flow/types";
 
 export default function useAwarenessPresence({
   yAwareness,
+  selectedNodeIds,
 }: {
   yAwareness: Awareness;
+  selectedNodeIds: string[];
 }) {
   const rawSelf = useSelf(yAwareness);
   const rawUsers = useUsers(yAwareness);
@@ -139,15 +141,34 @@ export default function useAwarenessPresence({
     yAwareness.setLocalStateField("draggingEdge", null);
   }, [yAwareness]);
 
-  const setSelectedNodes = useCallback(
-    (nodeIds: string[]) => {
-      yAwareness.setLocalStateField(
-        "selectedNodeIds",
-        nodeIds.length > 0 ? nodeIds : null,
-      );
-    },
-    [yAwareness],
-  );
+  // Stable reference — only produces a new object when selection content changes,
+  // so cursor moves on rawUsers don't invalidate the EditorContext value.
+  const prevSelectionsKeyRef = useRef("");
+  const awarenessSelectionsMapRef = useRef<AwarenessSelectionsMap>({});
+  const awarenessSelectionsMap = useMemo(() => {
+    let key = "";
+    const map: AwarenessSelectionsMap = {};
+
+    rawUsers.forEach((state, clientId) => {
+      if (clientId === yAwareness.clientID) return;
+      const user = state;
+      if (!user.userName || !user.selectedNodeIds?.length) return;
+
+      key += `${clientId}:${user.selectedNodeIds.join(",")}|`;
+      user.selectedNodeIds.forEach((nodeId: string) => {
+        if (!map[nodeId]) map[nodeId] = [];
+        map[nodeId].push({ color: user.color, userName: user.userName });
+      });
+    });
+
+    if (key === prevSelectionsKeyRef.current) {
+      return awarenessSelectionsMapRef.current;
+    }
+
+    prevSelectionsKeyRef.current = key;
+    awarenessSelectionsMapRef.current = map;
+    return map;
+  }, [rawUsers, yAwareness.clientID]);
 
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
@@ -187,6 +208,13 @@ export default function useAwarenessPresence({
     yAwareness,
   ]);
 
+  useEffect(() => {
+    yAwareness.setLocalStateField(
+      "selectedNodeIds",
+      selectedNodeIds.length > 0 ? selectedNodeIds : null,
+    );
+  }, [selectedNodeIds, yAwareness]);
+
   return {
     self,
     users,
@@ -195,6 +223,6 @@ export default function useAwarenessPresence({
     selectionStartRef,
     setDraggingEdge,
     clearDraggingEdge,
-    setSelectedNodes,
+    awarenessSelectionsMap,
   };
 }

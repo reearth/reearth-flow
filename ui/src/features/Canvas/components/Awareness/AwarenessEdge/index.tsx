@@ -2,11 +2,11 @@ import { getStraightPath, useStore } from "@xyflow/react";
 
 import { AwarenessUser } from "@flow/types";
 
-type GhostEdgeProps = {
+type AwarenessEdgeProps = {
   user: AwarenessUser;
 };
 
-const GhostEdge: React.FC<GhostEdgeProps> = ({ user }) => {
+const AwarenessEdge: React.FC<AwarenessEdgeProps> = ({ user }) => {
   const nodeLookup = useStore((s) => s.nodeLookup);
 
   if (!user.draggingEdge || !user.cursor) return null;
@@ -64,4 +64,4 @@ const GhostEdge: React.FC<GhostEdgeProps> = ({ user }) => {
   );
 };
 
-export default GhostEdge;
+export default AwarenessEdge;

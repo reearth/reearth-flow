@@ -2,7 +2,7 @@ import { ViewportPortal } from "@xyflow/react";
 
 import type { AwarenessUser } from "@flow/types";
 
-import GhostEdge from "./GhostEdge";
+import AwarenessEdge from "./AwarenessEdge";
 import MultiCursor from "./MultiCursor";
 import SelectionRectangle from "./SelectionRectangle";
 
@@ -21,7 +21,7 @@ const Awareness: React.FC<AwarenessProps> = ({ users, currentWorkflowId }) => {
           <div key={key}>
             {user.cursor && <MultiCursor user={user} />}
             {user.selectionRect && <SelectionRectangle user={user} />}
-            {user.draggingEdge && <GhostEdge user={user} />}
+            {user.draggingEdge && <AwarenessEdge user={user} />}
           </div>
         );
       })}
