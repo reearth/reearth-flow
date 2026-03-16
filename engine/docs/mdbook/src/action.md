@@ -9017,6 +9017,12 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
   "type": "object",
   "properties": {
+    "allowEmptyPath": {
+      "title": "Allow Null Path",
+      "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+      "default": false,
+      "type": "boolean"
+    },
     "dataset": {
       "title": "File Path",
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
