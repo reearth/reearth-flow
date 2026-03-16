@@ -55,7 +55,7 @@ with:
   snowDepthShapefilePath: null
   snowDepthThreshold: null
   snowLoad: null
-  snowUnitWeight: 29.0
+  snowUnitWeight: 3000.0
   restrictAreaPath1: null
   restrictHeight1: null
   restrictDirection1: null
@@ -661,8 +661,9 @@ graphs:
         value: |
           let path = env.get("snowDepthShapefilePath");
           if path == () { "-" } else {
-            let depth = env.get("__value")["snow_G02_058"] ?? ();
-            if depth == () { "-" } else {
+            let depth_cm = env.get("__value")["snow_G02_058"] ?? ();
+            if depth_cm == () { "-" } else {
+              let depth = depth_cm / 100.0;
               let s = env.get("snowLoad") ?? 0.0;
               if s > 0.0 {
                 let dp = env.get("snowUnitWeight") ?? 0.0;
@@ -856,8 +857,9 @@ graphs:
         value: |
           let path = env.get("snowDepthShapefilePath");
           if path == () { "-" } else {
-            let depth = env.get("__value")["snow_G02_058"] ?? ();
-            if depth == () { "-" } else {
+            let depth_cm = env.get("__value")["snow_G02_058"] ?? ();
+            if depth_cm == () { "-" } else {
+              let depth = depth_cm / 100.0;
               let s = env.get("snowLoad") ?? 0.0;
               if s > 0.0 {
                 let dp = env.get("snowUnitWeight") ?? 0.0;

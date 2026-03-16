@@ -20,8 +20,8 @@ with:
   dailySunDataPath:
   monthlyWeatherDataPath:
   snowDepthDataPath:
-  maxRadiationPerDay: 7.5 # W/m^2
-  directNormalIrradianceFactor: 1.367 # W/m^2
+  maxRadiationPerDay: 7.5 # kW/m^2
+  directNormalIrradianceFactor: 1.367 # kW/m^2
   photovoltaicConversionEfficiency: 0.167
   lossConstant: 0.88
   monthlyTransmissivity:
@@ -59,7 +59,7 @@ with:
   snowDepthShapefilePath:          # 2_4: path to snow depth shapefile ZIP. null = skip
   snowDepthThreshold:              # 2_4: depth threshold in m.
   snowLoad:                        # 2_4: load threshold in kgf/m²
-  snowUnitWeight: 29.0             # 2_4: unit weight of snow in N/m³
+  snowUnitWeight: 3000.0           # 2_4: unit weight of snow in N/m³
   # Category 3 — Restriction zones (3 independent zones)
   restrictAreaPath1:               # 3_1: path to zone 1 shapefile ZIP. null = skip
   restrictHeight1:                 # 3_1: height threshold (m).
