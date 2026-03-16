@@ -442,8 +442,8 @@ impl AttributeValue {
                 }
             }
 
-            // If we collected any Code values, add them to result
             if has_codes {
+                // unzip resolved values and the code
                 result.insert(key.to_string(), AttributeValue::Array(values));
                 result.insert(format!("{key}_code"), AttributeValue::Array(codes));
             } else if !values.is_empty() {
