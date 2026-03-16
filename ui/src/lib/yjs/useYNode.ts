@@ -283,6 +283,7 @@ export default ({
     (
       nodesToChange: {
         nodeId: string;
+        type?: string;
         updatedParams?: any;
         updatedCustomizations?: any;
         isDisabled?: boolean;
@@ -295,7 +296,13 @@ export default ({
         const nodes = Object.values(yNodes.toJSON()) as Node[];
 
         nodesToChange.forEach(
-          ({ nodeId, updatedParams, updatedCustomizations, isDisabled }) => {
+          ({
+            nodeId,
+            type,
+            updatedParams,
+            updatedCustomizations,
+            isDisabled,
+          }) => {
             const prevNode = nodes.find((n) => n.id === nodeId);
 
             if (!prevNode) return;
@@ -328,7 +335,35 @@ export default ({
             if (updatedParams) yData?.set("params", updatedParams);
             if (updatedCustomizations)
               yData?.set("customizations", updatedCustomizations);
-            if (isDisabled !== undefined) yData?.set("isDisabled", isDisabled);
+
+            if (type === "batch" && isDisabled !== undefined) {
+              const nodesByParentId = new Map<string, Node[]>();
+              nodes.forEach((node) => {
+                if (node.parentId) {
+                  if (!nodesByParentId.has(node.parentId)) {
+                    nodesByParentId.set(node.parentId, []);
+                  }
+                  nodesByParentId.get(node.parentId)?.push(node);
+                }
+              });
+
+              const getChildNodes = (batchId: string): Node[] =>
+                nodesByParentId.get(batchId) ?? [];
+
+              const childNodes = getChildNodes(nodeId);
+              childNodes.forEach((childNode) => {
+                const childYData = yNodes
+                  .get(childNode.id)
+                  ?.get("data") as Y.Map<YNodeValue>;
+                if (childYData) {
+                  childYData.set("isDisabled", isDisabled);
+                }
+              });
+            }
+
+            if (isDisabled !== undefined) {
+              yData?.set("isDisabled", isDisabled);
+            }
           },
         );
       }),

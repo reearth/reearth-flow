@@ -85,11 +85,14 @@ export default function Editor({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
-    handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodesDisable,
     handlePaneClick,
+    handlePointerDown,
+    handleConnectStart,
+    handleConnectEnd,
+    awarenessSelectionsMap,
     setShowSearchPanel,
     selectedNodeIds,
   } = useHooks({
@@ -106,12 +109,14 @@ export default function Editor({
       onNodeSettings: handleNodeSettings,
       currentYWorkflow,
       undoTrackerActionWrapper,
+      awarenessSelectionsMap,
     }),
     [
       handleNodesChange,
       handleNodeSettings,
       currentYWorkflow,
       undoTrackerActionWrapper,
+      awarenessSelectionsMap,
     ],
   );
 
@@ -189,12 +194,14 @@ export default function Editor({
               onCopy={handleCopy}
               onCut={handleCut}
               onPaste={handlePaste}
-              onPaneMouseMove={handlePaneMouseMove}
               onNodesDisable={handleNodesDisable}
               onPaneClick={handlePaneClick}
               onDebugRunStartFromSelectedNode={
                 handleFromSelectedNodeDebugRunStart
               }
+              onConnectStart={handleConnectStart}
+              onConnectEnd={handleConnectEnd}
+              onPointerDown={handlePointerDown}
             />
           </OverlayUI>
 

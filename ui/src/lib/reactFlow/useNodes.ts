@@ -39,6 +39,7 @@ export default ({
   onNodePickerOpen,
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
+
   const { handleNodeDragOver, handleNodeDrop } = useDnd({
     onWorkflowAdd,
     onNodesAdd,
