@@ -26,6 +26,8 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   homeButton: false,
   geocoder: false,
   animation: false,
+  requestRenderMode: true,
+  maximumRenderTimeChange: Infinity,
   navigationHelpButton: false,
   creditContainer: document.createElement("none"),
 };

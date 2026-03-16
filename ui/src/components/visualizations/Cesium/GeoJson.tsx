@@ -154,24 +154,30 @@ const GeoJsonData: React.FC<Props> = ({
     });
   }, []);
 
-  const flyTo = useCallback(async () => {
-    const ds = dataSourceRef.current;
-    if (!ds || !viewer) return;
+  const flyTo = useCallback(
+    async (isInitial?: boolean) => {
+      const ds = dataSourceRef.current;
+      if (!ds || !viewer) return;
 
-    if (!selectedFeatureId) {
-      await viewer.zoomTo(ds);
-      return;
-    }
+      if (!selectedFeatureId) {
+        await viewer.zoomTo(ds);
+        return;
+      }
 
-    const records = featureMapRef.current.get(selectedFeatureId);
-    const entity = records?.[0]?.entity;
+      const records = featureMapRef.current.get(selectedFeatureId);
+      const entity = records?.[0]?.entity;
 
-    if (entity) {
-      await viewer.flyTo(entity, {
-        duration: 1.2,
-      });
-    }
-  }, [viewer, selectedFeatureId]);
+      if (entity) {
+        await viewer.flyTo(entity, {
+          duration: isInitial ? 0 : 1.2,
+        });
+      }
+      if (isInitial) {
+        viewer.scene.requestRender();
+      }
+    },
+    [viewer, selectedFeatureId],
+  );
 
   const handleLoad = useCallback(
     async (ds: GeoJsonDataSource) => {
@@ -197,7 +203,7 @@ const GeoJsonData: React.FC<Props> = ({
       });
 
       updateVisibility();
-      await flyTo();
+      await flyTo(true);
     },
     [updateVisibility, flyTo],
   );
