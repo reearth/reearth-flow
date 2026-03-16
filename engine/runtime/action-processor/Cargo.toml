@@ -71,3 +71,4 @@ zstd.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+tracing-subscriber.workspace = true

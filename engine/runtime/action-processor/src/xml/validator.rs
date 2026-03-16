@@ -10,7 +10,7 @@ use std::{
 use bytes::Bytes;
 use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher, SchemaFetcher};
 use fastxml::schema::types::CompiledSchema;
-use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver, XsdSchema};
+use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
 use reearth_flow_runtime::{
@@ -456,7 +456,7 @@ impl XmlValidator {
                 XmlProcessorError::Validator(format!("Failed to create caching fetcher: {e:?}"))
             })?;
 
-            let mut all_schemas: Vec<XsdSchema> = Vec::new();
+            let mut resolver = SchemaResolver::new(&fetcher);
             for (_namespace, location) in &schema_locations {
                 // Per W3C spec, xsi:schemaLocation URLs are hints.
                 // Remote schemas that are unreachable (404, DNS failure, etc.)
@@ -478,9 +478,8 @@ impl XmlValidator {
                 };
 
                 let base_uri = &fetch_result.final_url;
-                let mut resolver = SchemaResolver::new(&fetcher);
-                let schemas = match resolver.resolve_all(&fetch_result.content, base_uri) {
-                    Ok(s) => s,
+                match resolver.resolve_entry(&fetch_result.content, base_uri) {
+                    Ok(()) => {}
                     Err(e) if is_remote => {
                         tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
                         continue;
@@ -490,9 +489,9 @@ impl XmlValidator {
                             "Failed to resolve schema imports for {location}: {e:?}"
                         )));
                     }
-                };
-                all_schemas.extend(schemas);
+                }
             }
+            let all_schemas = resolver.take_all_schemas();
 
             let mut compiled = compile_schemas(all_schemas).map_err(|e| {
                 XmlProcessorError::Validator(format!("Failed to compile schemas: {e:?}"))
@@ -834,6 +833,7 @@ mod tests {
     // the inherited 'opening' element from AbstractBoundarySurfaceType.
     #[test]
     fn test_xml_validator_bldg_opening_false_positive_l02() {
+        init_tracing();
         // Minimal valid PLATEAU CityGML with bldg:opening inside WallSurface.
         // The header and namespace declarations are copied from real data that
         // triggered the false positive (53394509_bldg_6697_op.gml).
@@ -958,6 +958,7 @@ mod tests {
                         if let AttributeValue::Map(m) = e {
                             m.get("message").and_then(|v| {
                                 if let AttributeValue::String(s) = v {
+                                    tracing::error!("xmlError: {s}");
                                     Some(s.clone())
                                 } else {
                                     None
@@ -981,6 +982,16 @@ mod tests {
     //
     // Test utilities
     //
+
+    fn init_tracing() {
+        let _ = tracing_subscriber::fmt()
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
+            )
+            .with_test_writer()
+            .try_init();
+    }
 
     fn create_xml_validator(validation_type: ValidationType) -> XmlValidator {
         let params = XmlValidatorParam {

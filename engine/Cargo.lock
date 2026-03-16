@@ -6643,6 +6643,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "url",
  "uuid",
  "zip 8.1.0",
