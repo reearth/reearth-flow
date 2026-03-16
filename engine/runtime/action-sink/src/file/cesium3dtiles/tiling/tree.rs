@@ -112,6 +112,7 @@ impl Tile {
             }
         };
 
+        let has_content = !self.contents.is_empty();
         let (content, contents) = {
             match self.contents.len() {
                 0 => (None, None),
@@ -137,8 +138,13 @@ impl Tile {
         };
 
         let (z, _, y) = self.zxy;
+        let ge = if has_content {
+            geometric_error(z, y)
+        } else {
+            1e+100
+        };
         tileset::Tile {
-            geometric_error: geometric_error(z, y),
+            geometric_error: ge,
             refine: Some(tileset::Refine::Replace),
             bounding_volume: tileset::BoundingVolume::new_region([
                 self.min_lng.to_radians(),
