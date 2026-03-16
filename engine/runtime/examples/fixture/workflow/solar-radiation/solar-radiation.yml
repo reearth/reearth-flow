@@ -608,7 +608,8 @@ graphs:
           let m = env.get("bldgStructureToExclude") ?? #{};
           let any_active = m["木造・土蔵造"] || m["鉄骨鉄筋コンクリート造"] || m["鉄筋コンクリート造"] || m["鉄骨造"] || m["軽量鉄骨造"] || m["レンガ造等"] || m["非木造"] || m["不明"];
           if !any_active { "-" } else {
-            let st = env.get("__value")["structureType"] ?? -1;
+            let st_raw = env.get("__value")["structureType"] ?? "-1";
+            let st = if type_of(st_raw) == "string" { parse_int(st_raw) } else { st_raw };
             let excluded = switch st {
               601 => m["木造・土蔵造"],
               602 => m["鉄骨鉄筋コンクリート造"],
