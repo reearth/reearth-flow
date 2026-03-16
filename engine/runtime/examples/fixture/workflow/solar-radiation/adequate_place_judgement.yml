@@ -1,0 +1,1472 @@
+# Adequate Place Judgment Subgraph
+#
+# Evaluates buildings and land areas for solar panel installation suitability.
+# Writes two CSV output files:
+#   - 適地判定結果.csv   (building judgment)
+#   - 土地適地判定結果.csv (land judgment)
+#
+# Input ports:
+#   buildingRadiation — aggregated solar radiation per building (from BuildingRadiationAggregator)
+#   buildingAttr      — building CityGML attributes (from BuildingAttrExtractor)
+#   landRadiation     — land area radiation features (from LandAreaSeparator.land)
+#   demTriangle       — DEM triangle geometry for land spatial checks (from DEMTriangleReprojector)
+
+id: f1e2d3c4-b5a6-4798-8c9d-0e1f2a3b4c5d
+name: AdequatePlaceJudgment
+nodes:
+  # ========================================
+  # Input Routers
+  # ========================================
+
+  - id: a0000000-0000-0000-0000-000000000001
+    name: BuildingRadiationInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: buildingRadiation
+
+  - id: a0000000-0000-0000-0000-000000000002
+    name: BuildingAttrInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: buildingAttr
+
+  - id: a0000000-0000-0000-0000-000000000003
+    name: LandRadiationInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: landRadiation
+
+  - id: a0000000-0000-0000-0000-000000000004
+    name: DemTriangleInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: demTriangle
+
+  # ========================================
+  # Section 2e: Per-Building Data Assembly
+  # ========================================
+
+  # Branch 1: Count total buildings (for 1_1_2 percentile criterion)
+  - id: 00000005-0000-0000-0000-000000000030
+    name: BuildingTotalCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy: []
+      calculations:
+        - newAttribute: totalBuildingCount
+          expr: "1"
+
+  - id: 00000005-0000-0000-0000-000000000031
+    name: AddBroadcastKey
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: _bcastKey
+          method: create
+          value: '"all"'
+
+  # Branch 2: Sort by radiation and rank (for 1_1_2 percentile criterion)
+  - id: 00000005-0000-0000-0000-000000000032
+    name: BuildingRadiationSorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+        - totalSolarRadiation
+      order: ascending
+
+  - id: 00000005-0000-0000-0000-000000000033
+    name: BuildingRankCounter
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      outputAttribute: solarRank
+
+  - id: 00000005-0000-0000-0000-000000000034
+    name: AddBroadcastKeyToRanked
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: _bcastKey
+          method: create
+          value: '"all"'
+
+  # Merge total count onto ranked features
+  - id: 00000005-0000-0000-0000-000000000035
+    name: TotalCountMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - _bcastKey
+      supplierAttribute:
+        - _bcastKey
+
+  # Branch 3: Join building CityGML attributes onto radiation results
+  - id: 00000005-0000-0000-0000-000000000036
+    name: BuildingAttrMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # ========================================
+  # Section 2f: Restriction Zone Spatial Checks
+  # ========================================
+
+  # --- Zone 1 ---
+  - id: 00000007-0000-0000-0000-000000000001
+    name: RestrictZone1ShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("restrictAreaPath1")
+      allowEmptyPath: true
+
+  - id: 00000007-0000-0000-0000-000000000002
+    name: RestrictZone1Reprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+
+  - id: 00000007-0000-0000-0000-000000000004
+    name: RestrictZone1SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+
+  - id: 00000007-0000-0000-0000-000000000005
+    name: InZone1FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone1
+          method: create
+          value: "1"
+
+  - id: 00000007-0000-0000-0000-000000000006
+    name: InZone1FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone1
+          method: create
+          value: "0"
+
+  - id: 00000007-0000-0000-0000-000000000007
+    name: Zone1Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # --- Zone 2 ---
+  - id: 00000007-0000-0000-0000-000000000011
+    name: RestrictZone2ShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("restrictAreaPath2")
+      allowEmptyPath: true
+
+  - id: 00000007-0000-0000-0000-000000000012
+    name: RestrictZone2Reprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+
+  - id: 00000007-0000-0000-0000-000000000014
+    name: RestrictZone2SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+
+  - id: 00000007-0000-0000-0000-000000000015
+    name: InZone2FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone2
+          method: create
+          value: "1"
+
+  - id: 00000007-0000-0000-0000-000000000016
+    name: InZone2FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone2
+          method: create
+          value: "0"
+
+  - id: 00000007-0000-0000-0000-000000000017
+    name: Zone2Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # --- Zone 3 ---
+  - id: 00000007-0000-0000-0000-000000000021
+    name: RestrictZone3ShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("restrictAreaPath3")
+      allowEmptyPath: true
+
+  - id: 00000007-0000-0000-0000-000000000022
+    name: RestrictZone3Reprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+
+  - id: 00000007-0000-0000-0000-000000000024
+    name: RestrictZone3SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+
+  - id: 00000007-0000-0000-0000-000000000025
+    name: InZone3FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone3
+          method: create
+          value: "1"
+
+  - id: 00000007-0000-0000-0000-000000000026
+    name: InZone3FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone3
+          method: create
+          value: "0"
+
+  - id: 00000007-0000-0000-0000-000000000027
+    name: Zone3Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # --- Snow Depth Check ---
+  - id: 00000007-0000-0000-0000-000000000030
+    name: SnowShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("snowDepthShapefilePath")
+      allowEmptyPath: true
+
+  - id: 00000007-0000-0000-0000-000000000031
+    name: SnowShapefileReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+
+  - id: 00000007-0000-0000-0000-000000000033
+    name: SnowSpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+      mergeFilterAttributes: true
+      mergedAttributesPrefix: "snow_"
+
+  - id: 00000007-0000-0000-0000-000000000034
+    name: SnowMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # ========================================
+  # Section 2g: Final Building Judgment
+  # ========================================
+
+  # Compute per-building judgment criteria
+  - id: 00000005-0000-0000-0000-000000000060
+    name: BuildingJudgmentComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        # 1_1_1: solar radiation absolute threshold
+        - attribute: result_1_1_1
+          method: create
+          value: |
+            let thresh = env.get("solarRadiationThreshold") ?? 0.0;
+            let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
+            if thresh <= 0.0 || rad < 0.0 { "-" }
+            else if rad < thresh { "×" } else { "○" }
+
+        # 1_1_2: lower percentile exclusion
+        - attribute: result_1_1_2
+          method: create
+          value: |
+            let pct = env.get("lowerPercent") ?? 0.0;
+            let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
+            if pct <= 0.0 || rad < 0.0 { "-" } else {
+              let rank = env.get("__value")["solarRank"] ?? 0;
+              let total = env.get("__value")["totalBuildingCount"] ?? 1;
+              if total > 0 && (rank.to_float() / total.to_float()) <= (pct / 100.0) { "×" } else { "○" }
+            }
+
+        # 1_2: structure type exclusion map
+        - attribute: result_1_2
+          method: create
+          value: |
+            let m = env.get("bldgStructureToExclude") ?? #{};
+            let any_active = m["木造・土蔵造"] || m["鉄骨鉄筋コンクリート造"] || m["鉄筋コンクリート造"] || m["鉄骨造"] || m["軽量鉄骨造"] || m["レンガ造等"] || m["非木造"] || m["不明"];
+            if !any_active { "-" } else {
+              let st = env.get("__value")["structureType"] ?? -1;
+              let excluded = switch st {
+                601 => m["木造・土蔵造"],
+                602 => m["鉄骨鉄筋コンクリート造"],
+                603 => m["鉄筋コンクリート造"],
+                604 => m["鉄骨造"],
+                605 => m["軽量鉄骨造"],
+                606 => m["レンガ造等"],
+                610 => m["非木造"],
+                _ => m["不明"] ?? false,
+              };
+              if excluded { "×" } else { "○" }
+            }
+
+        # 1_3: floor count bounds
+        - attribute: result_1_3
+          method: create
+          value: |
+            let lb = env.get("floorsBelow") ?? -1;
+            let ub = env.get("upperFloors") ?? -1;
+            let fc = env.get("__value")["floorCount"] ?? -1;
+            if (lb == -1 && ub == -1) || fc < 0 { "-" }
+            else if lb != -1 && fc <= lb { "×" }
+            else if ub != -1 && fc >= ub { "×" }
+            else { "○" }
+
+        # 2_1: tsunami risk
+        - attribute: result_2_1
+          method: create
+          value: |
+            if !(env.get("enableTsunamiCheck") ?? false) { "-" } else {
+              let h = env.get("__value")["bldgHeight"] ?? -1.0;
+              let th = env.get("__value")["tsunamiHeight"] ?? 0.0;
+              if h < 0.0 || th <= 0.0 { "-" }
+              else if h < th { "×" } else { "○" }
+            }
+
+        # 2_2: flood risk
+        - attribute: result_2_2
+          method: create
+          value: |
+            if !(env.get("enableFloodCheck") ?? false) { "-" } else {
+              let h = env.get("__value")["bldgHeight"] ?? -1.0;
+              let fd = env.get("__value")["floodDepth"] ?? 0.0;
+              if h < 0.0 || fd <= 0.0 { "-" }
+              else if h < fd { "×" } else { "○" }
+            }
+
+        # 2_3: landslide risk
+        - attribute: result_2_3
+          method: create
+          value: |
+            if !(env.get("enableLandslideCheck") ?? false) { "-" } else {
+              let flag = env.get("__value")["landslideFlag"] ?? false;
+              if flag { "×" } else { "○" }
+            }
+
+        # 2_4: snow depth/load
+        - attribute: result_2_4
+          method: create
+          value: |
+            let path = env.get("snowDepthShapefilePath");
+            if path == () { "-" } else {
+              let depth = env.get("__value")["snow_G02_058"] ?? ();
+              if depth == () { "-" } else {
+                let s = env.get("snowLoad") ?? 0.0;
+                if s > 0.0 {
+                  let dp = env.get("snowUnitWeight") ?? 0.0;
+                  let load = depth * dp / 9.80665;
+                  if load >= s { "×" } else { "○" }
+                } else {
+                  let thresh = env.get("snowDepthThreshold") ?? -1.0;
+                  if thresh > 0.0 && depth >= thresh { "×" } else { "○" }
+                }
+              }
+            }
+
+        # 3_1: restriction zone 1
+        - attribute: result_3_1
+          method: create
+          value: |
+            let path = env.get("restrictAreaPath1");
+            let hThresh = env.get("restrictHeight1") ?? -1.0;
+            if path == () || hThresh == -1.0 { "-" } else {
+              let inZone = env.get("__value")["inZone1"] ?? 0;
+              if inZone == 0 { "○" } else {
+                let h = env.get("__value")["bldgHeight"] ?? -1.0;
+                if h >= 0.0 && h < hThresh { "○" } else {
+                  let dir = env.get("restrictDirection1") ?? -1.0;
+                  if dir < 0.0 { "×" } else {
+                    let sm = env.get("__value")["dirMatchSum1"] ?? 0;
+                    if sm > 0 { "×" } else { "○" }
+                  }
+                }
+              }
+            }
+
+        # 3_2: restriction zone 2
+        - attribute: result_3_2
+          method: create
+          value: |
+            let path = env.get("restrictAreaPath2");
+            let hThresh = env.get("restrictHeight2") ?? -1.0;
+            if path == () || hThresh == -1.0 { "-" } else {
+              let inZone = env.get("__value")["inZone2"] ?? 0;
+              if inZone == 0 { "○" } else {
+                let h = env.get("__value")["bldgHeight"] ?? -1.0;
+                if h >= 0.0 && h < hThresh { "○" } else {
+                  let dir = env.get("restrictDirection2") ?? -1.0;
+                  if dir < 0.0 { "×" } else {
+                    let sm = env.get("__value")["dirMatchSum2"] ?? 0;
+                    if sm > 0 { "×" } else { "○" }
+                  }
+                }
+              }
+            }
+
+        # 3_3: restriction zone 3
+        - attribute: result_3_3
+          method: create
+          value: |
+            let path = env.get("restrictAreaPath3");
+            let hThresh = env.get("restrictHeight3") ?? -1.0;
+            if path == () || hThresh == -1.0 { "-" } else {
+              let inZone = env.get("__value")["inZone3"] ?? 0;
+              if inZone == 0 { "○" } else {
+                let h = env.get("__value")["bldgHeight"] ?? -1.0;
+                if h >= 0.0 && h < hThresh { "○" } else {
+                  let dir = env.get("restrictDirection3") ?? -1.0;
+                  if dir < 0.0 { "×" } else {
+                    let sm = env.get("__value")["dirMatchSum3"] ?? 0;
+                    if sm > 0 { "×" } else { "○" }
+                  }
+                }
+              }
+            }
+
+  # Compute building priority rank from judgment results
+  - id: 00000005-0000-0000-0000-000000000063
+    name: BuildingPriorityComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: priority
+          method: create
+          value: |
+            let score = 0;
+            let r11 = env.get("__value")["result_1_1_1"];
+            let r12 = env.get("__value")["result_1_1_2"];
+            if r11 == "×" || r12 == "×" { score -= 1; }
+            if env.get("__value")["result_1_2"] == "×" { score -= 1; }
+            if env.get("__value")["result_1_3"] == "×" { score -= 1; }
+            if env.get("__value")["result_2_1"] == "×" { score -= 1; }
+            if env.get("__value")["result_2_2"] == "×" { score -= 1; }
+            if env.get("__value")["result_2_3"] == "×" { score -= 1; }
+            if env.get("__value")["result_2_4"] == "×" { score -= 1; }
+            if env.get("__value")["result_3_1"] == "×" { score -= 1; }
+            if env.get("__value")["result_3_2"] == "×" { score -= 1; }
+            if env.get("__value")["result_3_3"] == "×" { score -= 1; }
+            if score >= 0 { 5 }
+            else if score >= -2 { 4 }
+            else if score >= -4 { 3 }
+            else if score >= -6 { 2 }
+            else { 1 }
+
+  # Map building judgment to CSV column names
+  - id: 00000005-0000-0000-0000-000000000061
+    name: BuildingJudgmentMapper
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: 建物ID
+          expr: env.get("__value")["gmlId"]
+        - attribute: 優先度
+          expr: env.get("__value")["priority"]
+        - attribute: 適否1_1_1
+          expr: env.get("__value")["result_1_1_1"]
+        - attribute: 適否1_1_2
+          expr: env.get("__value")["result_1_1_2"]
+        - attribute: 適否1_2
+          expr: env.get("__value")["result_1_2"]
+        - attribute: 適否1_3
+          expr: env.get("__value")["result_1_3"]
+        - attribute: 適否2_1
+          expr: env.get("__value")["result_2_1"]
+        - attribute: 適否2_2
+          expr: env.get("__value")["result_2_2"]
+        - attribute: 適否2_3
+          expr: env.get("__value")["result_2_3"]
+        - attribute: 適否2_4
+          expr: env.get("__value")["result_2_4"]
+        - attribute: 適否3_1
+          expr: env.get("__value")["result_3_1"]
+        - attribute: 適否3_2
+          expr: env.get("__value")["result_3_2"]
+        - attribute: 適否3_3
+          expr: env.get("__value")["result_3_3"]
+
+  - id: 00000005-0000-0000-0000-000000000062
+    name: BuildingJudgmentWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "適地判定結果.csv")
+
+  # ========================================
+  # Section 2h: Land Area Pipeline
+  # ========================================
+
+  # Aggregate land radiation per gmlId (triangle ID)
+  - id: 00000006-0000-0000-0000-000000000002
+    name: LandRadiationAggregator
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - gmlId
+      calculations:
+        - newAttribute: totalSolarRadiation
+          expr: |
+            env.get("__value")["radiationPerMonth"]
+        - newAttribute: totalSolarPower
+          expr: |
+            let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
+            dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        - newAttribute: dirMatchSum1
+          expr: env.get("__value")["dirMatch1"] ?? 0
+        - newAttribute: dirMatchSum2
+          expr: env.get("__value")["dirMatch2"] ?? 0
+        - newAttribute: dirMatchSum3
+          expr: env.get("__value")["dirMatch3"] ?? 0
+
+  # Compute land area judgment criteria (1_2 and 1_3 always "-" for land)
+  - id: 00000006-0000-0000-0000-000000000003
+    name: LandJudgmentComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        # 1_1_1: solar radiation absolute threshold
+        - attribute: result_1_1_1
+          method: create
+          value: |
+            let thresh = env.get("solarRadiationThreshold") ?? 0.0;
+            let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
+            if thresh <= 0.0 || rad < 0.0 { "-" }
+            else if rad < thresh { "×" } else { "○" }
+
+        # 1_1_2: not applicable for land
+        - attribute: result_1_1_2
+          method: create
+          value: '"-"'
+
+        # 1_2: not applicable for land
+        - attribute: result_1_2
+          method: create
+          value: '"-"'
+
+        # 1_3: not applicable for land
+        - attribute: result_1_3
+          method: create
+          value: '"-"'
+
+        # 2_1: tsunami risk (land areas do not have building height)
+        - attribute: result_2_1
+          method: create
+          value: '"-"'
+
+        # 2_2: flood risk
+        - attribute: result_2_2
+          method: create
+          value: '"-"'
+
+        # 2_3: landslide risk
+        - attribute: result_2_3
+          method: create
+          value: |
+            if !(env.get("enableLandslideCheck") ?? false) { "-" } else {
+              let flag = env.get("__value")["landslideFlag"] ?? false;
+              if flag { "×" } else { "○" }
+            }
+
+        # 2_4: snow depth/load
+        - attribute: result_2_4
+          method: create
+          value: |
+            let path = env.get("snowDepthShapefilePath");
+            if path == () { "-" } else {
+              let depth = env.get("__value")["snow_G02_058"] ?? ();
+              if depth == () { "-" } else {
+                let s = env.get("snowLoad") ?? 0.0;
+                if s > 0.0 {
+                  let dp = env.get("snowUnitWeight") ?? 0.0;
+                  let load = depth * dp / 9.80665;
+                  if load >= s { "×" } else { "○" }
+                } else {
+                  let thresh = env.get("snowDepthThreshold") ?? -1.0;
+                  if thresh > 0.0 && depth >= thresh { "×" } else { "○" }
+                }
+              }
+            }
+
+        # 3_1: restriction zone 1
+        - attribute: result_3_1
+          method: create
+          value: |
+            let path = env.get("restrictAreaPath1");
+            let hThresh = env.get("restrictHeight1") ?? -1.0;
+            if path == () || hThresh == -1.0 { "-" } else {
+              let inZone = env.get("__value")["inZone1"] ?? 0;
+              if inZone == 0 { "○" } else {
+                let dir = env.get("restrictDirection1") ?? -1.0;
+                if dir < 0.0 { "×" } else {
+                  let sm = env.get("__value")["dirMatchSum1"] ?? 0;
+                  if sm > 0 { "×" } else { "○" }
+                }
+              }
+            }
+
+        # 3_2: restriction zone 2
+        - attribute: result_3_2
+          method: create
+          value: |
+            let path = env.get("restrictAreaPath2");
+            let hThresh = env.get("restrictHeight2") ?? -1.0;
+            if path == () || hThresh == -1.0 { "-" } else {
+              let inZone = env.get("__value")["inZone2"] ?? 0;
+              if inZone == 0 { "○" } else {
+                let dir = env.get("restrictDirection2") ?? -1.0;
+                if dir < 0.0 { "×" } else {
+                  let sm = env.get("__value")["dirMatchSum2"] ?? 0;
+                  if sm > 0 { "×" } else { "○" }
+                }
+              }
+            }
+
+        # 3_3: restriction zone 3
+        - attribute: result_3_3
+          method: create
+          value: |
+            let path = env.get("restrictAreaPath3");
+            let hThresh = env.get("restrictHeight3") ?? -1.0;
+            if path == () || hThresh == -1.0 { "-" } else {
+              let inZone = env.get("__value")["inZone3"] ?? 0;
+              if inZone == 0 { "○" } else {
+                let dir = env.get("restrictDirection3") ?? -1.0;
+                if dir < 0.0 { "×" } else {
+                  let sm = env.get("__value")["dirMatchSum3"] ?? 0;
+                  if sm > 0 { "×" } else { "○" }
+                }
+              }
+            }
+
+  # Compute land priority rank from judgment results
+  - id: 00000006-0000-0000-0000-000000000006
+    name: LandPriorityComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: priority
+          method: create
+          value: |
+            let score = 0;
+            if env.get("__value")["result_1_1_1"] == "×" { score -= 1; }
+            if env.get("__value")["result_2_3"] == "×" { score -= 1; }
+            if env.get("__value")["result_2_4"] == "×" { score -= 1; }
+            if env.get("__value")["result_3_1"] == "×" { score -= 1; }
+            if env.get("__value")["result_3_2"] == "×" { score -= 1; }
+            if env.get("__value")["result_3_3"] == "×" { score -= 1; }
+            if score >= 0 { 5 }
+            else if score >= -2 { 4 }
+            else if score >= -4 { 3 }
+            else if score >= -6 { 2 }
+            else { 1 }
+
+  # Map land judgment to CSV column names
+  - id: 00000006-0000-0000-0000-000000000004
+    name: LandJudgmentMapper
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: 土地ID
+          expr: env.get("__value")["gmlId"]
+        - attribute: 優先度
+          expr: env.get("__value")["priority"]
+        - attribute: 適否1_1_1
+          expr: env.get("__value")["result_1_1_1"]
+        - attribute: 適否1_1_2
+          expr: env.get("__value")["result_1_1_2"]
+        - attribute: 適否1_2
+          expr: env.get("__value")["result_1_2"]
+        - attribute: 適否1_3
+          expr: env.get("__value")["result_1_3"]
+        - attribute: 適否2_1
+          expr: env.get("__value")["result_2_1"]
+        - attribute: 適否2_2
+          expr: env.get("__value")["result_2_2"]
+        - attribute: 適否2_3
+          expr: env.get("__value")["result_2_3"]
+        - attribute: 適否2_4
+          expr: env.get("__value")["result_2_4"]
+        - attribute: 適否3_1
+          expr: env.get("__value")["result_3_1"]
+        - attribute: 適否3_2
+          expr: env.get("__value")["result_3_2"]
+        - attribute: 適否3_3
+          expr: env.get("__value")["result_3_3"]
+
+  - id: 00000006-0000-0000-0000-000000000005
+    name: LandJudgmentWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "土地適地判定結果.csv")
+
+  # Snow spatial filter for land areas
+  - id: 00000006-0000-0000-0000-000000000010
+    name: LandSnowSpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+      mergeFilterAttributes: true
+      mergedAttributesPrefix: "snow_"
+
+  - id: 00000006-0000-0000-0000-000000000011
+    name: LandSnowMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # Zone 1 for land areas
+  - id: 00000006-0000-0000-0000-000000000021
+    name: LandZone1SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+
+  - id: 00000006-0000-0000-0000-000000000022
+    name: LandInZone1FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone1
+          method: create
+          value: "1"
+
+  - id: 00000006-0000-0000-0000-000000000023
+    name: LandInZone1FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone1
+          method: create
+          value: "0"
+
+  - id: 00000006-0000-0000-0000-000000000024
+    name: LandZone1Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # Zone 2 for land areas
+  - id: 00000006-0000-0000-0000-000000000031
+    name: LandZone2SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+
+  - id: 00000006-0000-0000-0000-000000000032
+    name: LandInZone2FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone2
+          method: create
+          value: "1"
+
+  - id: 00000006-0000-0000-0000-000000000033
+    name: LandInZone2FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone2
+          method: create
+          value: "0"
+
+  - id: 00000006-0000-0000-0000-000000000034
+    name: LandZone2Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+  # Zone 3 for land areas
+  - id: 00000006-0000-0000-0000-000000000041
+    name: LandZone3SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+
+  - id: 00000006-0000-0000-0000-000000000042
+    name: LandInZone3FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone3
+          method: create
+          value: "1"
+
+  - id: 00000006-0000-0000-0000-000000000043
+    name: LandInZone3FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: inZone3
+          method: create
+          value: "0"
+
+  - id: 00000006-0000-0000-0000-000000000044
+    name: LandZone3Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+        - gmlId
+      supplierAttribute:
+        - gmlId
+
+edges:
+  # ========================================
+  # Input Router fan-outs
+  # ========================================
+
+  # BuildingRadiationInput → BuildingRadiationSorter (branch 2: rank by radiation)
+  - id: ea000000-0000-0000-0000-000000000001
+    from: a0000000-0000-0000-0000-000000000001
+    to: 00000005-0000-0000-0000-000000000032
+    fromPort: default
+    toPort: default
+
+  # BuildingRadiationInput → BuildingTotalCounter (branch 1: count total)
+  - id: ea000000-0000-0000-0000-000000000002
+    from: a0000000-0000-0000-0000-000000000001
+    to: 00000005-0000-0000-0000-000000000030
+    fromPort: default
+    toPort: default
+
+  # BuildingAttrInput → BuildingAttrMerger.supplier
+  - id: ea000000-0000-0000-0000-000000000003
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000005-0000-0000-0000-000000000036
+    fromPort: default
+    toPort: supplier
+
+  # BuildingAttrInput → RestrictZone1SpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000004
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: candidate
+
+  # BuildingAttrInput → RestrictZone2SpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000005
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000014
+    fromPort: default
+    toPort: candidate
+
+  # BuildingAttrInput → RestrictZone3SpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000006
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: candidate
+
+  # BuildingAttrInput → SnowSpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000007
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: candidate
+
+  # LandRadiationInput → LandRadiationAggregator
+  - id: ea000000-0000-0000-0000-000000000008
+    from: a0000000-0000-0000-0000-000000000003
+    to: 00000006-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+
+  # DemTriangleInput → LandZone1SpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000009
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000021
+    fromPort: default
+    toPort: candidate
+
+  # DemTriangleInput → LandZone2SpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000010
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: candidate
+
+  # DemTriangleInput → LandZone3SpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000011
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000041
+    fromPort: default
+    toPort: candidate
+
+  # DemTriangleInput → LandSnowSpatialFilter.candidate
+  - id: ea000000-0000-0000-0000-000000000012
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000010
+    fromPort: default
+    toPort: candidate
+
+  # ========================================
+  # Section 2e: Building Judgment Pipeline Edges
+  # ========================================
+
+  # BuildingTotalCounter → AddBroadcastKey
+  - id: e0000005-0000-0000-0000-000000000042
+    from: 00000005-0000-0000-0000-000000000030
+    to: 00000005-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: default
+
+  # AddBroadcastKey → TotalCountMerger.supplier
+  - id: e0000005-0000-0000-0000-000000000043
+    from: 00000005-0000-0000-0000-000000000031
+    to: 00000005-0000-0000-0000-000000000035
+    fromPort: default
+    toPort: supplier
+
+  # BuildingRadiationSorter → BuildingRankCounter
+  - id: e0000005-0000-0000-0000-000000000044
+    from: 00000005-0000-0000-0000-000000000032
+    to: 00000005-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: default
+
+  # BuildingRankCounter → AddBroadcastKeyToRanked
+  - id: e0000005-0000-0000-0000-000000000045
+    from: 00000005-0000-0000-0000-000000000033
+    to: 00000005-0000-0000-0000-000000000034
+    fromPort: default
+    toPort: default
+
+  # AddBroadcastKeyToRanked → TotalCountMerger.requestor
+  - id: e0000005-0000-0000-0000-000000000046
+    from: 00000005-0000-0000-0000-000000000034
+    to: 00000005-0000-0000-0000-000000000035
+    fromPort: default
+    toPort: requestor
+
+  # TotalCountMerger.merged → BuildingAttrMerger.requestor
+  - id: e0000005-0000-0000-0000-000000000047
+    from: 00000005-0000-0000-0000-000000000035
+    to: 00000005-0000-0000-0000-000000000036
+    fromPort: merged
+    toPort: requestor
+
+  # BuildingAttrMerger.merged → Zone1Merger.requestor (first zone check)
+  - id: e0000005-0000-0000-0000-000000000048
+    from: 00000005-0000-0000-0000-000000000036
+    to: 00000007-0000-0000-0000-000000000007
+    fromPort: merged
+    toPort: requestor
+
+  # Zone1Merger.merged → Zone2Merger.requestor
+  - id: e0000005-0000-0000-0000-000000000049
+    from: 00000007-0000-0000-0000-000000000007
+    to: 00000007-0000-0000-0000-000000000017
+    fromPort: merged
+    toPort: requestor
+
+  # Zone2Merger.merged → Zone3Merger.requestor
+  - id: e0000005-0000-0000-0000-000000000050
+    from: 00000007-0000-0000-0000-000000000017
+    to: 00000007-0000-0000-0000-000000000027
+    fromPort: merged
+    toPort: requestor
+
+  # Zone3Merger.merged → SnowMerger.requestor
+  - id: e0000005-0000-0000-0000-000000000051
+    from: 00000007-0000-0000-0000-000000000027
+    to: 00000007-0000-0000-0000-000000000034
+    fromPort: merged
+    toPort: requestor
+
+  # SnowMerger.merged → BuildingJudgmentComputer
+  - id: e0000005-0000-0000-0000-000000000052
+    from: 00000007-0000-0000-0000-000000000034
+    to: 00000005-0000-0000-0000-000000000060
+    fromPort: merged
+    toPort: default
+
+  # BuildingJudgmentComputer → BuildingPriorityComputer
+  - id: e0000005-0000-0000-0000-000000000055
+    from: 00000005-0000-0000-0000-000000000060
+    to: 00000005-0000-0000-0000-000000000063
+    fromPort: default
+    toPort: default
+
+  # BuildingPriorityComputer → BuildingJudgmentMapper
+  - id: e0000005-0000-0000-0000-000000000053
+    from: 00000005-0000-0000-0000-000000000063
+    to: 00000005-0000-0000-0000-000000000061
+    fromPort: default
+    toPort: default
+
+  # BuildingJudgmentMapper → BuildingJudgmentWriter
+  - id: e0000005-0000-0000-0000-000000000054
+    from: 00000005-0000-0000-0000-000000000061
+    to: 00000005-0000-0000-0000-000000000062
+    fromPort: default
+    toPort: default
+
+  # ========================================
+  # Section 2f: Restriction Zone Edges
+  # ========================================
+
+  # --- Zone 1 ---
+  # RestrictZone1ShapefileReader → RestrictZone1Reprojector
+  - id: e0000007-0000-0000-0000-000000000001
+    from: 00000007-0000-0000-0000-000000000001
+    to: 00000007-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+
+  # RestrictZone1ShapefileReader → RestrictZone1SpatialFilter.filter
+  # Use un-reprojected geographic CRS to match buildings (EPSG:6697).
+  - id: e0000007-0000-0000-0000-000000000002
+    from: 00000007-0000-0000-0000-000000000001
+    to: 00000007-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: filter
+
+  # RestrictZone1SpatialFilter.passed → InZone1FlagPassed
+  - id: e0000007-0000-0000-0000-000000000004
+    from: 00000007-0000-0000-0000-000000000004
+    to: 00000007-0000-0000-0000-000000000005
+    fromPort: passed
+    toPort: default
+
+  # RestrictZone1SpatialFilter.failed → InZone1FlagFailed
+  - id: e0000007-0000-0000-0000-000000000005
+    from: 00000007-0000-0000-0000-000000000004
+    to: 00000007-0000-0000-0000-000000000006
+    fromPort: failed
+    toPort: default
+
+  # InZone1FlagPassed → Zone1Merger.supplier
+  - id: e0000007-0000-0000-0000-000000000006
+    from: 00000007-0000-0000-0000-000000000005
+    to: 00000007-0000-0000-0000-000000000007
+    fromPort: default
+    toPort: supplier
+
+  # InZone1FlagFailed → Zone1Merger.supplier
+  - id: e0000007-0000-0000-0000-000000000007
+    from: 00000007-0000-0000-0000-000000000006
+    to: 00000007-0000-0000-0000-000000000007
+    fromPort: default
+    toPort: supplier
+
+  # --- Zone 2 ---
+  # RestrictZone2ShapefileReader → RestrictZone2Reprojector
+  - id: e0000007-0000-0000-0000-000000000011
+    from: 00000007-0000-0000-0000-000000000011
+    to: 00000007-0000-0000-0000-000000000012
+    fromPort: default
+    toPort: default
+
+  # RestrictZone2ShapefileReader → RestrictZone2SpatialFilter.filter
+  # Use un-reprojected geographic CRS to match buildings (EPSG:6697).
+  - id: e0000007-0000-0000-0000-000000000012
+    from: 00000007-0000-0000-0000-000000000011
+    to: 00000007-0000-0000-0000-000000000014
+    fromPort: default
+    toPort: filter
+
+  # RestrictZone2SpatialFilter.passed → InZone2FlagPassed
+  - id: e0000007-0000-0000-0000-000000000014
+    from: 00000007-0000-0000-0000-000000000014
+    to: 00000007-0000-0000-0000-000000000015
+    fromPort: passed
+    toPort: default
+
+  # RestrictZone2SpatialFilter.failed → InZone2FlagFailed
+  - id: e0000007-0000-0000-0000-000000000015
+    from: 00000007-0000-0000-0000-000000000014
+    to: 00000007-0000-0000-0000-000000000016
+    fromPort: failed
+    toPort: default
+
+  # InZone2FlagPassed → Zone2Merger.supplier
+  - id: e0000007-0000-0000-0000-000000000016
+    from: 00000007-0000-0000-0000-000000000015
+    to: 00000007-0000-0000-0000-000000000017
+    fromPort: default
+    toPort: supplier
+
+  # InZone2FlagFailed → Zone2Merger.supplier
+  - id: e0000007-0000-0000-0000-000000000017
+    from: 00000007-0000-0000-0000-000000000016
+    to: 00000007-0000-0000-0000-000000000017
+    fromPort: default
+    toPort: supplier
+
+  # --- Zone 3 ---
+  # RestrictZone3ShapefileReader → RestrictZone3Reprojector
+  - id: e0000007-0000-0000-0000-000000000021
+    from: 00000007-0000-0000-0000-000000000021
+    to: 00000007-0000-0000-0000-000000000022
+    fromPort: default
+    toPort: default
+
+  # RestrictZone3ShapefileReader → RestrictZone3SpatialFilter.filter
+  # Use un-reprojected geographic CRS to match buildings (EPSG:6697).
+  - id: e0000007-0000-0000-0000-000000000022
+    from: 00000007-0000-0000-0000-000000000021
+    to: 00000007-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: filter
+
+  # RestrictZone3SpatialFilter.passed → InZone3FlagPassed
+  - id: e0000007-0000-0000-0000-000000000024
+    from: 00000007-0000-0000-0000-000000000024
+    to: 00000007-0000-0000-0000-000000000025
+    fromPort: passed
+    toPort: default
+
+  # RestrictZone3SpatialFilter.failed → InZone3FlagFailed
+  - id: e0000007-0000-0000-0000-000000000025
+    from: 00000007-0000-0000-0000-000000000024
+    to: 00000007-0000-0000-0000-000000000026
+    fromPort: failed
+    toPort: default
+
+  # InZone3FlagPassed → Zone3Merger.supplier
+  - id: e0000007-0000-0000-0000-000000000026
+    from: 00000007-0000-0000-0000-000000000025
+    to: 00000007-0000-0000-0000-000000000027
+    fromPort: default
+    toPort: supplier
+
+  # InZone3FlagFailed → Zone3Merger.supplier
+  - id: e0000007-0000-0000-0000-000000000027
+    from: 00000007-0000-0000-0000-000000000026
+    to: 00000007-0000-0000-0000-000000000027
+    fromPort: default
+    toPort: supplier
+
+  # --- Snow Depth ---
+  # SnowShapefileReader → SnowShapefileReprojector
+  - id: e0000007-0000-0000-0000-000000000030
+    from: 00000007-0000-0000-0000-000000000030
+    to: 00000007-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: default
+
+  # SnowShapefileReader → SnowSpatialFilter.filter
+  # Use un-reprojected geographic CRS (EPSG:4612) to match buildings (EPSG:6697).
+  # Both are geographic degree coordinates; the JGD2000↔JGD2011 difference is negligible.
+  - id: e0000007-0000-0000-0000-000000000031
+    from: 00000007-0000-0000-0000-000000000030
+    to: 00000007-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: filter
+
+  # SnowSpatialFilter.passed → SnowMerger.supplier
+  - id: e0000007-0000-0000-0000-000000000033
+    from: 00000007-0000-0000-0000-000000000033
+    to: 00000007-0000-0000-0000-000000000034
+    fromPort: passed
+    toPort: supplier
+
+  # SnowSpatialFilter.failed → SnowMerger.supplier (no snow data)
+  - id: e0000007-0000-0000-0000-000000000034
+    from: 00000007-0000-0000-0000-000000000033
+    to: 00000007-0000-0000-0000-000000000034
+    fromPort: failed
+    toPort: supplier
+
+  # ========================================
+  # Section 2h: Land Area Pipeline Edges
+  # ========================================
+
+  # LandRadiationAggregator → LandZone1Merger.requestor (aggregated data with no geometry)
+  - id: e0000006-0000-0000-0000-00000000006a
+    from: 00000006-0000-0000-0000-000000000002
+    to: 00000006-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: requestor
+
+  # Zone 1 for land:
+  # RestrictZone1Reprojector → LandZone1SpatialFilter.filter (reuse zone shapefile)
+  - id: e0000006-0000-0000-0000-000000000061
+    from: 00000007-0000-0000-0000-000000000002
+    to: 00000006-0000-0000-0000-000000000021
+    fromPort: default
+    toPort: filter
+
+  # LandZone1SpatialFilter.passed → LandInZone1FlagPassed
+  - id: e0000006-0000-0000-0000-000000000063
+    from: 00000006-0000-0000-0000-000000000021
+    to: 00000006-0000-0000-0000-000000000022
+    fromPort: passed
+    toPort: default
+
+  # LandZone1SpatialFilter.failed → LandInZone1FlagFailed
+  - id: e0000006-0000-0000-0000-000000000064
+    from: 00000006-0000-0000-0000-000000000021
+    to: 00000006-0000-0000-0000-000000000023
+    fromPort: failed
+    toPort: default
+
+  # LandInZone1FlagPassed → LandZone1Merger.supplier
+  - id: e0000006-0000-0000-0000-000000000065
+    from: 00000006-0000-0000-0000-000000000022
+    to: 00000006-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: supplier
+
+  # LandInZone1FlagFailed → LandZone1Merger.supplier
+  - id: e0000006-0000-0000-0000-000000000066
+    from: 00000006-0000-0000-0000-000000000023
+    to: 00000006-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: supplier
+
+  # Zone 2 for land:
+  # RestrictZone2Reprojector → LandZone2SpatialFilter.filter
+  - id: e0000006-0000-0000-0000-000000000068
+    from: 00000007-0000-0000-0000-000000000012
+    to: 00000006-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: filter
+
+  # LandZone2SpatialFilter.passed → LandInZone2FlagPassed
+  - id: e0000006-0000-0000-0000-000000000070
+    from: 00000006-0000-0000-0000-000000000031
+    to: 00000006-0000-0000-0000-000000000032
+    fromPort: passed
+    toPort: default
+
+  # LandZone2SpatialFilter.failed → LandInZone2FlagFailed
+  - id: e0000006-0000-0000-0000-000000000071
+    from: 00000006-0000-0000-0000-000000000031
+    to: 00000006-0000-0000-0000-000000000033
+    fromPort: failed
+    toPort: default
+
+  # LandInZone2FlagPassed → LandZone2Merger.supplier
+  - id: e0000006-0000-0000-0000-000000000072
+    from: 00000006-0000-0000-0000-000000000032
+    to: 00000006-0000-0000-0000-000000000034
+    fromPort: default
+    toPort: supplier
+
+  # LandInZone2FlagFailed → LandZone2Merger.supplier
+  - id: e0000006-0000-0000-0000-000000000073
+    from: 00000006-0000-0000-0000-000000000033
+    to: 00000006-0000-0000-0000-000000000034
+    fromPort: default
+    toPort: supplier
+
+  # LandZone1Merger.merged (land data with inZone1) → LandZone2Merger.requestor
+  - id: e0000006-0000-0000-0000-000000000074
+    from: 00000006-0000-0000-0000-000000000024
+    to: 00000006-0000-0000-0000-000000000034
+    fromPort: merged
+    toPort: requestor
+
+  # Zone 3 for land:
+  # RestrictZone3Reprojector → LandZone3SpatialFilter.filter
+  - id: e0000006-0000-0000-0000-000000000076
+    from: 00000007-0000-0000-0000-000000000022
+    to: 00000006-0000-0000-0000-000000000041
+    fromPort: default
+    toPort: filter
+
+  # LandZone3SpatialFilter.passed → LandInZone3FlagPassed
+  - id: e0000006-0000-0000-0000-000000000078
+    from: 00000006-0000-0000-0000-000000000041
+    to: 00000006-0000-0000-0000-000000000042
+    fromPort: passed
+    toPort: default
+
+  # LandZone3SpatialFilter.failed → LandInZone3FlagFailed
+  - id: e0000006-0000-0000-0000-000000000079
+    from: 00000006-0000-0000-0000-000000000041
+    to: 00000006-0000-0000-0000-000000000043
+    fromPort: failed
+    toPort: default
+
+  # LandInZone3FlagPassed → LandZone3Merger.supplier
+  - id: e0000006-0000-0000-0000-000000000080
+    from: 00000006-0000-0000-0000-000000000042
+    to: 00000006-0000-0000-0000-000000000044
+    fromPort: default
+    toPort: supplier
+
+  # LandInZone3FlagFailed → LandZone3Merger.supplier
+  - id: e0000006-0000-0000-0000-000000000081
+    from: 00000006-0000-0000-0000-000000000043
+    to: 00000006-0000-0000-0000-000000000044
+    fromPort: default
+    toPort: supplier
+
+  # LandZone2Merger.merged → LandZone3Merger.requestor
+  - id: e0000006-0000-0000-0000-000000000082
+    from: 00000006-0000-0000-0000-000000000034
+    to: 00000006-0000-0000-0000-000000000044
+    fromPort: merged
+    toPort: requestor
+
+  # Snow for land:
+  # SnowShapefileReprojector → LandSnowSpatialFilter.filter (reuse snow shapefile)
+  - id: e0000006-0000-0000-0000-000000000083
+    from: 00000007-0000-0000-0000-000000000031
+    to: 00000006-0000-0000-0000-000000000010
+    fromPort: default
+    toPort: filter
+
+  # LandSnowSpatialFilter.passed → LandSnowMerger.supplier
+  - id: e0000006-0000-0000-0000-000000000085
+    from: 00000006-0000-0000-0000-000000000010
+    to: 00000006-0000-0000-0000-000000000011
+    fromPort: passed
+    toPort: supplier
+
+  # LandSnowSpatialFilter.failed → LandSnowMerger.supplier (no snow data)
+  - id: e0000006-0000-0000-0000-000000000086
+    from: 00000006-0000-0000-0000-000000000010
+    to: 00000006-0000-0000-0000-000000000011
+    fromPort: failed
+    toPort: supplier
+
+  # LandZone3Merger.merged (original gmlId data) → LandSnowMerger.requestor
+  - id: e0000006-0000-0000-0000-000000000087
+    from: 00000006-0000-0000-0000-000000000044
+    to: 00000006-0000-0000-0000-000000000011
+    fromPort: merged
+    toPort: requestor
+
+  # LandSnowMerger.merged → LandJudgmentComputer
+  - id: e0000006-0000-0000-0000-000000000088
+    from: 00000006-0000-0000-0000-000000000011
+    to: 00000006-0000-0000-0000-000000000003
+    fromPort: merged
+    toPort: default
+
+  # LandJudgmentComputer → LandPriorityComputer
+  - id: e0000006-0000-0000-0000-000000000091
+    from: 00000006-0000-0000-0000-000000000003
+    to: 00000006-0000-0000-0000-000000000006
+    fromPort: default
+    toPort: default
+
+  # LandPriorityComputer → LandJudgmentMapper
+  - id: e0000006-0000-0000-0000-000000000089
+    from: 00000006-0000-0000-0000-000000000006
+    to: 00000006-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: default
+
+  # LandJudgmentMapper → LandJudgmentWriter
+  - id: e0000006-0000-0000-0000-000000000090
+    from: 00000006-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000005
+    fromPort: default
+    toPort: default

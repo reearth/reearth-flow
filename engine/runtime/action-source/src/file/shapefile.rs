@@ -189,6 +189,12 @@ pub(super) struct ShapefileReaderParam {
     /// If true, forces all geometries to be 2D (ignoring Z values)
     #[serde(default)]
     pub(super) force_2d: bool,
+    /// # Allow Null Path
+    /// If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features
+    /// instead of an error. This is useful for optional shapefile inputs where the path may
+    /// not be configured.
+    #[serde(default, alias = "allowEmptyPath")]
+    pub(super) allow_empty_path: bool,
 }
 
 #[async_trait::async_trait]
@@ -209,6 +215,21 @@ impl Source for ShapefileReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
+
+        // When allow_empty_path is set, a null dataset expression means "no input".
+        if self.params.allow_empty_path {
+            if let Some(ref dataset) = self.params.common_property.dataset {
+                let scope = ctx.expr_engine.new_scope();
+                if let Ok(val) = ctx
+                    .expr_engine
+                    .eval_scope::<rhai::Dynamic>(dataset.as_ref(), &scope)
+                {
+                    if val.is_unit() {
+                        return Ok(());
+                    }
+                }
+            }
+        }
 
         let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
         read_shapefile(&content, &self.params, sender)
@@ -294,7 +315,40 @@ fn parse_prj_epsg(prj_data: &[u8]) -> Option<EpsgCode> {
         }
     }
 
-    // Method 2: Name-based lookup for common ESRI WKT formats
+    // Method 2a: Name-based lookup for GEOGCS (geographic CRS) ESRI WKT formats
+    if let Some(start) = trimmed.find("GEOGCS[\"") {
+        let after_start = &trimmed[start + 8..];
+        if let Some(end) = after_start.find('\"') {
+            let geogcs_name = &after_start[..end];
+
+            let esri_geogcs_mapping: &[(&str, u16)] = &[
+                // WGS84
+                ("GCS_WGS_1984", 4326),
+                // Japanese Geodetic Datum
+                ("GCS_JGD_2000", 4612),
+                ("GCS_JGD_2011", 6668),
+                // NAD83
+                ("GCS_North_American_1983", 4269),
+                // ETRS89
+                ("GCS_ETRS_1989", 4258),
+            ];
+
+            for (name_pattern, epsg) in esri_geogcs_mapping {
+                if geogcs_name.eq_ignore_ascii_case(name_pattern) {
+                    tracing::info!(
+                        "Identified EPSG code from ESRI GEOGCS name '{}': {}",
+                        geogcs_name,
+                        epsg
+                    );
+                    return Some(*epsg);
+                }
+            }
+
+            tracing::debug!("Unrecognized GEOGCS name: {}", geogcs_name);
+        }
+    }
+
+    // Method 2b: Name-based lookup for common ESRI PROJCS WKT formats
     // ESRI shapefiles often use PROJCS names without AUTHORITY tags
     // Extract the PROJCS name from the WKT
     if let Some(start) = trimmed.find("PROJCS[\"") {
