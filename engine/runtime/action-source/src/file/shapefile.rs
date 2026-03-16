@@ -216,8 +216,9 @@ impl Source for ShapefileReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        // When allow_empty_path is set, a null dataset expression means "no input".
-        if self.params.allow_empty_path {
+        // When allow_empty_path is set and no inline content is provided,
+        // a null dataset expression means "no input".
+        if self.params.allow_empty_path && self.params.common_property.inline.is_none() {
             if let Some(ref dataset) = self.params.common_property.dataset {
                 let scope = ctx.expr_engine.new_scope();
                 if let Ok(val) = ctx

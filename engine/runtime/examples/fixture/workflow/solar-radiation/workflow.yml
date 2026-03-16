@@ -57,7 +57,7 @@ with:
   enableFloodCheck: false          # 2_2
   enableLandslideCheck: false      # 2_3
   snowDepthShapefilePath:          # 2_4: path to snow depth shapefile ZIP. null = skip
-  snowDepthThreshold:              # 2_4: depth threshold in cm.
+  snowDepthThreshold:              # 2_4: depth threshold in m.
   snowLoad:                        # 2_4: load threshold in kgf/m²
   snowUnitWeight: 29.0             # 2_4: unit weight of snow in N/m³
   # Category 3 — Restriction zones (3 independent zones)
