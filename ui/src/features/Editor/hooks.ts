@@ -1,4 +1,4 @@
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, type OnConnectStart } from "@xyflow/react";
 import {
   MouseEvent,
   useCallback,
@@ -19,7 +19,7 @@ import {
 import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import {
-  useAwarenessCursor,
+  useAwarenessPresence,
   useSpotlightUser,
   useYjsStore,
 } from "@flow/lib/yjs";
@@ -358,9 +358,30 @@ export default ({
     }
   };
 
-  const { self, users, handlePaneMouseMove } = useAwarenessCursor({
+  const {
+    self,
+    users,
+    handlePointerDown,
+    setDraggingEdge,
+    clearDraggingEdge,
+    awarenessSelectionsMap,
+  } = useAwarenessPresence({
+    selectedNodeIds,
     yAwareness,
   });
+
+  const handleConnectStart: OnConnectStart = useCallback(
+    (_event, params) => {
+      if (params.nodeId) {
+        setDraggingEdge(params.nodeId, params.handleId, params.handleType);
+      }
+    },
+    [setDraggingEdge],
+  );
+
+  const handleConnectEnd = useCallback(() => {
+    clearDraggingEdge();
+  }, [clearDraggingEdge]);
 
   const {
     spotlightUser,
@@ -456,11 +477,14 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
-    handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,
     selectedNodeIds,
     setShowSearchPanel,
+    handlePointerDown,
+    handleConnectStart,
+    handleConnectEnd,
+    awarenessSelectionsMap,
   };
 };
