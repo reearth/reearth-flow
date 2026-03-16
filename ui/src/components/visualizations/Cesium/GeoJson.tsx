@@ -160,11 +160,10 @@ const GeoJsonData: React.FC<Props> = ({
       if (!ds || !viewer) return;
 
       if (!selectedFeatureId) {
+        await viewer.zoomTo(ds);
         if (isInitial) {
           viewer.scene.requestRender();
         }
-        await viewer.zoomTo(ds);
-
         return;
       }
       const records = featureMapRef.current.get(selectedFeatureId);
