@@ -173,7 +173,7 @@ const CityGmlData: React.FC<Props> = ({
     if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
 
     if (boundingSphere) {
-      viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 0 });
+      viewer.camera.viewBoundingSphere(boundingSphere);
       setCityGmlBoundingSphere(boundingSphere);
     }
     viewer.scene.requestRender();
