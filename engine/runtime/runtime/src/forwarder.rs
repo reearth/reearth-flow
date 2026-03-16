@@ -306,7 +306,7 @@ impl ChannelManager {
 
     pub fn wait_until_downstream_empty(&self) {
         while !self.are_downstream_channels_empty() {
-            std::thread::yield_now();
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
     }
 

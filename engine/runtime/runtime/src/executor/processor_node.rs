@@ -348,7 +348,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             self.node_handle.id.as_ref(),
                         );
                     }
-                    self.channel_manager.read().wait_until_downstream_empty();
                     self.wait_until_pool_has_capacity();
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
@@ -384,7 +383,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             feature,
                             port.clone(),
                         );
-                        self.channel_manager.read().wait_until_downstream_empty();
                         self.wait_until_pool_has_capacity();
                         self.on_op_with_failure_tracking(ctx, has_failed.clone())?;
                     }
