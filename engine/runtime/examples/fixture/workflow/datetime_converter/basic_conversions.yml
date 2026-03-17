@@ -1,0 +1,48 @@
+id: 550e8400-e29b-41d4-a716-446655440100
+name: "Test DateTimeConverter Basic Conversions"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440101
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440101
+    name: "DateTime Conversion Graph"
+    nodes:
+      - id: 550e8400-e29b-41d4-a716-446655440102
+        name: "FeatureCreator"
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ timestamp: "2021-01-01T00:00:00Z" },
+              #{ timestamp: "2021-06-15T12:30:45Z" },
+            ]
+
+      - id: 550e8400-e29b-41d4-a716-446655440103
+        name: "DateTimeConverter"
+        type: action
+        action: DateTimeConverter
+        with:
+          attribute: timestamp
+          inputFormat: auto
+          outputFormat: unix_s
+
+      - id: 550e8400-e29b-41d4-a716-446655440104
+        name: "Output"
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "expected_output.json")
+
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440105
+        from: 550e8400-e29b-41d4-a716-446655440102
+        to: 550e8400-e29b-41d4-a716-446655440103
+        fromPort: default
+        toPort: default
+      - id: 550e8400-e29b-41d4-a716-446655440106
+        from: 550e8400-e29b-41d4-a716-446655440103
+        to: 550e8400-e29b-41d4-a716-446655440104
+        fromPort: default
+        toPort: default

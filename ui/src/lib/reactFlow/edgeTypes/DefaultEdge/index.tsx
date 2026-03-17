@@ -5,6 +5,7 @@ import {
   EdgeProps,
   getBezierPath,
 } from "@xyflow/react";
+import { memo } from "react";
 
 import { Edge } from "@flow/types";
 
@@ -60,7 +61,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
       <EdgeLabelRenderer>
         {jobStatus === "failed" && (
           <XIcon
-            className="nodrag nopan absolute z-[9999] size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
+            className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
             style={{
               pointerEvents: "all",
@@ -70,7 +71,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
         )}
         {hasIntermediateData && (
           <TableIcon
-            className={`nodrag nopan absolute z-[9999] size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
+            className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
             style={{
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
@@ -79,18 +80,36 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           />
         )}
       </EdgeLabelRenderer>
-      {jobStatus === "completed" && (
-        <path
-          className="stroke-success"
-          d={edgePath}
-          strokeWidth="1"
-          fill="none"
-          markerEnd="url(#arrow)"
-        />
-      )}
-      {jobStatus === "queued" && (
-        <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
-      )}
+      {jobStatus === "completed" &&
+        hasIntermediateData &&
+        (selected ? (
+          <path
+            className="stroke-success"
+            d={edgePath}
+            strokeWidth="2"
+            fill="none"
+            markerEnd="url(#arrow)"
+          />
+        ) : (
+          <path
+            d={edgePath}
+            className="stroke-success/60"
+            strokeWidth="1"
+            fill="none"
+            markerEnd="url(#arrow)"
+          />
+        ))}
+      {jobStatus === "queued" &&
+        (selected ? (
+          <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
+        ) : (
+          <path
+            d={edgePath}
+            stroke="#27272A"
+            fill="none"
+            className="stroke-dashed"
+          />
+        ))}
       {jobStatus === "running" && (
         <>
           <path
@@ -135,4 +154,4 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   );
 };
 
-export default DefaultEdge;
+export default memo(DefaultEdge);

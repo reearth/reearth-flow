@@ -1,0 +1,8 @@
+{
+  "description": "Test basic datetime conversions from RFC3339 to Unix seconds",
+  "workflowPath": "datetime_converter/basic_conversions.yml",
+  "workflowVariables": [],
+  "expectedOutput": {
+    "expectedFile": "expected_output.json"
+  }
+}

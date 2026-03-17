@@ -1,5 +1,17 @@
 citygml_zip_name = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg.zip"
 
+[convs.json.tilesets_lod1]
+flow_path = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1/tileset.json"
+output_path = "3dtiles_lod1_tileset.json"
+generate_truth = false
+json_path = ".properties"
+
+[convs.json.tilesets_lod1.casts]
+"" = "ordered_dict"
+
+[tests.json_attributes_v2.tilesets_lod1]
+path = "3dtiles_lod1_tileset.json"
+
 [tests.cesium.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
@@ -7,14 +19,6 @@ citygml_zip_name = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg.zip"
 # FME is probably wrong
 ".利根川水系大落古利根川（都道府県管理区間）_L2（想定最大規模）_浸水継続時間" = "ignore_both"
 ".荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水継続時間" = "ignore_both"
-
-[tests.json_attributes_v2.tilesets_lod1]
-flow.path = "flow_extracted/11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1/tileset.json"
-flow.json_path = ".properties"
-truth.path = "3dtiles_lod1_tileset.json"
-
-[tests.json_attributes_v2.tilesets_lod1.casts]
-"" = "ordered_dict"
 
 [filter.tree]
 "udx/bldg/" = ["53396677_bldg_6697_op.gml"]

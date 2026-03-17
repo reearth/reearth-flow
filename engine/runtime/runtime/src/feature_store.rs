@@ -88,6 +88,24 @@ impl PrimaryKeyLookupFeatureWriter {
             flush_threshold,
         }
     }
+
+    async fn write_inner(&self, item: serde_json::Value) -> Result<(), FeatureWriterError> {
+        let item = self
+            .state
+            .object_to_string(&item)
+            .map_err(FeatureWriterError::Serialize)?;
+        let mut buffer = self.buffer.write().await;
+        buffer.push_back(item);
+        if buffer.len() > self.flush_threshold {
+            let elements = buffer.drain(..).collect::<Vec<_>>();
+            buffer.shrink_to_fit();
+            self.state
+                .append_strings(&elements, self.edge_id.to_string().as_str())
+                .await
+                .map_err(|e| FeatureWriterError::Flush(e.to_string()))?;
+        }
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -106,23 +124,10 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
         })?;
         self.thread_counter
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let item = self
-            .state
-            .object_to_string(&item)
-            .map_err(FeatureWriterError::Serialize)?;
-        let mut buffer = self.buffer.write().await;
-        buffer.push_back(item);
-        if buffer.len() > self.flush_threshold {
-            let elements = buffer.drain(..).collect::<Vec<_>>();
-            buffer.shrink_to_fit(); // Release memory after drain
-            self.state
-                .append_strings(&elements, self.edge_id.to_string().as_str())
-                .await
-                .map_err(|e| FeatureWriterError::Flush(e.to_string()))?;
-        }
+        let result = self.write_inner(item).await;
         self.thread_counter
             .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
-        Ok(())
+        result
     }
 
     async fn flush(&self) -> Result<(), FeatureWriterError> {

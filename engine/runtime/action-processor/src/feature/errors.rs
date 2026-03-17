@@ -57,6 +57,14 @@ pub(super) enum FeatureProcessorError {
     BuildingPartConnectivityCheckerFactory(String),
     #[error("BuildingPartConnectivityChecker error: {0}")]
     BuildingPartConnectivityChecker(String),
+    #[error("Feature Joiner Factory error: {0}")]
+    JoinerFactory(String),
+    #[error("Feature Joiner error: {0}")]
+    Joiner(String),
+    #[error("JSONFragmenter Factory error: {0}")]
+    JSONFragmenterFactory(String),
+    #[error("JSONFragmenter error: {0}")]
+    JSONFragmenter(String),
 }
 
 pub(super) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;

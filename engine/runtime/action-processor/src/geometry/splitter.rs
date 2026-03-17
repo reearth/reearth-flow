@@ -1,11 +1,14 @@
 use std::collections::HashMap;
+use std::io::{BufWriter, Write};
+use std::path::PathBuf;
 
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_runtime::{
+    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
@@ -18,6 +21,9 @@ use reearth_flow_types::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
+const FILE_BACKED_THRESHOLD: usize = 64;
 
 use super::errors::GeometryProcessorError;
 
@@ -95,6 +101,8 @@ impl ProcessorFactory for GeometrySplitterFactory {
 
         let process = GeometrySplitter {
             split_level: param.split_level,
+            executor_id: None,
+            temp_dir: None,
         };
         Ok(Box::new(process))
     }
@@ -103,6 +111,20 @@ impl ProcessorFactory for GeometrySplitterFactory {
 #[derive(Debug, Clone)]
 pub struct GeometrySplitter {
     split_level: SplitLevel,
+    executor_id: Option<uuid::Uuid>,
+    temp_dir: Option<PathBuf>,
+}
+
+impl Drop for GeometrySplitter {
+    fn drop(&mut self) {
+        if let Some(ref dir) = self.temp_dir {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+}
+
+fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
+    executor_cache_subdir(executor_id, "processors")
 }
 
 impl Processor for GeometrySplitter {
@@ -111,6 +133,9 @@ impl Processor for GeometrySplitter {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
@@ -194,7 +219,7 @@ impl GeometrySplitter {
     }
 
     fn process_flow_geometry_3d(
-        &self,
+        &mut self,
         geometry: &Geometry3D,
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
@@ -230,11 +255,78 @@ impl GeometrySplitter {
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
                 }
             }
+            Geometry3D::TriangularMesh(mesh) => {
+                self.process_triangular_mesh(mesh, ctx, fw)?;
+            }
             _ => {
                 // For non-multi geometries, pass through unchanged
                 fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
             }
         }
+        Ok(())
+    }
+
+    fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
+        if self.temp_dir.is_none() {
+            let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
+            let dir =
+                engine_cache_dir(executor_id).join(format!("splitter-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&dir)?;
+            self.temp_dir = Some(dir);
+        }
+        Ok(self.temp_dir.as_ref().unwrap())
+    }
+
+    fn process_triangular_mesh(
+        &mut self,
+        mesh: &reearth_flow_geometry::types::triangular_mesh::TriangularMesh<f64>,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let triangles = mesh.get_triangles();
+
+        if triangles.len() < FILE_BACKED_THRESHOLD {
+            let vertices = mesh.get_vertices();
+            for (index, triangle_indices) in triangles.iter().enumerate() {
+                let [i, j, k] = *triangle_indices;
+                let ring =
+                    LineString3D::new(vec![vertices[i], vertices[j], vertices[k], vertices[i]]);
+                let polygon = Polygon3D::new(ring, vec![]);
+                let mut new_feature = ctx.feature.clone();
+                new_feature.insert(
+                    Attribute::new("_split_index"),
+                    AttributeValue::Number(serde_json::Number::from(index + 1)),
+                );
+                new_feature.geometry_mut().value =
+                    GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
+                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            }
+            return Ok(());
+        }
+
+        let dir = self.ensure_temp_dir()?.clone();
+        let output_path = dir.join(format!("triangles-{}.jsonl", uuid::Uuid::new_v4()));
+        let file = std::fs::File::create(&output_path)?;
+        let mut writer = BufWriter::new(file);
+
+        let vertices = mesh.get_vertices();
+        for (index, triangle_indices) in triangles.iter().enumerate() {
+            let [i, j, k] = *triangle_indices;
+            let ring = LineString3D::new(vec![vertices[i], vertices[j], vertices[k], vertices[i]]);
+            let polygon = Polygon3D::new(ring, vec![]);
+            let mut new_feature = ctx.feature.clone();
+            new_feature.insert(
+                Attribute::new("_split_index"),
+                AttributeValue::Number(serde_json::Number::from(index + 1)),
+            );
+            new_feature.geometry_mut().value =
+                GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
+            serde_json::to_writer(&mut writer, &new_feature)?;
+            writer.write_all(b"\n")?;
+        }
+        writer.flush()?;
+
+        fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
         Ok(())
     }
 

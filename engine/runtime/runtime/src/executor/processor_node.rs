@@ -1,6 +1,6 @@
 use std::env;
 use std::fmt::Debug;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::Arc;
 use std::time::{self, Duration};
@@ -348,7 +348,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             self.node_handle.id.as_ref(),
                         );
                     }
-                    self.channel_manager.read().wait_until_downstream_empty();
                     self.wait_until_pool_has_capacity();
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
@@ -358,13 +357,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     port,
                     context,
                 } => {
-                    let file = std::fs::File::open(&path).map_err(|e| {
+                    let reader = crate::forwarder::open_jsonl_reader(&path).map_err(|e| {
                         ExecutionError::CannotReceiveFromChannel(format!(
                             "Failed to open file-backed op file {}: {e}",
                             path.display()
                         ))
                     })?;
-                    let reader = BufReader::new(file);
                     for line in reader.lines() {
                         let line = line.map_err(|e| {
                             ExecutionError::CannotReceiveFromChannel(format!(
@@ -385,7 +383,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             feature,
                             port.clone(),
                         );
-                        self.channel_manager.read().wait_until_downstream_empty();
                         self.wait_until_pool_has_capacity();
                         self.on_op_with_failure_tracking(ctx, has_failed.clone())?;
                     }
@@ -456,7 +453,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        channel_manager.wait_until_downstream_empty();
+        channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
         channel_manager.reset_send_count();
         let result = processor
             .write()

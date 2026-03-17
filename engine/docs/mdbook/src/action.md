@@ -1263,7 +1263,52 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 ### Description
 Replace Feature Geometry with Center Point
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CenterPointReplacerParam",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "description": "The method used to compute the replacement center point.",
+      "default": "centerOfGravity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CenterPointMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CenterPointMode": {
+      "description": "Method used to compute the center point of a geometry.",
+      "oneOf": [
+        {
+          "description": "Computes the centroid (center of gravity) of the geometry.",
+          "type": "string",
+          "enum": [
+            "centerOfGravity"
+          ]
+        },
+        {
+          "description": "Computes the center of the geometry's bounding box.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
+          "type": "string",
+          "enum": [
+            "anyInsidePoint"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -2267,6 +2312,170 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 ### Category
 * File
 
+## DateTimeConverter
+### Type
+* processor
+### Description
+Convert datetime values between different formats
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DateTimeConverter Parameters",
+  "type": "object",
+  "required": [
+    "attribute"
+  ],
+  "properties": {
+    "attribute": {
+      "description": "Attribute containing the datetime value to convert",
+      "type": "string"
+    },
+    "inputFormat": {
+      "description": "Format of the input value (default: auto)",
+      "default": "auto",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DateTimeInputFormat"
+        }
+      ]
+    },
+    "outputAttribute": {
+      "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "outputFormat": {
+      "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
+      "default": "auto",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DateTimeOutputFormat"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DateTimeInputFormat": {
+      "description": "Input format options for DateTimeConverter",
+      "oneOf": [
+        {
+          "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+          "type": "string",
+          "enum": [
+            "auto"
+          ]
+        },
+        {
+          "description": "RFC3339 / ISO 8601 format",
+          "type": "string",
+          "enum": [
+            "rfc3339"
+          ]
+        },
+        {
+          "description": "Unix timestamp in seconds",
+          "type": "string",
+          "enum": [
+            "unix_s"
+          ]
+        },
+        {
+          "description": "Unix timestamp in milliseconds",
+          "type": "string",
+          "enum": [
+            "unix_ms"
+          ]
+        },
+        {
+          "description": "Date only format (YYYY-MM-DD)",
+          "type": "string",
+          "enum": [
+            "date"
+          ]
+        },
+        {
+          "description": "Custom format using chrono format specifiers",
+          "type": "object",
+          "required": [
+            "custom"
+          ],
+          "properties": {
+            "custom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DateTimeOutputFormat": {
+      "description": "Output format options for DateTimeConverter",
+      "oneOf": [
+        {
+          "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
+          "type": "string",
+          "enum": [
+            "auto"
+          ]
+        },
+        {
+          "description": "RFC3339 / ISO 8601 format",
+          "type": "string",
+          "enum": [
+            "rfc3339"
+          ]
+        },
+        {
+          "description": "Unix timestamp in seconds",
+          "type": "string",
+          "enum": [
+            "unix_s"
+          ]
+        },
+        {
+          "description": "Unix timestamp in milliseconds",
+          "type": "string",
+          "enum": [
+            "unix_ms"
+          ]
+        },
+        {
+          "description": "Date only format (YYYY-MM-DD)",
+          "type": "string",
+          "enum": [
+            "date"
+          ]
+        },
+        {
+          "description": "Custom format using chrono format specifiers",
+          "type": "object",
+          "required": [
+            "custom"
+          ],
+          "properties": {
+            "custom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* failed
+### Category
+* Attribute
+
 ## DimensionFilter
 ### Type
 * processor
@@ -2859,6 +3068,147 @@ Filter Features Based on Custom Conditions
 ### Category
 * Feature
 
+## FeatureJoiner
+### Type
+* processor
+### Description
+Joins requestor and supplier features based on matching attribute values with configurable join types
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureJoiner Parameters",
+  "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
+  "type": "object",
+  "required": [
+    "joinType"
+  ],
+  "properties": {
+    "conflictResolution": {
+      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ConflictResolution"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "joinType": {
+      "description": "Join type: inner, left, or full",
+      "allOf": [
+        {
+          "$ref": "#/definitions/JoinType"
+        }
+      ]
+    },
+    "requestorAttribute": {
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "requestorAttributeValue": {
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "supplierAttribute": {
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttributeValue": {
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "ConflictResolution": {
+      "oneOf": [
+        {
+          "description": "Requestor attributes win on conflict",
+          "type": "string",
+          "enum": [
+            "requestorWins"
+          ]
+        },
+        {
+          "description": "Supplier attributes win on conflict (default)",
+          "type": "string",
+          "enum": [
+            "supplierWins"
+          ]
+        }
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "JoinType": {
+      "oneOf": [
+        {
+          "description": "Only emit features where a match exists",
+          "type": "string",
+          "enum": [
+            "inner"
+          ]
+        },
+        {
+          "description": "Emit all requestor features (default)",
+          "type": "string",
+          "enum": [
+            "left"
+          ]
+        },
+        {
+          "description": "Emit all features from both sides",
+          "type": "string",
+          "enum": [
+            "full"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* requestor
+* supplier
+### Output Ports
+* joined
+* unjoinedRequestor
+* unjoinedSupplier
+### Category
+* Feature
+
 ## FeatureLodFilter
 ### Type
 * processor
@@ -3374,6 +3724,62 @@ Writes features from various formats
             {
               "$ref": "#/definitions/Expr"
             }
+          ]
+        }
+      }
+    },
+    {
+      "title": "CityGmlWriter Parameters",
+      "description": "Configuration for writing features in CityGML 2.0 format.",
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "epsgCode": {
+          "description": "EPSG code for coordinate reference system",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "citygml"
+          ]
+        },
+        "lodFilter": {
+          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+          "default": null,
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "output": {
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "prettyPrint": {
+          "description": "Whether to format output with indentation (default: true)",
+          "default": true,
+          "type": [
+            "boolean",
+            "null"
           ]
         }
       }
@@ -5831,6 +6237,141 @@ Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to
 ### Category
 * Geometry
 
+## JSONFragmenter
+### Type
+* processor
+### Description
+Fragments JSON documents into individual features based on a JSONPath query
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JSONFragmenter Parameters",
+  "description": "Configuration for fragmenting JSON documents into individual features.",
+  "oneOf": [
+    {
+      "description": "Read JSON from a feature attribute",
+      "type": "object",
+      "required": [
+        "inputSource",
+        "jsonAttribute",
+        "jsonQuery"
+      ],
+      "properties": {
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "attribute"
+          ]
+        },
+        "jsonAttribute": {
+          "description": "The attribute containing the JSON text to fragment",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
+        "rejectNoFragments": {
+          "description": "If true, reject features that produce no fragments",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "description": "Read JSON from a file path or URL",
+      "type": "object",
+      "required": [
+        "inputSource",
+        "jsonQuery",
+        "path"
+      ],
+      "properties": {
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "fileUrl"
+          ]
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "path": {
+          "description": "Expression evaluating to the file path or URL containing JSON",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
+        "rejectNoFragments": {
+          "description": "If true, reject features that produce no fragments",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Feature
+
 ## JsonReader
 ### Type
 * source
@@ -7856,11 +8397,27 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
   "description": "Configure unshared edge detection behavior",
   "type": "object",
   "properties": {
+    "groupBy": {
+      "description": "Group By Attributes. When specified, edge detection is performed independently within each group. Features with the same values for these attributes are grouped together.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "tolerance": {
       "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
       "default": 0.1,
       "type": "number",
       "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
     }
   }
 }
@@ -8460,6 +9017,12 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
   "type": "object",
   "properties": {
+    "allowEmptyPath": {
+      "title": "Allow Null Path",
+      "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+      "default": false,
+      "type": "boolean"
+    },
     "dataset": {
       "title": "File Path",
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",

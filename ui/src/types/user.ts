@@ -33,8 +33,17 @@ export type UpdateMe = {
   me?: User;
 } & ApiResponse;
 
+export type AwarenessSelection = { color: string; userName: string };
+export type AwarenessSelectionsMap = Record<string, AwarenessSelection[]>;
+
 export type AwarenessUser = {
   clientId: number;
+  selectionRect?: {
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null;
   cursor?: {
     x: number;
     y: number;
@@ -49,6 +58,12 @@ export type AwarenessUser = {
   currentWorkflowId?: string;
   openWorkflowIds?: string[];
   debugRun?: UserDebugRun;
+  draggingEdge?: {
+    nodeId: string;
+    handleId: string | null;
+    handleType: "source" | "target" | null;
+  } | null;
+  selectedNodeIds?: string[] | null;
 };
 
 export type UserDebugRun = {

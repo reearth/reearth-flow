@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use indexmap::IndexMap;
@@ -144,8 +144,8 @@ pub struct Dissolver {
     group_map: HashMap<AttributeValue, usize>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
-    // In-memory buffer: group_idx -> Vec<feature_json>
-    buffer: HashMap<usize, Vec<String>>,
+    // In-memory buffer: group_idx -> compressed zstd bytes (concatenated frames)
+    buffer: HashMap<usize, Vec<u8>>,
     buffer_bytes: usize,
     /// Executor ID for cache isolation, set on first process() call
     executor_id: Option<uuid::Uuid>,
@@ -199,13 +199,16 @@ impl Dissolver {
         self.temp_dir
             .as_ref()
             .unwrap()
-            .join(format!("group_{group_idx:06}.jsonl"))
+            .join(format!("group_{group_idx:06}.jsonl.zst"))
     }
 
     fn write_feature(&mut self, group_idx: usize, feature: &Feature) -> Result<(), BoxedError> {
         let feature_json = serde_json::to_string(feature)?;
         self.buffer_bytes += feature_json.len();
-        self.buffer.entry(group_idx).or_default().push(feature_json);
+        let mut src = feature_json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.buffer.entry(group_idx).or_default().extend(frame);
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -219,15 +222,10 @@ impl Dissolver {
         }
 
         self.ensure_temp_dir()?;
-        for (group_idx, entries) in std::mem::take(&mut self.buffer) {
+        for (group_idx, bytes) in std::mem::take(&mut self.buffer) {
             let path = self.group_file_path(group_idx);
-            let file = File::options().create(true).append(true).open(path)?;
-            let mut writer = BufWriter::new(file);
-            for feature_json in entries {
-                writer.write_all(feature_json.as_bytes())?;
-                writer.write_all(b"\n")?;
-            }
-            writer.flush()?;
+            let mut file = File::options().create(true).append(true).open(path)?;
+            file.write_all(&bytes)?;
         }
 
         self.buffer_bytes = 0;
@@ -240,7 +238,7 @@ impl Dissolver {
             return Ok(Vec::new());
         }
         let file = File::open(&path)?;
-        let reader = BufReader::new(file);
+        let reader = BufReader::new(zstd::Decoder::new(file)?);
         let mut features = Vec::new();
         for line in reader.lines() {
             let line = line?;

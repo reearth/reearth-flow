@@ -17,7 +17,7 @@
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
@@ -127,12 +127,11 @@ impl ProcessorFactory for UnsharedEdgeDetectorFactory {
 
         Ok(Box::new(UnsharedEdgeDetector {
             tolerance: param.tolerance,
+            group_by: param.group_by,
             executor_id: None,
-            temp_dir: None,
-            edge_buffer: Vec::new(),
-            edge_buffer_bytes: 0,
-            chunk_count: 0,
-            first_attrs: None,
+            base_temp_dir: None,
+            groups: HashMap::new(),
+            group_count: 0,
         }))
     }
 }
@@ -146,12 +145,19 @@ pub struct UnsharedEdgeDetectorParam {
     /// Edges within this distance are considered the same edge
     #[serde(default = "default_tolerance")]
     pub tolerance: f64,
+
+    /// Group By Attributes.
+    /// When specified, edge detection is performed independently within each group.
+    /// Features with the same values for these attributes are grouped together.
+    #[serde(default)]
+    pub group_by: Option<Vec<Attribute>>,
 }
 
 impl Default for UnsharedEdgeDetectorParam {
     fn default() -> Self {
         Self {
             tolerance: default_tolerance(),
+            group_by: None,
         }
     }
 }
@@ -160,22 +166,92 @@ fn default_tolerance() -> f64 {
     0.1 // 10 cm tolerance
 }
 
-#[derive(Debug, Clone)]
-pub struct UnsharedEdgeDetector {
-    tolerance: f64,
-    // Disk-backed state
-    executor_id: Option<uuid::Uuid>,
-    temp_dir: Option<PathBuf>,
+/// Per-group state for edge accumulation and disk-backed storage.
+struct GroupState {
+    group_idx: usize,
     edge_buffer: Vec<Edge>,
     edge_buffer_bytes: usize,
     chunk_count: usize,
-    // Minimal in-memory state (from first valid feature)
     first_attrs: Option<IndexMap<Attribute, AttributeValue>>,
+}
+
+impl GroupState {
+    fn new(group_idx: usize) -> Self {
+        Self {
+            group_idx,
+            edge_buffer: Vec::new(),
+            edge_buffer_bytes: 0,
+            chunk_count: 0,
+            first_attrs: None,
+        }
+    }
+
+    fn group_dir(&self, base_dir: &Path) -> PathBuf {
+        base_dir.join(format!("group_{:06}", self.group_idx))
+    }
+
+    /// Sort the in-memory edge buffer and write it as a sorted binary chunk file.
+    fn flush_buffer(&mut self, base_dir: &Path) -> Result<(), BoxedError> {
+        if self.edge_buffer.is_empty() {
+            return Ok(());
+        }
+
+        // Sort by (start.x, start.y, end.x, end.y) — derived Ord on Edge/FixedPoint
+        self.edge_buffer.sort();
+
+        let dir = self.group_dir(base_dir);
+        std::fs::create_dir_all(&dir)?;
+        let chunk_path = dir.join(format!("chunk_{:06}.bin", self.chunk_count));
+        let file = File::create(&chunk_path)?;
+        let mut writer = BufWriter::new(file);
+
+        for edge in &self.edge_buffer {
+            write_edge(&mut writer, edge)?;
+        }
+        writer.flush()?;
+
+        self.chunk_count += 1;
+        self.edge_buffer.clear();
+        self.edge_buffer_bytes = 0;
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for GroupState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GroupState")
+            .field("group_idx", &self.group_idx)
+            .field("chunk_count", &self.chunk_count)
+            .finish_non_exhaustive()
+    }
+}
+
+#[derive(Debug)]
+pub struct UnsharedEdgeDetector {
+    tolerance: f64,
+    executor_id: Option<uuid::Uuid>,
+    group_by: Option<Vec<Attribute>>,
+    groups: HashMap<AttributeValue, GroupState>,
+    group_count: usize,
+    base_temp_dir: Option<PathBuf>,
+}
+
+impl Clone for UnsharedEdgeDetector {
+    fn clone(&self) -> Self {
+        Self {
+            tolerance: self.tolerance,
+            executor_id: self.executor_id,
+            group_by: self.group_by.clone(),
+            groups: HashMap::new(),
+            group_count: 0,
+            base_temp_dir: None,
+        }
+    }
 }
 
 impl Drop for UnsharedEdgeDetector {
     fn drop(&mut self) {
-        if let Some(ref dir) = self.temp_dir {
+        if let Some(ref dir) = self.base_temp_dir {
             let _ = std::fs::remove_dir_all(dir);
         }
     }
@@ -201,19 +277,56 @@ impl Processor for UnsharedEdgeDetector {
             return Ok(());
         }
 
+        // Compute group key
+        let key = if let Some(group_by) = &self.group_by {
+            AttributeValue::Array(
+                group_by
+                    .iter()
+                    .map(|attr| {
+                        ctx.feature
+                            .attributes
+                            .get(attr)
+                            .cloned()
+                            .unwrap_or_else(|| {
+                                tracing::warn!(
+                                    "group_by attribute {:?} not found in feature; using Null",
+                                    attr,
+                                );
+                                AttributeValue::Null
+                            })
+                    })
+                    .collect(),
+            )
+        } else {
+            AttributeValue::Null
+        };
+
+        // Eagerly resolve the temp dir before borrowing groups, to avoid
+        // a simultaneous mutable borrow of `self` inside the flush check below.
+        // This is a no-op when the directory was already created.
+        let base_dir = self.ensure_base_temp_dir()?.clone();
+
+        // Get or create group state
+        let group_count = &mut self.group_count;
+        let group = self.groups.entry(key).or_insert_with(|| {
+            let idx = *group_count;
+            *group_count += 1;
+            GroupState::new(idx)
+        });
+
         // Save first valid feature's attributes for populating output features
-        if self.first_attrs.is_none() {
-            self.first_attrs = Some((*ctx.feature.attributes).clone());
+        if group.first_attrs.is_none() {
+            group.first_attrs = Some((*ctx.feature.attributes).clone());
         }
 
         // Extract edges eagerly (32 bytes each vs. full Feature in memory)
         let new_edges = extract_edges_from_feature(&ctx.feature);
-        self.edge_buffer_bytes += new_edges.len() * EDGE_BINARY_SIZE;
-        self.edge_buffer.extend(new_edges);
+        group.edge_buffer_bytes += new_edges.len() * EDGE_BINARY_SIZE;
+        group.edge_buffer.extend(new_edges);
 
         // Spill to disk when buffer exceeds threshold
-        if self.edge_buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
-            self.flush_buffer()?;
+        if group.edge_buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            group.flush_buffer(&base_dir)?;
         }
 
         Ok(())
@@ -224,106 +337,42 @@ impl Processor for UnsharedEdgeDetector {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Flush any remaining in-memory edges
-        self.flush_buffer()?;
-
-        // Free buffer memory before the merge phase
-        self.edge_buffer = Vec::new();
-        self.edge_buffer_bytes = 0;
-
-        if self.chunk_count == 0 {
-            return Ok(()); // No valid features processed
+        // Flush all remaining in-memory edges for all groups
+        if let Some(ref base_dir) = self.base_temp_dir.clone() {
+            for group in self.groups.values_mut() {
+                group.flush_buffer(base_dir)?;
+            }
+        } else if self.groups.values().any(|g| !g.edge_buffer.is_empty()) {
+            let base_dir = self.ensure_base_temp_dir()?.clone();
+            for group in self.groups.values_mut() {
+                group.flush_buffer(&base_dir)?;
+            }
         }
 
-        let dir = match &self.temp_dir {
+        let base_dir = match &self.base_temp_dir {
             Some(d) => d.clone(),
             None => return Ok(()),
         };
 
-        // Collect initial chunk paths
-        let mut chunk_paths: Vec<PathBuf> = (0..self.chunk_count)
-            .map(|i| dir.join(format!("chunk_{:06}.bin", i)))
-            .collect();
+        // Process each group independently
+        for group in self.groups.values_mut() {
+            // Free buffer memory
+            group.edge_buffer = Vec::new();
+            group.edge_buffer_bytes = 0;
 
-        // Multi-pass K-way merge: reduce chunks until few enough to merge in one pass
-        let mut pass: usize = 0;
-        while chunk_paths.len() > MERGE_FAN_IN {
-            pass += 1;
-            let mut next_paths = Vec::new();
-
-            for (group_idx, group) in chunk_paths.chunks(MERGE_FAN_IN).enumerate() {
-                let out_path = dir.join(format!("pass_{pass:03}_chunk_{group_idx:06}.bin"));
-                merge_edge_chunks_to_file(group, &out_path)?;
-                next_paths.push(out_path);
+            if group.chunk_count == 0 {
+                continue;
             }
 
-            // Remove old chunk files
-            for p in &chunk_paths {
-                let _ = std::fs::remove_file(p);
-            }
-            chunk_paths = next_paths;
-        }
-
-        // Final K-way merge via min-heap, streaming into sliding-window scan
-        let first_attrs = self.first_attrs.take().unwrap_or_default();
-        let tol_fixed = (self.tolerance * FIXED_POINT_SCALE) as i64;
-
-        let mut readers: Vec<BufReader<File>> = chunk_paths
-            .iter()
-            .map(|p| File::open(p).map(BufReader::new))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        // Seed the min-heap with the first edge from each chunk
-        let mut heap: BinaryHeap<HeapEntry> = BinaryHeap::new();
-        for (i, reader) in readers.iter_mut().enumerate() {
-            if let Some(edge) = read_edge(reader) {
-                heap.push(HeapEntry { edge, chunk_idx: i });
-            }
-        }
-
-        // Sliding-window tolerance scan
-        // pending: deque of (ref_edge, members) groups, ordered by ref_edge insertion
-        let mut pending: VecDeque<(Edge, Vec<Edge>)> = VecDeque::new();
-
-        while let Some(entry) = heap.pop() {
-            let e = entry.edge;
-
-            // Advance the heap with the next edge from the same chunk
-            if let Some(next) = read_edge(&mut readers[entry.chunk_idx]) {
-                heap.push(HeapEntry {
-                    edge: next,
-                    chunk_idx: entry.chunk_idx,
-                });
-            }
-
-            // Close groups whose start.x is too far behind to ever match e
-            // (any group with ref.start.x + tol_fixed < e.start.x is complete)
-            while pending
-                .front()
-                .is_some_and(|(ref_edge, _)| ref_edge.start.x + tol_fixed < e.start.x)
-            {
-                if let Some(group) = pending.pop_front() {
-                    emit_microgaps(group, &first_attrs, &ctx, fw);
-                }
-            }
-
-            // Try to place e into an existing pending group
-            let mut placed = false;
-            for (ref_edge, members) in &mut pending {
-                if e.matches(ref_edge, self.tolerance) {
-                    members.push(e.clone());
-                    placed = true;
-                    break;
-                }
-            }
-            if !placed {
-                pending.push_back((e.clone(), vec![e]));
-            }
-        }
-
-        // Emit all remaining groups
-        for group in pending.drain(..) {
-            emit_microgaps(group, &first_attrs, &ctx, fw);
+            let dir = group.group_dir(&base_dir);
+            process_group_chunks(
+                &dir,
+                group.chunk_count,
+                self.tolerance,
+                group.first_attrs.take().unwrap_or_default(),
+                &ctx,
+                fw,
+            )?;
         }
 
         Ok(())
@@ -365,46 +414,117 @@ impl UnsharedEdgeDetector {
     }
 
     /// Ensure the temporary directory exists, creating it on first call.
-    fn ensure_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
-        if self.temp_dir.is_none() {
+    fn ensure_base_temp_dir(&mut self) -> Result<&PathBuf, BoxedError> {
+        if self.base_temp_dir.is_none() {
             let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
             let dir = engine_cache_dir(executor_id)
                 .join(format!("unshared-edge-detector-{}", uuid::Uuid::new_v4()));
             std::fs::create_dir_all(&dir)?;
-            self.temp_dir = Some(dir);
+            self.base_temp_dir = Some(dir);
         }
-        Ok(self.temp_dir.as_ref().unwrap())
-    }
-
-    /// Sort the in-memory edge buffer and write it as a sorted binary chunk file.
-    fn flush_buffer(&mut self) -> Result<(), BoxedError> {
-        if self.edge_buffer.is_empty() {
-            return Ok(());
-        }
-
-        // Sort by (start.x, start.y, end.x, end.y) — derived Ord on Edge/FixedPoint
-        self.edge_buffer.sort();
-
-        let dir = self.ensure_temp_dir()?.clone();
-        let chunk_path = dir.join(format!("chunk_{:06}.bin", self.chunk_count));
-        let file = File::create(&chunk_path)?;
-        let mut writer = BufWriter::new(file);
-
-        for edge in &self.edge_buffer {
-            write_edge(&mut writer, edge)?;
-        }
-        writer.flush()?;
-
-        self.chunk_count += 1;
-        self.edge_buffer.clear();
-        self.edge_buffer_bytes = 0;
-        Ok(())
+        Ok(self.base_temp_dir.as_ref().unwrap())
     }
 }
 
 /// Returns the executor-specific processors cache directory.
 fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
+}
+
+/// Process all chunks for a single group: multi-pass merge + sliding-window scan.
+fn process_group_chunks(
+    dir: &Path,
+    chunk_count: usize,
+    tolerance: f64,
+    first_attrs: IndexMap<Attribute, AttributeValue>,
+    ctx: &NodeContext,
+    fw: &ProcessorChannelForwarder,
+) -> Result<(), BoxedError> {
+    // Collect initial chunk paths
+    let mut chunk_paths: Vec<PathBuf> = (0..chunk_count)
+        .map(|i| dir.join(format!("chunk_{:06}.bin", i)))
+        .collect();
+
+    // Multi-pass K-way merge: reduce chunks until few enough to merge in one pass
+    let mut pass: usize = 0;
+    while chunk_paths.len() > MERGE_FAN_IN {
+        pass += 1;
+        let mut next_paths = Vec::new();
+
+        for (group_idx, group) in chunk_paths.chunks(MERGE_FAN_IN).enumerate() {
+            let out_path = dir.join(format!("pass_{pass:03}_chunk_{group_idx:06}.bin"));
+            merge_edge_chunks_to_file(group, &out_path)?;
+            next_paths.push(out_path);
+        }
+
+        // Remove old chunk files
+        for p in &chunk_paths {
+            let _ = std::fs::remove_file(p);
+        }
+        chunk_paths = next_paths;
+    }
+
+    // Final K-way merge via min-heap, streaming into sliding-window scan
+    let tol_fixed = (tolerance * FIXED_POINT_SCALE) as i64;
+
+    let mut readers: Vec<BufReader<File>> = chunk_paths
+        .iter()
+        .map(|p| File::open(p).map(BufReader::new))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Seed the min-heap with the first edge from each chunk
+    let mut heap: BinaryHeap<HeapEntry> = BinaryHeap::new();
+    for (i, reader) in readers.iter_mut().enumerate() {
+        if let Some(edge) = read_edge(reader) {
+            heap.push(HeapEntry { edge, chunk_idx: i });
+        }
+    }
+
+    // Sliding-window tolerance scan
+    // pending: deque of (ref_edge, members) groups, ordered by ref_edge insertion
+    let mut pending: VecDeque<(Edge, Vec<Edge>)> = VecDeque::new();
+
+    while let Some(entry) = heap.pop() {
+        let e = entry.edge;
+
+        // Advance the heap with the next edge from the same chunk
+        if let Some(next) = read_edge(&mut readers[entry.chunk_idx]) {
+            heap.push(HeapEntry {
+                edge: next,
+                chunk_idx: entry.chunk_idx,
+            });
+        }
+
+        // Close groups whose start.x is too far behind to ever match e
+        while pending
+            .front()
+            .is_some_and(|(ref_edge, _)| ref_edge.start.x + tol_fixed < e.start.x)
+        {
+            if let Some(group) = pending.pop_front() {
+                emit_microgaps(group, &first_attrs, ctx, fw);
+            }
+        }
+
+        // Try to place e into an existing pending group
+        let mut placed = false;
+        for (ref_edge, members) in &mut pending {
+            if e.matches(ref_edge, tolerance) {
+                members.push(e.clone());
+                placed = true;
+                break;
+            }
+        }
+        if !placed {
+            pending.push_back((e.clone(), vec![e]));
+        }
+    }
+
+    // Emit all remaining groups
+    for group in pending.drain(..) {
+        emit_microgaps(group, &first_attrs, ctx, fw);
+    }
+
+    Ok(())
 }
 
 /// Emit a micro-gap group as LineString features.

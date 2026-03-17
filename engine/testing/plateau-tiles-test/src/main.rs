@@ -1,41 +1,32 @@
-mod align_cesium;
-mod align_mvt;
-mod cast_config;
-mod compare_attributes;
-mod conv_mvt;
-mod runner;
-mod test_cesium;
-mod test_json_attributes;
-mod test_json_attributes_v2;
-mod test_json_object_key_order;
-mod test_mvt_lines;
-mod test_mvt_points;
-mod test_mvt_polygons;
-
+use plateau_tiles_test::conv::mvt;
+use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::file::{extract_dir, zip_dir};
+use plateau_tiles_test::profile_config::Convs;
+use plateau_tiles_test::runner;
+use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
+use plateau_tiles_test::tester::cesium_statistics;
+use plateau_tiles_test::tester::json_attributes::{self, JsonFileConfig};
+use plateau_tiles_test::tester::json_attributes_v2::{self, JsonFileV2Config};
+use plateau_tiles_test::tester::json_object_key_order::{self, KeyOrderConfig};
+use plateau_tiles_test::tester::mvt_lines::{self, MvtLinesConfig};
+use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
+use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
+use plateau_tiles_test::tester::raster::{self, RasterConfig};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
-use test_cesium::CesiumConfig;
-use test_json_attributes::JsonFileConfig;
-use test_json_attributes_v2::JsonFileV2Config;
-use test_json_object_key_order::KeyOrderConfig;
-use test_mvt_lines::MvtLinesConfig;
-use test_mvt_points::MvtPointsConfig;
-use test_mvt_polygons::MvtPolygonsConfig;
 use tracing::info;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
 use walkdir::WalkDir;
-use zip::write::SimpleFileOptions;
-use zip::ZipWriter;
 
 static INIT: Once = Once::new();
 
 fn init_logging() {
     INIT.call_once(|| {
-        use tracing_subscriber::prelude::*;
-        use tracing_subscriber::EnvFilter;
         let filter = EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| EnvFilter::new("info,plateau_tiles_test=debug"));
 
@@ -46,24 +37,6 @@ fn init_logging() {
             ))
             .init();
     });
-}
-
-#[derive(Debug, Deserialize)]
-struct ConvMvtFlowSource {
-    path: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct ConvMvtEntry {
-    flow: ConvMvtFlowSource,
-    #[serde(default)]
-    casts: Option<HashMap<String, cast_config::CastConfigValue>>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-struct Convs {
-    #[serde(default)]
-    mvt: HashMap<String, ConvMvtEntry>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,6 +65,8 @@ struct Tests {
     cesium: Option<CesiumConfig>,
     #[serde(default)]
     json_object_key_order: Option<KeyOrderConfig>,
+    #[serde(default)]
+    raster: Option<HashMap<String, RasterConfig>>,
 }
 
 fn pack_inputs(
@@ -104,7 +79,7 @@ fn pack_inputs(
     let citymodel_udx_dir = test_path.join("citymodel/udx");
     assert!(citymodel_udx_dir.exists());
     let citymodel = output_dir.join(format!("{}.zip", zip_stem));
-    zip_dir(&citymodel_udx_dir, &citymodel);
+    zip_dir(&citymodel_udx_dir, &citymodel).unwrap();
 
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
@@ -112,14 +87,14 @@ fn pack_inputs(
     let codelists_dir = test_path.join("citymodel/codelists");
     if codelists_dir.exists() {
         let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
-        zip_dir(&codelists_dir, &path);
+        zip_dir(&codelists_dir, &path).unwrap();
         inputs.insert("codelists", path);
     }
 
     let schemas_dir = test_path.join("citymodel/schemas");
     if schemas_dir.exists() {
         let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
-        zip_dir(&schemas_dir, &path);
+        zip_dir(&schemas_dir, &path).unwrap();
         inputs.insert("schemas", path);
     }
 
@@ -138,26 +113,8 @@ fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
     inputs
 }
 
-fn zip_dir(src_dir: &Path, zip_path: &Path) {
-    let file = fs::File::create(zip_path).unwrap();
-    let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path.is_file() {
-            let relative_path = path.strip_prefix(src_dir).unwrap();
-            let zip_path = relative_path.to_string_lossy().to_string();
-            zip.start_file(zip_path, options).unwrap();
-            let content = fs::read(path).unwrap();
-            std::io::Write::write_all(&mut zip, &content).unwrap();
-        }
-    }
-
-    zip.finish().unwrap();
-}
-
 const DEFAULT_TESTS: &[&str] = &[
+    "data-convert/plateau4/01-bldg/fld",
     "data-convert/plateau4/01-bldg/lod1",
     "data-convert/plateau4/01-bldg/tako-machi",
     "data-convert/plateau4/01-bldg/ogasawara-mura",
@@ -189,6 +146,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/09-unf/unf",
     "data-convert/plateau4/10-wtr/wtr",
     "data-convert/plateau4/11-gen/mvt",
+    "examples/citygml-roundtrip/tun",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -289,15 +247,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     }
 
     if stages.contains('e') {
-        // Extract FME zip files from testcase to output_dir/fme_extracted
+        // Extract FME zip files and copy other items from testcase to output_dir/fme_extracted
         let fme_source_dir = test_path.join("fme");
         let fme_extracted_dir = output_dir.join("fme_extracted");
-        extract_toplevel_zips(&fme_source_dir, &fme_extracted_dir);
+        extract_dir(&fme_source_dir, &fme_extracted_dir).unwrap();
 
         // Extract Flow output zip files to output_dir/flow_extracted
         let flow_source_dir = output_dir.join("flow");
         let flow_extracted_dir = output_dir.join("flow_extracted");
-        extract_toplevel_zips(&flow_source_dir, &flow_extracted_dir);
+        extract_dir(&flow_source_dir, &flow_extracted_dir).unwrap();
 
         // Decompress draco-compressed glb in flow output
         // fme.zip should be preprocessed to contain only decompressed glb files
@@ -308,7 +266,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
-                test_json_attributes::test_json_attributes(
+                json_attributes::test_json_attributes(
                     &fme_source_dir,
                     &flow_source_dir,
                     &fme_extracted_dir,
@@ -318,52 +276,114 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
-        if !profile.convs.mvt.is_empty() {
-            run_test("convs_mvt", &relative_path_display, || {
-                let convs_dir = output_dir.join("convs/mvt");
-                fs::create_dir_all(&convs_dir).map_err(|e| e.to_string())?;
-                for (id, entry) in &profile.convs.mvt {
-                    let mvt_dir = output_dir.join(&entry.flow.path);
-                    let output_path = convs_dir.join(format!("{}.json", id));
-                    conv_mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
+        if !profile.convs.json.is_empty() {
+            run_test("convs_json", &relative_path_display, || {
+                for entry in profile.convs.json.values() {
+                    let flow_file = output_dir.join("flow_extracted").join(&entry.flow_path);
+                    let output_path = output_dir.join("flow_extracted").join(&entry.output_path);
+                    plateau_tiles_test::conv::json::write_json(
+                        &flow_file,
+                        &output_path,
+                        entry.json_path.as_deref(),
+                        &entry.casts,
+                    )?;
                 }
                 Ok(())
             });
         }
 
+        if !profile.convs.mvt_attributes.is_empty() {
+            run_test("convs_mvt_attributes", &relative_path_display, || {
+                for entry in profile.convs.mvt_attributes.values() {
+                    let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
+                    mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
+                }
+                Ok(())
+            });
+        }
+
+        if !profile.convs.mvt_png.is_empty() {
+            run_test("convs_mvt_png", &relative_path_display, || {
+                for entry in profile.convs.mvt_png.values() {
+                    let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
+                    let (w, h) = entry.size.dimensions();
+                    mvt_png::write_png_truth(
+                        &mvt_dir,
+                        &png_dir,
+                        entry.tiles.as_deref(),
+                        w,
+                        h,
+                        entry.stroke,
+                    )?;
+                }
+                Ok(())
+            });
+        }
+
+        if !profile.convs.cesium_statistics.is_empty() {
+            run_test("cesium_statistics", &relative_path_display, || {
+                cesium_statistics::test_cesium_statistics(
+                    &fme_source_dir,
+                    &flow_extracted_dir,
+                    &profile.convs.cesium_statistics,
+                )
+            });
+        }
+
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
-                test_json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
+                json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_polygons {
             run_test("mvt_polygons", &relative_path_display, || {
-                test_mvt_polygons::test_mvt_polygons(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_polygons::test_mvt_polygons(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_lines {
             run_test("mvt_lines", &relative_path_display, || {
-                test_mvt_lines::test_mvt_lines(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_lines::test_mvt_lines(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_points {
             run_test("mvt_points", &relative_path_display, || {
-                test_mvt_points::test_mvt_points(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_points::test_mvt_points(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.cesium {
             run_test("cesium", &relative_path_display, || {
-                test_cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
             });
+        }
+
+        if let Some(raster_tests) = &tests.raster {
+            for (id, cfg) in raster_tests {
+                let conv_entry = profile.convs.mvt_png.get(id).unwrap_or_else(|| {
+                    panic!(
+                        "tests.raster.{} references missing convs.mvt_png.{}",
+                        id, id
+                    )
+                });
+                let flow_png_dir = output_dir
+                    .join("flow_extracted")
+                    .join(&conv_entry.truth_path);
+                let truth_dir = fme_extracted_dir.join(&conv_entry.truth_path);
+                let id = id.clone();
+                run_test(&format!("raster/{}", id), &relative_path_display, || {
+                    raster::test_raster(&truth_dir, &flow_png_dir, cfg)
+                });
+            }
         }
 
         if let Some(cfg) = &tests.json_object_key_order {
             run_test("json_object_key_order", &relative_path_display, || {
-                test_json_object_key_order::test_json_object_key_order(
+                json_object_key_order::test_json_object_key_order(
                     &flow_source_dir,
                     &flow_extracted_dir,
                     cfg,
@@ -375,25 +395,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     if let Some("1") = env::var("PLATEAU_TILES_TEST_CLEANUP").ok().as_deref() {
         info!("Cleaning up output directory: {}", output_dir.display());
         fs::remove_dir_all(&output_dir).unwrap();
-    }
-}
-
-fn extract_toplevel_zips(source_dir: &Path, output_dir: &Path) {
-    if !source_dir.exists() {
-        return;
-    }
-    fs::create_dir_all(output_dir).unwrap();
-
-    for entry in fs::read_dir(source_dir).unwrap().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path.extension().is_some_and(|e| e == "zip") {
-            let stem = path.file_stem().unwrap().to_str().unwrap();
-            let out = output_dir.join(stem);
-            let _ = fs::remove_dir_all(&out);
-            fs::create_dir_all(&out).unwrap();
-            let mut zip = zip::ZipArchive::new(fs::File::open(&path).unwrap()).unwrap();
-            zip.extract(&out).unwrap();
-        }
     }
 }
 

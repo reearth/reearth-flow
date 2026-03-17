@@ -16,6 +16,7 @@ memory-stats = ["reearth-flow-common/memory-stats"]
 
 [dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-action-sink.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
@@ -66,6 +67,7 @@ tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
 zip.workspace = true
+zstd.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
