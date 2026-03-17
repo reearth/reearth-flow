@@ -19,10 +19,7 @@ type SchemaFormProps = {
   originalSchema?: any; // Original schema before patching, used for UI schema generation
   actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
-  fieldFocusMap?: Record<
-    string,
-    { color: string; userName: string; liveValue?: string }[]
-  >;
+  fieldFocusMap?: Record<string, { color: string; userName: string }[]>;
   onFieldFocus?: (fieldId: string | null) => void;
   onChange: (data: any) => void;
   onError?: (errors: RJSFValidationError[]) => void;

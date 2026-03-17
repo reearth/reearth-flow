@@ -38,10 +38,7 @@ type Props = {
   nodeType: string;
   nodeParams?: NodeParams;
   nodeCustomizations?: any;
-  fieldFocusMap?: Record<
-    string,
-    { color: string; userName: string; liveValue?: string }[]
-  >;
+  fieldFocusMap?: Record<string, { color: string; userName: string }[]>;
   onParamsUpdate: (data: any) => void;
   onCustomizationsUpdate: (data: any) => void;
   onUpdate: (

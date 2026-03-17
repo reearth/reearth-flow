@@ -121,12 +121,8 @@ const ParamsDialog: React.FC<Props> = ({
   }, []);
 
   const fieldFocusMap = useMemo(() => {
-    const map: Record<
-      string,
-      { color: string; userName: string; liveValue?: string }[]
-    > = {};
+    const map: Record<string, { color: string; userName: string }[]> = {};
     if (!openNode) return map;
-    const draftParams = rawDrafts[openNode.id]?.params;
     Object.values(users).forEach((user) => {
       if (user.openNodeId === openNode.id && user.focusedParamField) {
         const fieldId = user.focusedParamField;
@@ -135,12 +131,11 @@ const ParamsDialog: React.FC<Props> = ({
         map[fieldId].push({
           color: user.color,
           userName: user.userName,
-          liveValue: draftParams,
         });
       }
     });
     return map;
-  }, [users, openNode, rawDrafts]);
+  }, [users, openNode]);
 
   const handleParamChange = useCallback(
     (data: any) => {

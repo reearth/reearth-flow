@@ -20,6 +20,8 @@ export type ExtendedFormContext = FormContextType & {
   onAssetsOpen?: (fieldContext: FieldContext) => void;
   originalSchema?: any;
   actionName?: string;
+  fieldFocusMap?: Record<string, { color: string; userName: string }[]>;
+  onFieldFocus?: (fieldId: string | null) => void;
 };
 
 /** The `BaseInputTemplate` handles all input types directly */
