@@ -227,22 +227,32 @@ impl Processor for NullAttributeMapper {
                 had_null = true;
 
                 // Find replacement value (per-attribute mapping takes precedence)
-                let replacement = self
+                let mapping = self
                     .params
                     .mappings
                     .iter()
-                    .find(|m| m.attribute == key_str)
-                    .and_then(|m| m.replacement.clone())
-                    .or_else(|| self.params.default_replacement.clone());
+                    .find(|m| m.attribute == key_str);
 
-                match replacement {
-                    None => {
-                        // Remove attribute
-                        attributes.swap_remove(&attr_key);
-                    }
-                    Some(value) => {
+                // Distinguish between:
+                // - mapping present with replacement Some(Value)
+                // - mapping present with replacement None (explicit removal)
+                // - mapping absent, in which case default_replacement (if any) applies
+                let replacement = match mapping {
+                    Some(m) => m.replacement.clone(),
+                    None => self.params.default_replacement.clone(),
+                };
+
+                match (replacement, mapping.is_some()) {
+                    (Some(value), _) => {
                         let attr_value = AttributeValue::from(value);
                         attributes.insert(attr_key, attr_value);
+                    }
+                    (None, true) => {
+                        // Explicit removal requested by mapping (replacement: null)
+                        attributes.swap_remove(&attr_key);
+                    }
+                    (None, false) => {
+                        // No mapping and no default replacement: leave attribute unchanged
                     }
                 }
             } else if matches!(state, AttributeState::Missing) {
