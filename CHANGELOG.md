@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.10 - 2026-03-17
+
+### engine
+
+#### 🚀 Features
+
+- Adequate place judgement for the solar radiation workflow ([#1994](https://github.com/reearth/reearth-flow/pull/1994)) [`4828e2`](https://github.com/reearth/reearth-flow/commit/4828e2)
+- Action DateTimeConverter ([#1977](https://github.com/reearth/reearth-flow/pull/1977)) [`8a2522`](https://github.com/reearth/reearth-flow/commit/8a2522)
+- CityGML writer appearance support ([#1985](https://github.com/reearth/reearth-flow/pull/1985)) [`ae3491`](https://github.com/reearth/reearth-flow/commit/ae3491)
+- Add CenterPointReplacer parameters and implement interior point calculation for polygons ([#1979](https://github.com/reearth/reearth-flow/pull/1979)) [`f902b9`](https://github.com/reearth/reearth-flow/commit/f902b9)
+- Add sanitization method to JSONFragmenterParam for attribute name processing [`3ce766`](https://github.com/reearth/reearth-flow/commit/3ce766)
+- Add group_by support to UnsharedEdgeDetector ([#1987](https://github.com/reearth/reearth-flow/pull/1987)) [`27caa9`](https://github.com/reearth/reearth-flow/commit/27caa9)
+- Add JSONFragmenter processor for fragmenting JSON documents ([#1983](https://github.com/reearth/reearth-flow/pull/1983)) [`91ae43`](https://github.com/reearth/reearth-flow/commit/91ae43)
+- Interpretable plateau-tiles-test by splitting conv and test stages ([#1973](https://github.com/reearth/reearth-flow/pull/1973)) [`346eb5`](https://github.com/reearth/reearth-flow/commit/346eb5)
+- Added zstd support for disk-backed actions ([#1976](https://github.com/reearth/reearth-flow/pull/1976)) [`526aaa`](https://github.com/reearth/reearth-flow/commit/526aaa)
+
+#### 🔧 Bug Fixes
+
+- Remove overly aggressive backpressure that caused pipeline stalls ([#1996](https://github.com/reearth/reearth-flow/pull/1996)) [`4935a6`](https://github.com/reearth/reearth-flow/commit/4935a6)
+- Prevent OOM during artifact upload by gating file reads with semaphore ([#1995](https://github.com/reearth/reearth-flow/pull/1995)) [`9a2791`](https://github.com/reearth/reearth-flow/commit/9a2791)
+- Cesium writer skip empty node ([#1992](https://github.com/reearth/reearth-flow/pull/1992)) [`4a21f3`](https://github.com/reearth/reearth-flow/commit/4a21f3)
+- Fix address extraction with multiple locality names ([#1990](https://github.com/reearth/reearth-flow/pull/1990)) [`2ff826`](https://github.com/reearth/reearth-flow/commit/2ff826)
+- Allow sink not connected to any source and skip DAG building for them ([#1986](https://github.com/reearth/reearth-flow/pull/1986)) [`17984f`](https://github.com/reearth/reearth-flow/commit/17984f)
+- Skip unreachable remote schemas in XML validator ([#1978](https://github.com/reearth/reearth-flow/pull/1978)) [`aa54f4`](https://github.com/reearth/reearth-flow/commit/aa54f4)
+
+### ui
+
+#### 🚀 Features
+
+- Improve awareness to show other user selections and action interactions [FLOW-FE-341] ([#1988](https://github.com/reearth/reearth-flow/pull/1988)) [`bc7f4c`](https://github.com/reearth/reearth-flow/commit/bc7f4c)
+
+#### 🔧 Bug Fixes
+
+- Update search panel headers and localization for action names ([#1991](https://github.com/reearth/reearth-flow/pull/1991)) [`df2676`](https://github.com/reearth/reearth-flow/commit/df2676)
+- Enable onNodesDisable functionality and improve edge rendering condition [FLOW-FE-337] ([#1857](https://github.com/reearth/reearth-flow/pull/1857)) [`e9cf52`](https://github.com/reearth/reearth-flow/commit/e9cf52)
+- Prevent previously selected actions when adding batch or note on dnd [FLOW-FE-424] ([#1982](https://github.com/reearth/reearth-flow/pull/1982)) [`a628d3`](https://github.com/reearth/reearth-flow/commit/a628d3)
+- Adjust z-index for selected action nodes to replicate manual elevation behavior [`ff6379`](https://github.com/reearth/reearth-flow/commit/ff6379)
+- Various UI issues around edges ([#1980](https://github.com/reearth/reearth-flow/pull/1980)) [`53dfe3`](https://github.com/reearth/reearth-flow/commit/53dfe3)
+
+#### ✨ Refactor
+
+- Remove Maplibre and use only Cesium for Geo Visualization [FLOW-FE-418] ([#1981](https://github.com/reearth/reearth-flow/pull/1981)) [`592c65`](https://github.com/reearth/reearth-flow/commit/592c65)
+
+#### Miscellaneous Tasks
+
+- March 2026 Dependencies Updates ([#1989](https://github.com/reearth/reearth-flow/pull/1989)) [`c788af`](https://github.com/reearth/reearth-flow/commit/c788af)
+
 ## 0.1.0-alpha.9 - 2026-03-10
 
 ### Misc
