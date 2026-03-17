@@ -73,10 +73,12 @@ impl ProcessorChannelForwarder {
         }
     }
 
-    pub fn wait_until_downstream_empty(&self) {
+    pub fn wait_until_downstream_empty(&self, max_wait: std::time::Duration) -> bool {
         match self {
-            ProcessorChannelForwarder::ChannelManager(cm) => cm.wait_until_downstream_empty(),
-            ProcessorChannelForwarder::Noop(_) => {}
+            ProcessorChannelForwarder::ChannelManager(cm) => {
+                cm.wait_until_downstream_empty(max_wait)
+            }
+            ProcessorChannelForwarder::Noop(_) => true,
         }
     }
 
@@ -304,10 +306,57 @@ impl ChannelManager {
         self.senders.iter().all(|s| s.sender.is_empty())
     }
 
-    pub fn wait_until_downstream_empty(&self) {
+    /// Collect `(index, len)` for every non-empty downstream channel.
+    fn downstream_channel_lengths(&self) -> Vec<(usize, usize)> {
+        self.senders
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| {
+                let len = s.sender.len();
+                if len > 0 {
+                    Some((i, len))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Wait for all downstream channels to drain, with a hard timeout.
+    ///
+    /// Logs progress every 30 s so silent hangs are visible in logs.
+    /// After `max_wait` the function returns `false` (timed-out) instead
+    /// of spinning forever; the caller can then proceed with a forced
+    /// shutdown rather than blocking indefinitely.
+    pub fn wait_until_downstream_empty(&self, max_wait: std::time::Duration) -> bool {
+        let start = std::time::Instant::now();
+        let log_interval = std::time::Duration::from_secs(30);
+        let mut next_log = log_interval;
+
         while !self.are_downstream_channels_empty() {
-            std::thread::yield_now();
+            if start.elapsed() >= max_wait {
+                let pending = self.downstream_channel_lengths();
+                tracing::warn!(
+                    node_id = ?self.owner.id,
+                    ?pending,
+                    elapsed = ?start.elapsed(),
+                    "wait_until_downstream_empty timed out, proceeding with shutdown",
+                );
+                return false;
+            }
+            if start.elapsed() >= next_log {
+                let pending = self.downstream_channel_lengths();
+                tracing::info!(
+                    node_id = ?self.owner.id,
+                    ?pending,
+                    elapsed = ?start.elapsed(),
+                    "wait_until_downstream_empty still waiting",
+                );
+                next_log += log_interval;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
+        true
     }
 
     pub fn owner(&self) -> &NodeHandle {
