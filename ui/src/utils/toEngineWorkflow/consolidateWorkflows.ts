@@ -22,7 +22,10 @@ export const consolidateWorkflows = (
   const newEntryId = generateUUID();
 
   const withVariables = Object.fromEntries(
-    workflowVariables.map((v) => [v.name, v.defaultValue]),
+    workflowVariables.map((v) => [
+      v.name,
+      v.defaultValue !== "" ? v.defaultValue : null,
+    ]),
   );
 
   const convertedWorkflows = workflows.map((wf) => {
