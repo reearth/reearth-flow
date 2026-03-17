@@ -1,6 +1,5 @@
 use std::{path::MAIN_SEPARATOR, str::FromStr, sync::Arc};
 
-use bytes::Bytes;
 use reearth_flow_common::{dir, uri::Uri};
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::sync::Semaphore;
@@ -57,8 +56,13 @@ pub(crate) async fn upload_artifact(
         .map(|uri| {
             let local_artifact_root_path = local_artifact_root_path.clone();
             let remote_artifact_root_path = remote_artifact_root_path.clone();
-            let permit = semaphore.clone().acquire_owned();
+            let semaphore = semaphore.clone();
             async move {
+                let _permit_guard = semaphore
+                    .acquire_owned()
+                    .await
+                    .map_err(Error::failed_to_upload_artifact)?;
+
                 let storage = storage_resolver
                     .resolve(uri)
                     .map_err(Error::failed_to_upload_artifact)?;
@@ -82,11 +86,9 @@ pub(crate) async fn upload_artifact(
                     .resolve(&location)
                     .map_err(Error::failed_to_upload_artifact)?;
 
-                let _permit_guard = permit.await.map_err(Error::failed_to_upload_artifact)?;
-
                 info!("Uploading artifact from {:?} to {:?}", uri, location);
                 root_storage
-                    .put(location.path().as_path(), Bytes::from(bytes.to_vec()))
+                    .put(location.path().as_path(), bytes)
                     .await
                     .map_err(Error::failed_to_upload_artifact)?;
                 Ok(())
