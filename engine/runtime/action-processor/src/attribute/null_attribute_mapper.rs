@@ -191,6 +191,13 @@ impl Processor for NullAttributeMapper {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // If the feature arrives on a non-default port (e.g., a rejected port),
+        // forward it unchanged on that same port and skip normal processing.
+        if ctx.port != DEFAULT_PORT {
+            fw.send(ctx.port, ctx.feature.clone())?;
+            return Ok(());
+        }
+
         let feature = ctx.feature.clone();
         let mut had_null = false;
 
