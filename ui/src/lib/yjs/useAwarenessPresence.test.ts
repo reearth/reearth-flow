@@ -1,7 +1,10 @@
 import { renderHook, act } from "@testing-library/react";
+import { OnConnectStartParams } from "@xyflow/react";
 import { MouseEvent } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Awareness } from "y-protocols/awareness";
+
+import { Node } from "@flow/types";
 
 import useAwarenessPresence from "./useAwarenessPresence";
 
@@ -134,7 +137,41 @@ describe("useAwarenessPresence", () => {
       currentY: 20,
     });
   });
-  it("clearDraggingEdge clears draggingEdge field", () => {
+
+  it("handleConnectStart sets draggingEdge field", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    const event = {
+      clientX: 10,
+      clientY: 20,
+      shiftKey: true,
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as globalThis.MouseEvent | TouchEvent;
+
+    const startParams = {
+      nodeId: "node1",
+      handleId: "handle1",
+      handleType: "source",
+    } as OnConnectStartParams;
+
+    act(() => {
+      result.current.handleConnectStart(event, startParams);
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith("draggingEdge", {
+      nodeId: "node1",
+      handleId: "handle1",
+      handleType: "source",
+    });
+  });
+
+  it("handleConnectEnd clears draggingEdge field", () => {
     const { result } = renderHook(() =>
       useAwarenessPresence({
         yAwareness: awareness,
@@ -169,6 +206,76 @@ describe("useAwarenessPresence", () => {
     rerender({ selectedNodeIds: [] });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith(
       "selectedNodeIds",
+      null,
+    );
+  });
+  it("handleParamFieldFocus sets focusedParamField field", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    act(() => {
+      result.current.handleParamFieldFocus("field123");
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedParamField",
+      "field123",
+    );
+    act(() => {
+      result.current.handleParamFieldFocus(null);
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedParamField",
+      null,
+    );
+  });
+
+  it("syncs openNode prop to awareness field and clears focusedParamField when closed", () => {
+    const { rerender } = renderHook(
+      ({ openNode }: { openNode: Node | undefined }) =>
+        useAwarenessPresence({
+          yAwareness: awareness,
+          selectedNodeIds: [],
+          openNode,
+        }),
+      {
+        initialProps: {
+          openNode: {
+            id: "node-1",
+            type: "batch",
+            position: { x: 0, y: 0 },
+            measured: { width: 0, height: 0 },
+            data: {
+              officialName: "officialName",
+              inputs: ["input1"],
+              outputs: ["output1"],
+              params: {},
+              customizations: {},
+              isCollapsed: true,
+              isDisabled: false,
+              pseudoInputs: [],
+              pseudoOutputs: [],
+            },
+            style: { width: 0, height: 0 },
+          },
+        },
+      },
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "openNodeId",
+      "node-1",
+    );
+
+    rerender({ openNode: undefined });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "openNodeId",
+      null,
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedParamField",
       null,
     );
   });
