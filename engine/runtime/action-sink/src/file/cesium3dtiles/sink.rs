@@ -310,7 +310,16 @@ impl Cesium3DTilesWriter {
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
-        let schema = self.schema.clone();
+        let mut schema = self.schema.clone();
+        for (typename, features) in upstream {
+            let key = typename.as_deref().unwrap_or("Feature");
+            if !schema.types.contains_key(key) {
+                if let Some(feature) = features.first() {
+                    let typedef: TypeDef = feature.into();
+                    schema.types.insert(key.to_string(), typedef);
+                }
+            }
+        }
         let grouped_features: Vec<(Option<String>, Vec<Feature>)> = upstream.to_owned();
 
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
