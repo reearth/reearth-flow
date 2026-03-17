@@ -26,7 +26,7 @@ import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import type { NodeData, NodeParams } from "@flow/types";
+import type { AwarenessUser, NodeData, NodeParams } from "@flow/types";
 
 import { extractDescriptions } from "../../utils/extractDescriptions";
 import { FieldContext } from "../../utils/fieldUtils";
@@ -38,7 +38,7 @@ type Props = {
   nodeType: string;
   nodeParams?: NodeParams;
   nodeCustomizations?: any;
-  fieldFocusMap?: Record<string, { color: string; userName: string }[]>;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onParamsUpdate: (data: any) => void;
   onCustomizationsUpdate: (data: any) => void;
   onUpdate: (

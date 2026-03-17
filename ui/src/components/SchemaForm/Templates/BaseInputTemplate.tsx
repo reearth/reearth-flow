@@ -9,6 +9,7 @@ import {
   FieldContext,
   createFieldContext,
 } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
+import { AwarenessUser } from "@flow/types";
 
 import { ColorInput } from "./BaseInputTemplate/ColorInput";
 import { NumberInput } from "./BaseInputTemplate/NumberInput";
@@ -20,7 +21,7 @@ export type ExtendedFormContext = FormContextType & {
   onAssetsOpen?: (fieldContext: FieldContext) => void;
   originalSchema?: any;
   actionName?: string;
-  fieldFocusMap?: Record<string, { color: string; userName: string }[]>;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onFieldFocus?: (fieldId: string | null) => void;
 };
 

@@ -8,6 +8,7 @@ import {
 } from "@rjsf/utils";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
+import { AwarenessUser } from "@flow/types";
 
 import { ExtendedFormContext } from "./BaseInputTemplate";
 
@@ -85,8 +86,8 @@ const FieldTemplate = <
             onFieldFocus?.(null);
           }
         }}>
-        {focusedUsers.map((user: any) => (
-          <Tooltip key={user.userName}>
+        {focusedUsers.map((user: AwarenessUser) => (
+          <Tooltip key={user.clientId}>
             <TooltipTrigger asChild>
               <div
                 className="inline-flex h-4 w-4 shrink-0 cursor-default items-center justify-center rounded-full"

@@ -121,7 +121,7 @@ const ParamsDialog: React.FC<Props> = ({
   }, []);
 
   const fieldFocusMap = useMemo(() => {
-    const map: Record<string, { color: string; userName: string }[]> = {};
+    const map: Record<string, AwarenessUser[]> = {};
     if (!openNode) return map;
     Object.values(users).forEach((user) => {
       if (user.openNodeId === openNode.id && user.focusedParamField) {
@@ -129,6 +129,7 @@ const ParamsDialog: React.FC<Props> = ({
         if (!map[fieldId]) map[fieldId] = [];
 
         map[fieldId].push({
+          clientId: user.clientId,
           color: user.color,
           userName: user.userName,
         });

@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 
 import { FieldContext } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
 import { useT } from "@flow/lib/i18n";
+import { AwarenessUser } from "@flow/types";
 
 import { SchemaFormErrorBoundary } from "./components/SchemaFormErrorBoundary";
 import { ThemedForm } from "./ThemedForm";
@@ -19,7 +20,7 @@ type SchemaFormProps = {
   originalSchema?: any; // Original schema before patching, used for UI schema generation
   actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
-  fieldFocusMap?: Record<string, { color: string; userName: string }[]>;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onFieldFocus?: (fieldId: string | null) => void;
   onChange: (data: any) => void;
   onError?: (errors: RJSFValidationError[]) => void;
