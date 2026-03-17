@@ -19,6 +19,11 @@ type SchemaFormProps = {
   originalSchema?: any; // Original schema before patching, used for UI schema generation
   actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
+  fieldFocusMap?: Record<
+    string,
+    { color: string; userName: string; liveValue?: string }[]
+  >;
+  onFieldFocus?: (fieldId: string | null) => void;
   onChange: (data: any) => void;
   onError?: (errors: RJSFValidationError[]) => void;
   onValidationChange?: (isValid: boolean) => void;
@@ -142,6 +147,8 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   originalSchema,
   actionName,
   defaultFormData,
+  fieldFocusMap,
+  onFieldFocus,
   onChange,
   onError,
   onValidationChange,
@@ -223,6 +230,8 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
           originalSchema,
           schema,
           actionName,
+          fieldFocusMap,
+          onFieldFocus,
         }}
         onChange={handleChange}
         onError={handleError}

@@ -37,13 +37,20 @@ type Props = {
   nodeMeta: NodeData;
   nodeType: string;
   nodeParams?: NodeParams;
+  nodeCustomizations?: any;
+  fieldFocusMap?: Record<
+    string,
+    { color: string; userName: string; liveValue?: string }[]
+  >;
   onParamsUpdate: (data: any) => void;
+  onCustomizationsUpdate: (data: any) => void;
   onUpdate: (
     nodeId: string,
     updatedParams: any,
     updatedCustomizations: any,
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
+  onParamFieldFocus?: (fieldId: string | null) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
 };
@@ -53,10 +60,14 @@ const ParamEditor: React.FC<Props> = ({
   nodeId,
   nodeMeta,
   nodeParams,
+  nodeCustomizations,
   nodeType,
+  fieldFocusMap,
   onParamsUpdate,
+  onCustomizationsUpdate,
   onUpdate,
   onWorkflowRename,
+  onParamFieldFocus,
   onValueEditorOpen,
   onPythonEditorOpen,
 }) => {
@@ -85,16 +96,8 @@ const ParamEditor: React.FC<Props> = ({
   // Generate UI schema from original schema (before patching) to preserve Expr detection
   const originalSchema = createdAction?.parameter;
 
-  const [updatedCustomization, setUpdatedCustomization] = useState(
-    nodeMeta.customizations,
-  );
-
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
-
-  const handleCustomizationChange = (data: any) => {
-    setUpdatedCustomization(data);
-  };
 
   const handleParamsValidationChange = (isValid: boolean) => {
     setIsParamsValid(isValid);
@@ -116,10 +119,10 @@ const ParamEditor: React.FC<Props> = ({
     if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
       onWorkflowRename?.(
         nodeMeta?.subworkflowId,
-        updatedCustomization?.customName || nodeMeta?.officialName,
+        nodeCustomizations?.customName || nodeMeta?.officialName,
       );
     }
-    onUpdate(nodeId, nodeParams, updatedCustomization);
+    onUpdate(nodeId, nodeParams, nodeCustomizations);
   };
 
   const customizationDescriptions = extractDescriptions(
@@ -172,6 +175,8 @@ const ParamEditor: React.FC<Props> = ({
                   originalSchema={originalSchema}
                   actionName={nodeMeta.officialName}
                   defaultFormData={nodeParams}
+                  fieldFocusMap={fieldFocusMap}
+                  onFieldFocus={onParamFieldFocus}
                   onChange={onParamsUpdate}
                   onValidationChange={handleParamsValidationChange}
                   onEditorOpen={onValueEditorOpen}
@@ -231,8 +236,10 @@ const ParamEditor: React.FC<Props> = ({
                   <SchemaForm
                     readonly={readonly}
                     schema={createdAction?.customizations}
-                    defaultFormData={updatedCustomization}
-                    onChange={handleCustomizationChange}
+                    defaultFormData={nodeCustomizations}
+                    fieldFocusMap={fieldFocusMap}
+                    onFieldFocus={onParamFieldFocus}
+                    onChange={onCustomizationsUpdate}
                     onValidationChange={handleCustomizationsValidationChange}
                   />
                 </div>

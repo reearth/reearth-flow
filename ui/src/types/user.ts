@@ -53,6 +53,8 @@ export type AwarenessUser = {
     y: number;
     zoom: number;
   };
+  openNodeId?: string | null;
+  focusedParamField?: string | null;
   color: string;
   userName: string;
   currentWorkflowId?: string;

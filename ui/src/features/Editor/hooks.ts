@@ -1,4 +1,4 @@
-import { useReactFlow, type OnConnectStart } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import {
   MouseEvent,
   useCallback,
@@ -58,7 +58,7 @@ export default ({
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
 
-  const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
+  const [openNodeId, setOpenNodeId] = useState<string | undefined>(undefined);
 
   // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
   useEffect(() => {
@@ -132,6 +132,12 @@ export default ({
     [rawNodes, selectedNodeIds],
   );
 
+  // Derived reactively from nodes so remote Yjs param changes update the dialog live
+  const openNode = useMemo(
+    () => (openNodeId ? nodes.find((n) => n.id === openNodeId) : undefined),
+    [nodes, openNodeId],
+  );
+
   const rawEdges = useY(currentYWorkflow?.get("edges") ?? new YMap()) as Record<
     string,
     Edge
@@ -172,17 +178,9 @@ export default ({
     setCurrentWorkflowId,
   });
 
-  const handleOpenNode = useCallback(
-    (nodeId?: string) => {
-      if (!nodeId) {
-        setOpenNode(undefined);
-      }
-      setOpenNode((on) =>
-        on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
-      );
-    },
-    [nodes, setOpenNode],
-  );
+  const handleOpenNode = useCallback((nodeId?: string) => {
+    setOpenNodeId((prev) => (!nodeId || prev === nodeId ? undefined : nodeId));
+  }, []);
 
   // Passed to editor context so needs to be a ref
   const handleNodeSettingsClickRef =
@@ -361,27 +359,16 @@ export default ({
   const {
     self,
     users,
-    handlePointerDown,
-    setDraggingEdge,
-    clearDraggingEdge,
     awarenessSelectionsMap,
+    handlePointerDown,
+    handleConnectStart,
+    handleConnectEnd,
+    handleParamFieldFocus,
   } = useAwarenessPresence({
     selectedNodeIds,
+    openNode,
     yAwareness,
   });
-
-  const handleConnectStart: OnConnectStart = useCallback(
-    (_event, params) => {
-      if (params.nodeId) {
-        setDraggingEdge(params.nodeId, params.handleId, params.handleType);
-      }
-    },
-    [setDraggingEdge],
-  );
-
-  const handleConnectEnd = useCallback(() => {
-    clearDraggingEdge();
-  }, [clearDraggingEdge]);
 
   const {
     spotlightUser,
@@ -496,5 +483,6 @@ export default ({
     handleConnectStart,
     handleConnectEnd,
     awarenessSelectionsMap,
+    handleParamFieldFocus,
   };
 };
