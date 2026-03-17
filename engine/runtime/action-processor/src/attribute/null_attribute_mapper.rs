@@ -104,7 +104,7 @@ impl Default for NullAttributeMapperParams {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct NullAttributeMapperFactory;
+pub(super) struct NullAttributeMapperFactory;
 
 impl ProcessorFactory for NullAttributeMapperFactory {
     fn name(&self) -> &str {
