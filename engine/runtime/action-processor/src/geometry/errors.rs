@@ -183,6 +183,10 @@ pub(super) enum GeometryProcessorError {
     CoordinateExtractorFactory(String),
     #[error("CoordinateExtractor error: {0}")]
     CoordinateExtractor(String),
+    #[error("NeighborFinder Factory error: {0}")]
+    NeighborFinderFactory(String),
+    #[error("NeighborFinder error: {0}")]
+    NeighborFinder(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

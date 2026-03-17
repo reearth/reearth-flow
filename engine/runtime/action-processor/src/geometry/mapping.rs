@@ -5,6 +5,7 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     appearance_remover::AppearanceRemoverFactory,
+    neighbor_finder::NeighborFinderFactory,
     area_calculator::AreaCalculatorFactory,
     area_on_area_overlayer::AreaOnAreaOverlayerFactory,
     boundary_extractor::BoundaryExtractorFactory,
@@ -110,6 +111,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<GridDividerFactory>::default(),
         Box::<Rotator3DFactory>::default(),
         Box::<CoordinateExtractorFactory>::default(),
+        Box::<NeighborFinderFactory>::default(),
     ];
     factories
         .into_iter()
