@@ -191,10 +191,9 @@ impl Processor for NullAttributeMapper {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // If the feature arrives on a non-default port (e.g., a rejected port),
-        // forward it unchanged on that same port and skip normal processing.
-        if ctx.port != DEFAULT_PORT {
-            fw.send(ctx.port, ctx.feature.clone())?;
+        // If the feature arrives on a non-default port, reject it
+        if ctx.port != *DEFAULT_PORT {
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), Port::new(REJECTED_PORT)));
             return Ok(());
         }
 
@@ -234,11 +233,7 @@ impl Processor for NullAttributeMapper {
                 had_null = true;
 
                 // Find replacement value (per-attribute mapping takes precedence)
-                let mapping = self
-                    .params
-                    .mappings
-                    .iter()
-                    .find(|m| m.attribute == key_str);
+                let mapping = self.params.mappings.iter().find(|m| m.attribute == key_str);
 
                 // Distinguish between:
                 // - mapping present with replacement Some(Value)
