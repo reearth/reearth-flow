@@ -1,4 +1,5 @@
 pub mod cesium;
+pub mod cesium_statistics;
 pub mod json_attributes;
 pub mod json_attributes_v2;
 pub mod json_object_key_order;

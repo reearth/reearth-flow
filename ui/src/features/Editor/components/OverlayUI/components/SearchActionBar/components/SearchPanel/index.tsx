@@ -58,7 +58,7 @@ const SearchPanel = ({
       {
         accessorFn: (row) => row?.displayName,
         id: "displayName",
-        header: t("Action Name"),
+        header: t("Display Name"),
         cell: ({ row }) => (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -71,6 +71,27 @@ const SearchPanel = ({
               sideOffset={-100}
               className="bg-primary">
               {row.original?.displayName}
+            </TooltipContent>
+          </Tooltip>
+        ),
+      },
+      {
+        accessorFn: (row) => row?.officialName,
+        id: "officialName",
+        header: t("Action"),
+        enableHiding: true,
+        cell: ({ row }) => (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block max-w-[100px] truncate font-medium">
+                {row.original?.officialName}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              sideOffset={-100}
+              className="bg-primary">
+              {row.original?.officialName}
             </TooltipContent>
           </Tooltip>
         ),
@@ -126,7 +147,7 @@ const SearchPanel = ({
 
   return (
     <div
-      className={`absolute z-50 flex h-[600px] w-[400px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      className={`absolute z-50 flex h-[600px] w-[450px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
       ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
       `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">

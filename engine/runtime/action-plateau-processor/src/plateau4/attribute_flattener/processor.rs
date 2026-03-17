@@ -1213,6 +1213,42 @@ mod tests {
         }
     }
 
+    /// Test that bldg:address is concatenated when multiple xAL:LocalityName elements exist
+    /// (e.g. Fukushima data with Type="prefecture" and Type="city")
+    #[test]
+    fn test_address_concatenated_from_multiple_locality_names() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "core:Address": [{
+                "xAL:AddressDetails": [{
+                    "xAL:Country": [{
+                        "xAL:Locality": ["福島県", "福島市"]
+                    }]
+                }]
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-011",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "56403376_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        let address = result.get("bldg:address");
+        match address {
+            Some(AttributeValue::String(s)) => {
+                assert_eq!(s, "福島県福島市");
+            }
+            _ => panic!("bldg:address should be String, got {:?}", address),
+        }
+    }
+
     /// Test that meshcode is extracted from path
     #[test]
     fn test_meshcode_extracted_from_path() {

@@ -283,8 +283,11 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "e", commandKey: true }} />
           ),
-          // disabled: (!nodes && !node) || !onNodesDisable,
-          disabled: true,
+          disabled:
+            (!nodes && !node) ||
+            !onNodesDisable ||
+            nodes?.some((n) => n.type === "note") ||
+            node?.type === "note",
           onCallback: wrapWithClose(
             () => onNodesDisable?.(node ? [node] : undefined) ?? (() => {}),
           ),

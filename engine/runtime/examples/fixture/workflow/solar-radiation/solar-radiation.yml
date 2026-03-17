@@ -15,6 +15,7 @@ with:
   endTime: null
   workerArtifactPath: null
   outputReflection: false
+  considerDEM: false
   dailySunDataPath: null
   monthlyWeatherDataPath: null
   snowDepthDataPath: null
@@ -35,6 +36,35 @@ with:
   - 0.71
   - 0.74
   - 0.75
+  solarRadiationThreshold: null
+  lowerPercent: null
+  bldgStructureToExclude:
+    木造・土蔵造: false
+    鉄骨鉄筋コンクリート造: false
+    鉄筋コンクリート造: false
+    鉄骨造: false
+    軽量鉄骨造: false
+    レンガ造等: false
+    非木造: false
+    不明: false
+  floorsBelow: null
+  upperFloors: null
+  enableTsunamiCheck: false
+  enableFloodCheck: false
+  enableLandslideCheck: false
+  snowDepthShapefilePath: null
+  snowDepthThreshold: null
+  snowLoad: null
+  snowUnitWeight: 3000.0
+  restrictAreaPath1: null
+  restrictHeight1: null
+  restrictDirection1: null
+  restrictAreaPath2: null
+  restrictHeight2: null
+  restrictDirection2: null
+  restrictAreaPath3: null
+  restrictHeight3: null
+  restrictDirection3: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -286,6 +316,1155 @@ graphs:
     to: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
     fromPort: default
     toPort: default
+- id: f1e2d3c4-b5a6-4798-8c9d-0e1f2a3b4c5d
+  name: AdequatePlaceJudgment
+  nodes:
+  - id: a0000000-0000-0000-0000-000000000001
+    name: BuildingRadiationInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: buildingRadiation
+  - id: a0000000-0000-0000-0000-000000000002
+    name: BuildingAttrInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: buildingAttr
+  - id: a0000000-0000-0000-0000-000000000003
+    name: LandRadiationInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: landRadiation
+  - id: a0000000-0000-0000-0000-000000000004
+    name: DemTriangleInput
+    type: action
+    action: InputRouter
+    with:
+      routingPort: demTriangle
+  - id: 00000005-0000-0000-0000-000000000030
+    name: BuildingTotalCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy: []
+      calculations:
+      - newAttribute: totalBuildingCount
+        expr: '1'
+  - id: 00000005-0000-0000-0000-000000000031
+    name: AddBroadcastKey
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _bcastKey
+        method: create
+        value: '"all"'
+  - id: 00000005-0000-0000-0000-000000000032
+    name: BuildingRadiationSorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - totalSolarRadiation
+      order: ascending
+  - id: 00000005-0000-0000-0000-000000000033
+    name: BuildingRankCounter
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      outputAttribute: solarRank
+  - id: 00000005-0000-0000-0000-000000000034
+    name: AddBroadcastKeyToRanked
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _bcastKey
+        method: create
+        value: '"all"'
+  - id: 00000005-0000-0000-0000-000000000035
+    name: TotalCountMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - _bcastKey
+      supplierAttribute:
+      - _bcastKey
+  - id: 00000005-0000-0000-0000-000000000036
+    name: BuildingAttrMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000007-0000-0000-0000-000000000001
+    name: RestrictZone1ShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("restrictAreaPath1")
+      allowEmptyPath: true
+  - id: 00000007-0000-0000-0000-000000000002
+    name: RestrictZone1Reprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+  - id: 00000007-0000-0000-0000-000000000004
+    name: RestrictZone1SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+  - id: 00000007-0000-0000-0000-000000000005
+    name: InZone1FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone1
+        method: create
+        value: '1'
+  - id: 00000007-0000-0000-0000-000000000006
+    name: InZone1FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone1
+        method: create
+        value: '0'
+  - id: 00000007-0000-0000-0000-000000000007
+    name: Zone1Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000007-0000-0000-0000-000000000011
+    name: RestrictZone2ShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("restrictAreaPath2")
+      allowEmptyPath: true
+  - id: 00000007-0000-0000-0000-000000000012
+    name: RestrictZone2Reprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+  - id: 00000007-0000-0000-0000-000000000014
+    name: RestrictZone2SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+  - id: 00000007-0000-0000-0000-000000000015
+    name: InZone2FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone2
+        method: create
+        value: '1'
+  - id: 00000007-0000-0000-0000-000000000016
+    name: InZone2FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone2
+        method: create
+        value: '0'
+  - id: 00000007-0000-0000-0000-000000000017
+    name: Zone2Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000007-0000-0000-0000-000000000021
+    name: RestrictZone3ShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("restrictAreaPath3")
+      allowEmptyPath: true
+  - id: 00000007-0000-0000-0000-000000000022
+    name: RestrictZone3Reprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+  - id: 00000007-0000-0000-0000-000000000024
+    name: RestrictZone3SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+  - id: 00000007-0000-0000-0000-000000000025
+    name: InZone3FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone3
+        method: create
+        value: '1'
+  - id: 00000007-0000-0000-0000-000000000026
+    name: InZone3FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone3
+        method: create
+        value: '0'
+  - id: 00000007-0000-0000-0000-000000000027
+    name: Zone3Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000007-0000-0000-0000-000000000030
+    name: SnowShapefileReader
+    type: action
+    action: ShapefileReader
+    with:
+      dataset: |
+        env.get("snowDepthShapefilePath")
+      allowEmptyPath: true
+  - id: 00000007-0000-0000-0000-000000000031
+    name: SnowShapefileReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+  - id: 00000007-0000-0000-0000-000000000033
+    name: SnowSpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+      mergeFilterAttributes: true
+      mergedAttributesPrefix: snow_
+  - id: 00000007-0000-0000-0000-000000000034
+    name: SnowMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000005-0000-0000-0000-000000000060
+    name: BuildingJudgmentComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: result_1_1_1
+        method: create
+        value: |
+          let thresh = env.get("solarRadiationThreshold") ?? 0.0;
+          let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
+          if thresh <= 0.0 || rad < 0.0 { "-" }
+          else if rad < thresh { "×" } else { "○" }
+      - attribute: result_1_1_2
+        method: create
+        value: |
+          let pct = env.get("lowerPercent") ?? 0.0;
+          let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
+          if pct <= 0.0 || rad < 0.0 { "-" } else {
+            let rank = env.get("__value")["solarRank"] ?? 0;
+            let total = env.get("__value")["totalBuildingCount"] ?? 1;
+            if total > 0 && (rank.to_float() / total.to_float()) <= (pct / 100.0) { "×" } else { "○" }
+          }
+      - attribute: result_1_2
+        method: create
+        value: |
+          let m = env.get("bldgStructureToExclude") ?? #{};
+          let any_active = m["木造・土蔵造"] || m["鉄骨鉄筋コンクリート造"] || m["鉄筋コンクリート造"] || m["鉄骨造"] || m["軽量鉄骨造"] || m["レンガ造等"] || m["非木造"] || m["不明"];
+          if !any_active { "-" } else {
+            let st_raw = env.get("__value")["structureType"] ?? "-1";
+            let st = if type_of(st_raw) == "string" { parse_int(st_raw) } else { st_raw };
+            let excluded = switch st {
+              601 => m["木造・土蔵造"],
+              602 => m["鉄骨鉄筋コンクリート造"],
+              603 => m["鉄筋コンクリート造"],
+              604 => m["鉄骨造"],
+              605 => m["軽量鉄骨造"],
+              606 => m["レンガ造等"],
+              610 => m["非木造"],
+              _ => m["不明"] ?? false,
+            };
+            if excluded { "×" } else { "○" }
+          }
+      - attribute: result_1_3
+        method: create
+        value: |
+          let lb = env.get("floorsBelow") ?? -1;
+          let ub = env.get("upperFloors") ?? -1;
+          let fc = env.get("__value")["floorCount"] ?? -1;
+          if (lb == -1 && ub == -1) || fc < 0 { "-" }
+          else if lb != -1 && fc <= lb { "×" }
+          else if ub != -1 && fc >= ub { "×" }
+          else { "○" }
+      - attribute: result_2_1
+        method: create
+        value: |
+          if !(env.get("enableTsunamiCheck") ?? false) { "-" } else {
+            let h = env.get("__value")["bldgHeight"] ?? -1.0;
+            let th = env.get("__value")["tsunamiHeight"] ?? 0.0;
+            if h < 0.0 || th <= 0.0 { "-" }
+            else if h < th { "×" } else { "○" }
+          }
+      - attribute: result_2_2
+        method: create
+        value: |
+          if !(env.get("enableFloodCheck") ?? false) { "-" } else {
+            let h = env.get("__value")["bldgHeight"] ?? -1.0;
+            let fd = env.get("__value")["floodDepth"] ?? 0.0;
+            if h < 0.0 || fd <= 0.0 { "-" }
+            else if h < fd { "×" } else { "○" }
+          }
+      - attribute: result_2_3
+        method: create
+        value: |
+          if !(env.get("enableLandslideCheck") ?? false) { "-" } else {
+            let flag = env.get("__value")["landslideFlag"] ?? false;
+            if flag { "×" } else { "○" }
+          }
+      - attribute: result_2_4
+        method: create
+        value: |
+          let path = env.get("snowDepthShapefilePath");
+          if path == () { "-" } else {
+            let depth_cm = env.get("__value")["snow_G02_058"] ?? ();
+            if depth_cm == () { "-" } else {
+              let depth = depth_cm / 100.0;
+              let s = env.get("snowLoad") ?? 0.0;
+              if s > 0.0 {
+                let dp = env.get("snowUnitWeight") ?? 0.0;
+                let load = depth * dp / 9.80665;
+                if load >= s { "×" } else { "○" }
+              } else {
+                let thresh = env.get("snowDepthThreshold") ?? -1.0;
+                if thresh > 0.0 && depth >= thresh { "×" } else { "○" }
+              }
+            }
+          }
+      - attribute: result_3_1
+        method: create
+        value: |
+          let path = env.get("restrictAreaPath1");
+          let hThresh = env.get("restrictHeight1") ?? -1.0;
+          if path == () || hThresh == -1.0 { "-" } else {
+            let inZone = env.get("__value")["inZone1"] ?? 0;
+            if inZone == 0 { "○" } else {
+              let h = env.get("__value")["bldgHeight"] ?? -1.0;
+              if h >= 0.0 && h < hThresh { "○" } else {
+                let dir = env.get("restrictDirection1") ?? -1.0;
+                if dir < 0.0 { "×" } else {
+                  let sm = env.get("__value")["dirMatchSum1"] ?? 0;
+                  if sm > 0 { "×" } else { "○" }
+                }
+              }
+            }
+          }
+      - attribute: result_3_2
+        method: create
+        value: |
+          let path = env.get("restrictAreaPath2");
+          let hThresh = env.get("restrictHeight2") ?? -1.0;
+          if path == () || hThresh == -1.0 { "-" } else {
+            let inZone = env.get("__value")["inZone2"] ?? 0;
+            if inZone == 0 { "○" } else {
+              let h = env.get("__value")["bldgHeight"] ?? -1.0;
+              if h >= 0.0 && h < hThresh { "○" } else {
+                let dir = env.get("restrictDirection2") ?? -1.0;
+                if dir < 0.0 { "×" } else {
+                  let sm = env.get("__value")["dirMatchSum2"] ?? 0;
+                  if sm > 0 { "×" } else { "○" }
+                }
+              }
+            }
+          }
+      - attribute: result_3_3
+        method: create
+        value: |
+          let path = env.get("restrictAreaPath3");
+          let hThresh = env.get("restrictHeight3") ?? -1.0;
+          if path == () || hThresh == -1.0 { "-" } else {
+            let inZone = env.get("__value")["inZone3"] ?? 0;
+            if inZone == 0 { "○" } else {
+              let h = env.get("__value")["bldgHeight"] ?? -1.0;
+              if h >= 0.0 && h < hThresh { "○" } else {
+                let dir = env.get("restrictDirection3") ?? -1.0;
+                if dir < 0.0 { "×" } else {
+                  let sm = env.get("__value")["dirMatchSum3"] ?? 0;
+                  if sm > 0 { "×" } else { "○" }
+                }
+              }
+            }
+          }
+  - id: 00000005-0000-0000-0000-000000000063
+    name: BuildingPriorityComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: priority
+        method: create
+        value: |
+          let score = 0;
+          let r11 = env.get("__value")["result_1_1_1"];
+          let r12 = env.get("__value")["result_1_1_2"];
+          if r11 == "×" || r12 == "×" { score -= 1; }
+          if env.get("__value")["result_1_2"] == "×" { score -= 1; }
+          if env.get("__value")["result_1_3"] == "×" { score -= 1; }
+          if env.get("__value")["result_2_1"] == "×" { score -= 1; }
+          if env.get("__value")["result_2_2"] == "×" { score -= 1; }
+          if env.get("__value")["result_2_3"] == "×" { score -= 1; }
+          if env.get("__value")["result_2_4"] == "×" { score -= 1; }
+          if env.get("__value")["result_3_1"] == "×" { score -= 1; }
+          if env.get("__value")["result_3_2"] == "×" { score -= 1; }
+          if env.get("__value")["result_3_3"] == "×" { score -= 1; }
+          if score >= 0 { 5 }
+          else if score >= -2 { 4 }
+          else if score >= -4 { 3 }
+          else if score >= -6 { 2 }
+          else { 1 }
+  - id: 00000005-0000-0000-0000-000000000061
+    name: BuildingJudgmentMapper
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: 建物ID
+        expr: env.get("__value")["gmlId"]
+      - attribute: 優先度
+        expr: env.get("__value")["priority"]
+      - attribute: 適否1_1_1
+        expr: env.get("__value")["result_1_1_1"]
+      - attribute: 適否1_1_2
+        expr: env.get("__value")["result_1_1_2"]
+      - attribute: 適否1_2
+        expr: env.get("__value")["result_1_2"]
+      - attribute: 適否1_3
+        expr: env.get("__value")["result_1_3"]
+      - attribute: 適否2_1
+        expr: env.get("__value")["result_2_1"]
+      - attribute: 適否2_2
+        expr: env.get("__value")["result_2_2"]
+      - attribute: 適否2_3
+        expr: env.get("__value")["result_2_3"]
+      - attribute: 適否2_4
+        expr: env.get("__value")["result_2_4"]
+      - attribute: 適否3_1
+        expr: env.get("__value")["result_3_1"]
+      - attribute: 適否3_2
+        expr: env.get("__value")["result_3_2"]
+      - attribute: 適否3_3
+        expr: env.get("__value")["result_3_3"]
+  - id: 00000005-0000-0000-0000-000000000062
+    name: BuildingJudgmentWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "適地判定結果.csv")
+  - id: 00000006-0000-0000-0000-000000000002
+    name: LandRadiationAggregator
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+      - gmlId
+      calculations:
+      - newAttribute: totalSolarRadiation
+        expr: |
+          env.get("__value")["radiationPerMonth"]
+      - newAttribute: totalSolarPower
+        expr: |
+          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
+          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+      - newAttribute: dirMatchSum1
+        expr: env.get("__value")["dirMatch1"] ?? 0
+      - newAttribute: dirMatchSum2
+        expr: env.get("__value")["dirMatch2"] ?? 0
+      - newAttribute: dirMatchSum3
+        expr: env.get("__value")["dirMatch3"] ?? 0
+  - id: 00000006-0000-0000-0000-000000000003
+    name: LandJudgmentComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: result_1_1_1
+        method: create
+        value: |
+          let thresh = env.get("solarRadiationThreshold") ?? 0.0;
+          let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
+          if thresh <= 0.0 || rad < 0.0 { "-" }
+          else if rad < thresh { "×" } else { "○" }
+      - attribute: result_1_1_2
+        method: create
+        value: '"-"'
+      - attribute: result_1_2
+        method: create
+        value: '"-"'
+      - attribute: result_1_3
+        method: create
+        value: '"-"'
+      - attribute: result_2_1
+        method: create
+        value: '"-"'
+      - attribute: result_2_2
+        method: create
+        value: '"-"'
+      - attribute: result_2_3
+        method: create
+        value: |
+          if !(env.get("enableLandslideCheck") ?? false) { "-" } else {
+            let flag = env.get("__value")["landslideFlag"] ?? false;
+            if flag { "×" } else { "○" }
+          }
+      - attribute: result_2_4
+        method: create
+        value: |
+          let path = env.get("snowDepthShapefilePath");
+          if path == () { "-" } else {
+            let depth_cm = env.get("__value")["snow_G02_058"] ?? ();
+            if depth_cm == () { "-" } else {
+              let depth = depth_cm / 100.0;
+              let s = env.get("snowLoad") ?? 0.0;
+              if s > 0.0 {
+                let dp = env.get("snowUnitWeight") ?? 0.0;
+                let load = depth * dp / 9.80665;
+                if load >= s { "×" } else { "○" }
+              } else {
+                let thresh = env.get("snowDepthThreshold") ?? -1.0;
+                if thresh > 0.0 && depth >= thresh { "×" } else { "○" }
+              }
+            }
+          }
+      - attribute: result_3_1
+        method: create
+        value: |
+          let path = env.get("restrictAreaPath1");
+          let hThresh = env.get("restrictHeight1") ?? -1.0;
+          if path == () || hThresh == -1.0 { "-" } else {
+            let inZone = env.get("__value")["inZone1"] ?? 0;
+            if inZone == 0 { "○" } else {
+              let dir = env.get("restrictDirection1") ?? -1.0;
+              if dir < 0.0 { "×" } else {
+                let sm = env.get("__value")["dirMatchSum1"] ?? 0;
+                if sm > 0 { "×" } else { "○" }
+              }
+            }
+          }
+      - attribute: result_3_2
+        method: create
+        value: |
+          let path = env.get("restrictAreaPath2");
+          let hThresh = env.get("restrictHeight2") ?? -1.0;
+          if path == () || hThresh == -1.0 { "-" } else {
+            let inZone = env.get("__value")["inZone2"] ?? 0;
+            if inZone == 0 { "○" } else {
+              let dir = env.get("restrictDirection2") ?? -1.0;
+              if dir < 0.0 { "×" } else {
+                let sm = env.get("__value")["dirMatchSum2"] ?? 0;
+                if sm > 0 { "×" } else { "○" }
+              }
+            }
+          }
+      - attribute: result_3_3
+        method: create
+        value: |
+          let path = env.get("restrictAreaPath3");
+          let hThresh = env.get("restrictHeight3") ?? -1.0;
+          if path == () || hThresh == -1.0 { "-" } else {
+            let inZone = env.get("__value")["inZone3"] ?? 0;
+            if inZone == 0 { "○" } else {
+              let dir = env.get("restrictDirection3") ?? -1.0;
+              if dir < 0.0 { "×" } else {
+                let sm = env.get("__value")["dirMatchSum3"] ?? 0;
+                if sm > 0 { "×" } else { "○" }
+              }
+            }
+          }
+  - id: 00000006-0000-0000-0000-000000000006
+    name: LandPriorityComputer
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: priority
+        method: create
+        value: |
+          let score = 0;
+          if env.get("__value")["result_1_1_1"] == "×" { score -= 1; }
+          if env.get("__value")["result_2_3"] == "×" { score -= 1; }
+          if env.get("__value")["result_2_4"] == "×" { score -= 1; }
+          if env.get("__value")["result_3_1"] == "×" { score -= 1; }
+          if env.get("__value")["result_3_2"] == "×" { score -= 1; }
+          if env.get("__value")["result_3_3"] == "×" { score -= 1; }
+          if score >= 0 { 5 }
+          else if score >= -2 { 4 }
+          else if score >= -4 { 3 }
+          else if score >= -6 { 2 }
+          else { 1 }
+  - id: 00000006-0000-0000-0000-000000000004
+    name: LandJudgmentMapper
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: 土地ID
+        expr: env.get("__value")["gmlId"]
+      - attribute: 優先度
+        expr: env.get("__value")["priority"]
+      - attribute: 適否1_1_1
+        expr: env.get("__value")["result_1_1_1"]
+      - attribute: 適否1_1_2
+        expr: env.get("__value")["result_1_1_2"]
+      - attribute: 適否1_2
+        expr: env.get("__value")["result_1_2"]
+      - attribute: 適否1_3
+        expr: env.get("__value")["result_1_3"]
+      - attribute: 適否2_1
+        expr: env.get("__value")["result_2_1"]
+      - attribute: 適否2_2
+        expr: env.get("__value")["result_2_2"]
+      - attribute: 適否2_3
+        expr: env.get("__value")["result_2_3"]
+      - attribute: 適否2_4
+        expr: env.get("__value")["result_2_4"]
+      - attribute: 適否3_1
+        expr: env.get("__value")["result_3_1"]
+      - attribute: 適否3_2
+        expr: env.get("__value")["result_3_2"]
+      - attribute: 適否3_3
+        expr: env.get("__value")["result_3_3"]
+  - id: 00000006-0000-0000-0000-000000000005
+    name: LandJudgmentWriter
+    type: action
+    action: CsvWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "土地適地判定結果.csv")
+  - id: 00000006-0000-0000-0000-000000000010
+    name: LandSnowSpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+      mergeFilterAttributes: true
+      mergedAttributesPrefix: snow_
+  - id: 00000006-0000-0000-0000-000000000011
+    name: LandSnowMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000006-0000-0000-0000-000000000021
+    name: LandZone1SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+  - id: 00000006-0000-0000-0000-000000000022
+    name: LandInZone1FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone1
+        method: create
+        value: '1'
+  - id: 00000006-0000-0000-0000-000000000023
+    name: LandInZone1FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone1
+        method: create
+        value: '0'
+  - id: 00000006-0000-0000-0000-000000000024
+    name: LandZone1Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000006-0000-0000-0000-000000000031
+    name: LandZone2SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+  - id: 00000006-0000-0000-0000-000000000032
+    name: LandInZone2FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone2
+        method: create
+        value: '1'
+  - id: 00000006-0000-0000-0000-000000000033
+    name: LandInZone2FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone2
+        method: create
+        value: '0'
+  - id: 00000006-0000-0000-0000-000000000034
+    name: LandZone2Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  - id: 00000006-0000-0000-0000-000000000041
+    name: LandZone3SpatialFilter
+    type: action
+    action: SpatialFilter
+    with:
+      predicate: intersects
+  - id: 00000006-0000-0000-0000-000000000042
+    name: LandInZone3FlagPassed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone3
+        method: create
+        value: '1'
+  - id: 00000006-0000-0000-0000-000000000043
+    name: LandInZone3FlagFailed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: inZone3
+        method: create
+        value: '0'
+  - id: 00000006-0000-0000-0000-000000000044
+    name: LandZone3Merger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - gmlId
+      supplierAttribute:
+      - gmlId
+  edges:
+  - id: ea000000-0000-0000-0000-000000000001
+    from: a0000000-0000-0000-0000-000000000001
+    to: 00000005-0000-0000-0000-000000000032
+    fromPort: default
+    toPort: default
+  - id: ea000000-0000-0000-0000-000000000002
+    from: a0000000-0000-0000-0000-000000000001
+    to: 00000005-0000-0000-0000-000000000030
+    fromPort: default
+    toPort: default
+  - id: ea000000-0000-0000-0000-000000000003
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000005-0000-0000-0000-000000000036
+    fromPort: default
+    toPort: supplier
+  - id: ea000000-0000-0000-0000-000000000004
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000005
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000014
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000006
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000007
+    from: a0000000-0000-0000-0000-000000000002
+    to: 00000007-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000008
+    from: a0000000-0000-0000-0000-000000000003
+    to: 00000006-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+  - id: ea000000-0000-0000-0000-000000000009
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000021
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000010
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000011
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000041
+    fromPort: default
+    toPort: candidate
+  - id: ea000000-0000-0000-0000-000000000012
+    from: a0000000-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000010
+    fromPort: default
+    toPort: candidate
+  - id: e0000005-0000-0000-0000-000000000042
+    from: 00000005-0000-0000-0000-000000000030
+    to: 00000005-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000043
+    from: 00000005-0000-0000-0000-000000000031
+    to: 00000005-0000-0000-0000-000000000035
+    fromPort: default
+    toPort: supplier
+  - id: e0000005-0000-0000-0000-000000000044
+    from: 00000005-0000-0000-0000-000000000032
+    to: 00000005-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000045
+    from: 00000005-0000-0000-0000-000000000033
+    to: 00000005-0000-0000-0000-000000000034
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000046
+    from: 00000005-0000-0000-0000-000000000034
+    to: 00000005-0000-0000-0000-000000000035
+    fromPort: default
+    toPort: requestor
+  - id: e0000005-0000-0000-0000-000000000047
+    from: 00000005-0000-0000-0000-000000000035
+    to: 00000005-0000-0000-0000-000000000036
+    fromPort: merged
+    toPort: requestor
+  - id: e0000005-0000-0000-0000-000000000048
+    from: 00000005-0000-0000-0000-000000000036
+    to: 00000007-0000-0000-0000-000000000007
+    fromPort: merged
+    toPort: requestor
+  - id: e0000005-0000-0000-0000-000000000049
+    from: 00000007-0000-0000-0000-000000000007
+    to: 00000007-0000-0000-0000-000000000017
+    fromPort: merged
+    toPort: requestor
+  - id: e0000005-0000-0000-0000-000000000050
+    from: 00000007-0000-0000-0000-000000000017
+    to: 00000007-0000-0000-0000-000000000027
+    fromPort: merged
+    toPort: requestor
+  - id: e0000005-0000-0000-0000-000000000051
+    from: 00000007-0000-0000-0000-000000000027
+    to: 00000007-0000-0000-0000-000000000034
+    fromPort: merged
+    toPort: requestor
+  - id: e0000005-0000-0000-0000-000000000052
+    from: 00000007-0000-0000-0000-000000000034
+    to: 00000005-0000-0000-0000-000000000060
+    fromPort: merged
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000055
+    from: 00000005-0000-0000-0000-000000000060
+    to: 00000005-0000-0000-0000-000000000063
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000053
+    from: 00000005-0000-0000-0000-000000000063
+    to: 00000005-0000-0000-0000-000000000061
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000054
+    from: 00000005-0000-0000-0000-000000000061
+    to: 00000005-0000-0000-0000-000000000062
+    fromPort: default
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000001
+    from: 00000007-0000-0000-0000-000000000001
+    to: 00000007-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000002
+    from: 00000007-0000-0000-0000-000000000001
+    to: 00000007-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: filter
+  - id: e0000007-0000-0000-0000-000000000004
+    from: 00000007-0000-0000-0000-000000000004
+    to: 00000007-0000-0000-0000-000000000005
+    fromPort: passed
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000005
+    from: 00000007-0000-0000-0000-000000000004
+    to: 00000007-0000-0000-0000-000000000006
+    fromPort: failed
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000006
+    from: 00000007-0000-0000-0000-000000000005
+    to: 00000007-0000-0000-0000-000000000007
+    fromPort: default
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000007
+    from: 00000007-0000-0000-0000-000000000006
+    to: 00000007-0000-0000-0000-000000000007
+    fromPort: default
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000011
+    from: 00000007-0000-0000-0000-000000000011
+    to: 00000007-0000-0000-0000-000000000012
+    fromPort: default
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000012
+    from: 00000007-0000-0000-0000-000000000011
+    to: 00000007-0000-0000-0000-000000000014
+    fromPort: default
+    toPort: filter
+  - id: e0000007-0000-0000-0000-000000000014
+    from: 00000007-0000-0000-0000-000000000014
+    to: 00000007-0000-0000-0000-000000000015
+    fromPort: passed
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000015
+    from: 00000007-0000-0000-0000-000000000014
+    to: 00000007-0000-0000-0000-000000000016
+    fromPort: failed
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000016
+    from: 00000007-0000-0000-0000-000000000015
+    to: 00000007-0000-0000-0000-000000000017
+    fromPort: default
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000017
+    from: 00000007-0000-0000-0000-000000000016
+    to: 00000007-0000-0000-0000-000000000017
+    fromPort: default
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000021
+    from: 00000007-0000-0000-0000-000000000021
+    to: 00000007-0000-0000-0000-000000000022
+    fromPort: default
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000022
+    from: 00000007-0000-0000-0000-000000000021
+    to: 00000007-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: filter
+  - id: e0000007-0000-0000-0000-000000000024
+    from: 00000007-0000-0000-0000-000000000024
+    to: 00000007-0000-0000-0000-000000000025
+    fromPort: passed
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000025
+    from: 00000007-0000-0000-0000-000000000024
+    to: 00000007-0000-0000-0000-000000000026
+    fromPort: failed
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000026
+    from: 00000007-0000-0000-0000-000000000025
+    to: 00000007-0000-0000-0000-000000000027
+    fromPort: default
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000027
+    from: 00000007-0000-0000-0000-000000000026
+    to: 00000007-0000-0000-0000-000000000027
+    fromPort: default
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000030
+    from: 00000007-0000-0000-0000-000000000030
+    to: 00000007-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: default
+  - id: e0000007-0000-0000-0000-000000000031
+    from: 00000007-0000-0000-0000-000000000030
+    to: 00000007-0000-0000-0000-000000000033
+    fromPort: default
+    toPort: filter
+  - id: e0000007-0000-0000-0000-000000000033
+    from: 00000007-0000-0000-0000-000000000033
+    to: 00000007-0000-0000-0000-000000000034
+    fromPort: passed
+    toPort: supplier
+  - id: e0000007-0000-0000-0000-000000000034
+    from: 00000007-0000-0000-0000-000000000033
+    to: 00000007-0000-0000-0000-000000000034
+    fromPort: failed
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-00000000006a
+    from: 00000006-0000-0000-0000-000000000002
+    to: 00000006-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: requestor
+  - id: e0000006-0000-0000-0000-000000000061
+    from: 00000007-0000-0000-0000-000000000002
+    to: 00000006-0000-0000-0000-000000000021
+    fromPort: default
+    toPort: filter
+  - id: e0000006-0000-0000-0000-000000000063
+    from: 00000006-0000-0000-0000-000000000021
+    to: 00000006-0000-0000-0000-000000000022
+    fromPort: passed
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000064
+    from: 00000006-0000-0000-0000-000000000021
+    to: 00000006-0000-0000-0000-000000000023
+    fromPort: failed
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000065
+    from: 00000006-0000-0000-0000-000000000022
+    to: 00000006-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000066
+    from: 00000006-0000-0000-0000-000000000023
+    to: 00000006-0000-0000-0000-000000000024
+    fromPort: default
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000068
+    from: 00000007-0000-0000-0000-000000000012
+    to: 00000006-0000-0000-0000-000000000031
+    fromPort: default
+    toPort: filter
+  - id: e0000006-0000-0000-0000-000000000070
+    from: 00000006-0000-0000-0000-000000000031
+    to: 00000006-0000-0000-0000-000000000032
+    fromPort: passed
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000071
+    from: 00000006-0000-0000-0000-000000000031
+    to: 00000006-0000-0000-0000-000000000033
+    fromPort: failed
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000072
+    from: 00000006-0000-0000-0000-000000000032
+    to: 00000006-0000-0000-0000-000000000034
+    fromPort: default
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000073
+    from: 00000006-0000-0000-0000-000000000033
+    to: 00000006-0000-0000-0000-000000000034
+    fromPort: default
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000074
+    from: 00000006-0000-0000-0000-000000000024
+    to: 00000006-0000-0000-0000-000000000034
+    fromPort: merged
+    toPort: requestor
+  - id: e0000006-0000-0000-0000-000000000076
+    from: 00000007-0000-0000-0000-000000000022
+    to: 00000006-0000-0000-0000-000000000041
+    fromPort: default
+    toPort: filter
+  - id: e0000006-0000-0000-0000-000000000078
+    from: 00000006-0000-0000-0000-000000000041
+    to: 00000006-0000-0000-0000-000000000042
+    fromPort: passed
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000079
+    from: 00000006-0000-0000-0000-000000000041
+    to: 00000006-0000-0000-0000-000000000043
+    fromPort: failed
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000080
+    from: 00000006-0000-0000-0000-000000000042
+    to: 00000006-0000-0000-0000-000000000044
+    fromPort: default
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000081
+    from: 00000006-0000-0000-0000-000000000043
+    to: 00000006-0000-0000-0000-000000000044
+    fromPort: default
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000082
+    from: 00000006-0000-0000-0000-000000000034
+    to: 00000006-0000-0000-0000-000000000044
+    fromPort: merged
+    toPort: requestor
+  - id: e0000006-0000-0000-0000-000000000083
+    from: 00000007-0000-0000-0000-000000000031
+    to: 00000006-0000-0000-0000-000000000010
+    fromPort: default
+    toPort: filter
+  - id: e0000006-0000-0000-0000-000000000085
+    from: 00000006-0000-0000-0000-000000000010
+    to: 00000006-0000-0000-0000-000000000011
+    fromPort: passed
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000086
+    from: 00000006-0000-0000-0000-000000000010
+    to: 00000006-0000-0000-0000-000000000011
+    fromPort: failed
+    toPort: supplier
+  - id: e0000006-0000-0000-0000-000000000087
+    from: 00000006-0000-0000-0000-000000000044
+    to: 00000006-0000-0000-0000-000000000011
+    fromPort: merged
+    toPort: requestor
+  - id: e0000006-0000-0000-0000-000000000088
+    from: 00000006-0000-0000-0000-000000000011
+    to: 00000006-0000-0000-0000-000000000003
+    fromPort: merged
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000091
+    from: 00000006-0000-0000-0000-000000000003
+    to: 00000006-0000-0000-0000-000000000006
+    fromPort: default
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000089
+    from: 00000006-0000-0000-0000-000000000006
+    to: 00000006-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000090
+    from: 00000006-0000-0000-0000-000000000004
+    to: 00000006-0000-0000-0000-000000000005
+    fromPort: default
+    toPort: default
 - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
   name: main
   nodes:
@@ -431,8 +1610,9 @@ graphs:
     action: ShapefileReader
     with:
       dataset: |
-        env.get("roofFilterShapefilePath") ?? ""
+        env.get("roofFilterShapefilePath")
       force2D: true
+      allowEmptyPath: true
   - id: 00000004-0000-0000-0000-000000000002
     name: RoofFilterReprojector
     type: action
@@ -443,7 +1623,7 @@ graphs:
       targetEpsgCode: |
         env.get("prcs")
   - id: 00000004-0000-0000-0000-000000000003
-    name: RoofSpatialFilter
+    name: AreaSpatialFilter
     type: action
     action: SpatialFilter
     with:
@@ -591,6 +1771,20 @@ graphs:
         expr: env.get("__value").normalY
       - attribute: normalZ
         expr: env.get("__value").normalZ
+      - attribute: featureType
+        expr: env.get("__value").featureType
+      - attribute: azimuth
+        expr: env.get("__value").azimuth
+      - attribute: dirMatch1
+        expr: env.get("__value").dirMatch1
+      - attribute: dirMatch2
+        expr: env.get("__value").dirMatch2
+      - attribute: dirMatch3
+        expr: env.get("__value").dirMatch3
+      - attribute: _grid_col
+        expr: env.get("__value")._grid_col
+      - attribute: _grid_row
+        expr: env.get("__value")._grid_row
   - id: 00000001-0000-0000-0000-000000000010
     name: RayIntersectorShadow
     type: action
@@ -730,6 +1924,9 @@ graphs:
       - cellId
       - surfaceId
       - gmlId
+      - featureType
+      - _grid_col
+      - _grid_row
       calculations:
       - newAttribute: radiationSunnySum
         expr: |
@@ -770,6 +1967,9 @@ graphs:
       - cellId
       - surfaceId
       - gmlId
+      - featureType
+      - _grid_col
+      - _grid_row
       calculations:
       - newAttribute: totalSolarRadiation
         expr: |
@@ -794,6 +1994,12 @@ graphs:
         expr: |
           let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
           dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+      - newAttribute: dirMatchSum1
+        expr: env.get("__value")["dirMatch1"] ?? 0
+      - newAttribute: dirMatchSum2
+        expr: env.get("__value")["dirMatch2"] ?? 0
+      - newAttribute: dirMatchSum3
+        expr: env.get("__value")["dirMatch3"] ?? 0
   - id: 00000001-0000-0000-0000-000000000075
     name: SolarAttributeMerger
     type: action
@@ -1118,6 +2324,12 @@ graphs:
         expr: |
           let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
           dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+      - newAttribute: dirMatchSum1
+        expr: env.get("__value")["dirMatchSum1"] ?? 0
+      - newAttribute: dirMatchSum2
+        expr: env.get("__value")["dirMatchSum2"] ?? 0
+      - newAttribute: dirMatchSum3
+        expr: env.get("__value")["dirMatchSum3"] ?? 0
   - id: 00000001-0000-0000-0000-0000000000c5
     name: BuildingPotentialMapper
     type: action
@@ -1381,7 +2593,7 @@ graphs:
     action: PLATEAU4.SolarCityGmlAttributeInserter
     with:
       outputDir: |
-        env.get("workerArtifactPath")
+        file::join_path(env.get("workerArtifactPath"), "citygml")
       pathAttribute: path
       gmlIdAttribute: gmlId
       measurements:
@@ -1402,6 +2614,244 @@ graphs:
     with:
       output: |
         file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
+  - id: 00000005-0000-0000-0000-000000000001
+    name: BuildingFeatureFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:Building";
+        outputPort: default
+  - id: 00000005-0000-0000-0000-000000000002
+    name: BuildingAttrExtractor
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: gmlId
+        expr: env.get("__value")["gmlId"]
+      - attribute: bldgHeight
+        expr: |
+          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
+          cga["bldg:measuredHeight"] ?? -1.0
+      - attribute: structureType
+        expr: |
+          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
+          let detail = cga["uro:BuildingDetailAttribute"] ?? [];
+          if detail.len() > 0 { detail[0]["uro:buildingStructureType_code"] ?? -1 } else { -1 }
+      - attribute: floodDepth
+        expr: |
+          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
+          let max_d = 0.0;
+          for list in [cga["uro:RiverFloodingRiskAttribute"] ?? [], cga["uro:InlandFloodingRiskAttribute"] ?? [], cga["uro:HighTideRiskAttribute"] ?? []] {
+            for item in list { let d = item["uro:depth"] ?? 0.0; if d > max_d { max_d = d; } }
+          }
+          max_d
+      - attribute: tsunamiHeight
+        expr: |
+          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
+          let list = cga["uro:TsunamiRiskAttribute"] ?? [];
+          let max_d = 0.0;
+          for item in list { let d = item["uro:depth"] ?? 0.0; if d > max_d { max_d = d; } }
+          max_d
+      - attribute: landslideFlag
+        expr: |
+          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
+          let v = cga["uro:LandSlideRiskAttribute"] ?? ();
+          v != ()
+      - attribute: floorCount
+        expr: |
+          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
+          cga["bldg:storeysAboveGround"] ?? -1
+  - id: 00000002-0000-0000-0000-000000000013
+    name: DEMConsiderFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("considerDEM") == true;
+        outputPort: default
+  - id: 00000002-0000-0000-0000-000000000007
+    name: DEMGeometrySplitter
+    type: action
+    action: GeometrySplitter
+  - id: 00000002-0000-0000-0000-000000000008
+    name: DEMFeatureTypeAssigner
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: featureType
+        method: create
+        value: |
+          "dem:Triangle"
+      - attribute: gmlId
+        method: create
+        value: |
+          "land_" + to_string(env.get("__value")["_relief_index"] ?? env.get("__value")["_split_index"] ?? 0)
+  - id: 00000002-0000-0000-0000-000000000009
+    name: DEMTriangleReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: |
+        env.get("prcs")
+  - id: 00000005-0000-0000-0000-000000000020
+    name: AzimuthDirectionFlags
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: dirMatch1
+        method: create
+        value: |
+          let dir = env.get("restrictDirection1") ?? -1.0;
+          if dir < 0.0 { 0 } else {
+            let pne = env.get("__value")["azimuth"] ?? 0.0;
+            let geo = (180.0 - pne + 360.0) % 360.0;
+            let diff = (geo - dir + 360.0) % 360.0;
+            let d = if diff > 180.0 { 360.0 - diff } else { diff };
+            if d <= 11.25 { 1 } else { 0 }
+          }
+      - attribute: dirMatch2
+        method: create
+        value: |
+          let dir = env.get("restrictDirection2") ?? -1.0;
+          if dir < 0.0 { 0 } else {
+            let pne = env.get("__value")["azimuth"] ?? 0.0;
+            let geo = (180.0 - pne + 360.0) % 360.0;
+            let diff = (geo - dir + 360.0) % 360.0;
+            let d = if diff > 180.0 { 360.0 - diff } else { diff };
+            if d <= 11.25 { 1 } else { 0 }
+          }
+      - attribute: dirMatch3
+        method: create
+        value: |
+          let dir = env.get("restrictDirection3") ?? -1.0;
+          if dir < 0.0 { 0 } else {
+            let pne = env.get("__value")["azimuth"] ?? 0.0;
+            let geo = (180.0 - pne + 360.0) % 360.0;
+            let diff = (geo - dir + 360.0) % 360.0;
+            let d = if diff > 180.0 { 360.0 - diff } else { diff };
+            if d <= 11.25 { 1 } else { 0 }
+          }
+  - id: 00000002-0000-0000-0000-00000000000b
+    name: FeatureTypeRouter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:RoofSurface";
+        outputPort: bldg
+      - expr: |
+          env.get("__value")["featureType"] == "dem:Triangle";
+        outputPort: dem
+  - id: 00000002-0000-0000-0000-00000000000a
+    name: DEMGridDivider
+    type: action
+    action: GridDivider
+    with:
+      unitSquareSize: 5.0
+      keepSquareOnly: false
+  - id: 00000002-0000-0000-0000-00000000000c
+    name: TotalRadiationTypeRouter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:RoofSurface";
+        outputPort: bldg
+      - expr: |
+          env.get("__value")["featureType"] == "dem:Triangle";
+        outputPort: dem
+  - id: 00000002-0000-0000-0000-00000000000d
+    name: DEMGridKeyAssigner
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _dem_grid_key
+        method: create
+        value: |
+          to_string(env.get("__value")["_grid_col"] ?? 0) + "_" + to_string(env.get("__value")["_grid_row"] ?? 0)
+  - id: 00000002-0000-0000-0000-00000000000e
+    name: DEMCellRadiationMerger
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+      - _dem_grid_key
+      - featureType
+      calculations:
+      - newAttribute: totalSolarRadiation
+        expr: |
+          env.get("__value")["totalSolarRadiation"]
+      - newAttribute: totalSolarPower
+        expr: |
+          env.get("__value")["totalSolarPower"]
+  - id: 00000002-0000-0000-0000-00000000000f
+    name: GridCellTypeRouter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:RoofSurface";
+        outputPort: bldg
+      - expr: |
+          env.get("__value")["featureType"] == "dem:Triangle";
+        outputPort: dem
+  - id: 00000002-0000-0000-0000-000000000010
+    name: DEMGridKeyAssigner2
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: _dem_grid_key
+        method: create
+        value: |
+          to_string(env.get("__value")["_grid_col"] ?? 0) + "_" + to_string(env.get("__value")["_grid_row"] ?? 0)
+  - id: 00000002-0000-0000-0000-000000000011
+    name: DEMColorTypeRouter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:RoofSurface";
+        outputPort: bldg
+      - expr: |
+          env.get("__value")["featureType"] == "dem:Triangle";
+        outputPort: dem
+  - id: 00000002-0000-0000-0000-000000000012
+    name: DEMCellGeometryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttribute:
+      - _dem_grid_key
+      supplierAttribute:
+      - _dem_grid_key
+  - id: 00000006-0000-0000-0000-000000000001
+    name: LandAreaSeparator
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["featureType"] == "dem:Triangle";
+        outputPort: land
+      - expr: |
+          env.get("__value")["featureType"] == "bldg:RoofSurface";
+        outputPort: default
+  - id: 00000008-0000-0000-0000-000000000001
+    name: AdequatePlaceJudgment
+    type: subGraph
+    subGraphId: f1e2d3c4-b5a6-4798-8c9d-0e1f2a3b4c5d
   edges:
   - id: e0000001-0000-0000-0000-000000000001
     from: 00000001-0000-0000-0000-000000000001
@@ -1448,29 +2898,54 @@ graphs:
     to: 00000004-0000-0000-0000-000000000003
     fromPort: default
     toPort: filter
-  - id: e0000004-0000-0000-0000-000000000003
+  - id: e0000005-0000-0000-0000-000000000010
     from: 00000001-0000-0000-0000-000000000005
-    to: 00000004-0000-0000-0000-000000000003
-    fromPort: default
-    toPort: candidate
-  - id: e0000001-0000-0000-0000-000000000005
-    from: 00000004-0000-0000-0000-000000000003
     to: 00000001-0000-0000-0000-000000000006
-    fromPort: passed
-    toPort: default
-  - id: e0000001-0000-0000-0000-000000000006
-    from: 00000001-0000-0000-0000-000000000006
-    to: 00000001-0000-0000-0000-000000000008
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-000000000008
-    from: 00000001-0000-0000-0000-000000000008
+  - id: e0000005-0000-0000-0000-000000000012
+    from: 00000001-0000-0000-0000-000000000006
     to: 00000001-0000-0000-0000-00000000000a
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-000000000009
+  - id: e0000005-0000-0000-0000-000000000013
     from: 00000001-0000-0000-0000-00000000000a
+    to: 00000004-0000-0000-0000-000000000003
+    fromPort: default
+    toPort: candidate
+  - id: e0000005-0000-0000-0000-000000000011
+    from: 00000001-0000-0000-0000-000000000006
+    to: 00000004-0000-0000-0000-000000000004
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000014
+    from: 00000004-0000-0000-0000-000000000003
+    to: 00000001-0000-0000-0000-000000000008
+    fromPort: passed
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000006
+    from: 00000001-0000-0000-0000-000000000008
+    to: 00000005-0000-0000-0000-000000000020
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000008
+    from: 00000005-0000-0000-0000-000000000020
+    to: 00000002-0000-0000-0000-00000000000b
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000009
+    from: 00000002-0000-0000-0000-00000000000b
     to: 00000001-0000-0000-0000-000000000009
+    fromPort: bldg
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000000a
+    from: 00000002-0000-0000-0000-00000000000b
+    to: 00000002-0000-0000-0000-00000000000a
+    fromPort: dem
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000000b
+    from: 00000002-0000-0000-0000-00000000000a
+    to: 00000001-0000-0000-0000-000000000029
     fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-00000000000a
@@ -1502,11 +2977,6 @@ graphs:
     from: 00000001-0000-0000-0000-000000000031
     to: 00000001-0000-0000-0000-000000000011
     fromPort: default
-    toPort: default
-  - id: e0000001-0000-0000-0000-00000000000f
-    from: 00000004-0000-0000-0000-000000000003
-    to: 00000004-0000-0000-0000-000000000004
-    fromPort: passed
     toPort: default
   - id: e0000004-0000-0000-0000-000000000004
     from: 00000004-0000-0000-0000-000000000004
@@ -1603,18 +3073,48 @@ graphs:
     to: 00000001-0000-0000-0000-000000000016
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-000000000071
+  - id: e0000006-0000-0000-0000-000000000050
     from: 00000001-0000-0000-0000-000000000053
+    to: 00000006-0000-0000-0000-000000000001
+    fromPort: default
+    toPort: default
+  - id: e0000001-0000-0000-0000-000000000071
+    from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-000000000071
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-000000000072
+  - id: e0000002-0000-0000-0000-000000000011
+    from: 00000006-0000-0000-0000-000000000001
+    to: 00000001-0000-0000-0000-000000000071
+    fromPort: land
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000000c
     from: 00000001-0000-0000-0000-000000000071
+    to: 00000002-0000-0000-0000-00000000000c
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000000d
+    from: 00000002-0000-0000-0000-00000000000c
+    to: 00000001-0000-0000-0000-000000000070
+    fromPort: bldg
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000000e
+    from: 00000002-0000-0000-0000-00000000000c
+    to: 00000002-0000-0000-0000-00000000000d
+    fromPort: dem
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000000f
+    from: 00000002-0000-0000-0000-00000000000d
+    to: 00000002-0000-0000-0000-00000000000e
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000010
+    from: 00000002-0000-0000-0000-00000000000e
     to: 00000001-0000-0000-0000-000000000070
     fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-000000000073
-    from: 00000001-0000-0000-0000-000000000053
+    from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-000000000074
     fromPort: default
     toPort: default
@@ -1643,16 +3143,46 @@ graphs:
     to: 00000001-0000-0000-0000-000000000060
     fromPort: default
     toPort: default
-  - id: e0000001-0000-0000-0000-000000000068
+  - id: e0000002-0000-0000-0000-000000000012
     from: 00000001-0000-0000-0000-000000000029
+    to: 00000002-0000-0000-0000-00000000000f
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000013
+    from: 00000002-0000-0000-0000-00000000000f
     to: 00000001-0000-0000-0000-000000000068
+    fromPort: bldg
+    toPort: requestor
+  - id: e0000002-0000-0000-0000-000000000014
+    from: 00000002-0000-0000-0000-00000000000f
+    to: 00000002-0000-0000-0000-000000000010
+    fromPort: dem
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000015
+    from: 00000002-0000-0000-0000-000000000010
+    to: 00000002-0000-0000-0000-000000000012
     fromPort: default
     toPort: requestor
-  - id: e0000001-0000-0000-0000-000000000069
+  - id: e0000002-0000-0000-0000-000000000016
     from: 00000001-0000-0000-0000-000000000060
-    to: 00000001-0000-0000-0000-000000000068
+    to: 00000002-0000-0000-0000-000000000011
     fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-000000000017
+    from: 00000002-0000-0000-0000-000000000011
+    to: 00000001-0000-0000-0000-000000000068
+    fromPort: bldg
     toPort: supplier
+  - id: e0000002-0000-0000-0000-000000000018
+    from: 00000002-0000-0000-0000-000000000011
+    to: 00000002-0000-0000-0000-000000000012
+    fromPort: dem
+    toPort: supplier
+  - id: e0000002-0000-0000-0000-000000000019
+    from: 00000002-0000-0000-0000-000000000012
+    to: 00000001-0000-0000-0000-000000000069
+    fromPort: merged
+    toPort: default
   - id: e0000001-0000-0000-0000-000000000060
     from: 00000001-0000-0000-0000-000000000068
     to: 00000001-0000-0000-0000-000000000069
@@ -1709,7 +3239,7 @@ graphs:
     fromPort: default
     toPort: default
   - id: e0000001-0000-0000-0000-0000000000c0
-    from: 00000001-0000-0000-0000-000000000053
+    from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-0000000000c0
     fromPort: default
     toPort: default
@@ -1898,3 +3428,58 @@ graphs:
     to: 00000001-0000-0000-0000-0000000000e1
     fromPort: default
     toPort: default
+  - id: e0000005-0000-0000-0000-000000000001
+    from: 00000001-0000-0000-0000-00000000003a
+    to: 00000005-0000-0000-0000-000000000001
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000002
+    from: 00000005-0000-0000-0000-000000000001
+    to: 00000005-0000-0000-0000-000000000002
+    fromPort: default
+    toPort: default
+  - id: e0000005-0000-0000-0000-000000000003
+    from: 00000005-0000-0000-0000-000000000002
+    to: 00000008-0000-0000-0000-000000000001
+    fromPort: default
+    toPort: buildingAttr
+  - id: e0000006-0000-0000-0000-000000000001
+    from: 00000002-0000-0000-0000-000000000006
+    to: 00000002-0000-0000-0000-000000000013
+    fromPort: default
+    toPort: default
+  - id: e0000002-0000-0000-0000-00000000001a
+    from: 00000002-0000-0000-0000-000000000013
+    to: 00000002-0000-0000-0000-000000000007
+    fromPort: default
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000002
+    from: 00000002-0000-0000-0000-000000000007
+    to: 00000002-0000-0000-0000-000000000008
+    fromPort: default
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000003
+    from: 00000002-0000-0000-0000-000000000008
+    to: 00000002-0000-0000-0000-000000000009
+    fromPort: default
+    toPort: default
+  - id: e0000006-0000-0000-0000-000000000004
+    from: 00000002-0000-0000-0000-000000000009
+    to: 00000004-0000-0000-0000-000000000003
+    fromPort: default
+    toPort: candidate
+  - id: e0000005-0000-0000-0000-000000000040
+    from: 00000001-0000-0000-0000-0000000000c0
+    to: 00000008-0000-0000-0000-000000000001
+    fromPort: default
+    toPort: buildingRadiation
+  - id: e0000006-0000-0000-0000-000000000051
+    from: 00000006-0000-0000-0000-000000000001
+    to: 00000008-0000-0000-0000-000000000001
+    fromPort: land
+    toPort: landRadiation
+  - id: e0000006-0000-0000-0000-000000000060
+    from: 00000002-0000-0000-0000-000000000009
+    to: 00000008-0000-0000-0000-000000000001
+    fromPort: default
+    toPort: demTriangle

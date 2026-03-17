@@ -2,6 +2,7 @@ pub(crate) mod aggregator;
 pub(crate) mod bulk_array_joiner;
 pub(crate) mod bulk_renamer;
 pub(crate) mod conversion_table;
+pub(crate) mod datetime_converter;
 pub(crate) mod duplicate_filter;
 pub(crate) mod errors;
 pub(crate) mod file_path_info_extractor;

@@ -47,6 +47,10 @@ pub(super) enum AttributeProcessorError {
     NullAttributeMapperFactory(String),
     #[error("NullAttributeMapper error: {0}")]
     NullAttributeMapper(String),
+    #[error("Attribute DateTimeConverterFactory error: {0}")]
+    DateTimeConverterFactory(String),
+    #[error("Attribute DateTimeConverter error: {0}")]
+    DateTimeConverter(String),
 }
 
 #[allow(dead_code)]
