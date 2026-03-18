@@ -18,6 +18,7 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     if (value === "") {
       onUpdate({
         ...variable,
+        defaultValue: null,
       });
       return;
     }
@@ -107,7 +108,7 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         <Input
           id="default-value"
           type="number"
-          value={variable.defaultValue || ""}
+          value={variable.defaultValue ?? ""}
           onChange={(e) => handleDefaultValueChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={(e) => e.stopPropagation()}

@@ -20,7 +20,7 @@ export const DefaultEditor: React.FC<Props> = ({
   const handleDefaultValueChange = (value: string) => {
     onUpdate({
       ...variable,
-      defaultValue: value,
+      defaultValue: value === "" ? null : value,
     });
   };
 
@@ -50,7 +50,7 @@ export const DefaultEditor: React.FC<Props> = ({
         </div>
         <Input
           id="default-value"
-          value={variable.defaultValue || ""}
+          value={variable.defaultValue ?? ""}
           onChange={(e) => handleDefaultValueChange(e.target.value)}
           placeholder={t("Enter default value")}
           className="mt-1"
