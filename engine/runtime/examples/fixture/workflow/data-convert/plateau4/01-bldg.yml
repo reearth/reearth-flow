@@ -180,19 +180,6 @@ graphs:
           let attributes = env.get("__value").cityGmlAttributes;
           let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
           building_id_attributes["uro:city"] ?? env.get("__value").cityName
-  - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
-    name: CityCodeBoundaryFilter
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          let code = env.get("__value").cityCode;
-          let base = env.get("__value").baseCityCode;
-          if code == base { return true; }
-          let parents = ["01100","04100","11100","12100","13100","14100","14130","14150","15100","22100","22130","23100","26100","27100","27140","28100","33100","34100","40100","40130","43100"];
-          base in parents
-        outputPort: default
   - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
     name: AttributeConversionTable
     type: action
@@ -409,6 +396,17 @@ graphs:
         conversionTableKeys:
         - ward_code
         conversionTableTo: ward_name_en
+  - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    name: CityCodeBoundaryFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          let code = env.get("__value").cityCode;
+          let base = env.get("__value").baseCityCode;
+          code == base || env.get("__value").cityNameEn != ()
+        outputPort: default
   - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
     name: FeatureSorter
     type: action
@@ -941,16 +939,16 @@ graphs:
     toPort: default
   - id: 29479f80-4753-400b-9e05-32c69a9a5037
     from: 33e32a91-5ade-4265-8665-b061f552839c
-    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
-    fromPort: default
-    toPort: default
-  - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
-    from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     to: ae9c558d-ce05-4b40-ae04-a4477d96db5a
     fromPort: default
     toPort: default
-  - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
+  - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     from: ae9c558d-ce05-4b40-ae04-a4477d96db5a
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    fromPort: default
+    toPort: default
+  - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
+    from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
     fromPort: default
     toPort: default
