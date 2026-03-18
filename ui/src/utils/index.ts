@@ -1,5 +1,6 @@
 export * from "./fullscreen";
 export * from "./date";
+export * from "./dateTime";
 export * from "./generateUUID";
 export * from "./cancellableDebounce";
 export * from "./isDefined";
