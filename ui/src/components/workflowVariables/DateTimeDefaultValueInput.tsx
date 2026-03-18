@@ -5,7 +5,7 @@ import { formatDateOnly } from "@flow/utils";
 type Props = {
   id?: string;
   variable: Pick<WorkflowVariable, "defaultValue" | "config">;
-  onDefaultValueChange: (newValue: any) => void;
+  onDefaultValueChange: (newValue: string | null) => void;
 };
 
 export const DateTimeDefaultValueInput: React.FC<Props> = ({
@@ -21,8 +21,6 @@ export const DateTimeDefaultValueInput: React.FC<Props> = ({
     if (!value) return "";
 
     try {
-      const allowTime = config.allowTime !== false; // Default to true
-
       // If it's already in the correct format, return as-is
       if (typeof value === "string") {
         if (allowTime && value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)) {
@@ -79,21 +77,24 @@ export const DateTimeDefaultValueInput: React.FC<Props> = ({
   };
 
   // Format min/max values for datetime-local inputs (needs YYYY-MM-DDTHH:MM format)
-  const formatDateTimeMinMax = (value: string | undefined): string => {
+  const formatDateTimeMinMax = (
+    value: string | undefined,
+    isMax = false,
+  ): string => {
     if (!value) return "";
+    const time = isMax ? "T23:59" : "T00:00";
     try {
       const date = new Date(value);
       if (!isNaN(date.getTime())) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
-        // For min/max on datetime-local, we use 00:00 for min and 23:59 for max to be inclusive
-        return `${year}-${month}-${day}T00:00`;
+        return `${year}-${month}-${day}${time}`;
       }
     } catch {
       // If parsing fails, return empty string
     }
-    return value?.slice(0, 10) ? `${value.slice(0, 10)}T00:00` : "";
+    return value?.slice(0, 10) ? `${value.slice(0, 10)}${time}` : "";
   };
 
   return (
@@ -115,7 +116,7 @@ export const DateTimeDefaultValueInput: React.FC<Props> = ({
       max={
         allowTime
           ? config.maxDate
-            ? formatDateTimeMinMax(config.maxDate)
+            ? formatDateTimeMinMax(config.maxDate, true)
             : undefined
           : config.maxDate
             ? formatDateOnly(config.maxDate)
