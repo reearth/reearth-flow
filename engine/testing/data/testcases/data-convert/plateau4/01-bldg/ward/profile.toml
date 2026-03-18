@@ -1,0 +1,15 @@
+# for test that gml containing other districts should be properly filtered (non-政令指定都市 case)
+# also for test generic lod1 bldg output
+
+citygml_zip_name = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg.zip"
+
+[convs.cesium_attributes.lod1]
+path = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod1"
+truth_path = "cesium_lod1_truth.json"
+generate_truth = false
+
+[convs.cesium_attributes.lod1.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.cesium_lod1]
+path = "cesium_lod1_truth.json"
