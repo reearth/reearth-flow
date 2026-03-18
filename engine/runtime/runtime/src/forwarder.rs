@@ -3,8 +3,14 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use crossbeam::channel::Sender;
+
+/// Timeout for individual channel send operations.
+/// If a downstream channel stays full for this long, the send fails rather
+/// than blocking forever (which previously caused 6-hour batch timeouts).
+const CHANNEL_SEND_TIMEOUT: Duration = Duration::from_secs(300);
 
 use crate::cache::executor_cache_subdir;
 use reearth_flow_types::Feature;
@@ -125,10 +131,12 @@ impl SenderWithPortMapping {
             for port in ports {
                 let mut ctx = ctx.clone();
                 ctx.port = port.clone();
-                self.sender.send(ExecutorOperation::Op { ctx })?;
+                self.sender
+                    .send_timeout(ExecutorOperation::Op { ctx }, CHANNEL_SEND_TIMEOUT)?;
             }
             ctx.port = last_port.clone();
-            self.sender.send(ExecutorOperation::Op { ctx })?;
+            self.sender
+                .send_timeout(ExecutorOperation::Op { ctx }, CHANNEL_SEND_TIMEOUT)?;
         }
         Ok(())
     }
@@ -145,17 +153,23 @@ impl SenderWithPortMapping {
 
         if let Some((last_port, rest_ports)) = ports.split_last() {
             for p in rest_ports {
-                self.sender.send(ExecutorOperation::FileBackedOp {
-                    path: path.to_path_buf(),
-                    port: p.clone(),
-                    context: context.clone(),
-                })?;
+                self.sender.send_timeout(
+                    ExecutorOperation::FileBackedOp {
+                        path: path.to_path_buf(),
+                        port: p.clone(),
+                        context: context.clone(),
+                    },
+                    CHANNEL_SEND_TIMEOUT,
+                )?;
             }
-            self.sender.send(ExecutorOperation::FileBackedOp {
-                path: path.to_path_buf(),
-                port: last_port.clone(),
-                context: context.clone(),
-            })?;
+            self.sender.send_timeout(
+                ExecutorOperation::FileBackedOp {
+                    path: path.to_path_buf(),
+                    port: last_port.clone(),
+                    context: context.clone(),
+                },
+                CHANNEL_SEND_TIMEOUT,
+            )?;
         }
         Ok(())
     }
@@ -258,9 +272,11 @@ impl ChannelManager {
     pub fn send_non_op(&self, op: ExecutorOperation) -> Result<(), ExecutionError> {
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
-                sender.sender.send(op.clone())?;
+                sender
+                    .sender
+                    .send_timeout(op.clone(), CHANNEL_SEND_TIMEOUT)?;
             }
-            last_sender.sender.send(op)?;
+            last_sender.sender.send_timeout(op, CHANNEL_SEND_TIMEOUT)?;
         }
         Ok(())
     }
@@ -273,23 +289,56 @@ impl ChannelManager {
             .cloned()
             .collect::<Vec<_>>();
         let node_handle = self.owner.clone();
-        self.runtime.block_on(async {
-            let futures = all_writers.iter().map(|writer| {
-                let writer = writer.clone();
-                let node = node_handle.clone();
-                async move {
-                    let result = writer.flush().await;
-                    if let Err(e) = result {
-                        self.event_hub.error_log_with_node_handle(
-                            None,
-                            node,
-                            format!("Failed to flush feature writer: {e}"),
-                        );
-                    }
-                }
-            });
-            futures::future::join_all(futures).await;
-        });
+        // Flush writers on a dedicated thread to avoid blocking the tokio
+        // runtime (concurrent block_on calls from many processor nodes can
+        // starve the timer driver, preventing tokio::time::timeout from
+        // ever firing).
+        let runtime = Arc::clone(&self.runtime);
+        let event_hub = self.event_hub.clone();
+        let (done_tx, done_rx) = crossbeam::channel::bounded::<()>(1);
+        std::thread::Builder::new()
+            .name("flush-writers".to_string())
+            .spawn(move || {
+                runtime.block_on(async {
+                    let futures = all_writers.iter().map(|writer| {
+                        let writer = writer.clone();
+                        let node = node_handle.clone();
+                        let event_hub = event_hub.clone();
+                        async move {
+                            let result =
+                                tokio::time::timeout(CHANNEL_SEND_TIMEOUT, writer.flush()).await;
+                            match result {
+                                Ok(Err(e)) => {
+                                    event_hub.error_log_with_node_handle(
+                                        None,
+                                        node,
+                                        format!("Failed to flush feature writer: {e}"),
+                                    );
+                                }
+                                Err(_elapsed) => {
+                                    tracing::warn!(
+                                        node_id = ?node.id,
+                                        "Feature writer flush timed out after {:?}",
+                                        CHANNEL_SEND_TIMEOUT,
+                                    );
+                                }
+                                Ok(Ok(())) => {}
+                            }
+                        }
+                    });
+                    futures::future::join_all(futures).await;
+                });
+                let _ = done_tx.send(());
+            })
+            .map_err(|e| ExecutionError::CannotSpawnWorkerThread(e))?;
+        // Sync wait with a hard OS-level timeout — no dependency on tokio.
+        if done_rx.recv_timeout(CHANNEL_SEND_TIMEOUT).is_err() {
+            tracing::warn!(
+                node_id = ?self.owner.id,
+                "send_terminate: writer flush timed out after {:?}, proceeding",
+                CHANNEL_SEND_TIMEOUT,
+            );
+        }
         self.send_non_op(ExecutorOperation::Terminate { ctx })?;
         self.event_hub.info_log_with_node_handle(
             None,

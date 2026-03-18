@@ -115,6 +115,19 @@ impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
     }
 }
 
+impl<T> From<crossbeam::channel::SendTimeoutError<T>> for ExecutionError {
+    fn from(e: crossbeam::channel::SendTimeoutError<T>) -> Self {
+        match e {
+            crossbeam::channel::SendTimeoutError::Timeout(_) => {
+                ExecutionError::CannotSendToChannel("SendTimeoutError: channel full".to_string())
+            }
+            crossbeam::channel::SendTimeoutError::Disconnected(_) => {
+                ExecutionError::CannotSendToChannel("SendTimeoutError: disconnected".to_string())
+            }
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 #[error("Cannot convert f64 to json: {0}")]
 pub struct CannotConvertF64ToJson(pub f64);
