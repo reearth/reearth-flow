@@ -98,6 +98,10 @@ graphs:
               featureTo: "cityNameEn"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "ward_name_en"
+            - featureFroms: ["cityCode"]
+              featureTo: "__wardParentCode"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
 
       - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
         name: CityCodeBoundaryFilter
@@ -108,7 +112,7 @@ graphs:
             - expr: |
                 let code = env.get("__value").cityCode;
                 let base = env.get("__value").baseCityCode;
-                code == base || env.get("__value").cityNameEn != ()
+                code == base || env.get("__value").__wardParentCode == base
               outputPort: default
 
       - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
