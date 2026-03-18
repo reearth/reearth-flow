@@ -24,7 +24,7 @@ export const consolidateWorkflows = (
   const withVariables = Object.fromEntries(
     workflowVariables.map((v) => [
       v.name,
-      v.defaultValue !== "" ? v.defaultValue : null,
+      v.defaultValue === "" ? null : v.defaultValue, // Convert empty string defaults to null for engine compatibility
     ]),
   );
 
