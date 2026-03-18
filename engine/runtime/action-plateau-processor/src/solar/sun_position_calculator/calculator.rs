@@ -233,9 +233,8 @@ mod tests {
 
     #[test]
     fn test_early_morning_utc_crossing_midnight() {
-        // 6:00 JST = 21:00 UTC (previous day) — this crosses midnight when adding timezone offset.
-        // The sun at 6 AM in summer Tokyo should be in the East (azimuth > 180 in 0=South convention).
-        let early_morning = Utc.with_ymd_and_hms(2024, 6, 21, 21, 0, 0).unwrap();
+        // 6:00 JST on June 21 = 21:00 UTC on June 20
+        let early_morning = Utc.with_ymd_and_hms(2024, 6, 20, 21, 0, 0).unwrap();
         let pos = calculate_solar_position(35.6762, 139.6503, early_morning, 135.0);
 
         assert!(
@@ -243,26 +242,22 @@ mod tests {
             "Sun should be above horizon at 6 AM JST in summer, got {}",
             pos.altitude
         );
-        // In 0=South clockwise convention: East = 270°, so morning azimuth should be > 180°
         assert!(
             pos.azimuth > 180.0,
-            "6 AM azimuth {} should be > 180 (eastern half in 0=South convention)",
+            "6 AM azimuth {} should be > 180 (eastern half)",
             pos.azimuth
         );
 
-        // Compare with symmetric afternoon time: 18:00 JST = 09:00 UTC
+        // 18:00 JST on June 21 = 09:00 UTC on June 21
         let late_afternoon = Utc.with_ymd_and_hms(2024, 6, 21, 9, 0, 0).unwrap();
         let afternoon_pos = calculate_solar_position(35.6762, 139.6503, late_afternoon, 135.0);
 
-        // Altitudes should be roughly similar (not exactly symmetric because
-        // solar noon differs from clock noon due to longitude correction and equation of time)
         assert!(
             (pos.altitude - afternoon_pos.altitude).abs() < 10.0,
             "Morning {} and afternoon {} altitudes should be roughly similar",
             pos.altitude,
             afternoon_pos.altitude
         );
-        // Azimuths should be on opposite sides: morning > 180, afternoon < 180
         assert!(
             afternoon_pos.azimuth < 180.0,
             "6 PM azimuth {} should be < 180 (western half)",

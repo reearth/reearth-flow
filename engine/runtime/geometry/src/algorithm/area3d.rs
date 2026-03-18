@@ -32,16 +32,7 @@ where
         return T::zero();
     }
 
-    // Use a reasonable shift for the line-string coords
-    // to avoid numerical-errors when summing the
-    // determinants.
-    //
-    // Note: we can't use the `Centroid` trait as it
-    // requires `T: Float` and in fact computes area in the
-    // implementation. Another option is to use the average
-    // of the coordinates, but it is not fool-proof to
-    // divide by the length of the linestring (eg. a long
-    // line-string with T = u8)
+    // Shift coords to reduce numerical error when summing cross products.
     let shift = linestring.0[0];
 
     let mut sum_xy = T::zero();
@@ -57,6 +48,8 @@ where
     }
 
     let magnitude = (sum_xy * sum_xy + sum_yz * sum_yz + sum_zx * sum_zx).sqrt();
+    // Sign is determined by the Z-component (sum_xy) of the cross-product vector,
+    // i.e. the winding as seen from the +Z direction.
     if sum_xy < T::zero() {
         -magnitude
     } else {
@@ -225,6 +218,7 @@ where
         }
         let magnitude = (sum_xy * sum_xy + sum_yz * sum_yz + sum_zx * sum_zx).sqrt();
         let two = T::one() + T::one();
+        // Sign determined by Z-component of cross-product vector (winding w.r.t. +Z).
         if sum_xy < T::zero() {
             -magnitude / two
         } else {
@@ -458,11 +452,7 @@ mod tests {
 
     #[test]
     fn test_tilted_polygon_area_orientation_independent() {
-        // A 1m x 1m grid cell on a surface tilted ~23° should have the same
-        // 3D area regardless of whether the surface faces north or south.
-        // Expected 3D area ≈ 1/cos(23°) ≈ 1.086 for a 1m² projected cell.
-
-        // North-facing cell (from actual solar workflow data, shifted to origin)
+        // ~23° tilted 1m² cells facing opposite directions should have equal 3D area (~1.09).
         let north_coords = vec![
             (0.0, 0.0, 0.0).into(),
             (0.0, -1.0, 0.3996).into(),
@@ -473,7 +463,6 @@ mod tests {
         let north_poly = Polygon3D::new(LineString3D::new(north_coords), vec![]);
         let north_area: f64 = north_poly.unsigned_area3d();
 
-        // South-facing cell (opposite tilt, same slope magnitude)
         let south_coords = vec![
             (0.0, 0.0, 0.0).into(),
             (-1.0, 0.0, -0.1678).into(),
@@ -484,7 +473,6 @@ mod tests {
         let south_poly = Polygon3D::new(LineString3D::new(south_coords), vec![]);
         let south_area: f64 = south_poly.unsigned_area3d();
 
-        // Both should be close to 1/cos(23°) ≈ 1.086-1.090
         assert!(
             (north_area - south_area).abs() < 0.01_f64,
             "North-facing area {} and south-facing area {} should be nearly equal",
