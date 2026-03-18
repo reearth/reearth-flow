@@ -10,5 +10,6 @@ pub(crate) mod flattener;
 pub(crate) mod manager;
 pub(crate) mod mapper;
 pub(crate) mod mapping;
+pub(crate) mod null_attribute_mapper;
 pub(crate) mod range_mapper;
 pub(crate) mod statistics_calculator;
