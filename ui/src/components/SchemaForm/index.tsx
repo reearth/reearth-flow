@@ -5,8 +5,10 @@ import {
   RJSFValidationError,
 } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
-import { useState, useEffect } from "react";
+import { JSONSchema7Definition } from "json-schema";
+import { useState, useEffect, useMemo } from "react";
 
+import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { FieldContext } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
 import { useT } from "@flow/lib/i18n";
 
@@ -15,8 +17,7 @@ import { ThemedForm } from "./ThemedForm";
 
 type SchemaFormProps = {
   readonly?: boolean;
-  schema?: RJSFSchema;
-  originalSchema?: any; // Original schema before patching, used for UI schema generation
+  schema?: any; // Original schema before patching, used for UI schema generation
   actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
   onChange: (data: any) => void;
@@ -138,8 +139,7 @@ const buildExprUiSchema = (
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
   readonly,
-  schema,
-  originalSchema,
+  schema: originalSchema,
   actionName,
   defaultFormData,
   onChange,
@@ -150,6 +150,15 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
+
+  // This is a patch for the `anyOf` type in JSON Schema.
+  const patchedSchema = useMemo<RJSFSchema | undefined>(
+    () =>
+      originalSchema
+        ? patchAnyOfAndOneOfType(originalSchema as JSONSchema7Definition)
+        : undefined,
+    [originalSchema],
+  );
 
   const handleError = (errors: RJSFValidationError[]) => {
     const hasValidationErrors = errors.length > 0;
@@ -176,11 +185,11 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
 
   // Validate initial data on mount
   useEffect(() => {
-    if (schema && defaultFormData) {
+    if (patchedSchema && defaultFormData) {
       try {
         const validationResult = validator.validateFormData(
           defaultFormData,
-          schema,
+          patchedSchema,
         );
         const isValid =
           !validationResult.errors || validationResult.errors.length === 0;
@@ -194,7 +203,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
         onValidationChange?.(false);
       }
     }
-  }, [schema, defaultFormData, onValidationChange, t]);
+  }, [patchedSchema, defaultFormData, onValidationChange, t]);
 
   // Generate UI schema to mark Expr fields from original schema (before patching)
 
@@ -208,11 +217,11 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     "ui:submitButtonOptions": { norender: true },
   };
 
-  return schema ? (
+  return patchedSchema ? (
     <SchemaFormErrorBoundary>
       <ThemedForm
         className="flex-1 overflow-scroll"
-        schema={schema}
+        schema={patchedSchema}
         readonly={readonly}
         formData={defaultFormData}
         validator={validator}
@@ -221,7 +230,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
           onEditorOpen,
           onPythonEditorOpen,
           originalSchema,
-          schema,
+          patchedSchema,
           actionName,
         }}
         onChange={handleChange}

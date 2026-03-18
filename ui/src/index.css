@@ -64,6 +64,7 @@
     /* success green */
     --success: oklch(72% 0.18 145);
   }
+
   .dark,
   [data-theme="dark"] {
     --background: oklch(
@@ -412,4 +413,32 @@
 
 #cesiumContainer {
   clip-path: inset(0 round calc(var(--radius) /* 0.25rem = 4px */ - 2px));
+}
+
+:root input[type="date"]::-webkit-calendar-picker-indicator,
+:root input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"]
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"]
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[data-theme="midnight"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="midnight"]
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+[data-theme="synthwave"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="synthwave"]
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) grayscale(1) brightness(200%);
+}
+
+[data-theme="terminal"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="terminal"]
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) saturate(3) hue-rotate(80deg);
 }
