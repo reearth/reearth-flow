@@ -488,7 +488,8 @@ mod tests {
         assert!(
             (north_area - south_area).abs() < 0.01_f64,
             "North-facing area {} and south-facing area {} should be nearly equal",
-            north_area, south_area
+            north_area,
+            south_area
         );
         assert!(
             north_area > 1.08 && north_area < 1.10,
