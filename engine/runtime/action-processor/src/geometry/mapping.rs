@@ -5,7 +5,6 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     appearance_remover::AppearanceRemoverFactory,
-    neighbor_finder::NeighborFinderFactory,
     area_calculator::AreaCalculatorFactory,
     area_on_area_overlayer::AreaOnAreaOverlayerFactory,
     boundary_extractor::BoundaryExtractorFactory,
@@ -33,6 +32,7 @@ use super::{
     image_rasterizer::ImageRasterizerFactory,
     jp_standard_grid_accumulator::JPStandardGridAccumulatorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory,
+    neighbor_finder::NeighborFinderFactory,
     offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory,
     planarity_filter::PlanarityFilterFactory,

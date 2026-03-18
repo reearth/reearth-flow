@@ -332,7 +332,9 @@ fn extract_representative_point(feature: &Feature) -> Option<[f64; 2]> {
     }
 }
 
-fn extract_representative_point_2d(geo: &reearth_flow_geometry::types::geometry::Geometry2D<f64>) -> Option<[f64; 2]> {
+fn extract_representative_point_2d(
+    geo: &reearth_flow_geometry::types::geometry::Geometry2D<f64>,
+) -> Option<[f64; 2]> {
     use reearth_flow_geometry::types::geometry::Geometry2D;
 
     match geo {
@@ -353,12 +355,7 @@ fn extract_representative_point_2d(geo: &reearth_flow_geometry::types::geometry:
         }
         Geometry2D::Polygon(poly) => {
             // Use centroid of exterior ring
-            let coords: Vec<[f64; 2]> = poly
-                .exterior()
-                .0
-                .iter()
-                .map(|c| [c.x, c.y])
-                .collect();
+            let coords: Vec<[f64; 2]> = poly.exterior().0.iter().map(|c| [c.x, c.y]).collect();
             Some(centroid_2d(&coords))
         }
         Geometry2D::MultiPolygon(mp) => {
@@ -369,12 +366,8 @@ fn extract_representative_point_2d(geo: &reearth_flow_geometry::types::geometry:
                 let area = poly.unsigned_area2d();
                 if area > largest_area {
                     largest_area = area;
-                    let coords: Vec<[f64; 2]> = poly
-                        .exterior()
-                        .0
-                        .iter()
-                        .map(|c| [c.x, c.y])
-                        .collect();
+                    let coords: Vec<[f64; 2]> =
+                        poly.exterior().0.iter().map(|c| [c.x, c.y]).collect();
                     best_centroid = Some(centroid_2d(&coords));
                 }
             }
@@ -384,7 +377,9 @@ fn extract_representative_point_2d(geo: &reearth_flow_geometry::types::geometry:
     }
 }
 
-fn extract_representative_point_3d(geo: &reearth_flow_geometry::types::geometry::Geometry3D<f64>) -> Option<[f64; 2]> {
+fn extract_representative_point_3d(
+    geo: &reearth_flow_geometry::types::geometry::Geometry3D<f64>,
+) -> Option<[f64; 2]> {
     use reearth_flow_geometry::types::geometry::Geometry3D;
 
     match geo {
@@ -403,12 +398,7 @@ fn extract_representative_point_3d(geo: &reearth_flow_geometry::types::geometry:
             }
         }
         Geometry3D::Polygon(poly) => {
-            let coords: Vec<[f64; 2]> = poly
-                .exterior()
-                .0
-                .iter()
-                .map(|c| [c.x, c.y])
-                .collect();
+            let coords: Vec<[f64; 2]> = poly.exterior().0.iter().map(|c| [c.x, c.y]).collect();
             Some(centroid_2d(&coords))
         }
         Geometry3D::MultiPolygon(mp) => {
@@ -419,12 +409,8 @@ fn extract_representative_point_3d(geo: &reearth_flow_geometry::types::geometry:
                 let area = poly.unsigned_area3d();
                 if area > largest_area {
                     largest_area = area;
-                    let coords: Vec<[f64; 2]> = poly
-                        .exterior()
-                        .0
-                        .iter()
-                        .map(|c| [c.x, c.y])
-                        .collect();
+                    let coords: Vec<[f64; 2]> =
+                        poly.exterior().0.iter().map(|c| [c.x, c.y]).collect();
                     best_centroid = Some(centroid_2d(&coords));
                 }
             }
@@ -471,7 +457,9 @@ mod tests {
             Attributes::new(),
             Geometry {
                 value: GeometryValue::FlowGeometry2D(
-                    reearth_flow_geometry::types::geometry::Geometry2D::Point(Point2D::new_(x, y, NoValue)),
+                    reearth_flow_geometry::types::geometry::Geometry2D::Point(Point2D::new_(
+                        x, y, NoValue,
+                    )),
                 ),
                 ..Default::default()
             },
@@ -479,7 +467,12 @@ mod tests {
         )
     }
 
-    fn create_point_feature_with_attr(x: f64, y: f64, attr_name: &str, attr_value: AttributeValue) -> Feature {
+    fn create_point_feature_with_attr(
+        x: f64,
+        y: f64,
+        attr_name: &str,
+        attr_value: AttributeValue,
+    ) -> Feature {
         use reearth_flow_geometry::types::no_value::NoValue;
         let mut attrs = Attributes::new();
         attrs.insert(Attribute::new(attr_name), attr_value);
@@ -487,7 +480,9 @@ mod tests {
             attrs,
             Geometry {
                 value: GeometryValue::FlowGeometry2D(
-                    reearth_flow_geometry::types::geometry::Geometry2D::Point(Point2D::new_(x, y, NoValue)),
+                    reearth_flow_geometry::types::geometry::Geometry2D::Point(Point2D::new_(
+                        x, y, NoValue,
+                    )),
                 ),
                 ..Default::default()
             },
@@ -504,8 +499,18 @@ mod tests {
         };
 
         // Create candidate features
-        let candidate1 = create_point_feature_with_attr(0.0, 0.0, "name", AttributeValue::String("A".to_string()));
-        let candidate2 = create_point_feature_with_attr(10.0, 0.0, "name", AttributeValue::String("B".to_string()));
+        let candidate1 = create_point_feature_with_attr(
+            0.0,
+            0.0,
+            "name",
+            AttributeValue::String("A".to_string()),
+        );
+        let candidate2 = create_point_feature_with_attr(
+            10.0,
+            0.0,
+            "name",
+            AttributeValue::String("B".to_string()),
+        );
 
         // Create base feature closer to candidate1
         let base = create_point_feature(1.0, 0.0);
@@ -513,7 +518,7 @@ mod tests {
         // Process candidates
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        
+
         let mut ctx = create_default_execute_context(&candidate1);
         ctx.port = CANDIDATE_PORT.clone();
         finder.process(ctx, &fw).unwrap();
@@ -543,7 +548,12 @@ mod tests {
             base_features: Vec::new(),
         };
 
-        let candidate = create_point_feature_with_attr(0.0, 0.0, "id", AttributeValue::Number(serde_json::Number::from(1)));
+        let candidate = create_point_feature_with_attr(
+            0.0,
+            0.0,
+            "id",
+            AttributeValue::Number(serde_json::Number::from(1)),
+        );
         let base = create_point_feature(10.0, 0.0); // Distance is 10, exceeds max_distance of 5
 
         let noop = NoopChannelForwarder::default();
