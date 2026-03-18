@@ -6792,6 +6792,67 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 ### Category
 * File
 
+## NeighborFinder
+### Type
+* processor
+### Description
+Finds the closest candidate features for each base feature based on spatial proximity
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NeighborFinder Parameters",
+  "description": "Configuration for finding spatial neighbors between base and candidate features.",
+  "type": "object",
+  "properties": {
+    "attributePrefix": {
+      "description": "Prefix applied to transferred candidate attributes to avoid collisions.",
+      "default": "_neighbor_",
+      "type": "string"
+    },
+    "attributesToTransfer": {
+      "description": "List of candidate attributes to transfer. Empty list means all attributes are transferred.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "distanceAttribute": {
+      "description": "Name of the attribute to store the computed distance to the nearest neighbor.",
+      "default": "_neighbor_distance",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "maxDistance": {
+      "description": "Maximum distance threshold for matching. If None, no distance limit is applied.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* base
+* candidate
+### Output Ports
+* matched
+* unmatched
+* rejected
+### Category
+* Geometry
+
 ## NoopProcessor
 ### Type
 * processor
