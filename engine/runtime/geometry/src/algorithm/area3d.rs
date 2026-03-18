@@ -18,7 +18,7 @@ use super::map_coords::MapCoords;
 
 pub(crate) fn twice_signed_ring_area3d<T>(linestring: &LineString3D<T>) -> T
 where
-    T: CoordNum,
+    T: CoordFloat,
 {
     // LineString with less than 3 points is empty, or a
     // single point, or is not closed.
@@ -44,13 +44,24 @@ where
     // line-string with T = u8)
     let shift = linestring.0[0];
 
-    let mut tmp = T::zero();
+    let mut sum_xy = T::zero();
+    let mut sum_yz = T::zero();
+    let mut sum_zx = T::zero();
     for line in linestring.lines() {
         let line = line.map_coords(|c| c - shift);
-        tmp = tmp + line.determinant3d();
+        let s = &line.start;
+        let e = &line.end;
+        sum_xy = sum_xy + s.x * e.y - s.y * e.x;
+        sum_yz = sum_yz + s.y * e.z - s.z * e.y;
+        sum_zx = sum_zx + s.z * e.x - s.x * e.z;
     }
 
-    tmp
+    let magnitude = (sum_xy * sum_xy + sum_yz * sum_yz + sum_zx * sum_zx).sqrt();
+    if sum_xy < T::zero() {
+        -magnitude
+    } else {
+        magnitude
+    }
 }
 
 /// Computes 2D surface area of planar geometries in 3D space (NOT volume).
@@ -202,10 +213,23 @@ where
     T: CoordFloat,
 {
     fn signed_area3d(&self) -> T {
-        self.to_lines()
-            .iter()
-            .fold(T::zero(), |total, line| total + line.determinant3d())
-            / (T::one() + T::one())
+        let mut sum_xy = T::zero();
+        let mut sum_yz = T::zero();
+        let mut sum_zx = T::zero();
+        for line in &self.to_lines() {
+            let s = &line.start;
+            let e = &line.end;
+            sum_xy = sum_xy + s.x * e.y - s.y * e.x;
+            sum_yz = sum_yz + s.y * e.z - s.z * e.y;
+            sum_zx = sum_zx + s.z * e.x - s.x * e.z;
+        }
+        let magnitude = (sum_xy * sum_xy + sum_yz * sum_yz + sum_zx * sum_zx).sqrt();
+        let two = T::one() + T::one();
+        if sum_xy < T::zero() {
+            -magnitude / two
+        } else {
+            magnitude / two
+        }
     }
 
     fn unsigned_area3d(&self) -> T {
@@ -430,5 +454,51 @@ mod tests {
         test_winding(&exterior_ccw, &interior_cw, 3.0_f64, "CCW/CW");
         test_winding(&exterior_cw, &interior_ccw, -3.0_f64, "CW/CCW");
         test_winding(&exterior_cw, &interior_cw, -3.0_f64, "CW/CW");
+    }
+
+    #[test]
+    fn test_tilted_polygon_area_orientation_independent() {
+        // A 1m x 1m grid cell on a surface tilted ~23° should have the same
+        // 3D area regardless of whether the surface faces north or south.
+        // Expected 3D area ≈ 1/cos(23°) ≈ 1.086 for a 1m² projected cell.
+
+        // North-facing cell (from actual solar workflow data, shifted to origin)
+        let north_coords = vec![
+            (0.0, 0.0, 0.0).into(),
+            (0.0, -1.0, 0.3996).into(),
+            (1.0, -1.0, 0.2282).into(),
+            (1.0, 0.0, -0.1714).into(),
+            (0.0, 0.0, 0.0).into(),
+        ];
+        let north_poly = Polygon3D::new(LineString3D::new(north_coords), vec![]);
+        let north_area: f64 = north_poly.unsigned_area3d();
+
+        // South-facing cell (opposite tilt, same slope magnitude)
+        let south_coords = vec![
+            (0.0, 0.0, 0.0).into(),
+            (-1.0, 0.0, -0.1678).into(),
+            (-1.0, -1.0, -0.559).into(),
+            (0.0, -1.0, -0.3912).into(),
+            (0.0, 0.0, 0.0).into(),
+        ];
+        let south_poly = Polygon3D::new(LineString3D::new(south_coords), vec![]);
+        let south_area: f64 = south_poly.unsigned_area3d();
+
+        // Both should be close to 1/cos(23°) ≈ 1.086-1.090
+        assert!(
+            (north_area - south_area).abs() < 0.01_f64,
+            "North-facing area {} and south-facing area {} should be nearly equal",
+            north_area, south_area
+        );
+        assert!(
+            north_area > 1.08 && north_area < 1.10,
+            "North-facing area {} should be ~1.09",
+            north_area
+        );
+        assert!(
+            south_area > 1.08 && south_area < 1.10,
+            "South-facing area {} should be ~1.09",
+            south_area
+        );
     }
 }
