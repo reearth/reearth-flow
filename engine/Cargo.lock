@@ -2001,9 +2001,9 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fastxml"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1ec6791af8c604b988d1283460b6ca27bd2985de9fc68cce3cca251aadf2700"
+checksum = "1fb583b5faf7b5b74d35ffe37eadc1094c03535a46eaae50739e67e9fad4c531"
 dependencies = [
  "clap",
  "compact_str",
@@ -6018,7 +6018,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "itertools",
  "log",
  "multimap",
