@@ -16,6 +16,7 @@ import (
 
 type Config struct {
 	ServerURL string `json:"server_url"`
+	APISecret string `json:"api_secret"`
 }
 
 type Client struct {
@@ -44,12 +45,22 @@ func (c *Client) Close() error {
 	return nil
 }
 
+// setCommonHeaders adds shared authentication headers to outgoing requests.
+// If an APISecret is configured, it sets the X-API-Secret header required by
+// the WebSocket server's HTTP document API authentication middleware.
+func (c *Client) setCommonHeaders(req *http.Request) {
+	if c.config.APISecret != "" {
+		req.Header.Set("X-API-Secret", c.config.APISecret)
+	}
+}
+
 func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Document, error) {
 	url := fmt.Sprintf("%s/api/document/%s", c.config.ServerURL, docID)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -100,6 +111,7 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -151,6 +163,7 @@ func (c *Client) GetHistoryMetadata(ctx context.Context, docID string) ([]*webso
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -199,6 +212,7 @@ func (c *Client) GetHistoryByVersion(ctx context.Context, docID string, version 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -257,6 +271,7 @@ func (c *Client) Rollback(ctx context.Context, id string, version int) (*websock
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -305,6 +320,7 @@ func (c *Client) FlushToGCS(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -344,6 +360,7 @@ func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -392,6 +409,7 @@ func (c *Client) CopyDocument(ctx context.Context, docID string, source string) 
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -434,6 +452,7 @@ func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) 
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	c.setCommonHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {

@@ -2,12 +2,15 @@ use axum::{
     body::Body,
     extract::{Path, State, WebSocketUpgrade},
     http::Response,
+    middleware::from_fn_with_state,
     routing::get,
     Router,
 };
 use tower::ServiceBuilder;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
+
+use crate::presentation::http::middleware::api_auth_layer;
 
 use google_cloud_storage::{
     client::Client,
@@ -96,7 +99,11 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
 
     let app = Router::new()
         .merge(ws_router)
-        .nest("/api", document_routes())
+        .nest(
+            "/api",
+            document_routes()
+                .layer(from_fn_with_state(state.clone(), api_auth_layer)),
+        )
         .route("/health", get(health_check_handler))
         .with_state(state)
         .layer(axum::extract::Extension(health_handler))

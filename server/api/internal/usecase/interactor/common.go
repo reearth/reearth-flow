@@ -21,6 +21,7 @@ type ContainerConfig struct {
 	Host                     string
 	SharedPath               string
 	WebsocketThriftServerURL string
+	WebsocketAPISecret       string
 	SkipPermissionCheck      bool
 }
 
@@ -34,6 +35,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 
 	clientConfig := websocket.Config{
 		ServerURL: config.WebsocketThriftServerURL,
+		APISecret: config.WebsocketAPISecret,
 	}
 	client, err := websocket.NewClient(clientConfig)
 	if err != nil {
