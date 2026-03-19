@@ -870,6 +870,19 @@ impl GcsStore {
 
 impl DocOps<'_> for GcsStore {}
 
+/// Returns true if the given GCS error represents a "not found" (404) response.
+/// All other errors (permission denied, server errors, network failures) return false
+/// so that they propagate to the caller instead of being silently swallowed.
+fn is_not_found(err: &google_cloud_storage::http::Error) -> bool {
+    match err {
+        google_cloud_storage::http::Error::Response(resp) => resp.code == 404,
+        google_cloud_storage::http::Error::HttpClient(reqwest_err) => {
+            reqwest_err.status().is_some_and(|s| s.as_u16() == 404)
+        }
+        _ => false,
+    }
+}
+
 #[async_trait::async_trait]
 impl KVStore for GcsStore {
     type Error = google_cloud_storage::http::Error;
@@ -891,7 +904,8 @@ impl KVStore for GcsStore {
             .await
         {
             Ok(data) => Ok(Some(data)),
-            Err(_) => Ok(None),
+            Err(e) if is_not_found(&e) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 
@@ -1148,5 +1162,56 @@ impl KVEntry for GcsEntry {
     }
     fn value(&self) -> &[u8] {
         &self.value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_not_found;
+    use google_cloud_storage::http::error::ErrorResponse;
+    use google_cloud_storage::http::Error as GcsError;
+
+    fn make_response_error(code: u16, message: &str) -> GcsError {
+        GcsError::Response(ErrorResponse {
+            code,
+            errors: vec![],
+            message: message.to_string(),
+        })
+    }
+
+    #[test]
+    fn gcs_404_is_not_found() {
+        let err = make_response_error(404, "Not Found");
+        assert!(
+            is_not_found(&err),
+            "404 Response error should be identified as not-found"
+        );
+    }
+
+    #[test]
+    fn gcs_500_is_not_not_found() {
+        let err = make_response_error(500, "Internal Server Error");
+        assert!(
+            !is_not_found(&err),
+            "500 Response error should not be identified as not-found"
+        );
+    }
+
+    #[test]
+    fn gcs_403_is_not_not_found() {
+        let err = make_response_error(403, "Forbidden");
+        assert!(
+            !is_not_found(&err),
+            "403 Response error should not be identified as not-found"
+        );
+    }
+
+    #[test]
+    fn gcs_401_is_not_not_found() {
+        let err = make_response_error(401, "Unauthorized");
+        assert!(
+            !is_not_found(&err),
+            "401 Response error should not be identified as not-found"
+        );
     }
 }

@@ -117,8 +117,8 @@ impl BroadcastGroup {
                                 if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
                                     let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
                                     if let Err(e) = sink.send(msg_bytes) {
-                                        error!("couldn't broadcast awareness update {}", e);
-                                        return;
+                                        warn!("Broadcast awareness send failed ({}), will retry on next update", e);
+                                        continue;
                                     }
 
                                     let update_bytes = update.encode_v1();
