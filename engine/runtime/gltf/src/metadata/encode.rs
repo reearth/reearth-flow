@@ -210,7 +210,8 @@ impl Class {
                     }
                     PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
                     PropertyType::String => {
-                        prop.value_buffer.extend_from_slice(STRING_NO_DATA.as_bytes());
+                        prop.value_buffer
+                            .extend_from_slice(STRING_NO_DATA.as_bytes());
                         let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {
                             warn!(
                                 "Skipping default string offset for property '{}': value_buffer length {} exceeds u32::MAX",

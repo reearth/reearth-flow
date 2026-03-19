@@ -350,7 +350,11 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
-                json_attributes_v2::test_json_attributes_v2(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                json_attributes_v2::test_json_attributes_v2(
+                    &fme_extracted_dir,
+                    &flow_extracted_dir,
+                    cfg,
+                )
             });
         }
 

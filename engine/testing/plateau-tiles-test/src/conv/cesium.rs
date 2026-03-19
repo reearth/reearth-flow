@@ -9,7 +9,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Recursively extract GLB paths from the tileset tile tree.
-fn collect_glb_paths(tile: &Value, tileset_dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+fn collect_glb_paths(
+    tile: &Value,
+    tileset_dir: &Path,
+    out: &mut Vec<PathBuf>,
+) -> Result<(), String> {
     // Single content
     if let Some(content) = tile.get("content") {
         if let Some(uri) = content.get("uri").and_then(|u| u.as_str()) {
