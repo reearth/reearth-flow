@@ -13,3 +13,4 @@ pub use encode::MetadataEncoder;
 pub const ENUM_NO_DATA: u32 = 0;
 pub const ENUM_NO_DATA_NAME: &str = "";
 pub const FLOAT_NO_DATA: f64 = f64::MAX;
+pub const STRING_NO_DATA: &str = "\u{FFFF}";

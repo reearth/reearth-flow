@@ -16,7 +16,7 @@ use tracing::warn;
 
 use super::{
     int_type_selector::{SignedIntCollector, UnsignedIntCollector},
-    ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA,
+    ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA, STRING_NO_DATA,
 };
 
 pub struct MetadataEncoder<'a> {
@@ -210,6 +210,7 @@ impl Class {
                     }
                     PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
                     PropertyType::String => {
+                        prop.value_buffer.extend_from_slice(STRING_NO_DATA.as_bytes());
                         let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {
                             warn!(
                                 "Skipping default string offset for property '{}': value_buffer length {} exceeds u32::MAX",
@@ -283,7 +284,7 @@ impl Class {
                             Some(serde_json::Value::String(ENUM_NO_DATA_NAME.to_string()))
                         }
                         (PropertyType::String, false) => {
-                            Some(serde_json::Value::String("".to_string()))
+                            Some(serde_json::Value::String(STRING_NO_DATA.to_string()))
                         }
                         (PropertyType::Float64, false) => Some(serde_json::Value::Number(
                             serde_json::Number::from_f64(FLOAT_NO_DATA).unwrap(),
