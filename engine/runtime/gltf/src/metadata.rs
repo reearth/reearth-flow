@@ -13,4 +13,6 @@ pub use encode::MetadataEncoder;
 pub const ENUM_NO_DATA: u32 = 0;
 pub const ENUM_NO_DATA_NAME: &str = "";
 pub const FLOAT_NO_DATA: f64 = f64::MAX;
+// using empty string for no data cannot represent attribute value of empty strings
+// we use 0xFFFF which is valid JSON but "malformed" unicode string
 pub const STRING_NO_DATA: &str = "\u{FFFF}";
