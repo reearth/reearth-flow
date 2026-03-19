@@ -102,7 +102,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
         .nest(
             "/api",
             document_routes()
-                .layer(from_fn_with_state(state.clone(), api_auth_layer)),
+                .layer(from_fn_with_state(state.api_secret.clone(), api_auth_layer)),
         )
         .route("/health", get(health_check_handler))
         .with_state(state)
