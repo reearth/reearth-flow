@@ -20,7 +20,7 @@ export default ({
     (jobId: string | null, status?: string) => {
       if (jobId && projectId) {
         const existingDebugRun = yAwareness.getLocalState()?.debugRun;
-        if (existingDebugRun) {
+        if (existingDebugRun && existingDebugRun.jobId === jobId) {
           yAwareness.setLocalStateField("debugRun", {
             ...existingDebugRun,
             status,
