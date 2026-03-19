@@ -6827,18 +6827,104 @@
               }
             ]
           },
+          "distanceMetric": {
+            "description": "Method used to compute distance between two features.",
+            "default": "euclidean2d",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DistanceMetric"
+              }
+            ]
+          },
           "maxDistance": {
-            "description": "Maximum distance threshold for matching. If None, no distance limit is applied.",
+            "description": "Maximum distance threshold for matching. If None, no distance limit is applied. Units depend on the distanceMetric: native units for Euclidean, meters for Haversine.",
             "type": [
               "number",
               "null"
             ],
             "format": "double"
+          },
+          "mergeStrategy": {
+            "description": "Controls how multiple neighbors are represented on the output.",
+            "default": "closest",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MergeStrategy"
+              }
+            ]
+          },
+          "neighborIndexAttribute": {
+            "description": "Name of the attribute to store the neighbor index (0-based rank) when num_closest > 1 and merge_strategy is \"repeatBase\". Set to empty string to suppress.",
+            "default": "_neighbor_index",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "numClosest": {
+            "description": "Number of closest neighbors to find per base feature. Must be >= 1.",
+            "default": 1,
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
+          },
+          "DistanceMetric": {
+            "description": "Distance metric for computing spatial proximity.",
+            "oneOf": [
+              {
+                "description": "2D Euclidean distance using X and Y coordinates. Z is ignored.",
+                "type": "string",
+                "enum": [
+                  "euclidean2d"
+                ]
+              },
+              {
+                "description": "3D Euclidean distance using X, Y, and Z coordinates.",
+                "type": "string",
+                "enum": [
+                  "euclidean3d"
+                ]
+              },
+              {
+                "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.",
+                "type": "string",
+                "enum": [
+                  "haversine"
+                ]
+              }
+            ]
+          },
+          "MergeStrategy": {
+            "description": "Merge strategy for handling multiple neighbors.",
+            "oneOf": [
+              {
+                "description": "Only the single closest neighbor is merged onto the Base feature.",
+                "type": "string",
+                "enum": [
+                  "closest"
+                ]
+              },
+              {
+                "description": "One output feature is emitted per neighbor. Base attributes are duplicated across all rows, mirroring FME's default multi-neighbor output.",
+                "type": "string",
+                "enum": [
+                  "repeatBase"
+                ]
+              },
+              {
+                "description": "A single Base feature is emitted; each transferred attribute becomes an ordered array sorted by ascending distance.",
+                "type": "string",
+                "enum": [
+                  "arrayAttributes"
+                ]
+              }
+            ]
           }
         }
       },
