@@ -889,18 +889,10 @@ fn extract_representative_point_3d(
 
     match geo {
         Geometry3D::Point(p) => Some(([p.x(), p.y()], Some(p.z()))),
-        Geometry3D::MultiPoint(mp) => {
-            mp.centroid().map(|c| ([c.x(), c.y()], Some(c.z())))
-        }
-        Geometry3D::LineString(ls) => {
-            ls.centroid().map(|c| ([c.x(), c.y()], Some(c.z())))
-        }
-        Geometry3D::Polygon(poly) => {
-            poly.centroid().map(|c| ([c.x(), c.y()], Some(c.z())))
-        }
-        Geometry3D::MultiPolygon(mp) => {
-            mp.centroid().map(|c| ([c.x(), c.y()], Some(c.z())))
-        }
+        Geometry3D::MultiPoint(mp) => mp.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
+        Geometry3D::LineString(ls) => ls.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
+        Geometry3D::Polygon(poly) => poly.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
+        Geometry3D::MultiPolygon(mp) => mp.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
         _ => None,
     }
 }
