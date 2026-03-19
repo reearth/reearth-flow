@@ -327,13 +327,23 @@ impl BroadcastGroup {
             let sink = sink.clone();
             tokio::spawn(async move {
                 let mut rx = sender.subscribe();
-                while let Ok(msg) = rx.recv().await {
-                    let mut sink = sink.lock().await;
-                    if sink.send(msg).await.is_err() {
-                        return Ok(());
+                loop {
+                    match rx.recv().await {
+                        Ok(msg) => {
+                            let mut sink = sink.lock().await;
+                            if sink.send(msg).await.is_err() {
+                                return Ok(());
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            warn!("Client lagged by {} messages, recovering", n);
+                            continue;
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                            return Ok(());
+                        }
                     }
                 }
-                Ok(())
             })
         };
 

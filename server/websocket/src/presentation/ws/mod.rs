@@ -15,8 +15,7 @@ use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use tokio::sync::mpsc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
@@ -76,23 +75,17 @@ impl futures_util::Sink<Bytes> for WarpSink {
 }
 
 #[derive(Debug)]
-pub struct WarpStream(SplitStream<WebSocket>, Option<mpsc::Sender<Message>>);
+pub struct WarpStream(SplitStream<WebSocket>);
 
 impl From<SplitStream<WebSocket>> for WarpStream {
     fn from(stream: SplitStream<WebSocket>) -> Self {
-        WarpStream(stream, None)
+        WarpStream(stream)
     }
 }
 
 impl From<WarpStream> for SplitStream<WebSocket> {
     fn from(val: WarpStream) -> Self {
         val.0
-    }
-}
-
-impl WarpStream {
-    pub fn with_pong_sender(stream: SplitStream<WebSocket>, sender: mpsc::Sender<Message>) -> Self {
-        WarpStream(stream, Some(sender))
     }
 }
 
@@ -106,21 +99,7 @@ impl Stream for WarpStream {
             Poll::Ready(Some(res)) => match res {
                 Ok(msg) => match msg {
                     Message::Binary(data) => Poll::Ready(Some(Ok(data))),
-                    Message::Ping(ping_data) => {
-                        if let Some(sender) = &self.1 {
-                            let pong_msg = Message::Pong(ping_data.clone());
-                            let tx = sender.clone();
-                            tokio::spawn(async move {
-                                if let Err(e) = tx.send(pong_msg).await {
-                                    warn!("Failed to send pong message: {}", e);
-                                } else {
-                                    debug!("Pong response sent");
-                                }
-                            });
-                        }
-                        self.poll_next(cx)
-                    }
-                    Message::Pong(_) | Message::Text(_) => self.poll_next(cx),
+                    Message::Ping(_) | Message::Pong(_) | Message::Text(_) => self.poll_next(cx),
                     Message::Close(_) => Poll::Ready(None),
                 },
                 Err(e) => Poll::Ready(Some(Err(Error::Other(e.into())))),
@@ -201,10 +180,9 @@ pub async fn ws_handler(
 
         async move {
             let (sender, receiver) = socket.split();
-            let (pong_tx, _pong_rx) = mpsc::channel::<Message>(64);
 
             let sink = WarpSink::from(sender);
-            let stream = WarpStream::with_pong_sender(receiver, pong_tx);
+            let stream = WarpStream::from(receiver);
 
             if let Err(err) = websocket_usecase
                 .handle_connection(group, sink, stream, &doc_id, user_token)
