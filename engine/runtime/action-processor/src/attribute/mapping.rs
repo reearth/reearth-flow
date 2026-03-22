@@ -10,8 +10,8 @@ use super::{
     duplicate_filter::AttributeDuplicateFilterFactory,
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
     flattener::AttributeFlattenerFactory, manager::AttributeManagerFactory,
-    mapper::AttributeMapperFactory, range_mapper::AttributeRangeMapperFactory,
-    statistics_calculator::StatisticsCalculatorFactory,
+    mapper::AttributeMapperFactory, null_attribute_mapper::NullAttributeMapperFactory,
+    range_mapper::AttributeRangeMapperFactory, statistics_calculator::StatisticsCalculatorFactory,
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -27,6 +27,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<AttributeBulkArrayJoinerFactory>::default(),
         Box::<AttributeConversionTableFactory>::default(),
         Box::<AttributeRangeMapperFactory>::default(),
+        Box::<NullAttributeMapperFactory>::default(),
         Box::<DateTimeConverterFactory>::default(),
     ];
     factories

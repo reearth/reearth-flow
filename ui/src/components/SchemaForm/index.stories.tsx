@@ -9,6 +9,8 @@ import validator from "@rjsf/validator-ajv8";
 import type { Meta } from "@storybook/react-vite";
 import { useEffect, useMemo, useState } from "react";
 
+import type { Action } from "@flow/types";
+
 import { Button } from "../buttons";
 import {
   DropdownMenu,
@@ -304,6 +306,82 @@ export const Default = () => {
       )}
       <div className="rounded border p-2">
         <SchemaForm schema={schema} onChange={() => console.log("change!")} />
+      </div>
+    </div>
+  );
+};
+
+export const Custom = () => {
+  const [action, setAction] = useState<Action>();
+  const [originalSchema, setOriginalSchema] = useState<RJSFSchema>(
+    commonArgs.schema,
+  );
+  const [showSchema, setShowSchema] = useState<boolean>(false);
+
+  const CHANGE_NAMES: Record<string, string> = {
+    processor: "transformer",
+    sink: "writer",
+    source: "reader",
+  };
+
+  const handleSchemaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    try {
+      const parsed = JSON.parse(e.target.value);
+      const newAction = {
+        ...parsed,
+        type: CHANGE_NAMES[parsed.type] ?? parsed.type,
+      };
+      setAction(newAction);
+      setOriginalSchema(newAction.parameter ?? commonArgs.schema);
+    } catch (error) {
+      // Invalid JSON, you might want to show an error message here
+      console.error("Invalid JSON:", error);
+    }
+  };
+
+  return (
+    <div className="flex w-[80vw] flex-col gap-2">
+      <div className="flex items-center justify-between rounded border p-2">
+        <div className="flex flex-col">
+          <div>Action Name: {action ? action.name : "Default"}</div>
+          <p className="text-xs text-muted-foreground">
+            Description:{" "}
+            {action ? action.description : "No description available"}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-sm"
+          onClick={() => setShowSchema(!showSchema)}>
+          {showSchema ? "Hide" : "Show/Edit"} Schema
+        </Button>
+      </div>
+      {showSchema && (
+        <div className="relative rounded border bg-card p-2 text-xs">
+          <textarea
+            placeholder="Paste an action object from engine/schema/actions.json..."
+            onChange={handleSchemaChange}
+            className="h-96 w-full rounded border bg-transparent p-2 font-mono text-xs"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="absolute top-2 right-2 mt-2 mr-2"
+            onClick={() => {
+              navigator.clipboard.writeText(
+                JSON.stringify(originalSchema, null, 2),
+              );
+            }}>
+            <CopyIcon />
+          </Button>
+        </div>
+      )}
+      <div className="rounded border p-2">
+        <SchemaForm
+          schema={originalSchema}
+          onChange={() => console.log("change!")}
+        />
       </div>
     </div>
   );
