@@ -31,7 +31,11 @@ pub struct CesiumConfig {
     pub skip_all_geometry_tests: bool,
 }
 
-pub fn test_cesium(truth_path: &Path, flow_path: &Path, config: &CesiumConfig) -> Result<(), String> {
+pub fn test_cesium(
+    truth_path: &Path,
+    flow_path: &Path,
+    config: &CesiumConfig,
+) -> Result<(), String> {
     let casts = if let Some(casts_cfg) = &config.casts {
         convert_casts(casts_cfg)?
     } else {
@@ -341,8 +345,10 @@ fn compare_detail_level(
 
     if !skip.contains(&GeometryTest::MassCenter) {
         // Compute centroids directly from vertex positions
-        let truth_centroid = compute_centroid(&truth_level.triangles, &truth_geometries.vertex_positions)
-            .map_err(|e| format!("ident '{}': failed to compute Truth centroid: {}", ident, e))?;
+        let truth_centroid =
+            compute_centroid(&truth_level.triangles, &truth_geometries.vertex_positions).map_err(
+                |e| format!("ident '{}': failed to compute Truth centroid: {}", ident, e),
+            )?;
         let flow_centroid =
             compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions).map_err(
                 |e| format!("ident '{}': failed to compute Flow centroid: {}", ident, e),

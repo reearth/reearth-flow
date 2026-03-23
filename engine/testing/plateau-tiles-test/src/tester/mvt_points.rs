@@ -135,7 +135,8 @@ pub fn test_mvt_points(
     let zmax = if zmax == u32::MAX { None } else { Some(zmax) };
 
     // Fetch Point features
-    let point_features = align_mvt_features(truth_path, flow_path, GeometryType::Point, zmin, zmax)?;
+    let point_features =
+        align_mvt_features(truth_path, flow_path, GeometryType::Point, zmin, zmax)?;
 
     let mut results = Vec::new();
     let mut total = 0;
