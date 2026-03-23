@@ -39,3 +39,4 @@ Stages:
 - `3d-tiles-tools` has several [problems](https://github.com/reearth/reearth-flow/pull/1841) especially when testing tiles containing multiple features.
 - truth's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
 - ignore bool vs int difference: truth outputs integer but using native bool is possibly better
+- ignore padded whitespace differences

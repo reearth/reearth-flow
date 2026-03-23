@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_92a1fd4b-3388-4042-bd22-b7af4b65ae62">
+<gml:name>PointCloudSpecAttribute_function</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_1">
+<gml:description>航空レーザ計測</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_2">
+<gml:description>航空レーザ測深測量</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_3">
+<gml:description>高密度航空レーザ測量</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_4">
+<gml:description>車載写真レーザ測量</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_5">
+<gml:description>地上レーザ測量</gml:description>
+<gml:name>5</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_6">
+<gml:description>LidarSLAM計測</gml:description>
+<gml:name>6</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_7">
+<gml:description>写真点群測量</gml:description>
+<gml:name>7</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_8">
+<gml:description>UAV写真点群測量</gml:description>
+<gml:name>8</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_9">
+<gml:description>UAVレーザ測量</gml:description>
+<gml:name>9</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_function_10">
+<gml:description>マルチビーム音響測深測量</gml:description>
+<gml:name>10</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>
