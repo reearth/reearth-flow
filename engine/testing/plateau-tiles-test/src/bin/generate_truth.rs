@@ -101,9 +101,9 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let stem = Path::new(&entry.path)
             .file_name()
             .expect("convs.cesium_attributes path must have a file name");
-        let zip_path = fme_dir.join(stem).with_extension("zip");
+        let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
-        let output_path = fme_dir.join(&entry.truth_path);
+        let output_path = truth_dir.join(&entry.truth_path);
         let result = conv_cesium::write_cesium_json(&tmp_dir, &output_path, entry.casts.as_ref());
         fs::remove_dir_all(&tmp_dir).ok();
         result?;
