@@ -562,17 +562,6 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let xml_str = String::from_utf8(xml_content.to_vec())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let root_namespaces = fastxml::namespace::extract_root_namespaces(&xml_str).map_err(|e| {
-        PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Failed to parse root namespaces: {e:?}"
-        ))
-    })?;
-    let xlink_prefixes = root_namespaces
-        .iter()
-        .filter(|(_, uri)| uri.as_str() == "http://www.w3.org/1999/xlink")
-        .map(|(prefix, _)| prefix.to_string())
-        .collect::<Vec<_>>();
-
     let mut response = ValidateResponse::default();
 
     let t_total = Instant::now();
@@ -625,6 +614,7 @@ fn process_feature(
                 city_object_groups.push(CityObjectGroupInfo {
                     feature_type: member_ref.name(),
                     gml_id,
+                    xlinks: Vec::new(),
                 });
             }
 
@@ -640,9 +630,15 @@ fn process_feature(
                 &gml_id_pattern,
                 Arc::clone(&storage_resolver),
                 fallback_codelists_path,
+                is_city_object_group,
             ) {
-                Ok(process_result) => {
+                Ok((process_result, group_xlinks)) => {
                     result.extend(process_result);
+                    if is_city_object_group {
+                        if let Some(group) = city_object_groups.last_mut() {
+                            group.xlinks = group_xlinks;
+                        }
+                    }
                 }
                 Err(e) => {
                     stream_error = Some(e);
@@ -659,12 +655,11 @@ fn process_feature(
     }
 
     // On the city object group model T03: Extracting unreferenced xlink:href
-    let t_xlinks = Instant::now();
-    let xlinks = collect_xlinks(&xml_str, &xlink_prefixes)?;
-    let xlinks_ms = t_xlinks.elapsed().as_millis();
+    // CityObjectGroup xlinks are checked against the global gml_ids (all members),
+    // unlike non-CityObjectGroup xlinks which are checked against member-local gml_ids.
     for member in city_object_groups.iter() {
-        for xlink in xlinks.iter() {
-            let xlink_href = xlink.href.clone();
+        for xlink in member.xlinks.iter() {
+            let xlink_href = &xlink.href;
             if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
                 let mut result_feature =
                     create_lightweight_feature(feature, &["index", "udxDirs", "name"]);
@@ -674,6 +669,7 @@ fn process_feature(
                 );
                 result_feature.insert("tag", AttributeValue::String(xlink.tag.clone()));
                 result_feature.insert("xpath", AttributeValue::String(xlink.xpath.clone()));
+                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
                 result_feature.insert(
                     "featureType",
                     AttributeValue::String(member.feature_type.clone()),
@@ -693,7 +689,6 @@ fn process_feature(
         total_ms = %total_ms,
         envelope_ms = %envelope_ms,
         members_stream_ms = %members_ms,
-        collect_xlinks_ms = %xlinks_ms,
         member_count,
         "DomainOfDefinitionValidator::process_feature END"
     );
@@ -866,6 +861,7 @@ fn parse_envelope_from_node(node: &EditableNode) -> super::errors::Result<Envelo
 struct CityObjectGroupInfo {
     feature_type: String,
     gml_id: String,
+    xlinks: Vec<XlinkInfo>,
 }
 
 #[derive(Clone, Debug)]
@@ -915,64 +911,6 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
     })
 }
 
-fn collect_xlinks(
-    raw_xml: &str,
-    xlink_prefixes: &[String],
-) -> super::errors::Result<Vec<XlinkInfo>> {
-    let xlinks: RefCell<Vec<XlinkInfo>> = RefCell::new(Vec::new());
-
-    let mut expected_keys = Vec::new();
-    for prefix in xlink_prefixes {
-        if prefix.is_empty() {
-            expected_keys.push("href".to_string());
-        } else {
-            expected_keys.push(format!("{prefix}:href"));
-        }
-    }
-    if expected_keys.is_empty() {
-        expected_keys.push("xlink:href".to_string());
-    }
-
-    let transformer = StreamTransformer::new(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-
-    transformer
-        .on_with_context("//*", |node, ctx| {
-            let attrs = node.get_attributes();
-            let href = expected_keys
-                .iter()
-                .find_map(|key| attrs.get(key.as_str()).cloned());
-
-            if let Some(href) = href {
-                let qname = node.qname();
-                let path_id = ctx.path_id();
-                let xpath = if path_id.is_empty() {
-                    qname.clone()
-                } else {
-                    format!("{}/{}", path_id, qname)
-                };
-                xlinks.borrow_mut().push(XlinkInfo {
-                    href,
-                    tag: qname,
-                    xpath,
-                });
-            }
-        })
-        .for_each()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to collect xlinks: {e:?}"
-            ))
-        })?;
-
-    Ok(xlinks.into_inner())
-}
-
 #[allow(clippy::too_many_arguments)]
 fn process_member_node(
     ctx: &ExecutorContext,
@@ -986,7 +924,8 @@ fn process_member_node(
     gml_id_pattern: &Regex,
     storage_resolver: Arc<StorageResolver>,
     fallback_codelists_path: Option<&Uri>,
-) -> super::errors::Result<Vec<Feature>> {
+    is_city_object_group: bool,
+) -> super::errors::Result<(Vec<Feature>, Vec<XlinkInfo>)> {
     let mut result = Vec::<Feature>::new();
     let gml_ns = std::str::from_utf8(GML31_NS.into_inner()).unwrap_or("");
     let xlink_ns = "http://www.w3.org/1999/xlink";
@@ -1368,59 +1307,84 @@ fn process_member_node(
     }
 
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
-    for xlink_entry in collected
-        .xlink_entries
-        .iter()
-        .filter(|e| e.tag != "core:CityObjectGroup")
-    {
-        let xlink_href = &xlink_entry.href;
-        if let Some(caps) = GML_LINK_PATTERN.captures(xlink_href.as_str()) {
-            let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
-            let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-            if !response.external_file_to_gml_ids.contains_key(gml_path) {
-                let gml_path_uri = Uri::from_str(gml_path).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let storage = storage_resolver.resolve(&gml_path_uri).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let xml_content = storage
-                    .get_sync(gml_path_uri.path().as_path())
-                    .map_err(|e| {
+    // For CityObjectGroup members, xlink checking is deferred to the post-processing phase
+    // where they are checked against the global gml_ids (across all members).
+    let group_xlinks = if is_city_object_group {
+        collected
+            .xlink_entries
+            .into_iter()
+            .map(|e| XlinkInfo {
+                href: e.href,
+                tag: e.tag,
+                xpath: e.xpath,
+            })
+            .collect()
+    } else {
+        for xlink_entry in collected.xlink_entries.iter() {
+            let xlink_href = &xlink_entry.href;
+            if let Some(caps) = GML_LINK_PATTERN.captures(xlink_href.as_str()) {
+                let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
+                let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
+                if !response.external_file_to_gml_ids.contains_key(gml_path) {
+                    let gml_path_uri = Uri::from_str(gml_path).map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-                let xml_content_str = String::from_utf8(xml_content.to_vec()).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                })?;
-                let gml_path_owned = gml_path.to_string();
-                let ext_transformer = StreamTransformer::new(&xml_content_str)
-                    .with_root_namespaces()
-                    .map_err(|e| {
+                    let storage = storage_resolver.resolve(&gml_path_uri).map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-                ext_transformer
-                    .on(".//*", |node| {
-                        if let Some(id) = node.get_attribute_ns("http://www.opengis.net/gml", "id")
-                        {
-                            response
-                                .external_file_to_gml_ids
-                                .entry(gml_path_owned.clone())
-                                .or_default()
-                                .push(id);
-                        }
-                    })
-                    .for_each()
-                    .map_err(|e| {
+                    let xml_content =
+                        storage
+                            .get_sync(gml_path_uri.path().as_path())
+                            .map_err(|e| {
+                                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                            })?;
+                    let xml_content_str = String::from_utf8(xml_content.to_vec()).map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-            }
-            if !response.external_file_to_gml_ids.contains_key(gml_path)
-                || !response
-                    .external_file_to_gml_ids
-                    .get(gml_path)
-                    .unwrap()
-                    .contains(&ext_gml_id.to_string())
-            {
+                    let gml_path_owned = gml_path.to_string();
+                    let ext_transformer = StreamTransformer::new(&xml_content_str)
+                        .with_root_namespaces()
+                        .map_err(|e| {
+                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                        })?;
+                    ext_transformer
+                        .on(".//*", |node| {
+                            if let Some(id) =
+                                node.get_attribute_ns("http://www.opengis.net/gml", "id")
+                            {
+                                response
+                                    .external_file_to_gml_ids
+                                    .entry(gml_path_owned.clone())
+                                    .or_default()
+                                    .push(id);
+                            }
+                        })
+                        .for_each()
+                        .map_err(|e| {
+                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                        })?;
+                }
+                if !response.external_file_to_gml_ids.contains_key(gml_path)
+                    || !response
+                        .external_file_to_gml_ids
+                        .get(gml_path)
+                        .unwrap()
+                        .contains(&ext_gml_id.to_string())
+                {
+                    let mut result_feature = base_feature.clone();
+                    result_feature.insert(
+                        "flag",
+                        AttributeValue::String("XLink_NoReference".to_string()),
+                    );
+                    result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
+                    result_feature
+                        .insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
+                    result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
+                    result.push(result_feature.clone());
+                    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+                    response.xlink_has_no_reference_num += 1;
+                }
+            } else if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
                 let mut result_feature = base_feature.clone();
                 result_feature.insert(
                     "flag",
@@ -1428,53 +1392,46 @@ fn process_member_node(
                 );
                 result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
                 result_feature.insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
+                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
                 result.push(result_feature.clone());
                 fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
                 response.xlink_has_no_reference_num += 1;
-            }
-        } else if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
-            let mut result_feature = base_feature.clone();
-            result_feature.insert(
-                "flag",
-                AttributeValue::String("XLink_NoReference".to_string()),
-            );
-            result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
-            result_feature.insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
-            result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-            result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-            response.xlink_has_no_reference_num += 1;
-        } else if let Some(gml_ids) = gml_ids.get(&xlink_href.chars().skip(1).collect::<String>()) {
-            for item in gml_ids.iter().filter(|&item| {
-                !VALID_GEOMETRY_TYPES
-                    .contains(&item.get("tag").map(|t| t.as_str()).unwrap_or_default())
-            }) {
-                let mut result_feature = base_feature.clone();
-                result_feature.insert(
-                    "flag",
-                    AttributeValue::String("XLink_InvalidObjectType".to_string()),
-                );
-                result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
-                result_feature.insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
-                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-                result_feature.insert(
-                    "refGmlId",
-                    AttributeValue::String(xlink_href.chars().skip(1).collect::<String>()),
-                );
-                result_feature.insert(
-                    "refGmlTag",
-                    AttributeValue::String(item.get("tag").cloned().unwrap_or_default()),
-                );
-                result_feature.insert(
-                    "refGmlXpath",
-                    AttributeValue::String(item.get("xpath").cloned().unwrap_or_default()),
-                );
-                result.push(result_feature.clone());
-                fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-                response.xlink_invalid_object_type_num += 1;
+            } else if let Some(gml_ids) =
+                gml_ids.get(&xlink_href.chars().skip(1).collect::<String>())
+            {
+                for item in gml_ids.iter().filter(|&item| {
+                    !VALID_GEOMETRY_TYPES
+                        .contains(&item.get("tag").map(|t| t.as_str()).unwrap_or_default())
+                }) {
+                    let mut result_feature = base_feature.clone();
+                    result_feature.insert(
+                        "flag",
+                        AttributeValue::String("XLink_InvalidObjectType".to_string()),
+                    );
+                    result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
+                    result_feature
+                        .insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
+                    result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
+                    result_feature.insert(
+                        "refGmlId",
+                        AttributeValue::String(xlink_href.chars().skip(1).collect::<String>()),
+                    );
+                    result_feature.insert(
+                        "refGmlTag",
+                        AttributeValue::String(item.get("tag").cloned().unwrap_or_default()),
+                    );
+                    result_feature.insert(
+                        "refGmlXpath",
+                        AttributeValue::String(item.get("xpath").cloned().unwrap_or_default()),
+                    );
+                    result.push(result_feature.clone());
+                    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+                    response.xlink_invalid_object_type_num += 1;
+                }
             }
         }
-    }
+        Vec::new()
+    };
 
     // L-frn-01: Validation of geometric object types described as lod{0-3}Geometry.
     for lod_entry in &collected.lod_entries {
@@ -1534,7 +1491,7 @@ fn process_member_node(
             response.invalid_lod_x_geometry_num += 1;
         }
     }
-    Ok(result)
+    Ok((result, group_xlinks))
 }
 
 #[derive(Default)]
