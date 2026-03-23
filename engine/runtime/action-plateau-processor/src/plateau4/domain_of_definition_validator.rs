@@ -1035,8 +1035,8 @@ fn process_member_node(
 
     // Verification of the format of gml:id of a geographical object instance
     // grp:CityObjectGroup pattern should be {any prefix}_{UUID}.
-    if !gml_id_pattern.is_match(gml_id.as_str())
-        || (tag == "grp:CityObjectGroup" && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str()))
+    if !(gml_id_pattern.is_match(gml_id.as_str())
+        || (tag == "grp:CityObjectGroup" && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
     {
         let mut result_feature = base_feature.clone();
         result_feature.insert(
