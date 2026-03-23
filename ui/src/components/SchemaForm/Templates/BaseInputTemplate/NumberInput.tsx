@@ -17,6 +17,7 @@ const NumberInput = <
 >(
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
+    styles?: React.CSSProperties;
   },
 ) => {
   const {
@@ -28,6 +29,7 @@ const NumberInput = <
     disabled,
     value,
     onFieldFocus,
+    styles,
     onChange,
     onBlur,
     onFocus,
@@ -100,20 +102,7 @@ const NumberInput = <
           aria-invalid={rawErrors.length > 0}
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
           className={rawErrors.length > 0 ? "border-destructive" : ""}
-          style={{
-            border:
-              Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
-                ? "2px solid"
-                : undefined,
-            borderColor:
-              Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
-                ? props.focusedUsers.map((user) => user.color).join(",")
-                : undefined,
-            borderRadius:
-              Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
-                ? "4px"
-                : undefined,
-          }}
+          style={styles}
         />
         <ActionArea
           value={value}

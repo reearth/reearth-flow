@@ -98,6 +98,21 @@ const BaseInputTemplate = <
       }
     : undefined;
 
+  const paramsAwarenessStyles = {
+    border:
+      Array.isArray(focusedUsers) && focusedUsers.length > 0
+        ? "2px solid"
+        : undefined,
+    borderColor:
+      Array.isArray(focusedUsers) && focusedUsers.length > 0
+        ? focusedUsers.map((user) => user.color).join(",")
+        : undefined,
+    borderRadius:
+      Array.isArray(focusedUsers) && focusedUsers.length > 0
+        ? "4px"
+        : undefined,
+  };
+
   // Handle color inputs
   if (schema.format === "color") {
     return (
@@ -105,7 +120,7 @@ const BaseInputTemplate = <
         {...props}
         onEditorOpen={handleEditorOpen}
         onFieldFocus={onFieldFocus}
-        focusedUsers={focusedUsers}
+        styles={paramsAwarenessStyles}
       />
     );
   }
@@ -124,7 +139,7 @@ const BaseInputTemplate = <
         onEditorOpen={handleEditorOpen}
         onAssetsOpen={handleAssetsOpen}
         onFieldFocus={onFieldFocus}
-        focusedUsers={focusedUsers}
+        styles={paramsAwarenessStyles}
       />
     );
   }
@@ -137,7 +152,7 @@ const BaseInputTemplate = <
       onPythonEditorOpen={handlePythonEditorOpen}
       onAssetsOpen={handleAssetsOpen}
       onFieldFocus={onFieldFocus}
-      focusedUsers={focusedUsers}
+      styles={paramsAwarenessStyles}
     />
   );
 };

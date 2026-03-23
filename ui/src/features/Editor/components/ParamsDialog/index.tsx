@@ -251,22 +251,38 @@ const ParamsDialog: React.FC<Props> = ({
               <div className="flex items-center gap-2">
                 <GearFineIcon weight="thin" />
                 {t("Action Editor")}
-                {Object.entries(users).map(([key, user]) => {
-                  return (
-                    <div key={key}>
-                      {user.openNodeId === openNode?.id && (
-                        <div
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                          style={{ backgroundColor: user.color }}>
-                          <span className="text-xs font-medium text-white select-none">
-                            {user.userName.charAt(0).toUpperCase()}
-                            {user.userName.charAt(1)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                <div className="flex items-center -space-x-4">
+                  {(() => {
+                    const nodeUsers = Object.values(users).filter(
+                      (user) => user.openNodeId === openNode?.id,
+                    );
+                    return (
+                      <>
+                        {nodeUsers.slice(0, 2).map((user) => (
+                          <div key={user.clientId}>
+                            <div
+                              className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                              style={{
+                                backgroundColor: user.color || undefined,
+                              }}>
+                              <span className="text-xs font-medium text-white select-none">
+                                {user.userName.charAt(0).toUpperCase()}
+                                {user.userName.charAt(1)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {nodeUsers.length > 2 && (
+                          <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                            <span className="text-[10px] font-medium text-white">
+                              + {nodeUsers.length - 2}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </DialogTitle>
           </DialogHeader>

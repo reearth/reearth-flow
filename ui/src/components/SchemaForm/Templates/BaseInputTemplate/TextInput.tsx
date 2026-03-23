@@ -18,6 +18,7 @@ const TextInput = <
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
     onPythonEditorOpen?: () => void;
+    styles?: React.CSSProperties;
   },
 ) => {
   const {
@@ -28,7 +29,7 @@ const TextInput = <
     readonly,
     disabled,
     value,
-    focusedUsers,
+    styles,
     onChange,
     onBlur,
     onFocus,
@@ -87,20 +88,7 @@ const TextInput = <
         aria-invalid={rawErrors.length > 0}
         aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
         className={rawErrors.length > 0 ? "border-destructive" : ""}
-        style={{
-          border:
-            Array.isArray(focusedUsers) && focusedUsers.length > 0
-              ? "2px solid"
-              : undefined,
-          borderColor:
-            Array.isArray(focusedUsers) && focusedUsers.length > 0
-              ? focusedUsers.map((user) => user.color).join(",")
-              : undefined,
-          borderRadius:
-            Array.isArray(focusedUsers) && focusedUsers.length > 0
-              ? "4px"
-              : undefined,
-        }}
+        style={styles}
       />
       <ActionArea
         value={value}

@@ -5,7 +5,7 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { ChangeEvent, FocusEvent, useCallback } from "react";
+import { ChangeEvent, useCallback } from "react";
 
 import { TextArea } from "@flow/components";
 
@@ -41,21 +41,15 @@ const TextareaWidget = <
   const _onChange = ({ target: { value } }: ChangeEvent<HTMLTextAreaElement>) =>
     onChange(value === "" ? options.emptyValue : value);
 
-  const handleBlur = useCallback(
-    ({ target }: FocusEvent<HTMLTextAreaElement>) => {
-      onBlur(id, target?.value);
+  const handleBlur = useCallback(() => {
+    onBlur(id, value);
 
-      onFieldFocus?.(null);
-    },
-    [onBlur, id, onFieldFocus],
-  );
-  const handleFocus = useCallback(
-    ({ target }: FocusEvent<HTMLTextAreaElement>) => {
-      onFocus(id, target?.value);
-      onFieldFocus?.(id);
-    },
-    [onFocus, id, onFieldFocus],
-  );
+    onFieldFocus?.(null);
+  }, [onBlur, id, onFieldFocus, value]);
+  const handleFocus = useCallback(() => {
+    onFocus(id, value);
+    onFieldFocus?.(id);
+  }, [onFocus, id, onFieldFocus, value]);
 
   return (
     <TextArea

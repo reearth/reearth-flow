@@ -47,21 +47,15 @@ const CheckboxWidget = <
   const _onChange = ({ target }: FocusEvent<HTMLButtonElement>) =>
     onChange(id, target?.value);
 
-  const handleBlur = useCallback(
-    ({ target }: FocusEvent<HTMLButtonElement>) => {
-      onBlur?.(id, target.value);
-      onFieldFocus?.(null);
-    },
-    [onBlur, onFieldFocus, id],
-  );
+  const handleBlur = useCallback(() => {
+    onBlur?.(id, value);
+    onFieldFocus?.(null);
+  }, [onBlur, onFieldFocus, id, value]);
 
-  const handleFocus = useCallback(
-    ({ target }: FocusEvent<HTMLButtonElement>) => {
-      onFocus?.(id, target.value);
-      onFieldFocus?.(id);
-    },
-    [onFocus, onFieldFocus, id],
-  );
+  const handleFocus = useCallback(() => {
+    onFocus?.(id, value);
+    onFieldFocus?.(id);
+  }, [onFocus, onFieldFocus, id, value]);
 
   return (
     <div className="flex items-center gap-2 py-2">
