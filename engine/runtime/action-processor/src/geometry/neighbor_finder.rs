@@ -379,11 +379,11 @@ impl NeighborFinder {
             return Ok(());
         }
 
-        let chunk_path = self
-            .temp_dir
-            .as_ref()
-            .unwrap()
-            .join(format!("base_chunk_{}.jsonl.zst", self.base_chunk_count));
+        let temp_dir = self.temp_dir.as_ref().unwrap();
+        std::fs::create_dir_all(temp_dir)?;
+
+        let chunk_path =
+            temp_dir.join(format!("base_chunk_{}.jsonl.zst", self.base_chunk_count));
         let file = File::create(&chunk_path)?;
         let mut writer = BufWriter::new(zstd::Encoder::new(file, 3)?);
 
