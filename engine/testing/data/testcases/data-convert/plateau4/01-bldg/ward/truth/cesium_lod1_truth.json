@@ -1,0 +1,207 @@
+{
+  "bldg_77ca1a15-3b35-4386-8f86-152ed71c4c64": {
+    "meshcode": "53394517",
+    "feature_type": "bldg:Building",
+    "city_code": "13104",
+    "city_name": "東京都新宿区",
+    "gml_id": "bldg_77ca1a15-3b35-4386-8f86-152ed71c4c64",
+    "attributes": {
+      "meshcode": "53394517",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_77ca1a15-3b35-4386-8f86-152ed71c4c64",
+      "core:creationDate": "2024-03-15",
+      "gen:genericAttribute": [
+        {
+          "type": "string",
+          "name": "13+区市町村コード+大字・町コード+町・丁目コード",
+          "value": "13104125000"
+        },
+        {
+          "type": "string",
+          "name": "再開発等促進区を定める地区計画",
+          "value": "神宮外苑地区"
+        },
+        {
+          "type": "string",
+          "name": "大字・町コード",
+          "value": "125"
+        },
+        {
+          "type": "string",
+          "name": "延べ面積換算係数",
+          "value": "0.85"
+        },
+        {
+          "type": "string",
+          "name": "説明注記",
+          "value": " "
+        }
+      ],
+      "bldg:class": "堅ろう建物",
+      "bldg:class_code": "3002",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 16.1,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 3,
+      "bldg:storeysBelowGround": 0,
+      "bldg:address": "東京都新宿区霞ヶ丘町",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "（公共測量ではない）航空レーザ測量の測量成果",
+          "uro:geometrySrcDescLod2_code": "112",
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果ではない測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "100",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": [
+                "数値地形図データ",
+                "航空レーザ測量の測量成果"
+              ],
+              "uro:publicSurveySrcDescLod1_code": [
+                "023",
+                "012"
+              ]
+            }
+          ]
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "耐火構造",
+          "uro:codeValue_code": "11"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "建物の上層部が下層部の形状の50%以上100%未満",
+          "uro:codeValue_code": "2"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "変化していない",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "過年度修正なし",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "調整が必要でない建物",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "高度地区",
+          "uro:key_code": "105",
+          "uro:codeValue": "第二種高度地区",
+          "uro:codeValue_code": "2"
+        },
+        {
+          "uro:key": "防火及び準防火地域",
+          "uro:key_code": "106",
+          "uro:codeValue": "準防火地域",
+          "uro:codeValue_code": "20"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 2513.85514,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "耐火",
+          "uro:fireproofStructureType_code": "1001",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:areaClassificationType": "市街化区域",
+          "uro:areaClassificationType_code": "22",
+          "uro:districtsAndZonesType": "第2種中高層住居専用地域",
+          "uro:districtsAndZonesType_code": "4",
+          "uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+          "uro:landUseType_code": "214",
+          "uro:detailedUsage": "文化施設",
+          "uro:detailedUsage_code": "1122",
+          "uro:specifiedBuildingCoverageRate": 60.0,
+          "uro:specifiedFloorAreaRate": 200.0,
+          "uro:surveyYear": 2021
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13104-bldg-57513",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都新宿区",
+          "uro:city_code": "13104"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-15",
+    "bldg:class": "堅ろう建物",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 16.1,
+    "bldg:storeysAboveGround": 3,
+    "bldg:storeysBelowGround": 0,
+    "bldg:address": "東京都新宿区霞ヶ丘町",
+    "uro:BuildingIDAttribute_uro:buildingID": "13104-bldg-57513",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都新宿区",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 2513.85514,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "耐火",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化区域",
+    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "第2種中高層住居専用地域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+    "uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate": 60.0,
+    "uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate": 200.0,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
+    "uro:geometrySrcDescLod1": "公共測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "13+区市町村コード+大字・町コード+町・丁目コード": "13104125000",
+    "再開発等促進区を定める地区計画": "神宮外苑地区",
+    "大字・町コード": "125",
+    "延べ面積換算係数": "0.85",
+    "説明注記": "",
+    "_lod": 1,
+    "_x": 139.71762387464184,
+    "_y": 35.67878158838007,
+    "_xmin": 139.7169642035086,
+    "_xmax": 139.7182835457751,
+    "_ymin": 35.678490964020085,
+    "_ymax": 35.67907221274005,
+    "_zmin": 34.5,
+    "_zmax": 50.6
+  }
+}

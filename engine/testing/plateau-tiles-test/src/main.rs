@@ -1,3 +1,4 @@
+use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
@@ -115,9 +116,9 @@ fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
 
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/fld",
-    "data-convert/plateau4/01-bldg/lod1",
     "data-convert/plateau4/01-bldg/tako-machi",
     "data-convert/plateau4/01-bldg/ogasawara-mura",
+    "data-convert/plateau4/01-bldg/ward",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr_xlink",
@@ -316,6 +317,21 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                         w,
                         h,
                         entry.stroke,
+                    )?;
+                }
+                Ok(())
+            });
+        }
+
+        if !profile.convs.cesium_attributes.is_empty() {
+            run_test("convs_cesium_attributes", &relative_path_display, || {
+                for entry in profile.convs.cesium_attributes.values() {
+                    let tileset_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
+                    conv_cesium::write_cesium_json(
+                        &tileset_dir,
+                        &output_path,
+                        entry.casts.as_ref(),
                     )?;
                 }
                 Ok(())

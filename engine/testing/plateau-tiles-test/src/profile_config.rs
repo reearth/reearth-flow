@@ -41,6 +41,17 @@ pub struct ConvJsonEntry {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ConvCesiumEntry {
+    /// Path to 3DTiles directory, relative to flow_extracted
+    pub path: String,
+    /// Path to truth JSON file, relative to flow_extracted
+    pub truth_path: String,
+    pub generate_truth: bool,
+    #[serde(default)]
+    pub casts: Option<HashMap<String, CastConfigValue>>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ConvCesiumStatisticsEntry {
     /// Path to 3DTiles directory, relative to output_dir
     pub path: String,
@@ -57,6 +68,8 @@ pub struct Convs {
     pub mvt_png: HashMap<String, ConvMvtPngEntry>,
     #[serde(default)]
     pub json: HashMap<String, ConvJsonEntry>,
+    #[serde(default)]
+    pub cesium_attributes: HashMap<String, ConvCesiumEntry>,
     #[serde(default)]
     pub cesium_statistics: HashMap<String, ConvCesiumStatisticsEntry>,
 }
