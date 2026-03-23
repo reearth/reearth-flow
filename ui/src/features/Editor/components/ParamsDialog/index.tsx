@@ -1,5 +1,6 @@
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
+import { debounce } from "lodash-es";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import { Doc, Map as YMap } from "yjs";
@@ -200,33 +201,34 @@ const ParamsDialog: React.FC<Props> = ({
     return map;
   }, [users, openNode]);
 
-  const handleParamChange = useCallback(
-    (data: any) => {
-      if (!openNode) return;
+  const paramChange = useMemo(
+    () =>
+      debounce((data: any) => {
+        if (!openNode) return;
 
-      const base = openNode.data.params ?? {};
-      const patch = diffToPatch(base, data);
-
-      setMyDraft(openNode.id, (existing) => ({
-        ...existing,
-        paramsPatch: patch,
-      }));
-    },
+        const base = openNode.data.params ?? {};
+        const patch = diffToPatch(base, data);
+        setMyDraft(openNode.id, (existing) => ({
+          ...existing,
+          paramsPatch: patch,
+        }));
+      }, 150),
     [openNode, setMyDraft],
   );
 
-  const handleCustomizationChange = useCallback(
-    (data: any) => {
-      if (!openNode) return;
+  const customizationChange = useMemo(
+    () =>
+      debounce((data: any) => {
+        if (!openNode) return;
 
-      const base = openNode.data.customizations ?? {};
-      const patch = diffToPatch(base, data);
+        const base = openNode.data.customizations ?? {};
+        const patch = diffToPatch(base, data);
 
-      setMyDraft(openNode.id, (existing) => ({
-        ...existing,
-        customizationsPatch: patch,
-      }));
-    },
+        setMyDraft(openNode.id, (existing) => ({
+          ...existing,
+          customizationsPatch: patch,
+        }));
+      }, 150),
     [openNode, setMyDraft],
   );
 
@@ -238,7 +240,7 @@ const ParamsDialog: React.FC<Props> = ({
         currentFieldContext.path,
         value,
       );
-      handleParamChange(newParams);
+      paramChange(newParams);
     }
   };
 
@@ -295,8 +297,8 @@ const ParamsDialog: React.FC<Props> = ({
               nodeParams={currentParams}
               nodeCustomizations={currentCustomizations}
               fieldFocusMap={fieldFocusMap}
-              onParamsUpdate={handleParamChange}
-              onCustomizationsUpdate={handleCustomizationChange}
+              onParamsUpdate={paramChange}
+              onCustomizationsUpdate={customizationChange}
               onUpdate={handleUpdate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
