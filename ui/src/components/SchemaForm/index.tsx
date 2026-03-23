@@ -23,7 +23,7 @@ type SchemaFormProps = {
   defaultFormData?: any;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
   onFieldFocus?: (fieldId: string | null) => void;
-  onChange: (data: any) => void;
+  onChange: (data: any, changedFieldId?: string) => void;
   onError?: (errors: RJSFValidationError[]) => void;
   onValidationChange?: (isValid: boolean) => void;
   onEditorOpen?: (fieldContext: FieldContext) => void;
@@ -174,6 +174,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
 
   const handleChange = (
     data: IChangeEvent<any, RJSFSchema, GenericObjectType>,
+    changedFieldId?: string,
   ) => {
     const hasValidationErrors = data.errors && data.errors.length > 0;
 
@@ -185,7 +186,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
       onValidationChange?.(true);
     }
 
-    onChange(data.formData);
+    onChange(data.formData, changedFieldId);
   };
 
   // Validate initial data on mount

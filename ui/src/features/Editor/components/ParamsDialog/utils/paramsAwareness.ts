@@ -98,3 +98,9 @@ export const applyMergedPatch = (
 
   return result;
 };
+
+export const rjsfIdToPath = (changedFieldId?: string) => {
+  console.log("rjsfIdToPath called with:", changedFieldId);
+  if (!changedFieldId) return undefined;
+  return changedFieldId.replace(/^root_/, "").replace(/_/g, ".");
+};

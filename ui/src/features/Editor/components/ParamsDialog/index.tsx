@@ -1,6 +1,5 @@
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { debounce } from "lodash-es";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import { Doc, Map as YMap } from "yjs";
@@ -19,12 +18,12 @@ import {
   ValueEditorDialog,
   PythonEditorDialog,
 } from "./components";
-import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
+import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
 import {
   applyMergedPatch,
-  diffToPatch,
   DraftPatch,
   DraftStore,
+  rjsfIdToPath,
 } from "./utils/paramsAwareness";
 
 type Props = {
@@ -112,6 +111,27 @@ const ParamsDialog: React.FC<Props> = ({
     [rawDrafts, yDrafts, clientId],
   );
 
+  const updateMyFieldPatch = useCallback(
+    (
+      nodeId: string,
+      patchKey: "paramsPatch" | "customizationsPatch",
+      path: string,
+      value: any,
+    ) => {
+      setMyDraft(nodeId, (existing) => ({
+        ...existing,
+        [patchKey]: {
+          ...(existing[patchKey] ?? {}),
+          [path]: {
+            value,
+            updatedAt: Date.now(),
+          },
+        },
+      }));
+    },
+    [setMyDraft],
+  );
+
   const handleUpdate = useCallback(
     async (id: string, _updatedParams: any, _updatedCustomizations: any) => {
       if (!openNode || openNode.id !== id) return;
@@ -169,7 +189,6 @@ const ParamsDialog: React.FC<Props> = ({
     previousNodeIdRef.current = currentNodeId;
   }, [openNode?.id, removeMyDraft]);
 
-  // Keep refs always up-to-date so the unmount cleanup can use the latest values
   const nodeIdRef = useRef<string | undefined>(openNode?.id);
   nodeIdRef.current = openNode?.id;
   const removeMyDraftRef = useRef(removeMyDraft);
@@ -201,46 +220,40 @@ const ParamsDialog: React.FC<Props> = ({
     return map;
   }, [users, openNode]);
 
-  const paramChange = useMemo(
-    () =>
-      debounce((data: any) => {
-        if (!openNode) return;
+  const handleParamChange = useCallback(
+    (data: any, changedFieldId?: string) => {
+      if (!openNode) return;
 
-        const base = openNode.data.params ?? {};
-        const patch = diffToPatch(base, data);
-        setMyDraft(openNode.id, (existing) => ({
-          ...existing,
-          paramsPatch: patch,
-        }));
-      }, 150),
-    [openNode, setMyDraft],
+      const path = rjsfIdToPath(changedFieldId);
+      if (!path) return;
+
+      const value = getValueAtPath(data, [path]);
+
+      updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
+    },
+    [openNode, updateMyFieldPatch],
   );
 
-  const customizationChange = useMemo(
-    () =>
-      debounce((data: any) => {
-        if (!openNode) return;
+  const handleCustomizationChange = useCallback(
+    (data: any, changedFieldId?: string) => {
+      if (!openNode) return;
 
-        const base = openNode.data.customizations ?? {};
-        const patch = diffToPatch(base, data);
+      const path = rjsfIdToPath(changedFieldId);
+      if (!path) return;
 
-        setMyDraft(openNode.id, (existing) => ({
-          ...existing,
-          customizationsPatch: patch,
-        }));
-      }, 150),
-    [openNode, setMyDraft],
+      const value = getValueAtPath(data, [path]);
+
+      updateMyFieldPatch(openNode.id, "customizationsPatch", path, value);
+    },
+    [openNode, updateMyFieldPatch],
   );
 
   const handleValueChange = (value: any) => {
     if (currentFieldContext && openNode) {
-      const current = currentParams || {};
-      const newParams = setValueAtPath(
-        current,
-        currentFieldContext.path,
-        value,
-      );
-      paramChange(newParams);
+      const path = Array.isArray(currentFieldContext.path)
+        ? currentFieldContext.path.join(".")
+        : currentFieldContext.path;
+      updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
     }
   };
 
@@ -297,8 +310,8 @@ const ParamsDialog: React.FC<Props> = ({
               nodeParams={currentParams}
               nodeCustomizations={currentCustomizations}
               fieldFocusMap={fieldFocusMap}
-              onParamsUpdate={paramChange}
-              onCustomizationsUpdate={customizationChange}
+              onParamsUpdate={handleParamChange}
+              onCustomizationsUpdate={handleCustomizationChange}
               onUpdate={handleUpdate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}

@@ -36,8 +36,8 @@ type Props = {
   nodeParams?: NodeParams;
   nodeCustomizations?: any;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
-  onParamsUpdate: (data: any) => void;
-  onCustomizationsUpdate: (data: any) => void;
+  onParamsUpdate: (data: any, changedFieldId?: string) => void;
+  onCustomizationsUpdate: (data: any, changedFieldId?: string) => void;
   onUpdate: (
     nodeId: string,
     updatedParams: any,
