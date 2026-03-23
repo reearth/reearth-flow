@@ -6867,7 +6867,7 @@
             "default": 1,
             "type": "integer",
             "format": "uint",
-            "minimum": 0.0
+            "minimum": 1.0
           }
         },
         "definitions": {

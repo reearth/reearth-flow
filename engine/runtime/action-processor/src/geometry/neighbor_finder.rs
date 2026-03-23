@@ -98,7 +98,8 @@ impl ProcessorFactory for NeighborFinderFactory {
             params,
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -144,6 +145,7 @@ pub enum MergeStrategy {
 pub struct NeighborFinderParams {
     /// Number of closest neighbors to find per base feature. Must be >= 1.
     #[serde(default = "default_num_closest")]
+    #[schemars(range(min = 1))]
     pub num_closest: usize,
 
     /// Maximum distance threshold for matching. If None, no distance limit is applied.
@@ -243,8 +245,9 @@ struct NeighborFinder {
     params: NeighborFinderParams,
     candidates: Vec<CandidateEntry>,
     base_features: Vec<Feature>,
-    // Disk spilling fields
-    buffer_bytes: usize,
+    // Disk spilling fields - track bytes separately for each buffer
+    base_buffer_bytes: usize,
+    candidate_buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
     candidate_chunk_count: usize,
     base_chunk_count: usize,
@@ -266,6 +269,8 @@ impl Processor for NeighborFinder {
             self.executor_id = Some(fw.executor_id());
             // Initialize temp_dir now that we have executor_id
             let temp_dir = executor_cache_subdir(fw.executor_id(), "neighbor_finder");
+            // Create the directory if it doesn't exist
+            std::fs::create_dir_all(&temp_dir)?;
             self.temp_dir = Some(temp_dir);
         }
 
@@ -289,14 +294,19 @@ impl Processor for NeighborFinder {
             port if port == &*BASE_PORT => {
                 // Check if we need to spill to disk
                 let feature_bytes = serde_json::to_vec(feature)?.len();
-                if self.buffer_bytes + feature_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                if self.base_buffer_bytes + feature_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
                     self.flush_base_features()?;
                 }
                 self.base_features.push(feature.clone());
-                self.buffer_bytes += feature_bytes;
+                self.base_buffer_bytes += feature_bytes;
             }
             port if port == &*CANDIDATE_PORT => {
                 // Extract representative point and store candidate
+                // Note: Invalid candidates (unsupported or empty geometry) are silently
+                // skipped rather than sent to rejected port. Only base features with
+                // invalid geometry are routed to rejected. This is intentional because
+                // candidates are consumed but never emitted - sending them to rejected
+                // would violate this design principle.
                 if let Some((point, point_z)) = extract_representative_point(feature) {
                     let entry = CandidateEntry {
                         point,
@@ -304,11 +314,13 @@ impl Processor for NeighborFinder {
                         feature: feature.clone(),
                     };
                     let entry_bytes = serde_json::to_vec(&entry)?.len();
-                    if self.buffer_bytes + entry_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                    if self.candidate_buffer_bytes + entry_bytes
+                        >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD
+                    {
                         self.flush_candidates()?;
                     }
                     self.candidates.push(entry);
-                    self.buffer_bytes += entry_bytes;
+                    self.candidate_buffer_bytes += entry_bytes;
                 }
             }
             _ => {
@@ -384,7 +396,7 @@ impl NeighborFinder {
 
         self.base_chunk_count += 1;
         self.base_features.clear();
-        self.buffer_bytes = 0;
+        self.base_buffer_bytes = 0;
         Ok(())
     }
 
@@ -410,7 +422,7 @@ impl NeighborFinder {
 
         self.candidate_chunk_count += 1;
         self.candidates.clear();
-        self.buffer_bytes = 0;
+        self.candidate_buffer_bytes = 0;
         Ok(())
     }
 
@@ -500,13 +512,34 @@ impl NeighborFinder {
                     }
                 }
                 Ok((None, true)) => {
+                    // Geometry error - send to rejected
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                         ctx,
                         base.clone(),
                         REJECTED_PORT.clone(),
                     ));
                 }
-                _ => {}
+                Ok((None, false)) => {
+                    // No matches found (not a geometry error) - send to unmatched
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        ctx,
+                        base.clone(),
+                        UNMATCHED_PORT.clone(),
+                    ));
+                }
+                Ok((Some(_), true)) => {
+                    // Invalid state: has matches but also has geometry error
+                    // This shouldn't happen, but treat as rejected to be safe
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        ctx,
+                        base.clone(),
+                        REJECTED_PORT.clone(),
+                    ));
+                }
+                Err(e) => {
+                    // Propagate errors from find_neighbors_for_base
+                    return Err(e);
+                }
             }
         }
 
@@ -754,7 +787,18 @@ impl NeighborFinder {
     }
 }
 
+/// Over-fetch factor for non-2D Euclidean metrics to ensure correctness.
+/// The R-tree uses 2D Euclidean ordering, which may differ from Haversine or 3D Euclidean.
+const KNN_OVERFETCH_FACTOR: usize = 4;
+
 /// Find the k nearest neighbors for a given base point using the R-tree.
+///
+/// For Euclidean2D metric, we can use the R-tree ordering directly since the index
+/// is built using 2D Euclidean distance.
+///
+/// For Haversine and Euclidean3D metrics, we over-fetch candidates and re-sort by
+/// the actual metric distance to ensure correctness, since the R-tree's 2D ordering
+/// may not match the true nearest neighbors in those metrics.
 fn find_k_nearest_neighbors(
     rtree: &RTree<CandidateEntry>,
     base_point: &[f64; 2],
@@ -762,27 +806,64 @@ fn find_k_nearest_neighbors(
     k: usize,
     metric: &DistanceMetric,
 ) -> Vec<NeighborMatch> {
-    rtree
-        .nearest_neighbor_iter(base_point)
-        .take(k)
-        .cloned()
-        .enumerate()
-        .map(|(index, candidate)| {
-            // Compute distance based on the specified metric
-            let distance = compute_distance(
-                metric,
-                base_point,
-                base_z,
-                &candidate.point,
-                candidate.point_z,
-            );
-            NeighborMatch {
-                candidate,
-                distance,
-                index,
+    match metric {
+        DistanceMetric::Euclidean2d => {
+            // For 2D Euclidean, R-tree ordering is correct
+            rtree
+                .nearest_neighbor_iter(base_point)
+                .take(k)
+                .cloned()
+                .enumerate()
+                .map(|(index, candidate)| {
+                    let distance = euclidean_distance_2d(base_point, &candidate.point);
+                    NeighborMatch {
+                        candidate,
+                        distance,
+                        index,
+                    }
+                })
+                .collect()
+        }
+        _ => {
+            // For Haversine and Euclidean3D, over-fetch and re-sort by actual metric
+            // to ensure we get the true k-nearest neighbors
+            let fetch_count = k.saturating_mul(KNN_OVERFETCH_FACTOR).min(rtree.size());
+            let mut matches: Vec<NeighborMatch> = rtree
+                .nearest_neighbor_iter(base_point)
+                .take(fetch_count)
+                .cloned()
+                .enumerate()
+                .map(|(index, candidate)| {
+                    let distance = compute_distance(
+                        metric,
+                        base_point,
+                        base_z,
+                        &candidate.point,
+                        candidate.point_z,
+                    );
+                    NeighborMatch {
+                        candidate,
+                        distance,
+                        index,
+                    }
+                })
+                .collect();
+
+            // Sort by actual distance using the selected metric and take top k
+            matches.sort_by(|a, b| {
+                a.distance
+                    .partial_cmp(&b.distance)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            matches.truncate(k);
+
+            // Re-assign indices based on new ordering
+            for (i, m) in matches.iter_mut().enumerate() {
+                m.index = i;
             }
-        })
-        .collect()
+            matches
+        }
+    }
 }
 
 /// Compute 2D Euclidean distance between two points
@@ -968,7 +1049,8 @@ mod tests {
             params: NeighborFinderParams::default(),
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1023,7 +1105,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1066,7 +1149,8 @@ mod tests {
             params: NeighborFinderParams::default(),
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1157,7 +1241,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1220,7 +1305,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1284,7 +1370,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1346,7 +1433,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1405,7 +1493,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,
@@ -1479,7 +1568,8 @@ mod tests {
             },
             candidates: Vec::new(),
             base_features: Vec::new(),
-            buffer_bytes: 0,
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
             temp_dir: None,
             candidate_chunk_count: 0,
             base_chunk_count: 0,

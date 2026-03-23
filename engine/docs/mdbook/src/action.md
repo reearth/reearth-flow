@@ -6867,7 +6867,7 @@ Finds the closest candidate features for each base feature based on spatial prox
       "default": 1,
       "type": "integer",
       "format": "uint",
-      "minimum": 0.0
+      "minimum": 1.0
     }
   },
   "definitions": {
