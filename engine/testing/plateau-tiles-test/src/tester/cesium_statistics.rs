@@ -103,13 +103,13 @@ fn compare_feature_stats(ident: &str, truth: &Value, actual: &Value) -> Result<(
 }
 
 pub fn test_cesium_statistics(
-    fme_dir: &Path,
+    truth_dir: &Path,
     flow_extracted_dir: &Path,
     entries: &HashMap<String, ConvCesiumStatisticsEntry>,
 ) -> Result<(), String> {
     for (id, entry) in entries {
         let flow_tileset_dir = flow_extracted_dir.join(&entry.path);
-        let truth_path = fme_dir.join(&entry.truth_path);
+        let truth_path = truth_dir.join(&entry.truth_path);
 
         let actual = compute_cesium_statistics(&flow_tileset_dir)?;
         let truth: Value = serde_json::from_slice(

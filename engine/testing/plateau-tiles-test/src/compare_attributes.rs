@@ -19,7 +19,6 @@ fn is_risk_type(path: &str) -> bool {
 /// For other features, use gml_id alone (extracted from props).
 pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     let getter = |key| {
-        // FME has unreliable number vs string types so we convert everything to string here
         if let Some(value) = props.get(key) {
             match value {
                 Value::String(s) => s.clone(),
@@ -78,8 +77,6 @@ pub enum CastConfig {
 
 /// Returns only the structural casts (Json, ListToDict, IgnoreBoth) that need
 /// to be applied to both sides for data-equivalence checks within the same dataset.
-/// Primitive casts (String, Float, Int) are dropped since they only normalize
-/// FME's unreliable types toward ground truth.
 pub fn structural_casts(casts: &HashMap<String, CastConfig>) -> HashMap<String, CastConfig> {
     casts
         .iter()
@@ -473,7 +470,7 @@ impl AttributeComparer {
             return Err(format!(
                 "Missing attributes for identifier: {} for {}",
                 self.identifier,
-                if attr1.is_null() { "FME" } else { "flow" }
+                if attr1.is_null() { "truth" } else { "flow" }
             ));
         }
 

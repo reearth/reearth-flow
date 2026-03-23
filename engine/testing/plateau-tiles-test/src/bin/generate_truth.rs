@@ -20,14 +20,14 @@ fn run(profile_path: &Path) -> Result<(), String> {
         toml::from_str(&content).map_err(|e| format!("Failed to parse profile: {}", e))?;
 
     let testcase_dir = profile_path.parent().unwrap();
-    let fme_dir = testcase_dir.join("fme");
+    let truth_dir = testcase_dir.join("truth");
 
     for (id, entry) in &profile.convs.json {
         if !entry.generate_truth {
             continue;
         }
-        let flow_file = fme_dir.join(&entry.flow_path);
-        let output_path = fme_dir.join(&entry.output_path);
+        let flow_file = truth_dir.join(&entry.flow_path);
+        let output_path = truth_dir.join(&entry.output_path);
         plateau_tiles_test::conv::json::write_json(
             &flow_file,
             &output_path,
@@ -44,9 +44,9 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let stem = Path::new(&entry.path)
             .file_name()
             .expect("convs.mvt_attributes path must have a file name");
-        let zip_path = fme_dir.join(stem).with_extension("zip");
+        let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
-        let output_path = fme_dir.join(&entry.truth_path);
+        let output_path = truth_dir.join(&entry.truth_path);
         let result = mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
         fs::remove_dir_all(&tmp_dir).ok();
         result?;
@@ -60,7 +60,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let stem = Path::new(&entry.path)
             .file_name()
             .expect("convs.mvt_png path must have a file name");
-        let mvt_zip_path = fme_dir.join(stem).with_extension("zip");
+        let mvt_zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_mvt_dir = extract_zip_to_tmp(&mvt_zip_path)?;
 
         let tmp_png_dir =
@@ -85,7 +85,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             return Err(e);
         }
 
-        let truth_zip_path = fme_dir.join(&entry.truth_path).with_extension("zip");
+        let truth_zip_path = truth_dir.join(&entry.truth_path).with_extension("zip");
         let zip_result = zip_dir(&tmp_png_dir, &truth_zip_path);
         fs::remove_dir_all(&tmp_png_dir).ok();
         zip_result?;
@@ -100,9 +100,9 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let stem = Path::new(&entry.path)
             .file_name()
             .expect("convs.cesium_statistics path must have a file name");
-        let zip_path = fme_dir.join(stem).with_extension("zip");
+        let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
-        let output_path = fme_dir.join(&entry.truth_path);
+        let output_path = truth_dir.join(&entry.truth_path);
         let result = cesium_statistics::write_cesium_statistics(&tmp_dir, &output_path);
         fs::remove_dir_all(&tmp_dir).ok();
         result?;

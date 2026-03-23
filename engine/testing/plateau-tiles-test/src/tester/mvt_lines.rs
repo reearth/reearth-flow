@@ -223,9 +223,9 @@ fn polygon_to_linestrings(poly: &MultiPolygon2D<f64>) -> MultiLineString2D<f64> 
     MultiLineString2D::new(linestrings)
 }
 
-/// Tests MVT lines between FME and Flow outputs
+/// Tests MVT lines between truth and Flow outputs
 pub fn test_mvt_lines(
-    fme_path: &Path,
+    truth_path: &Path,
     flow_path: &Path,
     config: &MvtLinesConfig,
 ) -> Result<(), String> {
@@ -236,9 +236,9 @@ pub fn test_mvt_lines(
 
     // Fetch both LineString and Polygon features
     let line_features =
-        align_mvt_features(fme_path, flow_path, GeometryType::LineString, zmin, zmax)?;
+        align_mvt_features(truth_path, flow_path, GeometryType::LineString, zmin, zmax)?;
     let polygon_features =
-        align_mvt_features(fme_path, flow_path, GeometryType::Polygon, zmin, zmax)?;
+        align_mvt_features(truth_path, flow_path, GeometryType::Polygon, zmin, zmax)?;
 
     let mut results = Vec::new();
     let mut total = 0;
