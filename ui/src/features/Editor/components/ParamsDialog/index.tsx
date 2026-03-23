@@ -19,6 +19,12 @@ import {
   PythonEditorDialog,
 } from "./components";
 import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
+import {
+  applyMergedPatch,
+  diffToPatch,
+  DraftPatch,
+  DraftStore,
+} from "./utils/paramsAwareness";
 
 type Props = {
   readonly?: boolean;
@@ -48,6 +54,7 @@ const ParamsDialog: React.FC<Props> = ({
   onParamFieldFocus,
 }) => {
   const t = useT();
+  const clientId = String(yDoc?.clientID ?? "local");
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
   const [openPythonEditor, setOpenPythonEditor] = useState(false);
@@ -55,30 +62,79 @@ const ParamsDialog: React.FC<Props> = ({
     FieldContext | undefined
   >(undefined);
 
-  // Shared Y.Map for draft state — keyed by nodeId, value is { params, customizations }
   const yDrafts = useMemo(() => yDoc?.getMap<any>("paramDrafts"), [yDoc]);
-  const rawDrafts = useY(yDrafts ?? new YMap()) as Record<
-    string,
-    { params?: any; customizations?: any } | undefined
-  >;
+  const rawDrafts = useY(yDrafts ?? new YMap()) as DraftStore;
 
-  const draft = openNode?.id ? rawDrafts[openNode?.id] : undefined;
-  const currentParams =
-    draft?.params !== undefined ? draft.params : openNode?.data.params;
-  const currentCustomizations =
-    draft?.customizations !== undefined
-      ? draft.customizations
-      : openNode?.data.customizations;
+  const nodeDrafts = openNode?.id ? rawDrafts[openNode.id] : undefined;
+
+  const currentParams = useMemo(() => {
+    if (!openNode) return undefined;
+    return applyMergedPatch(openNode.data.params, nodeDrafts, "paramsPatch");
+  }, [openNode, nodeDrafts]);
+
+  const currentCustomizations = useMemo(() => {
+    if (!openNode) return undefined;
+    return applyMergedPatch(
+      openNode.data.customizations,
+      nodeDrafts,
+      "customizationsPatch",
+    );
+  }, [openNode, nodeDrafts]);
+
+  const setMyDraft = useCallback(
+    (nodeId: string, updater: (existing: DraftPatch) => DraftPatch) => {
+      const existingNodeDrafts = rawDrafts[nodeId] ?? {};
+      const existingMyDraft = existingNodeDrafts[clientId] ?? {};
+      const nextMyDraft = updater(existingMyDraft);
+
+      yDrafts?.set(nodeId, {
+        ...existingNodeDrafts,
+        [clientId]: nextMyDraft,
+      });
+    },
+    [rawDrafts, yDrafts, clientId],
+  );
+
+  const removeMyDraft = useCallback(
+    (nodeId: string) => {
+      const existingNodeDrafts = rawDrafts[nodeId];
+      if (!existingNodeDrafts) return;
+
+      const { [clientId]: _removed, ...remainingDrafts } = existingNodeDrafts;
+
+      if (Object.keys(remainingDrafts).length === 0) {
+        yDrafts?.delete(nodeId);
+      } else {
+        yDrafts?.set(nodeId, remainingDrafts);
+      }
+    },
+    [rawDrafts, yDrafts, clientId],
+  );
 
   const handleUpdate = useCallback(
-    async (id: string, updatedParams: any, updatedCustomizations: any) => {
+    async (id: string, _updatedParams: any, _updatedCustomizations: any) => {
+      if (!openNode || openNode.id !== id) return;
+
+      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const updatedParams = applyMergedPatch(
+        openNode.data.params,
+        latestNodeDrafts,
+        "paramsPatch",
+      );
+      const updatedCustomizations = applyMergedPatch(
+        openNode.data.customizations,
+        latestNodeDrafts,
+        "customizationsPatch",
+      );
+
       await Promise.resolve(
         onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]),
       );
-      yDrafts?.delete(id);
+
+      removeMyDraft(id);
       onOpenNode();
     },
-    [onDataSubmit, onOpenNode, yDrafts],
+    [openNode, rawDrafts, onDataSubmit, removeMyDraft, onOpenNode],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -99,24 +155,30 @@ const ParamsDialog: React.FC<Props> = ({
     }
   }, [setViewport, getViewport, openNode]);
 
+  const previousNodeIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const previousNodeId = previousNodeIdRef.current;
+    const currentNodeId = openNode?.id;
+
+    if (previousNodeId && !currentNodeId) {
+      removeMyDraft(previousNodeId);
+    }
+
+    previousNodeIdRef.current = currentNodeId;
+  }, [openNode?.id, removeMyDraft]);
+
   // Keep refs always up-to-date so the unmount cleanup can use the latest values
   const nodeIdRef = useRef<string | undefined>(openNode?.id);
   nodeIdRef.current = openNode?.id;
-  const usersRef = useRef(users);
-  usersRef.current = users;
-  const yDraftsRef = useRef(yDrafts);
-  yDraftsRef.current = yDrafts;
+  const removeMyDraftRef = useRef(removeMyDraft);
+  removeMyDraftRef.current = removeMyDraft;
 
   useEffect(() => {
     return () => {
       const nodeId = nodeIdRef.current;
       if (!nodeId) return;
-      const otherUserHasNodeOpen = Object.values(usersRef.current).some(
-        (u) => u.openNodeId === nodeId,
-      );
-      if (!otherUserHasNodeOpen) {
-        yDraftsRef.current?.delete(nodeId);
-      }
+      removeMyDraftRef.current(nodeId);
     };
   }, []);
 
@@ -140,22 +202,32 @@ const ParamsDialog: React.FC<Props> = ({
 
   const handleParamChange = useCallback(
     (data: any) => {
-      if (openNode) {
-        const existing = rawDrafts[openNode.id] ?? {};
-        yDrafts?.set(openNode.id, { ...existing, params: data });
-      }
+      if (!openNode) return;
+
+      const base = openNode.data.params ?? {};
+      const patch = diffToPatch(base, data);
+
+      setMyDraft(openNode.id, (existing) => ({
+        ...existing,
+        paramsPatch: patch,
+      }));
     },
-    [openNode, yDrafts, rawDrafts],
+    [openNode, setMyDraft],
   );
 
   const handleCustomizationChange = useCallback(
     (data: any) => {
-      if (openNode) {
-        const existing = rawDrafts[openNode.id] ?? {};
-        yDrafts?.set(openNode.id, { ...existing, customizations: data });
-      }
+      if (!openNode) return;
+
+      const base = openNode.data.customizations ?? {};
+      const patch = diffToPatch(base, data);
+
+      setMyDraft(openNode.id, (existing) => ({
+        ...existing,
+        customizationsPatch: patch,
+      }));
     },
-    [openNode, yDrafts, rawDrafts],
+    [openNode, setMyDraft],
   );
 
   const handleValueChange = (value: any) => {

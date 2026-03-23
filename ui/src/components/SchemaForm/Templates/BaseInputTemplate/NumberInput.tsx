@@ -27,6 +27,7 @@ const NumberInput = <
     readonly,
     disabled,
     value,
+    onFieldFocus,
     onChange,
     onBlur,
     onFocus,
@@ -58,15 +59,17 @@ const NumberInput = <
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onBlur?.(id, e.target.value);
+      onFieldFocus?.(null);
     },
-    [onBlur, id],
+    [onBlur, id, onFieldFocus],
   );
 
   const handleFocus = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onFocus?.(id, e.target.value);
+      onFieldFocus?.(id);
     },
-    [onFocus, id],
+    [onFocus, id, onFieldFocus],
   );
 
   const handleReset = useCallback(() => {
@@ -97,6 +100,20 @@ const NumberInput = <
           aria-invalid={rawErrors.length > 0}
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
           className={rawErrors.length > 0 ? "border-destructive" : ""}
+          style={{
+            border:
+              Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
+                ? "2px solid"
+                : undefined,
+            borderColor:
+              Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
+                ? props.focusedUsers.map((user) => user.color).join(",")
+                : undefined,
+            borderRadius:
+              Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
+                ? "4px"
+                : undefined,
+          }}
         />
         <ActionArea
           value={value}

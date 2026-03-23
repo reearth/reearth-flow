@@ -29,6 +29,7 @@ const ColorInput = <
     value,
     onChange,
     onBlur,
+    onFieldFocus,
     onFocus,
     onEditorOpen,
     options,
@@ -48,15 +49,17 @@ const ColorInput = <
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onBlur?.(id, e.target.value);
+      onFieldFocus?.(null);
     },
-    [onBlur, id],
+    [onBlur, id, onFieldFocus],
   );
 
   const handleFocus = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onFocus?.(id, e.target.value);
+      onFieldFocus?.(id);
     },
-    [onFocus, id],
+    [onFocus, id, onFieldFocus],
   );
 
   const handleReset = useCallback(() => {
@@ -81,6 +84,20 @@ const ColorInput = <
         aria-invalid={rawErrors.length > 0}
         aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
         className={`${rawErrors.length > 0 ? "border-destructive" : ""} h-7 w-20 p-0`}
+        style={{
+          border:
+            Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
+              ? "2px solid"
+              : undefined,
+          borderColor:
+            Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
+              ? props.focusedUsers.map((user) => user.color).join(",")
+              : undefined,
+          borderRadius:
+            Array.isArray(props.focusedUsers) && props.focusedUsers.length > 0
+              ? "4px"
+              : undefined,
+        }}
       />
       <ActionArea
         value={value}

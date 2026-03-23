@@ -28,9 +28,11 @@ const TextInput = <
     readonly,
     disabled,
     value,
+    focusedUsers,
     onChange,
     onBlur,
     onFocus,
+    onFieldFocus,
     onEditorOpen,
     onPythonEditorOpen,
     options,
@@ -50,15 +52,17 @@ const TextInput = <
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onBlur?.(id, e.target.value);
+      onFieldFocus?.(null);
     },
-    [onBlur, id],
+    [onBlur, id, onFieldFocus],
   );
 
   const handleFocus = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onFocus?.(id, e.target.value);
+      onFieldFocus?.(id);
     },
-    [onFocus, id],
+    [onFocus, id, onFieldFocus],
   );
 
   const handleReset = useCallback(() => {
@@ -83,6 +87,20 @@ const TextInput = <
         aria-invalid={rawErrors.length > 0}
         aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
         className={rawErrors.length > 0 ? "border-destructive" : ""}
+        style={{
+          border:
+            Array.isArray(focusedUsers) && focusedUsers.length > 0
+              ? "2px solid"
+              : undefined,
+          borderColor:
+            Array.isArray(focusedUsers) && focusedUsers.length > 0
+              ? focusedUsers.map((user) => user.color).join(",")
+              : undefined,
+          borderRadius:
+            Array.isArray(focusedUsers) && focusedUsers.length > 0
+              ? "4px"
+              : undefined,
+        }}
       />
       <ActionArea
         value={value}

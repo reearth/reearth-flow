@@ -5,7 +5,7 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { ChangeEvent, FocusEvent } from "react";
+import { ChangeEvent, FocusEvent, useCallback } from "react";
 
 import { TextArea } from "@flow/components";
 
@@ -27,6 +27,7 @@ const TextareaWidget = <
   value,
   required,
   disabled,
+  registry,
   autofocus,
   readonly,
   onBlur,
@@ -34,15 +35,44 @@ const TextareaWidget = <
   onChange,
   options,
 }: CustomWidgetProps<T, S, F>) => {
+  const formContext = registry?.formContext;
+  const { fieldFocusMap, onFieldFocus } = formContext ?? {};
+  const focusedUsers = fieldFocusMap?.[id] ?? [];
   const _onChange = ({ target: { value } }: ChangeEvent<HTMLTextAreaElement>) =>
     onChange(value === "" ? options.emptyValue : value);
-  const _onBlur = ({ target }: FocusEvent<HTMLTextAreaElement>) =>
-    onBlur(id, target?.value);
-  const _onFocus = ({ target }: FocusEvent<HTMLTextAreaElement>) =>
-    onFocus(id, target?.value);
+
+  const handleBlur = useCallback(
+    ({ target }: FocusEvent<HTMLTextAreaElement>) => {
+      onBlur(id, target?.value);
+
+      onFieldFocus?.(null);
+    },
+    [onBlur, id, onFieldFocus],
+  );
+  const handleFocus = useCallback(
+    ({ target }: FocusEvent<HTMLTextAreaElement>) => {
+      onFocus(id, target?.value);
+      onFieldFocus?.(id);
+    },
+    [onFocus, id, onFieldFocus],
+  );
 
   return (
     <TextArea
+      style={{
+        border:
+          Array.isArray(focusedUsers) && focusedUsers.length > 0
+            ? "2px solid"
+            : undefined,
+        borderColor:
+          Array.isArray(focusedUsers) && focusedUsers.length > 0
+            ? focusedUsers.map((user) => user.color).join(",")
+            : undefined,
+        borderRadius:
+          Array.isArray(focusedUsers) && focusedUsers.length > 0
+            ? "4px"
+            : undefined,
+      }}
       id={id}
       name={id}
       placeholder={placeholder}
@@ -53,8 +83,8 @@ const TextareaWidget = <
       autoFocus={autofocus}
       rows={options.rows || 5}
       onChange={_onChange}
-      onBlur={_onBlur}
-      onFocus={_onFocus}
+      onBlur={handleBlur}
+      onFocus={handleFocus}
       aria-describedby={ariaDescribedByIds(id)}
     />
   );

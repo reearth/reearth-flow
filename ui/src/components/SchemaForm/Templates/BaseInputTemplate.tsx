@@ -36,6 +36,9 @@ const BaseInputTemplate = <
   const { schema, registry, id, name, value, uiSchema } = props;
 
   const formContext = registry.formContext as ExtendedFormContext;
+  const { fieldFocusMap, onFieldFocus } =
+    (registry.formContext as ExtendedFormContext) ?? {};
+  const focusedUsers = fieldFocusMap?.[id] ?? [];
 
   const {
     onEditorOpen,
@@ -101,7 +104,8 @@ const BaseInputTemplate = <
       <ColorInput
         {...props}
         onEditorOpen={handleEditorOpen}
-        onAssetsOpen={handleAssetsOpen}
+        onFieldFocus={onFieldFocus}
+        focusedUsers={focusedUsers}
       />
     );
   }
@@ -119,6 +123,8 @@ const BaseInputTemplate = <
         {...props}
         onEditorOpen={handleEditorOpen}
         onAssetsOpen={handleAssetsOpen}
+        onFieldFocus={onFieldFocus}
+        focusedUsers={focusedUsers}
       />
     );
   }
@@ -130,6 +136,8 @@ const BaseInputTemplate = <
       onEditorOpen={handleEditorOpen}
       onPythonEditorOpen={handlePythonEditorOpen}
       onAssetsOpen={handleAssetsOpen}
+      onFieldFocus={onFieldFocus}
+      focusedUsers={focusedUsers}
     />
   );
 };
