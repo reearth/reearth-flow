@@ -36,7 +36,7 @@ impl Scope {
         let engine = Arc::new(engine.clone());
         let vars = Arc::new(RwLock::new(Vars::new()));
 
-        let env = ScopeEnv {
+    let env = ScopeEnv {
             engine: Arc::clone(&engine),
             vars: Arc::clone(&vars),
         };

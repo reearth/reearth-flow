@@ -18,20 +18,20 @@ pub struct JsonFileConfig {
 }
 
 pub fn test_json_attributes(
-    fme_source_path: &Path,
+    truth_source_path: &Path,
     flow_source_path: &Path,
-    fme_extracted_path: &Path,
+    truth_extracted_path: &Path,
     flow_extracted_path: &Path,
     config: &HashMap<String, JsonFileConfig>,
 ) -> Result<(), String> {
     for (name, file_cfg) in config {
         let file_path = &file_cfg.path;
-        let (fme_base, flow_base) = if file_cfg.extracted {
-            (fme_extracted_path, flow_extracted_path)
+        let (truth_base, flow_base) = if file_cfg.extracted {
+            (truth_extracted_path, flow_extracted_path)
         } else {
-            (fme_source_path, flow_source_path)
+            (truth_source_path, flow_source_path)
         };
-        let fme_file = fme_base.join(file_path);
+        let truth_file = truth_base.join(file_path);
         let flow_file = flow_base.join(file_path);
 
         if file_cfg.must_not_exist {
@@ -44,17 +44,17 @@ pub fn test_json_attributes(
             continue;
         }
 
-        assert!(fme_file.exists(), "missing fme file {:?}", fme_file);
+        assert!(truth_file.exists(), "missing truth file {:?}", truth_file);
         assert!(flow_file.exists(), "missing flow file {:?}", flow_file);
 
-        let fme_content = fs::read(&fme_file).map_err(|e| e.to_string())?;
-        let fme_content = if fme_content.starts_with(&[0xEF, 0xBB, 0xBF]) {
-            &fme_content[3..]
+        let truth_content = fs::read(&truth_file).map_err(|e| e.to_string())?;
+        let truth_content = if truth_content.starts_with(&[0xEF, 0xBB, 0xBF]) {
+            &truth_content[3..]
         } else {
-            &fme_content
+            &truth_content
         };
-        let fme_data: serde_json::Value = serde_json::from_slice(fme_content)
-            .map_err(|e| format!("Failed to parse FME JSON: {}", e))?;
+        let truth_data: serde_json::Value = serde_json::from_slice(truth_content)
+            .map_err(|e| format!("Failed to parse truth JSON: {}", e))?;
         let flow_content = fs::read(&flow_file).map_err(|e| e.to_string())?;
         let flow_data: serde_json::Value = serde_json::from_slice(&flow_content)
             .map_err(|e| format!("Failed to parse Flow JSON: {}", e))?;
@@ -68,7 +68,7 @@ pub fn test_json_attributes(
         let values = file_cfg.values.clone().unwrap_or_default();
 
         tracing::debug!("Comparing JSON file: {} ({})", name, file_path);
-        analyze_attributes(name, &fme_data, &flow_data, casts, values)?;
+        analyze_attributes(name, &truth_data, &flow_data, casts, values)?;
     }
 
     Ok(())

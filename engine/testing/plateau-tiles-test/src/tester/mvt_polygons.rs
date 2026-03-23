@@ -72,9 +72,9 @@ fn compare_polygons(
     }
 }
 
-/// Tests MVT polygons between FME and Flow outputs
+/// Tests MVT polygons between truth and Flow outputs
 pub fn test_mvt_polygons(
-    fme_path: &Path,
+    truth_path: &Path,
     flow_path: &Path,
     config: &MvtPolygonsConfig,
 ) -> Result<(), String> {
@@ -84,7 +84,7 @@ pub fn test_mvt_polygons(
     let zmax = if zmax == u32::MAX { None } else { Some(zmax) };
 
     let aligned_features =
-        align_mvt_features(fme_path, flow_path, GeometryType::Polygon, zmin, zmax)?;
+        align_mvt_features(truth_path, flow_path, GeometryType::Polygon, zmin, zmax)?;
 
     let mut results = Vec::new();
     let mut total = 0;

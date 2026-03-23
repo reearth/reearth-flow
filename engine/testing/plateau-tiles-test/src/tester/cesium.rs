@@ -31,41 +31,41 @@ pub struct CesiumConfig {
     pub skip_all_geometry_tests: bool,
 }
 
-pub fn test_cesium(fme_path: &Path, flow_path: &Path, config: &CesiumConfig) -> Result<(), String> {
+pub fn test_cesium(truth_path: &Path, flow_path: &Path, config: &CesiumConfig) -> Result<(), String> {
     let casts = if let Some(casts_cfg) = &config.casts {
         convert_casts(casts_cfg)?
     } else {
         HashMap::new()
     };
 
-    let fme_dirs = find_cesium_tile_directories(fme_path)?;
+    let truth_dirs = find_cesium_tile_directories(truth_path)?;
     let flow_dirs = find_cesium_tile_directories(flow_path)?;
 
-    if fme_dirs.is_empty() || flow_dirs.is_empty() {
+    if truth_dirs.is_empty() || flow_dirs.is_empty() {
         return Err("No 3D Tiles directories found".to_string());
     }
-    if fme_dirs != flow_dirs {
+    if truth_dirs != flow_dirs {
         return Err(format!(
-            "3D Tiles directories differ: FME={:?}, Flow={:?}",
-            fme_dirs, flow_dirs
+            "3D Tiles directories differ: Truth={:?}, Flow={:?}",
+            truth_dirs, flow_dirs
         ));
     }
 
-    for dir_name in &fme_dirs {
-        let fme_dir = fme_path.join(dir_name);
+    for dir_name in &truth_dirs {
+        let truth_dir = truth_path.join(dir_name);
         let flow_dir = flow_path.join(dir_name);
 
         tracing::debug!("Comparing Cesium in directory: {}", dir_name);
 
-        let fme_collector = collect_geometries_by_ident(&fme_dir, &casts, false)?;
+        let truth_collector = collect_geometries_by_ident(&truth_dir, &casts, false)?;
         let flow_collector = collect_geometries_by_ident(&flow_dir, &casts, true)?;
 
         // Compare attributes
-        compare_attributes(&fme_collector, &flow_collector, &casts)?;
+        compare_attributes(&truth_collector, &flow_collector, &casts)?;
 
         // Compare statistics
         if !config.skip_all_geometry_tests {
-            compare_geometry(&fme_collector, &flow_collector, config)?;
+            compare_geometry(&truth_collector, &flow_collector, config)?;
         }
     }
 
@@ -73,17 +73,17 @@ pub fn test_cesium(fme_path: &Path, flow_path: &Path, config: &CesiumConfig) -> 
 }
 
 fn compare_attributes(
-    fme: &GeometryCollector,
+    truth: &GeometryCollector,
     flow: &GeometryCollector,
     casts: &HashMap<String, CastConfig>,
 ) -> Result<(), String> {
-    let all_keys: HashSet<_> = fme
+    let all_keys: HashSet<_> = truth
         .feature_attributes
         .keys()
         .chain(flow.feature_attributes.keys())
         .collect();
     for ident in all_keys {
-        let attr1 = fme
+        let attr1 = truth
             .feature_attributes
             .get(ident)
             .cloned()
@@ -100,19 +100,19 @@ fn compare_attributes(
 
 fn test_texture_presence(
     ident: &str,
-    fme_detail_levels: &[DetailLevel],
+    truth_detail_levels: &[DetailLevel],
     flow_detail_levels: &[DetailLevel],
 ) -> Result<(), String> {
     // all detail levels must have same texture presence (indicated by source_idx)
-    let fme_has_texture = fme_detail_levels
+    let truth_has_texture = truth_detail_levels
         .first()
-        .ok_or_else(|| format!("No detail levels for ident '{}' in FME", ident))?
+        .ok_or_else(|| format!("No detail levels for ident '{}' in Truth", ident))?
         .source_idx
         .is_some();
-    for level in fme_detail_levels.iter() {
-        if level.source_idx.is_some() != fme_has_texture {
+    for level in truth_detail_levels.iter() {
+        if level.source_idx.is_some() != truth_has_texture {
             return Err(format!(
-                "ident '{}': inconsistent texture presence in FME detail levels",
+                "ident '{}': inconsistent texture presence in Truth detail levels",
                 ident
             ));
         }
@@ -130,62 +130,62 @@ fn test_texture_presence(
             ));
         }
     }
-    if fme_has_texture != flow_has_texture {
+    if truth_has_texture != flow_has_texture {
         return Err(format!(
-            "ident '{}': texture presence differs between FME ({}) and Flow ({})",
-            ident, fme_has_texture, flow_has_texture
+            "ident '{}': texture presence differs between Truth ({}) and Flow ({})",
+            ident, truth_has_texture, flow_has_texture
         ));
     }
     Ok(())
 }
 
 fn compare_geometry(
-    fme_geometries: &GeometryCollector,
+    truth_geometries: &GeometryCollector,
     flow_geometries: &GeometryCollector,
     config: &CesiumConfig,
 ) -> Result<(), String> {
     let skip: HashSet<GeometryTest> = config.skip_geometry_tests.iter().copied().collect();
-    let fme_detail_levels = &fme_geometries.detail_levels;
+    let truth_detail_levels = &truth_geometries.detail_levels;
     let flow_detail_levels = &flow_geometries.detail_levels;
-    let fme_keys: std::collections::HashSet<_> = fme_detail_levels.keys().collect();
+    let truth_keys: std::collections::HashSet<_> = truth_detail_levels.keys().collect();
     let flow_keys: std::collections::HashSet<_> = flow_detail_levels.keys().collect();
 
-    if fme_keys != flow_keys {
-        let missing_in_flow: Vec<_> = fme_keys.difference(&flow_keys).collect();
-        let missing_in_fme: Vec<_> = flow_keys.difference(&fme_keys).collect();
+    if truth_keys != flow_keys {
+        let missing_in_flow: Vec<_> = truth_keys.difference(&flow_keys).collect();
+        let missing_in_truth: Vec<_> = flow_keys.difference(&truth_keys).collect();
 
         let mut error_msg = String::new();
         if !missing_in_flow.is_empty() {
             error_msg.push_str(&format!("Missing in Flow: {:?}\n", missing_in_flow));
         }
-        if !missing_in_fme.is_empty() {
-            error_msg.push_str(&format!("Missing in FME: {:?}\n", missing_in_fme));
+        if !missing_in_truth.is_empty() {
+            error_msg.push_str(&format!("Missing in Truth: {:?}\n", missing_in_truth));
         }
-        panic!("ident mismatch between FME and Flow:\n{}", error_msg);
+        panic!("ident mismatch between Truth and Flow:\n{}", error_msg);
     }
 
-    for ident in fme_keys {
-        let fme_detail_levels = &fme_detail_levels[ident];
+    for ident in truth_keys {
+        let truth_detail_levels = &truth_detail_levels[ident];
         let flow_detail_levels = &flow_detail_levels[ident];
         if !skip.contains(&GeometryTest::TexturePresence) {
-            test_texture_presence(ident, fme_detail_levels, flow_detail_levels)?;
+            test_texture_presence(ident, truth_detail_levels, flow_detail_levels)?;
         }
 
         // Assert geometric error decreases monotonically
         if !skip.contains(&GeometryTest::MonotonicGeometricError) {
-            verify_monotonic_geometric_error(ident, fme_detail_levels, "FME")?;
+            verify_monotonic_geometric_error(ident, truth_detail_levels, "Truth")?;
             verify_monotonic_geometric_error(ident, flow_detail_levels, "Flow")?;
         }
 
-        // compare each Flow detail level to the highest-detail FME level
-        let fme_highest_level = fme_detail_levels
+        // compare each Flow detail level to the highest-detail Truth level
+        let truth_highest_level = truth_detail_levels
             .last()
-            .ok_or_else(|| format!("No detail levels for ident '{}' in FME", ident))?;
+            .ok_or_else(|| format!("No detail levels for ident '{}' in Truth", ident))?;
         for (idx, level) in flow_detail_levels.iter().enumerate() {
             let result = compare_detail_level(
                 ident,
-                fme_highest_level,
-                fme_geometries,
+                truth_highest_level,
+                truth_geometries,
                 level,
                 flow_geometries,
                 &skip,
@@ -220,7 +220,7 @@ fn verify_monotonic_geometric_error(
             ));
         }
 
-        // 1mm tolerance, FME is observed to produce slight non-monotonic errors
+        // 1mm tolerance, Truth is observed to produce slight non-monotonic errors
         if level.geometric_error > prev_error + 1e-3 {
             return Err(format!(
                 "{} ident '{}': geometric error is not monotonically decreasing at level {} \
@@ -268,30 +268,30 @@ impl DetailLevelComparisonResult {
 
 fn compare_detail_level(
     ident: &str,
-    fme_level: &DetailLevel,
-    fme_geometries: &GeometryCollector,
+    truth_level: &DetailLevel,
+    truth_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
     skip: &HashSet<GeometryTest>,
 ) -> Result<DetailLevelComparisonResult, String> {
     let mut result = DetailLevelComparisonResult::new(ident.to_string());
-    let fme_error = fme_level.geometric_error;
+    let truth_error = truth_level.geometric_error;
     let flow_error = flow_level.geometric_error;
 
     // If flow geometry is degenerate (all zero-area triangles), the object may have been
-    // simplified away. This is acceptable if the FME object's size is within the flow's
+    // simplified away. This is acceptable if the Truth object's size is within the flow's
     // geometric error — i.e. the object is smaller than the LOD resolution.
     let flow_total_area =
         compute_total_area(&flow_level.triangles, &flow_geometries.vertex_positions);
     if flow_total_area == 0.0 {
-        let fme_bbox = compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
-        let bbox_diagonal = ((fme_bbox.1.x - fme_bbox.0.x).powi(2)
-            + (fme_bbox.1.y - fme_bbox.0.y).powi(2)
-            + (fme_bbox.1.z - fme_bbox.0.z).powi(2))
+        let truth_bbox = compute_bbox(&truth_level.triangles, &truth_geometries.vertex_positions)?;
+        let bbox_diagonal = ((truth_bbox.1.x - truth_bbox.0.x).powi(2)
+            + (truth_bbox.1.y - truth_bbox.0.y).powi(2)
+            + (truth_bbox.1.z - truth_bbox.0.z).powi(2))
         .sqrt();
         if bbox_diagonal <= flow_error {
             tracing::debug!(
-                "ident '{}': skipping geometry tests — flow geometry is degenerate and FME \
+                "ident '{}': skipping geometry tests — flow geometry is degenerate and Truth \
                  object size ({:.6}) is within flow geometric error ({:.6})",
                 ident,
                 bbox_diagonal,
@@ -300,7 +300,7 @@ fn compare_detail_level(
             return Ok(result);
         }
         return Err(format!(
-            "ident '{}': flow geometry is degenerate (zero total area) but FME geometry \
+            "ident '{}': flow geometry is degenerate (zero total area) but Truth geometry \
              size ({:.6}) exceeds flow geometric error ({:.6})",
             ident, bbox_diagonal, flow_error
         ));
@@ -308,51 +308,51 @@ fn compare_detail_level(
 
     if !skip.contains(&GeometryTest::BoundingBox) {
         // Compute bounding boxes directly from vertex positions
-        let fme_bbox = compute_bbox(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+        let truth_bbox = compute_bbox(&truth_level.triangles, &truth_geometries.vertex_positions)?;
         let flow_bbox = compute_bbox(&flow_level.triangles, &flow_geometries.vertex_positions)?;
 
         // if vertices have max error r, the bounding boxes can differ by at most r in each direction
         // thus the bounding box error is at most sqrt(3) * r. We simply use 2 * r as a safe upper bound.
-        let bbox_error = 2.0 * (fme_error + flow_error);
-        let error_min = ((fme_bbox.0.x - flow_bbox.0.x).powi(2)
-            + (fme_bbox.0.y - flow_bbox.0.y).powi(2)
-            + (fme_bbox.0.z - flow_bbox.0.z).powi(2))
+        let bbox_error = 2.0 * (truth_error + flow_error);
+        let error_min = ((truth_bbox.0.x - flow_bbox.0.x).powi(2)
+            + (truth_bbox.0.y - flow_bbox.0.y).powi(2)
+            + (truth_bbox.0.z - flow_bbox.0.z).powi(2))
         .sqrt()
             / bbox_error;
-        let error_max = ((fme_bbox.1.x - flow_bbox.1.x).powi(2)
-            + (fme_bbox.1.y - flow_bbox.1.y).powi(2)
-            + (fme_bbox.1.z - flow_bbox.1.z).powi(2))
+        let error_max = ((truth_bbox.1.x - flow_bbox.1.x).powi(2)
+            + (truth_bbox.1.y - flow_bbox.1.y).powi(2)
+            + (truth_bbox.1.z - flow_bbox.1.z).powi(2))
         .sqrt()
             / bbox_error;
         result.bounding_box_error = error_min.max(error_max);
         if result.bounding_box_error > 1.0 {
             return Err(format!(
                 "ident '{}': bounding box mismatch exceeds max error: {}/{}: min:({}, {}, {}), max:({}, {}, {})",
-                ident, fme_error, flow_error,
-                fme_bbox.0.x - flow_bbox.0.x,
-                fme_bbox.0.y - flow_bbox.0.y,
-                fme_bbox.0.z - flow_bbox.0.z,
-                fme_bbox.1.x - flow_bbox.1.x,
-                fme_bbox.1.y - flow_bbox.1.y,
-                fme_bbox.1.z - flow_bbox.1.z,
+                ident, truth_error, flow_error,
+                truth_bbox.0.x - flow_bbox.0.x,
+                truth_bbox.0.y - flow_bbox.0.y,
+                truth_bbox.0.z - flow_bbox.0.z,
+                truth_bbox.1.x - flow_bbox.1.x,
+                truth_bbox.1.y - flow_bbox.1.y,
+                truth_bbox.1.z - flow_bbox.1.z,
             ));
         }
     }
 
     if !skip.contains(&GeometryTest::MassCenter) {
         // Compute centroids directly from vertex positions
-        let fme_centroid = compute_centroid(&fme_level.triangles, &fme_geometries.vertex_positions)
-            .map_err(|e| format!("ident '{}': failed to compute FME centroid: {}", ident, e))?;
+        let truth_centroid = compute_centroid(&truth_level.triangles, &truth_geometries.vertex_positions)
+            .map_err(|e| format!("ident '{}': failed to compute Truth centroid: {}", ident, e))?;
         let flow_centroid =
             compute_centroid(&flow_level.triangles, &flow_geometries.vertex_positions).map_err(
                 |e| format!("ident '{}': failed to compute Flow centroid: {}", ident, e),
             )?;
 
         // if vertices have max error r, centroids can differ by at most r
-        let centroid_error_bound = fme_error + flow_error;
-        let centroid_diff = ((fme_centroid.x - flow_centroid.x).powi(2)
-            + (fme_centroid.y - flow_centroid.y).powi(2)
-            + (fme_centroid.z - flow_centroid.z).powi(2))
+        let centroid_error_bound = truth_error + flow_error;
+        let centroid_diff = ((truth_centroid.x - flow_centroid.x).powi(2)
+            + (truth_centroid.y - flow_centroid.y).powi(2)
+            + (truth_centroid.z - flow_centroid.z).powi(2))
         .sqrt();
         result.mass_center_error = centroid_diff / centroid_error_bound;
         if result.mass_center_error > 1.0 {
@@ -367,13 +367,13 @@ fn compare_detail_level(
     // NOTE: (probably) diffuseColor in X3D material is used as base color, overriden by texture if present.
     // Therefore, we ignore color comparison when textures exist.
     if !skip.contains(&GeometryTest::AverageColor) {
-        let has_texture = fme_level.source_idx.is_some() || flow_level.source_idx.is_some();
+        let has_texture = truth_level.source_idx.is_some() || flow_level.source_idx.is_some();
         if !has_texture {
             // Test face-weighted average color (material base color × vertex color)
             result.average_color_error = test_face_weighted_average_color(
                 ident,
-                fme_level,
-                fme_geometries,
+                truth_level,
+                truth_geometries,
                 flow_level,
                 flow_geometries,
             )?;
@@ -383,8 +383,8 @@ fn compare_detail_level(
     if !skip.contains(&GeometryTest::AverageWinding) {
         result.average_winding_error = test_area_weighted_average_winding(
             ident,
-            fme_level,
-            fme_geometries,
+            truth_level,
+            truth_geometries,
             flow_level,
             flow_geometries,
         )?;
@@ -397,18 +397,18 @@ fn compare_detail_level(
 /// Returns normalized color error (0.0 = perfect match, 1.0 = at tolerance threshold)
 fn test_face_weighted_average_color(
     ident: &str,
-    fme_level: &DetailLevel,
-    fme_geometries: &GeometryCollector,
+    truth_level: &DetailLevel,
+    truth_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
 ) -> Result<f32, String> {
-    // Compute face-weighted average color for FME
-    let fme_avg_color = compute_face_weighted_average_color(
-        &fme_level.triangles,
-        &fme_geometries.vertex_positions,
-        fme_geometries.vertex_colors.as_deref(),
-        fme_geometries.vertex_materials.as_deref(),
-        &fme_geometries.materials,
+    // Compute face-weighted average color for Truth
+    let truth_avg_color = compute_face_weighted_average_color(
+        &truth_level.triangles,
+        &truth_geometries.vertex_positions,
+        truth_geometries.vertex_colors.as_deref(),
+        truth_geometries.vertex_materials.as_deref(),
+        &truth_geometries.materials,
     )?;
 
     // Compute face-weighted average color for Flow
@@ -421,11 +421,11 @@ fn test_face_weighted_average_color(
     )?;
 
     // Check if colors should be treated as equivalent defaults
-    // Flow default: ~(0.7, 0.7, 0.7, 1.0), FME default: (1.0, 1.0, 1.0, 1.0)
-    let is_fme_default = is_near_default_color(&fme_avg_color, &[1.0, 1.0, 1.0, 1.0]);
+    // Flow default: ~(0.7, 0.7, 0.7, 1.0), Truth default: (1.0, 1.0, 1.0, 1.0)
+    let is_truth_default = is_near_default_color(&truth_avg_color, &[1.0, 1.0, 1.0, 1.0]);
     let is_flow_default = is_near_default_color(&flow_avg_color, &[0.7, 0.7, 0.7, 1.0]);
 
-    if is_fme_default && is_flow_default {
+    if is_truth_default && is_flow_default {
         // Both are default colors, treat as equivalent
         return Ok(0.0);
     }
@@ -433,10 +433,10 @@ fn test_face_weighted_average_color(
     // Compare average colors with tolerance
     let color_tolerance = 0.1; // Allow 10% difference per channel (0-1 range)
     let color_diff = [
-        (fme_avg_color[0] - flow_avg_color[0]).abs(),
-        (fme_avg_color[1] - flow_avg_color[1]).abs(),
-        (fme_avg_color[2] - flow_avg_color[2]).abs(),
-        (fme_avg_color[3] - flow_avg_color[3]).abs(),
+        (truth_avg_color[0] - flow_avg_color[0]).abs(),
+        (truth_avg_color[1] - flow_avg_color[1]).abs(),
+        (truth_avg_color[2] - flow_avg_color[2]).abs(),
+        (truth_avg_color[3] - flow_avg_color[3]).abs(),
     ];
 
     let max_diff = color_diff.iter().copied().fold(0.0f32, f32::max);
@@ -445,15 +445,15 @@ fn test_face_weighted_average_color(
     if max_diff > color_tolerance {
         return Err(format!(
             "ident '{}': face-weighted average color differs by {:.4} (max allowed: {:.4})\n\
-             FME: [{:.4}, {:.4}, {:.4}, {:.4}]\n\
+             Truth: [{:.4}, {:.4}, {:.4}, {:.4}]\n\
              Flow: [{:.4}, {:.4}, {:.4}, {:.4}]",
             ident,
             max_diff,
             color_tolerance,
-            fme_avg_color[0],
-            fme_avg_color[1],
-            fme_avg_color[2],
-            fme_avg_color[3],
+            truth_avg_color[0],
+            truth_avg_color[1],
+            truth_avg_color[2],
+            truth_avg_color[3],
             flow_avg_color[0],
             flow_avg_color[1],
             flow_avg_color[2],
@@ -528,38 +528,38 @@ fn is_near_default_color(color: &[f32; 4], default: &[f32; 4]) -> bool {
         && (color[3] - default[3]).abs() <= DEFAULT_TOLERANCE
 }
 
-/// Compare area-weighted average winding vectors between FME and Flow in Euclidean space.
+/// Compare area-weighted average winding vectors between Truth and Flow in Euclidean space.
 /// Both vectors are dimensionless with magnitude in [0, 1].
 /// Returns the error normalized by the tolerance (0.0 = perfect match, 1.0 = at threshold).
 fn test_area_weighted_average_winding(
     ident: &str,
-    fme_level: &DetailLevel,
-    fme_geometries: &GeometryCollector,
+    truth_level: &DetailLevel,
+    truth_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
 ) -> Result<f64, String> {
-    let fme_vec =
-        compute_area_weighted_winding(&fme_level.triangles, &fme_geometries.vertex_positions)?;
+    let truth_vec =
+        compute_area_weighted_winding(&truth_level.triangles, &truth_geometries.vertex_positions)?;
     let flow_vec =
         compute_area_weighted_winding(&flow_level.triangles, &flow_geometries.vertex_positions)?;
 
-    let diff_magnitude = ((fme_vec[0] - flow_vec[0]).powi(2)
-        + (fme_vec[1] - flow_vec[1]).powi(2)
-        + (fme_vec[2] - flow_vec[2]).powi(2))
+    let diff_magnitude = ((truth_vec[0] - flow_vec[0]).powi(2)
+        + (truth_vec[1] - flow_vec[1]).powi(2)
+        + (truth_vec[2] - flow_vec[2]).powi(2))
     .sqrt();
 
     const TOLERANCE: f64 = 0.25;
     if diff_magnitude > TOLERANCE {
         return Err(format!(
             "ident '{}': area-weighted average winding differs by {:.4} (max allowed: {:.4})\n\
-             FME:  [{:.6}, {:.6}, {:.6}]\n\
+             Truth:  [{:.6}, {:.6}, {:.6}]\n\
              Flow: [{:.6}, {:.6}, {:.6}]",
             ident,
             diff_magnitude,
             TOLERANCE,
-            fme_vec[0],
-            fme_vec[1],
-            fme_vec[2],
+            truth_vec[0],
+            truth_vec[1],
+            truth_vec[2],
             flow_vec[0],
             flow_vec[1],
             flow_vec[2],

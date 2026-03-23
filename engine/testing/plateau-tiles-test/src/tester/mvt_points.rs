@@ -123,9 +123,9 @@ fn compare_points(
     }
 }
 
-/// Tests MVT points between FME and Flow outputs
+/// Tests MVT points between truth and Flow outputs
 pub fn test_mvt_points(
-    fme_path: &Path,
+    truth_path: &Path,
     flow_path: &Path,
     config: &MvtPointsConfig,
 ) -> Result<(), String> {
@@ -135,7 +135,7 @@ pub fn test_mvt_points(
     let zmax = if zmax == u32::MAX { None } else { Some(zmax) };
 
     // Fetch Point features
-    let point_features = align_mvt_features(fme_path, flow_path, GeometryType::Point, zmin, zmax)?;
+    let point_features = align_mvt_features(truth_path, flow_path, GeometryType::Point, zmin, zmax)?;
 
     let mut results = Vec::new();
     let mut total = 0;
