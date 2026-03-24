@@ -1811,4 +1811,150 @@ mod tests {
         // sqrt(3^2 + 4^2 + 12^2) = sqrt(9 + 16 + 144) = sqrt(169) = 13
         assert!((dist_3d_with_z - 13.0).abs() < 0.001);
     }
+
+    /// Test disk spilling behavior by manually setting up a temp directory.
+    /// This verifies that the disk-based candidate storage and retrieval works correctly.
+    #[test]
+    fn test_disk_spilling() {
+        use tempfile::tempdir;
+        use uuid::Uuid;
+
+        // Create a temporary directory for disk spilling
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let mut finder = NeighborFinder {
+            params: NeighborFinderParams::default(),
+            candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
+            base_features: Vec::new(),
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
+            temp_dir: Some(temp_path.clone()),
+            candidate_chunk_count: 0,
+            base_chunk_count: 0,
+            executor_id: Some(Uuid::new_v4()),
+        };
+
+        // Create candidate features
+        let candidates: Vec<_> = (0..5)
+            .map(|i| {
+                create_point_feature_with_attr(
+                    i as f64 * 10.0,
+                    0.0,
+                    "name",
+                    AttributeValue::String(format!("Candidate{}", i)),
+                )
+            })
+            .collect();
+
+        let base = create_point_feature(15.0, 0.0);
+
+        // Use NoopChannelForwarder - note: this returns nil executor_id
+        // but we've already set temp_dir manually above
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+
+        // Process candidates - they should be flushed to disk when buffer is full
+        // or when manually flushed
+        for candidate in &candidates {
+            let mut ctx = create_default_execute_context(candidate);
+            ctx.port = CANDIDATE_PORT.clone();
+            finder.process(ctx, &fw).unwrap();
+        }
+
+        // Flush candidates to disk
+        finder.flush_candidates().unwrap();
+
+        // Verify that candidate files were created
+        let chunk_path = temp_path.join("candidate_chunk_0.jsonl.zst");
+        assert!(chunk_path.exists(), "Candidate chunk file should exist");
+
+        // Process base feature
+        let mut ctx = create_default_execute_context(&base);
+        ctx.port = BASE_PORT.clone();
+        finder.process(ctx, &fw).unwrap();
+
+        // Finish processing
+        let ctx = NodeContext::default();
+        finder.finish(ctx, &fw).unwrap();
+
+        // Verify that the candidate chunk file was cleaned up
+        assert!(
+            !chunk_path.exists(),
+            "Candidate chunk file should be deleted after processing"
+        );
+
+        // Verify output
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let ports = noop.send_ports.lock().unwrap();
+            assert_eq!(ports.len(), 1);
+            assert_eq!(ports[0], *MATCHED_PORT);
+        }
+    }
+
+    /// Test that disk-based candidate reading works correctly.
+    /// This tests the `read_candidate_from_disk` function directly.
+    #[test]
+    fn test_disk_based_candidate_read() {
+        use tempfile::tempdir;
+        use uuid::Uuid;
+
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let mut finder = NeighborFinder {
+            params: NeighborFinderParams::default(),
+            candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
+            base_features: Vec::new(),
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
+            temp_dir: Some(temp_path.clone()),
+            candidate_chunk_count: 0,
+            base_chunk_count: 0,
+            executor_id: Some(Uuid::new_v4()),
+        };
+
+        // Create a candidate feature
+        let candidate = create_point_feature_with_attr(
+            10.0,
+            20.0,
+            "id",
+            AttributeValue::Number(serde_json::Number::from(42)),
+        );
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+
+        // Process the candidate
+        let mut ctx = create_default_execute_context(&candidate);
+        ctx.port = CANDIDATE_PORT.clone();
+        finder.process(ctx, &fw).unwrap();
+
+        // Flush to disk
+        finder.flush_candidates().unwrap();
+
+        // Verify the index was created
+        assert_eq!(finder.candidate_index.len(), 1);
+        assert_eq!(finder.candidate_index[0].chunk_id, 0);
+        assert_eq!(finder.candidate_index[0].point, [10.0, 20.0]);
+
+        // Read the candidate back from disk
+        let read_candidate = finder
+            .read_candidate_from_disk(&finder.candidate_index[0])
+            .unwrap();
+
+        // Verify the read candidate matches the original
+        assert_eq!(read_candidate.point, [10.0, 20.0]);
+        assert_eq!(
+            read_candidate.feature.attributes.get(&Attribute::new("id")),
+            Some(&AttributeValue::Number(serde_json::Number::from(42)))
+        );
+
+        // Cleanup
+        finder.cleanup_temp_dir();
+    }
 }

@@ -29,7 +29,7 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
 
 #[derive(RustEmbed)]
 #[folder = "fixture/testdata/"]
-struct Fixtures;
+pub(crate) struct Fixtures;
 
 #[derive(RustEmbed)]
 #[folder = "fixture/workflow/"]

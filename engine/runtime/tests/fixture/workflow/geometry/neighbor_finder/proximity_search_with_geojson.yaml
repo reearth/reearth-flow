@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# WORKFLOW TEST: NeighborFinder with GeoJSON Input
+# =================================================
+# 
+# This workflow tests the NeighborFinder processor with real geometry data
+# loaded from a GeoJSON file.
+
+id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
+name: "NeighborFinderProximitySearchWithGeoJSON"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  outputPath:
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: GeoJsonReader
+        type: action
+        action: GeoJsonReader
+        with:
+          dataset: "ram:///fixture/testdata/geometry/neighbor_finder/points_for_proximity_test.geojson"
+
+      - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        name: FilterByType
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").type == "candidate"
+              outputPort: candidate
+            - expr: |
+                env.get("__value").type == "base"
+              outputPort: base
+
+      - id: c3d4e5f6-a7b8-9012-cdef-345678901234
+        name: NeighborFinder
+        type: action
+        action: NeighborFinder
+        with:
+          numClosest: 2
+          maxDistance: 15
+          distanceAttribute: "_distance"
+          neighborIndexAttribute: "_rank"
+          attributePrefix: "_nearest_"
+          mergeStrategy: "closest"
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            env.get("outputPath")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        fromPort: default
+        toPort: default
+
+      - id: d92fb311-aab2-5633-c083-21f9ca295d8c
+        from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        to: c3d4e5f6-a7b8-9012-cdef-345678901234
+        fromPort: candidate
+        toPort: candidate
+
+      - id: ea30c422-bbc3-6744-d194-320adb3a6e9d
+        from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        to: c3d4e5f6-a7b8-9012-cdef-345678901234
+        fromPort: base
+        toPort: base
+
+      - id: fb41d533-ccd4-7855-e2a5-431bec4b7f0e
+        from: c3d4e5f6-a7b8-9012-cdef-345678901234
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: matched
+        toPort: default
