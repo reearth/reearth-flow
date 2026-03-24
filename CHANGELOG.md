@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.11 - 2026-03-24
+
+### engine
+
+#### 🚀 Features
+
+- Implemented NullAttributeMapper ([#1984](https://github.com/reearth/reearth-flow/pull/1984)) [`30a71a`](https://github.com/reearth/reearth-flow/commit/30a71a)
+
+#### 🔧 Bug Fixes
+
+- Fix CityObjectGroup xlink validation to check against global gml_ids ([#2010](https://github.com/reearth/reearth-flow/pull/2010)) [`4e80f5`](https://github.com/reearth/reearth-flow/commit/4e80f5)
+- Fix bldg data-convert attribute errors with a newly added 01-bldg&#x2F;ward test ([#2006](https://github.com/reearth/reearth-flow/pull/2006)) [`a7568e`](https://github.com/reearth/reearth-flow/commit/a7568e)
+- Fix MVT layer name for 11-gen data-convert workflow ([#2009](https://github.com/reearth/reearth-flow/pull/2009)) [`10e746`](https://github.com/reearth/reearth-flow/commit/10e746)
+- Correct gml:id validation logic for CityObjectGroup ([#2005](https://github.com/reearth/reearth-flow/pull/2005)) [`33aa66`](https://github.com/reearth/reearth-flow/commit/33aa66)
+- Skip features of different city code for non-designated city datasets ([#2001](https://github.com/reearth/reearth-flow/pull/2001)) [`e70baa`](https://github.com/reearth/reearth-flow/commit/e70baa)
+- Bug fixes for area calculation and sun position calculation ([#2002](https://github.com/reearth/reearth-flow/pull/2002)) [`c8edea`](https://github.com/reearth/reearth-flow/commit/c8edea)
+- Use single SchemaResolver for all schema locations in XML validator ([#2000](https://github.com/reearth/reearth-flow/pull/2000)) [`1b0915`](https://github.com/reearth/reearth-flow/commit/1b0915)
+
+### ui
+
+#### 🚀 Features
+
+- Add custom action schema editor to SchemaForm component ([#2004](https://github.com/reearth/reearth-flow/pull/2004)) [`6b7f4f`](https://github.com/reearth/reearth-flow/commit/6b7f4f)
+
+#### 🔧 Bug Fixes
+
+- Ensure correct debugRun state update based on jobId match ([#2008](https://github.com/reearth/reearth-flow/pull/2008)) [`c58763`](https://github.com/reearth/reearth-flow/commit/c58763)
+- Workflow vars in the debug run settings ([#2003](https://github.com/reearth/reearth-flow/pull/2003)) [`f43f31`](https://github.com/reearth/reearth-flow/commit/f43f31)
+- Optimize rendering for GeoJson and CityGml components [FLOW-FE-392] ([#1993](https://github.com/reearth/reearth-flow/pull/1993)) [`a7c2c2`](https://github.com/reearth/reearth-flow/commit/a7c2c2)
+
+### workflow
+
+#### 🔧 Bug Fixes
+
+- Handle empty default values in workflow variables ([#1999](https://github.com/reearth/reearth-flow/pull/1999)) [`18c945`](https://github.com/reearth/reearth-flow/commit/18c945)
+
 ## 0.1.0-alpha.10 - 2026-03-17
 
 ### engine
