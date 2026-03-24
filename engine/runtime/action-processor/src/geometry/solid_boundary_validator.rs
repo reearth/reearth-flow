@@ -233,9 +233,6 @@ impl Processor for SolidBoundaryValidator {
             return Ok(());
         }
 
-        // Check manifold condition on polygon edges directly (not on triangulated mesh).
-        // Triangulation introduces bridge edges for polygons with interior rings
-        // that are not part of the actual solid boundary, causing false positives.
         let result = if let Some(result) =
             Self::check_manifold_from_polygons(&polygons, mesh.get_vertices())
         {

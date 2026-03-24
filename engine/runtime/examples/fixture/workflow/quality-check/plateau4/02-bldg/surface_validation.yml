@@ -698,9 +698,10 @@ nodes:
     type: action
     action: FootprintReplacer
 
-  # Shrink the footprint by 0.005m to match the behavior of FME's PLATEAU workflow,
-  # which silently ignores small intersections caused by sub-mm coordinate precision
-  # artifacts at shared building boundaries.
+  # IMPORTANT: Shrink the footprint by 0.005m to match the behavior of FME's PLATEAU workflow,
+  # which silently ignores small intersections caused by a few mm coordinate precision
+  # artifacts at shared building boundaries. Note that this is NOT part of the PLATEAU spec, 
+  # but we are replicating it here to ensure that our results are comparable to the existing FME-based workflow.
   - id: f2c3d4e5-f7a8-4b9c-1e2f-3a4b5c6d7e8f
     name: BuffererSolidIntersection
     type: action
