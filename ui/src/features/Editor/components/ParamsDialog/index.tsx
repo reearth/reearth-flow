@@ -147,15 +147,14 @@ const ParamsDialog: React.FC<Props> = ({
         latestNodeDrafts,
         "customizationsPatch",
       );
-
-      await Promise.resolve(
-        onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]),
-      );
+      yDoc?.transact(() => {
+        onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]);
+      }, "params");
 
       removeMyDraft(id);
       onOpenNode();
     },
-    [openNode, rawDrafts, onDataSubmit, removeMyDraft, onOpenNode],
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
   );
 
   const { getViewport, setViewport } = useReactFlow();
