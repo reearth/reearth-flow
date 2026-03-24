@@ -1,0 +1,9 @@
+Index,Folder,Filename,フィーチャータイプ,LOD,インスタンス数,無効な空間属性の型,立体のその他のエラー,立体の境界面のエラー,面のエラー,不連続なCompositeSurface
+1,unf,09LD283_unf_10170_op.gml,ElectricityCable,1,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,ElectricityCable,2,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,ElectricityCable,3,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,ElectricityCable,4,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,TelecommunicationsCable,1,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,TelecommunicationsCable,2,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,TelecommunicationsCable,3,1,0,0,0,0,0
+1,unf,09LD283_unf_10170_op.gml,TelecommunicationsCable,4,1,0,0,0,0,0
