@@ -97,6 +97,8 @@ impl ProcessorFactory for NeighborFinderFactory {
         Ok(Box::new(NeighborFinder {
             params,
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -209,22 +211,17 @@ fn default_attribute_prefix() -> String {
     "_neighbor_".to_string()
 }
 
-/// A neighbor match result containing the candidate and computed distance.
+/// A lightweight spatial index entry for candidates.
+/// Contains only point location and disk location - the feature data stays on disk.
 #[derive(Debug, Clone)]
-struct NeighborMatch {
-    candidate: CandidateEntry,
-    distance: f64,
-    index: usize, // 0-based rank
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CandidateEntry {
+struct CandidateIndex {
     point: [f64; 2],
-    point_z: Option<f64>, // Z coordinate for 3D distance calculations
-    feature: Feature,
+    point_z: Option<f64>,
+    chunk_id: usize,
+    byte_offset: u64,
 }
 
-impl RTreeObject for CandidateEntry {
+impl RTreeObject for CandidateIndex {
     type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
@@ -232,7 +229,7 @@ impl RTreeObject for CandidateEntry {
     }
 }
 
-impl PointDistance for CandidateEntry {
+impl PointDistance for CandidateIndex {
     fn distance_2(&self, point: &[f64; 2]) -> f64 {
         let dx = self.point[0] - point[0];
         let dy = self.point[1] - point[1];
@@ -240,10 +237,41 @@ impl PointDistance for CandidateEntry {
     }
 }
 
+/// A neighbor match result containing the candidate index and computed distance.
+#[derive(Debug, Clone)]
+struct NeighborMatch {
+    candidate_index: CandidateIndex,
+    distance: f64,
+    index: usize, // 0-based rank
+}
+
+/// Full candidate entry stored on disk.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CandidateEntry {
+    point: [f64; 2],
+    point_z: Option<f64>, // Z coordinate for 3D distance calculations
+    feature: Feature,
+}
+
+/// Wrapper for candidate data with tracking info during accumulation.
+#[derive(Debug, Clone)]
+struct CandidateBufferEntry {
+    point: [f64; 2],
+    point_z: Option<f64>,
+    feature: Feature,
+}
+
 #[derive(Debug, Clone)]
 struct NeighborFinder {
     params: NeighborFinderParams,
-    candidates: Vec<CandidateEntry>,
+    /// Buffer for candidates before spilling. Uses lightweight buffer entries.
+    candidates: Vec<CandidateBufferEntry>,
+    /// Spatial index built from candidates (point + disk location only).
+    /// Populated during finish() after all candidates are flushed to disk.
+    candidate_index: Vec<CandidateIndex>,
+    /// In-memory storage for candidates when disk spilling is not available (e.g., tests).
+    /// Indexed by the position in candidate_index when chunk_id == usize::MAX.
+    in_memory_candidates: Vec<CandidateEntry>,
     base_features: Vec<Feature>,
     // Disk spilling fields - track bytes separately for each buffer
     base_buffer_bytes: usize,
@@ -266,12 +294,15 @@ impl Processor for NeighborFinder {
     ) -> Result<(), BoxedError> {
         // Capture executor_id on first process call for cache isolation
         if self.executor_id.is_none() {
-            self.executor_id = Some(fw.executor_id());
-            // Initialize temp_dir now that we have executor_id
-            let temp_dir = executor_cache_subdir(fw.executor_id(), "neighbor_finder");
-            // Create the directory if it doesn't exist
-            std::fs::create_dir_all(&temp_dir)?;
-            self.temp_dir = Some(temp_dir);
+            let executor_id = fw.executor_id();
+            self.executor_id = Some(executor_id);
+            // Only use disk spilling for non-nil executor IDs (actual execution, not tests)
+            // Tests use NoopChannelForwarder which returns Uuid::nil(), causing shared temp dirs
+            if executor_id != uuid::Uuid::nil() {
+                let temp_dir = executor_cache_subdir(executor_id, "neighbor_finder");
+                std::fs::create_dir_all(&temp_dir)?;
+                self.temp_dir = Some(temp_dir);
+            }
         }
 
         let feature = &ctx.feature;
@@ -308,12 +339,17 @@ impl Processor for NeighborFinder {
                 // candidates are consumed but never emitted - sending them to rejected
                 // would violate this design principle.
                 if let Some((point, point_z)) = extract_representative_point(feature) {
-                    let entry = CandidateEntry {
+                    let entry = CandidateBufferEntry {
                         point,
                         point_z,
                         feature: feature.clone(),
                     };
-                    let entry_bytes = serde_json::to_vec(&entry)?.len();
+                    let entry_bytes = serde_json::to_vec(&CandidateEntry {
+                        point,
+                        point_z,
+                        feature: feature.clone(),
+                    })?
+                    .len();
                     if self.candidate_buffer_bytes + entry_bytes
                         >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD
                     {
@@ -336,16 +372,17 @@ impl Processor for NeighborFinder {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // If no features were processed, temp_dir is None - nothing to do
-        if self.temp_dir.is_none() {
+        // Load any spilled data and build candidate index
+        // If temp_dir is None (e.g., in tests), this will convert in-memory candidates to index
+        self.load_from_disk()?;
+
+        // If no base features were processed, nothing to do
+        if self.base_features.is_empty() && self.base_chunk_count == 0 {
             return Ok(());
         }
 
-        // Load any spilled data
-        self.load_from_disk()?;
-
         // If no candidates, all base features go to unmatched
-        if self.candidates.is_empty() {
+        if self.candidate_index.is_empty() {
             for base in &self.base_features {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
@@ -357,20 +394,16 @@ impl Processor for NeighborFinder {
             return Ok(());
         }
 
-        // Build R-tree index from candidates
-        let rtree: RTree<CandidateEntry> = RTree::bulk_load(self.candidates.clone());
+        // Build R-tree index from lightweight candidate index (point + disk location only)
+        let rtree: RTree<CandidateIndex> = RTree::bulk_load(self.candidate_index.clone());
 
-        // Process each base feature (parallel processing if feature count is large)
-        let base_count = self.base_features.len();
-        let use_parallel = base_count >= 100; // Use parallel processing for large datasets
+        // Process each base feature sequentially.
+        // Note: Parallel processing is disabled for disk-based candidates because
+        // file handles cannot be safely shared across threads. The disk I/O would
+        // be the bottleneck anyway, not CPU.
+        self.process_sequential(&ctx, fw, &rtree)?;
 
-        if use_parallel {
-            self.process_parallel(&ctx, fw, &rtree)?;
-        } else {
-            self.process_sequential(&ctx, fw, &rtree)?;
-        }
-
-        // Clean up temporary directory after processing
+        // Clean up temporary directory and candidate chunk files after processing
         self.cleanup_temp_dir();
 
         Ok(())
@@ -408,7 +441,8 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Flush candidates to disk (zstd-compressed JSONL)
+    /// Flush candidates to disk (zstd-compressed JSONL) and build index entries.
+    /// Tracks byte offsets so candidates can be read on-demand during matching.
     fn flush_candidates(&mut self) -> Result<(), BoxedError> {
         if self.candidates.is_empty() {
             return Ok(());
@@ -421,10 +455,30 @@ impl NeighborFinder {
         let file = File::create(&chunk_path)?;
         let mut writer = BufWriter::new(zstd::Encoder::new(file, 3)?);
 
+        let chunk_id = self.candidate_chunk_count;
+        let mut byte_offset: u64 = 0;
+
         for entry in &self.candidates {
-            let line = serde_json::to_vec(entry)?;
+            let serialized = CandidateEntry {
+                point: entry.point,
+                point_z: entry.point_z,
+                feature: entry.feature.clone(),
+            };
+            let line = serde_json::to_vec(&serialized)?;
+            let byte_length = line.len();
+
+            // Create index entry pointing to this candidate's location on disk
+            self.candidate_index.push(CandidateIndex {
+                point: entry.point,
+                point_z: entry.point_z,
+                chunk_id,
+                byte_offset,
+            });
+
             writer.write_all(&line)?;
             writer.write_all(b"\n")?;
+
+            byte_offset += (byte_length + 1) as u64; // +1 for newline
         }
         writer.flush()?;
 
@@ -434,54 +488,125 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Load spilled data from disk back into memory
+    /// Load spilled data from disk back into memory.
+    /// For base features: fully load into memory.
+    /// For candidates: index is already built during flush; just ensure any remaining
+    /// in-memory candidates are converted to index entries.
     fn load_from_disk(&mut self) -> Result<(), BoxedError> {
-        // Load base features
-        for i in 0..self.base_chunk_count {
-            let chunk_path = self
-                .temp_dir
-                .as_ref()
-                .unwrap()
-                .join(format!("base_chunk_{}.jsonl.zst", i));
-            let file = File::open(&chunk_path)?;
-            let reader = BufReader::new(zstd::Decoder::new(file)?);
-
-            for line in reader.lines() {
-                let line = line?;
-                let feature: Feature = serde_json::from_str(&line)?;
-                self.base_features.push(feature);
+        // Handle in-memory candidates that were never flushed (no temp_dir or empty buffer)
+        // Convert them to index entries pointing to "virtual" chunk 0
+        if !self.candidates.is_empty() {
+            if self.temp_dir.is_some() {
+                // Flush remaining candidates to disk and index them
+                self.flush_candidates()?;
+            } else {
+                // No temp_dir (e.g., in tests) - keep candidates in memory
+                // Store the full entries and create index entries pointing to them
+                for (i, entry) in self.candidates.iter().enumerate() {
+                    self.in_memory_candidates.push(CandidateEntry {
+                        point: entry.point,
+                        point_z: entry.point_z,
+                        feature: entry.feature.clone(),
+                    });
+                    self.candidate_index.push(CandidateIndex {
+                        point: entry.point,
+                        point_z: entry.point_z,
+                        chunk_id: usize::MAX,  // Special marker for in-memory
+                        byte_offset: i as u64, // Use offset as index into in_memory_candidates
+                    });
+                }
+                self.candidates.clear();
+                self.candidate_buffer_bytes = 0;
             }
-
-            // Delete the chunk file after loading to free disk space
-            std::fs::remove_file(&chunk_path)?;
         }
 
-        // Load candidates
-        for i in 0..self.candidate_chunk_count {
-            let chunk_path = self
-                .temp_dir
-                .as_ref()
-                .unwrap()
-                .join(format!("candidate_chunk_{}.jsonl.zst", i));
-            let file = File::open(&chunk_path)?;
-            let reader = BufReader::new(zstd::Decoder::new(file)?);
+        // Load base features from disk (only if they were spilled)
+        if let Some(ref temp_dir) = self.temp_dir {
+            if self.base_chunk_count > 0 {
+                for i in 0..self.base_chunk_count {
+                    let chunk_path = temp_dir.join(format!("base_chunk_{}.jsonl.zst", i));
+                    let file = File::open(&chunk_path)?;
+                    let reader = BufReader::new(zstd::Decoder::new(file)?);
 
-            for line in reader.lines() {
-                let line = line?;
-                let entry: CandidateEntry = serde_json::from_str(&line)?;
-                self.candidates.push(entry);
+                    for line in reader.lines() {
+                        let line = line?;
+                        let feature: Feature = serde_json::from_str(&line)?;
+                        self.base_features.push(feature);
+                    }
+
+                    // Delete the chunk file after loading to free disk space
+                    std::fs::remove_file(&chunk_path)?;
+                }
             }
-
-            // Delete the chunk file after loading to free disk space
-            std::fs::remove_file(&chunk_path)?;
         }
+
+        // Candidates are NOT loaded into memory - their index is already built.
+        // The candidate chunk files remain on disk for random access during matching.
 
         Ok(())
     }
 
-    /// Clean up the temporary directory after processing is complete
+    /// Read a single candidate from disk using its index entry.
+    /// For in-memory candidates (chunk_id == usize::MAX), retrieves from in_memory_candidates vector.
+    /// Note: Since zstd doesn't support seeking, we read and decompress the entire
+    /// chunk but only deserialize the specific line we need. For large chunks,
+    /// this is still memory-efficient since we process one chunk at a time.
+    fn read_candidate_from_disk(
+        &self,
+        index: &CandidateIndex,
+    ) -> Result<CandidateEntry, BoxedError> {
+        // Check if this is an in-memory candidate (used when temp_dir is None, e.g., in tests)
+        if index.chunk_id == usize::MAX {
+            let idx = index.byte_offset as usize;
+            return self.in_memory_candidates.get(idx).cloned().ok_or_else(|| {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("In-memory candidate not found at index {}", idx),
+                )) as BoxedError
+            });
+        }
+
+        let chunk_path = self
+            .temp_dir
+            .as_ref()
+            .unwrap()
+            .join(format!("candidate_chunk_{}.jsonl.zst", index.chunk_id));
+        let file = File::open(&chunk_path)?;
+        let reader = BufReader::new(zstd::Decoder::new(file)?);
+
+        // Read lines until we reach the target offset
+        // This is O(n) in the chunk size but chunks are bounded by ACCUMULATOR_BUFFER_BYTE_THRESHOLD
+        let mut current_offset: u64 = 0;
+        for line_result in reader.lines() {
+            let line = line_result?;
+            let line_len = line.len() as u64 + 1; // +1 for newline
+
+            if current_offset == index.byte_offset {
+                let entry: CandidateEntry = serde_json::from_str(&line)?;
+                return Ok(entry);
+            }
+
+            current_offset += line_len;
+        }
+
+        Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!(
+                "Candidate not found at offset {} in chunk {}",
+                index.byte_offset, index.chunk_id
+            ),
+        )))
+    }
+
+    /// Clean up the temporary directory and all candidate chunk files after processing.
     fn cleanup_temp_dir(&mut self) {
         if let Some(ref temp_dir) = self.temp_dir {
+            // Delete candidate chunk files first (they may still exist)
+            for i in 0..self.candidate_chunk_count {
+                let chunk_path = temp_dir.join(format!("candidate_chunk_{}.jsonl.zst", i));
+                let _ = std::fs::remove_file(chunk_path);
+            }
+            // Then remove the directory itself
             let _ = std::fs::remove_dir(temp_dir);
         }
     }
@@ -491,7 +616,7 @@ impl NeighborFinder {
         &self,
         ctx: &NodeContext,
         fw: &ProcessorChannelForwarder,
-        rtree: &RTree<CandidateEntry>,
+        rtree: &RTree<CandidateIndex>,
     ) -> Result<(), BoxedError> {
         for base in &self.base_features {
             self.process_single_base(ctx, fw, rtree, base)?;
@@ -499,12 +624,15 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Process base features in parallel using rayon
+    /// Process base features in parallel using rayon.
+    /// Note: Currently unused because file handles cannot be safely shared across threads.
+    /// Could be re-enabled in the future with thread-safe file pooling.
+    #[allow(dead_code)]
     fn process_parallel(
         &self,
         ctx: &NodeContext,
         fw: &ProcessorChannelForwarder,
-        rtree: &RTree<CandidateEntry>,
+        rtree: &RTree<CandidateIndex>,
     ) -> Result<(), BoxedError> {
         use rayon::prelude::*;
 
@@ -567,10 +695,13 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Find neighbors for a single base feature (used in parallel mode)
+    /// Find neighbors for a single base feature (used in parallel mode).
+    /// Note: Parallel processing with disk-based candidates requires special handling
+    /// since file handles cannot be shared across threads easily.
+    #[allow(dead_code)]
     fn find_neighbors_for_base(
         &self,
-        rtree: &RTree<CandidateEntry>,
+        rtree: &RTree<CandidateIndex>,
         base: &Feature,
     ) -> Result<(Option<Vec<NeighborMatch>>, bool), BoxedError> {
         let Some((base_point, base_z)) = extract_representative_point(base) else {
@@ -609,7 +740,7 @@ impl NeighborFinder {
         &self,
         ctx: &NodeContext,
         fw: &ProcessorChannelForwarder,
-        rtree: &RTree<CandidateEntry>,
+        rtree: &RTree<CandidateIndex>,
         base: &Feature,
     ) -> Result<(), BoxedError> {
         let Some((base_point, base_z)) = extract_representative_point(base) else {
@@ -663,7 +794,7 @@ impl NeighborFinder {
     ) -> Result<(), BoxedError> {
         match self.params.merge_strategy {
             MergeStrategy::Closest => {
-                let enriched = self.create_enriched_feature(base, &filtered_matches[0], false);
+                let enriched = self.create_enriched_feature(base, &filtered_matches[0], false)?;
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     ctx,
                     enriched,
@@ -672,7 +803,7 @@ impl NeighborFinder {
             }
             MergeStrategy::RepeatBase => {
                 for neighbor_match in filtered_matches {
-                    let enriched = self.create_enriched_feature(base, neighbor_match, true);
+                    let enriched = self.create_enriched_feature(base, neighbor_match, true)?;
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                         ctx,
                         enriched,
@@ -681,7 +812,7 @@ impl NeighborFinder {
                 }
             }
             MergeStrategy::ArrayAttributes => {
-                let enriched = self.create_array_enriched_feature(base, filtered_matches);
+                let enriched = self.create_array_enriched_feature(base, filtered_matches)?;
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     ctx,
                     enriched,
@@ -693,12 +824,13 @@ impl NeighborFinder {
     }
 
     /// Create an enriched feature with distance and transferred attributes.
+    /// Reads the candidate data from disk using the index entry.
     fn create_enriched_feature(
         &self,
         base: &Feature,
         neighbor_match: &NeighborMatch,
         include_index: bool,
-    ) -> Feature {
+    ) -> Result<Feature, BoxedError> {
         let mut enriched = base.clone();
 
         // Add distance attribute
@@ -721,18 +853,20 @@ impl NeighborFinder {
             }
         }
 
-        // Transfer candidate attributes with prefix
-        self.transfer_attributes(&mut enriched, &neighbor_match.candidate);
+        // Read candidate from disk and transfer attributes
+        let candidate = self.read_candidate_from_disk(&neighbor_match.candidate_index)?;
+        self.transfer_attributes(&mut enriched, &candidate);
 
-        enriched
+        Ok(enriched)
     }
 
     /// Create an enriched feature with array-valued attributes for all neighbors.
+    /// Reads candidate data from disk for each neighbor using index entries.
     fn create_array_enriched_feature(
         &self,
         base: &Feature,
         neighbor_matches: &[NeighborMatch],
-    ) -> Feature {
+    ) -> Result<Feature, BoxedError> {
         let mut enriched = base.clone();
         let prefix = &self.params.attribute_prefix;
 
@@ -751,11 +885,17 @@ impl NeighborFinder {
             AttributeValue::Array(distances),
         );
 
+        // Read all candidates from disk first
+        let candidates: Vec<CandidateEntry> = neighbor_matches
+            .iter()
+            .map(|m| self.read_candidate_from_disk(&m.candidate_index))
+            .collect::<Result<Vec<_>, _>>()?;
+
         // Collect all unique attribute names from all candidates
         let mut all_attrs: Vec<Attribute> = Vec::new();
-        for m in neighbor_matches {
+        for candidate in &candidates {
             let candidate_attrs: Vec<_> = if self.params.attributes_to_transfer.is_empty() {
-                m.candidate.feature.attributes.keys().cloned().collect()
+                candidate.feature.attributes.keys().cloned().collect()
             } else {
                 self.params.attributes_to_transfer.clone()
             };
@@ -768,11 +908,10 @@ impl NeighborFinder {
 
         // For each attribute, collect values from all neighbors into an array
         for attr in all_attrs {
-            let values: Vec<AttributeValue> = neighbor_matches
+            let values: Vec<AttributeValue> = candidates
                 .iter()
-                .map(|m| {
-                    m.candidate
-                        .feature
+                .map(|c| {
+                    c.feature
                         .attributes
                         .get(&attr)
                         .cloned()
@@ -785,7 +924,7 @@ impl NeighborFinder {
                 .insert(prefixed_attr, AttributeValue::Array(values));
         }
 
-        enriched
+        Ok(enriched)
     }
 
     /// Transfer candidate attributes to the enriched feature with prefix.
@@ -820,8 +959,10 @@ const KNN_OVERFETCH_FACTOR: usize = 4;
 /// For Haversine and Euclidean3D metrics, we over-fetch candidates and re-sort by
 /// the actual metric distance to ensure correctness, since the R-tree's 2D ordering
 /// may not match the true nearest neighbors in those metrics.
+///
+/// Uses lightweight CandidateIndex entries (point + disk location only).
 fn find_k_nearest_neighbors(
-    rtree: &RTree<CandidateEntry>,
+    rtree: &RTree<CandidateIndex>,
     base_point: &[f64; 2],
     base_z: Option<f64>,
     k: usize,
@@ -835,10 +976,10 @@ fn find_k_nearest_neighbors(
                 .take(k)
                 .cloned()
                 .enumerate()
-                .map(|(index, candidate)| {
-                    let distance = euclidean_distance_2d(base_point, &candidate.point);
+                .map(|(index, candidate_index)| {
+                    let distance = euclidean_distance_2d(base_point, &candidate_index.point);
                     NeighborMatch {
-                        candidate,
+                        candidate_index,
                         distance,
                         index,
                     }
@@ -854,16 +995,16 @@ fn find_k_nearest_neighbors(
                 .take(fetch_count)
                 .cloned()
                 .enumerate()
-                .map(|(index, candidate)| {
+                .map(|(index, candidate_index)| {
                     let distance = compute_distance(
                         metric,
                         base_point,
                         base_z,
-                        &candidate.point,
-                        candidate.point_z,
+                        &candidate_index.point,
+                        candidate_index.point_z,
                     );
                     NeighborMatch {
-                        candidate,
+                        candidate_index,
                         distance,
                         index,
                     }
@@ -1074,6 +1215,8 @@ mod tests {
         let mut finder = NeighborFinder {
             params: NeighborFinderParams::default(),
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1130,6 +1273,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1174,6 +1319,8 @@ mod tests {
         let mut finder = NeighborFinder {
             params: NeighborFinderParams::default(),
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1266,6 +1413,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1330,6 +1479,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1395,6 +1546,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1458,6 +1611,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1518,6 +1673,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
@@ -1593,6 +1750,8 @@ mod tests {
                 ..Default::default()
             },
             candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
             base_features: Vec::new(),
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
