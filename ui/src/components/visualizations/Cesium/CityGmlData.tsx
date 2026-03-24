@@ -139,7 +139,6 @@ const CityGmlData: React.FC<Props> = ({
   // Process CityGML data and create primitives (only on data change)
   useEffect(() => {
     if (!cityGmlData || !viewer) return;
-
     // Cancel any in-flight worker requests
     cancelPending();
 
@@ -174,9 +173,10 @@ const CityGmlData: React.FC<Props> = ({
     if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
 
     if (boundingSphere) {
-      viewer.camera.flyToBoundingSphere(boundingSphere, { duration: 1.5 });
+      viewer.camera.viewBoundingSphere(boundingSphere);
       setCityGmlBoundingSphere(boundingSphere);
     }
+    viewer.scene.requestRender();
   }, [cityGmlData, viewer, setCityGmlBoundingSphere, cancelPending]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes

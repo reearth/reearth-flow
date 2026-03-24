@@ -6826,6 +6826,159 @@
       ]
     },
     {
+      "name": "NullAttributeMapper",
+      "type": "processor",
+      "description": "Replace null-like attribute values with configured defaults",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "NullAttributeMapperParams",
+        "description": "NullAttributeMapper parameters",
+        "type": "object",
+        "properties": {
+          "defaultReplacement": {
+            "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")",
+            "default": null
+          },
+          "mappings": {
+            "description": "Per-attribute replacement rules",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AttributeMapping"
+            }
+          },
+          "nullDefinition": {
+            "description": "Which states count as \"null\"",
+            "default": [
+              "null",
+              "missing"
+            ],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/NullKind"
+            }
+          },
+          "routeNullFeatures": {
+            "description": "Emit original features with nulls to hasNull port",
+            "default": false,
+            "type": "boolean"
+          },
+          "scope": {
+            "description": "Which attributes to inspect",
+            "default": "listed",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Scope"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "AttributeMapping": {
+            "description": "Per-attribute replacement mapping",
+            "type": "object",
+            "required": [
+              "attribute"
+            ],
+            "properties": {
+              "attribute": {
+                "description": "Name of the attribute to inspect",
+                "type": "string"
+              },
+              "onMissing": {
+                "description": "What to do when attribute is missing but not in nullDefinition",
+                "default": "skip",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/OnMissing"
+                  }
+                ]
+              },
+              "replacement": {
+                "description": "Value to write when attribute is null-like null means remove the attribute"
+              }
+            }
+          },
+          "NullKind": {
+            "description": "Defines what states count as \"null\"",
+            "oneOf": [
+              {
+                "description": "AttributeValue::Null",
+                "type": "string",
+                "enum": [
+                  "null"
+                ]
+              },
+              {
+                "description": "Attribute key absent from the feature",
+                "type": "string",
+                "enum": [
+                  "missing"
+                ]
+              },
+              {
+                "description": "AttributeValue::String(\"\")",
+                "type": "string",
+                "enum": [
+                  "emptyString"
+                ]
+              }
+            ]
+          },
+          "OnMissing": {
+            "description": "What to do when attribute is missing but not in nullDefinition",
+            "oneOf": [
+              {
+                "description": "Leave unchanged",
+                "type": "string",
+                "enum": [
+                  "skip"
+                ]
+              },
+              {
+                "description": "Write replacement value, creating the attribute",
+                "type": "string",
+                "enum": [
+                  "create"
+                ]
+              }
+            ]
+          },
+          "Scope": {
+            "description": "Scope of attributes to inspect",
+            "oneOf": [
+              {
+                "description": "Only check attributes named in mappings",
+                "type": "string",
+                "enum": [
+                  "listed"
+                ]
+              },
+              {
+                "description": "Check all attributes on the feature",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "hasNull",
+        "rejected"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "ObjReader",
       "type": "source",
       "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",

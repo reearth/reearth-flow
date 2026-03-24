@@ -1,4 +1,5 @@
 import {
+  DateTimeDefaultValueInput,
   Input,
   Select,
   SelectContent,
@@ -117,13 +118,12 @@ const VariableRow: React.FC<Props> = ({
       );
     case "datetime":
       return (
-        <Input
+        <DateTimeDefaultValueInput
           id={`default-${index}`}
-          type={"datetime-local"}
-          value={variable.defaultValue}
-          onChange={(e) => {
-            onDefaultValueChange(index, e.target.value);
-          }}
+          variable={variable}
+          onDefaultValueChange={(newValue) =>
+            onDefaultValueChange(index, newValue)
+          }
         />
       );
     case "text":

@@ -19,7 +19,7 @@ pub fn test_json_attributes_v2(
         let flow_file = output_dir.join("flow_extracted").join(&cfg.path);
         assert!(flow_file.exists(), "missing flow file {:?}", flow_file);
 
-        let truth_file = testcase_dir.join(&cfg.path);
+        let truth_file = testcase_dir.join("truth").join(&cfg.path);
         assert!(truth_file.exists(), "missing truth file {:?}", truth_file);
 
         let flow_content = fs::read(&flow_file).map_err(|e| e.to_string())?;

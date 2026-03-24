@@ -76,10 +76,9 @@ fn calculate_hour_angle(
         datetime.hour() as f64 * 60.0 + datetime.minute() as f64 + datetime.second() as f64 / 60.0;
     let local_time_minutes = utc_minutes + standard_meridian / 15.0 * 60.0;
 
-    // Longitude correction for difference from standard meridian
-    // 4 minutes per degree of longitude
     let longitude_correction = 4.0 * (longitude - standard_meridian);
-    let solar_time_minutes = local_time_minutes + longitude_correction + equation_of_time;
+    let solar_time_minutes =
+        (local_time_minutes + longitude_correction + equation_of_time).rem_euclid(24.0 * 60.0);
 
     let hour_angle_degrees = (solar_time_minutes / 60.0 - 12.0) * 15.0;
     hour_angle_degrees.to_radians()
@@ -228,6 +227,40 @@ mod tests {
             (morning_pos.azimuth - afternoon_pos.azimuth).abs() > 90.0,
             "Morning {} and afternoon {} azimuths should differ significantly",
             morning_pos.azimuth,
+            afternoon_pos.azimuth
+        );
+    }
+
+    #[test]
+    fn test_early_morning_utc_crossing_midnight() {
+        // 6:00 JST on June 21 = 21:00 UTC on June 20
+        let early_morning = Utc.with_ymd_and_hms(2024, 6, 20, 21, 0, 0).unwrap();
+        let pos = calculate_solar_position(35.6762, 139.6503, early_morning, 135.0);
+
+        assert!(
+            pos.altitude > 0.0,
+            "Sun should be above horizon at 6 AM JST in summer, got {}",
+            pos.altitude
+        );
+        assert!(
+            pos.azimuth > 180.0,
+            "6 AM azimuth {} should be > 180 (eastern half)",
+            pos.azimuth
+        );
+
+        // 18:00 JST on June 21 = 09:00 UTC on June 21
+        let late_afternoon = Utc.with_ymd_and_hms(2024, 6, 21, 9, 0, 0).unwrap();
+        let afternoon_pos = calculate_solar_position(35.6762, 139.6503, late_afternoon, 135.0);
+
+        assert!(
+            (pos.altitude - afternoon_pos.altitude).abs() < 10.0,
+            "Morning {} and afternoon {} altitudes should be roughly similar",
+            pos.altitude,
+            afternoon_pos.altitude
+        );
+        assert!(
+            afternoon_pos.azimuth < 180.0,
+            "6 PM azimuth {} should be < 180 (western half)",
             afternoon_pos.azimuth
         );
     }

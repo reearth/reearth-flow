@@ -98,6 +98,22 @@ graphs:
               featureTo: "cityNameEn"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "ward_name_en"
+            - featureFroms: ["cityCode"]
+              featureTo: "__wardParentCode"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
+
+      - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        name: CityCodeBoundaryFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                let code = env.get("__value").cityCode;
+                let base = env.get("__value").baseCityCode;
+                code == base || env.get("__value").__wardParentCode == base
+              outputPort: default
 
       - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         name: FeatureSorter
@@ -126,10 +142,6 @@ graphs:
               method: create
               value: |
                 file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
-            - attribute: _lod
-              method: create
-              value: |
-                env.get("__lod")
             - attribute: _lod_type
               method: create
               value: |
@@ -212,6 +224,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+            - attribute: _lod
+              method: create
+              value: "1"
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojectorByLod1
@@ -246,7 +261,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-
+            - attribute: _lod
+              method: create
+              value: "2"
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
         name: VerticalReprojectorByLod2
         type: action
@@ -280,6 +297,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+            - attribute: _lod
+              method: create
+              value: "2"
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
         name: VerticalReprojectorByLod2NoTexture
@@ -314,6 +334,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+            - attribute: _lod
+              method: create
+              value: "3"
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
         name: VerticalReprojectorByLod3
@@ -348,6 +371,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+            - attribute: _lod
+              method: create
+              value: "3"
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
         name: VerticalReprojectorByLod3NoTexture
@@ -382,6 +408,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+            - attribute: _lod
+              method: create
+              value: "4"
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
         name: VerticalReprojectorByLod4
@@ -416,6 +445,9 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+            - attribute: _lod
+              method: create
+              value: "4"
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
         name: VerticalReprojectorByLod4NoTexture
@@ -667,8 +699,13 @@ graphs:
         to: ae9c558d-ce05-4b40-ae04-a4477d96db5a
         fromPort: default
         toPort: default
-      - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
+      - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
         from: ae9c558d-ce05-4b40-ae04-a4477d96db5a
+        to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        fromPort: default
+        toPort: default
+      - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
+        from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
         to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         fromPort: default
         toPort: default
