@@ -18,7 +18,11 @@ import {
   ValueEditorDialog,
   PythonEditorDialog,
 } from "./components";
-import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
+import {
+  FieldContext,
+  getValueAtPath,
+  setValueAtPath,
+} from "./utils/fieldUtils";
 import {
   applyMergedPatch,
   DraftPatch,
@@ -69,7 +73,21 @@ const ParamsDialog: React.FC<Props> = ({
 
   const currentParams = useMemo(() => {
     if (!openNode) return undefined;
-    return applyMergedPatch(openNode.data.params, nodeDrafts, "paramsPatch");
+
+    const drafts = Object.values(nodeDrafts ?? {});
+    const latestParamsDraft = drafts.reduce<DraftPatch | undefined>(
+      (latest, draft) => {
+        if (!draft || draft.params === undefined) return latest;
+        if (!latest) return draft;
+
+        return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
+          ? draft
+          : latest;
+      },
+      undefined,
+    );
+
+    return latestParamsDraft?.params ?? openNode.data.params;
   }, [openNode, nodeDrafts]);
 
   const currentCustomizations = useMemo(() => {
@@ -114,7 +132,7 @@ const ParamsDialog: React.FC<Props> = ({
   const updateMyFieldPatch = useCallback(
     (
       nodeId: string,
-      patchKey: "paramsPatch" | "customizationsPatch",
+      patchKey: "customizationsPatch",
       path: string,
       value: any,
     ) => {
@@ -137,16 +155,26 @@ const ParamsDialog: React.FC<Props> = ({
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
-      const updatedParams = applyMergedPatch(
-        openNode.data.params,
-        latestNodeDrafts,
-        "paramsPatch",
-      );
+
+      const latestParamsDraft = Object.values(latestNodeDrafts).reduce<
+        DraftPatch | undefined
+      >((latest, draft) => {
+        if (!draft || draft.params === undefined) return latest;
+        if (!latest) return draft;
+
+        return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
+          ? draft
+          : latest;
+      }, undefined);
+
+      const updatedParams = latestParamsDraft?.params ?? openNode.data.params;
+
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
         latestNodeDrafts,
         "customizationsPatch",
       );
+
       yDoc?.transact(() => {
         onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]);
       }, "params");
@@ -220,17 +248,16 @@ const ParamsDialog: React.FC<Props> = ({
   }, [users, openNode]);
 
   const handleParamChange = useCallback(
-    (data: any, changedFieldId?: string) => {
+    (data: any) => {
       if (!openNode) return;
 
-      const path = rjsfIdToPath(changedFieldId);
-      if (!path) return;
-
-      const value = getValueAtPath(data, [path]);
-
-      updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
+      setMyDraft(openNode.id, (existing) => ({
+        ...existing,
+        params: data,
+        paramsUpdatedAt: Date.now(),
+      }));
     },
-    [openNode, updateMyFieldPatch],
+    [openNode, setMyDraft],
   );
 
   const handleCustomizationChange = useCallback(
@@ -252,7 +279,14 @@ const ParamsDialog: React.FC<Props> = ({
       const path = Array.isArray(currentFieldContext.path)
         ? currentFieldContext.path.join(".")
         : currentFieldContext.path;
-      updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
+
+      const nextParams = setValueAtPath(currentParams || {}, [path], value);
+
+      setMyDraft(openNode.id, (existing) => ({
+        ...existing,
+        params: nextParams,
+        paramsUpdatedAt: Date.now(),
+      }));
     }
   };
 

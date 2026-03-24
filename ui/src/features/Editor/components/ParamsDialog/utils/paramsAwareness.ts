@@ -8,6 +8,8 @@ type PatchEntry = {
 export type DraftPatch = {
   paramsPatch?: Record<string, PatchEntry>;
   customizationsPatch?: Record<string, PatchEntry>;
+  params?: any;
+  paramsUpdatedAt?: number;
 };
 
 type NodeDrafts = Record<string, DraftPatch | undefined>;
