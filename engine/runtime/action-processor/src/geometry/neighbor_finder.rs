@@ -336,6 +336,11 @@ impl Processor for NeighborFinder {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // If no features were processed, temp_dir is None - nothing to do
+        if self.temp_dir.is_none() {
+            return Ok(());
+        }
+
         // Load any spilled data
         self.load_from_disk()?;
 
@@ -348,6 +353,7 @@ impl Processor for NeighborFinder {
                     UNMATCHED_PORT.clone(),
                 ));
             }
+            self.cleanup_temp_dir();
             return Ok(());
         }
 
@@ -363,6 +369,9 @@ impl Processor for NeighborFinder {
         } else {
             self.process_sequential(&ctx, fw, &rtree)?;
         }
+
+        // Clean up temporary directory after processing
+        self.cleanup_temp_dir();
 
         Ok(())
     }
@@ -442,6 +451,9 @@ impl NeighborFinder {
                 let feature: Feature = serde_json::from_str(&line)?;
                 self.base_features.push(feature);
             }
+
+            // Delete the chunk file after loading to free disk space
+            std::fs::remove_file(&chunk_path)?;
         }
 
         // Load candidates
@@ -459,9 +471,19 @@ impl NeighborFinder {
                 let entry: CandidateEntry = serde_json::from_str(&line)?;
                 self.candidates.push(entry);
             }
+
+            // Delete the chunk file after loading to free disk space
+            std::fs::remove_file(&chunk_path)?;
         }
 
         Ok(())
+    }
+
+    /// Clean up the temporary directory after processing is complete
+    fn cleanup_temp_dir(&mut self) {
+        if let Some(ref temp_dir) = self.temp_dir {
+            let _ = std::fs::remove_dir(temp_dir);
+        }
     }
 
     /// Process base features sequentially
@@ -940,7 +962,7 @@ fn extract_representative_point(feature: &Feature) -> Option<([f64; 2], Option<f
             if all_points.is_empty() {
                 None
             } else {
-                let centroid = centroid_weighted(&all_points);
+                let centroid = centroid_simple_mean(&all_points);
                 Some(([centroid[0], centroid[1]], Some(centroid[2])))
             }
         }
@@ -977,8 +999,13 @@ fn extract_representative_point_3d(
     }
 }
 
-/// Compute area-weighted centroid of a set of 3D points (simplified version for CityGML)
-fn centroid_weighted(points: &[[f64; 3]]) -> [f64; 3] {
+/// Compute arithmetic mean of a set of 3D points.
+///
+/// Note: This is a simple average of vertex coordinates, NOT an area-weighted centroid.
+/// For CityGML geometries, we use this simplification as a representative point.
+/// For true area-weighted centroids of polygons, use the `Centroid` trait from
+/// `reearth_flow_geometry::algorithm::centroid`.
+fn centroid_simple_mean(points: &[[f64; 3]]) -> [f64; 3] {
     if points.is_empty() {
         return [0.0, 0.0, 0.0];
     }
