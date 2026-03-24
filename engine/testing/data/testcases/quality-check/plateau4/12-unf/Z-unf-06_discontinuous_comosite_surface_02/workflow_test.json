@@ -1,0 +1,56 @@
+{
+  "description": "discontinuous composite should not be detected",
+  "workflowPath": "quality-check/plateau4/12-unf/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "unf_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op/13999_milt_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/unf",
+      "name": "unf_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_unf.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "12_地下埋設物_検査結果一覧.csv",
+      "excludeColumns": [
+        "非水密立体"
+      ],
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
+      ]
+    }
+  }
+}
