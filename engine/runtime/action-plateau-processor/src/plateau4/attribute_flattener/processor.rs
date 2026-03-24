@@ -9,7 +9,10 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{metadata::Metadata, Attribute, AttributeValue, Attributes, Feature};
+use reearth_flow_types::{
+    metadata::{self, Metadata},
+    Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -378,7 +381,7 @@ impl AttributeFlattener {
             return;
         }
 
-        let Some(feature_id) = feature.feature_id() else {
+        let Some(feature_id) = feature.citygml_gml_id() else {
             return;
         };
         let Some(toplevel_id) = self.find_toplevel_ancestor_id(&feature_id) else {
@@ -480,7 +483,7 @@ impl AttributeFlattener {
         lookup_key: &str,
     ) {
         let mut ancestors = vec![];
-        let feature_type = feature.feature_type().unwrap_or_default();
+        let feature_type = feature.citygml_feature_type().unwrap_or_default();
         let mut citygml_attributes = if feature_type == "uro:DmGeometricAttribute" {
             // get parent attributes before stripping parent info
             let mut parent_attr = self.get_parent_attr(&citygml_attributes);
@@ -500,13 +503,13 @@ impl AttributeFlattener {
                 "dm_attributes".to_string(),
                 AttributeValue::String(json_string),
             );
-            if let Some(feature_type) = feature.metadata.feature_type.as_ref() {
+            if let Some(feature_type) = feature.citygml_feature_type() {
                 feature.insert(
                     "dm_feature_type".to_string(),
                     AttributeValue::String(
                         feature_type
                             .strip_prefix("uro:")
-                            .unwrap_or(feature_type)
+                            .unwrap_or(&feature_type)
                             .to_string(),
                     ),
                 );
@@ -516,14 +519,14 @@ impl AttributeFlattener {
             Self::insert_common_attributes(feature, &mut parent_attr);
             // replace feature_type with attributes["featureType"]
             if let Some(feature_type) = feature.get("featureType") {
-                feature.update_feature_type(feature_type.to_string());
+                feature.metadata.insert(metadata::CITYGML_FEATURE_TYPE.to_string(), AttributeValue::String(feature_type.to_string()));
             }
             parent_attr
         } else {
             // add common attributes BEFORE caching and building ancestors
             Self::insert_common_attributes(feature, &mut citygml_attributes);
             // attribute must be cached BEFORE inserting ancestors, AFTER inserting common attributes
-            if let Some(feature_id) = feature.feature_id() {
+            if let Some(feature_id) = feature.citygml_gml_id() {
                 self.gmlid_to_citygml_attributes
                     .insert(feature_id, citygml_attributes.clone());
             }
@@ -606,7 +609,7 @@ impl AttributeFlattener {
         // Cache attributes only for top-level + LOD4 features (for LOD4 subfeature inheritance)
         let is_toplevel = !citygml_attributes.contains_key("parentId");
         let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
-        if let Some(feature_id) = feature.feature_id() {
+        if let Some(feature_id) = feature.citygml_gml_id() {
             if is_toplevel || is_lod4 {
                 let flattened_attrs: AttributeMap = feature
                     .attributes
@@ -678,7 +681,7 @@ impl AttributeFlattener {
                 );
 
                 // Recursively process this child's buffered children
-                if let Some(child_id) = flattened_child.feature_id() {
+                if let Some(child_id) = flattened_child.citygml_gml_id() {
                     self.process_buffered_children(ctx, fw, &child_id)?;
                 }
             }
@@ -758,11 +761,9 @@ impl AttributeFlattener {
             .nth(1)
             .unwrap_or(feature_type_key)
             .to_string();
-        feature.metadata = Metadata {
-            feature_id: None,
-            feature_type: Some(schema_feature_type),
-            lod: None,
-        };
+        let mut md = Metadata::new();
+        md.insert(metadata::CITYGML_FEATURE_TYPE.to_string(), AttributeValue::String(schema_feature_type));
+        feature.metadata = md;
         feature
     }
 
@@ -812,7 +813,7 @@ impl AttributeFlattener {
 
         // Process risk attributes before consuming citygml_attributes
         let risk_keys = self.process_and_add_risk_attributes(&mut feature, &citygml_attributes);
-        if let Some(feature_id) = feature.feature_id() {
+        if let Some(feature_id) = feature.citygml_gml_id() {
             self.gmlid_to_risk_attr_keys.insert(feature_id, risk_keys);
         }
 
@@ -909,7 +910,7 @@ impl Processor for AttributeFlattener {
         fw.send(ctx.new_with_feature_and_port(flattened_feature.clone(), DEFAULT_PORT.clone()));
 
         // Check if this feature has any buffered children and process them recursively
-        if let Some(feature_id) = flattened_feature.feature_id() {
+        if let Some(feature_id) = flattened_feature.citygml_gml_id() {
             self.process_buffered_children(&ctx, fw, &feature_id)?;
         }
 
@@ -987,7 +988,7 @@ mod tests {
         feature.insert("package", AttributeValue::String(package.to_string()));
         feature.insert("path", AttributeValue::String(path.to_string()));
         feature.insert("cityGmlAttributes", AttributeValue::Map(citygml_attributes));
-        feature.metadata.feature_type = Some(feature_type.to_string());
+        feature.metadata.insert(metadata::CITYGML_FEATURE_TYPE.to_string(), AttributeValue::String(feature_type.to_string()));
         feature
     }
 

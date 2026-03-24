@@ -17,4 +17,5 @@ pub use expr::*;
 pub use feature::*;
 pub use file::*;
 pub use geometry::*;
+pub use metadata::CitygmlFeatureExt;
 pub use workflow::*;

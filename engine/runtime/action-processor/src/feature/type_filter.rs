@@ -8,6 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::CitygmlFeatureExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,7 +90,7 @@ impl Processor for FeatureTypeFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(feature_type) = feature.feature_type() else {
+        let Some(feature_type) = feature.citygml_feature_type() else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
         };

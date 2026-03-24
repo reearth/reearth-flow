@@ -6,7 +6,6 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use nutype::nutype;
 use reearth_flow_common::{
     str,
     xml::{xpath_value_to_json, XmlXpathValue},
@@ -17,26 +16,12 @@ use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
 pub use crate::attribute::AttributeValue;
-use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metadata::Metadata};
-
-#[nutype(
-    sanitize(trim),
-    derive(
-        Debug,
-        Display,
-        Clone,
-        Eq,
-        PartialEq,
-        PartialOrd,
-        Ord,
-        AsRef,
-        Serialize,
-        Deserialize,
-        Hash,
-        JsonSchema
-    )
-)]
-pub struct MetadataKey(String);
+use crate::{
+    all_attribute_keys,
+    attribute::Attribute,
+    geometry::Geometry,
+    metadata::{CitygmlFeatureExt, Metadata},
+};
 
 /// Type alias for feature attributes to reduce verbosity
 pub type Attributes = IndexMap<Attribute, AttributeValue>;
@@ -72,7 +57,7 @@ impl From<IndexMap<String, AttributeValue>> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
+            metadata: Metadata::new(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -89,7 +74,7 @@ impl From<Attributes> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(v),
-            metadata: Metadata::default(),
+            metadata: Metadata::new(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -100,7 +85,7 @@ impl From<Geometry> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             geometry: Arc::new(v),
-            metadata: Metadata::default(),
+            metadata: Metadata::new(),
             attributes: Arc::new(Attributes::new()),
         }
     }
@@ -125,7 +110,7 @@ impl From<AttributeValue> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
+            metadata: Metadata::new(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -134,7 +119,7 @@ impl From<AttributeValue> for Feature {
 impl From<&Feature> for nusamai_citygml::schema::Schema {
     fn from(v: &Feature) -> Self {
         let mut schema = nusamai_citygml::schema::Schema::default();
-        let Some(feature_type) = v.feature_type() else {
+        let Some(feature_type) = v.citygml_feature_type() else {
             return schema;
         };
         schema.types.insert(feature_type, v.into());
@@ -287,7 +272,7 @@ impl Feature {
         Self {
             id,
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
+            metadata: Metadata::new(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -296,7 +281,7 @@ impl Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
-            metadata: Metadata::default(),
+            metadata: Metadata::new(),
             geometry: Arc::new(Geometry::default()),
         }
     }
@@ -423,20 +408,17 @@ impl Feature {
         scope.set("__value", value);
         scope.set(
             "__feature_type",
-            self.feature_type().map_or(serde_json::Value::Null, |_| {
-                serde_json::Value::String(self.feature_type().unwrap_or_default())
-            }),
+            self.citygml_feature_type()
+                .map_or(serde_json::Value::Null, serde_json::Value::String),
         );
         scope.set(
             "__feature_id",
-            self.feature_id().map_or(serde_json::Value::Null, |_| {
-                serde_json::Value::String(self.feature_id().unwrap_or_default())
-            }),
+            self.citygml_gml_id()
+                .map_or(serde_json::Value::Null, serde_json::Value::String),
         );
         scope.set(
             "__lod",
-            self.metadata
-                .lod
+            self.citygml_lod_mask()
                 .and_then(|lod| lod.highest_lod())
                 .map_or(serde_json::Value::Null, |lod| {
                     serde_json::Value::Number(serde_json::Number::from(lod))
@@ -496,25 +478,10 @@ impl Feature {
         keys
     }
 
-    pub fn feature_id(&self) -> Option<String> {
-        self.metadata.feature_id.clone()
-    }
+}
 
-    pub fn feature_type(&self) -> Option<String> {
-        self.metadata.feature_type.clone()
-    }
-
-    pub fn lod(&self) -> Option<String> {
-        self.metadata
-            .lod
-            .and_then(|lod| lod.highest_lod().map(|lod| lod.to_string()))
-    }
-
-    pub fn update_feature_type(&mut self, feature_type: String) {
-        self.metadata.feature_type = Some(feature_type);
-    }
-
-    pub fn update_feature_id(&mut self, feature_id: String) {
-        self.metadata.feature_id = Some(feature_id);
+impl CitygmlFeatureExt for Feature {
+    fn metadata(&self) -> &Metadata {
+        &self.metadata
     }
 }

@@ -24,7 +24,7 @@ use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::Context;
-use reearth_flow_types::Feature;
+use reearth_flow_types::{CitygmlFeatureExt, Feature};
 use tempfile::tempdir;
 
 use super::tiling::{TileContent, TileTree};
@@ -51,7 +51,7 @@ pub(super) fn geometry_slicing_stage(
             |(z, x, y), feature| {
                 let bytes = serde_json::to_vec(&feature)
                     .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
-                let Some(feature_type) = parcel.feature_type() else {
+                let Some(feature_type) = parcel.citygml_feature_type() else {
                     return Err(crate::errors::SinkError::cesium3dtiles_writer(
                         "Failed to get feature type",
                     ));

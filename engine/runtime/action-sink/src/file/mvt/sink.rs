@@ -18,7 +18,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
-use reearth_flow_types::{Attribute, Feature};
+use reearth_flow_types::{Attribute, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -182,7 +182,7 @@ impl Sink for MVTWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
             let feature = &ctx.feature;
-            if let Some(feature_type) = feature.feature_type() {
+            if let Some(feature_type) = feature.citygml_feature_type() {
                 let typedef: TypeDef = feature.into();
                 self.schema.types.insert(feature_type, typedef);
             }

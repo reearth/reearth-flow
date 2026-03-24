@@ -1,5 +1,5 @@
 use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 
 /// Get the attribute definitions map for a feature type from the schema.
 /// Returns None if the feature type is not found or is a Property type.
@@ -85,7 +85,7 @@ pub fn filter_and_cast_attributes(feature: &Feature, schema: &Schema) -> Attribu
     let schema_key = feature
         .get("__schema_definition")
         .and_then(|v| v.as_string())
-        .or_else(|| feature.feature_type());
+        .or_else(|| feature.citygml_feature_type());
     let Some(schema_attrs) = schema_key
         .as_ref()
         .and_then(|ft| schema_attributes(ft, schema))

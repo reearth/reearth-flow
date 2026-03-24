@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
+use reearth_flow_types::{metadata, Attribute, AttributeValue, Attributes, Feature};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -641,8 +641,8 @@ fn create_error_feature(parent: &Feature, gml_id: &str, feature_type: &str) -> F
         AttributeValue::String(feature_type.to_string()),
     );
     let mut f = Feature::new_with_attributes(attrs);
-    f.update_feature_type(feature_type.to_string());
-    f.update_feature_id(gml_id.to_string());
+    f.metadata.insert(metadata::CITYGML_FEATURE_TYPE.to_string(), AttributeValue::String(feature_type.to_string()));
+    f.metadata.insert(metadata::CITYGML_GML_ID.to_string(), AttributeValue::String(gml_id.to_string()));
     f
 }
 

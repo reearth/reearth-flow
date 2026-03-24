@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{CitygmlFeatureExt, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -183,7 +183,7 @@ impl Sink for Cesium3DTilesWriter {
 
 impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
-        let Some(feature_type) = &ctx.feature.feature_type() else {
+        let Some(feature_type) = &ctx.feature.citygml_feature_type() else {
             return Err(SinkError::Cesium3DTilesWriter(
                 "Failed to get feature type".to_string(),
             ));
@@ -242,7 +242,7 @@ impl Cesium3DTilesWriter {
 
     fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let feature = &ctx.feature;
-        let Some(feature_type) = &feature.feature_type() else {
+        let Some(feature_type) = &feature.citygml_feature_type() else {
             return Err(SinkError::Cesium3DTilesWriter(
                 "Failed to get feature type".to_string(),
             ));

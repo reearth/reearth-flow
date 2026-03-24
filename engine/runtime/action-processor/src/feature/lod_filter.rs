@@ -8,7 +8,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{lod::LodMask, Attribute, AttributeValue, Feature};
+use reearth_flow_types::{
+    lod::LodMask, metadata, Attribute, AttributeValue, CitygmlFeatureExt, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -118,7 +120,7 @@ impl Processor for FeatureLodFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(lod) = feature.metadata.lod else {
+        let Some(lod) = feature.citygml_lod_mask() else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
         };
@@ -175,7 +177,7 @@ impl FeatureLodFilter {
         feature: &Feature,
         lod_count: &LodCount,
     ) {
-        let Some(lod) = feature.metadata.lod else {
+        let Some(lod) = feature.citygml_lod_mask() else {
             fw.send(ctx.as_executor_context(feature.clone(), UNFILTERED_PORT.clone()));
             return;
         };
@@ -218,7 +220,7 @@ impl FeatureLodFilter {
         let mut filtered_feature = feature.clone();
 
         // Calculate the actual LOD to use based on feature's available LODs
-        let actual_lod = if let Some(lod_mask) = &feature.metadata.lod {
+        let actual_lod = if let Some(lod_mask) = feature.citygml_lod_mask() {
             // Find the maximum LOD that doesn't exceed max_lod
             let mut best_lod = None;
             for lod in 0..=max_lod {
@@ -240,10 +242,13 @@ impl FeatureLodFilter {
                     reearth_flow_types::GeometryValue::CityGmlGeometry(filtered_citygml_geometry);
             }
 
-            if filtered_feature.metadata.lod.is_some() {
+            if filtered_feature.citygml_lod_mask().is_some() {
                 let mut new_lod_mask = LodMask::default();
                 new_lod_mask.add_lod(target_lod);
-                filtered_feature.metadata.lod = Some(new_lod_mask);
+                filtered_feature.metadata.insert(
+                    metadata::CITYGML_LOD_MASK.to_string(),
+                    AttributeValue::Number(serde_json::Number::from(new_lod_mask.as_u8())),
+                );
             }
         }
 

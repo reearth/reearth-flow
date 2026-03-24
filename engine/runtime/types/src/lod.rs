@@ -47,6 +47,14 @@ impl LodMask {
     pub fn find_lods_by_citygml_value(value: &nusamai_citygml::Value) -> Self {
         find_lods(value)
     }
+
+    pub fn as_u8(&self) -> u8 {
+        self.0
+    }
+
+    pub fn from_u8(v: u8) -> Self {
+        Self(v)
+    }
 }
 
 fn find_lods(value: &nusamai_citygml::Value) -> LodMask {
