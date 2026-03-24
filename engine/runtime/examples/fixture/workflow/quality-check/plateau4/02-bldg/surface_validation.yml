@@ -709,7 +709,9 @@ nodes:
     with:
       bufferType: area2d
       distance: -0.005
-      interpolationAngle: 10
+      # TODO: interpolationAngle has no effect on Polygon/MultiPolygon buffering (only affects Point/LineString).
+      # Setting to 0 for now, but should be removed later after Bafferer is fixed.
+      interpolationAngle: 0
 
   - id: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
     name: AreaOnAreaOverlayerSolidIntersection
