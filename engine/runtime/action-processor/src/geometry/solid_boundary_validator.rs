@@ -25,6 +25,8 @@ static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
+const EPSILON: f64 = 1e-8;
+
 #[derive(Debug, Clone, Default)]
 pub struct SolidBoundaryValidatorFactory;
 
@@ -324,13 +326,12 @@ impl SolidBoundaryValidator {
         polygons: &[Polygon3D<f64>],
         vertices: &[Coordinate3D<f64>],
     ) -> Option<ValidationResult> {
-        let epsilon = 1e-8;
         if polygons.is_empty() {
             return None;
         }
 
         let vertex_index = |v: &Coordinate3D<f64>| -> Option<usize> {
-            vertices.iter().position(|&vv| (vv - *v).norm() < epsilon)
+            vertices.iter().position(|&vv| (vv - *v).norm() < EPSILON)
         };
 
         let mut edges: Vec<[usize; 2]> = Vec::new();
@@ -380,7 +381,6 @@ impl SolidBoundaryValidator {
         polygons: &[Polygon3D<f64>],
         vertices: &[Coordinate3D<f64>],
     ) -> Option<ValidationResult> {
-        let epsilon = 1e-8;
         if polygons.is_empty() {
             return None;
         }
@@ -389,7 +389,7 @@ impl SolidBoundaryValidator {
         let vertex_index = |v: &Coordinate3D<f64>| {
             vertices
                 .iter()
-                .position(|&vv| (vv - *v).norm() < epsilon)
+                .position(|&vv| (vv - *v).norm() < EPSILON)
                 .unwrap()
         };
 
