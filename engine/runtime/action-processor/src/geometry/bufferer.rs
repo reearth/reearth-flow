@@ -184,6 +184,27 @@ impl Bufferer {
                         );
                     }
                 }
+                Geometry2D::MultiPolygon(mp) => {
+                    let mut feature = feature.clone();
+                    let mut geometry = geometry.clone();
+                    let buffered_polys: Vec<Polygon2D<f64>> =
+                        mp.0.iter()
+                            .filter_map(|poly| buffer_polygon(poly, self.distance))
+                            .collect();
+                    if buffered_polys.is_empty() {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    } else {
+                        geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(
+                            reearth_flow_geometry::types::multi_polygon::MultiPolygon2D::new(
+                                buffered_polys,
+                            ),
+                        ));
+                        feature.geometry = Arc::new(geometry);
+                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    }
+                }
                 _ => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
                 }
