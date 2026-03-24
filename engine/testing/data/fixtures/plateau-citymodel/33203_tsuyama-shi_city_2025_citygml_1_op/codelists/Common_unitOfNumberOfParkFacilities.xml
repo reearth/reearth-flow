@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="Common_unitOfNumberOfParkFacilities">
+<!-- 施設数量単位 -->
+	<gml:name>Common_unitOfNumberOfParkFacilities</gml:name>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_1">
+			<gml:description>ｍ</gml:description>
+			<gml:name>1</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_2">
+			<gml:description>㎡</gml:description>
+			<gml:name>2</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_3">
+			<gml:description>㎥</gml:description>
+			<gml:name>3</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_4">
+			<gml:description>ｔ</gml:description>
+			<gml:name>4</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_5">
+			<gml:description>箇所</gml:description>
+			<gml:name>5</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_6">
+			<gml:description>枚</gml:description>
+			<gml:name>6</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_7">
+			<gml:description>基</gml:description>
+			<gml:name>7</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_8">
+			<gml:description>個</gml:description>
+			<gml:name>8</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_9">
+			<gml:description>面</gml:description>
+			<gml:name>9</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_10">
+			<gml:description>段</gml:description>
+			<gml:name>10</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_11">
+			<gml:description>組</gml:description>
+			<gml:name>11</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_12">
+			<gml:description>式</gml:description>
+			<gml:name>12</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_13">
+			<gml:description>橋</gml:description>
+			<gml:name>13</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_unitOfNumberOfParkFacilities_14">
+			<gml:description>棟</gml:description>
+			<gml:name>14</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+</gml:Dictionary>
