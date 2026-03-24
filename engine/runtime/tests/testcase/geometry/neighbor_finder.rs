@@ -62,7 +62,7 @@ fn test_proximity_search_with_geojson() {
 
     // Load workflow
     let workflow_str = std::fs::read_to_string(&workflow_path)
-        .expect(&format!("Failed to read workflow: {:?}", workflow_path));
+        .unwrap_or_else(|_| panic!("Failed to read workflow: {:?}", workflow_path));
     let mut workflow = Workflow::try_from(workflow_str.as_str()).expect("Failed to parse workflow");
 
     // Set up temp directory and output path
