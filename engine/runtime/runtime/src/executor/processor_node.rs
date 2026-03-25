@@ -507,10 +507,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             ),
         );
 
-        // Skip feature writer block_on calls globally from this point to
-        // prevent tokio runtime starvation during send_terminate. Set after
+        // Skip feature writer block_on calls for this executor from this point
+        // to prevent tokio runtime starvation during send_terminate. Set after
         // finish() so that intermediate data is still captured during finish.
-        crate::forwarder::set_global_skip_feature_writes();
+        crate::forwarder::set_executor_shutting_down(channel_manager.executor_id());
         let terminate_result = channel_manager.send_terminate(ctx);
 
         if result.is_err() {

@@ -16,13 +16,21 @@ const CHANNEL_SEND_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Global flag: once set, all feature writer `block_on(write())` calls are
 /// skipped across the entire DAG to prevent tokio runtime starvation during
-/// concurrent node termination.
-static GLOBAL_SKIP_FEATURE_WRITES: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+/// Set of executor IDs currently in shutdown. Feature writer `block_on(write())`
+/// calls are skipped for these executors to prevent tokio runtime starvation
+/// during concurrent node termination. Scoped per-executor so multiple
+/// workflows in the same process don't interfere.
+static SHUTDOWN_EXECUTORS: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashSet<uuid::Uuid>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashSet::new()));
 
-/// Signal all channel managers to stop calling `block_on(writer.write())`.
-pub fn set_global_skip_feature_writes() {
-    GLOBAL_SKIP_FEATURE_WRITES.store(true, std::sync::atomic::Ordering::Relaxed);
+/// Mark an executor as shutting down — its feature writer writes will be skipped.
+pub fn set_executor_shutting_down(executor_id: uuid::Uuid) {
+    SHUTDOWN_EXECUTORS.lock().unwrap().insert(executor_id);
+}
+
+fn is_executor_shutting_down(executor_id: &uuid::Uuid) -> bool {
+    SHUTDOWN_EXECUTORS.lock().unwrap().contains(executor_id)
 }
 
 use crate::errors::ExecutionError;
@@ -226,7 +234,7 @@ impl ChannelManager {
                     .feature_writers
                     .get(&FeatureWriterKey(ctx.port.clone(), port.clone()))
                 {
-                    if GLOBAL_SKIP_FEATURE_WRITES.load(std::sync::atomic::Ordering::Relaxed) {
+                    if is_executor_shutting_down(&self.executor_id) {
                         continue;
                     }
                     for writer in writers {
