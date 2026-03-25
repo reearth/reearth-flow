@@ -454,9 +454,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         };
 
         channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
-        // Skip feature writer block_on calls globally to prevent tokio runtime
-        // starvation when many processor nodes terminate concurrently.
-        crate::forwarder::set_global_skip_feature_writes();
         // Cache processor name before spawning finish thread — the thread
         // holds processor.write() and if it times out the lock is never
         // released, so processor.read() after would deadlock.
@@ -510,6 +507,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             ),
         );
 
+        // Skip feature writer block_on calls globally from this point to
+        // prevent tokio runtime starvation during send_terminate. Set after
+        // finish() so that intermediate data is still captured during finish.
+        crate::forwarder::set_global_skip_feature_writes();
         let terminate_result = channel_manager.send_terminate(ctx);
 
         if result.is_err() {
