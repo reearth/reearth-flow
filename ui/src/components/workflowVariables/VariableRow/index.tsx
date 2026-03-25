@@ -1,15 +1,8 @@
 import { useCallback } from "react";
 
 import {
-  Checkbox,
   DateTimeDefaultValueInput,
   Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Switch,
   TextArea,
 } from "@flow/components";
@@ -17,6 +10,7 @@ import { useT } from "@flow/lib/i18n";
 import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
 import VariableArrayInput from "./VariableArrayInput";
+import VariableChoiceInput from "./VariableChoiceInput";
 
 type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
@@ -101,53 +95,14 @@ const VariableRow: React.FC<Props> = ({
           }
           return choice;
         });
-
-        if (variable.config.displayMode === "radio") {
-          return (
-            <div className="space-y-2">
-              {choices.map((option: { value: string; label: string }) => {
-                return (
-                  <div
-                    key={`checkbox-${option.value}-${index}`}
-                    className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`default-option-${index}`}
-                      checked={variable.defaultValue === option.value}
-                      onCheckedChange={(checked) =>
-                        onDefaultValueChange(
-                          index,
-                          checked ? option.value : null,
-                        )
-                      }
-                    />
-                    <Label htmlFor={`default-option-${index}`}>
-                      {option.label}
-                    </Label>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        } else {
-          return (
-            <Select
-              value={variable.defaultValue}
-              onValueChange={(newValue) =>
-                onDefaultValueChange(index, newValue)
-              }>
-              <SelectTrigger className="h-9 w-[150px]">
-                <SelectValue placeholder={t("Select an option")} />
-              </SelectTrigger>
-              <SelectContent>
-                {choices.map((option: { value: string; label: string }) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          );
-        }
+        return (
+          <VariableChoiceInput
+            index={index}
+            variable={variable}
+            choices={choices}
+            onDefaultValueChange={onDefaultValueChange}
+          />
+        );
       }
       return (
         <Input
