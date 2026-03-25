@@ -18,11 +18,7 @@ import {
   ValueEditorDialog,
   PythonEditorDialog,
 } from "./components";
-import {
-  FieldContext,
-  getValueAtPath,
-  setValueAtPath,
-} from "./utils/fieldUtils";
+import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
 import {
   applyMergedPatch,
   DraftPatch,
@@ -255,23 +251,13 @@ const ParamsDialog: React.FC<Props> = ({
   );
 
   const handleValueChange = (value: any) => {
-    if (currentFieldContext && openNode) {
-      const path = Array.isArray(currentFieldContext.path)
-        ? currentFieldContext.path.join(".")
-        : currentFieldContext.path;
+    if (!currentFieldContext || !openNode) return;
 
-      const nextParams = setValueAtPath(
-        currentParams || {},
-        path.split("."),
-        value,
-      );
+    const path = Array.isArray(currentFieldContext.path)
+      ? currentFieldContext.path.join(".")
+      : currentFieldContext.path;
 
-      setMyDraft(openNode.id, (existing) => ({
-        ...existing,
-        params: nextParams,
-        paramsUpdatedAt: Date.now(),
-      }));
-    }
+    updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
   };
 
   return (
