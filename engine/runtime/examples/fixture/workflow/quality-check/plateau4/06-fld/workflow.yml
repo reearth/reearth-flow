@@ -214,7 +214,7 @@ graphs:
         type: action
         action: PLATEAU4.UnsharedEdgeDetector
         with:
-          tolerance: 1.0  # 1 meter tolerance for edge matching
+          tolerance: 0.1  # meter(s)
           groupBy:
             - "_fld_scale"
             - "udxDirs"
@@ -368,27 +368,39 @@ graphs:
             if env.get("__features").is_empty() {
               []
             } else {
-              let feature = env.get("__features")[0];
+              let features = env.get("__features");
+              let sum_incorrect = 0;
+              let sum_not_closed = 0;
+              let sum_wrong_orientation = 0;
+              let sum_degenerate = 0;
+              let sum_unshared = 0;
+              for f in features {
+                sum_incorrect += f["頂点数が不正な三角形"] ?? 0;
+                sum_not_closed += f["閉じていない三角形"] ?? 0;
+                sum_wrong_orientation += f["向きが不正な三角形"] ?? 0;
+                sum_degenerate += f["線状・点状の三角形"] ?? 0;
+                sum_unshared += f["共有先のない辺"] ?? 0;
+              }
               [
                 #{
                   name: "頂点数が不正な三角形",
-                  count: feature["頂点数が不正な三角形"],
+                  count: sum_incorrect,
                 },
                 #{
                   name: "閉じていない三角形",
-                  count: feature["閉じていない三角形"],
+                  count: sum_not_closed,
                 },
                 #{
                   name: "向きが不正な三角形",
-                  count: feature["向きが不正な三角形"],
+                  count: sum_wrong_orientation,
                 },
                 #{
                   name: "線状・点状の三角形",
-                  count: feature["線状・点状の三角形"],
+                  count: sum_degenerate,
                 },
                 #{
                   name: "共有先のない辺",
-                  count: feature["共有先のない辺"],
+                  count: sum_unshared,
                 }
               ]
             }
