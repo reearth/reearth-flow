@@ -70,25 +70,36 @@ const ParamsDialog: React.FC<Props> = ({
   const rawDrafts = useY(yDrafts ?? new YMap()) as DraftStore;
 
   const nodeDrafts = openNode?.id ? rawDrafts[openNode.id] : undefined;
+  const myDraft = nodeDrafts?.[clientId];
+
+  const latestRemoteParamsDraft = useMemo(() => {
+    const drafts = Object.entries(nodeDrafts ?? {})
+      .filter(([draftClientId, draft]) => {
+        return draftClientId !== clientId && draft?.params !== undefined;
+      })
+      .map(([, draft]) => draft as DraftPatch);
+
+    return drafts.reduce<DraftPatch | undefined>((latest, draft) => {
+      if (!latest) return draft;
+      return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
+        ? draft
+        : latest;
+    }, undefined);
+  }, [nodeDrafts, clientId]);
 
   const currentParams = useMemo(() => {
     if (!openNode) return undefined;
 
-    const drafts = Object.values(nodeDrafts ?? {});
-    const latestParamsDraft = drafts.reduce<DraftPatch | undefined>(
-      (latest, draft) => {
-        if (!draft || draft.params === undefined) return latest;
-        if (!latest) return draft;
+    if (myDraft?.params !== undefined) {
+      return myDraft.params;
+    }
 
-        return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
-          ? draft
-          : latest;
-      },
-      undefined,
-    );
+    if (latestRemoteParamsDraft?.params !== undefined) {
+      return latestRemoteParamsDraft.params;
+    }
 
-    return latestParamsDraft?.params ?? openNode.data.params;
-  }, [openNode, nodeDrafts]);
+    return openNode.data.params;
+  }, [openNode, myDraft, latestRemoteParamsDraft]);
 
   const currentCustomizations = useMemo(() => {
     if (!openNode) return undefined;
@@ -155,19 +166,28 @@ const ParamsDialog: React.FC<Props> = ({
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
+      const myLatestDraft = latestNodeDrafts[clientId];
 
-      const latestParamsDraft = Object.values(latestNodeDrafts).reduce<
-        DraftPatch | undefined
-      >((latest, draft) => {
-        if (!draft || draft.params === undefined) return latest;
-        if (!latest) return draft;
+      const remoteDrafts = Object.entries(latestNodeDrafts)
+        .filter(([draftClientId, draft]) => {
+          return draftClientId !== clientId && draft?.params !== undefined;
+        })
+        .map(([, draft]) => draft as DraftPatch);
 
-        return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
-          ? draft
-          : latest;
-      }, undefined);
+      const latestRemoteDraft = remoteDrafts.reduce<DraftPatch | undefined>(
+        (latest, draft) => {
+          if (!latest) return draft;
+          return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
+            ? draft
+            : latest;
+        },
+        undefined,
+      );
 
-      const updatedParams = latestParamsDraft?.params ?? openNode.data.params;
+      const updatedParams =
+        myLatestDraft?.params ??
+        latestRemoteDraft?.params ??
+        openNode.data.params;
 
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
@@ -182,7 +202,15 @@ const ParamsDialog: React.FC<Props> = ({
       removeMyDraft(id);
       onOpenNode();
     },
-    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
+    [
+      openNode,
+      rawDrafts,
+      clientId,
+      onDataSubmit,
+      yDoc,
+      removeMyDraft,
+      onOpenNode,
+    ],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -267,7 +295,7 @@ const ParamsDialog: React.FC<Props> = ({
       const path = rjsfIdToPath(changedFieldId);
       if (!path) return;
 
-      const value = getValueAtPath(data, [path]);
+      const value = getValueAtPath(data, path.split("."));
 
       updateMyFieldPatch(openNode.id, "customizationsPatch", path, value);
     },
@@ -280,7 +308,11 @@ const ParamsDialog: React.FC<Props> = ({
         ? currentFieldContext.path.join(".")
         : currentFieldContext.path;
 
-      const nextParams = setValueAtPath(currentParams || {}, [path], value);
+      const nextParams = setValueAtPath(
+        currentParams || {},
+        path.split("."),
+        value,
+      );
 
       setMyDraft(openNode.id, (existing) => ({
         ...existing,
