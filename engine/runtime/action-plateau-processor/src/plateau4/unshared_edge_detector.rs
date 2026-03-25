@@ -14,8 +14,9 @@
 //! 2. **HorizontalReprojector** (convert to projected CRS like EPSG:6670)
 //! 3. UnsharedEdgeDetector (this action)
 
-use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::collections::{hash_map, BinaryHeap, HashMap, VecDeque};
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -60,8 +61,8 @@ const ACCUMULATOR_BUFFER_BYTE_THRESHOLD: usize = 10_485_760;
 /// Maximum number of chunk files to merge in one pass (K-way merge fan-in)
 const MERGE_FAN_IN: usize = 64;
 
-/// Binary size of one serialized edge: 4 × i64 = 32 bytes
-const EDGE_BINARY_SIZE: usize = 32;
+/// Binary size of one serialized edge: 4 × i64 + 1 × u32 = 36 bytes
+const EDGE_BINARY_SIZE: usize = 36;
 
 pub static UNSHARED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unshared"));
 
@@ -172,7 +173,10 @@ struct GroupState {
     edge_buffer: Vec<Edge>,
     edge_buffer_bytes: usize,
     chunk_count: usize,
-    first_attrs: Option<IndexMap<Attribute, AttributeValue>>,
+    /// Deduplicated store of per-feature attribute sets, indexed by `attr_idx`.
+    attrs_store: Vec<IndexMap<Attribute, AttributeValue>>,
+    /// Hash-based dedup map: hash(attrs) → index into `attrs_store`.
+    attrs_dedup: HashMap<u64, u32>,
 }
 
 impl GroupState {
@@ -182,8 +186,23 @@ impl GroupState {
             edge_buffer: Vec::new(),
             edge_buffer_bytes: 0,
             chunk_count: 0,
-            first_attrs: None,
+            attrs_store: Vec::new(),
+            attrs_dedup: HashMap::new(),
         }
+    }
+
+    /// Get or insert an attribute set, returning its index for tagging edges.
+    fn get_or_insert_attrs(&mut self, attrs: &IndexMap<Attribute, AttributeValue>) -> u32 {
+        let hash = hash_attrs(attrs);
+        if let Some(&idx) = self.attrs_dedup.get(&hash) {
+            if self.attrs_store[idx as usize] == *attrs {
+                return idx;
+            }
+        }
+        let idx = self.attrs_store.len() as u32;
+        self.attrs_store.push(attrs.clone());
+        self.attrs_dedup.insert(hash, idx);
+        idx
     }
 
     fn group_dir(&self, base_dir: &Path) -> PathBuf {
@@ -314,13 +333,11 @@ impl Processor for UnsharedEdgeDetector {
             GroupState::new(idx)
         });
 
-        // Save first valid feature's attributes for populating output features
-        if group.first_attrs.is_none() {
-            group.first_attrs = Some((*ctx.feature.attributes).clone());
-        }
+        // Get or insert this feature's attributes for later output attribution
+        let attr_idx = group.get_or_insert_attrs(&ctx.feature.attributes);
 
-        // Extract edges eagerly (32 bytes each vs. full Feature in memory)
-        let new_edges = extract_edges_from_feature(&ctx.feature);
+        // Extract edges eagerly (36 bytes each vs. full Feature in memory)
+        let new_edges = extract_edges_from_feature(&ctx.feature, attr_idx);
         group.edge_buffer_bytes += new_edges.len() * EDGE_BINARY_SIZE;
         group.edge_buffer.extend(new_edges);
 
@@ -365,11 +382,12 @@ impl Processor for UnsharedEdgeDetector {
             }
 
             let dir = group.group_dir(&base_dir);
+            let attrs_store = std::mem::take(&mut group.attrs_store);
             process_group_chunks(
                 &dir,
                 group.chunk_count,
                 self.tolerance,
-                group.first_attrs.take().unwrap_or_default(),
+                attrs_store,
                 &ctx,
                 fw,
             )?;
@@ -436,7 +454,7 @@ fn process_group_chunks(
     dir: &Path,
     chunk_count: usize,
     tolerance: f64,
-    first_attrs: IndexMap<Attribute, AttributeValue>,
+    attrs_store: Vec<IndexMap<Attribute, AttributeValue>>,
     ctx: &NodeContext,
     fw: &ProcessorChannelForwarder,
 ) -> Result<(), BoxedError> {
@@ -501,7 +519,7 @@ fn process_group_chunks(
             .is_some_and(|(ref_edge, _)| ref_edge.start.x + tol_fixed < e.start.x)
         {
             if let Some(group) = pending.pop_front() {
-                emit_microgaps(group, &first_attrs, ctx, fw);
+                emit_microgaps(group, &attrs_store, ctx, fw);
             }
         }
 
@@ -521,7 +539,7 @@ fn process_group_chunks(
 
     // Emit all remaining groups
     for group in pending.drain(..) {
-        emit_microgaps(group, &first_attrs, ctx, fw);
+        emit_microgaps(group, &attrs_store, ctx, fw);
     }
 
     Ok(())
@@ -534,7 +552,7 @@ fn process_group_chunks(
 /// exactly the same — indicating a tiny gap between mesh triangles).
 fn emit_microgaps(
     group: (Edge, Vec<Edge>),
-    first_attrs: &IndexMap<Attribute, AttributeValue>,
+    attrs_store: &[IndexMap<Attribute, AttributeValue>],
     ctx: &NodeContext,
     fw: &ProcessorChannelForwarder,
 ) {
@@ -567,11 +585,13 @@ fn emit_microgaps(
         edge_feature.geometry_mut().value =
             GeometryValue::FlowGeometry2D(Geometry2D::LineString(line));
 
-        // Copy source feature attributes (like udxDirs, _file_index)
-        for (key, value) in first_attrs.iter() {
-            edge_feature
-                .attributes_mut()
-                .insert(key.clone(), value.clone());
+        // Copy the actual source feature's attributes (like udxDirs, _file_index)
+        if let Some(attrs) = attrs_store.get(edge.attr_idx as usize) {
+            for (key, value) in attrs.iter() {
+                edge_feature
+                    .attributes_mut()
+                    .insert(key.clone(), value.clone());
+            }
         }
 
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -582,26 +602,29 @@ fn emit_microgaps(
     }
 }
 
-/// Write one edge as 4 × i64 little-endian (32 bytes).
+/// Write one edge as 4 × i64 + 1 × u32 little-endian (36 bytes).
 fn write_edge<W: Write>(writer: &mut W, edge: &Edge) -> std::io::Result<()> {
     writer.write_all(&edge.start.x.to_le_bytes())?;
     writer.write_all(&edge.start.y.to_le_bytes())?;
     writer.write_all(&edge.end.x.to_le_bytes())?;
     writer.write_all(&edge.end.y.to_le_bytes())?;
+    writer.write_all(&edge.attr_idx.to_le_bytes())?;
     Ok(())
 }
 
-/// Read one edge (32 bytes) from a reader; returns `None` on EOF or error.
+/// Read one edge (36 bytes) from a reader; returns `None` on EOF or error.
 fn read_edge<R: Read>(reader: &mut R) -> Option<Edge> {
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 36];
     reader.read_exact(&mut buf).ok()?;
     let sx = i64::from_le_bytes(buf[0..8].try_into().unwrap());
     let sy = i64::from_le_bytes(buf[8..16].try_into().unwrap());
     let ex = i64::from_le_bytes(buf[16..24].try_into().unwrap());
     let ey = i64::from_le_bytes(buf[24..32].try_into().unwrap());
+    let attr_idx = u32::from_le_bytes(buf[32..36].try_into().unwrap());
     Some(Edge {
         start: FixedPoint { x: sx, y: sy },
         end: FixedPoint { x: ex, y: ey },
+        attr_idx,
     })
 }
 
@@ -638,16 +661,16 @@ fn merge_edge_chunks_to_file(
 }
 
 /// Extract all edges from a feature's geometry (used eagerly in `process()`).
-fn extract_edges_from_feature(feature: &Feature) -> Vec<Edge> {
+fn extract_edges_from_feature(feature: &Feature, attr_idx: u32) -> Vec<Edge> {
     let mut edges = Vec::new();
     if let Some(geom_2d) = extract_geometry_2d(&feature.geometry) {
         match geom_2d {
             Geometry2D::Polygon(poly) => {
-                edges.extend(extract_polygon_edges(poly));
+                edges.extend(extract_polygon_edges(poly, attr_idx));
             }
             Geometry2D::MultiPolygon(mpoly) => {
                 for poly in mpoly.iter() {
-                    edges.extend(extract_polygon_edges(poly));
+                    edges.extend(extract_polygon_edges(poly, attr_idx));
                 }
             }
             _ => {}
@@ -657,7 +680,7 @@ fn extract_edges_from_feature(feature: &Feature) -> Vec<Edge> {
 }
 
 /// Extract edges from a single polygon's exterior ring.
-fn extract_polygon_edges(polygon: &Polygon2D<f64>) -> Vec<Edge> {
+fn extract_polygon_edges(polygon: &Polygon2D<f64>, attr_idx: u32) -> Vec<Edge> {
     let mut edges = Vec::new();
     let exterior = polygon.exterior();
     let coords: Vec<_> = exterior.coords().collect();
@@ -666,7 +689,7 @@ fn extract_polygon_edges(polygon: &Polygon2D<f64>) -> Vec<Edge> {
         let p2 = FixedPoint::from_coordinate(window[1]);
         if p1 != p2 {
             // Skip degenerate edges
-            edges.push(Edge::new(p1, p2));
+            edges.push(Edge::new(p1, p2, attr_idx));
         }
     }
     edges
@@ -680,17 +703,49 @@ fn extract_geometry_2d(geometry: &reearth_flow_types::Geometry) -> Option<&Geome
     }
 }
 
+/// Compute a hash of an attribute map for deduplication purposes.
+fn hash_attrs(attrs: &IndexMap<Attribute, AttributeValue>) -> u64 {
+    let mut hasher = hash_map::DefaultHasher::new();
+    for (k, v) in attrs.iter() {
+        k.hash(&mut hasher);
+        v.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
 /// Represents a directed edge with fixed-point coordinates.
 ///
 /// Edges are normalized so that `(A, B)` and `(B, A)` produce the same `Edge`
 /// (the lexicographically smaller point is always `start`).
 ///
-/// The derived `Ord` sorts by `(start.x, start.y, end.x, end.y)`, which is the
-/// key invariant used by the K-way merge and sliding-window scan.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// `Ord`/`Eq` compare only coordinates (not `attr_idx`), which is the key
+/// invariant used by the K-way merge and sliding-window scan.
+#[derive(Debug, Clone)]
 struct Edge {
     start: FixedPoint,
     end: FixedPoint,
+    /// Index into the group's `attrs_store` identifying the source feature.
+    attr_idx: u32,
+}
+
+impl PartialEq for Edge {
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start && self.end == other.end
+    }
+}
+
+impl Eq for Edge {}
+
+impl PartialOrd for Edge {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Edge {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.start.cmp(&other.start).then(self.end.cmp(&other.end))
+    }
 }
 
 /// Fixed-point representation of a 2-D coordinate (micrometer precision).
@@ -718,12 +773,20 @@ impl FixedPoint {
 }
 
 impl Edge {
-    fn new(p1: FixedPoint, p2: FixedPoint) -> Self {
+    fn new(p1: FixedPoint, p2: FixedPoint, attr_idx: u32) -> Self {
         // Normalize direction so (A,B) and (B,A) produce the same edge
         if (p1.x, p1.y) < (p2.x, p2.y) {
-            Self { start: p1, end: p2 }
+            Self {
+                start: p1,
+                end: p2,
+                attr_idx,
+            }
         } else {
-            Self { start: p2, end: p1 }
+            Self {
+                start: p2,
+                end: p1,
+                attr_idx,
+            }
         }
     }
 
