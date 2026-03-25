@@ -256,10 +256,7 @@ export default ({
       ) {
         const creates = addChanges.map((change) => ({
           name: change.workflowVariable.name,
-          defaultValue:
-            change.workflowVariable.defaultValue === ""
-              ? null
-              : change.workflowVariable.defaultValue,
+          defaultValue: change.workflowVariable.defaultValue,
           config: change.workflowVariable.config,
           type: change.workflowVariable.type,
           required: change.workflowVariable.required,
@@ -270,10 +267,7 @@ export default ({
         const updates = updateChanges.map((change) => ({
           paramId: change.workflowVariable.id,
           name: change.workflowVariable.name,
-          defaultValue:
-            change.workflowVariable.defaultValue === ""
-              ? null
-              : change.workflowVariable.defaultValue,
+          defaultValue: change.workflowVariable.defaultValue,
           config: change.workflowVariable.config,
           type: change.workflowVariable.type,
           required: change.workflowVariable.required,
