@@ -9,6 +9,8 @@ import { ChangeEvent, useCallback } from "react";
 
 import { TextArea } from "@flow/components";
 
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
+
 type CustomWidgetProps<
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
@@ -53,20 +55,7 @@ const TextareaWidget = <
 
   return (
     <TextArea
-      style={{
-        border:
-          Array.isArray(focusedUsers) && focusedUsers.length > 0
-            ? "2px solid"
-            : undefined,
-        borderColor:
-          Array.isArray(focusedUsers) && focusedUsers.length > 0
-            ? focusedUsers.map((user) => user.color).join(",")
-            : undefined,
-        borderRadius:
-          Array.isArray(focusedUsers) && focusedUsers.length > 0
-            ? "4px"
-            : undefined,
-      }}
+      style={paramsAwarenessStyles(focusedUsers)}
       id={id}
       name={id}
       placeholder={placeholder}

@@ -10,6 +10,8 @@ import { FocusEvent, useCallback } from "react";
 
 import { Checkbox } from "@flow/components";
 
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
+
 /** The `CheckBoxWidget` is a widget for rendering boolean properties.
  *  It is typically used to represent a boolean.
  *
@@ -62,20 +64,7 @@ const CheckboxWidget = <
       <Checkbox
         id={id}
         name={id}
-        style={{
-          border:
-            Array.isArray(focusedUsers) && focusedUsers.length > 0
-              ? "2px solid"
-              : undefined,
-          borderColor:
-            Array.isArray(focusedUsers) && focusedUsers.length > 0
-              ? focusedUsers.map((user) => user.color).join(",")
-              : undefined,
-          borderRadius:
-            Array.isArray(focusedUsers) && focusedUsers.length > 0
-              ? "4px"
-              : undefined,
-        }}
+        style={paramsAwarenessStyles(focusedUsers)}
         checked={typeof value === "undefined" ? false : Boolean(value)}
         required={required}
         disabled={readonly || disabled}

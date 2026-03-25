@@ -11,6 +11,8 @@ import {
 } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
 import { AwarenessUser } from "@flow/types";
 
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
+
 import { ColorInput } from "./BaseInputTemplate/ColorInput";
 import { NumberInput } from "./BaseInputTemplate/NumberInput";
 import { TextInput } from "./BaseInputTemplate/TextInput";
@@ -98,21 +100,6 @@ const BaseInputTemplate = <
       }
     : undefined;
 
-  const paramsAwarenessStyles = {
-    border:
-      Array.isArray(focusedUsers) && focusedUsers.length > 0
-        ? "2px solid"
-        : undefined,
-    borderColor:
-      Array.isArray(focusedUsers) && focusedUsers.length > 0
-        ? focusedUsers.map((user) => user.color).join(",")
-        : undefined,
-    borderRadius:
-      Array.isArray(focusedUsers) && focusedUsers.length > 0
-        ? "4px"
-        : undefined,
-  };
-
   // Handle color inputs
   if (schema.format === "color") {
     return (
@@ -120,7 +107,7 @@ const BaseInputTemplate = <
         {...props}
         onEditorOpen={handleEditorOpen}
         onFieldFocus={onFieldFocus}
-        styles={paramsAwarenessStyles}
+        styles={paramsAwarenessStyles(focusedUsers)}
       />
     );
   }
@@ -139,7 +126,7 @@ const BaseInputTemplate = <
         onEditorOpen={handleEditorOpen}
         onAssetsOpen={handleAssetsOpen}
         onFieldFocus={onFieldFocus}
-        styles={paramsAwarenessStyles}
+        styles={paramsAwarenessStyles(focusedUsers)}
       />
     );
   }
@@ -152,7 +139,7 @@ const BaseInputTemplate = <
       onPythonEditorOpen={handlePythonEditorOpen}
       onAssetsOpen={handleAssetsOpen}
       onFieldFocus={onFieldFocus}
-      styles={paramsAwarenessStyles}
+      styles={paramsAwarenessStyles(focusedUsers)}
     />
   );
 };
