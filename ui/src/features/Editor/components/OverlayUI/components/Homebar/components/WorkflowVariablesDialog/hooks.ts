@@ -89,12 +89,12 @@ export default ({
     }
   }, [currentWorkflowVariables, getUserFacingName]);
 
-  const defaultValueConversion = (variable: WorkflowVariable) => {
+  function defaultValueConversion(variable: WorkflowVariable) {
     return {
       ...variable,
       defaultValue: variable.defaultValue === "" ? null : variable.defaultValue,
     };
-  };
+  }
 
   const handleLocalAdd = useCallback(
     (type: VarType) => {
