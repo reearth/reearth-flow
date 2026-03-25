@@ -25,6 +25,8 @@ static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
+const EPSILON: f64 = 1e-8;
+
 #[derive(Debug, Clone, Default)]
 pub struct SolidBoundaryValidatorFactory;
 
@@ -231,19 +233,9 @@ impl Processor for SolidBoundaryValidator {
             return Ok(());
         }
 
-        // Check manifold condition
-        let result = if let Some(result) = {
-            let violating = mesh.edges_violating_manifold_condition();
-            let len = violating.len();
-            if len > 0 {
-                Some(ValidationResult {
-                    issue_count: len,
-                    issue: IssueType::NotA2Manifold,
-                })
-            } else {
-                None
-            }
-        } {
+        let result = if let Some(result) =
+            Self::check_manifold_from_polygons(&polygons, mesh.get_vertices())
+        {
             result
         }
         // Check connectivity
@@ -326,11 +318,66 @@ impl SolidBoundaryValidator {
         })
     }
 
+    /// Check the 2-manifold condition directly on polygon ring edges.
+    fn check_manifold_from_polygons(
+        polygons: &[Polygon3D<f64>],
+        vertices: &[Coordinate3D<f64>],
+    ) -> Option<ValidationResult> {
+        if polygons.is_empty() {
+            return None;
+        }
+
+        let vertex_index = |v: &Coordinate3D<f64>| -> Option<usize> {
+            vertices.iter().position(|&vv| (vv - *v).norm() < EPSILON)
+        };
+
+        let mut edges: Vec<[usize; 2]> = Vec::new();
+        for polygon in polygons {
+            let rings = std::iter::once(polygon.exterior()).chain(polygon.interiors().iter());
+            for ring in rings {
+                let indices: Vec<usize> = ring.iter().filter_map(&vertex_index).collect();
+                for w in indices.windows(2) {
+                    if w[0] == w[1] {
+                        continue;
+                    }
+                    let edge = if w[0] < w[1] {
+                        [w[0], w[1]]
+                    } else {
+                        [w[1], w[0]]
+                    };
+                    edges.push(edge);
+                }
+            }
+        }
+        edges.sort_unstable();
+
+        let mut issue_count = 0;
+        let mut i = 0;
+        while i < edges.len() {
+            let mut count = 1;
+            while i + count < edges.len() && edges[i + count] == edges[i] {
+                count += 1;
+            }
+            if count != 2 {
+                issue_count += 1;
+            }
+            i += count;
+        }
+
+        if issue_count == 0 {
+            None
+        } else {
+            Some(ValidationResult {
+                issue_count,
+                issue: IssueType::NotA2Manifold,
+            })
+        }
+    }
+
     fn check_orientation(
         polygons: &[Polygon3D<f64>],
         vertices: &[Coordinate3D<f64>],
     ) -> Option<ValidationResult> {
-        let epsilon = 1e-8;
         if polygons.is_empty() {
             return None;
         }
@@ -339,7 +386,7 @@ impl SolidBoundaryValidator {
         let vertex_index = |v: &Coordinate3D<f64>| {
             vertices
                 .iter()
-                .position(|&vv| (vv - *v).norm() < epsilon)
+                .position(|&vv| (vv - *v).norm() < EPSILON)
                 .unwrap()
         };
 

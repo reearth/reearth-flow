@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use nusamai_citygml::GmlGeometryType;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -82,8 +83,15 @@ impl Processor for CompositeSurfaceContinuityFilter {
                     return Ok(());
                 };
 
-                // Only check Surface type (CompositeSurface/MultiSurface)
-                if geom.ty.name() != "Surface" {
+                // Only check CompositeSurface (NOT MultiSurface)
+                // MultiSurface does not require surface continuity per CityGML spec
+                let is_composite_surface = geom
+                    .gml_trait
+                    .as_ref()
+                    .map(|t| matches!(t.gml_geometry_type, GmlGeometryType::CompositeSurface))
+                    .unwrap_or(false);
+
+                if geom.ty.name() != "Surface" || !is_composite_surface {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                     return Ok(());
                 }

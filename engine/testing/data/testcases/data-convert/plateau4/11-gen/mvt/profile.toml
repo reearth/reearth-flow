@@ -1,5 +1,20 @@
-# test gen (generic)
+# test:
+# 1. gen general attributes
+# 2. layer names to be pkg + gml_name_code
 citygml_zip_name = "40223_koga-shi_city_2024_citygml_1_op_gen.zip"
+
+[convs.json.tilejson_lod1]
+flow_path = "40223_koga-shi_city_2024_citygml_1_op_gen_20_mvt_lod1/tilejson.json"
+output_path = "mvt_lod1_tilejson.json"
+generate_truth = false
+json_path = ".vector_layers"
+
+[convs.json.tilejson_lod1.casts."."]
+comparator = "list_to_dict"
+key = ".id"
+
+[tests.json_attributes_v2.tilejson_lod1]
+path = "mvt_lod1_tilejson.json"
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"

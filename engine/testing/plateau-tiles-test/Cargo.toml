@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.2.12"
+version = "0.2.16"
 edition = "2021"
 
 [dependencies]

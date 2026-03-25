@@ -1,3 +1,4 @@
+use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
@@ -115,9 +116,9 @@ fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
 
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/fld",
-    "data-convert/plateau4/01-bldg/lod1",
     "data-convert/plateau4/01-bldg/tako-machi",
     "data-convert/plateau4/01-bldg/ogasawara-mura",
+    "data-convert/plateau4/01-bldg/ward",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr_xlink",
@@ -247,10 +248,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     }
 
     if stages.contains('e') {
-        // Extract FME zip files and copy other items from testcase to output_dir/fme_extracted
-        let fme_source_dir = test_path.join("fme");
-        let fme_extracted_dir = output_dir.join("fme_extracted");
-        extract_dir(&fme_source_dir, &fme_extracted_dir).unwrap();
+        // Extract truth zip files and copy other items from testcase to output_dir/truth_extracted
+        let truth_dir = test_path.join("truth");
+        let truth_extracted_dir = output_dir.join("truth_extracted");
+        extract_dir(&truth_dir, &truth_extracted_dir).unwrap();
 
         // Extract Flow output zip files to output_dir/flow_extracted
         let flow_source_dir = output_dir.join("flow");
@@ -258,7 +259,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         extract_dir(&flow_source_dir, &flow_extracted_dir).unwrap();
 
         // Decompress draco-compressed glb in flow output
-        // fme.zip should be preprocessed to contain only decompressed glb files
+        // truth zips should be preprocessed to contain only decompressed glb files
         decompress_glbs(&flow_extracted_dir);
 
         let tests = &profile.tests;
@@ -267,9 +268,9 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(cfg) = &tests.json_attributes {
             run_test("json_attributes", &relative_path_display, || {
                 json_attributes::test_json_attributes(
-                    &fme_source_dir,
+                    &truth_dir,
                     &flow_source_dir,
-                    &fme_extracted_dir,
+                    &truth_extracted_dir,
                     &flow_extracted_dir,
                     cfg,
                 )
@@ -322,10 +323,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if !profile.convs.cesium_attributes.is_empty() {
+            run_test("convs_cesium_attributes", &relative_path_display, || {
+                for entry in profile.convs.cesium_attributes.values() {
+                    let tileset_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
+                    conv_cesium::write_cesium_json(
+                        &tileset_dir,
+                        &output_path,
+                        entry.casts.as_ref(),
+                    )?;
+                }
+                Ok(())
+            });
+        }
+
         if !profile.convs.cesium_statistics.is_empty() {
             run_test("cesium_statistics", &relative_path_display, || {
                 cesium_statistics::test_cesium_statistics(
-                    &fme_source_dir,
+                    &truth_dir,
                     &flow_extracted_dir,
                     &profile.convs.cesium_statistics,
                 )
@@ -340,25 +356,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.mvt_polygons {
             run_test("mvt_polygons", &relative_path_display, || {
-                mvt_polygons::test_mvt_polygons(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_polygons::test_mvt_polygons(&truth_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_lines {
             run_test("mvt_lines", &relative_path_display, || {
-                mvt_lines::test_mvt_lines(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_lines::test_mvt_lines(&truth_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.mvt_points {
             run_test("mvt_points", &relative_path_display, || {
-                mvt_points::test_mvt_points(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                mvt_points::test_mvt_points(&truth_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
         if let Some(cfg) = &tests.cesium {
             run_test("cesium", &relative_path_display, || {
-                cesium::test_cesium(&fme_extracted_dir, &flow_extracted_dir, cfg)
+                cesium::test_cesium(&truth_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 
@@ -373,7 +389,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 let flow_png_dir = output_dir
                     .join("flow_extracted")
                     .join(&conv_entry.truth_path);
-                let truth_dir = fme_extracted_dir.join(&conv_entry.truth_path);
+                let truth_dir = truth_extracted_dir.join(&conv_entry.truth_path);
                 let id = id.clone();
                 run_test(&format!("raster/{}", id), &relative_path_display, || {
                     raster::test_raster(&truth_dir, &flow_png_dir, cfg)
