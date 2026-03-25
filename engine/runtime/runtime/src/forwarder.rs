@@ -3,12 +3,27 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use crossbeam::channel::Sender;
 
 use crate::cache::executor_cache_subdir;
 use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
+
+/// Timeout for Terminate sends and flush operations during shutdown.
+const CHANNEL_SEND_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Global flag: once set, all feature writer `block_on(write())` calls are
+/// skipped across the entire DAG to prevent tokio runtime starvation during
+/// concurrent node termination.
+static GLOBAL_SKIP_FEATURE_WRITES: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Signal all channel managers to stop calling `block_on(writer.write())`.
+pub fn set_global_skip_feature_writes() {
+    GLOBAL_SKIP_FEATURE_WRITES.store(true, std::sync::atomic::Ordering::Relaxed);
+}
 
 use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
@@ -211,6 +226,9 @@ impl ChannelManager {
                     .feature_writers
                     .get(&FeatureWriterKey(ctx.port.clone(), port.clone()))
                 {
+                    if GLOBAL_SKIP_FEATURE_WRITES.load(std::sync::atomic::Ordering::Relaxed) {
+                        continue;
+                    }
                     for writer in writers {
                         let edge_id = writer.edge_id();
                         let feature_id = ctx.feature.id;
@@ -258,9 +276,11 @@ impl ChannelManager {
     pub fn send_non_op(&self, op: ExecutorOperation) -> Result<(), ExecutionError> {
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
-                sender.sender.send(op.clone())?;
+                sender
+                    .sender
+                    .send_timeout(op.clone(), CHANNEL_SEND_TIMEOUT)?;
             }
-            last_sender.sender.send(op)?;
+            last_sender.sender.send_timeout(op, CHANNEL_SEND_TIMEOUT)?;
         }
         Ok(())
     }
@@ -561,12 +581,20 @@ impl ChannelManager {
         let feature_id = ctx.feature.id;
         let port = ctx.port.clone();
         let node_id = self.owner.id.clone().into_inner();
-        self.send_op(ctx).unwrap_or_else(|e| {
-            panic!(
-                "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
-            )
-        });
-        self.increment_send_count(1);
+        match self.send_op(ctx) {
+            Ok(()) => {
+                self.increment_send_count(1);
+            }
+            Err(e) => {
+                tracing::error!(
+                    ?node_id,
+                    ?feature_id,
+                    ?port,
+                    ?e,
+                    "Failed to send operation, dropping feature",
+                );
+            }
+        }
     }
 }
 

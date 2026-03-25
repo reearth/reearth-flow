@@ -454,11 +454,45 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         };
 
         channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
+        // Skip feature writer block_on calls globally to prevent tokio runtime
+        // starvation when many processor nodes terminate concurrently.
+        crate::forwarder::set_global_skip_feature_writes();
+        // Cache processor name before spawning finish thread — the thread
+        // holds processor.write() and if it times out the lock is never
+        // released, so processor.read() after would deadlock.
+        let processor_name = self.processor.read().name().to_string();
         channel_manager.reset_send_count();
-        let result = processor
-            .write()
-            .finish(ctx.clone(), channel_manager)
-            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+
+        // Run finish() on a dedicated thread with a hard deadline so it
+        // cannot block the shutdown path indefinitely (e.g., when sending
+        // features to a full downstream channel).
+        let finish_deadline = Duration::from_secs(300);
+        let (finish_tx, finish_rx) =
+            crossbeam::channel::bounded::<Result<(), crate::errors::BoxedError>>(1);
+        let processor_clone = Arc::clone(&processor);
+        let ctx_clone = ctx.clone();
+        let cm_clone = Arc::clone(&self.channel_manager);
+        std::thread::Builder::new()
+            .name("finish-timeout".into())
+            .spawn(move || {
+                let cm_guard = cm_clone.read();
+                let cm: &ProcessorChannelForwarder = &cm_guard;
+                let result = processor_clone.write().finish(ctx_clone, cm);
+                let _ = finish_tx.send(result);
+            })
+            .ok();
+        let result: Result<(), ExecutionError> = match finish_rx.recv_timeout(finish_deadline) {
+            Ok(inner) => inner.map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}"))),
+            Err(_) => {
+                tracing::warn!(
+                    node_id = ?self.node_handle.id,
+                    processor = %processor_name,
+                    "on_terminate: finish() timed out after {:?}, proceeding to send Terminate",
+                    finish_deadline,
+                );
+                Ok(())
+            }
+        };
         let finish_feature_count = channel_manager.get_send_count();
 
         drop(_accumulating_guard);
@@ -470,7 +504,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             self.node_name.clone(),
             format!(
                 "{} finish process complete. elapsed = {:?}, features = {}",
-                self.processor.read().name(),
+                processor_name,
                 now.elapsed(),
                 finish_feature_count
             ),
