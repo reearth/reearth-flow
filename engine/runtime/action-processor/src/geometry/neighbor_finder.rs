@@ -383,12 +383,17 @@ impl Processor for NeighborFinder {
 
         // If no candidates, all base features go to unmatched
         if self.candidate_index.is_empty() {
+            // Process in-memory base features
             for base in &self.base_features {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     base.clone(),
                     UNMATCHED_PORT.clone(),
                 ));
+            }
+            // Process disk-based base features sequentially without loading all into memory
+            if self.base_chunk_count > 0 {
+                self.send_disk_bases_to_unmatched(&ctx, fw)?;
             }
             self.cleanup_temp_dir();
             return Ok(());
@@ -397,11 +402,16 @@ impl Processor for NeighborFinder {
         // Build R-tree index from lightweight candidate index (point + disk location only)
         let rtree: RTree<CandidateIndex> = RTree::bulk_load(self.candidate_index.clone());
 
-        // Process each base feature sequentially.
-        // Note: Parallel processing is disabled for disk-based candidates because
-        // file handles cannot be safely shared across threads. The disk I/O would
-        // be the bottleneck anyway, not CPU.
-        self.process_sequential(&ctx, fw, &rtree)?;
+        // Process in-memory base features first
+        for base in &self.base_features {
+            self.process_single_base(&ctx, fw, &rtree, base)?;
+        }
+
+        // Process disk-based base features sequentially without loading all into memory
+        // This maintains memory efficiency - only one base feature is in memory at a time
+        if self.base_chunk_count > 0 {
+            self.process_base_features_from_disk(&ctx, fw, &rtree)?;
+        }
 
         // Clean up temporary directory and candidate chunk files after processing
         self.cleanup_temp_dir();
@@ -520,25 +530,9 @@ impl NeighborFinder {
             }
         }
 
-        // Load base features from disk (only if they were spilled)
-        if let Some(ref temp_dir) = self.temp_dir {
-            if self.base_chunk_count > 0 {
-                for i in 0..self.base_chunk_count {
-                    let chunk_path = temp_dir.join(format!("base_chunk_{}.jsonl.zst", i));
-                    let file = File::open(&chunk_path)?;
-                    let reader = BufReader::new(zstd::Decoder::new(file)?);
-
-                    for line in reader.lines() {
-                        let line = line?;
-                        let feature: Feature = serde_json::from_str(&line)?;
-                        self.base_features.push(feature);
-                    }
-
-                    // Delete the chunk file after loading to free disk space
-                    std::fs::remove_file(&chunk_path)?;
-                }
-            }
-        }
+        // Note: Base features are NOT loaded into memory here.
+        // They are processed sequentially from disk in finish() to maintain memory efficiency.
+        // This prevents loading all base features back into memory when they were spilled to disk.
 
         // Candidates are NOT loaded into memory - their index is already built.
         // The candidate chunk files remain on disk for random access during matching.
@@ -611,16 +605,67 @@ impl NeighborFinder {
         }
     }
 
-    /// Process base features sequentially
-    fn process_sequential(
+    /// Process base features sequentially from disk without loading all into memory.
+    /// This maintains memory efficiency - only one base feature is in memory at a time.
+    /// Chunk files are deleted immediately after processing to free disk space.
+    fn process_base_features_from_disk(
         &self,
         ctx: &NodeContext,
         fw: &ProcessorChannelForwarder,
         rtree: &RTree<CandidateIndex>,
     ) -> Result<(), BoxedError> {
-        for base in &self.base_features {
-            self.process_single_base(ctx, fw, rtree, base)?;
+        let Some(ref temp_dir) = self.temp_dir else {
+            return Ok(());
+        };
+
+        for i in 0..self.base_chunk_count {
+            let chunk_path = temp_dir.join(format!("base_chunk_{}.jsonl.zst", i));
+            let file = File::open(&chunk_path)?;
+            let reader = BufReader::new(zstd::Decoder::new(file)?);
+
+            for line in reader.lines() {
+                let line = line?;
+                let base: Feature = serde_json::from_str(&line)?;
+                self.process_single_base(ctx, fw, rtree, &base)?;
+            }
+
+            // Delete the chunk file immediately after processing to free disk space
+            std::fs::remove_file(&chunk_path)?;
         }
+
+        Ok(())
+    }
+
+    /// Send disk-based base features to unmatched port without loading all into memory.
+    /// Used when there are no candidates to match against.
+    fn send_disk_bases_to_unmatched(
+        &self,
+        ctx: &NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let Some(ref temp_dir) = self.temp_dir else {
+            return Ok(());
+        };
+
+        for i in 0..self.base_chunk_count {
+            let chunk_path = temp_dir.join(format!("base_chunk_{}.jsonl.zst", i));
+            let file = File::open(&chunk_path)?;
+            let reader = BufReader::new(zstd::Decoder::new(file)?);
+
+            for line in reader.lines() {
+                let line = line?;
+                let base: Feature = serde_json::from_str(&line)?;
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    ctx,
+                    base,
+                    UNMATCHED_PORT.clone(),
+                ));
+            }
+
+            // Delete the chunk file immediately after processing
+            std::fs::remove_file(&chunk_path)?;
+        }
+
         Ok(())
     }
 
