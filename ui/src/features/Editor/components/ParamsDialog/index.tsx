@@ -70,36 +70,11 @@ const ParamsDialog: React.FC<Props> = ({
   const rawDrafts = useY(yDrafts ?? new YMap()) as DraftStore;
 
   const nodeDrafts = openNode?.id ? rawDrafts[openNode.id] : undefined;
-  const myDraft = nodeDrafts?.[clientId];
-
-  const latestRemoteParamsDraft = useMemo(() => {
-    const drafts = Object.entries(nodeDrafts ?? {})
-      .filter(([draftClientId, draft]) => {
-        return draftClientId !== clientId && draft?.params !== undefined;
-      })
-      .map(([, draft]) => draft as DraftPatch);
-
-    return drafts.reduce<DraftPatch | undefined>((latest, draft) => {
-      if (!latest) return draft;
-      return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
-        ? draft
-        : latest;
-    }, undefined);
-  }, [nodeDrafts, clientId]);
 
   const currentParams = useMemo(() => {
     if (!openNode) return undefined;
-
-    if (myDraft?.params !== undefined) {
-      return myDraft.params;
-    }
-
-    if (latestRemoteParamsDraft?.params !== undefined) {
-      return latestRemoteParamsDraft.params;
-    }
-
-    return openNode.data.params;
-  }, [openNode, myDraft, latestRemoteParamsDraft]);
+    return applyMergedPatch(openNode.data.params, nodeDrafts, "paramsPatch");
+  }, [openNode, nodeDrafts]);
 
   const currentCustomizations = useMemo(() => {
     if (!openNode) return undefined;
@@ -143,7 +118,7 @@ const ParamsDialog: React.FC<Props> = ({
   const updateMyFieldPatch = useCallback(
     (
       nodeId: string,
-      patchKey: "customizationsPatch",
+      patchKey: "paramsPatch" | "customizationsPatch",
       path: string,
       value: any,
     ) => {
@@ -166,28 +141,12 @@ const ParamsDialog: React.FC<Props> = ({
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
-      const myLatestDraft = latestNodeDrafts[clientId];
 
-      const remoteDrafts = Object.entries(latestNodeDrafts)
-        .filter(([draftClientId, draft]) => {
-          return draftClientId !== clientId && draft?.params !== undefined;
-        })
-        .map(([, draft]) => draft as DraftPatch);
-
-      const latestRemoteDraft = remoteDrafts.reduce<DraftPatch | undefined>(
-        (latest, draft) => {
-          if (!latest) return draft;
-          return (draft.paramsUpdatedAt ?? 0) > (latest.paramsUpdatedAt ?? 0)
-            ? draft
-            : latest;
-        },
-        undefined,
+      const updatedParams = applyMergedPatch(
+        openNode.data.params,
+        latestNodeDrafts,
+        "paramsPatch",
       );
-
-      const updatedParams =
-        myLatestDraft?.params ??
-        latestRemoteDraft?.params ??
-        openNode.data.params;
 
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
@@ -202,15 +161,7 @@ const ParamsDialog: React.FC<Props> = ({
       removeMyDraft(id);
       onOpenNode();
     },
-    [
-      openNode,
-      rawDrafts,
-      clientId,
-      onDataSubmit,
-      yDoc,
-      removeMyDraft,
-      onOpenNode,
-    ],
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -276,16 +227,17 @@ const ParamsDialog: React.FC<Props> = ({
   }, [users, openNode]);
 
   const handleParamChange = useCallback(
-    (data: any) => {
+    (data: any, changedFieldId?: string) => {
       if (!openNode) return;
 
-      setMyDraft(openNode.id, (existing) => ({
-        ...existing,
-        params: data,
-        paramsUpdatedAt: Date.now(),
-      }));
+      const path = rjsfIdToPath(changedFieldId);
+      if (!path) return;
+
+      const value = getValueAtPath(data, path.split("."));
+
+      updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
     },
-    [openNode, setMyDraft],
+    [openNode, updateMyFieldPatch],
   );
 
   const handleCustomizationChange = useCallback(
