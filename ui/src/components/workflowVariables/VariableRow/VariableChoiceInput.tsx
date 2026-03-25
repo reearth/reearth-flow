@@ -1,6 +1,8 @@
 import {
   Checkbox,
   Label,
+  RadioGroup,
+  RadioGroupItem,
   Select,
   SelectContent,
   SelectItem,
@@ -8,14 +10,22 @@ import {
   SelectValue,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { AnyWorkflowVariable } from "@flow/types";
 
-type VariableChoiceInputProps = {
-  variable: any;
-  index: number;
-  choices: { value: string; label: string }[];
-  onDefaultValueChange: (index: number, newValue: any) => void;
+type ChoiceConfig = {
+  allowMultiple?: boolean;
+  displayMode?: string;
 };
 
+type VariableChoiceInputProps = {
+  variable: AnyWorkflowVariable;
+  index: number;
+  choices: { value: string; label: string }[];
+  onDefaultValueChange: (
+    index: number,
+    newValue: string | string[] | null,
+  ) => void;
+};
 export default function VariableChoiceInput({
   index,
   choices,
@@ -24,7 +34,11 @@ export default function VariableChoiceInput({
 }: VariableChoiceInputProps) {
   const t = useT();
 
-  if (variable.config.allowMultiple) {
+  if (
+    variable.config &&
+    variable.type === "choice" &&
+    (variable.config as ChoiceConfig).allowMultiple
+  ) {
     return (
       <div className="space-y-2">
         {choices.map((option: { value: string; label: string }) => {
@@ -39,10 +53,11 @@ export default function VariableChoiceInput({
                   variable.defaultValue.includes(option.value)
                 }
                 onCheckedChange={(checked) => {
+                  const isChecked = !!checked;
                   let newValue = Array.isArray(variable.defaultValue)
                     ? [...variable.defaultValue]
                     : [];
-                  if (checked) {
+                  if (isChecked) {
                     newValue.push(option.value);
                   } else {
                     newValue = newValue.filter((v) => v !== option.value);
@@ -50,33 +65,40 @@ export default function VariableChoiceInput({
                   onDefaultValueChange(index, newValue);
                 }}
               />
-              <Label htmlFor={`default-option-${index}`}>{option.label}</Label>
+              <Label htmlFor={`default-option-${option.value}-${index}`}>
+                {option.label}
+              </Label>
             </div>
           );
         })}
       </div>
     );
   }
-  if (variable.config.displayMode === "radio") {
+  if (
+    variable.config &&
+    variable.type === "choice" &&
+    (variable.config as ChoiceConfig).displayMode === "radio"
+  ) {
     return (
-      <div className="space-y-2">
-        {choices.map((option: { value: string; label: string }) => {
-          return (
+      <RadioGroup
+        value={
+          typeof variable.defaultValue === "string" ? variable.defaultValue : ""
+        }
+        onValueChange={(newValue) => onDefaultValueChange(index, newValue)}>
+        {choices.map(
+          (option: { value: string; label: string }, idx: number) => (
             <div
-              key={`checkbox-${option.value}-${index}`}
+              key={`radio-${option.value}-${index}`}
               className="flex items-center space-x-2">
-              <Checkbox
-                id={`default-option-${index}`}
-                checked={variable.defaultValue === option.value}
-                onCheckedChange={(checked) =>
-                  onDefaultValueChange(index, checked ? option.value : null)
-                }
+              <RadioGroupItem
+                value={option.value}
+                id={`option-${index}-${idx}`}
               />
-              <Label htmlFor={`default-option-${index}`}>{option.label}</Label>
+              <Label htmlFor={`option-${index}-${idx}`}>{option.label}</Label>
             </div>
-          );
-        })}
-      </div>
+          ),
+        )}
+      </RadioGroup>
     );
   } else {
     return (
