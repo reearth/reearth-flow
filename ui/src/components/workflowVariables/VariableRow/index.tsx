@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import {
   DateTimeDefaultValueInput,
   Input,
@@ -26,6 +28,26 @@ const VariableRow: React.FC<Props> = ({
   onDefaultValueChange,
 }) => {
   const t = useT();
+
+  const validateNumber = useCallback(
+    (value: number) => {
+      if (
+        "config" in variable &&
+        variable.config &&
+        ("max" in variable.config || "min" in variable.config)
+      ) {
+        if (
+          (variable.config.max !== undefined && value > variable.config.max) ||
+          (variable.config.min !== undefined && value < variable.config.min)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    [variable],
+  );
 
   switch (variable.type) {
     case "array":
@@ -56,7 +78,11 @@ const VariableRow: React.FC<Props> = ({
           type="number"
           value={variable.defaultValue}
           onChange={(e) => {
-            onDefaultValueChange(index, parseFloat(e.target.value));
+            const newValue = parseFloat(e.target.value);
+            const validNumber = validateNumber(newValue);
+            if (validNumber) {
+              onDefaultValueChange(index, newValue);
+            }
           }}
         />
       );
