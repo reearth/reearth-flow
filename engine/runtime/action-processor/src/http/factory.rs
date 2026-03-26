@@ -34,11 +34,11 @@ impl ProcessorFactory for HttpCallerFactory {
         &["Web"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -177,8 +177,8 @@ mod tests {
     #[test]
     fn test_factory_ports() {
         let factory = HttpCallerFactory;
-        assert_eq!(factory.get_input_ports().len(), 1);
-        assert_eq!(factory.get_output_ports().len(), 2);
+        assert_eq!(factory.get_input_ports(&HashMap::new()).len(), 1);
+        assert_eq!(factory.get_output_ports(&HashMap::new()).len(), 2);
     }
 
     #[test]

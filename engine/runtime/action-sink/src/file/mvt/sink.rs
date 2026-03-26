@@ -21,7 +21,7 @@ use reearth_flow_types::Expr;
 use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde_json::{Value, Value as JsonValue};
 
 use crate::errors::SinkError;
 
@@ -49,7 +49,7 @@ impl SinkFactory for MVTSinkFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
@@ -133,7 +133,8 @@ pub struct MVTWriter {
 ///
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
 /// Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
     /// # Output

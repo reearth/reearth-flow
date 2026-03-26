@@ -37,6 +37,7 @@ pub(super) enum CenterPointMode {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CenterPointReplacerParam {
     /// The method used to compute the replacement center point.
@@ -64,11 +65,11 @@ impl ProcessorFactory for CenterPointReplacerFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![POINT_PORT.clone(), REJECTED_PORT.clone()]
     }
 

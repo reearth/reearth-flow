@@ -84,11 +84,11 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), COMPLETE_PORT.clone()]
     }
 
@@ -158,7 +158,8 @@ struct CompiledCalculation {
 /// # StatisticsCalculator Parameters
 ///
 /// Configuration for calculating statistical aggregations on feature attributes.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct StatisticsCalculatorParam {
     /// # Group id
@@ -172,7 +173,8 @@ struct StatisticsCalculatorParam {
     calculations: Vec<Calculation>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct Calculation {
     /// # New attribute name

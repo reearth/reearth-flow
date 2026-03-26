@@ -37,7 +37,7 @@ impl SinkFactory for CsvWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -82,7 +82,8 @@ pub(super) struct CsvWriter {
 /// # CsvWriter Parameters
 ///
 /// Configuration for writing features to CSV/TSV files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvWriterParam {
     /// Output path or expression for the CSV/TSV file to create
@@ -95,11 +96,12 @@ pub(super) struct CsvWriterParam {
     geometry: Option<super::writer_geometry::GeometryExportConfig>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum CsvFormat {
     /// # CSV (Comma-Separated Values)
     /// File with comma-separated values
+    #[default]
     Csv,
     /// # TSV (Tab-Separated Values)
     /// File with tab-separated values

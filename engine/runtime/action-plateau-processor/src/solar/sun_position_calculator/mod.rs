@@ -59,11 +59,11 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -201,6 +201,18 @@ pub enum SolarPositionCalculatorParam {
     },
 }
 
+impl Default for SolarPositionCalculatorParam {
+    fn default() -> Self {
+        Self::Time {
+            time: Expr::default(),
+            source_epsg: Expr::default(),
+            standard_meridian: None,
+            output_type: OutputType::default(),
+            output_below_horizon: false,
+        }
+    }
+}
+
 impl SolarPositionCalculatorParam {
     fn source_epsg(&self) -> &Expr {
         match self {
@@ -241,9 +253,10 @@ impl SolarPositionCalculatorParam {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum StepUnit {
+    #[default]
     Second,
     Minute,
     Hour,

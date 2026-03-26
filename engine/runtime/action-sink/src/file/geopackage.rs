@@ -39,7 +39,7 @@ impl SinkFactory for GeoPackageWriterFactory {
         &["File", "Database"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -91,7 +91,8 @@ pub(super) struct GeoPackageWriter {
 /// # GeoPackageWriter Parameters
 ///
 /// Configuration for writing features to GeoPackage files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoPackageWriterParam {
     /// Output path for the GeoPackage file to create

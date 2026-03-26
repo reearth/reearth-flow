@@ -111,7 +111,7 @@ impl SourceFactory for ShapefileReaderFactory {
         &["File"]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -154,7 +154,8 @@ pub(super) struct ShapefileReader {
 ///
 /// Configuration for reading Shapefile archives as geographic features.
 /// Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ShapefileReaderParam {
     #[serde(flatten)]

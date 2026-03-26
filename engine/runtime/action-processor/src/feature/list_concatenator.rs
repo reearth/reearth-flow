@@ -34,11 +34,11 @@ impl ProcessorFactory for ListConcatenatorFactory {
         &["Feature"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -73,7 +73,8 @@ impl ProcessorFactory for ListConcatenatorFactory {
 /// # ListConcatenator Parameters
 ///
 /// Configuration for concatenating a specific attribute from list elements.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct ListConcatenator {
     /// List attribute to read from

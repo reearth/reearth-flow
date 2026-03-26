@@ -35,11 +35,11 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -134,7 +134,8 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
 /// # FilePropertyExtractor Parameters
 ///
 /// Configuration for extracting file system properties from files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct FilePropertyExtractor {
     /// Attribute name containing the file path to analyze for properties

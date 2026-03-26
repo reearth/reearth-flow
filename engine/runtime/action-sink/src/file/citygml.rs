@@ -235,7 +235,7 @@ impl SinkFactory for CityGmlWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -292,7 +292,8 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// Output file path expression

@@ -66,6 +66,7 @@ static BLDG_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
 
 /// # AttributeFlattener Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AttributeFlattenerParam {
     /// When true, only include attributes that were actually used during processing in the schema output.
@@ -94,11 +95,11 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 

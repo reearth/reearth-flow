@@ -2,10 +2,12 @@ use nutype::nutype;
 
 #[nutype(
     sanitize(trim),
+    default = "",
     derive(
         Debug,
         Display,
         Clone,
+        Default,
         Eq,
         PartialEq,
         PartialOrd,

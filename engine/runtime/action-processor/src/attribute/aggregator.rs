@@ -36,11 +36,11 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -127,7 +127,8 @@ struct AttributeAggregator {
 
 /// # AttributeAggregator Parameters
 /// Configure how features are grouped and aggregated based on attribute values
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct AttributeAggregatorParam {
     /// # List of attributes to aggregate
@@ -142,7 +143,8 @@ struct AttributeAggregatorParam {
     method: Method,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct AggregateAttribute {
     /// # New attribute to create
@@ -160,11 +162,12 @@ struct CompliledAggregateAttribute {
     attribute_value: Option<rhai::AST>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 enum Method {
     /// # Maximum Value
     /// Find the maximum value in the group
     #[serde(rename = "max")]
+    #[default]
     Max,
     /// # Minimum Value
     /// Find the minimum value in the group

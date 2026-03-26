@@ -50,11 +50,11 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![PATH_PORT.clone(), ELEMENT_PORT.clone(), BOUNDS_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -132,7 +132,8 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
 }
 
 /// Configuration for inserting measurement attributes into CityGML files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct CityGmlAttributeInserterParam {
     /// Output directory expression for modified CityGML files
@@ -154,7 +155,8 @@ struct CityGmlAttributeInserterParam {
 }
 
 /// A single measurement attribute definition.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct MeasurementDef {
     /// XML name attribute value (e.g. "年間予測日射量")

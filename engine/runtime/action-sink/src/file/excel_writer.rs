@@ -36,7 +36,7 @@ impl SinkFactory for ExcelWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -83,7 +83,8 @@ pub(super) struct ExcelWriter {
 /// # ExcelWriter Parameters
 ///
 /// Configuration for writing features to Microsoft Excel format.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
     /// Output path or expression for the Excel file to create

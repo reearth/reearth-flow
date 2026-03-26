@@ -37,11 +37,11 @@ impl ProcessorFactory for AttributeManagerFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -88,7 +88,8 @@ struct AttributeManager {
 }
 
 /// # AttributeManager Parameters
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct AttributeManagerParam {
     /// # Attribute Operations
@@ -96,7 +97,8 @@ struct AttributeManagerParam {
     operations: Vec<Operation>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct Operation {
     /// # Attribute name
@@ -108,9 +110,10 @@ struct Operation {
     value: Option<Expr>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum Method {
+    #[default]
     Convert,
     Create,
     Rename,

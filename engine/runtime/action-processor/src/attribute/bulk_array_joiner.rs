@@ -34,11 +34,11 @@ impl ProcessorFactory for AttributeBulkArrayJoinerFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -81,7 +81,8 @@ struct AttributeBulkArrayJoiner {
 
 /// # AttributeBulkArrayJoiner Parameters
 /// Configure which array attributes to join into single values
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct AttributeBulkArrayJoinerParam {
     /// # Attributes to Ignore

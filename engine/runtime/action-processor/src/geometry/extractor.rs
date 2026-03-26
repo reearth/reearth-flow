@@ -35,11 +35,11 @@ impl ProcessorFactory for GeometryExtractorFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -73,7 +73,8 @@ impl ProcessorFactory for GeometryExtractorFactory {
 
 /// # Geometry Extractor Parameters
 /// Configure where to store the extracted geometry data as a compressed attribute
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryExtractor {
     /// # Output Attribute

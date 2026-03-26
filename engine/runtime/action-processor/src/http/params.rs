@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 /// # HTTP Caller Parameters
 /// Configure HTTP/HTTPS requests to enrich features with response data
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpCallerParam {
     /// # URL
@@ -79,7 +80,8 @@ fn default_method() -> HttpMethod {
 
 /// # Timeout Configuration
 /// Configure connection and transfer timeouts for HTTP requests
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct TimeoutConfig {
     /// # Connection Timeout
@@ -95,7 +97,8 @@ pub struct TimeoutConfig {
 
 /// # HTTP Options
 /// Configure HTTP client behavior
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpOptions {
     /// # User Agent
@@ -121,7 +124,8 @@ pub struct HttpOptions {
 
 /// # Response Configuration
 /// Configure how HTTP response data is stored and processed
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct ResponseConfig {
     /// # Response Body Attribute
@@ -183,11 +187,12 @@ fn default_error_attr() -> String {
 
 /// # HTTP Method
 /// The HTTP request method to use
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
     /// # GET
     /// Retrieve data from the server
+    #[default]
     Get,
     /// # POST
     /// Submit data to the server
@@ -253,7 +258,8 @@ impl From<HttpMethod> for Method {
 
 /// # HTTP Header
 /// A custom HTTP header to include in the request
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct HeaderParam {
     /// # Header Name
@@ -266,7 +272,8 @@ pub struct HeaderParam {
 
 /// # Query Parameter
 /// A URL query parameter to append to the request
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryParam {
     /// # Parameter Name
@@ -380,7 +387,8 @@ pub enum ResponseEncoding {
 
 /// # Retry Configuration
 /// Configure automatic retry behavior for failed requests
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct RetryConfig {
     /// # Max Attempts
@@ -436,7 +444,8 @@ fn default_honor_retry_after() -> bool {
 
 /// # Rate Limit Configuration
 /// Control the rate of HTTP requests to avoid overwhelming the server
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct RateLimitConfig {
     /// # Requests
@@ -464,11 +473,12 @@ fn default_timing_strategy() -> TimingStrategy {
 
 /// # Timing Strategy
 /// How to distribute requests within the rate limit interval
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum TimingStrategy {
     /// # Burst
     /// Allow all requests immediately, then pause until next interval
+    #[default]
     Burst,
     /// # Distributed
     /// Evenly distribute requests throughout the interval
@@ -477,7 +487,8 @@ pub enum TimingStrategy {
 
 /// # Observability Configuration
 /// Track additional metrics and diagnostics about HTTP requests
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct ObservabilityConfig {
     /// # Track Duration

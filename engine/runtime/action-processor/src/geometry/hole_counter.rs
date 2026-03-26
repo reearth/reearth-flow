@@ -35,11 +35,11 @@ impl ProcessorFactory for HoleCounterFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
     fn build(
@@ -74,7 +74,8 @@ impl ProcessorFactory for HoleCounterFactory {
 
 /// # Hole Counter Parameters
 /// Configure where to store the count of holes found in polygon geometries
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct HoleCounterParam {
     /// # Output Attribute

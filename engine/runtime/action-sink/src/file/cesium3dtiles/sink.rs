@@ -17,7 +17,7 @@ use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde_json::{Value, Value as JsonValue};
 
 use crate::errors::SinkError;
 use crate::file::mvt::tileid::TileIdMethod;
@@ -44,7 +44,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
@@ -120,7 +120,8 @@ pub struct Cesium3DTilesWriter {
 }
 
 /// # Cesium3DTilesWriter Parameters
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct Cesium3DTilesWriterParam {
     /// # Output Path

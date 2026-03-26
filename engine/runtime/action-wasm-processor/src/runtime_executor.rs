@@ -39,11 +39,11 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
         &["Wasm"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -201,7 +201,8 @@ pub(crate) struct WasmRuntimeExecutor {
 /// # WasmRuntimeExecutor Parameters
 ///
 /// Configuration for compiling and executing scripts in WebAssembly runtime.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WasmRuntimeExecutorParam {
     /// # Source Code
@@ -215,12 +216,14 @@ pub(crate) struct WasmRuntimeExecutorParam {
     programming_language: ProgrammingLanguage,
 }
 
-#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 pub(crate) enum ProgrammingLanguage {
+    #[default]
     Python,
 }
-#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub(crate) enum ProcessorType {
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
+    #[default]
     Attribute,
 }
 

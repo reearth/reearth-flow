@@ -11,10 +11,11 @@ use serde::de::Error;
 use serde::{Deserialize, Serialize, Serializer};
 use url::Url;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum Protocol {
+    #[default]
     File = 1,
     Ram = 2,
     Google = 3,
@@ -92,7 +93,7 @@ impl FromStr for Protocol {
 
 pub const PROTOCOL_SEPARATOR: &str = "://";
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Default, Eq, PartialEq, Hash)]
 pub struct Uri {
     uri: String,
     protocol: Protocol,

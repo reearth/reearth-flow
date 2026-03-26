@@ -23,7 +23,8 @@ use url::Url;
 /// # CityGmlReader Parameters
 ///
 /// Configuration for reading CityGML files as a data source.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlReaderParam {
     pub(super) flatten: Option<bool>,

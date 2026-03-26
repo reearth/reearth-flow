@@ -44,7 +44,7 @@ impl SourceFactory for FilePathExtractorFactory {
         &["File"]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
     fn build(
@@ -209,7 +209,8 @@ pub async fn extract(
 /// # FilePathExtractor Parameters
 ///
 /// Configuration for extracting file paths from directories or archives.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePathExtractor {
     /// # Source Dataset

@@ -51,11 +51,11 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![POINT_PORT.clone(), LINE_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -97,7 +97,8 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 /// # LineOnLineOverlayer Parameters
 ///
 /// Configuration for finding intersection points between line features.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,

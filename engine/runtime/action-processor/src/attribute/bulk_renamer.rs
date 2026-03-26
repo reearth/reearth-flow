@@ -32,11 +32,11 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -95,7 +95,8 @@ struct BulkAttributeRenamer {
 
 /// # BulkAttributeRenamer Parameters
 /// Configure how to rename feature attributes in bulk operations
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct BulkAttributeRenamerParam {
     /// # Which Attributes to Rename
@@ -115,20 +116,22 @@ struct BulkAttributeRenamerParam {
     selected_attributes: Option<Vec<String>>,
 }
 
-#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 enum RenameType {
     /// # All Attributes
     /// Rename all attributes in the feature
+    #[default]
     All,
     /// # Selected Attributes
     /// Rename only specific attributes listed below
     Selected,
 }
 
-#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 enum RenameAction {
     /// # Add Prefix
     /// Add text to the beginning of attribute names
+    #[default]
     AddPrefix,
     /// # Add Suffix
     /// Add text to the end of attribute names

@@ -49,11 +49,11 @@ impl ProcessorFactory for FeatureJoinerFactory {
         &["Feature"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![REQUESTOR_PORT.clone(), SUPPLIER_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             JOINED_PORT.clone(),
             UNJOINED_REQUESTOR_PORT.clone(),
@@ -164,7 +164,8 @@ impl ProcessorFactory for FeatureJoinerFactory {
 /// # FeatureJoiner Parameters
 ///
 /// Configuration for joining requestor and supplier features based on matching attributes or expressions.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureJoinerParam {
     /// Join type: inner, left, or full
@@ -181,10 +182,11 @@ pub struct FeatureJoinerParam {
     conflict_resolution: Option<ConflictResolution>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum JoinType {
     /// Only emit features where a match exists
+    #[default]
     Inner,
     /// Emit all requestor features (default)
     Left,

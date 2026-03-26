@@ -57,11 +57,11 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
         &["Script", "Python"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -123,7 +123,8 @@ struct PythonScriptProcessor {
     ctx: NodeContext,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct PythonScriptProcessorParam {
     /// # Inline Script
@@ -1253,8 +1254,8 @@ mod tests {
             "Execute Python Scripts with Geospatial Data Processing"
         );
         assert_eq!(factory.categories(), &["Script", "Python"]);
-        assert_eq!(factory.get_input_ports().len(), 1);
-        assert_eq!(factory.get_output_ports().len(), 1);
+        assert_eq!(factory.get_input_ports(&HashMap::new()).len(), 1);
+        assert_eq!(factory.get_output_ports(&HashMap::new()).len(), 1);
         assert!(factory.parameter_schema().is_some());
     }
 

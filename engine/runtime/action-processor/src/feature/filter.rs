@@ -37,12 +37,23 @@ impl ProcessorFactory for FeatureFilterFactory {
         &["Feature"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
-        vec![UNFILTERED_PORT.clone()]
+    fn get_output_ports(&self, with: &HashMap<String, Value>) -> Vec<Port> {
+        let mut ports = vec![UNFILTERED_PORT.clone()];
+        if let Some(Value::Array(conditions)) = with.get("conditions") {
+            for condition in conditions {
+                if let Some(Value::String(port_name)) = condition.get("outputPort") {
+                    let port = Port::new(port_name);
+                    if !ports.contains(&port) {
+                        ports.push(port);
+                    }
+                }
+            }
+        }
+        ports
     }
 
     fn build(
@@ -98,7 +109,8 @@ struct FeatureFilter {
 
 /// # Feature Filter Parameters
 /// Configure the conditions and output ports for filtering features based on expressions
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct FeatureFilterParam {
     /// # Filter Conditions
@@ -106,7 +118,8 @@ struct FeatureFilterParam {
     conditions: Vec<Condition>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct Condition {
     /// # Condition expression

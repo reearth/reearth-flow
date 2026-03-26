@@ -75,9 +75,11 @@ pub(super) struct NodeId(String);
 
 #[nutype::nutype(
     sanitize(trim),
+    default = "",
     derive(
         Debug,
         Clone,
+        Default,
         Eq,
         PartialEq,
         PartialOrd,
@@ -225,7 +227,7 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
         &[]
     }
 
-    fn get_output_ports(&self) -> Vec<Port>;
+    fn get_output_ports(&self, with: &HashMap<String, Value>) -> Vec<Port>;
     fn build(
         &self,
         ctx: NodeContext,
@@ -289,8 +291,8 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
         &[]
     }
 
-    fn get_input_ports(&self) -> Vec<Port>;
-    fn get_output_ports(&self) -> Vec<Port>;
+    fn get_input_ports(&self, with: &HashMap<String, Value>) -> Vec<Port>;
+    fn get_output_ports(&self, with: &HashMap<String, Value>) -> Vec<Port>;
     fn build(
         &self,
         ctx: NodeContext,
@@ -353,7 +355,7 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
     fn categories(&self) -> &[&'static str] {
         &[]
     }
-    fn get_input_ports(&self) -> Vec<Port>;
+    fn get_input_ports(&self, with: &HashMap<String, Value>) -> Vec<Port>;
     fn prepare(&self) -> Result<(), BoxedError>;
     fn build(
         &self,
@@ -421,11 +423,11 @@ impl ProcessorFactory for InputRouterFactory {
         &["System"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -446,7 +448,8 @@ impl ProcessorFactory for InputRouterFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct InputRouter {
     routing_port: String,
@@ -503,12 +506,16 @@ impl ProcessorFactory for OutputRouterFactory {
         &["System"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
-        vec![]
+    fn get_output_ports(&self, with: &HashMap<String, Value>) -> Vec<Port> {
+        if let Some(Value::String(rp)) = with.get(ROUTING_PARAM_KEY) {
+            vec![Port::new(rp)]
+        } else {
+            vec![]
+        }
     }
 
     fn build(
@@ -528,7 +535,8 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputRouter {
     routing_port: String,

@@ -41,11 +41,11 @@ impl ProcessorFactory for Rotator3DFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -107,7 +107,8 @@ impl ProcessorFactory for Rotator3DFactory {
 
 /// # Rotator3D Parameters
 /// Configure the rotation for a 3D polygon
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct Rotator3DParam {
     /// # Rotation
@@ -125,7 +126,14 @@ pub enum RotationParam {
     AxisAngle(AxisAngleParam),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+impl Default for RotationParam {
+    fn default() -> Self {
+        Self::FromToVectors(FromToVectorsParam::default())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct FromToVectorsParam {
     /// X component of the source direction vector
@@ -142,7 +150,8 @@ pub struct FromToVectorsParam {
     pub to_z: Expr,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct AxisAngleParam {
     /// X component of the rotation axis

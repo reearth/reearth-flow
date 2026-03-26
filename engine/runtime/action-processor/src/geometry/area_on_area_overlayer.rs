@@ -53,11 +53,11 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             AREA_PORT.clone(),
             REMNANTS_PORT.clone(),
@@ -109,7 +109,8 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 
 /// # AreaOnAreaOverlayer Parameters
 /// Configure how area overlay analysis is performed
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct AreaOnAreaOverlayerParam {
     /// # Group By Attributes

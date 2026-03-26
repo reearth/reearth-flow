@@ -413,11 +413,11 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             ATTRIBUTE_FEATURE_PORT.clone(),
             SUMMARY_PORT.clone(),
@@ -480,7 +480,8 @@ pub struct XmlAttributeExtractor {
     features_group: HashMap<String, Vec<Feature>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlAttributeExtractorParam {
     city_code: Option<String>,

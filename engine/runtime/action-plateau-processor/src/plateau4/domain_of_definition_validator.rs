@@ -282,6 +282,7 @@ struct Envelope {
 ///
 /// Configuration for validating domain of definition of CityGML features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct DomainOfDefinitionValidatorParam {
     /// Fallback codelists directory path expression. When codelists files are not found
@@ -311,11 +312,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             DEFAULT_PORT.clone(),
             REJECTED_PORT.clone(),
