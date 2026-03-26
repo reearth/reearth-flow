@@ -465,7 +465,6 @@ impl Feature {
 pub trait CitygmlFeatureExt {
     fn feature_id(&self) -> Option<String>;
     fn feature_type(&self) -> Option<String>;
-    fn lod(&self) -> Option<String>;
     fn lod_mask(&self) -> Option<LodMask>;
     fn update_feature_type(&mut self, feature_type: String);
     fn update_feature_id(&mut self, feature_id: String);
@@ -480,13 +479,6 @@ impl CitygmlFeatureExt for Feature {
     fn feature_type(&self) -> Option<String> {
         self.get(CITYGML_FEATURE_TYPE_KEY)
             .and_then(|v| v.as_string())
-    }
-
-    fn lod(&self) -> Option<String> {
-        self.lod_mask().map(|m| {
-            let mask = m.to_u8();
-            (7 - mask.leading_zeros() as u8).to_string()
-        })
     }
 
     fn lod_mask(&self) -> Option<LodMask> {
