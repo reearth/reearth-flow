@@ -68,12 +68,6 @@ export type AwarenessUser = {
   selectedNodeIds?: string[] | null;
 };
 
-export type FocusedUser = {
-  clientId: string;
-  color: string;
-  userName: string;
-};
-
 export type UserDebugRun = {
   projectId: string;
   jobId: string;

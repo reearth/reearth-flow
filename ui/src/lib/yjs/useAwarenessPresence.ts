@@ -238,7 +238,6 @@ export default function useAwarenessPresence({
   }, [selectedNodeIds, yAwareness]);
 
   useEffect(() => {
-    yAwareness.setLocalStateField("openNodeId", openNode?.id ?? null);
     const openNodeId = openNode?.id ?? null;
     yAwareness.setLocalStateField("openNodeId", openNodeId);
     yAwareness.setLocalStateField("focusedParamField", null);
