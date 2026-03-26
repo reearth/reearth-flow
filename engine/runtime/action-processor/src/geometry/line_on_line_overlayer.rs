@@ -386,6 +386,11 @@ fn line_string_intersection_2d(
     line_strings: &[LineString2D<f64>],
     tolerance: f64,
 ) -> OverlayResult {
+    // Pre-compute bounding boxes so the inner loop can skip pairs whose
+    // envelopes don't overlap (cheap AABB test vs expensive intersection).
+    use rstar::{Envelope, RTreeObject};
+    let envelopes: Vec<_> = line_strings.iter().map(|ls| ls.envelope()).collect();
+
     let results = line_strings.par_iter().enumerate().map(|(i, line_string)| {
         let packed_line_string = LineStringWithTree2D::new(line_string.clone());
 
@@ -395,8 +400,9 @@ fn line_string_intersection_2d(
             intersection: LineIntersection<f64, NoValue>,
         }
 
+        let env_i = &envelopes[i];
         let inters_with_index = (0..line_strings.len())
-            .filter(|&j| j != i)
+            .filter(|&j| j != i && env_i.intersects(&envelopes[j]))
             .map(|j| (j, &line_strings[j]))
             .filter_map(|(j, other_line_string)| {
                 let intersections = packed_line_string.intersection(other_line_string);
