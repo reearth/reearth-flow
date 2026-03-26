@@ -6,7 +6,7 @@ use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR
 use reearth_flow_action_python_processor::ACTION_FACTORY_MAPPINGS as PYTHON_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
 use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
-use reearth_flow_runtime::node::NodeKind;
+use reearth_flow_runtime::node::{NodeKind, SYSTEM_ACTION_FACTORY_MAPPINGS};
 
 pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     SOURCE_MAPPINGS
@@ -31,3 +31,21 @@ pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect()
 });
+
+/// Look up an action by name across all registries.
+/// Returns `(NodeKind, is_builtin)`.
+pub(crate) fn find_action_by_name(name: &str) -> Option<(NodeKind, bool)> {
+    if let Some(kind) = BUILTIN_ACTION_FACTORIES.get(name) {
+        return Some((kind.clone(), true));
+    }
+    if let Some(kind) = SYSTEM_ACTION_FACTORY_MAPPINGS.get(name) {
+        return Some((kind.clone(), true));
+    }
+    if let Some(kind) = PLATEAU_ACTION_FACTORIES.get(name) {
+        return Some((kind.clone(), false));
+    }
+    if let Some(kind) = PYTHON_ACTION_FACTORIES.get(name) {
+        return Some((kind.clone(), false));
+    }
+    None
+}

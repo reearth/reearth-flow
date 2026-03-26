@@ -126,6 +126,17 @@ pub(crate) fn create_action_schema(
     builtin: bool,
     i18n: &HashMap<String, I18nSchema>,
 ) -> ActionSchema {
+    create_action_schema_with_params(kind, builtin, i18n, &HashMap::new())
+}
+
+/// Create an ActionSchema using user-supplied `with` params merged on top of schema defaults
+/// for port resolution.
+pub(crate) fn create_action_schema_with_params(
+    kind: &NodeKind,
+    builtin: bool,
+    i18n: &HashMap<String, I18nSchema>,
+    user_with: &HashMap<String, serde_json::Value>,
+) -> ActionSchema {
     let (name, description, parameter, input_ports, output_ports, categories) = match kind {
         NodeKind::Source(factory) => {
             let i18n_schema = i18n.get(&factory.name().to_string());
@@ -146,7 +157,8 @@ pub(crate) fn create_action_schema(
                         }
                         parameter_schema
                     });
-            let default_with = extract_defaults_from_schema(&parameter_schema);
+            let mut merged_with = extract_defaults_from_schema(&parameter_schema);
+            merged_with.extend(user_with.iter().map(|(k, v)| (k.clone(), v.clone())));
             (
                 factory.name().to_string(),
                 i18n_schema
@@ -155,7 +167,7 @@ pub(crate) fn create_action_schema(
                 parameter_schema,
                 vec![],
                 factory
-                    .get_output_ports(&default_with)
+                    .get_output_ports(&merged_with)
                     .iter()
                     .map(|p| p.to_string())
                     .collect(),
@@ -181,7 +193,8 @@ pub(crate) fn create_action_schema(
                         }
                         parameter_schema
                     });
-            let default_with = extract_defaults_from_schema(&parameter_schema);
+            let mut merged_with = extract_defaults_from_schema(&parameter_schema);
+            merged_with.extend(user_with.iter().map(|(k, v)| (k.clone(), v.clone())));
             (
                 factory.name().to_string(),
                 i18n_schema
@@ -189,12 +202,12 @@ pub(crate) fn create_action_schema(
                     .unwrap_or(factory.description().to_string()),
                 parameter_schema,
                 factory
-                    .get_input_ports(&default_with)
+                    .get_input_ports(&merged_with)
                     .iter()
                     .map(|p| p.to_string())
                     .collect(),
                 factory
-                    .get_output_ports(&default_with)
+                    .get_output_ports(&merged_with)
                     .iter()
                     .map(|p| p.to_string())
                     .collect(),
@@ -220,7 +233,8 @@ pub(crate) fn create_action_schema(
                         }
                         parameter_schema
                     });
-            let default_with = extract_defaults_from_schema(&parameter_schema);
+            let mut merged_with = extract_defaults_from_schema(&parameter_schema);
+            merged_with.extend(user_with.iter().map(|(k, v)| (k.clone(), v.clone())));
             (
                 factory.name().to_string(),
                 i18n_schema
@@ -228,7 +242,7 @@ pub(crate) fn create_action_schema(
                     .unwrap_or(factory.description().to_string()),
                 parameter_schema,
                 factory
-                    .get_input_ports(&default_with)
+                    .get_input_ports(&merged_with)
                     .iter()
                     .map(|p| p.to_string())
                     .collect(),
