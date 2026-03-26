@@ -11,6 +11,7 @@ import { useState, useEffect, useMemo } from "react";
 import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { FieldContext } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
 import { useT } from "@flow/lib/i18n";
+import { AwarenessUser } from "@flow/types";
 
 import { SchemaFormErrorBoundary } from "./components/SchemaFormErrorBoundary";
 import { ThemedForm } from "./ThemedForm";
@@ -20,7 +21,9 @@ type SchemaFormProps = {
   schema?: any; // Original schema before patching, used for UI schema generation
   actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
-  onChange: (data: any) => void;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
+  onFieldFocus?: (fieldId: string | null) => void;
+  onChange: (data: any, changedFieldId?: string) => void;
   onError?: (errors: RJSFValidationError[]) => void;
   onValidationChange?: (isValid: boolean) => void;
   onEditorOpen?: (fieldContext: FieldContext) => void;
@@ -142,6 +145,8 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   schema: originalSchema,
   actionName,
   defaultFormData,
+  fieldFocusMap,
+  onFieldFocus,
   onChange,
   onError,
   onValidationChange,
@@ -169,6 +174,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
 
   const handleChange = (
     data: IChangeEvent<any, RJSFSchema, GenericObjectType>,
+    changedFieldId?: string,
   ) => {
     const hasValidationErrors = data.errors && data.errors.length > 0;
 
@@ -180,7 +186,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
       onValidationChange?.(true);
     }
 
-    onChange(data.formData);
+    onChange(data.formData, changedFieldId);
   };
 
   // Validate initial data on mount
@@ -232,6 +238,8 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
           originalSchema,
           patchedSchema,
           actionName,
+          fieldFocusMap,
+          onFieldFocus,
         }}
         onChange={handleChange}
         onError={handleError}

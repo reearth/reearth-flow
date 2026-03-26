@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
+
 const SelectWidget = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
@@ -24,6 +26,7 @@ const SelectWidget = <
   disabled,
   readonly,
   required,
+  registry,
   value,
   multiple,
   onChange,
@@ -33,7 +36,9 @@ const SelectWidget = <
   rawErrors = [],
 }: WidgetProps<T, S, F>) => {
   const { enumOptions, enumDisabled, emptyValue } = options;
-
+  const formContext = registry?.formContext;
+  const { fieldFocusMap, onFieldFocus } = formContext ?? {};
+  const focusedUsers = fieldFocusMap?.[id] ?? [];
   const showPlaceholderOption = !multiple && !required;
 
   const getCurrentLabel = useCallback(() => {
@@ -48,14 +53,15 @@ const SelectWidget = <
     [onChange],
   );
 
-  const handleBlur = useCallback(
-    () => onBlur?.(id, value),
-    [onBlur, id, value],
-  );
-  const handleFocus = useCallback(
-    () => onFocus?.(id, value),
-    [onFocus, id, value],
-  );
+  const handleBlur = useCallback(() => {
+    onBlur?.(id, value);
+    onFieldFocus?.(null);
+  }, [onBlur, onFieldFocus, id, value]);
+
+  const handleFocus = useCallback(() => {
+    onFocus?.(id, value);
+    onFieldFocus?.(id);
+  }, [onFocus, onFieldFocus, id, value]);
 
   return (
     <DropdownMenu modal={true}>
@@ -63,6 +69,7 @@ const SelectWidget = <
         className={`flex h-8 max-w-141 min-w-[30%] items-center justify-between gap-2 rounded border bg-background px-3 hover:bg-accent ${
           rawErrors.length > 0 ? "border-destructive" : ""
         }`}
+        style={paramsAwarenessStyles(focusedUsers)}
         disabled={readonly || disabled}
         onBlur={handleBlur}
         onFocus={handleFocus}

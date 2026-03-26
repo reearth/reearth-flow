@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check for unshared edges #2",
+  "description": "No errors including no unshared edges — passes cleanly",
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {

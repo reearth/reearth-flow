@@ -17,6 +17,7 @@ const NumberInput = <
 >(
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
+    styles?: React.CSSProperties;
   },
 ) => {
   const {
@@ -27,6 +28,8 @@ const NumberInput = <
     readonly,
     disabled,
     value,
+    onFieldFocus,
+    styles,
     onChange,
     onBlur,
     onFocus,
@@ -58,15 +61,17 @@ const NumberInput = <
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onBlur?.(id, e.target.value);
+      onFieldFocus?.(null);
     },
-    [onBlur, id],
+    [onBlur, id, onFieldFocus],
   );
 
   const handleFocus = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
       onFocus?.(id, e.target.value);
+      onFieldFocus?.(id);
     },
-    [onFocus, id],
+    [onFocus, id, onFieldFocus],
   );
 
   const handleReset = useCallback(() => {
@@ -97,6 +102,7 @@ const NumberInput = <
           aria-invalid={rawErrors.length > 0}
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
           className={rawErrors.length > 0 ? "border-destructive" : ""}
+          style={styles}
         />
         <ActionArea
           value={value}
