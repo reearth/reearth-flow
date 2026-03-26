@@ -3,12 +3,18 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use crossbeam::channel::Sender;
 
 use crate::cache::executor_cache_subdir;
 use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
+
+/// Timeout for Terminate message sends during shutdown. If a downstream
+/// channel stays full for this duration, the send fails rather than blocking
+/// forever.
+const CHANNEL_SEND_TIMEOUT: Duration = Duration::from_secs(300);
 
 use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
@@ -258,9 +264,11 @@ impl ChannelManager {
     pub fn send_non_op(&self, op: ExecutorOperation) -> Result<(), ExecutionError> {
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
-                sender.sender.send(op.clone())?;
+                sender
+                    .sender
+                    .send_timeout(op.clone(), CHANNEL_SEND_TIMEOUT)?;
             }
-            last_sender.sender.send(op)?;
+            last_sender.sender.send_timeout(op, CHANNEL_SEND_TIMEOUT)?;
         }
         Ok(())
     }
@@ -561,12 +569,20 @@ impl ChannelManager {
         let feature_id = ctx.feature.id;
         let port = ctx.port.clone();
         let node_id = self.owner.id.clone().into_inner();
-        self.send_op(ctx).unwrap_or_else(|e| {
-            panic!(
-                "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
-            )
-        });
-        self.increment_send_count(1);
+        match self.send_op(ctx) {
+            Ok(()) => {
+                self.increment_send_count(1);
+            }
+            Err(e) => {
+                tracing::error!(
+                    ?node_id,
+                    ?feature_id,
+                    ?port,
+                    ?e,
+                    "Failed to send operation, dropping feature",
+                );
+            }
+        }
     }
 }
 
