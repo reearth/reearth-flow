@@ -21,7 +21,7 @@ export const AssetDefaultSelectionInput: React.FC<Props> = ({
   return (
     <div id={id}>
       <div className="mb-1 flex items-center justify-between pb-1">
-        <Label htmlFor="default-value" className="text-sm font-medium">
+        <Label htmlFor={id} className="text-sm font-medium">
           {t("Default Value")}
         </Label>
         <div className="flex gap-2">
@@ -42,7 +42,7 @@ export const AssetDefaultSelectionInput: React.FC<Props> = ({
         </div>
       </div>
       <Input
-        id="default-value"
+        id={id}
         value={variable.defaultValue ?? ""}
         onChange={(e) => onDefaultValueChange(e.target.value)}
         placeholder={t("Enter default value")}
