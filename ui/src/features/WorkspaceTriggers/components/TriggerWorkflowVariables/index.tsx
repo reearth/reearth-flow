@@ -120,19 +120,26 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
 
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+  const [showVariableDialog, setShowVariableDialog] = useState(false);
 
   const handleDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
   };
   const handleDialogClose = () => setShowDialog(undefined);
+  const handleVariableDialogOpen = useCallback((index: number) => {
+    setActiveVariableIndex(index);
+    setShowVariableDialog(true);
+  }, []);
+  const handleVariableDialogClose = useCallback(() => setShowVariableDialog(false), []);
   const handleAssetDoubleClick = (asset: Asset) => {
-    const v = asset.url;
-    handleDefaultValueChange?.(activeVariableIndex, v);
+    handleDefaultValueChange?.(activeVariableIndex, asset.url);
+    handleVariableDialogClose();
   };
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
     handleDefaultValueChange?.(activeVariableIndex, cmsItemAssetUrl);
     handleDialogClose();
+    handleVariableDialogClose();
   };
 
   const columns: ColumnDef<TriggerVariableConfig>[] = useMemo(
@@ -153,7 +160,9 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
             <VariableRow
               variable={row.original}
               index={row.index}
-              setActiveVariableIndex={setActiveVariableIndex}
+              showVariableDialog={showVariableDialog && activeVariableIndex === row.index}
+              onVariableDialogOpen={handleVariableDialogOpen}
+              onVariableDialogClose={handleVariableDialogClose}
               onDefaultValueChange={handleDefaultValueChange}
               onAssetDialogOpen={handleDialogOpen}
             />
@@ -188,7 +197,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
         size: 100,
       },
     ],
-    [handleDefaultValueChange, handleResetToDefault, isAtDefault, t],
+    [activeVariableIndex, handleDefaultValueChange, handleResetToDefault, handleVariableDialogClose, handleVariableDialogOpen, isAtDefault, showVariableDialog, t],
   );
 
   return (

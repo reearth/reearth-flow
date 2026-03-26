@@ -1,5 +1,4 @@
 import { GearIcon, PencilIcon } from "@phosphor-icons/react";
-import { useState } from "react";
 
 import {
   AssetDefaultSelectionInput,
@@ -27,7 +26,9 @@ import VariableArrayInput from "./VariableArrayInput";
 type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
-  setActiveVariableIndex?: (index: number) => void;
+  showVariableDialog?: boolean;
+  onVariableDialogOpen?: (index: number) => void;
+  onVariableDialogClose?: () => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
   onAssetDialogOpen: (dialog: "assets" | "cms") => void;
 };
@@ -35,18 +36,13 @@ type Props = {
 const VariableRow: React.FC<Props> = ({
   variable,
   index,
-  setActiveVariableIndex,
+  showVariableDialog,
+  onVariableDialogOpen,
+  onVariableDialogClose,
   onDefaultValueChange,
   onAssetDialogOpen,
 }) => {
   const t = useT();
-  const [showDialog, setShowDialog] = useState(false);
-  const handleDialogOpen = (index: number) => {
-    setActiveVariableIndex?.(index);
-    setShowDialog(true);
-  };
-
-  const handleDialogClose = () => setShowDialog(false);
 
   switch (variable.type) {
     case "array":
@@ -175,13 +171,13 @@ const VariableRow: React.FC<Props> = ({
             <div className="flex items-center gap-0">
               <IconButton
                 icon={<PencilIcon />}
-                onClick={() => handleDialogOpen(index)}
+                onClick={() => onVariableDialogOpen?.(index)}
                 className="ml-2"
               />
             </div>
           </div>
-          {showDialog && (
-            <Dialog open onOpenChange={handleDialogClose}>
+          {showVariableDialog && (
+            <Dialog open onOpenChange={onVariableDialogClose}>
               <DialogContent
                 size="lg"
                 position="center"
@@ -203,7 +199,7 @@ const VariableRow: React.FC<Props> = ({
                       variable={variable}
                       onDefaultValueChange={(newValue) => {
                         onDefaultValueChange(index, newValue);
-                        handleDialogClose();
+                        onVariableDialogClose?.();
                       }}
                       onDialogOpen={onAssetDialogOpen}
                     />

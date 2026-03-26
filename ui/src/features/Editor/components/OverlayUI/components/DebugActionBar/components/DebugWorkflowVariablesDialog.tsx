@@ -1,6 +1,6 @@
 import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   DataTable as Table,
@@ -35,19 +35,26 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   const [startingDebugRun, setStartingDebugRun] = useState(false);
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+  const [showVariableDialog, setShowVariableDialog] = useState(false);
 
   const handleAssetDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
   };
   const handleDialogClose = () => setShowDialog(undefined);
+  const handleVariableDialogOpen = useCallback((index: number) => {
+    setActiveVariableIndex(index);
+    setShowVariableDialog(true);
+  }, []);
+  const handleVariableDialogClose = useCallback(() => setShowVariableDialog(false), []);
   const handleAssetDoubleClick = (asset: Asset) => {
-    const v = asset.url;
-    onDebugRunVariableValueChange?.(activeVariableIndex, v);
+    onDebugRunVariableValueChange?.(activeVariableIndex, asset.url);
+    handleVariableDialogClose();
   };
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
     onDebugRunVariableValueChange?.(activeVariableIndex, cmsItemAssetUrl);
     handleDialogClose();
+    handleVariableDialogClose();
   };
 
   const t = useT();
@@ -76,7 +83,9 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
             <VariableRow
               variable={row.original}
               index={row.index}
-              setActiveVariableIndex={setActiveVariableIndex}
+              showVariableDialog={showVariableDialog && activeVariableIndex === row.index}
+              onVariableDialogOpen={handleVariableDialogOpen}
+              onVariableDialogClose={handleVariableDialogClose}
               onAssetDialogOpen={handleAssetDialogOpen}
               onDefaultValueChange={onDebugRunVariableValueChange}
             />
@@ -94,7 +103,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
         cell: ({ getValue }) => (getValue() ? t("Yes") : t("No")),
       },
     ],
-    [t, onDebugRunVariableValueChange],
+    [activeVariableIndex, handleVariableDialogClose, handleVariableDialogOpen, onDebugRunVariableValueChange, showVariableDialog, t],
   );
 
   return (
