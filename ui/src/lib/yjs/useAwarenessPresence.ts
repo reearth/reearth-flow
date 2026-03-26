@@ -240,7 +240,9 @@ export default function useAwarenessPresence({
   useEffect(() => {
     const openNodeId = openNode?.id ?? null;
 
-    if (openNodeId === yAwareness.getLocalState()?.openNodeId) {
+    const localOpenNodeId = yAwareness.getLocalState()?.openNodeId;
+
+    if (openNodeId === localOpenNodeId) {
       return;
     }
 
