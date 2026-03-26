@@ -45,10 +45,10 @@ const FieldTemplate = <
     registry,
     uiOptions,
   );
-
   if (hidden) {
     return <div className="hidden">{children}</div>;
   }
+
   return (
     <WrapIfAdditionalTemplate
       classNames={classNames}

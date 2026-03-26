@@ -3,6 +3,8 @@ import { MouseEvent } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Awareness } from "y-protocols/awareness";
 
+import { Node } from "@flow/types";
+
 import useAwarenessPresence from "./useAwarenessPresence";
 
 // Mock dependencies
@@ -25,6 +27,7 @@ const createMockAwareness = () => {
     setLocalStateField: vi.fn((key, value) => {
       state[key] = value;
     }),
+    getLocalState: vi.fn(() => state),
     getStates: vi.fn(
       () =>
         new Map([
@@ -67,7 +70,11 @@ describe("useAwarenessPresence", () => {
 
   it("returns self and users correctly", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
     );
     expect(result.current.self.userName).toBe("TestUser");
     expect(result.current.self.color).toBe("#123456");
@@ -76,7 +83,11 @@ describe("useAwarenessPresence", () => {
 
   it("handlePointerDown sets cursor and viewport", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
     );
     const event = {
       clientX: 50,
@@ -102,7 +113,11 @@ describe("useAwarenessPresence", () => {
 
   it("handlePointerDown with shiftKey sets selectionRect", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
     );
     const event = {
       clientX: 10,
@@ -115,8 +130,6 @@ describe("useAwarenessPresence", () => {
     act(() => {
       result.current.handlePointerDown(event);
     });
-    expect(result.current.isSelectingRef.current).toBe(true);
-    expect(result.current.selectionStartRef.current).toEqual({ x: 10, y: 20 });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith("selectionRect", {
       startX: 10,
       startY: 20,
@@ -127,7 +140,11 @@ describe("useAwarenessPresence", () => {
 
   it("setDraggingEdge sets draggingEdge field", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
     );
     act(() => {
       result.current.setDraggingEdge("node1", "handle1", "source");
@@ -141,7 +158,11 @@ describe("useAwarenessPresence", () => {
 
   it("clearDraggingEdge clears draggingEdge field", () => {
     const { result } = renderHook(() =>
-      useAwarenessPresence({ yAwareness: awareness, selectedNodeIds: [] }),
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
     );
     act(() => {
       result.current.clearDraggingEdge();
@@ -155,7 +176,11 @@ describe("useAwarenessPresence", () => {
   it("syncs selectedNodeIds prop to awareness field", () => {
     const { rerender } = renderHook(
       ({ selectedNodeIds }: { selectedNodeIds: string[] }) =>
-        useAwarenessPresence({ yAwareness: awareness, selectedNodeIds }),
+        useAwarenessPresence({
+          yAwareness: awareness,
+          selectedNodeIds,
+          openNode: undefined,
+        }),
       { initialProps: { selectedNodeIds: ["node1", "node2"] } },
     );
     expect(awareness.setLocalStateField).toHaveBeenCalledWith(
@@ -166,6 +191,77 @@ describe("useAwarenessPresence", () => {
     rerender({ selectedNodeIds: [] });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith(
       "selectedNodeIds",
+      null,
+    );
+  });
+
+  it("handleParamFieldFocus sets focusedParamField field", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    act(() => {
+      result.current.handleParamFieldFocus("field123");
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedParamField",
+      "field123",
+    );
+    act(() => {
+      result.current.handleParamFieldFocus(null);
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedParamField",
+      null,
+    );
+  });
+
+  it("syncs openNode prop to awareness field and clears focusedParamField when closed", () => {
+    const { rerender } = renderHook(
+      ({ openNode }: { openNode: Node | undefined }) =>
+        useAwarenessPresence({
+          yAwareness: awareness,
+          selectedNodeIds: [],
+          openNode,
+        }),
+      {
+        initialProps: {
+          openNode: {
+            id: "node-1",
+            type: "batch",
+            position: { x: 0, y: 0 },
+            measured: { width: 0, height: 0 },
+            data: {
+              officialName: "officialName",
+              inputs: ["input1"],
+              outputs: ["output1"],
+              params: {},
+              customizations: {},
+              isCollapsed: true,
+              isDisabled: false,
+              pseudoInputs: [],
+              pseudoOutputs: [],
+            },
+            style: { width: 0, height: 0 },
+          },
+        },
+      },
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "openNodeId",
+      "node-1",
+    );
+
+    rerender({ openNode: undefined });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "openNodeId",
+      null,
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedParamField",
       null,
     );
   });
