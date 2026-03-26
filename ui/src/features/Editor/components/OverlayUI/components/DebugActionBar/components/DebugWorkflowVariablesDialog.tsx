@@ -45,7 +45,10 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     setActiveVariableIndex(index);
     setShowVariableDialog(true);
   }, []);
-  const handleVariableDialogClose = useCallback(() => setShowVariableDialog(false), []);
+  const handleVariableDialogClose = useCallback(
+    () => setShowVariableDialog(false),
+    [],
+  );
   const handleAssetDoubleClick = (asset: Asset) => {
     onDebugRunVariableValueChange?.(activeVariableIndex, asset.url);
     handleVariableDialogClose();
@@ -83,7 +86,9 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
             <VariableRow
               variable={row.original}
               index={row.index}
-              showVariableDialog={showVariableDialog && activeVariableIndex === row.index}
+              showVariableDialog={
+                showVariableDialog && activeVariableIndex === row.index
+              }
               onVariableDialogOpen={handleVariableDialogOpen}
               onVariableDialogClose={handleVariableDialogClose}
               onAssetDialogOpen={handleAssetDialogOpen}
@@ -103,7 +108,14 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
         cell: ({ getValue }) => (getValue() ? t("Yes") : t("No")),
       },
     ],
-    [activeVariableIndex, handleVariableDialogClose, handleVariableDialogOpen, onDebugRunVariableValueChange, showVariableDialog, t],
+    [
+      activeVariableIndex,
+      handleVariableDialogClose,
+      handleVariableDialogOpen,
+      onDebugRunVariableValueChange,
+      showVariableDialog,
+      t,
+    ],
   );
 
   return (

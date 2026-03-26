@@ -130,7 +130,10 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     setActiveVariableIndex(index);
     setShowVariableDialog(true);
   }, []);
-  const handleVariableDialogClose = useCallback(() => setShowVariableDialog(false), []);
+  const handleVariableDialogClose = useCallback(
+    () => setShowVariableDialog(false),
+    [],
+  );
   const handleAssetDoubleClick = (asset: Asset) => {
     handleDefaultValueChange?.(activeVariableIndex, asset.url);
     handleVariableDialogClose();
@@ -160,7 +163,9 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
             <VariableRow
               variable={row.original}
               index={row.index}
-              showVariableDialog={showVariableDialog && activeVariableIndex === row.index}
+              showVariableDialog={
+                showVariableDialog && activeVariableIndex === row.index
+              }
               onVariableDialogOpen={handleVariableDialogOpen}
               onVariableDialogClose={handleVariableDialogClose}
               onDefaultValueChange={handleDefaultValueChange}
@@ -197,7 +202,16 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
         size: 100,
       },
     ],
-    [activeVariableIndex, handleDefaultValueChange, handleResetToDefault, handleVariableDialogClose, handleVariableDialogOpen, isAtDefault, showVariableDialog, t],
+    [
+      activeVariableIndex,
+      handleDefaultValueChange,
+      handleResetToDefault,
+      handleVariableDialogClose,
+      handleVariableDialogOpen,
+      isAtDefault,
+      showVariableDialog,
+      t,
+    ],
   );
 
   return (
