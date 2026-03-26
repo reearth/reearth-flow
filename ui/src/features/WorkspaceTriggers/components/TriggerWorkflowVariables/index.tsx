@@ -20,12 +20,14 @@ import {
   VariableRow,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
+import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import {
   getDefaultValue,
   inferWorkflowVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import { useT } from "@flow/lib/i18n";
-import { TriggerVariableConfig } from "@flow/types";
+import { Asset, TriggerVariableConfig } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 type TriggerWorkflowVariablesMappingDialogProps = {
@@ -37,6 +39,8 @@ type TriggerWorkflowVariablesMappingDialogProps = {
   onConfirm: (workflowVariables: any[]) => void;
   onCancel: () => void;
 };
+
+type DialogOptions = "assets" | "cms" | undefined;
 
 const TriggerWorkflowVariablesMappingDialog: React.FC<
   TriggerWorkflowVariablesMappingDialogProps
@@ -114,6 +118,25 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     onOpenChange(false);
   };
 
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+
+  const handleDialogOpen = (dialog: DialogOptions, index: number) => {
+    setActiveVariableIndex(index);
+
+    setShowDialog(dialog);
+  };
+  const handleDialogClose = () => setShowDialog(undefined);
+  const handleAssetDoubleClick = (asset: Asset) => {
+    const v = asset.url;
+    handleDefaultValueChange?.(activeVariableIndex, v);
+  };
+
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    handleDefaultValueChange?.(activeVariableIndex, cmsItemAssetUrl);
+    handleDialogClose();
+  };
+
   const columns: ColumnDef<TriggerVariableConfig>[] = useMemo(
     () => [
       {
@@ -133,6 +156,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
               variable={row.original}
               index={row.index}
               onDefaultValueChange={handleDefaultValueChange}
+              onDialogOpen={handleDialogOpen}
             />
           );
         },
@@ -204,6 +228,18 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
           </DialogFooter>
         </div>
       </DialogContent>
+      {showDialog === "assets" && (
+        <AssetsDialog
+          onDialogClose={handleDialogClose}
+          onAssetSelect={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
+        />
+      )}
     </Dialog>
   );
 };
