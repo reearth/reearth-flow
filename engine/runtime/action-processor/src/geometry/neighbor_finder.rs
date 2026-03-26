@@ -455,7 +455,9 @@ impl NeighborFinder {
             writer.write_all(&line)?;
             writer.write_all(b"\n")?;
         }
-        writer.flush()?;
+        // Finalize the zstd encoder to ensure the compressed frame is complete.
+        let encoder = writer.into_inner()?;
+        encoder.finish()?;
 
         self.base_chunk_count += 1;
         self.base_features.clear();
