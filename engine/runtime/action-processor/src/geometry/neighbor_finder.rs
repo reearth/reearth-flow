@@ -102,9 +102,7 @@ impl ProcessorFactory for NeighborFinderFactory {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000, // Each ZIP entry contains ~1000 candidates
+            candidate_file_count: 0,
             base_chunk_count: 0,
             executor_id: None,
         }))
@@ -213,18 +211,14 @@ fn default_attribute_prefix() -> String {
 }
 
 /// A lightweight spatial index entry for candidates.
-/// Contains only point location and ZIP entry location - the feature data stays in ZIP.
-/// Uses ZIP format with batched entries for efficient random access:
-/// - Each entry in the ZIP contains multiple candidates (batch)
-/// - Only the needed batch is decompressed, not the entire file
+/// Contains only point location and file index - the feature data stays in individual JSON files.
+/// Each candidate is stored as a separate .json file for true random access.
 #[derive(Debug, Clone)]
 struct CandidateIndex {
     point: [f64; 2],
     point_z: Option<f64>,
-    /// ZIP entry name (e.g., "batch_0000.jsonl", "batch_0001.jsonl")
-    entry_name: String,
-    /// Line number within the ZIP entry (0-based)
-    line_number: usize,
+    /// Index of the candidate file (e.g., 0 -> "00000000.json", 1 -> "00000001.json")
+    file_index: usize,
 }
 
 impl RTreeObject for CandidateIndex {
@@ -278,19 +272,15 @@ struct NeighborFinder {
     /// Populated during finish() after all candidates are flushed to disk.
     candidate_index: Vec<CandidateIndex>,
     /// In-memory storage for candidates when disk spilling is not available (e.g., tests).
-    /// Indexed by the position in candidate_index when entry_name is empty.
+    /// Indexed by the position in candidate_index when file_index is usize::MAX.
     in_memory_candidates: Vec<CandidateEntry>,
     base_features: Vec<BaseFeatureEntry>,
     // Disk spilling fields - track bytes separately for each buffer
     base_buffer_bytes: usize,
     candidate_buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
-    /// Path to the ZIP file containing candidate batches (if disk spilling is used)
-    candidate_zip_path: Option<PathBuf>,
-    /// Counter for batch entries within the ZIP file
-    candidate_batch_count: usize,
-    /// Number of candidates per ZIP batch entry
-    candidates_per_batch: usize,
+    /// Counter for candidate files written to disk
+    candidate_file_count: usize,
     base_chunk_count: usize,
     executor_id: Option<uuid::Uuid>,
 }
@@ -473,9 +463,8 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Flush candidates to disk as ZIP file with batched entries.
-    /// Each batch contains ~1000 candidates, allowing efficient random access:
-    /// only the needed batch is decompressed, not the entire file.
+    /// Flush candidates to disk as individual JSON files.
+    /// Each candidate gets its own .json file for true O(1) random access.
     fn flush_candidates(&mut self) -> Result<(), BoxedError> {
         if self.candidates.is_empty() {
             return Ok(());
@@ -484,67 +473,24 @@ impl NeighborFinder {
         let temp_dir = self.temp_dir.as_ref().unwrap();
         std::fs::create_dir_all(temp_dir)?;
 
-        // Initialize ZIP file path if not set
-        if self.candidate_zip_path.is_none() {
-            self.candidate_zip_path = Some(temp_dir.join("candidates.zip"));
-        }
-        let zip_path = self.candidate_zip_path.as_ref().unwrap();
+        for entry in &self.candidates {
+            let file_name = format!("{:08}.json", self.candidate_file_count);
+            let file_path = temp_dir.join(&file_name);
 
-        // Open or create ZIP file
-        let (file, is_new) = if zip_path.exists() {
-            (
-                std::fs::OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .open(zip_path)?,
-                false,
-            )
-        } else {
-            (File::create(zip_path)?, true)
-        };
+            // Write candidate to individual JSON file
+            let mut file = File::create(&file_path)?;
+            file.write_all(&entry.serialized)?;
 
-        // Use append mode for existing ZIPs to preserve previous batches
-        let mut zip_writer = if is_new {
-            zip::ZipWriter::new(file)
-        } else {
-            zip::ZipWriter::new_append(file)?
-        };
+            // Create index entry pointing to this candidate file
+            self.candidate_index.push(CandidateIndex {
+                point: entry.point,
+                point_z: entry.point_z,
+                file_index: self.candidate_file_count,
+            });
 
-        // Group candidates into batches
-        let batch_size = self.candidates_per_batch;
-        let batches: Vec<_> = self.candidates.chunks(batch_size).collect();
-
-        for batch in batches {
-            let entry_name = format!("batch_{:06}.jsonl", self.candidate_batch_count);
-
-            // Prepare batch content as JSON Lines
-            let mut batch_content = Vec::new();
-            for (line_num, entry) in batch.iter().enumerate() {
-                // Create index entry pointing to this candidate's location in ZIP
-                self.candidate_index.push(CandidateIndex {
-                    point: entry.point,
-                    point_z: entry.point_z,
-                    entry_name: entry_name.clone(),
-                    line_number: line_num,
-                });
-
-                // Use pre-serialized bytes to avoid double serialization
-                batch_content.extend_from_slice(&entry.serialized);
-                batch_content.push(b'\n');
-            }
-
-            // Write batch as a ZIP entry with DEFLATE compression
-            let options = zip::write::SimpleFileOptions::default()
-                .compression_method(zip::CompressionMethod::Deflated)
-                .compression_level(Some(6));
-
-            zip_writer.start_file(&entry_name, options)?;
-            zip_writer.write_all(&batch_content)?;
-
-            self.candidate_batch_count += 1;
+            self.candidate_file_count += 1;
         }
 
-        zip_writer.finish()?;
         self.candidates.clear();
         self.candidate_buffer_bytes = 0;
         Ok(())
@@ -559,18 +505,17 @@ impl NeighborFinder {
         // Convert them to index entries pointing to in-memory storage
         if !self.candidates.is_empty() {
             if self.temp_dir.is_some() {
-                // Flush remaining candidates to ZIP file
+                // Flush remaining candidates to individual JSON files
                 self.flush_candidates()?;
             } else {
                 // No temp_dir (e.g., in tests) - keep candidates in memory
                 // Store the full entries and create index entries pointing to them
-                for (i, entry) in self.candidates.iter().enumerate() {
+                for entry in self.candidates.iter() {
                     self.in_memory_candidates.push(entry.clone());
                     self.candidate_index.push(CandidateIndex {
                         point: entry.point,
                         point_z: entry.point_z,
-                        entry_name: String::new(), // Empty string marks in-memory
-                        line_number: i,
+                        file_index: usize::MAX, // Marks in-memory
                     });
                 }
                 self.candidates.clear();
@@ -582,14 +527,14 @@ impl NeighborFinder {
         // They are processed sequentially from disk in finish() to maintain memory efficiency.
 
         // Candidates are NOT loaded into memory - their index is already built.
-        // The candidate ZIP file remains on disk for random access during matching.
+        // Individual candidate JSON files remain on disk for random access during matching.
 
         Ok(())
     }
 
-    /// Read candidates from disk using their index entries.
-    /// Optimized to open the ZIP file only once per batch of reads.
-    /// For in-memory candidates (empty entry_name), retrieves from in_memory_candidates vector.
+    /// Read candidates from disk or memory using their indices.
+    /// Each disk-based candidate is stored as an individual JSON file for true O(1) random access.
+    /// For in-memory candidates (file_index == usize::MAX), retrieves from in_memory_candidates.
     fn read_candidates_from_disk(
         &self,
         indices: &[&CandidateIndex],
@@ -598,109 +543,50 @@ impl NeighborFinder {
             return Ok(Vec::new());
         }
 
-        // Check if all are in-memory candidates
-        if indices.iter().all(|idx| idx.entry_name.is_empty()) {
-            return indices
-                .iter()
-                .map(|idx| {
-                    self.in_memory_candidates
-                        .get(idx.line_number)
-                        .cloned()
-                        .ok_or_else(|| {
-                            Box::new(std::io::Error::new(
-                                std::io::ErrorKind::NotFound,
-                                format!(
-                                    "In-memory candidate not found at index {}",
-                                    idx.line_number
-                                ),
-                            )) as BoxedError
-                        })
-                })
-                .collect();
-        }
+        let mut result = Vec::with_capacity(indices.len());
 
-        // Open the ZIP file once
-        let zip_path = self.candidate_zip_path.as_ref().ok_or_else(|| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Candidate ZIP path not set",
-            )) as BoxedError
-        })?;
-
-        let file = File::open(zip_path)?;
-        let mut zip_archive = zip::ZipArchive::new(BufReader::new(file))?;
-
-        // Group indices by entry name to minimize repeated entry access
-        let mut result: Vec<Option<CandidateEntry>> = vec![None; indices.len()];
-        let mut entry_groups: HashMap<&str, Vec<(usize, &CandidateIndex)>> = HashMap::new();
-
-        for (i, idx) in indices.iter().enumerate() {
-            if !idx.entry_name.is_empty() {
-                entry_groups
-                    .entry(&idx.entry_name)
-                    .or_default()
-                    .push((i, idx));
+        for idx in indices {
+            if idx.file_index == usize::MAX {
+                // In-memory candidate - use position in in_memory_candidates
+                let in_memory_idx = result.len();
+                let candidate = self
+                    .in_memory_candidates
+                    .get(in_memory_idx)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Box::new(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            format!("In-memory candidate not found at index {}", in_memory_idx),
+                        )) as BoxedError
+                    })?;
+                result.push(candidate);
             } else {
-                // In-memory candidate
-                result[i] = self.in_memory_candidates.get(idx.line_number).cloned();
-            }
-        }
-
-        // Process each entry group
-        for (entry_name, group_indices) in entry_groups {
-            let mut entry = zip_archive.by_name(entry_name)?;
-            let reader = BufReader::new(&mut entry);
-
-            // Collect all line numbers needed from this entry
-            let line_numbers: std::collections::HashSet<usize> = group_indices
-                .iter()
-                .map(|(_, idx)| idx.line_number)
-                .collect();
-
-            // Read lines and collect needed ones
-            let mut line_data: HashMap<usize, String> = HashMap::new();
-            for (i, line_result) in reader.lines().enumerate() {
-                if line_numbers.contains(&i) {
-                    line_data.insert(i, line_result?);
-                }
-                // Early exit if we've found all needed lines
-                if line_data.len() == line_numbers.len() {
-                    break;
-                }
-            }
-
-            // Assign results
-            for (result_idx, idx) in group_indices {
-                if let Some(line) = line_data.get(&idx.line_number) {
-                    result[result_idx] = Some(serde_json::from_str(line)?);
-                }
-            }
-        }
-
-        // Convert Option<Vec> to Vec, returning error for any missing entries
-        result
-            .into_iter()
-            .enumerate()
-            .map(|(i, opt)| {
-                opt.ok_or_else(|| {
+                // Read from disk
+                let temp_dir = self.temp_dir.as_ref().ok_or_else(|| {
                     Box::new(std::io::Error::new(
                         std::io::ErrorKind::NotFound,
-                        format!(
-                            "Candidate not found at entry {} line {}",
-                            indices[i].entry_name, indices[i].line_number
-                        ),
+                        "Temp directory not set",
                     )) as BoxedError
-                })
-            })
-            .collect()
+                })?;
+                let file_name = format!("{:08}.json", idx.file_index);
+                let file_path = temp_dir.join(&file_name);
+                let content = std::fs::read(&file_path)?;
+                let candidate: CandidateEntry = serde_json::from_slice(&content)?;
+                result.push(candidate);
+            }
+        }
+
+        Ok(result)
     }
 
-    /// Clean up the temporary directory and candidate ZIP file after processing.
+    /// Clean up the temporary directory and candidate files after processing.
     fn cleanup_temp_dir(&mut self) {
         if let Some(ref temp_dir) = self.temp_dir {
-            // Delete candidate ZIP file if it exists
-            if let Some(ref zip_path) = self.candidate_zip_path {
-                let _ = std::fs::remove_file(zip_path);
+            // Remove all candidate files
+            for i in 0..self.candidate_file_count {
+                let file_name = format!("{:08}.json", i);
+                let file_path = temp_dir.join(&file_name);
+                let _ = std::fs::remove_file(file_path);
             }
             // Then remove the directory itself (recursively, in case files remain)
             let _ = std::fs::remove_dir_all(temp_dir);
@@ -1253,10 +1139,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1313,10 +1198,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1361,10 +1245,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1457,10 +1340,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1525,10 +1407,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1594,10 +1475,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1661,10 +1541,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1725,10 +1604,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1804,10 +1682,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1882,9 +1759,7 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: Some(temp_path.clone()),
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+            candidate_file_count: 0,
             base_chunk_count: 0,
             executor_id: Some(Uuid::new_v4()),
         };
@@ -1919,9 +1794,12 @@ mod tests {
         // Flush candidates to disk
         finder.flush_candidates().unwrap();
 
-        // Verify that candidate ZIP file was created
-        let zip_path = temp_path.join("candidates.zip");
-        assert!(zip_path.exists(), "Candidate ZIP file should exist");
+        // Verify that candidate JSON file was created
+        let candidate_file_path = temp_path.join("00000000.json");
+        assert!(
+            candidate_file_path.exists(),
+            "Candidate JSON file should exist"
+        );
 
         // Process base feature
         let mut ctx = create_default_execute_context(&base);
@@ -1932,10 +1810,10 @@ mod tests {
         let ctx = NodeContext::default();
         finder.finish(ctx, &fw).unwrap();
 
-        // Verify that the candidate ZIP file was cleaned up
+        // Verify that the candidate JSON file was cleaned up
         assert!(
-            !zip_path.exists(),
-            "Candidate ZIP file should be deleted after processing"
+            !candidate_file_path.exists(),
+            "Candidate JSON file should be deleted after processing"
         );
 
         // Verify output
@@ -1965,10 +1843,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: Some(temp_path.clone()),
-            candidate_zip_path: None,
-            candidate_batch_count: 0,
-            candidates_per_batch: 1000,
+
             base_chunk_count: 0,
+            candidate_file_count: 0,
             executor_id: Some(Uuid::new_v4()),
         };
 
@@ -1993,8 +1870,7 @@ mod tests {
 
         // Verify the index was created
         assert_eq!(finder.candidate_index.len(), 1);
-        assert_eq!(finder.candidate_index[0].entry_name, "batch_000000.jsonl");
-        assert_eq!(finder.candidate_index[0].line_number, 0);
+        assert_eq!(finder.candidate_index[0].file_index, 0);
         assert_eq!(finder.candidate_index[0].point, [10.0, 20.0]);
 
         // Read the candidate back from disk using batch API
