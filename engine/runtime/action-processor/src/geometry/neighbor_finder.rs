@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 
 use once_cell::sync::Lazy;
@@ -456,7 +456,9 @@ impl NeighborFinder {
             writer.write_all(b"\n")?;
         }
         // Finalize the zstd encoder to ensure the compressed frame is complete.
-        let encoder = writer.into_inner()?;
+        let encoder = writer
+            .into_inner()
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         encoder.finish()?;
 
         self.base_chunk_count += 1;
@@ -646,9 +648,7 @@ impl NeighborFinder {
             std::io::ErrorKind::NotFound,
             format!(
                 "Line {} not found in entry {} (only {} lines)",
-                index.line_number,
-                index.entry_name,
-                total_lines
+                index.line_number, index.entry_name, total_lines
             ),
         )) as BoxedError)
     }
