@@ -5,7 +5,7 @@ import {
   LightningIcon,
 } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
 import type { Node } from "@flow/types";
@@ -41,11 +41,25 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   const awarenessSelections = useAwarenessNodeSelections(id);
   const remoteColor = awarenessSelections[0]?.color;
 
+  const gradientBorderStyle = useMemo(() => {
+    if (awarenessSelections.length < 2) return undefined;
+    const colors = awarenessSelections.map((s) => s.color).join(", ");
+    return {
+      border: "1px solid transparent",
+      background: `linear-gradient(var(--secondary), var(--secondary)) padding-box, linear-gradient(135deg, ${colors}) border-box`,
+    };
+  }, [awarenessSelections]);
+
   return (
     <div
-      className={`max-w-[200px] min-w-[150px] rounded-lg border bg-secondary shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${selected ? selectedColor : borderColor} ${data.isDisabled ? "opacity-70" : ""}`}>
+      style={gradientBorderStyle}
+      className={`max-w-[200px] min-w-[150px] rounded-lg bg-secondary shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${gradientBorderStyle ? "" : `border ${selected ? selectedColor : borderColor}`} ${data.isDisabled ? "opacity-70" : ""}`}>
       <div
-        style={remoteColor ? { outline: `solid ${remoteColor}` } : undefined}
+        style={
+          !gradientBorderStyle && remoteColor
+            ? { outline: `solid ${remoteColor}` }
+            : undefined
+        }
         className={`rounded-[6px] border p-1 ${
           selected ? selectedColor : "border-transparent"
         }`}>

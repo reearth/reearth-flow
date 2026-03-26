@@ -1,6 +1,6 @@
 import { NoteIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
 import type { Node } from "@flow/types";
@@ -17,6 +17,26 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
   const awarenessSelections = useAwarenessNodeSelections(id);
   const remoteColor = awarenessSelections[0]?.color;
+
+  const gradientStyles = useMemo(() => {
+    if (awarenessSelections.length < 2) return null;
+    const colors = awarenessSelections.map((s) => s.color).join(", ");
+    const gradient = `linear-gradient(135deg, ${colors}) border-box`;
+    const fill = rgbaColor || "var(--secondary)";
+    return {
+      body: {
+        border: "1px solid transparent",
+        background: `linear-gradient(${fill}, ${fill}) padding-box, ${gradient}`,
+        minWidth: minSize.width,
+        minHeight: minSize.height,
+      } as React.CSSProperties,
+      header: {
+        border: "1px solid transparent",
+        background: `linear-gradient(var(--secondary), var(--secondary)) padding-box, ${gradient}`,
+      } as React.CSSProperties,
+    };
+  }, [awarenessSelections, rgbaColor]);
+
   return (
     <>
       {props.selected && (
@@ -39,9 +59,9 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
         />
       )}
       <div
-        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-secondary/50 p-1 shadow-md shadow-secondary backdrop-blur-xs ${props.selected ? "border-border" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-lg p-1 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-secondary/50 ${props.selected ? "border-border" : "border-transparent"}`}`}
         ref={(element) => {
-          if (element) {
+          if (element && !gradientStyles) {
             element.style.setProperty(
               "background-color",
               rgbaColor,
@@ -49,16 +69,19 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
             );
           }
         }}
-        style={{
-          ...(remoteColor ? { outline: `solid ${remoteColor}` } : {}),
-          minWidth: minSize.width,
-          minHeight: minSize.height,
-        }}>
-        <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg border-x border-t bg-secondary p-1 ${props.selected ? "border-border" : "border-transparent"}`}
-          style={{
+        style={
+          gradientStyles?.body ?? {
             ...(remoteColor ? { outline: `solid ${remoteColor}` } : {}),
-          }}
+            minWidth: minSize.width,
+            minHeight: minSize.height,
+          }
+        }>
+        <div
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg bg-secondary p-1 ${gradientStyles ? "" : `border-x border-t ${props.selected ? "border-border" : "border-transparent"}`}`}
+          style={
+            gradientStyles?.header ??
+            (remoteColor ? { outline: `solid ${remoteColor}` } : undefined)
+          }
           ref={(element) => {
             if (element)
               element.style.setProperty(
