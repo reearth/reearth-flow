@@ -1,5 +1,9 @@
+import { FileIcon } from "@phosphor-icons/react";
+
 import {
+  CmsLogo,
   DateTimeDefaultValueInput,
+  IconButton,
   Input,
   Select,
   SelectContent,
@@ -17,12 +21,14 @@ import VariableArrayInput from "./VariableArrayInput";
 type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
+  onDialogOpen: (dialog: "assets" | "cms", index: number) => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
 };
 
 const VariableRow: React.FC<Props> = ({
   variable,
   index,
+  onDialogOpen,
   onDefaultValueChange,
 }) => {
   const t = useT();
@@ -126,33 +132,45 @@ const VariableRow: React.FC<Props> = ({
           }
         />
       );
+
     case "text":
-      if (
-        typeof variable.defaultValue === "string" &&
-        variable.defaultValue.length > 50
-      ) {
-        return (
-          <TextArea
-            id={`default-${index}`}
-            value={variable.defaultValue}
-            onChange={(e) => {
-              onDefaultValueChange(index, e.target.value);
-            }}
-            className="min-h-[60px]"
-          />
-        );
-      } else {
-        return (
-          <Input
-            id={`default-${index}`}
-            type="text"
-            value={variable.defaultValue}
-            onChange={(e) => {
-              onDefaultValueChange(index, e.target.value);
-            }}
-          />
-        );
-      }
+      return (
+        <div className="flex items-center">
+          {typeof variable.defaultValue === "string" &&
+          variable.defaultValue.length > 50 ? (
+            <TextArea
+              id={`default-${index}`}
+              value={variable.defaultValue}
+              onChange={(e) => {
+                onDefaultValueChange(index, e.target.value);
+              }}
+              className="min-h-[60px]"
+            />
+          ) : (
+            <Input
+              id={`default-${index}`}
+              type="text"
+              value={variable.defaultValue}
+              onChange={(e) => {
+                onDefaultValueChange(index, e.target.value);
+              }}
+            />
+          )}
+          <div className="flex items-center gap-0">
+            <IconButton
+              icon={<FileIcon />}
+              onClick={() => onDialogOpen("assets", index)}
+              className="ml-2"
+            />
+            <IconButton
+              icon={<CmsLogo className="h-4 w-4 text-white" />}
+              onClick={() => onDialogOpen("cms", index)}
+              className="ml-2"
+            />
+          </div>
+        </div>
+      );
+
     default:
       console.error(
         `Unsupported variable type '${variable.type}' in Variable Row (index: ${index}).`,

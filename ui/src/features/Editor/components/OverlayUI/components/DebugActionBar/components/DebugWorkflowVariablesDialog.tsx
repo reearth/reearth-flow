@@ -13,8 +13,10 @@ import {
   DialogFooter,
   VariableRow,
 } from "@flow/components";
+import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable } from "@flow/types";
+import { AnyWorkflowVariable, Asset } from "@flow/types";
 
 type Props = {
   debugRunWorkflowVariables?: AnyWorkflowVariable[];
@@ -22,6 +24,7 @@ type Props = {
   onDebugRunStart: () => Promise<void>;
   onDialogClose: () => void;
 };
+type DialogOptions = "assets" | "cms" | undefined;
 
 const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   debugRunWorkflowVariables,
@@ -30,6 +33,25 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   onDialogClose,
 }) => {
   const [startingDebugRun, setStartingDebugRun] = useState(false);
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+
+  const handleDialogOpen = (dialog: DialogOptions, index: number) => {
+    setActiveVariableIndex(index);
+
+    setShowDialog(dialog);
+  };
+  const handleDialogClose = () => setShowDialog(undefined);
+  const handleAssetDoubleClick = (asset: Asset) => {
+    const v = asset.url;
+    onDebugRunVariableValueChange?.(activeVariableIndex, v);
+  };
+
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    onDebugRunVariableValueChange?.(activeVariableIndex, cmsItemAssetUrl);
+    handleDialogClose();
+  };
+
   const t = useT();
   const handleDebugRunStart = async () => {
     setStartingDebugRun(true);
@@ -37,6 +59,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     setStartingDebugRun(false);
     onDialogClose();
   };
+
   const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
@@ -55,6 +78,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
             <VariableRow
               variable={row.original}
               index={row.index}
+              onDialogOpen={handleDialogOpen}
               onDefaultValueChange={onDebugRunVariableValueChange}
             />
           );
@@ -116,6 +140,18 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
           </DialogFooter>
         </div>
       </DialogContent>
+      {showDialog === "assets" && (
+        <AssetsDialog
+          onDialogClose={handleDialogClose}
+          onAssetSelect={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
+        />
+      )}
     </Dialog>
   );
 };
