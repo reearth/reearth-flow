@@ -483,16 +483,24 @@ impl NeighborFinder {
         let zip_path = self.candidate_zip_path.as_ref().unwrap();
 
         // Open or create ZIP file
-        let file = if zip_path.exists() {
-            std::fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(zip_path)?
+        let (file, is_new) = if zip_path.exists() {
+            (
+                std::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(zip_path)?,
+                false,
+            )
         } else {
-            File::create(zip_path)?
+            (File::create(zip_path)?, true)
         };
 
-        let mut zip_writer = zip::ZipWriter::new(BufWriter::new(file));
+        // Use append mode for existing ZIPs to preserve previous batches
+        let mut zip_writer = if is_new {
+            zip::ZipWriter::new(file)
+        } else {
+            zip::ZipWriter::new_append(file)?
+        };
 
         // Group candidates into batches
         let batch_size = self.candidates_per_batch;
