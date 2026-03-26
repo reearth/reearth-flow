@@ -61,22 +61,25 @@ impl From<ValidationResult> for HashMap<String, AttributeValue> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum XmlInputType {
+    #[default]
     File,
     Text,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum ValidationType {
+    #[default]
     Syntax,
     SyntaxAndNamespace,
     SyntaxAndSchema,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlValidatorParam {
     pub attribute: Attribute,

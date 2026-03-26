@@ -89,11 +89,11 @@ impl ProcessorFactory for RayIntersectorFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![RAY_PORT.clone(), GEOM_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             INTERSECTION_PORT.clone(),
             NO_INTERSECTION_PORT.clone(),
@@ -210,7 +210,8 @@ pub enum OutputGeometryType {
 }
 
 /// RayIntersector Parameters
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct RayIntersectorParams {
     /// Defines how to extract ray data from feature attributes
@@ -249,7 +250,8 @@ pub struct RayIntersectorParams {
 }
 
 /// Defines how ray data is extracted from feature attributes.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct RayDefinition {
     /// Attribute containing ray origin X coordinate

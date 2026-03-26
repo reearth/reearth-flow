@@ -44,11 +44,11 @@ impl ProcessorFactory for ClipperFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![CLIPPER_PORT.clone(), CANDIDATE_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             INSIDE_PORT.clone(),
             OUTSIDE_PORT.clone(),

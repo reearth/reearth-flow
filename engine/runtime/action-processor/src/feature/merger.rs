@@ -48,11 +48,11 @@ impl ProcessorFactory for FeatureMergerFactory {
         &["Feature"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![REQUESTOR_PORT.clone(), SUPPLIER_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![MERGED_PORT.clone(), UNMERGED_PORT.clone()]
     }
 
@@ -151,7 +151,8 @@ impl ProcessorFactory for FeatureMergerFactory {
 /// # FeatureMerger Parameters
 ///
 /// Configuration for merging requestor and supplier features based on matching attributes or expressions.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureMergerParam {
     /// Attributes from requestor features to use for matching (alternative to requestor_attribute_value)

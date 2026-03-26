@@ -39,7 +39,7 @@ impl SinkFactory for JsonWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -84,7 +84,8 @@ pub(super) struct JsonWriter {
 /// # JsonWriter Parameters
 ///
 /// Configuration for writing features to JSON files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
     /// Output path or expression for the JSON file to create

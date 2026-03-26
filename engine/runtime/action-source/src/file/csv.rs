@@ -36,7 +36,7 @@ impl SourceFactory for CsvReaderFactory {
         &["File"]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -75,7 +75,8 @@ pub(super) struct CsvReader {
 
 /// # CsvReader Parameters
 /// Configure how CSV and TSV files are processed and read
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvReaderParam {
     #[serde(flatten)]
@@ -101,11 +102,12 @@ pub(super) struct CsvReaderParam {
     encoding: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "lowercase")]
 enum CsvFormat {
     /// # CSV (Comma-Separated Values)
     /// File with comma-separated values
+    #[default]
     Csv,
     /// # TSV (Tab-Separated Values)
     /// File with tab-separated values

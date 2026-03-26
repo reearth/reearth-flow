@@ -41,11 +41,11 @@ impl ProcessorFactory for BuffererFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
     fn build(
@@ -76,17 +76,19 @@ impl ProcessorFactory for BuffererFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 enum BufferType {
     /// # 2D Area Buffer
     /// Creates a 2D polygon buffer around the input geometry
     #[serde(rename = "area2d")]
+    #[default]
     Area2D,
 }
 
 /// # Bufferer Parameters
 /// Configure how to create buffers around input geometries
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct Bufferer {
     /// # Buffer Type

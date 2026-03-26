@@ -26,7 +26,7 @@ impl SinkFactory for NoopSinkFactory {
         &["Noop"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 

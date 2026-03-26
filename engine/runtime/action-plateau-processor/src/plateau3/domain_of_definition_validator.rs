@@ -296,11 +296,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -328,7 +328,7 @@ pub struct DomainOfDefinitionValidator {
 }
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DomainOfDefinitionValidatorParam {
     city_gml_path: Expr,

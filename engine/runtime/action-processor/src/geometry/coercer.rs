@@ -40,11 +40,11 @@ impl ProcessorFactory for GeometryCoercerFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
     fn build(
@@ -75,9 +75,10 @@ impl ProcessorFactory for GeometryCoercerFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum CoerceTarget {
+    #[default]
     LineString,
     Polygon,
     TriangularMesh,
@@ -86,7 +87,8 @@ enum CoerceTarget {
 /// # GeometryCoercer Parameters
 ///
 /// Configuration for coercing geometries to specific target types.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct GeometryCoercer {
     /// Target geometry type to coerce features to (e.g., LineString)

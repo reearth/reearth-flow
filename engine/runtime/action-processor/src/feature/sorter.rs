@@ -123,11 +123,11 @@ impl ProcessorFactory for FeatureSorterFactory {
         &["Feature"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -182,7 +182,8 @@ struct FeatureSorter {
 /// # FeatureSorter Parameters
 ///
 /// Configuration for sorting features based on attribute values.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct FeatureSorterParam {
     /// Attributes to use for sorting features (sort order based on attribute order)
@@ -191,9 +192,12 @@ struct FeatureSorterParam {
     order: Order,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Default,
+)]
 enum Order {
     #[serde(rename = "ascending")]
+    #[default]
     Asc,
     #[serde(rename = "descending")]
     Desc,

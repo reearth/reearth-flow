@@ -36,11 +36,11 @@ impl ProcessorFactory for VerticalReprojectorFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
     fn build(
@@ -75,15 +75,17 @@ impl ProcessorFactory for VerticalReprojectorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum VerticalReprojectorType {
+    #[default]
     Jgd2011ToWgs84,
 }
 
 /// # Vertical Reprojector Parameters
 /// Configure the type of vertical datum conversion to apply
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct VerticalReprojectorParam {
     /// # Reprojector Type

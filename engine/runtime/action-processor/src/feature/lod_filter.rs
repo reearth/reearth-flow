@@ -42,11 +42,11 @@ impl ProcessorFactory for FeatureLodFilterFactory {
         &["Feature"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             UP_TO_LOD0.clone(),
             UP_TO_LOD1.clone(),
@@ -93,7 +93,8 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 /// # FeatureLodFilter Parameters
 ///
 /// Configuration for filtering features based on Level of Detail (LOD).
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct FeatureLodFilterParam {
     /// Attribute used to group features for LOD filtering

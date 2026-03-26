@@ -38,7 +38,7 @@ impl SinkFactory for XmlWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -83,7 +83,8 @@ pub(super) struct XmlWriter {
 /// # XmlWriter Parameters
 ///
 /// Configuration for writing features to XML files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct XmlWriterParam {
     /// Output path or expression for the XML file to create

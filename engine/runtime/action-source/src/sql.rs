@@ -35,7 +35,7 @@ impl SourceFactory for SqlReaderFactory {
         &["Feature"]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
     fn build(
@@ -68,7 +68,8 @@ impl SourceFactory for SqlReaderFactory {
 
 /// # SQL Reader Parameters
 /// Configure the SQL query and database connection for reading features from a database
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct SqlReaderParam {
     /// # SQL Query

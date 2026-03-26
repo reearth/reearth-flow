@@ -44,11 +44,11 @@ impl ProcessorFactory for OrientationExtractorFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
     fn build(
@@ -83,7 +83,8 @@ impl ProcessorFactory for OrientationExtractorFactory {
 
 /// # Orientation Extractor Parameters
 /// Configure where to store the extracted polygon orientation information
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct OrientationExtractorParam {
     /// # Output Attribute

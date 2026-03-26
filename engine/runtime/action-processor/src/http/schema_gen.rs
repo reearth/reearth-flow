@@ -3,6 +3,8 @@
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::http::factory::HttpCallerFactory;
     use reearth_flow_runtime::node::ProcessorFactory;
 
@@ -15,8 +17,14 @@ mod tests {
             println!("Name: {}", factory.name());
             println!("Description: {}", factory.description());
             println!("Categories: {:?}", factory.categories());
-            println!("Input Ports: {:?}", factory.get_input_ports());
-            println!("Output Ports: {:?}", factory.get_output_ports());
+            println!(
+                "Input Ports: {:?}",
+                factory.get_input_ports(&HashMap::new())
+            );
+            println!(
+                "Output Ports: {:?}",
+                factory.get_output_ports(&HashMap::new())
+            );
         }
     }
 }

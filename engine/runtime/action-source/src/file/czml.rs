@@ -42,7 +42,7 @@ impl SourceFactory for CzmlReaderFactory {
         &["File"]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -82,7 +82,8 @@ pub(super) struct CzmlReader {
 /// # CzmlReader Parameters
 ///
 /// Configuration for reading CZML files as geographic features.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CzmlReaderParam {
     #[serde(flatten)]

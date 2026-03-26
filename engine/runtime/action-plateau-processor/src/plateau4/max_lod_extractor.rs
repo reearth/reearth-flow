@@ -32,11 +32,11 @@ impl ProcessorFactory for MaxLodExtractorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -76,7 +76,8 @@ impl ProcessorFactory for MaxLodExtractorFactory {
 /// # MaxLodExtractor Parameters
 ///
 /// Configuration for extracting maximum LOD (Level of Detail) information from PLATEAU4 CityGML files.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MaxLodExtractorParam {
     city_gml_path_attribute: Attribute,

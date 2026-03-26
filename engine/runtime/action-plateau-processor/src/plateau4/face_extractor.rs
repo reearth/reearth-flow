@@ -50,11 +50,11 @@ impl ProcessorFactory for FaceExtractorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             ERROR_PORT.clone(),
             SUMMARY_PORT.clone(),

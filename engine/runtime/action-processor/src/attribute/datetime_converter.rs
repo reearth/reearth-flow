@@ -37,11 +37,11 @@ impl ProcessorFactory for DateTimeConverterFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), Port::new(FAILED_PORT)]
     }
 
@@ -81,7 +81,8 @@ struct DateTimeConverter {
 }
 
 /// # DateTimeConverter Parameters
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct DateTimeConverterParam {
     /// Attribute containing the datetime value to convert

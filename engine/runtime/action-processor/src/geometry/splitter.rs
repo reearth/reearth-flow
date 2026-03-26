@@ -40,6 +40,7 @@ pub enum SplitLevel {
 
 /// Parameters for GeometrySplitter
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometrySplitterParam {
     /// Split level for CityGML geometry.
@@ -69,11 +70,11 @@ impl ProcessorFactory for GeometrySplitterFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 

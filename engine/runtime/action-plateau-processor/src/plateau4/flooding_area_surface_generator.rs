@@ -82,11 +82,11 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -134,6 +134,7 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
 /// 5. Performing Delaunay triangulation to create a TIN surface
 /// 6. Filtering triangles to keep only those inside the original polygons
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct FloodingAreaSurfaceGeneratorParam {
     /// Spacing between sampled points in meters (default: 50.0).

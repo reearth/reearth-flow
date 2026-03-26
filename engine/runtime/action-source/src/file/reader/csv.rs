@@ -11,7 +11,8 @@ use tokio::sync::mpsc::Sender;
 
 use super::csv_geometry::GeometryConfig;
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvReaderParam {
     /// # Header Row Offset

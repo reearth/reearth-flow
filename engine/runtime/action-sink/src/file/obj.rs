@@ -38,7 +38,7 @@ impl SinkFactory for ObjWriterFactory {
         &["File", "3D"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -85,7 +85,8 @@ impl SinkFactory for ObjWriterFactory {
 
 /// # OBJ Writer Parameters
 /// Configure output settings for writing 3D features to Wavefront OBJ format
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjWriterParam {
     /// # Output Path

@@ -35,7 +35,7 @@ impl SourceFactory for CityGmlReaderFactory {
         &["File"]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -77,7 +77,8 @@ pub(super) struct CityGmlReader {
 /// # CityGmlReader Parameters
 ///
 /// Configuration for reading CityGML files as 3D city models.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CityGmlReaderParam {
     #[serde(flatten)]

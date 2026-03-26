@@ -55,11 +55,11 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             SUMMARY_PORT.clone(),
             REQUIRED_PORT.clone(),
@@ -104,7 +104,8 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
 /// # MissingAttributeDetector Parameters
 ///
 /// Configuration for detecting missing attributes in PLATEAU4 features.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MissingAttributeDetectorParam {
     package_attribute: Attribute,

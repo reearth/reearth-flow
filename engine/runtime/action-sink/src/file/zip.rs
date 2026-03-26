@@ -37,7 +37,7 @@ impl SinkFactory for ZipFileWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -87,7 +87,8 @@ struct ZipFileWriter {
 /// # ZipFileWriter Parameters
 ///
 /// Configuration for creating ZIP archive files from features.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {
     /// Output path

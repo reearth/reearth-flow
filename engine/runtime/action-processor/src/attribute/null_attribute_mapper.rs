@@ -53,7 +53,8 @@ pub enum OnMissing {
 }
 
 /// Per-attribute replacement mapping
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeMapping {
     /// Name of the attribute to inspect
@@ -123,11 +124,11 @@ impl ProcessorFactory for NullAttributeMapperFactory {
         &["Attribute"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             DEFAULT_PORT.clone(),     // mapped
             Port::new(HAS_NULL_PORT), // hasNull

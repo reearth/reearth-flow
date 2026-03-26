@@ -19,10 +19,12 @@ use crate::error::Result;
 
 #[nutype(
     sanitize(trim),
+    default = "",
     derive(
         Debug,
         Display,
         Clone,
+        Default,
         Eq,
         PartialEq,
         PartialOrd,

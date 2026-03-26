@@ -45,11 +45,11 @@ impl ProcessorFactory for GeometryValidatorFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             SUCCESS_PORT.clone(),
             FAILED_PORT.clone(),
@@ -84,9 +84,10 @@ impl ProcessorFactory for GeometryValidatorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 pub enum ValidationType {
     #[serde(rename = "duplicatePoints")]
+    #[default]
     DuplicatePoints,
     #[serde(rename = "duplicateConsecutivePoints")]
     DuplicateConsecutivePoints(f64),
@@ -156,7 +157,8 @@ impl From<ValidationProblemReport> for ValidationResult {
 
 /// # Geometry Validator Parameters
 /// Configure which validation checks to perform on feature geometries
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryValidator {
     /// # Validation Types

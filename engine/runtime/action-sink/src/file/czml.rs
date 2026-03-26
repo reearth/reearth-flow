@@ -47,7 +47,7 @@ impl SinkFactory for CzmlWriterFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -125,7 +125,8 @@ pub(crate) struct CzmlWriter {
 ///     epoch: "2024-01-01T00:00:00Z"    # Base time for offsets
 ///     interpolationAlgorithm: "LINEAR"
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CzmlWriterParam {
     /// # Output File Path

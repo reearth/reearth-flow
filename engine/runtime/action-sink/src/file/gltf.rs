@@ -52,7 +52,7 @@ impl SinkFactory for GltfWriterSinkFactory {
         &["File"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -154,7 +154,8 @@ pub struct GltfWriter {
 /// # GltfWriter Parameters
 ///
 /// Configuration for writing features to GLTF 3D format.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct GltfWriterParam {
     /// Output path or expression for the GLTF file to create

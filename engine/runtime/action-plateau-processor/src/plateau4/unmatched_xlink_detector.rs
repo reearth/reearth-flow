@@ -147,11 +147,11 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             SUMMARY_PORT.clone(),
             UNMATCHED_XLINK_FROM.clone(),
@@ -188,7 +188,7 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UnmatchedXlinkDetectorParam {
     attribute: Attribute,

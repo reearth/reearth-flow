@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 /// # ExcelWriter Parameters
 ///
 /// Configuration for writing features to Microsoft Excel format.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
     pub(super) sheet_name: Option<String>,

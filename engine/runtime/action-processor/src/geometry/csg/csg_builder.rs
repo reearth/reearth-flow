@@ -54,11 +54,11 @@ impl ProcessorFactory for CSGBuilderFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![LEFT_PORT.clone(), RIGHT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             INTERSECTION_PORT.clone(),
             UNION_PORT.clone(),
@@ -115,7 +115,8 @@ impl ProcessorFactory for CSGBuilderFactory {
 
 /// # CSG Builder Parameters
 /// Configure how the CSG builder pairs features from left and right ports
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 struct CSGBuilderParam {
     /// # Pair ID Attribute

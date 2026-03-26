@@ -48,6 +48,7 @@ static UNCODED_GML_NAME_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy
 ///
 /// Configuration for validating gml:name elements to ensure they have codeSpace attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct GmlNameCodeSpaceValidatorParam {
     /// Expression to get the path to the CityGML file
@@ -75,11 +76,11 @@ impl ProcessorFactory for GmlNameCodeSpaceValidatorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![
             DEFAULT_PORT.clone(),
             GML_NAME_ERRORS_PORT.clone(),
@@ -369,8 +370,8 @@ mod tests {
     #[test]
     fn test_factory_ports() {
         let factory = GmlNameCodeSpaceValidatorFactory;
-        let input_ports = factory.get_input_ports();
-        let output_ports = factory.get_output_ports();
+        let input_ports = factory.get_input_ports(&HashMap::new());
+        let output_ports = factory.get_output_ports(&HashMap::new());
 
         assert_eq!(input_ports.len(), 1);
         assert_eq!(output_ports.len(), 3);

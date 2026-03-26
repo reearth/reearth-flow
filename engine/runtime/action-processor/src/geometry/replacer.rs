@@ -36,11 +36,11 @@ impl ProcessorFactory for GeometryReplacerFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
@@ -74,7 +74,8 @@ impl ProcessorFactory for GeometryReplacerFactory {
 
 /// # Geometry Replacer Parameters
 /// Configure which attribute contains the geometry data to replace the feature's current geometry
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryReplacer {
     /// # Source Attribute

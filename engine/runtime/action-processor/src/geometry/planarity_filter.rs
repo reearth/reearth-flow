@@ -36,7 +36,8 @@ pub enum PlanarityFilterType {
 
 /// # Planarity Filter Parameters
 /// Configure how to filter features based on geometry planarity
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanarityFilterParam {
     /// # Filter Type
@@ -70,11 +71,11 @@ impl ProcessorFactory for PlanarityFilterFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![PLANARITY_PORT.clone(), NOT_PLANARITY_PORT.clone()]
     }
 

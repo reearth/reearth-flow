@@ -22,6 +22,7 @@ use super::utils::finite_z;
 
 /// # Coordinate Extractor Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CoordinateExtractorParam {
     /// # Extraction Mode
@@ -110,11 +111,11 @@ impl ProcessorFactory for CoordinateExtractorFactory {
         &["Geometry"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 

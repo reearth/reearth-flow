@@ -76,11 +76,11 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
         &["PLATEAU"]
     }
 
-    fn get_input_ports(&self) -> Vec<Port> {
+    fn get_input_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
 
-    fn get_output_ports(&self) -> Vec<Port> {
+    fn get_output_ports(&self, _with: &HashMap<String, Value>) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
@@ -139,7 +139,8 @@ pub struct UDXFolderExtractor {
 /// # UDXFolderExtractor Parameters
 ///
 /// Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[schemars(default)]
 #[serde(rename_all = "camelCase")]
 pub struct UDXFolderExtractorParam {
     city_gml_path: Expr,
