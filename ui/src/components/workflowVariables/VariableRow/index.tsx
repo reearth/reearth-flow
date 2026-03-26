@@ -1,7 +1,8 @@
 import {
+  ColorDefaultValueInput,
   DateTimeDefaultValueInput,
   Input,
-  NumberValueInput,
+  NumberDefaultValueInput,
   Switch,
   TextArea,
 } from "@flow/components";
@@ -48,7 +49,7 @@ const VariableRow: React.FC<Props> = ({
       );
     case "number":
       return (
-        <NumberValueInput
+        <NumberDefaultValueInput
           id={`default-${index}`}
           variable={variable}
           onDefaultValueChange={(newValue) =>
@@ -91,14 +92,13 @@ const VariableRow: React.FC<Props> = ({
     case "color":
       return (
         <div className="flex items-center gap-2">
-          <Input
-            id={`default-${index}`}
+          <ColorDefaultValueInput
+            id={`default-color-${index}`}
             className="h-6 w-6 rounded border p-0 hover:cursor-pointer"
-            type={"color"}
-            value={variable.defaultValue}
-            onChange={(e) => {
-              onDefaultValueChange(index, e.target.value);
-            }}
+            variable={variable}
+            onDefaultValueChange={(newValue) =>
+              onDefaultValueChange(index, newValue)
+            }
           />
           <span className="font-mono text-sm">{variable.defaultValue}</span>
         </div>

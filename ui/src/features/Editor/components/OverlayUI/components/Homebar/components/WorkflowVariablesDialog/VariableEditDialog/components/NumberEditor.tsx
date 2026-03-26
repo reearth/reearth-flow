@@ -1,4 +1,4 @@
-import { Input, Label, NumberValueInput } from "@flow/components";
+import { Input, Label, NumberDefaultValueInput } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { WorkflowVariable, NumberConfig } from "@flow/types";
 
@@ -42,7 +42,7 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         <Label htmlFor="default-value" className="text-sm font-medium">
           {t("Default Value")}
         </Label>
-        <NumberValueInput
+        <NumberDefaultValueInput
           id="default-value"
           className="mt-1"
           variable={variable}

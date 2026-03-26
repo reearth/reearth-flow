@@ -11,7 +11,7 @@ type Props = {
   onDefaultValueChange: (newValue: number | null) => void;
 };
 
-export const NumberValueInput: React.FC<Props> = ({
+export const NumberDefaultValueInput: React.FC<Props> = ({
   id = "default-number",
   max,
   min,
@@ -105,4 +105,4 @@ export const NumberValueInput: React.FC<Props> = ({
   );
 };
 
-export default NumberValueInput;
+export default NumberDefaultValueInput;
