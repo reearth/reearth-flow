@@ -171,6 +171,8 @@ impl SenderWithPortMapping {
 pub struct ChannelManager {
     owner: NodeHandle,
     feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
+    /// Port-based feature writers: one writer per output port (for port-based intermediate data).
+    port_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
@@ -185,6 +187,7 @@ impl Clone for ChannelManager {
         Self {
             owner: self.owner.clone(),
             feature_writers: self.feature_writers.clone(),
+            port_writers: self.port_writers.clone(),
             senders: self.senders.clone(),
             runtime: self.runtime.clone(),
             event_hub: self.event_hub.clone(),
@@ -197,6 +200,24 @@ impl Clone for ChannelManager {
 impl ChannelManager {
     #[inline]
     pub fn send_op(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+        // Port-based writing (always, even for unconnected ports)
+        if let Some(port_writer) = self.port_writers.get(&ctx.port) {
+            let mut writer = port_writer.clone();
+            let feature = ctx.feature.clone();
+            let event_hub = self.event_hub.clone();
+            let node_handle = self.owner.clone();
+            self.runtime.block_on(async move {
+                if let Err(e) = writer.write(&feature).await {
+                    event_hub.error_log_with_node_handle(
+                        None,
+                        node_handle,
+                        format!("Failed to write feature to port writer: {e}"),
+                    );
+                }
+            });
+        }
+
+        // Edge-based writing (existing)
         let sender_ports: HashMap<Port, Vec<Port>> = {
             let mut sender_port = HashMap::new();
             for sender in &self.senders {
@@ -280,9 +301,10 @@ impl ChannelManager {
             .flatten()
             .cloned()
             .collect::<Vec<_>>();
+        let port_writers: Vec<_> = self.port_writers.values().cloned().collect();
         let node_handle = self.owner.clone();
         self.runtime.block_on(async {
-            let futures = all_writers.iter().map(|writer| {
+            let edge_futures = all_writers.iter().map(|writer| {
                 let writer = writer.clone();
                 let node = node_handle.clone();
                 async move {
@@ -296,7 +318,22 @@ impl ChannelManager {
                     }
                 }
             });
-            futures::future::join_all(futures).await;
+            futures::future::join_all(edge_futures).await;
+            let port_futures = port_writers.iter().map(|writer| {
+                let writer = writer.clone();
+                let node = node_handle.clone();
+                async move {
+                    let result = writer.flush().await;
+                    if let Err(e) = result {
+                        self.event_hub.error_log_with_node_handle(
+                            None,
+                            node,
+                            format!("Failed to flush port writer: {e}"),
+                        );
+                    }
+                }
+            });
+            futures::future::join_all(port_futures).await;
         });
         self.send_non_op(ExecutorOperation::Terminate { ctx })?;
         self.event_hub.info_log_with_node_handle(
@@ -374,6 +411,7 @@ impl ChannelManager {
     pub fn new(
         owner: NodeHandle,
         feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
+        port_writers: HashMap<Port, Box<dyn FeatureWriter>>,
         senders: Vec<SenderWithPortMapping>,
         runtime: Arc<Handle>,
         event_hub: EventHub,
@@ -382,6 +420,7 @@ impl ChannelManager {
         Self {
             owner,
             feature_writers,
+            port_writers,
             senders,
             runtime,
             event_hub,
@@ -509,6 +548,24 @@ impl ChannelManager {
                 Err(_) => continue,
             };
 
+            // Port-based writing (always, even for unconnected ports)
+            if let Some(port_writer) = self.port_writers.get(port) {
+                let mut writer = port_writer.clone();
+                let feature = feature.clone();
+                let event_hub = self.event_hub.clone();
+                let node_handle = self.owner.clone();
+                self.runtime.block_on(async move {
+                    if let Err(e) = writer.write(&feature).await {
+                        event_hub.error_log_with_node_handle(
+                            None,
+                            node_handle,
+                            format!("Failed to write feature to port writer: {e}"),
+                        );
+                    }
+                });
+            }
+
+            // Edge-based writing (existing)
             let sender_ports: HashMap<Port, Vec<Port>> = {
                 let mut sender_port = HashMap::new();
                 for sender in &self.senders {

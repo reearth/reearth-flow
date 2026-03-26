@@ -12,7 +12,8 @@ use crate::{
     event::EventHub,
     executor_operation::NodeContext,
     node::{
-        EdgeId, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink, Source,
+        EdgeId, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink,
+        Source, OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KEY,
     },
 };
 
@@ -21,6 +22,10 @@ pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub kind: NodeKind,
+    /// Factory-declared output ports for this node.
+    pub output_ports: Vec<Port>,
+    /// Accumulated subgraph prefix, propagated from SchemaNodeType.
+    pub subgraph_prefix: Option<String>,
 }
 
 impl Eq for NodeType {}
@@ -37,6 +42,8 @@ impl NodeType {
             handle: NodeHandle { id },
             name,
             kind,
+            output_ports: vec![],
+            subgraph_prefix: None,
         }
     }
 }
@@ -170,6 +177,8 @@ impl BuilderDag {
                     handle: handle.clone(),
                     name: node.name.clone(),
                     kind: NodeKind::Sink(sink),
+                    output_ports: vec![],
+                    subgraph_prefix: node.subgraph_prefix.clone(),
                 });
                 node_index_map.insert(node_index, new_node_index);
                 source_id_to_sinks
@@ -197,6 +206,7 @@ impl BuilderDag {
                             node.node.action().to_string(),
                         ));
                     }
+                    let output_ports = source.get_output_ports();
                     let source = source
                         .build(
                             ctx.clone(),
@@ -229,6 +239,8 @@ impl BuilderDag {
                         handle: node.handle,
                         name: node.name,
                         kind: NodeKind::Source(source),
+                        output_ports,
+                        subgraph_prefix: node.subgraph_prefix,
                     }
                 }
                 DagNodeKind::Processor(processor) => {
@@ -238,6 +250,17 @@ impl BuilderDag {
                             processor.name().to_string(),
                             node.node.action().to_string(),
                         ));
+                    }
+                    let mut output_ports = processor.get_output_ports();
+                    // OutputRouterFactory::get_output_ports() returns empty,
+                    // but the actual port is specified via routingPort param.
+                    if node.node.action() == OUTPUT_ROUTING_ACTION {
+                        if let Some(ref with) = node.with {
+                            if let Some(serde_json::Value::String(rp)) = with.get(ROUTING_PARAM_KEY)
+                            {
+                                output_ports.push(Port::new(rp));
+                            }
+                        }
                     }
                     let processor = processor
                         .build(
@@ -255,6 +278,8 @@ impl BuilderDag {
                         handle: node.handle,
                         name: node.name,
                         kind: NodeKind::Processor(processor),
+                        output_ports,
+                        subgraph_prefix: node.subgraph_prefix,
                     }
                 }
                 DagNodeKind::Sink(_) => continue,
