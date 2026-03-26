@@ -1,8 +1,7 @@
-import { useCallback } from "react";
-
 import {
   DateTimeDefaultValueInput,
   Input,
+  NumberValueInput,
   Switch,
   TextArea,
 } from "@flow/components";
@@ -24,26 +23,6 @@ const VariableRow: React.FC<Props> = ({
   onDefaultValueChange,
 }) => {
   const t = useT();
-
-  const validateNumber = useCallback(
-    (value: number) => {
-      if (
-        "config" in variable &&
-        variable.config &&
-        ("max" in variable.config || "min" in variable.config)
-      ) {
-        if (
-          (variable.config.max !== undefined && value > variable.config.max) ||
-          (variable.config.min !== undefined && value < variable.config.min)
-        ) {
-          return false;
-        }
-      }
-
-      return true;
-    },
-    [variable],
-  );
 
   switch (variable.type) {
     case "array":
@@ -69,17 +48,12 @@ const VariableRow: React.FC<Props> = ({
       );
     case "number":
       return (
-        <Input
+        <NumberValueInput
           id={`default-${index}`}
-          type="number"
-          value={variable.defaultValue}
-          onChange={(e) => {
-            const newValue = parseFloat(e.target.value);
-            const validNumber = validateNumber(newValue);
-            if (validNumber) {
-              onDefaultValueChange(index, newValue);
-            }
-          }}
+          variable={variable}
+          onDefaultValueChange={(newValue) =>
+            onDefaultValueChange(index, newValue)
+          }
         />
       );
     case "choice":
