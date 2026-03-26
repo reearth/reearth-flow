@@ -645,8 +645,8 @@ impl NeighborFinder {
             if let Some(ref zip_path) = self.candidate_zip_path {
                 let _ = std::fs::remove_file(zip_path);
             }
-            // Then remove the directory itself
-            let _ = std::fs::remove_dir(temp_dir);
+            // Then remove the directory itself (recursively, in case files remain)
+            let _ = std::fs::remove_dir_all(temp_dir);
         }
     }
 
