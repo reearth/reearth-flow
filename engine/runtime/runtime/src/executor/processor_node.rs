@@ -469,7 +469,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let processor_clone = Arc::clone(&processor);
         let ctx_clone = ctx.clone();
         let cm_clone = Arc::clone(&self.channel_manager);
-        std::thread::Builder::new()
+        let finish_tx_inline = finish_tx.clone();
+        if std::thread::Builder::new()
             .name("finish-timeout".into())
             .spawn(move || {
                 let cm_guard = cm_clone.read();
@@ -477,7 +478,16 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 let result = processor_clone.write().finish(ctx_clone, cm);
                 let _ = finish_tx.send(result);
             })
-            .ok();
+            .is_err()
+        {
+            // Thread spawn failed — run finish inline (no timeout protection).
+            tracing::warn!(
+                node_id = ?self.node_handle.id,
+                "Failed to spawn finish-timeout thread, running finish() inline",
+            );
+            let inline_result = processor.write().finish(ctx.clone(), channel_manager);
+            let _ = finish_tx_inline.send(inline_result);
+        }
         let result: Result<(), ExecutionError> = match finish_rx.recv_timeout(finish_deadline) {
             Ok(inner) => inner.map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}"))),
             Err(_) => {
@@ -507,10 +517,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             ),
         );
 
-        // Skip feature writer block_on calls for this executor from this point
-        // to prevent tokio runtime starvation during send_terminate. Set after
-        // finish() so that intermediate data is still captured during finish.
-        crate::forwarder::set_executor_shutting_down(channel_manager.executor_id());
         let terminate_result = channel_manager.send_terminate(ctx);
 
         if result.is_err() {

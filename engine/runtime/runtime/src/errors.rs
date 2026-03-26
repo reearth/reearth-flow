@@ -68,7 +68,7 @@ pub enum ExecutionError {
     MissingInput { node: NodeHandle, port: Port },
     #[error("Duplicate input for node {node} on port {port}")]
     DuplicateInput { node: NodeHandle, port: Port },
-    #[error("Cannot send to channel")]
+    #[error("Cannot send to channel: {0}")]
     CannotSendToChannel(String),
     #[error("Cannot receive from channel: {0}")]
     CannotReceiveFromChannel(String),
