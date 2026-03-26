@@ -9,6 +9,9 @@ import {
   FieldContext,
   createFieldContext,
 } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
+import { AwarenessUser } from "@flow/types";
+
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
 
 import { ColorInput } from "./BaseInputTemplate/ColorInput";
 import { NumberInput } from "./BaseInputTemplate/NumberInput";
@@ -20,6 +23,8 @@ export type ExtendedFormContext = FormContextType & {
   onAssetsOpen?: (fieldContext: FieldContext) => void;
   originalSchema?: any;
   actionName?: string;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
+  onFieldFocus?: (fieldId: string | null) => void;
 };
 
 /** The `BaseInputTemplate` handles all input types directly */
@@ -33,6 +38,9 @@ const BaseInputTemplate = <
   const { schema, registry, id, name, value, uiSchema } = props;
 
   const formContext = registry.formContext as ExtendedFormContext;
+  const { fieldFocusMap, onFieldFocus } =
+    (registry.formContext as ExtendedFormContext) ?? {};
+  const focusedUsers = fieldFocusMap?.[id] ?? [];
 
   const {
     onEditorOpen,
@@ -98,7 +106,8 @@ const BaseInputTemplate = <
       <ColorInput
         {...props}
         onEditorOpen={handleEditorOpen}
-        onAssetsOpen={handleAssetsOpen}
+        onFieldFocus={onFieldFocus}
+        styles={paramsAwarenessStyles(focusedUsers)}
       />
     );
   }
@@ -116,6 +125,8 @@ const BaseInputTemplate = <
         {...props}
         onEditorOpen={handleEditorOpen}
         onAssetsOpen={handleAssetsOpen}
+        onFieldFocus={onFieldFocus}
+        styles={paramsAwarenessStyles(focusedUsers)}
       />
     );
   }
@@ -127,6 +138,8 @@ const BaseInputTemplate = <
       onEditorOpen={handleEditorOpen}
       onPythonEditorOpen={handlePythonEditorOpen}
       onAssetsOpen={handleAssetsOpen}
+      onFieldFocus={onFieldFocus}
+      styles={paramsAwarenessStyles(focusedUsers)}
     />
   );
 };

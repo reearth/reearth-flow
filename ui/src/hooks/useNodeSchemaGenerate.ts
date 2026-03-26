@@ -30,6 +30,7 @@ export default (
     properties: {
       ...baseCustomizationSchema.properties,
       content: {
+        default: "",
         type: "string",
         format: "textarea",
         title: t("Content"),
