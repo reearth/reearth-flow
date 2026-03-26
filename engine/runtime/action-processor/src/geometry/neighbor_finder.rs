@@ -627,25 +627,30 @@ impl NeighborFinder {
 
         // Find and extract the specific entry (batch)
         let mut entry = zip_archive.by_name(&index.entry_name)?;
-        let mut content = String::new();
-        entry.read_to_string(&mut content)?;
 
-        // Parse lines and get the specific one
-        let lines: Vec<&str> = content.lines().collect();
-        let line = lines.get(index.line_number).ok_or_else(|| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "Line {} not found in entry {} (only {} lines)",
-                    index.line_number,
-                    index.entry_name,
-                    lines.len()
-                ),
-            )) as BoxedError
-        })?;
+        // Stream lines and get the specific one without loading the entire entry into memory
+        let reader = BufReader::new(&mut entry);
+        let mut total_lines = 0usize;
 
-        let candidate: CandidateEntry = serde_json::from_str(line)?;
-        Ok(candidate)
+        for (i, line_result) in reader.lines().enumerate() {
+            let line = line_result?;
+            total_lines += 1;
+            if i == index.line_number {
+                let candidate: CandidateEntry = serde_json::from_str(&line)?;
+                return Ok(candidate);
+            }
+        }
+
+        // If we get here, the requested line was not found
+        Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!(
+                "Line {} not found in entry {} (only {} lines)",
+                index.line_number,
+                index.entry_name,
+                total_lines
+            ),
+        )) as BoxedError)
     }
 
     /// Clean up the temporary directory and candidate ZIP file after processing.
