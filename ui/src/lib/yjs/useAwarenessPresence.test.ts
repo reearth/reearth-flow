@@ -28,6 +28,7 @@ const createMockAwareness = () => {
     setLocalStateField: vi.fn((key, value) => {
       state[key] = value;
     }),
+    getLocalState: vi.fn(() => state),
     getStates: vi.fn(
       () =>
         new Map([

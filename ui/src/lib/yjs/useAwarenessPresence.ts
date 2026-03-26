@@ -239,9 +239,10 @@ export default function useAwarenessPresence({
 
   useEffect(() => {
     const openNodeId = openNode?.id ?? null;
-    const state = yAwareness.getLocalState();
 
-    if (openNodeId === state?.openNodeId) {
+    const localOpenNodeId = yAwareness.getLocalState()?.openNodeId;
+
+    if (openNodeId === localOpenNodeId) {
       return;
     }
 
