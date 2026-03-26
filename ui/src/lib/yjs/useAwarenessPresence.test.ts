@@ -1,5 +1,4 @@
 import { renderHook, act } from "@testing-library/react";
-import { OnConnectStartParams } from "@xyflow/react";
 import { MouseEvent } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Awareness } from "y-protocols/awareness";
@@ -139,7 +138,7 @@ describe("useAwarenessPresence", () => {
     });
   });
 
-  it("handleConnectStart sets draggingEdge field", () => {
+  it("setDraggingEdge sets draggingEdge field", () => {
     const { result } = renderHook(() =>
       useAwarenessPresence({
         yAwareness: awareness,
@@ -147,23 +146,8 @@ describe("useAwarenessPresence", () => {
         openNode: undefined,
       }),
     );
-    const event = {
-      clientX: 10,
-      clientY: 20,
-      shiftKey: true,
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as globalThis.MouseEvent | TouchEvent;
-
-    const startParams = {
-      nodeId: "node1",
-      handleId: "handle1",
-      handleType: "source",
-    } as OnConnectStartParams;
-
     act(() => {
-      result.current.handleConnectStart(event, startParams);
+      result.current.setDraggingEdge("node1", "handle1", "source");
     });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith("draggingEdge", {
       nodeId: "node1",
@@ -172,7 +156,7 @@ describe("useAwarenessPresence", () => {
     });
   });
 
-  it("handleConnectEnd clears draggingEdge field", () => {
+  it("clearDraggingEdge clears draggingEdge field", () => {
     const { result } = renderHook(() =>
       useAwarenessPresence({
         yAwareness: awareness,
@@ -181,7 +165,7 @@ describe("useAwarenessPresence", () => {
       }),
     );
     act(() => {
-      result.current.handleConnectEnd();
+      result.current.clearDraggingEdge();
     });
     expect(awareness.setLocalStateField).toHaveBeenCalledWith(
       "draggingEdge",
@@ -210,6 +194,7 @@ describe("useAwarenessPresence", () => {
       null,
     );
   });
+
   it("handleParamFieldFocus sets focusedParamField field", () => {
     const { result } = renderHook(() =>
       useAwarenessPresence({

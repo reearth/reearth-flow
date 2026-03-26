@@ -1,4 +1,4 @@
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, type OnConnectStart } from "@xyflow/react";
 import {
   MouseEvent,
   useCallback,
@@ -361,9 +361,9 @@ export default ({
     users,
     awarenessSelectionsMap,
     handlePointerDown,
-    handleConnectStart,
-    handleConnectEnd,
     handleParamFieldFocus,
+    setDraggingEdge,
+    clearDraggingEdge,
   } = useAwarenessPresence({
     selectedNodeIds,
     openNode,
@@ -414,6 +414,19 @@ export default ({
     },
     [handleSpotlightUserDeselect],
   );
+
+  const handleConnectStart: OnConnectStart = useCallback(
+    (_event, params) => {
+      if (params.nodeId) {
+        setDraggingEdge(params.nodeId, params.handleId, params.handleType);
+      }
+    },
+    [setDraggingEdge],
+  );
+
+  const handleConnectEnd = useCallback(() => {
+    clearDraggingEdge();
+  }, [clearDraggingEdge]);
 
   return {
     currentWorkflowId,

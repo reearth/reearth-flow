@@ -1,4 +1,4 @@
-import { type OnConnectStart, useReactFlow, useViewport } from "@xyflow/react";
+import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
 import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
@@ -179,19 +179,6 @@ export default function useAwarenessPresence({
     [yAwareness],
   );
 
-  const handleConnectStart: OnConnectStart = useCallback(
-    (_event, params) => {
-      if (params.nodeId) {
-        setDraggingEdge(params.nodeId, params.handleId, params.handleType);
-      }
-    },
-    [setDraggingEdge],
-  );
-
-  const handleConnectEnd = useCallback(() => {
-    clearDraggingEdge();
-  }, [clearDraggingEdge]);
-
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
       throttledPresenceUpdate(event.clientX, event.clientY);
@@ -255,8 +242,8 @@ export default function useAwarenessPresence({
     users,
     awarenessSelectionsMap,
     handlePointerDown,
-    handleConnectStart,
-    handleConnectEnd,
     handleParamFieldFocus,
+    setDraggingEdge,
+    clearDraggingEdge,
   };
 }
