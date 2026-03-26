@@ -121,9 +121,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
 
-  const handleDialogOpen = (dialog: DialogOptions, index: number) => {
-    setActiveVariableIndex(index);
-
+  const handleDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
   };
   const handleDialogClose = () => setShowDialog(undefined);
@@ -155,8 +153,9 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
             <VariableRow
               variable={row.original}
               index={row.index}
+              setActiveVariableIndex={setActiveVariableIndex}
               onDefaultValueChange={handleDefaultValueChange}
-              onDialogOpen={handleDialogOpen}
+              onAssetDialogOpen={handleDialogOpen}
             />
           );
         },
@@ -228,6 +227,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
           </DialogFooter>
         </div>
       </DialogContent>
+
       {showDialog === "assets" && (
         <AssetsDialog
           onDialogClose={handleDialogClose}

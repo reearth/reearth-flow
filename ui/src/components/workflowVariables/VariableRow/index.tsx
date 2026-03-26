@@ -1,8 +1,14 @@
-import { FileIcon } from "@phosphor-icons/react";
+import { GearIcon, PencilIcon } from "@phosphor-icons/react";
+import { useState } from "react";
 
 import {
-  CmsLogo,
+  AssetDefaultSelectionInput,
   DateTimeDefaultValueInput,
+  Dialog,
+  DialogContent,
+  DialogContentSection,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   Input,
   Select,
@@ -21,17 +27,26 @@ import VariableArrayInput from "./VariableArrayInput";
 type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
-  onDialogOpen: (dialog: "assets" | "cms", index: number) => void;
+  setActiveVariableIndex?: (index: number) => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
+  onAssetDialogOpen: (dialog: "assets" | "cms") => void;
 };
 
 const VariableRow: React.FC<Props> = ({
   variable,
   index,
-  onDialogOpen,
+  setActiveVariableIndex,
   onDefaultValueChange,
+  onAssetDialogOpen,
 }) => {
   const t = useT();
+  const [showDialog, setShowDialog] = useState(false);
+  const handleDialogOpen = (index: number) => {
+    setActiveVariableIndex?.(index);
+    setShowDialog(true);
+  };
+
+  const handleDialogClose = () => setShowDialog(false);
 
   switch (variable.type) {
     case "array":
@@ -135,39 +150,68 @@ const VariableRow: React.FC<Props> = ({
 
     case "text":
       return (
-        <div className="flex items-center">
-          {typeof variable.defaultValue === "string" &&
-          variable.defaultValue.length > 50 ? (
-            <TextArea
-              id={`default-${index}`}
-              value={variable.defaultValue}
-              onChange={(e) => {
-                onDefaultValueChange(index, e.target.value);
-              }}
-              className="min-h-[60px]"
-            />
-          ) : (
-            <Input
-              id={`default-${index}`}
-              type="text"
-              value={variable.defaultValue}
-              onChange={(e) => {
-                onDefaultValueChange(index, e.target.value);
-              }}
-            />
-          )}
-          <div className="flex items-center gap-0">
-            <IconButton
-              icon={<FileIcon />}
-              onClick={() => onDialogOpen("assets", index)}
-              className="ml-2"
-            />
-            <IconButton
-              icon={<CmsLogo className="h-4 w-4 text-white" />}
-              onClick={() => onDialogOpen("cms", index)}
-              className="ml-2"
-            />
+        <div>
+          <div className="flex items-center">
+            {typeof variable.defaultValue === "string" &&
+            variable.defaultValue.length > 50 ? (
+              <TextArea
+                id={`default-${index}`}
+                value={variable.defaultValue}
+                onChange={(e) => {
+                  onDefaultValueChange(index, e.target.value);
+                }}
+                className="min-h-[60px]"
+              />
+            ) : (
+              <Input
+                id={`default-${index}`}
+                type="text"
+                value={variable.defaultValue}
+                onChange={(e) => {
+                  onDefaultValueChange(index, e.target.value);
+                }}
+              />
+            )}
+            <div className="flex items-center gap-0">
+              <IconButton
+                icon={<PencilIcon />}
+                onClick={() => handleDialogOpen(index)}
+                className="ml-2"
+              />
+            </div>
           </div>
+          {showDialog && (
+            <Dialog open onOpenChange={handleDialogClose}>
+              <DialogContent
+                size="lg"
+                position="center"
+                className="p-2"
+                onInteractOutside={(e) => e.preventDefault()}>
+                <DialogHeader>
+                  <DialogTitle>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <GearIcon />
+                        {t("Workflow Variables")}
+                      </div>
+                    </div>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex h-full min-h-0">
+                  <DialogContentSection className="flex-1 overflow-y-auto p-4">
+                    <AssetDefaultSelectionInput
+                      variable={variable}
+                      onDefaultValueChange={(newValue) => {
+                        onDefaultValueChange(index, newValue);
+                        handleDialogClose();
+                      }}
+                      onDialogOpen={onAssetDialogOpen}
+                    />
+                  </DialogContentSection>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       );
 

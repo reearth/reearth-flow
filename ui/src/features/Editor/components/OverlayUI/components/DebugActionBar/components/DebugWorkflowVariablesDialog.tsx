@@ -36,9 +36,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
 
-  const handleDialogOpen = (dialog: DialogOptions, index: number) => {
-    setActiveVariableIndex(index);
-
+  const handleAssetDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
   };
   const handleDialogClose = () => setShowDialog(undefined);
@@ -78,7 +76,8 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
             <VariableRow
               variable={row.original}
               index={row.index}
-              onDialogOpen={handleDialogOpen}
+              setActiveVariableIndex={setActiveVariableIndex}
+              onAssetDialogOpen={handleAssetDialogOpen}
               onDefaultValueChange={onDebugRunVariableValueChange}
             />
           );
