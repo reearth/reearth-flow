@@ -4,7 +4,6 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -252,34 +251,36 @@ struct NeighborMatch {
     index: usize, // 0-based rank
 }
 
-/// Full candidate entry stored on disk.
+/// Full candidate entry stored on disk and in memory.
+/// Includes pre-serialized bytes to avoid double serialization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CandidateEntry {
     point: [f64; 2],
     point_z: Option<f64>, // Z coordinate for 3D distance calculations
     feature: Feature,
+    #[serde(skip)]
+    serialized: Vec<u8>, // Pre-serialized bytes to avoid double serialization
 }
 
-/// Wrapper for candidate data with tracking info during accumulation.
+/// Base feature buffer entry with pre-serialized bytes to avoid double serialization.
 #[derive(Debug, Clone)]
-struct CandidateBufferEntry {
-    point: [f64; 2],
-    point_z: Option<f64>,
+struct BaseFeatureEntry {
     feature: Feature,
+    serialized: Vec<u8>, // Pre-serialized bytes
 }
 
 #[derive(Debug, Clone)]
 struct NeighborFinder {
     params: NeighborFinderParams,
-    /// Buffer for candidates before spilling. Uses lightweight buffer entries.
-    candidates: Vec<CandidateBufferEntry>,
+    /// Buffer for candidates before spilling.
+    candidates: Vec<CandidateEntry>,
     /// Spatial index built from candidates (point + disk location only).
     /// Populated during finish() after all candidates are flushed to disk.
     candidate_index: Vec<CandidateIndex>,
     /// In-memory storage for candidates when disk spilling is not available (e.g., tests).
     /// Indexed by the position in candidate_index when entry_name is empty.
     in_memory_candidates: Vec<CandidateEntry>,
-    base_features: Vec<Feature>,
+    base_features: Vec<BaseFeatureEntry>,
     // Disk spilling fields - track bytes separately for each buffer
     base_buffer_bytes: usize,
     candidate_buffer_bytes: usize,
@@ -335,12 +336,16 @@ impl Processor for NeighborFinder {
 
         match &ctx.port {
             port if port == &*BASE_PORT => {
-                // Check if we need to spill to disk
-                let feature_bytes = serde_json::to_vec(feature)?.len();
+                // Serialize once and reuse to avoid double serialization
+                let serialized = serde_json::to_vec(feature)?;
+                let feature_bytes = serialized.len();
                 if self.base_buffer_bytes + feature_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
                     self.flush_base_features()?;
                 }
-                self.base_features.push(feature.clone());
+                self.base_features.push(BaseFeatureEntry {
+                    feature: feature.clone(),
+                    serialized,
+                });
                 self.base_buffer_bytes += feature_bytes;
             }
             port if port == &*CANDIDATE_PORT => {
@@ -351,23 +356,25 @@ impl Processor for NeighborFinder {
                 // candidates are consumed but never emitted - sending them to rejected
                 // would violate this design principle.
                 if let Some((point, point_z)) = extract_representative_point(feature) {
-                    let entry = CandidateBufferEntry {
+                    // Serialize once and reuse to avoid double serialization
+                    let serialized = serde_json::to_vec(&CandidateEntry {
                         point,
                         point_z,
                         feature: feature.clone(),
-                    };
-                    let entry_bytes = serde_json::to_vec(&CandidateEntry {
-                        point,
-                        point_z,
-                        feature: feature.clone(),
-                    })?
-                    .len();
+                        serialized: Vec::new(),
+                    })?;
+                    let entry_bytes = serialized.len();
                     if self.candidate_buffer_bytes + entry_bytes
                         >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD
                     {
                         self.flush_candidates()?;
                     }
-                    self.candidates.push(entry);
+                    self.candidates.push(CandidateEntry {
+                        point,
+                        point_z,
+                        feature: feature.clone(),
+                        serialized,
+                    });
                     self.candidate_buffer_bytes += entry_bytes;
                 }
             }
@@ -396,10 +403,10 @@ impl Processor for NeighborFinder {
         // If no candidates, all base features go to unmatched
         if self.candidate_index.is_empty() {
             // Process in-memory base features
-            for base in &self.base_features {
+            for entry in &self.base_features {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
-                    base.clone(),
+                    entry.feature.clone(),
                     UNMATCHED_PORT.clone(),
                 ));
             }
@@ -415,8 +422,8 @@ impl Processor for NeighborFinder {
         let rtree: RTree<CandidateIndex> = RTree::bulk_load(self.candidate_index.clone());
 
         // Process in-memory base features first
-        for base in &self.base_features {
-            self.process_single_base(&ctx, fw, &rtree, base)?;
+        for entry in &self.base_features {
+            self.process_single_base(&ctx, fw, &rtree, &entry.feature)?;
         }
 
         // Process disk-based base features sequentially without loading all into memory
@@ -450,9 +457,8 @@ impl NeighborFinder {
         let file = File::create(&chunk_path)?;
         let mut writer = BufWriter::new(zstd::Encoder::new(file, 3)?);
 
-        for feature in &self.base_features {
-            let line = serde_json::to_vec(feature)?;
-            writer.write_all(&line)?;
+        for entry in &self.base_features {
+            writer.write_all(&entry.serialized)?;
             writer.write_all(b"\n")?;
         }
         // Finalize the zstd encoder to ensure the compressed frame is complete.
@@ -522,13 +528,8 @@ impl NeighborFinder {
                     line_number: line_num,
                 });
 
-                let serialized = CandidateEntry {
-                    point: entry.point,
-                    point_z: entry.point_z,
-                    feature: entry.feature.clone(),
-                };
-                let line = serde_json::to_vec(&serialized)?;
-                batch_content.extend_from_slice(&line);
+                // Use pre-serialized bytes to avoid double serialization
+                batch_content.extend_from_slice(&entry.serialized);
                 batch_content.push(b'\n');
             }
 
@@ -564,11 +565,7 @@ impl NeighborFinder {
                 // No temp_dir (e.g., in tests) - keep candidates in memory
                 // Store the full entries and create index entries pointing to them
                 for (i, entry) in self.candidates.iter().enumerate() {
-                    self.in_memory_candidates.push(CandidateEntry {
-                        point: entry.point,
-                        point_z: entry.point_z,
-                        feature: entry.feature.clone(),
-                    });
+                    self.in_memory_candidates.push(entry.clone());
                     self.candidate_index.push(CandidateIndex {
                         point: entry.point,
                         point_z: entry.point_z,
@@ -590,33 +587,39 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Read a single candidate from disk using its index entry.
+    /// Read candidates from disk using their index entries.
+    /// Optimized to open the ZIP file only once per batch of reads.
     /// For in-memory candidates (empty entry_name), retrieves from in_memory_candidates vector.
-    /// Uses ZIP format for efficient random access:
-    /// - Only the specific ZIP entry (batch) containing the candidate is decompressed
-    /// - Not the entire file, unlike standard zstd
-    fn read_candidate_from_disk(
+    fn read_candidates_from_disk(
         &self,
-        index: &CandidateIndex,
-    ) -> Result<CandidateEntry, BoxedError> {
-        // Check if this is an in-memory candidate (used when temp_dir is None, e.g., in tests)
-        if index.entry_name.is_empty() {
-            return self
-                .in_memory_candidates
-                .get(index.line_number)
-                .cloned()
-                .ok_or_else(|| {
-                    Box::new(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        format!(
-                            "In-memory candidate not found at index {}",
-                            index.line_number
-                        ),
-                    )) as BoxedError
-                });
+        indices: &[&CandidateIndex],
+    ) -> Result<Vec<CandidateEntry>, BoxedError> {
+        if indices.is_empty() {
+            return Ok(Vec::new());
         }
 
-        // Open the ZIP file
+        // Check if all are in-memory candidates
+        if indices.iter().all(|idx| idx.entry_name.is_empty()) {
+            return indices
+                .iter()
+                .map(|idx| {
+                    self.in_memory_candidates
+                        .get(idx.line_number)
+                        .cloned()
+                        .ok_or_else(|| {
+                            Box::new(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                format!(
+                                    "In-memory candidate not found at index {}",
+                                    idx.line_number
+                                ),
+                            )) as BoxedError
+                        })
+                })
+                .collect();
+        }
+
+        // Open the ZIP file once
         let zip_path = self.candidate_zip_path.as_ref().ok_or_else(|| {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -627,30 +630,69 @@ impl NeighborFinder {
         let file = File::open(zip_path)?;
         let mut zip_archive = zip::ZipArchive::new(BufReader::new(file))?;
 
-        // Find and extract the specific entry (batch)
-        let mut entry = zip_archive.by_name(&index.entry_name)?;
+        // Group indices by entry name to minimize repeated entry access
+        let mut result: Vec<Option<CandidateEntry>> = vec![None; indices.len()];
+        let mut entry_groups: HashMap<&str, Vec<(usize, &CandidateIndex)>> = HashMap::new();
 
-        // Stream lines and get the specific one without loading the entire entry into memory
-        let reader = BufReader::new(&mut entry);
-        let mut total_lines = 0usize;
-
-        for (i, line_result) in reader.lines().enumerate() {
-            let line = line_result?;
-            total_lines += 1;
-            if i == index.line_number {
-                let candidate: CandidateEntry = serde_json::from_str(&line)?;
-                return Ok(candidate);
+        for (i, idx) in indices.iter().enumerate() {
+            if !idx.entry_name.is_empty() {
+                entry_groups
+                    .entry(&idx.entry_name)
+                    .or_default()
+                    .push((i, idx));
+            } else {
+                // In-memory candidate
+                result[i] = self.in_memory_candidates.get(idx.line_number).cloned();
             }
         }
 
-        // If we get here, the requested line was not found
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!(
-                "Line {} not found in entry {} (only {} lines)",
-                index.line_number, index.entry_name, total_lines
-            ),
-        )) as BoxedError)
+        // Process each entry group
+        for (entry_name, group_indices) in entry_groups {
+            let mut entry = zip_archive.by_name(entry_name)?;
+            let reader = BufReader::new(&mut entry);
+
+            // Collect all line numbers needed from this entry
+            let line_numbers: std::collections::HashSet<usize> = group_indices
+                .iter()
+                .map(|(_, idx)| idx.line_number)
+                .collect();
+
+            // Read lines and collect needed ones
+            let mut line_data: HashMap<usize, String> = HashMap::new();
+            for (i, line_result) in reader.lines().enumerate() {
+                if line_numbers.contains(&i) {
+                    line_data.insert(i, line_result?);
+                }
+                // Early exit if we've found all needed lines
+                if line_data.len() == line_numbers.len() {
+                    break;
+                }
+            }
+
+            // Assign results
+            for (result_idx, idx) in group_indices {
+                if let Some(line) = line_data.get(&idx.line_number) {
+                    result[result_idx] = Some(serde_json::from_str(line)?);
+                }
+            }
+        }
+
+        // Convert Option<Vec> to Vec, returning error for any missing entries
+        result
+            .into_iter()
+            .enumerate()
+            .map(|(i, opt)| {
+                opt.ok_or_else(|| {
+                    Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!(
+                            "Candidate not found at entry {} line {}",
+                            indices[i].entry_name, indices[i].line_number
+                        ),
+                    )) as BoxedError
+                })
+            })
+            .collect()
     }
 
     /// Clean up the temporary directory and candidate ZIP file after processing.
@@ -727,117 +769,6 @@ impl NeighborFinder {
         }
 
         Ok(())
-    }
-
-    /// Process base features in parallel using rayon.
-    /// Note: Currently unused because file handles cannot be safely shared across threads.
-    /// Could be re-enabled in the future with thread-safe file pooling.
-    #[allow(dead_code)]
-    fn process_parallel(
-        &self,
-        ctx: &NodeContext,
-        fw: &ProcessorChannelForwarder,
-        rtree: &RTree<CandidateIndex>,
-    ) -> Result<(), BoxedError> {
-        use rayon::prelude::*;
-
-        // Create thread-safe references
-        let results: Vec<_> = self
-            .base_features
-            .par_iter()
-            .map(|base| {
-                let result = self.find_neighbors_for_base(rtree, base);
-                (base, result)
-            })
-            .collect();
-
-        // Send results (must be done sequentially for the forwarder)
-        for (base, result) in results {
-            match result {
-                Ok((Some(matches), false)) => {
-                    if matches.is_empty() {
-                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                            ctx,
-                            base.clone(),
-                            UNMATCHED_PORT.clone(),
-                        ));
-                    } else {
-                        self.emit_matches(ctx, fw, base, &matches)?;
-                    }
-                }
-                Ok((None, true)) => {
-                    // Geometry error - send to rejected
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        ctx,
-                        base.clone(),
-                        REJECTED_PORT.clone(),
-                    ));
-                }
-                Ok((None, false)) => {
-                    // No matches found (not a geometry error) - send to unmatched
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        ctx,
-                        base.clone(),
-                        UNMATCHED_PORT.clone(),
-                    ));
-                }
-                Ok((Some(_), true)) => {
-                    // Invalid state: has matches but also has geometry error
-                    // This shouldn't happen, but treat as rejected to be safe
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        ctx,
-                        base.clone(),
-                        REJECTED_PORT.clone(),
-                    ));
-                }
-                Err(e) => {
-                    // Propagate errors from find_neighbors_for_base
-                    return Err(e);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Find neighbors for a single base feature (used in parallel mode).
-    /// Note: Parallel processing with disk-based candidates requires special handling
-    /// since file handles cannot be shared across threads easily.
-    #[allow(dead_code)]
-    fn find_neighbors_for_base(
-        &self,
-        rtree: &RTree<CandidateIndex>,
-        base: &Feature,
-    ) -> Result<(Option<Vec<NeighborMatch>>, bool), BoxedError> {
-        let Some((base_point, base_z)) = extract_representative_point(base) else {
-            return Ok((None, true)); // None for matches, true indicates geometry error
-        };
-
-        let neighbor_matches = find_k_nearest_neighbors(
-            rtree,
-            &base_point,
-            base_z,
-            self.params.num_closest,
-            &self.params.distance_metric,
-        );
-
-        // Filter by max_distance and compute actual distance based on metric
-        let filtered_matches: Vec<NeighborMatch> = neighbor_matches
-            .into_iter()
-            .filter(|m| {
-                if let Some(max_dist) = self.params.max_distance {
-                    m.distance <= max_dist
-                } else {
-                    true
-                }
-            })
-            .collect();
-
-        if filtered_matches.is_empty() {
-            return Ok((Some(vec![]), false)); // Empty matches means no matches found
-        }
-
-        Ok((Some(filtered_matches), false))
     }
 
     /// Process a single base feature
@@ -938,13 +869,10 @@ impl NeighborFinder {
     ) -> Result<Feature, BoxedError> {
         let mut enriched = base.clone();
 
-        // Add distance attribute
+        // Add distance attribute (use Null for non-finite values like NaN/Infinity)
         enriched.attributes_mut().insert(
             self.params.distance_attribute.clone(),
-            AttributeValue::Number(
-                serde_json::Number::from_f64(neighbor_match.distance)
-                    .unwrap_or_else(|| serde_json::Number::from(0)),
-            ),
+            f64_to_attribute_value(neighbor_match.distance),
         );
 
         // Add neighbor index attribute (if not suppressed by empty string and requested)
@@ -959,8 +887,8 @@ impl NeighborFinder {
         }
 
         // Read candidate from disk and transfer attributes
-        let candidate = self.read_candidate_from_disk(&neighbor_match.candidate_index)?;
-        self.transfer_attributes(&mut enriched, &candidate);
+        let candidates = self.read_candidates_from_disk(&[&neighbor_match.candidate_index])?;
+        self.transfer_attributes(&mut enriched, &candidates[0]);
 
         Ok(enriched)
     }
@@ -975,26 +903,22 @@ impl NeighborFinder {
         let mut enriched = base.clone();
         let prefix = &self.params.attribute_prefix;
 
-        // Collect distances into an array
+        // Collect distances into an array (use Null for non-finite values)
         let distances: Vec<AttributeValue> = neighbor_matches
             .iter()
-            .map(|m| {
-                AttributeValue::Number(
-                    serde_json::Number::from_f64(m.distance)
-                        .unwrap_or_else(|| serde_json::Number::from(0)),
-                )
-            })
+            .map(|m| f64_to_attribute_value(m.distance))
             .collect();
         enriched.attributes_mut().insert(
             self.params.distance_attribute.clone(),
             AttributeValue::Array(distances),
         );
 
-        // Read all candidates from disk first
-        let candidates: Vec<CandidateEntry> = neighbor_matches
+        // Read all candidates from disk first (batched for efficiency)
+        let indices: Vec<_> = neighbor_matches
             .iter()
-            .map(|m| self.read_candidate_from_disk(&m.candidate_index))
-            .collect::<Result<Vec<_>, _>>()?;
+            .map(|m| &m.candidate_index)
+            .collect();
+        let candidates = self.read_candidates_from_disk(&indices)?;
 
         // Collect all unique attribute names from all candidates
         let mut all_attrs: Vec<Attribute> = Vec::new();
@@ -1133,14 +1057,20 @@ fn find_k_nearest_neighbors(
     }
 }
 
-/// Compute 2D Euclidean distance between two points
+/// Compute 2D Euclidean distance between two points.
+/// Uses reearth-flow-geometry's EuclideanDistance trait for consistency.
 fn euclidean_distance_2d(a: &[f64; 2], b: &[f64; 2]) -> f64 {
-    let dx = a[0] - b[0];
-    let dy = a[1] - b[1];
-    (dx * dx + dy * dy).sqrt()
+    use reearth_flow_geometry::algorithm::euclidean_distance::EuclideanDistance;
+    use reearth_flow_geometry::types::coordinate::Coordinate2D;
+
+    let coord_a: Coordinate2D<f64> = (*a).into();
+    let coord_b: Coordinate2D<f64> = (*b).into();
+    coord_a.euclidean_distance(&coord_b)
 }
 
-/// Compute 3D Euclidean distance between two points
+/// Compute 3D Euclidean distance between two points.
+/// Note: The geometry crate's EuclideanDistance for Coordinate3D uses Line3D which
+/// only computes 2D distance (dx.hypot(dy)), so we manually compute 3D distance here.
 fn euclidean_distance_3d(a: &[f64; 2], a_z: f64, b: &[f64; 2], b_z: f64) -> f64 {
     let dx = a[0] - b[0];
     let dy = a[1] - b[1];
@@ -1184,6 +1114,17 @@ fn compute_distance(
     }
 }
 
+/// Convert an f64 value to AttributeValue.
+/// Returns Null for non-finite values (NaN, Infinity) since they cannot be
+/// represented as JSON numbers.
+fn f64_to_attribute_value(value: f64) -> AttributeValue {
+    if let Some(num) = serde_json::Number::from_f64(value) {
+        AttributeValue::Number(num)
+    } else {
+        AttributeValue::Null
+    }
+}
+
 /// Extract representative point from a feature's geometry.
 /// Returns (xy, z) where z is None for 2D geometries.
 fn extract_representative_point(feature: &Feature) -> Option<([f64; 2], Option<f64>)> {
@@ -1218,31 +1159,17 @@ fn extract_representative_point(feature: &Feature) -> Option<([f64; 2], Option<f
 fn extract_representative_point_2d(
     geo: &reearth_flow_geometry::types::geometry::Geometry2D<f64>,
 ) -> Option<[f64; 2]> {
-    use reearth_flow_geometry::types::geometry::Geometry2D;
+    use reearth_flow_geometry::algorithm::centroid::Centroid;
 
-    match geo {
-        Geometry2D::Point(p) => Some([p.x(), p.y()]),
-        Geometry2D::MultiPoint(mp) => mp.centroid().map(|c| [c.x(), c.y()]),
-        Geometry2D::LineString(ls) => ls.centroid().map(|c| [c.x(), c.y()]),
-        Geometry2D::Polygon(poly) => poly.centroid().map(|c| [c.x(), c.y()]),
-        Geometry2D::MultiPolygon(mp) => mp.centroid().map(|c| [c.x(), c.y()]),
-        _ => None,
-    }
+    geo.centroid().map(|c| [c.x(), c.y()])
 }
 
 fn extract_representative_point_3d(
     geo: &reearth_flow_geometry::types::geometry::Geometry3D<f64>,
 ) -> Option<([f64; 2], Option<f64>)> {
-    use reearth_flow_geometry::types::geometry::Geometry3D;
+    use reearth_flow_geometry::algorithm::centroid::Centroid;
 
-    match geo {
-        Geometry3D::Point(p) => Some(([p.x(), p.y()], Some(p.z()))),
-        Geometry3D::MultiPoint(mp) => mp.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
-        Geometry3D::LineString(ls) => ls.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
-        Geometry3D::Polygon(poly) => poly.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
-        Geometry3D::MultiPolygon(mp) => mp.centroid().map(|c| ([c.x(), c.y()], Some(c.z()))),
-        _ => None,
-    }
+    geo.centroid().map(|c| ([c.x(), c.y()], Some(c.z())))
 }
 
 /// Compute arithmetic mean of a set of 3D points.
@@ -2020,7 +1947,7 @@ mod tests {
     }
 
     /// Test that disk-based candidate reading works correctly.
-    /// This tests the `read_candidate_from_disk` function directly.
+    /// This tests the `read_candidates_from_disk` function directly.
     #[test]
     fn test_disk_based_candidate_read() {
         use tempfile::tempdir;
@@ -2070,10 +1997,12 @@ mod tests {
         assert_eq!(finder.candidate_index[0].line_number, 0);
         assert_eq!(finder.candidate_index[0].point, [10.0, 20.0]);
 
-        // Read the candidate back from disk
-        let read_candidate = finder
-            .read_candidate_from_disk(&finder.candidate_index[0])
+        // Read the candidate back from disk using batch API
+        let read_candidates = finder
+            .read_candidates_from_disk(&[&finder.candidate_index[0]])
             .unwrap();
+        assert_eq!(read_candidates.len(), 1);
+        let read_candidate = &read_candidates[0];
 
         // Verify the read candidate matches the original
         assert_eq!(read_candidate.point, [10.0, 20.0]);
