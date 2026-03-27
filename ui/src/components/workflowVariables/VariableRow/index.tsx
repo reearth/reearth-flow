@@ -27,7 +27,7 @@ type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
   showVariableDialog?: boolean;
-  onVariableDialogOpen?: (index: number) => void;
+  onVariableDialogOpen?: (variableIndex: number, arrayItemIndex?: number) => void;
   onVariableDialogClose?: () => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
   onAssetDialogOpen: (dialog: "assets" | "cms") => void;
@@ -52,6 +52,12 @@ const VariableRow: React.FC<Props> = ({
             Array.isArray(variable.defaultValue) ? variable.defaultValue : []
           }
           onChange={(newValue) => onDefaultValueChange(index, newValue)}
+          showVariableDialog={showVariableDialog}
+          onVariableDialogOpen={(arrayItemIndex) =>
+            onVariableDialogOpen?.(index, arrayItemIndex)
+          }
+          onVariableDialogClose={onVariableDialogClose}
+          onAssetDialogOpen={onAssetDialogOpen}
         />
       );
     case "yes_no":
@@ -171,7 +177,7 @@ const VariableRow: React.FC<Props> = ({
             <div className="flex items-center gap-0">
               <IconButton
                 icon={<PencilIcon />}
-                onClick={() => onVariableDialogOpen?.(index)}
+                onClick={() => onVariableDialogOpen?.(index, undefined)}
                 className="ml-2"
               />
             </div>

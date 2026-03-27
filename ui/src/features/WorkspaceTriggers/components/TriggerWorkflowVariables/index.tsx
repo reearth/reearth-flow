@@ -120,27 +120,46 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
 
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+  const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
 
   const handleDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
   };
   const handleDialogClose = () => setShowDialog(undefined);
-  const handleVariableDialogOpen = useCallback((index: number) => {
-    setActiveVariableIndex(index);
-    setShowVariableDialog(true);
-  }, []);
+  const handleVariableDialogOpen = useCallback(
+    (variableIndex: number, arrayItemIndex = 0) => {
+      setActiveVariableIndex(variableIndex);
+      setActiveArrayItemIndex(arrayItemIndex);
+      setShowVariableDialog(true);
+    },
+    [],
+  );
   const handleVariableDialogClose = useCallback(
     () => setShowVariableDialog(false),
     [],
   );
   const handleAssetDoubleClick = (asset: Asset) => {
-    handleDefaultValueChange?.(activeVariableIndex, asset.url);
+    const mapping = variableMappings[activeVariableIndex];
+    if (Array.isArray(mapping?.defaultValue)) {
+      const newArray = [...mapping.defaultValue];
+      newArray[activeArrayItemIndex] = asset.url;
+      handleDefaultValueChange(activeVariableIndex, newArray);
+    } else {
+      handleDefaultValueChange(activeVariableIndex, asset.url);
+    }
     handleVariableDialogClose();
   };
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    handleDefaultValueChange?.(activeVariableIndex, cmsItemAssetUrl);
+    const mapping = variableMappings[activeVariableIndex];
+    if (Array.isArray(mapping?.defaultValue)) {
+      const newArray = [...mapping.defaultValue];
+      newArray[activeArrayItemIndex] = cmsItemAssetUrl;
+      handleDefaultValueChange(activeVariableIndex, newArray);
+    } else {
+      handleDefaultValueChange(activeVariableIndex, cmsItemAssetUrl);
+    }
     handleDialogClose();
     handleVariableDialogClose();
   };

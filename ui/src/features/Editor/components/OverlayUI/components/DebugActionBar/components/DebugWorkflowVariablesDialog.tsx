@@ -35,27 +35,46 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   const [startingDebugRun, setStartingDebugRun] = useState(false);
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+  const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
 
   const handleAssetDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
   };
   const handleDialogClose = () => setShowDialog(undefined);
-  const handleVariableDialogOpen = useCallback((index: number) => {
-    setActiveVariableIndex(index);
-    setShowVariableDialog(true);
-  }, []);
+  const handleVariableDialogOpen = useCallback(
+    (variableIndex: number, arrayItemIndex = 0) => {
+      setActiveVariableIndex(variableIndex);
+      setActiveArrayItemIndex(arrayItemIndex);
+      setShowVariableDialog(true);
+    },
+    [],
+  );
   const handleVariableDialogClose = useCallback(
     () => setShowVariableDialog(false),
     [],
   );
   const handleAssetDoubleClick = (asset: Asset) => {
-    onDebugRunVariableValueChange?.(activeVariableIndex, asset.url);
+    const variable = debugRunWorkflowVariables?.[activeVariableIndex];
+    if (Array.isArray(variable?.defaultValue)) {
+      const newArray = [...variable.defaultValue];
+      newArray[activeArrayItemIndex] = asset.url;
+      onDebugRunVariableValueChange?.(activeVariableIndex, newArray);
+    } else {
+      onDebugRunVariableValueChange?.(activeVariableIndex, asset.url);
+    }
     handleVariableDialogClose();
   };
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    onDebugRunVariableValueChange?.(activeVariableIndex, cmsItemAssetUrl);
+    const variable = debugRunWorkflowVariables?.[activeVariableIndex];
+    if (Array.isArray(variable?.defaultValue)) {
+      const newArray = [...variable.defaultValue];
+      newArray[activeArrayItemIndex] = cmsItemAssetUrl;
+      onDebugRunVariableValueChange?.(activeVariableIndex, newArray);
+    } else {
+      onDebugRunVariableValueChange?.(activeVariableIndex, cmsItemAssetUrl);
+    }
     handleDialogClose();
     handleVariableDialogClose();
   };
