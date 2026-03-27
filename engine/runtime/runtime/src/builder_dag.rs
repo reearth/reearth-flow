@@ -260,7 +260,7 @@ impl BuilderDag {
                     //   1. Such a method would require an empty default impl to
                     //      avoid mechanical changes across ~100 factories, but an
                     //      empty default lets developers forget to implement it for
-                    //      new dynamic-port actions — silently dropping ports. 
+                    //      new dynamic-port actions — silently dropping ports.
                     //      Such fragile approach should not be committed to the core
                     //      without a more robust architectural decision.
                     //   2. The existing get_output_ports() serves schema generation
@@ -273,8 +273,7 @@ impl BuilderDag {
                         if action == OUTPUT_ROUTING_ACTION {
                             // OutputRouter declares no output ports; the actual
                             // port is specified via the routingPort parameter.
-                            if let Some(serde_json::Value::String(rp)) =
-                                with.get(ROUTING_PARAM_KEY)
+                            if let Some(serde_json::Value::String(rp)) = with.get(ROUTING_PARAM_KEY)
                             {
                                 output_ports.push(Port::new(rp));
                             }
