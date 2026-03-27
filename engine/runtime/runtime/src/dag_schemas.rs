@@ -118,6 +118,7 @@ impl EdgeHavePorts for SchemaEdgeType {
     }
 }
 
+#[derive(Clone)]
 pub struct DagSchemas {
     pub(crate) id: GraphId,
     graph: DiGraph<SchemaNodeType, SchemaEdgeType>,
@@ -206,14 +207,15 @@ impl DagSchemas {
             } else {
                 global_params.clone()
             };
-            let subgraph = other_graph_schemas
-                .get_mut(sub_graph_id)
-                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"));
+            let mut subgraph = other_graph_schemas
+                .get(sub_graph_id)
+                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"))
+                .clone();
             for edge in subgraph.graph.edge_weights_mut() {
                 edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
             }
             prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
-            entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, subgraph);
+            entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
             let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id.clone())
             else {
                 continue;
